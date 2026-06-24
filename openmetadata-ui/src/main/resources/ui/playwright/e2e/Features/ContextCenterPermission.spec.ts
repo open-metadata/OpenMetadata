@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -30,7 +30,7 @@ import {
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
-  uploadDisposableDocument
+  uploadDisposableDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -827,7 +827,8 @@ test.describe('Context Center Permissions', () => {
           .getByTestId(`page-node-${childDisplayName}`)
           .dragTo(createAllPage.getByTestId(`page-node-${parentDisplayName}`));
 
-        const confirmationModal = createAllPage.getByTestId('confirmation-modal');
+        const confirmationModal =
+          createAllPage.getByTestId('confirmation-modal');
         await expect(confirmationModal).not.toBeVisible();
 
         const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
@@ -936,7 +937,7 @@ test.describe('Context Center Permissions', () => {
         await editAllPage
           .getByTestId(`page-node-${childDisplayName}`)
           .waitFor({ state: 'visible' });
-        
+
         await editAllPage
           .getByTestId(`page-node-${childDisplayName}`)
           .dragTo(editAllPage.getByTestId(`page-node-${parentDisplayName}`));
@@ -946,10 +947,8 @@ test.describe('Context Center Permissions', () => {
 
         const moveResPromise = editAllPage.waitForResponse(
           (response) =>
-            response.url().includes(
-              '/api/v1/contextCenter/pages/'
-            ) &&
-            response.request().method() === 'PATCH' 
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'PATCH'
         );
         await confirmationModal
           .getByRole('button', { name: /^confirm$/i })
@@ -1019,15 +1018,13 @@ test.describe('Context Center Permissions', () => {
         await expect(
           qlCard.getByTestId('edit-quick-link-btn')
         ).not.toBeVisible();
-        await expect(
-          qlCard.getByTestId('delete-quick-link-btn')
-        ).toBeVisible();
+        await expect(qlCard.getByTestId('delete-quick-link-btn')).toBeVisible();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
-          response =>
-            response.url().includes(
-              `/api/v1/contextCenter/pages/${disposableQl.id}`
-            ) &&
+          (response) =>
+            response
+              .url()
+              .includes(`/api/v1/contextCenter/pages/${disposableQl.id}`) &&
             response.url().includes('hardDelete=true')
         );
         await qlCard.getByTestId('delete-quick-link-btn').click();

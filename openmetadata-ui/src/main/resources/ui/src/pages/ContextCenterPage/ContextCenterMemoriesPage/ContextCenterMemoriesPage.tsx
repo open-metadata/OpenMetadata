@@ -126,7 +126,7 @@ const ContextCenterMemoriesPage: FC = () => {
       }),
       [permissions.Create, permissions.Delete, permissions.EditAll]
     );
-  
+
   const canDeleteMemory = useMemo(() => {
     const memory = memoryToEdit ?? memoryToView;
 
@@ -787,9 +787,7 @@ const ContextCenterMemoriesPage: FC = () => {
       {/* Edit / Create modal */}
       <CreateMemoryModal
         canCreate={hasCreatePermission}
-        canDelete={
-          canDeleteMemory
-        }
+        canDelete={canDeleteMemory}
         canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
         isAdminUser={currentUser?.isAdmin}
@@ -805,9 +803,7 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={
-            canDeleteMemory
-          }
+          canDelete={canDeleteMemory}
           canEdit={hasEditPermission}
           currentUserName={currentUser?.name}
           isAdminUser={currentUser?.isAdmin}

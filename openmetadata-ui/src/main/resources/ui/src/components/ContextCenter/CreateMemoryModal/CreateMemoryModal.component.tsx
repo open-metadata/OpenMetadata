@@ -251,8 +251,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
     return memorySource.type === EntityType.KNOWLEDGE_PAGE
       ? contextCenterClassBase.getArticlePath(
-        memorySource.fullyQualifiedName ?? ''
-      )
+          memorySource.fullyQualifiedName ?? ''
+        )
       : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
   }, [memorySource]);
 
@@ -261,11 +261,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     const showEditButton = isViewOnly && canEditMemory;
 
     const showSubmitButton =
-      !isViewOnly &&
-      (memoryToEdit ? canEditMemory : canCreate);
+      !isViewOnly && (memoryToEdit ? canEditMemory : canCreate);
 
-      return {showEditButton, showSubmitButton }
-  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate])
+    return { showEditButton, showSubmitButton };
+  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -397,10 +396,10 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           })),
           ...(hasExistingShareConfig
             ? {
-              shareConfig: {
-                visibility: memoryToEdit.shareConfig?.visibility,
-              },
-            }
+                shareConfig: {
+                  visibility: memoryToEdit.shareConfig?.visibility,
+                },
+              }
             : {}),
         };
         const updated = {
@@ -552,24 +551,24 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     </div>
                     {(memoryToEdit?.owners?.[0]?.name ??
                       memoryToEdit?.updatedBy) && (
-                        <div className="tw:flex tw:items-center tw:gap-1">
-                          <Typography className="tw:text-gray-500" size="text-xs">
-                            {t('label.created-by')}
-                          </Typography>
-                          <UserPopOverCard
-                            showUserName
-                            className="tw:text-primary"
-                            profileWidth={16}
-                            userName={memoryToEdit?.owners?.[0]?.name || ''}
-                          />
-                          <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
-                            &middot;
-                          </span>
-                          <Typography className="tw:text-gray-500" size="text-xs">
-                            {formatDate(memoryToEdit.updatedAt)}
-                          </Typography>
-                        </div>
-                      )}
+                      <div className="tw:flex tw:items-center tw:gap-1">
+                        <Typography className="tw:text-gray-500" size="text-xs">
+                          {t('label.created-by')}
+                        </Typography>
+                        <UserPopOverCard
+                          showUserName
+                          className="tw:text-primary"
+                          profileWidth={16}
+                          userName={memoryToEdit?.owners?.[0]?.name || ''}
+                        />
+                        <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
+                          &middot;
+                        </span>
+                        <Typography className="tw:text-gray-500" size="text-xs">
+                          {formatDate(memoryToEdit.updatedAt)}
+                        </Typography>
+                      </div>
+                    )}
                     {memorySource && memorySourceLink && (
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <FileLock02
@@ -719,8 +718,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       className="tw:text-tertiary"
                       size="text-xs"
                       weight="semibold">
-                      {`${t('label.linked-data-asset-plural')} (${linkedAssets.length
-                        })`}
+                      {`${t('label.linked-data-asset-plural')} (${
+                        linkedAssets.length
+                      })`}
                     </Typography>
 
                     {isViewOnly ? (
@@ -819,8 +819,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                 type="color">
                                 {visibilityOption
                                   ? VISIBILITY_ICON_MAP[
-                                  visibilityOption.iconName
-                                  ]
+                                      visibilityOption.iconName
+                                    ]
                                   : VISIBILITY_ICON_MAP.Share07}
                                 {visibilityOption
                                   ? t(visibilityOption.labelKey)
@@ -1012,7 +1012,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {showSubmitButton && (
                       <Button
                         color="primary"
-                        isDisabled={isSubmitDisabled || isSubmitting || isDeleting}
+                        isDisabled={
+                          isSubmitDisabled || isSubmitting || isDeleting
+                        }
                         isLoading={isSubmitting}
                         size="sm"
                         onClick={handleSubmit}>
