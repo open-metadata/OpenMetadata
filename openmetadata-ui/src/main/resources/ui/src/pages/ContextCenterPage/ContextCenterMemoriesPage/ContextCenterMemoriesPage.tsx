@@ -65,7 +65,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
 const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceFile';
+  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },

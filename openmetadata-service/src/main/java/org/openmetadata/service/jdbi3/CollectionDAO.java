@@ -84,6 +84,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -3637,7 +3638,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -3671,7 +3672,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -3681,7 +3682,8 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
+        @Define("domainCondition") String domainCondition);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -10691,6 +10693,7 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -14786,13 +14789,16 @@ public interface CollectionDAO {
     int insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
-        "SELECT id, change_event_id, event_ts, event_type, user_name, "
-            + "actor_type, impersonated_by, service_name, "
-            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at "
-            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+        "SELECT a.id, a.change_event_id, a.event_ts, a.event_type, a.user_name, "
+            + "a.actor_type, a.impersonated_by, a.service_name, "
+            + "a.entity_type, a.entity_id, a.entity_fqn, a.entity_fqn_hash, a.event_json, a.search_text, a.created_at "
+            + "FROM audit_log_event a "
+            + "JOIN (SELECT id FROM audit_log_event <condition> <orderClause> LIMIT :limit) k "
+            + "ON a.id = k.id <orderClauseQualified>")
     List<AuditLogRecord> list(
         @Define("condition") String condition,
         @Define("orderClause") String orderClause,
+        @Define("orderClauseQualified") String orderClauseQualified,
         @Bind("userName") String userName,
         @Bind("actorType") String actorType,
         @Bind("serviceName") String serviceName,

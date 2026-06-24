@@ -127,6 +127,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.MemoryOwnership;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -137,6 +138,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms,style";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms,style";
+  static final String FIELD_DERIVED_FROM = "derivedFrom";
 
   final FeedRepository feedRepository = Entity.getFeedRepository();
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
@@ -250,6 +252,20 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+    if (fields.contains(FIELD_DERIVED_FROM)) {
+      entity.setDerivedFrom(getDerivedFrom(entity));
+    }
+  }
+
+  /**
+   * Returns the context memory from which the Memory Agent created this glossary term.
+   * Edge direction: from=term → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
+   */
+  private EntityReference getDerivedFrom(GlossaryTerm entity) {
+    final List<EntityReference> refs =
+        findTo(
+            entity.getId(), Entity.GLOSSARY_TERM, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   @Override
@@ -364,6 +380,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
     entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
     entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
+    if (!fields.contains(FIELD_DERIVED_FROM)) {
+      entity.setDerivedFrom(null);
+    }
   }
 
   @Override
@@ -2070,6 +2089,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+    }
+
+    private boolean managedFieldChanged() {
+      return !Objects.equals(original.getName(), updated.getName())
+          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+          || !Objects.equals(original.getDescription(), updated.getDescription());
     }
 
     /**
