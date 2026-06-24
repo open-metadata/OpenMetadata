@@ -182,6 +182,11 @@ const fillSLAForm = async (
   await page
     .locator(`.retention-unit-select [title*='${slaData.retentionUnit}']`)
     .click();
+  await expect(
+    page
+      .getByTestId('retention-unit-select')
+      .locator('.ant-select-selection-item')
+  ).toContainText(slaData.retentionUnit);
 
   await page.locator('#columnName-select').fill(columnName);
   await page.locator('#columnName-select').press('Enter');
