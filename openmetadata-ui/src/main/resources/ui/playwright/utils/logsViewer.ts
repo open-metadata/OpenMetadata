@@ -46,9 +46,8 @@ export const navigateToBundleSuiteWithPagination = async (
       break;
     }
 
-    const listResponse = page.waitForResponse(
-      (r) =>
-        r.url().includes('/api/v1/dataQuality/testSuites/search/list')
+    const listResponse = page.waitForResponse((r) =>
+      r.url().includes('/api/v1/dataQuality/testSuites/search/list')
     );
     await nextBtn.click();
     await listResponse;
