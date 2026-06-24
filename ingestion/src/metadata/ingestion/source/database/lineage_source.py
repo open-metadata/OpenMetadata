@@ -80,6 +80,15 @@ class LineageSource(QueryParserSource, ABC):
 
     dialect: Dialect
 
+    def prepare_lineage_query(self, query: str) -> str:
+        """
+        Hook for connectors to normalize a query just before it is parsed for
+        lineage. Applied only on the parse path (not when persisting the query),
+        so the original statement is still stored. Defaults to identity;
+        override in connectors that emit non-standard DDL the parser can't read.
+        """
+        return query
+
     @staticmethod
     def generate_lineage_with_processes(  # noqa: C901
         producer_fn: Callable[[], Iterable[Any]],
@@ -375,6 +384,7 @@ class LineageSource(QueryParserSource, ABC):
             self.source_config.parsingTimeoutLimit,  # pyright: ignore[reportAttributeAccessIssue]
             self.config.serviceName,
             self.get_query_parser_type(),
+            self.prepare_lineage_query,
         )
         yield from self.generate_lineage_with_processes(
             producer_fn,
