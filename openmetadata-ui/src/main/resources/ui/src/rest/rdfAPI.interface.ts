@@ -51,6 +51,7 @@ export type EntityGraphExportFormat = 'turtle' | 'jsonld';
 
 export interface GlossaryGraphParams {
   glossaryId?: string;
+  glossaryTermId?: string;
   relationTypes?: string;
   limit?: number;
   offset?: number;
