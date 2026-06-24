@@ -160,6 +160,7 @@ export enum Operation {
     DeleteScim = "DeleteScim",
     DeleteTestCaseFailedRowsSample = "DeleteTestCaseFailedRowsSample",
     Deploy = "Deploy",
+    EditAIAutomationStatus = "EditAIAutomationStatus",
     EditAll = "EditAll",
     EditCertification = "EditCertification",
     EditCustomFields = "EditCustomFields",
