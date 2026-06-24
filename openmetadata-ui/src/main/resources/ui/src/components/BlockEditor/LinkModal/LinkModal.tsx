@@ -12,6 +12,7 @@
  */
 import { Form, FormProps, Input, Modal } from 'antd';
 import { FC } from 'react';
+import { LINK_OVERLAY_Z_INDEX } from '../../../constants/BlockEditor.constants';
 
 export interface LinkData {
   href: string;
@@ -29,10 +30,6 @@ export interface LinkModalProps {
   getContainer?: () => HTMLElement;
 }
 
-// Must exceed React Aria's overlay z-index (100000) so the modal paints above
-// the dialog content.
-const LINK_MODAL_Z_INDEX = 100001;
-
 const LinkModal: FC<LinkModalProps> = ({
   isOpen,
   data,
@@ -48,7 +45,7 @@ const LinkModal: FC<LinkModalProps> = ({
   // default avoids painting above unrelated portals.
   const container = getContainer?.();
   const zIndex =
-    container && container !== document.body ? LINK_MODAL_Z_INDEX : undefined;
+    container && container !== document.body ? LINK_OVERLAY_Z_INDEX : undefined;
 
   return (
     <Modal

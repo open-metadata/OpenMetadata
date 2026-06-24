@@ -14,16 +14,13 @@ import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import { LINK_OVERLAY_Z_INDEX } from '../../constants/BlockEditor.constants';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
-
-// Must exceed React Aria's overlay z-index (100000) so the link popup paints
-// above the dialog content when mounted inside a focus-trapping dialog.
-const LINK_POPUP_Z_INDEX = 100001;
 
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
   ({ editor, menuType }, ref) => {
@@ -157,7 +154,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           trigger: 'manual',
           placement: 'top',
           hideOnClick: true,
-          zIndex: LINK_POPUP_Z_INDEX,
+          zIndex: LINK_OVERLAY_Z_INDEX,
         });
         hasPopup = !isEmpty(popup);
       } else {

@@ -77,3 +77,8 @@ export const LINK_PASTE_REGEX =
 export const UPLOADED_ASSETS_URL = '/api/v1/attachments/';
 
 export const TEXT_TYPES = ['text/plain', 'text/rtf'];
+
+// z-index for the link modal/popup when the editor lives inside a
+// focus-trapping dialog. Must exceed React Aria's overlay z-index (100000) so
+// they paint above the dialog content.
+export const LINK_OVERLAY_Z_INDEX = 100001;
