@@ -59,16 +59,24 @@ class KafkaIngestionClass extends ServiceBaseClass {
 
     await page.fill('#root\\/bootstrapServers', kafkaBootstrapServers);
     await checkServiceFieldSectionHighlighting(page, 'bootstrapServers');
+
+    await page.getByTestId('connection-section-scope').click();
     await page.fill('#root\\/schemaRegistryURL', kafkaSchemaRegistryUrl);
     await checkServiceFieldSectionHighlighting(page, 'schemaRegistryURL');
   }
 
   async fillIngestionDetails(page: Page) {
+    await page.getByTestId('topicFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/topicFilterPattern\\/includes')
+      .getByTestId('filter-section-topicFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.entityName);
-
-    await page.locator('#root\\/topicFilterPattern\\/includes').press('Enter');
+    await page
+      .getByTestId('filter-section-topicFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async deleteService(page: Page) {
