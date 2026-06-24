@@ -629,15 +629,18 @@ test.describe('User with different Roles', () => {
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const searchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const searchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(table.entity.name))
       );
 
       const assetCardText = table.entity.displayName ?? table.entity.name;
 
       await assetsSearchBox.fill(table.entity.name);
 
-      await searchResponse;
+      const searchResponse = await searchPromise;
+      expect(searchResponse.status()).toBe(200);
 
       const assetCard = adminPage.getByText(assetCardText).first();
 
@@ -645,13 +648,18 @@ test.describe('User with different Roles', () => {
 
       await assetsSearchBox.clear();
 
-      const incorrectSearchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const incorrectSearchTerm = 'nonexistent-asset-name-xyz-123';
+
+      const incorrectSearchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(incorrectSearchTerm)
       );
 
-      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+      await assetsSearchBox.fill(incorrectSearchTerm);
 
-      await incorrectSearchResponse;
+      const incorrectSearchResponse = await incorrectSearchPromise;
+      expect(incorrectSearchResponse.status()).toBe(200);
 
       await expect(assetsSearchBox).toBeVisible();
 
