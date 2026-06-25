@@ -424,7 +424,7 @@ public class TeamRepository extends EntityRepository<Team> {
         daoCollection
             .relationshipDAO()
             .findToBatch(parentIds, TEAM, TEAM, Relationship.PARENT_OF.ordinal(), ALL);
-    Set<UUID> liveChildren = nonDeletedTeamIds(records);
+    Set<UUID> liveChildren = nonDeletedToIds(records, TEAM);
     for (CollectionDAO.EntityRelationshipObject record : records) {
       UUID childId = UUID.fromString(record.getToId());
       if (liveChildren.contains(childId)) {
@@ -436,15 +436,16 @@ public class TeamRepository extends EntityRepository<Team> {
     return result;
   }
 
-  private Set<UUID> nonDeletedTeamIds(List<CollectionDAO.EntityRelationshipObject> records) {
-    List<UUID> childIds =
+  private Set<UUID> nonDeletedToIds(
+      List<CollectionDAO.EntityRelationshipObject> records, String entityType) {
+    List<UUID> toIds =
         records.stream()
             .map(r -> UUID.fromString(r.getToId()))
             .distinct()
             .collect(Collectors.toList());
     Set<UUID> live = new HashSet<>();
-    if (!childIds.isEmpty()) {
-      Entity.getEntityReferencesByIds(TEAM, childIds, NON_DELETED)
+    if (!toIds.isEmpty()) {
+      Entity.getEntityReferencesByIds(entityType, toIds, NON_DELETED)
           .forEach(ref -> live.add(ref.getId()));
     }
     return live;
@@ -460,10 +461,14 @@ public class TeamRepository extends EntityRepository<Team> {
         daoCollection
             .relationshipDAO()
             .findToBatch(ids, TEAM, Entity.USER, Relationship.HAS.ordinal(), ALL);
+    Set<UUID> liveUsers = nonDeletedToIds(records, Entity.USER);
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      directUsers
-          .computeIfAbsent(UUID.fromString(record.getFromId()), k -> new HashSet<>())
-          .add(UUID.fromString(record.getToId()));
+      UUID userId = UUID.fromString(record.getToId());
+      if (liveUsers.contains(userId)) {
+        directUsers
+            .computeIfAbsent(UUID.fromString(record.getFromId()), k -> new HashSet<>())
+            .add(userId);
+      }
     }
     return directUsers;
   }
