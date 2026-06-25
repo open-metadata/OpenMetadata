@@ -66,6 +66,9 @@ public class MeteredPipelineServiceClient implements PipelineServiceClientInterf
       String name, Supplier<PipelineServiceClientResponse> operation) {
     try {
       PipelineServiceClientResponse result = operation.get();
+      if (result == null) {
+        result = new PipelineServiceClientResponse().withCode(200);
+      }
       Metrics.counter(
               "pipeline_client_request_status",
               "operation",
