@@ -69,9 +69,10 @@ const ProfilePicture = ({
     return (
       <Avatar
         contrastBorder={false}
+        placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
         size="md"
         src={profileURL}
-        style={{ width: size, height: size, ...style }}
+        style={rootStyle}
       />
     );
   }
