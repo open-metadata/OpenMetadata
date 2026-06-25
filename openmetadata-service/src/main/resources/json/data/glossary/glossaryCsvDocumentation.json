@@ -121,7 +121,7 @@
     {
       "name": "domains",
       "required": false,
-      "description": "Domains to which the glossary term belongs to, separated by ';'.",
+      "description": "Fully qualified names of the domains the glossary term belongs to, separated by ';'.",
       "examples": [
         "Marketing", "Sales;Operations"
       ]

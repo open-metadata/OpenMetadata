@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.csv.EntityCsv.IMPORT_FAILED;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -1118,13 +1119,13 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    */
   private String buildGlossaryTermsCsv(String glossaryFqn, TestNamespace ns) {
     StringBuilder csv = new StringBuilder();
-    // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
+    // CSV header with all 15 columns as expected by GlossaryCsv.addRecord()
     // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
     csv.append(GLOSSARY_TERM_CSV_HEADER);
 
     // Add 3 top-level glossary terms with EMPTY parent column
     // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
-    //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
+    //          tags, reviewers, owner, glossaryStatus, color, iconURL, domains, extension
     csv.append(
         String.format(
             ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,,\n",
@@ -1443,13 +1444,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     GlossaryTerm term = client.glossaryTerms().create(createTerm);
 
     String domainFqn = testDomain().getFullyQualifiedName();
-    EntityReference domainRef =
-        new EntityReference()
-            .withId(testDomain().getId())
-            .withType("domain")
-            .withName(testDomain().getName())
-            .withFullyQualifiedName(domainFqn);
-    term.setDomains(List.of(domainRef));
+    term.setDomains(List.of(testDomain().getEntityReference()));
     client.glossaryTerms().update(term.getId(), term);
 
     String exportedCsv = client.glossaries().exportCsv(glossary.getName());
@@ -1458,9 +1453,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "Exported glossary CSV should contain the term's domain. CSV:\n" + exportedCsv);
 
     String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
-    assertFalse(
-        resultCsv.contains("failure"),
-        "Re-importing the exported CSV should succeed. Result: " + resultCsv);
+    assertImportSucceeded(resultCsv);
 
     GlossaryTerm reimported =
         client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
@@ -1481,13 +1474,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
 
     Glossary glossary = createEntity(createMinimalRequest(ns));
     String domainFqn = testDomain().getFullyQualifiedName();
-    EntityReference domainRef =
-        new EntityReference()
-            .withId(testDomain().getId())
-            .withType("domain")
-            .withName(testDomain().getName())
-            .withFullyQualifiedName(domainFqn);
-    glossary.setDomains(List.of(domainRef));
+    glossary.setDomains(List.of(testDomain().getEntityReference()));
     patchEntity(glossary.getId().toString(), glossary);
 
     CreateGlossaryTerm createTerm =
@@ -1505,9 +1492,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "Inherited domain must not be written to the exported CSV. Row: " + termRow);
 
     String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
-    assertFalse(
-        resultCsv.contains("failure"),
-        "Re-importing the exported CSV should succeed. Result: " + resultCsv);
+    assertImportSucceeded(resultCsv);
 
     GlossaryTerm reimported =
         client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
@@ -1527,6 +1512,11 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
                         domainFqn.equals(domain.getFullyQualifiedName())
                             && Boolean.TRUE.equals(domain.getInherited()));
     assertTrue(stillInherits, "Inherited domain must still be present after CSV round-trip");
+  }
+
+  private static void assertImportSucceeded(String resultCsv) {
+    boolean anyRowFailed = resultCsv.lines().anyMatch(line -> line.startsWith(IMPORT_FAILED + ","));
+    assertFalse(anyRowFailed, "CSV import reported a failure row:\n" + resultCsv);
   }
 
   // ===================================================================
