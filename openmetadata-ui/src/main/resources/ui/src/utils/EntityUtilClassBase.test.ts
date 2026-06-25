@@ -17,6 +17,7 @@ import { EntityUtilClassBase } from './EntityUtilClassBase';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getServiceDetailsPath,
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -224,6 +225,13 @@ describe('EntityUtilClassBase', () => {
       undefined,
       undefined
     );
+  });
+
+  it('should return service details path for driveService entity type', () => {
+    const fqn = 'test.driveService';
+    entityUtil.getEntityLink(EntityType.DRIVE_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'driveServices');
   });
 
   describe('getFqnParts', () => {
