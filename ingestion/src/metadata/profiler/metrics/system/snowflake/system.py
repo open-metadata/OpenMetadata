@@ -43,7 +43,7 @@ RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*|COPY\s*INTO\s*))([\w._\"\'()]+)(?=\s|;|$)"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
@@ -53,13 +53,50 @@ def sha256_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-cache = LRUCache(LRU_CACHE_SIZE)
+_cache = LRUCache(LRU_CACHE_SIZE)
 
 
-@cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
-def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
-    """Parse snowflake queries to extract the identifiers"""
-    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+def _normalize_dml_sql(query: str) -> str:
+    """Normalize a SQL query before DML pattern matching.
+
+    Three-pass process:
+    1. Replace /* ... */ block comments with a single space so they act as a
+       token separator but do not expose their body to the regex.
+    2. Strip -- single-line comments (remove to end of line, leave the newline).
+    3. Strip leading/trailing whitespace so re.match() can find the DML keyword
+       at position 0.
+
+    This prevents comment bodies (e.g. commented-out SQL snippets) from being
+    mistaken for actual DML operations.
+
+    Note that this code does not handle comments inside of strings, and will remove
+    them if found. This function should not be used if their preservation is a
+    requirement.
+    """
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    query = re.sub(r"--[^\n]*", "", query)
+    return query.strip()
+
+
+def _parse_query(query: Optional[str]) -> Optional[str]:  # noqa: UP045
+    """Parse snowflake queries to extract the identifiers.
+
+    The query is first normalized (block comments, single-line comments, and
+    leading whitespace removed) so that re.match() can reliably find the DML
+    keyword at position 0 without being confused by commented-out SQL in the
+    query body.
+
+    Returns ``None`` if *query* is ``None`` or empty, or if the query is not a
+    recognized DML statement.
+    """
+    if not query:
+        return None
+    return _parse_cached(_normalize_dml_sql(query))
+
+
+@_cache.wrap(key_func=sha256_hash)
+def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
+    match = re.match(QUERY_PATTERN, normalized, re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
