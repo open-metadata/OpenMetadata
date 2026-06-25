@@ -12,7 +12,11 @@
  */
 package org.openmetadata.service.rdf;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -20,7 +24,13 @@ import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -53,6 +64,59 @@ class RdfUpdaterTest {
     mockRepository = Mockito.mock(RdfRepository.class);
     when(mockRepository.isEnabled()).thenReturn(true);
     originalRepository = swapRdfRepository(mockRepository);
+  }
+
+  @Test
+  @DisplayName("RDF writes touching the same entity id run in submission order")
+  void writesForSameEntityIdAreSequenced() throws Exception {
+    UUID termId = UUID.randomUUID();
+    UUID relatedTermId = UUID.randomUUID();
+    EntityInterface entity = Mockito.mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(termId);
+
+    CountDownLatch updateStarted = new CountDownLatch(1);
+    CountDownLatch releaseUpdate = new CountDownLatch(1);
+    CountDownLatch relationStarted = new CountDownLatch(1);
+    AtomicBoolean relationRan = new AtomicBoolean(false);
+    List<String> events = Collections.synchronizedList(new ArrayList<>());
+
+    doAnswer(
+            ignored -> {
+              events.add("update-start");
+              updateStarted.countDown();
+              assertFalse(relationRan.get());
+              assertTrue(releaseUpdate.await(5, TimeUnit.SECONDS));
+              events.add("update-end");
+              return null;
+            })
+        .when(mockRepository)
+        .createOrUpdate(entity);
+    doAnswer(
+            ignored -> {
+              relationRan.set(true);
+              events.add("relation");
+              relationStarted.countDown();
+              return null;
+            })
+        .when(mockRepository)
+        .addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
+
+    try {
+      RdfUpdater.updateEntity(entity);
+      assertTrue(updateStarted.await(5, TimeUnit.SECONDS));
+
+      RdfUpdater.addGlossaryTermRelation(termId, relatedTermId, "relatedTo");
+      assertFalse(relationStarted.await(250, TimeUnit.MILLISECONDS));
+
+      releaseUpdate.countDown();
+      assertTrue(relationStarted.await(5, TimeUnit.SECONDS));
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(5))
+          .untilAsserted(
+              () -> assertEquals(List.of("update-start", "update-end", "relation"), events));
+    } finally {
+      releaseUpdate.countDown();
+    }
   }
 
   @AfterEach

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row } from 'antd';
+import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ReviewerLabelV2 } from '../../../components/DataAssets/ReviewerLabelV2/ReviewerLabelV2';
 import DataProductsContainer from '../../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -27,6 +28,7 @@ import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
+import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 import './knowledge-page.less';
 interface KnowledgePageDetailRightPanelProps {
@@ -46,6 +48,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   updatePageTag,
   handleRelatedEntitiesUpdate,
 }) => {
+  const { t } = useTranslation();
   const {
     entityRules,
     data,
@@ -128,6 +131,17 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         </Col>
         {knowledgePage?.id && (
           <Col span={24}>
+            {knowledgePage.processingStatus && (
+              <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
+                <Typography.Text className="tw:text-gray-500 tw:text-sm">
+                  {t('label.memory-extraction')}
+                </Typography.Text>
+                <ArticleStatusBadge
+                  error={knowledgePage.processingError}
+                  status={knowledgePage.processingStatus}
+                />
+              </div>
+            )}
             <ExtractedMemoriesCard sourceId={knowledgePage.id} />
           </Col>
         )}

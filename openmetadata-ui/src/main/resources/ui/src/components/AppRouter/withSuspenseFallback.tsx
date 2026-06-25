@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 
-import { ComponentType, forwardRef, Suspense } from 'react';
+import { ComponentType, forwardRef, ReactNode, Suspense } from 'react';
 import Loader from '../common/Loader/Loader';
 
+const DEFAULT_FALLBACK = (
+  <div className="ant-layout-content flex-center">
+    <Loader />
+  </div>
+);
+
 export function withSuspenseFallback<T extends object>(
-  Component: ComponentType<T>
+  Component: ComponentType<T>,
+  fallback: ReactNode = DEFAULT_FALLBACK
 ) {
   return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
     return (
-      <Suspense
-        fallback={
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        }>
+      <Suspense fallback={fallback}>
         <Component {...(props as T)} ref={ref} />
       </Suspense>
     );

@@ -37,6 +37,13 @@ const defaultBaseURL = isH2Mode
 export default defineConfig({
   testDir: './playwright/e2e',
   outputDir: './playwright/output/test-results',
+  // Omit {projectName} and {platform} from snapshot filenames so a single
+  // reference image works on both macOS dev machines and Linux CI runners.
+  // Edge lines in the lineage PNG are pure bezier geometry (no text/fonts)
+  // and render identically across platforms; the threshold in toMatchSnapshot
+  // absorbs any minor anti-aliasing differences in the node-card text areas.
+  snapshotPathTemplate:
+    '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -61,6 +68,7 @@ export default defineConfig({
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
+    ['@flakiness/playwright', { flakinessProject: 'OpenMetadata/OpenMetadata' }],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -110,6 +118,7 @@ export default defineConfig({
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
         '**/IntakeForm.spec.ts',
+        '**/DomainIsolation/**',
       ],
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -191,6 +200,17 @@ export default defineConfig({
       dependencies: ['DataAssetRulesDisabled'],
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
+    },
+    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
+    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
+    // prevents cross-file races on that shared setting.
+    {
+      name: 'DomainIsolation',
+      testMatch: '**/DomainIsolation/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: false,
+      workers: 1,
     },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
