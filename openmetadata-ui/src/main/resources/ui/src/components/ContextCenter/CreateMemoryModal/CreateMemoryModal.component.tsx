@@ -774,6 +774,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                         )}
                         <DataAssetSelectList
+                          popoverClassName='tw:h-100'
                           renderTrigger={({ open }) => (
                             <Button
                               className="tw:px-2.5 tw:py-1.5"

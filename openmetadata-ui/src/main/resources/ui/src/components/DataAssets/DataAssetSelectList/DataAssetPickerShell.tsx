@@ -213,7 +213,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             {isLoading && (
               <Box align="center" className="tw:py-4" justify="center">
                 <Typography className="tw:text-quaternary" size="text-sm">
-                  {t('label.loading')}
+                  {t('label.loading')}...
                 </Typography>
               </Box>
             )}
