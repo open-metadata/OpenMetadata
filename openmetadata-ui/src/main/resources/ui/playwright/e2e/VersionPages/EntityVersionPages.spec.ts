@@ -336,19 +336,15 @@ test.describe('Entity Version pages', () => {
 
           // v0.1 view must show the original description, not the live value
           await expect(
-            page
-              .locator(
-                `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
-              )
-              .nth(1)
+            page.locator(
+              `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+            )
           ).toContainText(col0OriginalDesc);
 
           await expect(
-            page
-              .locator(
-                `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
-              )
-              .nth(1)
+            page.locator(
+              `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+            )
           ).not.toContainText(col0UpdatedDesc);
 
           await freshTable.delete(apiContext);

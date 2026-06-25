@@ -252,6 +252,7 @@ function VersionTable<T extends Column | SearchIndexField>({
         dataIndex: 'description',
         key: 'description',
         width: 400,
+        onCell: () => ({ 'data-testid': 'column-description-cell' }),
         render: (description: T['description']) =>
           description ? (
             <>
