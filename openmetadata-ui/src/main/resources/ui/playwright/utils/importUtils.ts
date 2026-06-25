@@ -1009,7 +1009,13 @@ export const uploadCSVAndWaitForGrid = async (
   }
 ): Promise<{ rowCount: number; tempFilePath?: string }> => {
   await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('stepper-container').waitFor({ state: 'visible' });
+  if (
+    !(await waitForVisibleLocator(page.getByTestId('stepper-container'), 1000))
+  ) {
+    await page
+      .getByTestId('csv-workflow-stepper')
+      .waitFor({ state: 'visible' });
+  }
   await expect(
     page.getByText('Drag & Drop or Browse CSV file here')
   ).toBeVisible();

@@ -96,7 +96,7 @@ const CsvWorkflowHeader = ({
       </div>
       <div
         className="csv-workflow-inline-stepper"
-        data-testid="csv-workflow-stepper">
+        data-testid="stepper-container">
         <span hidden data-testid="stepper" />
         <span hidden data-testid="active-step">
           {activeStep}
