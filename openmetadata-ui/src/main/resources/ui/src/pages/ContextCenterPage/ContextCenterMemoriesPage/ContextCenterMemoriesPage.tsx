@@ -81,7 +81,7 @@ const FILTER_BUTTON_BASE_CLS =
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
@@ -522,7 +522,7 @@ const ContextCenterMemoriesPage: FC = () => {
               className={classNames(
                 'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                 'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
-                { 'tw:bg-blue-50 tw:border-blue-200': isActive }
+                { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
               )}
               key={filterKey}
               onClick={() => handleFilterChange(filterKey)}>
@@ -590,9 +590,9 @@ const ContextCenterMemoriesPage: FC = () => {
                   classNames(
                     'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
                     {
-                      'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
+                      'tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:text-utility-brand-700':
                         isSelected,
-                      'tw:border-gray-300 tw:bg-primary tw:text-secondary':
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
                         !isSelected,
                     }
                   )
@@ -610,7 +610,9 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-secondary'
+                  selectedAsset
+                    ? 'tw:text-utility-brand-700'
+                    : 'tw:text-secondary'
                 }
                 weight="medium">
                 {assetOptions.find((o) => o.id === selectedAsset)?.label ??
@@ -642,7 +644,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <div className="tw:shrink-0">
                           {searchClassBase.getEntityIcon(
                             opt.type,
-                            'tw:w-6 tw:h-6 tw:text-gray-500'
+                            'tw:w-6 tw:h-6 tw:text-quaternary'
                           )}
                         </div>
                         <Box
@@ -652,14 +654,14 @@ const ContextCenterMemoriesPage: FC = () => {
                           <div className="tw:max-w-55">
                             <Typography
                               ellipsis
-                              className="tw:truncate tw:text-gray-800"
+                              className="tw:truncate tw:text-utility-gray-800"
                               size="text-sm"
                               weight="medium">
                               {opt.displayName}
                             </Typography>
                             <Typography
                               ellipsis
-                              className="tw:text-gray-400 tw:truncate"
+                              className="tw:text-utility-gray-400 tw:truncate"
                               size="text-xs">
                               {opt.id}
                             </Typography>
@@ -689,7 +691,9 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-secondary'
+                  selectedAuthor
+                    ? 'tw:text-utility-brand-700'
+                    : 'tw:text-secondary'
                 }
                 weight="medium">
                 {authorOptions.find((o) => o.id === selectedAuthor)?.label ??

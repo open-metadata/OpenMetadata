@@ -568,7 +568,7 @@ const KnowledgePagesHierarchy = forwardRef<
                   )}>
                   <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
                     <File06
-                      className="tw:shrink-0 tw:text-gray-500"
+                      className="tw:shrink-0 tw:text-utility-gray-500"
                       data-testid="page-icon"
                       height={13}
                       width={13}
@@ -689,14 +689,14 @@ const KnowledgePagesHierarchy = forwardRef<
         <Box align="center" className="tw:px-1.5 tw:pb-5" justify="between">
           <Box align="center" gap={3}>
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <File06 className="tw:text-gray-600" size={20} />
+              <File06 className="tw:text-fg-tertiary" size={20} />
             </div>
             <div>
               <Typography size="text-md" weight="medium">
                 {t('label.article-plural')}
               </Typography>
               <Typography
-                className="tw:text-gray-500 tw:flex tw:items-center tw:gap-2"
+                className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
                 size="text-xs">
                 {paginationState.paging.total ?? 0} {t('label.article-plural')}
               </Typography>
@@ -725,7 +725,7 @@ const KnowledgePagesHierarchy = forwardRef<
           <div className="tw:px-1.5">
             {Array.from({ length: 8 }, (_, i) => (
               <div
-                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-gray-100 tw:animate-pulse"
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
                 key={`skeleton-${i}`}
                 style={{ width: `${60 + (i % 3) * 15}%` }}
               />

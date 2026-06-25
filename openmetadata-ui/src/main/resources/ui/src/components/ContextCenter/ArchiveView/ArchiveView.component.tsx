@@ -72,12 +72,16 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
       <div
         className={classNames(
           'tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-          item.type === 'article' ? 'tw:bg-brand-50' : 'tw:bg-purple-50'
+          item.type === 'article'
+            ? 'tw:bg-utility-brand-50'
+            : 'tw:bg-utility-purple-50'
         )}>
         <Icon
           className={classNames(
             'tw:size-4',
-            item.type === 'article' ? 'tw:text-brand-700' : 'tw:text-purple-500'
+            item.type === 'article'
+              ? 'tw:text-utility-brand-700'
+              : 'tw:text-utility-purple-500'
           )}
         />
       </div>
@@ -86,7 +90,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
         <Typography className="tw:truncate" size="text-sm" weight="medium">
           {item.name}
         </Typography>
-        <Typography className="tw:text-gray-500" size="text-xs">
+        <Typography className="tw:text-quaternary" size="text-xs">
           {item.updatedBy && (
             <>
               {t('label.archived-by', { name: item.updatedBy })}
