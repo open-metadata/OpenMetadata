@@ -116,11 +116,14 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   );
 
   const paginationVisible = useMemo(() => {
+    const hasCursorPagination = Boolean(paging.before || paging.after);
+
     return (
+      hasCursorPagination ||
       paging.total > pageSize ||
       pageSize !== (defaultPageSize ?? PAGE_SIZE_BASE)
     );
-  }, [processedPageSize, paging, pageSize]);
+  }, [defaultPageSize, paging.after, paging.before, paging.total, pageSize]);
 
   const handlePageChange = useCallback(
     (
