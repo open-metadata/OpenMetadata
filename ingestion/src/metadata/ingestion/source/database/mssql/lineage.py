@@ -54,7 +54,7 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
         """
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
         current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
-        return self.sql_stmt.format(
+        return self.get_query_log_statement().format(
             start_time=start_time.strftime(current_datetime_format),
             end_time=end_time.strftime(current_datetime_format),
             filters=self.get_filters(),

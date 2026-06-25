@@ -40,6 +40,7 @@ from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -489,3 +490,28 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
     return  # noqa: RET502
+
+
+def should_use_query_store(engine: Engine) -> bool:
+    """
+    Return True when Query Store should be used for lineage/usage instead of the
+    plan cache: it must be active (READ_ONLY or READ_WRITE) AND in ALL capture
+    mode. In AUTO mode Query Store skips ad-hoc/infrequent queries, so the plan
+    cache (which still holds recently executed queries) is preferred there.
+
+    Returns False (plan-cache fallback) on any error or on SQL Server versions
+    without Query Store (< 2016), where sys.database_query_store_options does
+    not exist.
+    """
+    use_query_store = False
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).fetchone()
+        # actual_state: 1=READ_ONLY, 2=READ_WRITE; query_capture_mode: 1=ALL
+        actual_state = result[0] if result else None
+        capture_mode = result[1] if result else None
+        use_query_store = actual_state in (1, 2) and capture_mode == 1
+        logger.debug(f"Query Store actual_state={actual_state}, capture_mode={capture_mode}, use={use_query_store}")
+    except Exception as exc:
+        logger.debug(f"Query Store detection failed, using plan cache: {exc}")
+    return use_query_store

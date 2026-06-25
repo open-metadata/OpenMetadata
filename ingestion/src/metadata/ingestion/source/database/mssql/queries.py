@@ -41,6 +41,68 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
 """
 )
 
+# Query Store stores query history durably inside the user database (SQL Server
+# 2016+, opt-in per database), so it survives restarts and plan-cache eviction
+# that the dm_exec_* views above cannot. Used for lineage/usage only when it is
+# active and in ALL capture mode (AUTO skips ad-hoc queries).
+MSSQL_GET_QUERY_STORE_STATE = textwrap.dedent(
+    """
+    SELECT actual_state, query_capture_mode FROM sys.database_query_store_options
+"""
+)
+
+# Output columns mirror MSSQL_SQL_STATEMENT exactly so the downstream parser is
+# unchanged. The inner query is aliased `t` and exposes a `text` column, which
+# lets the same `t.text` lineage/usage filters apply to both query sources.
+# Internal and User-parameterized (sp_executesql) queries are excluded
+# (is_internal_query and query_parameterization_type = User) to mirror the
+# plan-cache path's objtype != 'Prepared': this keeps ad-hoc and
+# auto-parameterized statements but drops OpenMetadata's own reflection queries.
+MSSQL_QUERY_STORE_SQL_STATEMENT = textwrap.dedent(
+    """
+      SELECT TOP {result_limit}
+        t.database_name,
+        t.query_text,
+        t.start_time,
+        DATEADD(s, t.duration, t.start_time) end_time,
+        t.duration,
+        t.schema_name,
+        t.query_type,
+        t.user_name,
+        t.aborted
+      FROM (
+        SELECT
+          DB_NAME() database_name,
+          qt.query_sql_text query_text,
+          qt.query_sql_text [text],
+          CAST(rs.last_execution_time AS DATETIME) start_time,
+          CAST(rs.avg_duration / 1000000 AS BIGINT) duration,
+          CAST(NULL AS NVARCHAR(128)) schema_name,
+          CAST(NULL AS NVARCHAR(20)) query_type,
+          CAST(NULL AS NVARCHAR(128)) user_name,
+          CAST(NULL AS BIT) aborted,
+          ROW_NUMBER() OVER (
+            PARTITION BY rs.plan_id ORDER BY rs.last_execution_time DESC
+          ) row_num
+        FROM sys.query_store_query_text AS qt
+        INNER JOIN sys.query_store_query AS q
+          ON qt.query_text_id = q.query_text_id
+        INNER JOIN sys.query_store_plan AS p
+          ON q.query_id = p.query_id
+        INNER JOIN sys.query_store_runtime_stats AS rs
+          ON p.plan_id = rs.plan_id
+        WHERE q.is_internal_query = 0
+          AND q.query_parameterization_type <> 1
+      ) AS t
+      WHERE t.row_num = 1
+        AND t.start_time between '{start_time}' and '{end_time}'
+        AND t.[text] NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND t.[text] NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
+      ORDER BY t.start_time DESC
+"""
+)
+
 MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
