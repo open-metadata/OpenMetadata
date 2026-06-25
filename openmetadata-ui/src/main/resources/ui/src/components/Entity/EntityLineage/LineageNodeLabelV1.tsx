@@ -70,12 +70,11 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
         node as unknown as Table,
         node.entityType as EntityType,
         false
-      ).map((breadcrumb) => ({
-        id: breadcrumb.name,
+      ).map((breadcrumb, index) => ({
+        id: `${index}-${breadcrumb.name}`,
         label: breadcrumb.name,
-        url: breadcrumb.url,
       })),
-    [node.fullyQualifiedName]
+    [node]
   );
 
   const entityName = getEntityName(node);
