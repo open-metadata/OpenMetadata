@@ -11,6 +11,7 @@
 """TopologyRunnerMixin: per-instance registry, progress path, no pull hooks."""
 
 import inspect
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -69,6 +70,7 @@ class _WalkRunner(TopologyRunnerMixin):
         self.progress_tracking_enabled = enabled
         self.context = TopologyContextManager(self.topology)
         self.__dict__["_root_node_ids"] = set()
+        self.status = MagicMock()
 
     def _run_node_producer(self, node):
         return ["a", "b"]
@@ -80,6 +82,16 @@ class _WalkRunner(TopologyRunnerMixin):
 def _drive_leaf(runner):
     leaf = get_topology_node("table", runner.topology)
     list(runner._process_node(leaf))
+
+
+def _drive_container(runner):
+    """Drive _process_node through a container (non-leaf) node.
+
+    ``database`` has ``databaseSchema`` as a child, making it a container
+    whose producer is iterated lazily and whose progress is opened with
+    ``expected=None`` (no connector-pushed total)."""
+    container = get_topology_node("database", runner.topology)
+    list(runner._process_node(container))
 
 
 def test_disabled_walk_creates_no_registry():
@@ -94,6 +106,19 @@ def test_enabled_walk_records_into_registry():
     snapshot = runner.progress.snapshot()
     assert snapshot.child_type == "Table"
     assert snapshot.processed == 2
+
+
+def test_container_open_none_through_runner():
+    """Driving _process_node through the *database* container node must call
+    ``progress.open(parent_path, "Database", None)`` — the lazy branch where no
+    connector pushes a total — so the registry records ``expected=None`` for
+    the Database level."""
+    runner = _WalkRunner(enabled=True)
+    _drive_container(runner)
+    snapshot = runner.progress.snapshot()
+    assert snapshot is not None
+    assert snapshot.child_type == "Database"
+    assert snapshot.expected_by_type.get("Database") is None
 
 
 @pytest.fixture
