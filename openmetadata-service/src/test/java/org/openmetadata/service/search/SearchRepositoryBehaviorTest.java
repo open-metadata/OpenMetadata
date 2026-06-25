@@ -793,6 +793,40 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateInheritedFieldsToChildrenSkipsUnregisteredChildAliases() throws IOException {
+    IndexMapping mappingWithUnregisteredChild =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of("unregisteredChild", Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        mappingWithUnregisteredChild,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+
+    assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
+  }
+
+  @Test
   void deleteEntityByFqnPrefixUsesEntityIndex() throws IOException {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
