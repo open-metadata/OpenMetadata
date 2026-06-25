@@ -92,7 +92,8 @@ public abstract class ServiceEntityResource<
         repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
-      if (originalService != null && originalService.getConnection() != null) {
+      if (originalService != null && originalService.getConnection() != null
+          && service.getConnection() != null) {
         Object serviceConnectionConfig =
             EntityMaskerFactory.getEntityMasker()
                 .unmaskServiceConnectionConfig(
