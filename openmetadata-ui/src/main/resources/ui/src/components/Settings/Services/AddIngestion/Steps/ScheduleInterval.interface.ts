@@ -15,6 +15,10 @@ import { LoadingState } from 'Models';
 import { ReactNode } from 'react';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
 
+export interface ScheduleIntervalHandle {
+  submit: () => void;
+}
+
 export type ScheduleIntervalProps<T> = {
   status: LoadingState;
   initialData?: WorkflowExtraConfig & T;
