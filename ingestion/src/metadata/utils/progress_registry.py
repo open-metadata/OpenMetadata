@@ -71,12 +71,22 @@ class ProgressRegistry:
         self._active_leaf_cap = active_leaf_cap
         self._global_expected: Dict[str, Optional[int]] = {}  # noqa: UP006,UP045
 
-    def open(self, path: List[str], child_type: str, expected: Optional[int]) -> None:  # noqa: UP006,UP045
+    def open(self, path: List[str], child_type: str, expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
             node = self._navigate(path)
             if node.child_type is None:
                 node.child_type = child_type
-            node.expected_by_type[child_type] = expected
+            if expected is not None or child_type not in node.expected_by_type:
+                node.expected_by_type[child_type] = expected
+
+    def set_total(self, path: List[str], child_type: str, total: int) -> None:  # noqa: UP006
+        """Connector push: the producer knows it will yield ``total`` children of
+        ``child_type`` at ``path``. Wins over a lazy topology ``open(None)``."""
+        with self._lock:
+            node = self._navigate(path)
+            if node.child_type is None:
+                node.child_type = child_type
+            node.expected_by_type[child_type] = total
 
     def advance(self, path: List[str], child_type: Optional[str] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
@@ -130,6 +140,38 @@ class ProgressRegistry:
                 expected_by_type=dict(self._root.expected_by_type),
                 processed_by_type=dict(self._root.processed_by_type),
             )
+
+    def rollup_by_type(self) -> "List[Tuple[str, int, int | None]]":  # noqa: UP006
+        """Generic per-entity-type header. Container types (nodes with children)
+        count complete children; leaf types sum ``processed_by_type``. Connector-
+        agnostic: Database/Schema/Table and Workspace/Dashboard/Chart alike."""
+        with self._lock:
+            order: List[str] = []  # noqa: UP006
+            expected: Dict[str, Optional[int]] = {}  # noqa: UP006,UP045
+            processed: Dict[str, int] = {}  # noqa: UP006
+            self._rollup_visit(self._root, order, expected, processed)
+            return [(t, processed[t], expected[t]) for t in order]
+
+    def _rollup_visit(
+        self,
+        node: ProgressNode,
+        order: "List[str]",  # noqa: UP006
+        expected: "Dict[str, Optional[int]]",  # noqa: UP006,UP045
+        processed: "Dict[str, int]",  # noqa: UP006
+    ) -> None:
+        for child_type, exp in node.expected_by_type.items():
+            if child_type not in expected:
+                order.append(child_type)
+                expected[child_type] = None
+                processed[child_type] = 0
+            if exp is not None:
+                expected[child_type] = (expected[child_type] or 0) + exp
+            if node.children:
+                processed[child_type] += sum(1 for child in node.children.values() if self._is_complete(child))
+            else:
+                processed[child_type] += node.processed_by_type.get(child_type, 0)
+        for child in node.children.values():
+            self._rollup_visit(child, order, expected, processed)
 
     def _navigate(self, path: List[str]) -> ProgressNode:  # noqa: UP006
         node = self._root
