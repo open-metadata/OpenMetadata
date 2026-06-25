@@ -68,12 +68,17 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -359,7 +364,9 @@ public class FeedResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    rejectLegacyAnnouncementThread(dao.get(UUID.fromString(id)));
+    Thread original = dao.get(UUID.fromString(id));
+    rejectLegacyAnnouncementThread(original);
+    authorizeThreadEdit(securityContext, original);
     PatchResponse<Thread> response =
         dao.patchThread(
             uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
@@ -422,12 +429,52 @@ public class FeedResource {
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
     rejectLegacyAnnouncementAccess(create.getType() == ThreadType.Announcement);
+    authorizeThreadCreate(securityContext, create);
     Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
         .entity(thread)
         .header(CHANGE_CUSTOM_HEADER, THREAD_CREATED)
         .build();
+  }
+
+  private void authorizeThreadCreate(SecurityContext securityContext, CreateThread create) {
+    if (create.getType() == ThreadType.Task) {
+      EntityLink about = EntityLink.parse(create.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
+      authorizer.authorize(securityContext, entityOpContext, entityResourceContext);
+    }
+  }
+
+  /**
+   * Authorize an edit on an existing task thread with ANY-of semantics: pass if the caller has
+   * {@code EditTask} on the target entity (per-entity grant, e.g. owner via {@code isOwner}) OR
+   * {@code EditAll} on the existing thread instance (covers the original creator and admin-style
+   * thread-resource grants). Mirrors the TestCase pattern for an EXISTING child entity.
+   */
+  private void authorizeThreadEdit(SecurityContext securityContext, Thread thread) {
+    if (thread.getType() == ThreadType.Task) {
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TASK);
+      OperationContext threadOpContext =
+          new OperationContext(Entity.THREAD, MetadataOperation.EDIT_ALL);
+      ResourceContextInterface threadResourceContext =
+          new ThreadResourceContext(thread.getCreatedBy());
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(entityOpContext, entityResourceContext),
+              new AuthRequest(threadOpContext, threadResourceContext)),
+          AuthorizationLogic.ANY);
+    }
   }
 
   @POST

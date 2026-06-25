@@ -1,0 +1,339 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+@keyframes csv-jobs-tray-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes csv-jobs-tray-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes csv-jobs-tray-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.csv-jobs-tray-launcher-wrap {
+  animation: csv-jobs-tray-slide-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  bottom: 20px;
+  position: fixed;
+  right: 20px;
+  z-index: 1000;
+}
+
+.csv-jobs-tray-launcher {
+  align-items: center;
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 999px;
+  box-shadow: @box-shadow-elevated-multi;
+  color: @grey-900;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  line-height: 18px;
+  padding: 6px 16px 6px 6px;
+  transition: background 120ms ease;
+
+  &:hover {
+    background: @grey-26;
+  }
+}
+
+.csv-jobs-tray-launcher-count {
+  align-items: center;
+  background: @primary-6;
+  border-radius: 999px;
+  color: @white;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: @font-bold;
+  height: 28px;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 8px;
+}
+
+.csv-jobs-tray-launcher-label {
+  color: @grey-900;
+  font-weight: @font-semibold;
+}
+
+.csv-jobs-tray-popover {
+  animation: csv-jobs-tray-slide-in 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  bottom: 20px;
+  box-shadow: @box-shadow-elevated-multi;
+  overflow: hidden;
+  position: fixed;
+  right: 20px;
+  width: 340px;
+  z-index: 1000;
+}
+
+.csv-jobs-tray-header {
+  align-items: center;
+  background: @white;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.csv-jobs-tray-title-wrap {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.csv-jobs-tray-popover h3 {
+  color: @grey-900;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  margin: 0;
+}
+
+.csv-jobs-tray-header-count {
+  background: @primary-50;
+  border-radius: 999px;
+  color: @primary-6;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  line-height: 16px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.csv-jobs-tray-clear,
+.csv-jobs-tray-close {
+  border-radius: 6px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+
+  [data-icon] {
+    height: 14px !important;
+    width: 14px !important;
+  }
+}
+
+.csv-jobs-tray-clear {
+  color: @grey-700 !important;
+  font-size: 12px !important;
+  font-weight: @font-medium !important;
+}
+
+.csv-jobs-tray-close {
+  padding: 0 !important;
+  width: 26px !important;
+}
+
+.csv-jobs-tray-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.csv-jobs-tray-item {
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.csv-jobs-tray-item:last-child {
+  border-bottom: 0;
+}
+
+.csv-jobs-tray-item-row {
+  align-items: flex-start;
+  display: flex;
+  gap: 12px;
+}
+
+.csv-jobs-tray-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.csv-jobs-tray-title {
+  color: @grey-900;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-jobs-tray-sub {
+  color: @grey-600;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+}
+
+.csv-jobs-tray-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.csv-jobs-tray-action {
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: @font-medium !important;
+  min-height: 28px !important;
+  padding: 4px 10px !important;
+
+  [data-icon] {
+    height: 14px !important;
+    width: 14px !important;
+  }
+}
+
+.csv-jobs-tray-dismiss {
+  border-radius: 6px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 !important;
+  width: 26px !important;
+
+  [data-icon] {
+    color: @grey-500 !important;
+    height: 14px !important;
+    width: 14px !important;
+  }
+}
+
+.csv-jobs-tray-kind-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 8px;
+  color: @primary-6;
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.csv-jobs-tray-item-success .csv-jobs-tray-kind-icon {
+  background: @green-9;
+  color: @green-13;
+}
+
+.csv-jobs-tray-item-error .csv-jobs-tray-kind-icon {
+  background: @red-9;
+  color: @red-14;
+}
+
+.csv-jobs-tray-state {
+  align-items: center;
+  display: inline-flex;
+
+  svg {
+    height: 16px;
+    width: 16px;
+  }
+
+  &-success {
+    color: @green-13;
+  }
+
+  &-error {
+    color: @red-14;
+  }
+}
+
+.csv-jobs-tray-status-spin {
+  animation: csv-jobs-tray-spin 1.4s linear infinite;
+}
+
+.csv-jobs-tray-progress {
+  background: @grey-100;
+  border-radius: 999px;
+  height: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.csv-jobs-tray-progress span {
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 220ms ease;
+}
+
+.csv-jobs-tray-progress-running span {
+  background: @primary-6;
+  position: relative;
+
+  &::after {
+    animation: csv-jobs-tray-shimmer 1.6s infinite linear;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    content: '';
+    inset: 0;
+    position: absolute;
+  }
+}
+
+.csv-jobs-tray-progress-success span {
+  background: @green-500;
+}
+
+.csv-jobs-tray-progress-error span {
+  background: @red-14;
+}
