@@ -131,7 +131,7 @@ class ProgressRegistry:
                 processed_by_type=dict(self._root.processed_by_type),
             )
 
-    def rollup_by_type(self) -> "List[Tuple[str, int, int | None]]":  # noqa: UP006
+    def rollup_by_type(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
         """Generic per-entity-type header. Container types (nodes with children)
         count complete children; leaf types sum ``processed_by_type``. Connector-
         agnostic: Database/Schema/Table and Workspace/Dashboard/Chart alike."""
@@ -149,6 +149,18 @@ class ProgressRegistry:
         expected: "Dict[str, Optional[int]]",  # noqa: UP006,UP045
         processed: "Dict[str, int]",  # noqa: UP006
     ) -> None:
+        """Accumulate per-type processed/expected over the subtree.
+
+        WARNING: when a single node registers two or more *container* child
+        types (a node whose children are themselves containers — e.g. a
+        dashboard service root counting both DataModel and Dashboard), this
+        counts every complete child once per registered type, a double-count.
+        Unreachable in the DB topology (a schema's Table/StoredProcedure are
+        leaves, so the leaf branch runs and there are no child nodes). Must be
+        fixed — correct per-type attribution of complete children — before any
+        connector with that shape enables ``progress_tracking_enabled``. See
+        the PowerBI scope follow-up in the plan's "Out of scope" section.
+        """
         for child_type, exp in node.expected_by_type.items():
             if child_type not in expected:
                 order.append(child_type)

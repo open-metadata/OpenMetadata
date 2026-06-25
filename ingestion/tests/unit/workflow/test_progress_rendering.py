@@ -12,6 +12,7 @@
 
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressNode,
+    ProgressUpdate,
 )
 from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
 from metadata.workflow.progress_render import (
@@ -97,17 +98,41 @@ def _snowflake_like_registry() -> ProgressRegistry:
 
 
 class TestProgressReporter:
-    def test_payload_header_is_generic_rollup(self):
-        payload = ProgressReporter(_snowflake_like_registry()).payload()
-        rollup = {r["entityType"]: (r["processed"], r["expected"]) for r in payload["rollup"]}
-        assert rollup["Database"] == (0, 2)
-        assert rollup["DatabaseSchema"] == (0, 1)
-        assert rollup["Table"] == (45, 310)
+    def test_cli_header_is_generic_rollup(self):
+        text = ProgressReporter(_snowflake_like_registry()).cli()
+        header = text.splitlines()[0]
+        assert "Database 0/2" in header
+        assert "DatabaseSchema 0/1" in header
+        assert "Table 45/310" in header
 
     def test_cli_shows_ancestor_joined_active_scope(self):
         text = ProgressReporter(_snowflake_like_registry()).cli()
         assert "sales.public" in text
         assert "45/310" in text
+
+    def test_payload_is_bare_progress_node_tree(self):
+        payload = ProgressReporter(_snowflake_like_registry()).payload()
+        assert set(payload) == {
+            "label",
+            "entityType",
+            "processed",
+            "expected",
+            "active",
+            "overflow",
+            "children",
+        }
+        assert payload["entityType"] == "Database"
+
+    def test_payload_validates_against_progress_update_model(self):
+        reporter = ProgressReporter(_snowflake_like_registry())
+        update = ProgressUpdate(
+            runId="r",
+            timestamp=1,
+            updateType="PROCESSING",
+            progress=reporter.payload(),
+        )
+        assert update.progress is not None
+        assert update.progress.entityType == "Database"
 
     def test_payload_is_none_before_anything_starts(self):
         assert ProgressReporter(ProgressRegistry()).payload() is None
@@ -119,7 +144,6 @@ class TestProgressReporter:
         registry.open(["Marketing"], "Dashboard", 40)
         for _ in range(8):
             registry.advance(["Marketing"], "Dashboard")
-        payload = ProgressReporter(registry).payload()
-        rollup = {r["entityType"]: (r["processed"], r["expected"]) for r in payload["rollup"]}
+        rollup = {t: (p, e) for t, p, e in registry.rollup_by_type()}
         assert rollup["Workspace"] == (0, 2)
         assert rollup["Dashboard"] == (8, 40)

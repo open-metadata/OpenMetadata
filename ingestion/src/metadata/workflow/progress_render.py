@@ -72,17 +72,14 @@ class ProgressReporter:
         return f"{header}\n{tree}" if tree else header
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
-        snapshot = self._registry.snapshot()
-        result = None
-        if snapshot is not None:
-            result = {
-                "rollup": [
-                    {"entityType": entity_type, "processed": processed, "expected": expected}
-                    for entity_type, processed, expected in self._registry.rollup_by_type()
-                ],
-                "tree": _node_to_payload(snapshot),
-            }
-        return result
+        """The bare ``progressNode`` tree for ``ProgressUpdate.progress``.
+
+        ``ProgressUpdate`` (and ``ProgressNode``) are generated with
+        ``extra='forbid'``, so the payload MUST be exactly the progressNode
+        tree — a ``{rollup, tree}`` wrapper fails validation and the error is
+        swallowed at debug level, silently dropping every SSE update. The
+        rollup header stays CLI-only (see the plan's "Out of scope" section)."""
+        return snapshot_to_progress_payload(self._registry.snapshot())
 
 
 def _render_joined(node: ProgressNodeSnapshot, ancestors: "List[str]", lines: "List[str]") -> None:  # noqa: UP006
