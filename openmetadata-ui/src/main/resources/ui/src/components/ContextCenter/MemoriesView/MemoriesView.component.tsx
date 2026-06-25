@@ -59,11 +59,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
             <Box align="center" gap={2}>
               <Trash01
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
               />
               <Typography
                 ellipsis
-                className="tw:grow tw:text-error-600"
+                className="tw:grow tw:text-error-primary"
                 size="text-sm"
                 weight="medium">
                 {t('label.delete')}
@@ -90,7 +90,7 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
       <TooltipTrigger>
         <ButtonUtility
           className={classNames('tw:transition-colors tw:duration-150', {
-            'tw:bg-blue-50 tw:text-brand-600': pinned,
+            'tw:bg-utility-blue-50 tw:text-fg-brand-primary': pinned,
           })}
           color="tertiary"
           icon={
@@ -134,6 +134,8 @@ interface MemoryRowProps {
   currentUserName?: string;
   isAdminUser?: boolean;
   memory: ContextMemory;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
@@ -143,6 +145,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
   memory,
+  canEdit,
+  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
@@ -173,7 +177,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
         pinned
           ? {
               background:
-                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-brand-50) 80%, transparent) 0%, transparent 60%)',
+                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-utility-brand-50) 80%, transparent) 0%, transparent 60%)',
             }
           : undefined
       }
@@ -181,13 +185,13 @@ const MemoryRow: FC<MemoryRowProps> = ({
       {pinned && (
         <Box
           align="start"
-          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-brand-600"
+          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-fg-brand-primary"
           justify="end"
           style={{
             width: 28,
             height: 28,
             background:
-              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-brand-100) 80%, transparent) 0%, transparent 70%)',
+              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-utility-brand-100) 80%, transparent) 0%, transparent 70%)',
             borderBottomLeftRadius: 12,
             padding: '5px 7px 0 0',
           }}>
@@ -220,10 +224,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
             )}
             {memory.updatedAt !== undefined && (
               <>
-                <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
+                <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
                   &middot;
                 </span>
-                <Typography className="tw:text-gray-500" size="text-xs">
+                <Typography className="tw:text-quaternary" size="text-xs">
                   {getShortRelativeTime(memory.updatedAt)}
                 </Typography>
               </>
@@ -270,9 +274,13 @@ const MemoryRow: FC<MemoryRowProps> = ({
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
             <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+              <Clock
+                className="tw:text-utility-gray-500"
+                size={12}
+                strokeWidth={1.5}
+              />
               <Typography
-                className="tw:text-gray-500 tw:whitespace-nowrap"
+                className="tw:text-quaternary tw:whitespace-nowrap"
                 size="text-xs">
                 {memory.usageCount === undefined
                   ? ''
@@ -300,7 +308,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
             <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
-          {canActOnMemory && onEditMemory && (
+          {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
               <TooltipTrigger>
                 <ButtonUtility
@@ -313,7 +321,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               </TooltipTrigger>
             </Tooltip>
           )}
-          {canActOnMemory && (
+          {canActOnMemory && canDelete && (
             <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
           )}
         </Box>
@@ -329,6 +337,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isLoading,
   onDeleteMemory,
   onEditMemory,
+  canEdit,
+  canDelete,
   onViewMemory,
 }) => {
   const { t } = useTranslation();
@@ -358,7 +368,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
             entity: t('label.memory-plural'),
           })}
         </Typography>
-        <Typography className="tw:text-gray-500" size="text-sm">
+        <Typography className="tw:text-quaternary" size="text-sm">
           {t('message.try-a-different-filter-or-search')}
         </Typography>
       </Box>
@@ -369,6 +379,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
+          canDelete={canDelete}
+          canEdit={canEdit}
           currentUserName={currentUserName}
           isAdminUser={isAdminUser}
           key={memory.id}

@@ -20,6 +20,7 @@ export interface FolderOption {
 
 export interface DocumentsViewProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
@@ -52,12 +53,15 @@ export interface FolderPickerMenuProps {
 }
 export interface FileActionsProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
 }
 export interface ListHeaderProps {
+  canDelete?: boolean;
+  canEdit?: boolean;
   count: number;
   folders?: FolderOption[];
   selectedCount: number;
@@ -69,6 +73,7 @@ export interface ListHeaderProps {
 
 export interface FileRowProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
   isActive?: boolean;
