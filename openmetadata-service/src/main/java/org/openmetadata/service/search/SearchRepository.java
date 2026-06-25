@@ -1876,36 +1876,24 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription == null) {
-      return;
+    if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity, entityType);
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+          propagateToDomainChildren(entityId, indexMapping, updates);
+        } else {
+          String parentFieldName = resolveParentFieldName(entityType, updates);
+          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+          List<String> entityChildren =
+              filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+          if (!nullOrEmpty(entityChildren)) {
+            searchClient.updateChildren(entityChildren, parentMatch, updates);
+          }
+        }
+      }
     }
-
-    if (nullOrEmpty(indexMapping.getChildAliases())) {
-      return;
-    }
-
-    Pair<String, Map<String, Object>> updates =
-        getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
-      return;
-    }
-
-    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
-    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
-      propagateToDomainChildren(entityId, indexMapping, updates);
-      return;
-    }
-
-    // Other entities: resolve parent field name and propagate to children
-    String parentFieldName = resolveParentFieldName(entityType, updates);
-    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    List<String> entityChildren =
-        filterChildAliasesByCapability(
-            indexMapping, capability -> capability == null || !capability.isTimeSeries());
-    if (nullOrEmpty(entityChildren)) {
-      return;
-    }
-    searchClient.updateChildren(entityChildren, parentMatch, updates);
   }
 
   private List<String> filterChildAliasesByCapability(
