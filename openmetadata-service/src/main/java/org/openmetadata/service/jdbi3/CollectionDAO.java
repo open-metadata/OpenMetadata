@@ -1595,6 +1595,7 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String relationType;
     private String json;
     private String jsonSchema;
   }
@@ -2249,6 +2250,30 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
+    // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
+    // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
+    // can
+    // carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows with
+    // relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
+    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct and O(1) per
+    // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
+    // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
+    // page with fromId='', toId='', relation=-1, relationType=''.
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+            + "WHERE fromId > :fromId "
+            + "   OR (fromId = :fromId AND toId > :toId) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
+            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsAfter(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @Bind("limit") int limit);
+
     @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
     long getTotalRelationshipCount();
 
@@ -2459,6 +2484,27 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
+            .build();
+      }
+    }
+
+    // Like RelationshipObjectMapper but also projects relationType, needed by the keyset scan so
+    // its
+    // cursor can advance over the full primary key. Kept separate because the 27 other queries
+    // using
+    // RelationshipObjectMapper do not select relationType.
+    class RelationshipWithTypeObjectMapper implements RowMapper<EntityRelationshipObject> {
+      @Override
+      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipObject.builder()
+            .fromId(rs.getString("fromId"))
+            .fromEntity(rs.getString("fromEntity"))
+            .toEntity(rs.getString("toEntity"))
+            .toId(rs.getString("toId"))
+            .relation(rs.getInt("relation"))
+            .relationType(rs.getString("relationType"))
             .json(rs.getString("json"))
             .jsonSchema(rs.getString("jsonSchema"))
             .build();
