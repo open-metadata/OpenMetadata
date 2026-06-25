@@ -289,9 +289,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             <Typography
               ellipsis
               className={
-                firstDomain
-                  ? 'tw:text-quaternary'
-                  : 'tw:text-utility-gray-400'
+                firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
               }
               data-testid="domain-name"
               size="text-xs">
