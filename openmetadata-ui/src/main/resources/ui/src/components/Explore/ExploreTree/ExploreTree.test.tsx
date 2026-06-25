@@ -270,9 +270,7 @@ describe('ExploreTree', () => {
     const queryFilter = {
       query: {
         bool: {
-          must: [
-            { bool: { should: [{ term: { serviceType: 'BigQuery' } }] } },
-          ],
+          must: [{ bool: { should: [{ term: { serviceType: 'BigQuery' } }] } }],
         },
       },
     };

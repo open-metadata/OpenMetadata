@@ -260,60 +260,52 @@ test.describe(
     }) => {
       test.slow();
 
-      await test.step(
-        'Selecting a database service type narrows the browse tree directionally',
-        async () => {
-          await expandTreeNode(page, 'Databases');
+      await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
+        await expandTreeNode(page, 'Databases');
 
-          const browseRes = page.waitForResponse(
-            '/api/v1/search/query?*index=dataAsset*'
-          );
-          await page
-            .getByTestId(
-              `explore-tree-title-${table.service.serviceType.toLowerCase()}`
-            )
-            .click();
-          await browseRes;
-          await waitForAllLoadersToDisappear(page);
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page
+          .getByTestId(
+            `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+          )
+          .click();
+        await browseRes;
+        await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId('browse-chip-serviceType')
-          ).toBeVisible();
-          await expect(page.getByTestId('clear-all-chips')).toBeVisible();
-          await expect(page.getByTestId('clear-filters')).toHaveCount(0);
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
+        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+        await expect(page.getByTestId('clear-filters')).toHaveCount(0);
 
-          await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
-            /ant-tree-treenode-disabled/
-          );
-          await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
-            /ant-tree-treenode-disabled/
-          );
-          expect(page.url()).toContain('browsePath');
-        }
-      );
+        await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        expect(page.url()).toContain('browsePath');
+      });
 
-      await test.step(
-        'Query-panel Clear restores the full browse estate',
-        async () => {
-          const clearRes = page.waitForResponse(
-            '/api/v1/search/query?*index=dataAsset*'
-          );
-          await page.getByTestId('clear-all-chips').click();
-          await clearRes;
-          await waitForAllLoadersToDisappear(page);
+      await test.step('Query-panel Clear restores the full browse estate', async () => {
+        const clearRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('clear-all-chips').click();
+        await clearRes;
+        await waitForAllLoadersToDisappear(page);
 
-          const url = new URL(page.url());
-          expect(url.searchParams.get('browsePath')).toBeNull();
-          expect(url.searchParams.get('quickFilter')).toBeNull();
+        const url = new URL(page.url());
+        expect(url.searchParams.get('browsePath')).toBeNull();
+        expect(url.searchParams.get('quickFilter')).toBeNull();
 
-          await expect(
-            page.getByTestId('browse-chip-serviceType')
-          ).not.toBeVisible();
-          await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
-            /ant-tree-treenode-disabled/
-          );
-        }
-      );
+        await expect(
+          page.getByTestId('browse-chip-serviceType')
+        ).not.toBeVisible();
+        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+      });
     });
 
     test('drills a non-database hierarchy (Dashboards) down to the entity-type leaf', async ({

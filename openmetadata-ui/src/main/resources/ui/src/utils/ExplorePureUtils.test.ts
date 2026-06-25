@@ -266,9 +266,7 @@ describe('hasServiceDrillDownFilter', () => {
     const serviceTypeFilter = JSON.stringify({
       query: {
         bool: {
-          must: [
-            { bool: { should: [{ term: { serviceType: 'BigQuery' } }] } },
-          ],
+          must: [{ bool: { should: [{ term: { serviceType: 'BigQuery' } }] } }],
         },
       },
     });

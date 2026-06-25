@@ -416,6 +416,52 @@ export const isEntityTypeBucketSelected = (
     (entityType) => entityType.toLowerCase() === bucketKey.toLowerCase()
   );
 
+const isBrowsePathOption = (option: unknown): boolean =>
+  typeof option === 'object' &&
+  option !== null &&
+  typeof (option as Record<string, unknown>).key === 'string';
+
+const isBrowsePathField = (
+  field: unknown
+): field is ExploreQuickFilterField => {
+  const record =
+    field && typeof field === 'object'
+      ? (field as Record<string, unknown>)
+      : undefined;
+  const value = record?.value;
+  const hasValidValue =
+    value === undefined ||
+    (Array.isArray(value) && value.every(isBrowsePathOption));
+
+  return typeof record?.key === 'string' && hasValidValue;
+};
+
+/**
+ * The browse location selected in the explore tree, kept in its own
+ * `browsePath` URL param (ordered ExploreQuickFilterField[] — category,
+ * serviceType, service, database, schema). It ANDs with the dropdown
+ * `quickFilter`, so browsing never clears filters and vice versa.
+ * The param is untrusted URL input — malformed elements are dropped so
+ * crafted/legacy deep links degrade to an empty browse path.
+ */
+export function parseBrowsePathFields(
+  browsePath?: unknown
+): ExploreQuickFilterField[] {
+  let result: ExploreQuickFilterField[] = [];
+  if (isString(browsePath) && !isEmpty(browsePath)) {
+    try {
+      const parsed: unknown = JSON.parse(browsePath);
+      if (Array.isArray(parsed)) {
+        result = parsed.filter(isBrowsePathField);
+      }
+    } catch {
+      result = [];
+    }
+  }
+
+  return result;
+}
+
 /**
  * Extract a query_filter object's `must` clauses as an array.
  */
@@ -480,12 +526,8 @@ export const hasServiceDrillDownFilter = (
   browsePath?: unknown,
   queryFilter?: unknown
 ): boolean => {
-  const quickFilterKeys = getTermKeysFromQuery(
-    getQuickFilterMust(quickFilter)
-  );
-  const queryFilterKeys = getTermKeysFromQuery(
-    getQueryFilterMust(queryFilter)
-  );
+  const quickFilterKeys = getTermKeysFromQuery(getQuickFilterMust(quickFilter));
+  const queryFilterKeys = getTermKeysFromQuery(getQueryFilterMust(queryFilter));
   const browsePathKeys = parseBrowsePathFields(browsePath).map(
     (field) => field.key
   );
@@ -563,52 +605,6 @@ export const isElasticsearchError = (error: unknown): boolean => {
     (message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
       message.includes(ES_EXCEPTION_SHARDS_FAILED))
   );
-};
-
-const isBrowsePathOption = (option: unknown): boolean =>
-  typeof option === 'object' &&
-  option !== null &&
-  typeof (option as Record<string, unknown>).key === 'string';
-
-const isBrowsePathField = (
-  field: unknown
-): field is ExploreQuickFilterField => {
-  const record =
-    field && typeof field === 'object'
-      ? (field as Record<string, unknown>)
-      : undefined;
-  const value = record?.value;
-  const hasValidValue =
-    value === undefined ||
-    (Array.isArray(value) && value.every(isBrowsePathOption));
-
-  return typeof record?.key === 'string' && hasValidValue;
-};
-
-/**
- * The browse location selected in the explore tree, kept in its own
- * `browsePath` URL param (ordered ExploreQuickFilterField[] — category,
- * serviceType, service, database, schema). It ANDs with the dropdown
- * `quickFilter`, so browsing never clears filters and vice versa.
- * The param is untrusted URL input — malformed elements are dropped so
- * crafted/legacy deep links degrade to an empty browse path.
- */
-export const parseBrowsePathFields = (
-  browsePath?: unknown
-): ExploreQuickFilterField[] => {
-  let result: ExploreQuickFilterField[] = [];
-  if (isString(browsePath) && !isEmpty(browsePath)) {
-    try {
-      const parsed: unknown = JSON.parse(browsePath);
-      if (Array.isArray(parsed)) {
-        result = parsed.filter(isBrowsePathField);
-      }
-    } catch {
-      result = [];
-    }
-  }
-
-  return result;
 };
 
 export const getBrowsePathQueryFilter = (
