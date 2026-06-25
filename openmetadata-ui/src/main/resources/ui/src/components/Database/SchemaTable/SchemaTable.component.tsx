@@ -852,7 +852,9 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        filteredValue: activeTagFilter.tags,
+        filteredValue: activeTagFilter.tags.length
+          ? activeTagFilter.tags
+          : null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -875,7 +877,9 @@ const SchemaTable = () => {
         ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        filteredValue: activeTagFilter.glossaryTerms,
+        filteredValue: activeTagFilter.glossaryTerms.length
+          ? activeTagFilter.glossaryTerms
+          : null,
       },
       {
         title: t('label.data-quality'),
