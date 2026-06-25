@@ -47,7 +47,8 @@ const queryOpenApprovalTasks = async (
 
 // Returns the latest stage displayName of the GlossaryTermApprovalWorkflow
 // instance anchored to the given term FQN, or null if no instance is found.
-// Used purely for diagnostics when the term fails to reach its expected status.
+// Used both to gate the move on workflow readiness (waitForApprovalWorkflowReady)
+// and as diagnostics when the term fails to reach its expected status.
 const queryApprovalWorkflowStage = async (
   apiContext: APIRequestContext,
   termFqn: string
@@ -116,7 +117,7 @@ const waitForTermStatus = async (
         },
         {
           message: `term ${termId} to reach ${expectedStatus}`,
-          timeout: 240_000,
+          timeout: 120_000,
           intervals: [5_000],
         }
       )
