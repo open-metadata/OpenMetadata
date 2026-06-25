@@ -202,7 +202,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
                 {index > 0 && (
                   <span className="lineage-breadcrumb-item-separator" />
                 )}
-                <span className="lineage-breadcrumb-item">{item.label}</span>
+                {item.label}
               </Fragment>
             )
           )}

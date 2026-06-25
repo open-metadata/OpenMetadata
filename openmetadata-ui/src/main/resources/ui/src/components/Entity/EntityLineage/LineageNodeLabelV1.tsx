@@ -72,7 +72,9 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
         false
       ).map((breadcrumb, index) => ({
         id: `${index}-${breadcrumb.name}`,
-        label: breadcrumb.name,
+        label: (
+          <span className="lineage-breadcrumb-item">{breadcrumb.name}</span>
+        ),
       })),
     [node]
   );
@@ -93,10 +95,10 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
         )}
         <Box className="flex-1 tw:min-w-0" direction="col">
           <Typography
+            ellipsis
             as="span"
             className="m-b-0 d-block text-left entity-header-display-name w-54"
             data-testid="entity-header-display-name"
-            ellipsis
             size="text-md"
             title={entityName}
             weight="medium">
