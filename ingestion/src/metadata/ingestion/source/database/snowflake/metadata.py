@@ -129,7 +129,6 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -519,27 +518,11 @@ class SnowflakeSource(
             self.__dict__["_schema_names_by_db_cache"] = cache
         return cache
 
-    def prefetch_global_totals(self) -> "dict[str, int]":
-        """Global schema total = filtered schemas summed across all filtered
-        databases. Computed up front, before any database is processed."""
-        cache = self._schema_names_by_database()
-        return {DatabaseSchema.__name__: sum(len(schemas) for schemas in cache.values())}
-
-    def container_expected_count(self, entity_type_name: str) -> Optional[int]:  # noqa: UP045
-        """Database denominator from the cheap filtered-name list; schema denominator
-        from the prefetched per-database schema cache. Other levels defer to the base."""
-        if entity_type_name == Database.__name__:
-            return len(self._filtered_database_names())
-        if entity_type_name == DatabaseSchema.__name__:
-            cache = self.__dict__.get("_schema_names_by_db_cache")
-            if cache is not None:
-                current_database = getattr(self.context.get(), "database", None)
-                if current_database is not None and model_str(current_database) in cache:
-                    return len(cache[model_str(current_database)])
-        return super().container_expected_count(entity_type_name)
-
     def get_database_names(self) -> Iterable[str]:
-        for database_name in self._filtered_database_names():
+        database_names = self._filtered_database_names()
+        if self.progress_tracking_enabled:
+            self._push_progress_totals(database_names)
+        for database_name in database_names:
             try:
                 self.set_inspector(database_name=database_name)
                 self.set_session_query_tag()
@@ -553,6 +536,16 @@ class SnowflakeSource(
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error trying to connect to database {database_name}: {exc}")
+
+    def _push_progress_totals(self, database_names: List[str]) -> None:  # noqa: UP006
+        """Connector-declared totals: the service root counts databases, each
+        database counts its schemas. Reuses the cheap name cache — no COUNT query."""
+        self.progress.set_total([], Database.__name__, len(database_names))
+        cache = self._schema_names_by_database()
+        for database_name in database_names:
+            schemas = cache.get(database_name)
+            if schemas is not None:
+                self.progress.set_total([database_name], DatabaseSchema.__name__, len(schemas))
 
     def __clean_append(self, token: Token, result_list: List) -> None:  # noqa: UP006
         """
