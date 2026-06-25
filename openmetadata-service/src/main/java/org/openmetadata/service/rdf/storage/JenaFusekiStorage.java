@@ -496,7 +496,27 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   static boolean isCircuitBreakerFailure(Throwable t) {
-    return isConnectError(t) || isTimeoutError(t);
+    return isConnectError(t) || isTimeoutError(t) || isServerError(t);
+  }
+
+  // Only gateway/availability 5xx (502/503/504) indicate Fuseki itself is
+  // unhealthy and should count toward the shared breaker. A bare 500 is often a
+  // per-request failure (e.g. an expensive SPARQL SELECT that exceeds a server
+  // limit) — tripping the breaker on those would let one heavy graph query
+  // short-circuit ALL RDF traffic. Client errors (4xx) are the caller's fault
+  // and must never trip it either.
+  private static boolean isServerError(Throwable t) {
+    Throwable cause = t;
+    boolean result = false;
+    while (cause != null && !result) {
+      if (cause instanceof org.apache.jena.atlas.web.HttpException httpException) {
+        int code = httpException.getStatusCode();
+        result = code == 502 || code == 503 || code == 504;
+      }
+      Throwable next = cause.getCause();
+      cause = (next == cause) ? null : next;
+    }
+    return result;
   }
 
   private static boolean isConnectError(Throwable t) {

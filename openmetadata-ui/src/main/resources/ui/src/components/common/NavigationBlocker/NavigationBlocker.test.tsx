@@ -12,6 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { NavigationBlocker } from './NavigationBlocker';
 
 jest.mock('react-i18next', () => ({
@@ -40,7 +41,8 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled={false}>
         <div data-testid="test-content">Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -50,7 +52,8 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled>
         <div data-testid="test-content">Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -60,7 +63,8 @@ describe('NavigationBlocker component', () => {
     render(
       <NavigationBlocker enabled>
         <div>Test Content</div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Modal should not be visible initially
@@ -78,7 +82,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to trigger modal
@@ -106,7 +111,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to show modal
@@ -134,7 +140,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to show modal
@@ -160,7 +167,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     const link = screen.getByTestId('test-link');
@@ -178,7 +186,8 @@ describe('NavigationBlocker component', () => {
             Navigate Away
           </a>
         </div>
-      </NavigationBlocker>
+      </NavigationBlocker>,
+      { wrapper: MemoryRouter }
     );
 
     // Click link to trigger modal with default props

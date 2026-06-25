@@ -30,6 +30,13 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  advanceToServiceConnectionStep,
+  mockSuccessfulTestConnection,
+  selectServiceConnector,
+  testConnectionIfRequired,
+  waitForServiceConnectionForm,
+} from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const serviceOwnerPolicy = new PolicyClass();
@@ -153,19 +160,20 @@ test.describe(
 
       await page.getByTestId('add-service-button').click();
 
-      await page.getByTestId('Mysql').click();
-      await page.getByTestId('next-button').click();
+      await selectServiceConnector(page, 'Mysql');
 
       const serviceName = `pw-user-owned-service-${uuid()}`;
-      await page.getByTestId('service-name').fill(serviceName);
-      await page.getByTestId('next-button').click();
+      await mockSuccessfulTestConnection(page);
+      await page.locator('#service-name').fill(serviceName);
+      await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
-      await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
       await expect(page.getByTestId('entity-header-title')).toContainText(
         serviceName
@@ -238,7 +246,9 @@ test.describe(
       );
 
       await page.getByRole('tab', { name: 'Connection' }).click();
+      await mockSuccessfulTestConnection(page);
       await page.getByTestId('edit-connection-button').click();
+      await waitForServiceConnectionForm(page);
 
       await page.locator('#root\\/username').clear();
       await page.locator('#root\\/username').fill('updated_user');
@@ -247,8 +257,9 @@ test.describe(
         response.url().includes('/api/v1/services/databaseServices')
       );
 
-      await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await saveResponse;
 
       const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =

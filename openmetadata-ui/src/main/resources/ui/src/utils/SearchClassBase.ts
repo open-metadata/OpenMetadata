@@ -11,37 +11,28 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
-import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
-import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
 import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
-import {
-  ReactComponent as KnowledgeCenterIconComponent,
-  ReactComponent as KnowledgePageIcon,
-} from '../assets/svg/knowledge-center.svg';
+import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -89,14 +80,12 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-  getEntityName,
-} from './EntityUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
-import { getKnowledgePagePath } from './KnowledgePageUtils';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
@@ -271,7 +260,7 @@ class SearchClassBase {
             EntityType.TABLE_COLUMN,
           ],
         },
-        icon: DatabaseIcon,
+        icon: getEntityIcon(EntityType.DATABASE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.dashboard-plural'),
@@ -284,37 +273,37 @@ class SearchClassBase {
             EntityType.CHART,
           ],
         },
-        icon: DashboardIcon,
+        icon: getEntityIcon(EntityType.DASHBOARD, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.pipeline-plural'),
         key: SearchIndex.PIPELINE,
         data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
-        icon: PipelineIcon,
+        icon: getEntityIcon(EntityType.PIPELINE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.topic-plural'),
         key: SearchIndex.TOPIC,
         data: { isRoot: true, childEntities: [EntityType.TOPIC] },
-        icon: TopicIcon,
+        icon: getEntityIcon(EntityType.TOPIC, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.ml-model-plural'),
         key: SearchIndex.MLMODEL,
         data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
-        icon: MlModelIcon,
+        icon: getEntityIcon(EntityType.MLMODEL, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.container-plural'),
         key: SearchIndex.CONTAINER,
         data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
-        icon: ContainerIcon,
+        icon: getEntityIcon(EntityType.CONTAINER, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
-        icon: SearchIcon,
+        icon: getEntityIcon(EntityType.SEARCH_INDEX, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.api-uppercase-plural'),
@@ -323,7 +312,7 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
         },
-        icon: IconAPIService,
+        icon: getEntityIcon(EntityType.API_COLLECTION, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.drive-plural'),
@@ -337,7 +326,7 @@ class SearchClassBase {
             EntityType.WORKSHEET,
           ],
         },
-        icon: DriveIcon,
+        icon: getEntityIcon(EntityType.DIRECTORY, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.governance'),
@@ -350,13 +339,16 @@ class SearchClassBase {
             EntityType.METRIC,
           ],
         },
-        icon: GovernIcon,
+        icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.glossary-plural'),
             key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
-            icon: GlossaryIcon,
+            icon: getEntityIcon(
+              EntityType.GLOSSARY_TERM,
+              'service-icon w-4 h-4'
+            ),
             data: {
               entityType: EntityType.GLOSSARY_TERM,
               isStatic: true,
@@ -367,7 +359,7 @@ class SearchClassBase {
             title: t('label.tag-plural'),
             key: EntityType.TAG,
             isLeaf: true,
-            icon: ClassificationIcon,
+            icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.TAG,
               isStatic: true,
@@ -378,7 +370,7 @@ class SearchClassBase {
             title: t('label.metric-plural'),
             key: EntityType.METRIC,
             isLeaf: true,
-            icon: MetricIcon,
+            icon: getEntityIcon(EntityType.METRIC, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.METRIC,
               isStatic: true,
@@ -391,13 +383,16 @@ class SearchClassBase {
         title: t('label.domain-plural'),
         key: 'Domain',
         data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
-        icon: DomainIcon,
+        icon: getEntityIcon(EntityType.DOMAIN, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.data-product-plural'),
             key: EntityType.DATA_PRODUCT,
             isLeaf: true,
-            icon: DataProductIcon,
+            icon: getEntityIcon(
+              EntityType.DATA_PRODUCT,
+              'service-icon w-4 h-4'
+            ),
             data: {
               entityType: EntityType.DATA_PRODUCT,
               isStatic: true,
@@ -412,13 +407,16 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.KNOWLEDGE_PAGE],
         },
-        icon: KnowledgePageIcon,
+        icon: getEntityIcon(EntityType.KNOWLEDGE_PAGE, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.knowledge-page'),
             key: EntityType.KNOWLEDGE_PAGE,
             isLeaf: true,
-            icon: KnowledgeCenterIcon,
+            icon: getEntityIcon(
+              EntityType.KNOWLEDGE_PAGE,
+              'service-icon w-4 h-4'
+            ),
             data: {
               entityType: EntityType.KNOWLEDGE_PAGE,
               isStatic: true,

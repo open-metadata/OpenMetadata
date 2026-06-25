@@ -79,7 +79,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
           <Dialog.Content className="tw:flex tw:flex-col tw:gap-4 tw:pb-6">
             <div className="tw:bg-brand-primary tw:p-2 tw:mb-2 tw:w-max tw:leading-0 tw:rounded-xl">
               <FolderPlus
-                className="tw:text-brand-700"
+                className="tw:text-fg-brand-primary"
                 height={32}
                 width={32}
               />
@@ -89,7 +89,7 @@ const CreateFolderModal: FC<CreateFolderModalProps> = ({
             </Typography>
             <div className="tw:flex tw:flex-col tw:gap-1.5">
               <Typography
-                className="tw:text-gray-700"
+                className="tw:text-secondary"
                 size="text-sm"
                 weight="medium">
                 {t('label.entity-name', { entity: t('label.folder') })}

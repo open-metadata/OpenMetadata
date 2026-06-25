@@ -364,12 +364,14 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
                 }
                 // Then delete any concrete index sharing the alias name, atomically, so the alias
                 // add below cannot race a separate delete and orphan the canonical name.
+                // must_exist is intentionally omitted to stay byte-for-byte aligned with the
+                // OpenSearch path (which rejects it); it is unnecessary because
+                // resolveCanonicalRemoval only forwards indices already confirmed to exist.
                 for (String indexToRemove : finalIndicesToRemove) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.removeIndex(
-                              removeIndexBuilder ->
-                                  removeIndexBuilder.index(indexToRemove).mustExist(false)));
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
                 }
                 // Finally, add aliases to the new index
                 for (String alias : finalAliases) {
@@ -507,12 +509,16 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       }
       IndicesStats stats = entry.getValue();
       long docs = 0;
+      long indexedOps = 0;
       long sizeBytes = 0;
       int primaryShards = 0;
       int replicaShards = 0;
       if (stats.primaries() != null) {
         if (stats.primaries().docs() != null) {
           docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
         }
         if (stats.primaries().store() != null) {
           sizeBytes = stats.primaries().store().sizeInBytes();
@@ -533,7 +539,14 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       Set<String> aliases = getAliases(indexName);
       result.add(
           new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
     }
     return result;
   }

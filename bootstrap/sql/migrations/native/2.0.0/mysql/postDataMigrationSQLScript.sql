@@ -114,3 +114,32 @@ WHERE configType = 'workflowSettings'
   AND (CAST(JSON_EXTRACT(json, '$.executorConfiguration.asyncJobAcquisitionInterval') AS UNSIGNED) > 1000
     OR CAST(JSON_EXTRACT(json, '$.executorConfiguration.timerJobAcquisitionInterval') AS UNSIGNED) > 5000);
 
+-- pipelineStatuses is a derived field, read on demand from entity_extension_time_series, and is
+-- now an array instead of a single object. Strip any stale single-object value that a GET->PUT
+-- round-trip may have persisted into the stored entity JSON so it cannot break deserialization.
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.pipelineStatuses')
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.pipelineStatuses');
+
+-- MCP Server and MCP Chat are no longer internal Applications; their enablement now lives in
+-- platform settings (mcpConfiguration). The MCP Chat app was never shipped to customers, so
+-- aiSettings.mcpChat keeps its seeded default shape (no config carry-over).
+
+-- MCP Server: keep it disabled if the server app was not installed (mcpConfiguration defaults
+-- to enabled=true, which would otherwise turn it on).
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.enabled', false)
+WHERE configType = 'mcpConfiguration'
+  AND NOT EXISTS (SELECT 1 FROM installed_apps ia WHERE ia.name = 'McpApplication');
+
+-- Retire the MCP apps (their Java classes and marketplace seeds are removed). Keep the bot users
+-- so the MCP server keeps its principal.
+DELETE er FROM entity_relationship er
+  JOIN installed_apps ia ON er.fromId = ia.id OR er.toId = ia.id
+  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE er FROM entity_relationship er
+  JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id
+  WHERE ia.name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM installed_apps WHERE name IN ('McpApplication', 'McpChatApplication');
+DELETE FROM apps_marketplace WHERE name IN ('McpApplication', 'McpChatApplication');
+

@@ -263,6 +263,9 @@ jest.mock('reactflow', () => ({
 jest.mock('../../utils/EntityLineageUtils', () => ({
   customEdges: {},
   nodeTypes: {},
+}));
+
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   dragHandle: jest.fn(),
   onNodeContextMenu: jest.fn(),
   onNodeMouseEnter: jest.fn(),
@@ -337,6 +340,13 @@ describe('Lineage Component', () => {
       render(<Lineage {...defaultProps} />);
 
       expect(screen.getByTestId('custom-controls')).toBeInTheDocument();
+    });
+
+    it('should keep lineage graph mounted when controls are hidden', () => {
+      render(<Lineage {...defaultProps} showControls={false} />);
+
+      expect(screen.queryByTestId('custom-controls')).not.toBeInTheDocument();
+      expect(screen.getByTestId('react-flow-component')).toBeInTheDocument();
     });
 
     it('should apply edit mode class when isEditMode is true', () => {

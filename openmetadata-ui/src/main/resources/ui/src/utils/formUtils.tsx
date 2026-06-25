@@ -12,7 +12,6 @@
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
-import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
   Checkbox,
@@ -30,14 +29,13 @@ import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compact, isString, startCase, toString } from 'lodash';
+import { isString, startCase, toString } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
 import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -444,17 +442,6 @@ export const getField = (field: FieldProp) => {
       );
     }
 
-    case FieldTypes.COVER_IMAGE_UPLOAD_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUICoverImageUpload
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
     case FieldTypes.AUTOCOMPLETE_MUI: {
       return (
         <Form.Item {...formProps}>
@@ -559,50 +546,6 @@ export const generateFormFields = (fields: FieldProp[]) => {
   );
 };
 
-export const transformErrors: ErrorTransformer = (errors) => {
-  const errorRet = errors.map((error) => {
-    const { property, params, name } = error;
-
-    /**
-     * For nested fields we have to check if it's property start with "."
-     * else we will just prepend the root to property
-     */
-    const id = property?.startsWith('.')
-      ? 'root' + property?.replaceAll('.', '/')
-      : `root/${property}`;
-
-    // If element is not present in DOM, ignore error
-    if (document.getElementById(id)) {
-      const fieldName = startCase(property?.split('/').pop() ?? '');
-
-      const errorMessages = {
-        required: () => ({
-          message: t('message.field-text-is-required', {
-            fieldText: startCase(params?.missingProperty),
-          }),
-        }),
-        minimum: () => ({
-          message: t('message.value-must-be-greater-than', {
-            field: fieldName,
-            minimum: params?.limit,
-          }),
-        }),
-      };
-
-      const errorHandler = errorMessages[name as keyof typeof errorMessages];
-      if (errorHandler && params) {
-        error.message = errorHandler().message;
-
-        return error;
-      }
-    }
-
-    return null;
-  });
-
-  return compact(errorRet);
-};
-
 export const setInlineErrorValue = (
   description: string,
   serverAPIError: string,
@@ -669,93 +612,4 @@ export const handleEntityCreationError = ({
     getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
-};
-
-export const getPopupContainer = (triggerNode: HTMLElement) =>
-  triggerNode.parentElement || document.body;
-
-/**
- * Configuration options for custom scroll-to-error behavior
- */
-export interface ScrollToErrorOptions {
-  /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
-  scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
-  errorSelector?: string;
-  /** Offset from top in pixels for better visibility. Defaults to 100 */
-  offsetTop?: number;
-  /** Delay in milliseconds before scrolling. Defaults to 100 */
-  delay?: number;
-  /** Scroll behavior. Defaults to 'smooth' */
-  behavior?: ScrollBehavior;
-}
-
-/**
- * Creates a reusable scroll-to-error handler for forms in complex layouts
- *
- * This utility is particularly useful when:
- * - Form is inside a drawer or modal with custom scroll containers
- * - Ant Design's built-in scrollToFirstError doesn't work due to layout complexity
- * - Form is nested within grid layouts or other complex structures
- *
- * @param options - Configuration options for scroll behavior
- * @returns Function to be used as onFinishFailed handler for Ant Design forms
- *
- * @example
- * ```tsx
- * // Basic usage for drawer forms
- * const scrollToError = createScrollToErrorHandler();
- *
- * <Form onFinishFailed={scrollToError}>
- *   // form content
- * </Form>
- *
- * // Custom configuration
- * const scrollToError = createScrollToErrorHandler({
- *   scrollContainer: '.my-custom-scroll-container',
- *   offsetTop: 150,
- *   delay: 50
- * });
- * ```
- */
-export const createScrollToErrorHandler = (
-  options: ScrollToErrorOptions = {}
-) => {
-  const {
-    scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
-    offsetTop = 100,
-    delay = 100,
-    behavior = 'smooth',
-  } = options;
-
-  return () => {
-    setTimeout(() => {
-      const firstError = document.querySelector(errorSelector);
-      if (firstError) {
-        const scrollableContainer = document.querySelector(scrollContainer);
-        if (scrollableContainer) {
-          const errorRect = firstError.getBoundingClientRect();
-          const containerRect = scrollableContainer.getBoundingClientRect();
-          const scrollTop =
-            scrollableContainer.scrollTop +
-            errorRect.top -
-            containerRect.top -
-            offsetTop;
-
-          scrollableContainer.scrollTo({
-            top: Math.max(0, scrollTop), // Ensure we don't scroll to negative values
-            behavior,
-          });
-        } else {
-          // Fallback to standard scrollIntoView if container not found
-          firstError.scrollIntoView({
-            behavior,
-            block: 'center',
-            inline: 'nearest',
-          });
-        }
-      }
-    }, delay);
-  };
 };

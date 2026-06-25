@@ -6,9 +6,12 @@ import java.util.Set;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Drives the SearchIndexingApplication via the SDK and waits for run completion.
@@ -22,12 +25,52 @@ public final class ReindexHelpers {
 
   public static final String SEARCH_INDEX_APP = "SearchIndexingApplication";
 
+  private static final Logger LOG = LoggerFactory.getLogger(ReindexHelpers.class);
   private static final Set<String> TERMINAL_STATUSES =
       Set.of("success", "failed", "completed", "stopped", "activeError");
-  private static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+  private static final Set<String> SUCCESS_STATUSES = Set.of("success", "completed");
+  private static final String REINDEX_TIMEOUT_MIN_PROP = "jpw.reindex.timeoutMin";
+  private static final int EXTERNAL_TIMEOUT_MINUTES = 60;
+  private static final int EMBEDDED_TIMEOUT_MINUTES = 15;
+  private static final String PROPAGATION_TIMEOUT_MIN_PROP = "jpw.search.propagationTimeoutMin";
+  private static final int DEFAULT_PROPAGATION_MINUTES = 5;
+  // A stopped run leaves the server in a post-stop window (reindex lock still held by the
+  // winding-down job) where fresh runs are ACCEPTED but fail within seconds with an empty
+  // failureContext. The window self-heals within minutes, so baseline-recreate retries must
+  // be spaced across a minutes-scale budget — back-to-back attempts all land inside it.
+  private static final Duration BASELINE_RECREATE_MAX_WAIT = Duration.ofMinutes(10);
+  private static final Duration BASELINE_RECREATE_BACKOFF = Duration.ofSeconds(30);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   private ReindexHelpers() {}
+
+  /**
+   * Max wait for a reindex run to reach a terminal status — and for the singleton SearchIndexApp
+   * lock to free so a fresh trigger is accepted. Reindex duration scales with catalog size and
+   * cluster load: on a large shared/external cluster a single run can take ~20 minutes, and a
+   * concurrent test's run holds the lock for that whole window, so external mode defaults to 60
+   * minutes. Embedded/PR runs have a small catalog and a private cluster, so they default to 15 —
+   * a wedged run fails the build in minutes rather than burning the external cap. Override either
+   * with {@code -Djpw.reindex.timeoutMin}. The waits poll run status and return the instant it goes
+   * terminal, so a large cap never slows a fast run — it only bounds the failure.
+   */
+  public static Duration reindexTimeout() {
+    final int fallback =
+        OssTestServer.isExternalMode() ? EXTERNAL_TIMEOUT_MINUTES : EMBEDDED_TIMEOUT_MINUTES;
+    return Duration.ofMinutes(Integer.getInteger(REINDEX_TIMEOUT_MIN_PROP, fallback));
+  }
+
+  /**
+   * Max wait for a single document/field change to become query-visible — live-indexing lag or the
+   * tail of a reindex. On a clean cluster this is seconds, so the poll returns almost immediately
+   * and the cap never slows a passing test; it only bounds the failure. On a shared/external cluster
+   * under concurrent reindex load it can run minutes, so this defaults high and is overridable via
+   * {@code -Djpw.search.propagationTimeoutMin}.
+   */
+  public static Duration searchPropagationTimeout() {
+    return Duration.ofMinutes(
+        Integer.getInteger(PROPAGATION_TIMEOUT_MIN_PROP, DEFAULT_PROPAGATION_MINUTES));
+  }
 
   /** Triggers the named app via {@code POST /v1/apps/trigger/{name}}. */
   public static void triggerApp(final ServerHandle server, final String appName) {
@@ -57,7 +100,7 @@ public final class ReindexHelpers {
       final ServerHandle server,
       final Map<String, Object> config,
       final Duration acceptanceTimeout) {
-    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, reindexTimeout());
     Awaitility.await("trigger SearchIndexApp with config")
         .atMost(acceptanceTimeout)
         .pollInterval(Duration.ofSeconds(2))
@@ -117,15 +160,17 @@ public final class ReindexHelpers {
 
   /** Trigger SearchIndexingApplication and block until the latest run reaches a terminal state. */
   public static AppRunRecord triggerSearchIndexAndWait(final ServerHandle server) {
-    return triggerSearchIndexAndWait(server, DEFAULT_TIMEOUT);
+    return triggerSearchIndexAndWait(server, reindexTimeout());
   }
 
   public static AppRunRecord triggerSearchIndexAndWait(
       final ServerHandle server, final Duration timeout) {
-    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, Duration.ofSeconds(30));
+    waitForLatestRunTerminal(server, SEARCH_INDEX_APP, reindexTimeout());
     final long triggeredAtMillis = System.currentTimeMillis();
-    triggerWhenAccepted(server, Duration.ofSeconds(60));
-    return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    triggerWhenAccepted(server, reindexTimeout());
+    final AppRunRecord run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    logIfNotSuccess(run);
+    return run;
   }
 
   /**
@@ -154,16 +199,64 @@ public final class ReindexHelpers {
    * indices are recreated and read aliases are re-promoted — the only reliable way to restore a
    * baseline after a test has dropped indices or left an alias unswapped (e.g. a stopped recreate
    * run). Used by {@code SearchClusterResetExtension}.
+   *
+   * <p>Failed attempts retry with {@link #BASELINE_RECREATE_BACKOFF} spacing for up to {@link
+   * #BASELINE_RECREATE_MAX_WAIT}: after a stop, fresh runs fast-fail until the stopped job's
+   * wind-down releases the server-side reindex lock, so only spaced retries can outlast that
+   * window. The budget only bounds the failure — the first successful run returns immediately.
+   *
+   * <p>Throws {@link IllegalStateException} if the baseline never succeeds within the budget, so no
+   * caller silently proceeds against a cluster whose indices are still half-dropped or unswapped.
    */
   public static AppRunRecord recreateAllAndWait(final ServerHandle server, final Duration timeout) {
-    final long triggeredAtMillis = System.currentTimeMillis();
-    // Trigger via the idle-aware path: the SearchIndexApp single-run lock can linger briefly after
-    // a previous run flips to terminal, so a one-shot trigger races it and gets "Job is already
-    // running" (notably at class transitions in the serial search-it suite). This waits for the
-    // prior run to finish and retries the trigger until accepted, then blocks for the fresh run.
-    triggerSearchIndexWithConfigWhenIdle(
-        server, Map.of("recreateIndex", true), Duration.ofSeconds(60));
-    return waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+    final long deadlineMillis = System.currentTimeMillis() + BASELINE_RECREATE_MAX_WAIT.toMillis();
+    AppRunRecord run = null;
+    for (int attempt = 1; shouldRetryBaselineRecreate(run, attempt, deadlineMillis); attempt++) {
+      if (attempt > 1) {
+        backOff(BASELINE_RECREATE_BACKOFF);
+      }
+      final long triggeredAtMillis = System.currentTimeMillis();
+      triggerSearchIndexWithConfigWhenIdle(server, Map.of("recreateIndex", true), reindexTimeout());
+      run = waitForRunAfter(server, SEARCH_INDEX_APP, triggeredAtMillis, timeout);
+      logBaselineRecreateAttempt(run, attempt);
+    }
+    if (!isSuccess(run)) {
+      throw new IllegalStateException(
+          "Baseline recreate never succeeded after retrying for "
+              + BASELINE_RECREATE_MAX_WAIT
+              + "; final status '"
+              + statusOf(run)
+              + "'"
+              + failureSummary(run));
+    }
+    return run;
+  }
+
+  private static boolean shouldRetryBaselineRecreate(
+      final AppRunRecord run, final int attempt, final long deadlineMillis) {
+    return !isSuccess(run) && (attempt == 1 || System.currentTimeMillis() < deadlineMillis);
+  }
+
+  private static void logBaselineRecreateAttempt(final AppRunRecord run, final int attempt) {
+    if (!isSuccess(run)) {
+      LOG.warn(
+          "Baseline recreate attempt {} ended in status '{}'{} — a stopped reindex leaves a"
+              + " minutes-long post-stop window where fresh runs are accepted but fail within"
+              + " seconds with an empty failureContext; backing off {} and retrying for up to {}.",
+          attempt,
+          statusOf(run),
+          failureSummary(run),
+          BASELINE_RECREATE_BACKOFF,
+          BASELINE_RECREATE_MAX_WAIT);
+    }
+  }
+
+  private static void backOff(final Duration duration) {
+    try {
+      Thread.sleep(duration.toMillis());
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   /** Triggers a per-entity reindex via {@code POST /v1/search/reindex?entityType=...}. */
@@ -207,6 +300,34 @@ public final class ReindexHelpers {
         .getHttpClient()
         .execute(
             HttpMethod.GET, "/v1/apps/name/" + appName + "/runs/latest", null, AppRunRecord.class);
+  }
+
+  /** Whether the run ended in a status the suite treats as success. */
+  public static boolean isSuccess(final AppRunRecord run) {
+    return run != null && run.getStatus() != null && SUCCESS_STATUSES.contains(statusOf(run));
+  }
+
+  /** The run's status value, or {@code "none"} when the run or its status is absent. */
+  public static String statusOf(final AppRunRecord run) {
+    return (run == null || run.getStatus() == null) ? "none" : run.getStatus().value();
+  }
+
+  private static void logIfNotSuccess(final AppRunRecord run) {
+    if (!isSuccess(run)) {
+      LOG.warn(
+          "SearchIndexApp run did not succeed: status='{}'{}", statusOf(run), failureSummary(run));
+    }
+  }
+
+  /** A short, log-safe rendering of the run's failure context, or empty when there is none. */
+  private static String failureSummary(final AppRunRecord run) {
+    final String summary;
+    if (run == null || run.getFailureContext() == null) {
+      summary = "";
+    } else {
+      summary = " failureContext=" + run.getFailureContext();
+    }
+    return summary;
   }
 
   private static boolean isTerminal(final AppRunRecord run) {

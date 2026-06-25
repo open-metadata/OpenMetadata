@@ -87,15 +87,14 @@ jest.mock('../../../rest/feedsAPI', () => ({
     .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
+jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getCountBadge: (count: number) => (
     <span data-testid="filter-count">{count}</span>
   ),
   getEntityUserLink: jest.fn().mockReturnValue(''),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getFeedCounts: jest.fn((_, __, ___, cb) =>
     cb({
       conversationCount: 0,

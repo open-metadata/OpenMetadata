@@ -16,8 +16,6 @@ import traceback
 from copy import deepcopy
 from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
 
-from pydantic import EmailStr
-from pydantic_core import PydanticCustomError
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.engine.reflection import Inspector
@@ -50,12 +48,16 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
     DescribeJsonPayload,
     DescribeJsonType,
     NestedDescriptions,
     NestedFieldPath,
+)
+from metadata.ingestion.source.database.databricks.ownership import (
+    DatabricksOwnerResolver,
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
@@ -844,6 +846,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.table_tags = {}
         self.external_location_map = {}
         self.column_tags = {}
+        self.api_client = DatabricksClient(self.service_connection)
+        self.owner_resolver = DatabricksOwnerResolver(
+            api_client=self.api_client,
+            metadata=self.metadata,
+            include_owners=self.source_config.includeOwners,
+        )
 
     def _init_version(self):
         try:
@@ -1314,13 +1322,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
-            owner_ref = None
-            try:
-                owner_email = EmailStr._validate(owner)
-                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
-            except PydanticCustomError:
-                owner_ref = self.metadata.get_reference_by_name(name=owner)
-            return owner_ref  # noqa: TRY300
+            return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")

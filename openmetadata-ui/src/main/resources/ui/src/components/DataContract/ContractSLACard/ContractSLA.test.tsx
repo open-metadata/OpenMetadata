@@ -46,7 +46,8 @@ jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
   ReactComponent: () => <svg data-testid="check-icon" />,
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: mockTableData,
   })),

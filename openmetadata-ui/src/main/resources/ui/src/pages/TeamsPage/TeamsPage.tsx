@@ -47,13 +47,12 @@ import {
   updateUsersFromTeam,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
-import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import { getTermQuery } from '../../utils/SearchUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
-
 const TeamsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();

@@ -1,13 +1,20 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.flowable.variable.api.delegate.VariableScope;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class WorkflowVariableHandler {
@@ -70,6 +77,28 @@ public class WorkflowVariableHandler {
 
   public void setGlobalVariable(String varName, Object varValue) {
     setNamespacedVariable(GLOBAL_NAMESPACE, varName, varValue);
+  }
+
+  /**
+   * Resolves the workflow's related entity by its immutable id when available, falling back to the
+   * FQN-based {@link MessageParser.EntityLink}. Resolving by id keeps approval (and any other
+   * entity-attribute node) correct after the entity is moved or renamed: its id never changes, only
+   * its FQN does, so a stale FQN no longer breaks resolution. The FQN fallback covers in-flight
+   * workflows started before {@code relatedEntityId} was recorded at the trigger.
+   */
+  public EntityInterface getRelatedEntity(
+      MessageParser.EntityLink entityLink, String fields, Include include) {
+    Object idValue = getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
+    String relatedEntityId = idValue != null ? idValue.toString() : null;
+    EntityInterface entity;
+    if (nullOrEmpty(relatedEntityId)) {
+      entity = Entity.getEntity(entityLink, fields, include);
+    } else {
+      entity =
+          Entity.getEntity(
+              entityLink.getEntityType(), UUID.fromString(relatedEntityId), fields, include);
+    }
+    return entity;
   }
 
   private String getNodeNamespace() {
