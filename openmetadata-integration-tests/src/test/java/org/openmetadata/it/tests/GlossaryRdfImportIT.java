@@ -277,6 +277,50 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void dryRunForNonAdminDoesNotCountUnregisterableRelations(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    User owner = UserTestFactory.createUser(ns, "ontologyDryRunOwner");
+    setGlossaryOwner(glossary.getId().toString(), owner);
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+
+    // A custom object property that no other test registers, so it is guaranteed to be
+    // unregistered when this non-admin import runs (the global relation-type settings are
+    // shared across the concurrent suite, and a non-admin never registers it).
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:NonAdminProbeA a skos:Concept ;
+            skos:prefLabel "Non Admin Probe A" .
+        hcp:NonAdminProbeB a skos:Concept ;
+            skos:prefLabel "Non Admin Probe B" ;
+            hcp:nonAdminProbeLink hcp:NonAdminProbeA .
+        hcp:nonAdminProbeLink a owl:ObjectProperty ;
+            rdfs:label "non admin probe link" .
+        """;
+
+    HttpResponse<String> response = sendImportRdf(glossary.getName(), ownerToken, ontology, true);
+
+    assertEquals(200, response.statusCode(), response.body());
+    JsonNode result = OBJECT_MAPPER.readTree(response.body());
+    assertTrue(result.get("dryRun").asBoolean());
+    assertEquals(
+        0,
+        result.get("relationTypesRegistered").asInt(),
+        "a non-admin cannot register custom relation types: " + result);
+    assertEquals(
+        0,
+        result.get("relationsAdded").asInt(),
+        "the dry-run preview must not count a relation using a custom type the non-admin cannot "
+            + "register (it would otherwise contradict relationTypesRegistered=0): "
+            + result);
+  }
+
+  @Test
   void importsValidConceptsAndGracefullySkipsDanglingReferences(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String partialOntology =

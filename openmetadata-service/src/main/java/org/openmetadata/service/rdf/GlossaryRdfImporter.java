@@ -21,8 +21,10 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.StringReader;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -93,6 +95,9 @@ public class GlossaryRdfImporter {
   private static final String DOCTYPE_TOKEN = "<!DOCTYPE";
   private static final String RDF_XML_LANG = "RDF/XML";
 
+  /** Serializes the read-merge-write of the shared glossary relation-type settings. */
+  private static final Object RELATION_TYPE_SETTINGS_LOCK = new Object();
+
   private static final Set<String> STRUCTURAL_PREDICATES =
       Set.of(
           RDF + "type",
@@ -134,7 +139,7 @@ public class GlossaryRdfImporter {
   public OntologyImportResult importRdf(
       String rdf, String format, String targetGlossaryName, boolean dryRun) {
     result.setDryRun(dryRun);
-    validatePayloadSize(rdf);
+    validatePayload(rdf);
     Model model = parseModel(rdf, format);
     Map<String, EntityReference> glossaryByScheme =
         createGlossaries(model, targetGlossaryName, dryRun);
@@ -146,8 +151,11 @@ public class GlossaryRdfImporter {
     return result;
   }
 
-  private void validatePayloadSize(String rdf) {
-    if (rdf != null && rdf.length() > MAX_RDF_PAYLOAD_CHARS) {
+  private void validatePayload(String rdf) {
+    if (nullOrEmpty(rdf)) {
+      throw new BadRequestException("The ontology payload must not be empty");
+    }
+    if (rdf.length() > MAX_RDF_PAYLOAD_CHARS) {
       throw new BadRequestException(
           String.format(
               "Ontology payload of %d characters exceeds the maximum of %d",
@@ -181,7 +189,9 @@ public class GlossaryRdfImporter {
     return switch (normalized) {
       case "rdfxml", "xml", "rdf", "application/rdf+xml" -> RDF_XML_LANG;
       case "ntriples", "nt", "application/n-triples" -> "N-TRIPLES";
-      case "jsonld", "json-ld", "application/ld+json" -> "JSON-LD";
+      case "jsonld", "json-ld", "application/ld+json" -> throw new BadRequestException(
+          "JSON-LD import is disabled because its remote @context resolution is an SSRF risk; "
+              + "use Turtle, RDF/XML or N-Triples");
       default -> "TURTLE";
     };
   }
@@ -530,21 +540,31 @@ public class GlossaryRdfImporter {
     return names;
   }
 
-  private void persistRelationTypes(java.util.Collection<GlossaryTermRelationType> newTypes) {
-    GlossaryTermRelationSettings settings =
-        SettingsCache.getSetting(
-            SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-    List<GlossaryTermRelationType> merged =
-        settings == null || settings.getRelationTypes() == null
-            ? new ArrayList<>()
-            : new ArrayList<>(settings.getRelationTypes());
-    merged.addAll(newTypes);
-    Settings updated =
-        new Settings()
-            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
-            .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(merged));
-    Entity.getSystemRepository().createOrUpdate(updated);
-    result.setRelationTypesRegistered(result.getRelationTypesRegistered() + newTypes.size());
+  private void persistRelationTypes(Collection<GlossaryTermRelationType> newTypes) {
+    synchronized (RELATION_TYPE_SETTINGS_LOCK) {
+      GlossaryTermRelationSettings settings =
+          SettingsCache.getSetting(
+              SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+      List<GlossaryTermRelationType> merged =
+          settings == null || settings.getRelationTypes() == null
+              ? new ArrayList<>()
+              : new ArrayList<>(settings.getRelationTypes());
+      Set<String> existingNames = new HashSet<>();
+      merged.forEach(type -> existingNames.add(type.getName()));
+      int added = 0;
+      for (GlossaryTermRelationType type : newTypes) {
+        if (existingNames.add(type.getName())) {
+          merged.add(type);
+          added++;
+        }
+      }
+      Settings updated =
+          new Settings()
+              .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+              .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(merged));
+      Entity.getSystemRepository().createOrUpdate(updated);
+      result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
+    }
   }
 
   private void persistTerms(
@@ -664,18 +684,25 @@ public class GlossaryRdfImporter {
     Map<String, TermIntent> byIri = new HashMap<>();
     intents.forEach(intent -> byIri.put(intent.iri, intent));
     List<TermIntent> ordered = new ArrayList<>(intents);
-    ordered.sort(Comparator.comparingInt(intent -> depth(intent, byIri, new HashSetGuard())));
+    ordered.sort(Comparator.comparingInt(intent -> depth(intent, byIri)));
     return ordered;
   }
 
-  private int depth(TermIntent intent, Map<String, TermIntent> byIri, HashSetGuard visited) {
-    int result = 0;
-    if (intent.parentIri != null
-        && byIri.containsKey(intent.parentIri)
-        && visited.add(intent.iri)) {
-      result = 1 + depth(byIri.get(intent.parentIri), byIri, visited);
+  /**
+   * Walks the parent chain iteratively (not recursively) so a deep or crafted linear hierarchy
+   * cannot overflow the thread stack; the visited set bounds it against cycles.
+   */
+  private int depth(TermIntent intent, Map<String, TermIntent> byIri) {
+    int depth = 0;
+    Set<String> visited = new HashSet<>();
+    TermIntent current = intent;
+    while (current.parentIri != null
+        && byIri.containsKey(current.parentIri)
+        && visited.add(current.iri)) {
+      depth++;
+      current = byIri.get(current.parentIri);
     }
-    return result;
+    return depth;
   }
 
   private void wireRelations(List<TermIntent> intents, boolean dryRun) {
@@ -687,8 +714,32 @@ public class GlossaryRdfImporter {
   }
 
   private void countRelationsForDryRun(List<TermIntent> intents) {
-    int total = intents.stream().mapToInt(intent -> intent.relations.size()).sum();
+    Set<String> knownIris = new HashSet<>();
+    intents.forEach(intent -> knownIris.add(intent.iri));
+    Set<String> registerableTypes = registerableRelationTypes(intents);
+    int total = 0;
+    for (TermIntent intent : intents) {
+      for (String[] relation : intent.relations) {
+        if (knownIris.contains(relation[1]) && registerableTypes.contains(relation[0])) {
+          total++;
+        }
+      }
+    }
     result.setRelationsAdded(result.getRelationsAdded() + total);
+  }
+
+  /**
+   * Relation types the real import would accept: the already-registered (default + custom) types,
+   * plus — only when the caller may register them — the custom types declared by this ontology. A
+   * non-admin cannot register new types, so their relations using custom types are skipped on a real
+   * import and must not inflate the dry-run preview.
+   */
+  private Set<String> registerableRelationTypes(List<TermIntent> intents) {
+    Set<String> types = new HashSet<>(existingRelationTypeNames());
+    if (allowGlobalSchemaChanges) {
+      intents.forEach(intent -> intent.relations.forEach(relation -> types.add(relation[0])));
+    }
+    return types;
   }
 
   private void persistRelations(List<TermIntent> intents) {
@@ -915,13 +966,5 @@ public class GlossaryRdfImporter {
     String description;
     String domainIri;
     String xsdType;
-  }
-
-  private static final class HashSetGuard {
-    private final Set<String> seen = new java.util.HashSet<>();
-
-    private boolean add(String value) {
-      return seen.add(value);
-    }
   }
 }

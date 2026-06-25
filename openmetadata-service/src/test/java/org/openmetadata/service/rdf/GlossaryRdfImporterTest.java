@@ -180,6 +180,26 @@ class GlossaryRdfImporterTest {
     assertTrue(ex.getMessage().contains("DOCTYPE"), ex.getMessage());
   }
 
+  @Test
+  void rejectsEmptyPayloadWithBadRequest() {
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    BadRequestException ex =
+        assertThrows(BadRequestException.class, () -> importer.importRdf("", "turtle", "g", true));
+    assertTrue(ex.getMessage().contains("must not be empty"), ex.getMessage());
+  }
+
+  @Test
+  void rejectsJsonLdToPreventSsrf() {
+    String jsonld = "{\"@context\": \"http://169.254.169.254/latest/meta-data/\", \"@id\": \"x\"}";
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class, () -> importer.importRdf(jsonld, "jsonld", "g", true));
+    assertTrue(ex.getMessage().contains("JSON-LD"), ex.getMessage());
+  }
+
   private List<TermIntent> parse(String turtle) {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(turtle), null, "TURTLE");

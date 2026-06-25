@@ -654,13 +654,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
 
   @PUT
   @Path("/name/{name}/importRdf")
-  @Consumes({
-    MediaType.TEXT_PLAIN,
-    "text/turtle",
-    "application/rdf+xml",
-    "application/n-triples",
-    "application/ld+json"
-  })
+  @Consumes({MediaType.TEXT_PLAIN, "text/turtle", "application/rdf+xml", "application/n-triples"})
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "importGlossaryRdf",
