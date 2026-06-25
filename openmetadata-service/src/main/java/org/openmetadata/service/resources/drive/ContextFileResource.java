@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Files;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -372,6 +373,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           } catch (Exception ignored) {
             // Best-effort cleanup.
           }
+        }
+        if (isDuplicateKeyException(e)) {
+          repository.validateNoDuplicateFileName(pageName, file.getFolder(), null);
         }
         throw e;
       }
@@ -864,6 +868,30 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   /** Delegate to {@link ContextFileUploadSupport#sanitizeFileName(String)}. */
   static String sanitizeFileName(String fileName) {
     return ContextFileUploadSupport.sanitizeFileName(fileName);
+  }
+
+  static boolean isDuplicateKeyException(Throwable exception) {
+    Throwable current = exception;
+    while (current != null) {
+      if (current instanceof SQLException sqlException
+          && (sqlException.getErrorCode() == 1062
+              || "23505".equals(sqlException.getSQLState())
+              || isDuplicateKeyMessage(sqlException.getMessage()))) {
+        return true;
+      }
+      current = current.getCause();
+    }
+    return false;
+  }
+
+  private static boolean isDuplicateKeyMessage(String message) {
+    if (message == null) {
+      return false;
+    }
+    String normalized = message.toLowerCase(Locale.ROOT);
+    return normalized.contains("duplicate entry")
+        || normalized.contains("duplicate key")
+        || normalized.contains("unique constraint");
   }
 
   /** Delegate to {@link ContextFileUploadSupport#buildContentDisposition(String)}. */
