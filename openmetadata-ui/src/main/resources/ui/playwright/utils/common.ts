@@ -802,7 +802,7 @@ export const readElementInListWithScroll = async (
   await page.mouse.wheel(0, -99999);
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- virtualized list rendering delay
-  await page.waitForTimeout(300);
+  await page.waitForTimeout(1000);
 
   // Retry mechanism for pagination
   let elementCount = await element.count();
@@ -813,7 +813,7 @@ export const readElementInListWithScroll = async (
     await hierarchyElementLocator.hover();
     await page.mouse.wheel(0, 1000);
     // eslint-disable-next-line playwright/no-wait-for-timeout -- virtualized list scroll rendering delay
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(500);
 
     // Create fresh locator and check if the article is now visible after this retry
     const freshArticle = locator;
