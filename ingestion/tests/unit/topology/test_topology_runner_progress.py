@@ -8,9 +8,11 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""TopologyRunnerMixin: per-instance registry, progress path, no declare_totals."""
+"""TopologyRunnerMixin: per-instance registry, progress path, no pull hooks."""
 
 import inspect
+
+import pytest
 
 from metadata.ingestion.api import topology_runner
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
@@ -48,9 +50,6 @@ class TestRunnerProgressSurface:
         assert "declare_totals" not in source
         assert ".track(" not in source
 
-    def test_container_expected_count_defaults_to_unknown(self):
-        assert TopologyRunnerMixin().container_expected_count("Database") is None
-
     def test_root_node_detection_uses_iter_captured_ids(self):
         runner = TopologyRunnerMixin()
         root, child = object(), object()
@@ -58,46 +57,6 @@ class TestRunnerProgressSurface:
         runner.__dict__["_root_node_ids"] = {id(root)}
         assert runner._is_root_node(root) is True
         assert runner._is_root_node(child) is False
-
-
-class _FakeRegistry:
-    def __init__(self):
-        self.advances = []
-        self.globals = {}
-
-    def open(self, *args, **kwargs):
-        pass
-
-    def advance(self, path, child_type=None):
-        self.advances.append((tuple(path), child_type))
-
-    def set_global_expected(self, child_type, expected):
-        self.globals[child_type] = expected
-
-
-class _Runner(TopologyRunnerMixin):
-    progress_tracking_enabled = True
-
-    def __init__(self, totals):
-        self._totals = totals
-        self.__dict__["_progress_registry"] = _FakeRegistry()
-
-    def prefetch_global_totals(self):
-        return self._totals
-
-
-def test_prefetch_global_totals_fires_once_and_populates_registry():
-    runner = _Runner({"DatabaseSchema": 42})
-    runner._maybe_prefetch_global_totals()
-    runner._maybe_prefetch_global_totals()
-    assert runner.progress.globals == {"DatabaseSchema": 42}
-
-
-def test_default_prefetch_and_snapshot_hooks_are_inert():
-    runner = _Runner({})
-    runner._maybe_prefetch_global_totals()
-    assert runner.progress.globals == {}
-    assert TopologyRunnerMixin.prefetch_global_totals(runner) == {}
 
 
 class _WalkRunner(TopologyRunnerMixin):
@@ -135,3 +94,24 @@ def test_enabled_walk_records_into_registry():
     snapshot = runner.progress.snapshot()
     assert snapshot.child_type == "Table"
     assert snapshot.processed == 2
+
+
+@pytest.fixture
+def progress_runner():
+    """A _WalkRunner with progress tracking enabled, pre-seeded with a registry."""
+    return _WalkRunner(enabled=True)
+
+
+def test_container_without_push_is_unknown(progress_runner):
+    # progress_runner: a TopologyRunnerMixin test double with progress_tracking_enabled=True
+    progress_runner.progress.open(["db1"], "DatabaseSchema", None)
+    snap = progress_runner.progress.snapshot()
+    assert snap.children[0].expected is None
+
+
+def test_runner_has_no_pull_hooks():
+    from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+
+    assert not hasattr(TopologyRunnerMixin, "container_expected_count")
+    assert not hasattr(TopologyRunnerMixin, "prefetch_global_totals")
+    assert not hasattr(TopologyRunnerMixin, "progress_snapshot")

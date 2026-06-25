@@ -46,7 +46,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
-from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
+from metadata.utils.progress_registry import ProgressRegistry
 from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
@@ -189,33 +189,6 @@ class TopologyRunnerMixin(Generic[C]):
                         path.append(model_str(value))
         return path
 
-    def container_expected_count(self, entity_type_name: str) -> Optional[int]:  # noqa: UP045
-        """Side-effect-free count of the children a container producer will
-        yield, used as the progress denominator. ``None`` (the default) leaves
-        the level a bare running count; sources that can enumerate child names
-        cheaply override this to supply an exact ``processed/expected`` without
-        triggering the heavy per-entity setup the lazy producer does."""
-        return None
-
-    def prefetch_global_totals(self) -> "dict[str, int]":
-        """Side-effect-free global denominators computed once, up front, before any
-        container is processed (e.g. the total schemas across all databases). The
-        default supplies none; DB sources that can cheaply enumerate override it."""
-        return {}
-
-    def progress_snapshot(self) -> "Optional[ProgressNodeSnapshot]":  # noqa: UP045
-        """Read-model for the CLI/SSE renderers. The default is the generic registry
-        snapshot; database sources override this to project the two-tier view."""
-        return self.progress.snapshot()
-
-    def _maybe_prefetch_global_totals(self) -> None:
-        """Run ``prefetch_global_totals`` exactly once, the first time a non-root
-        container level opens (the service context is set by then)."""
-        if not self.__dict__.get("_global_prefetched"):
-            self.__dict__["_global_prefetched"] = True
-            for child_type, count in self.prefetch_global_totals().items():
-                self.progress.set_global_expected(child_type, count)
-
     def _is_root_node(self, node: TopologyNode) -> bool:
         """The topology root (the Service node) is a structural wrapper, not a
         progress level: it always holds a single entity and would otherwise
@@ -250,7 +223,6 @@ class TopologyRunnerMixin(Generic[C]):
         track_progress = self._should_track_progress(node, entity_type_name)
         parent_path = self.current_progress_path(entity_type_name) if track_progress else None
         if track_progress:
-            self._maybe_prefetch_global_totals()
             self.progress.open(parent_path, entity_type_name, node_entities_length)
 
         if node_entities_length == 0:
@@ -305,9 +277,6 @@ class TopologyRunnerMixin(Generic[C]):
         track_progress = self._should_track_progress(node, entity_type_name)
         parent_path = self.current_progress_path(entity_type_name) if track_progress else []
 
-        if track_progress:
-            self._maybe_prefetch_global_totals()
-
         if is_leaf:
             node_entities = list(self._run_node_producer(node) or [])
             if track_progress:
@@ -315,8 +284,7 @@ class TopologyRunnerMixin(Generic[C]):
         else:
             node_entities = self._run_node_producer(node) or []
             if track_progress:
-                expected = self.container_expected_count(entity_type_name)
-                self.progress.open(parent_path, entity_type_name, expected)
+                self.progress.open(parent_path, entity_type_name, None)
 
         for node_entity in node_entities:
             for stage in node.stages:

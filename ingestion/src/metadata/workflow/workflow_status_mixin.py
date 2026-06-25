@@ -19,7 +19,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional, Tuple  # noqa: UP035
 
 if TYPE_CHECKING:
-    from metadata.utils.progress_registry import ProgressNodeSnapshot
+    from metadata.workflow.progress_render import ProgressReporter
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -42,7 +42,7 @@ from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
-from metadata.workflow.progress_render import snapshot_to_progress_payload
+from metadata.workflow.progress_render import ProgressReporter
 
 logger = ometa_logger()
 
@@ -176,20 +176,17 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def _collect_progress_snapshot(self) -> Optional["ProgressNodeSnapshot"]:
-        """Snapshot the first workflow step that owns a progress registry.
-
-        Reads the backing attribute (not the `progress` property) so we never
-        create an empty registry on a step that never ran a topology walk.
-        """
-        snapshot = None
+    def _progress_reporter(self) -> Optional["ProgressReporter"]:
+        """Reporter for the first workflow step that ran a topology walk. Reads
+        the backing attribute so we never create an empty registry on a step
+        that never tracked progress."""
+        reporter = None
         for step in self.workflow_steps():
             registry = getattr(step, "_progress_registry", None)
             if registry is not None:
-                snapshot_fn = getattr(step, "progress_snapshot", None)
-                snapshot = snapshot_fn() if snapshot_fn is not None else registry.snapshot()
+                reporter = ProgressReporter(registry)
                 break
-        return snapshot
+        return reporter
 
     def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
@@ -202,7 +199,8 @@ class WorkflowStatusMixin:
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                progress_data = snapshot_to_progress_payload(self._collect_progress_snapshot())
+                reporter = self._progress_reporter()
+                progress_data = reporter.payload() if reporter is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,

@@ -60,7 +60,6 @@ from metadata.utils.streamable_logger import (
     cleanup_streamable_logging,
     setup_streamable_logging_for_workflow,
 )
-from metadata.workflow.progress_render import render_progress_tree
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
 from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
@@ -449,9 +448,11 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"Processes: {metrics.active_processes}"
                 )
 
-            snapshot = self._collect_progress_snapshot()
-            if snapshot:
-                logger.info("Ingestion progress:\n%s", render_progress_tree(snapshot))
+            reporter = self._progress_reporter()
+            if reporter is not None:
+                text = reporter.cli()
+                if text:
+                    logger.info("Ingestion progress:\n%s", text)
 
             # Send progress update to the server for live tracking
             self.send_progress_update()
