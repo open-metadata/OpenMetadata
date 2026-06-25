@@ -446,9 +446,7 @@ test.describe('Data Contracts', () => {
 
           await page.getByTestId('pipeline-name').fill('test-pipeline');
 
-          await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
