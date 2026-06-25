@@ -312,7 +312,7 @@ jest.mock('../TableTags/TableTags.component', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(),
-  searchTagInData: jest.fn(),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
 
 jest.mock('../TableDescription/TableDescription.component', () => {

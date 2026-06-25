@@ -84,7 +84,10 @@ const applyBrandCssVars = (colors: BrandColors, root: HTMLElement) => {
     root.style.setProperty('--tw-color-utility-brand-600_alt', primaryColor);
     root.style.setProperty('--tw-color-fg-brand-primary', primaryColor);
     root.style.setProperty('--tw-color-fg-brand-primary_alt', primaryColor);
-    root.style.setProperty('--tw-color-fg-brand-secondary_hover', primaryColor);
+    root.style.setProperty(
+      '--tw-color-fg-brand-secondary_hover',
+      hoverColor ?? primaryColor
+    );
     root.style.setProperty('--tw-color-bg-brand-solid', primaryColor);
     root.style.setProperty('--tw-color-border-brand_alt', primaryColor);
     root.style.setProperty('--tw-color-text-brand-tertiary', primaryColor);
