@@ -123,7 +123,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader to disappear after submission
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verify the role is added successfully
       await expect(page).toHaveURL(`/settings/access/roles/${roleName}`);
@@ -144,7 +144,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await policiesTab.click();
 
       // Wait for policies tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verifying the added policies - use proper assertions
       await expect(
@@ -167,7 +167,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await teamsTab.click();
 
       // Wait for teams tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
 
       // click on the users tab
@@ -176,12 +176,12 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await usersTab.click();
 
       // Wait for users tab content to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.getByRole('cell', { name: 'No data' })).toBeVisible();
 
       // Navigate to roles list page to verify the added role
       await settingClick(page, GlobalSettingOptions.ROLES);
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
@@ -249,7 +249,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await settingClick(page, GlobalSettingOptions.ROLES);
 
       // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Edit description
       const roleLocator = page.locator(
@@ -258,7 +258,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await getElementWithPagination(page, roleLocator);
 
       // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const editDescriptionButton = page.locator(
         '[data-testid="edit-description"]'
@@ -286,7 +286,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader to disappear and verify description updated
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       await expect(page.locator('[data-testid="inactive-link"]')).toBeVisible();
 
       // Asserting updated description
@@ -329,7 +329,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for loader and verify header updated
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
       const headerDisplayName = page.getByTestId('entity-header-display-name');
       await expect(headerDisplayName).toBeVisible();
       await expect(headerDisplayName).toContainText(updatedRoleName);
@@ -339,7 +339,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await settingClick(page, GlobalSettingOptions.ROLES);
 
       // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
@@ -347,7 +347,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await getElementWithPagination(page, roleLocator);
 
       // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Click add policy button
       const addPolicyButton = page.locator('[data-testid="add-policy"]');
@@ -391,7 +391,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       // Wait for modal to close and UI to update
       await expect(modalContainer).not.toBeVisible();
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Verify policy was added
       await expect(
@@ -406,7 +406,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await settingClick(page, GlobalSettingOptions.ROLES);
 
       // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
@@ -414,7 +414,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await getElementWithPagination(page, roleLocator);
 
       // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Remove policy
       await removePolicyFromRole(
@@ -424,7 +424,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       // Wait for UI to update after removal
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Validating if the policy is removed successfully
       await expect(
@@ -439,7 +439,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await settingClick(page, GlobalSettingOptions.ROLES);
 
       // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="role-name"][href="/settings/access/roles/${roleName}"]`
@@ -447,7 +447,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await getElementWithPagination(page, roleLocator);
 
       // Wait for role details page to load
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Removing second policy from the role
       await removePolicyFromRole(
@@ -457,7 +457,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
 
       // Wait for UI to update after removal
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Validating if the policy is removed successfully
       await expect(
@@ -493,7 +493,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await settingClick(page, GlobalSettingOptions.ROLES);
 
       // Wait for roles page to be ready
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       const roleLocator = page.locator(
         `[data-testid="delete-action-${updatedRoleName}"]`
@@ -525,7 +525,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       ]);
 
       // Wait for modal to close and UI to update
-      await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+      await waitForAllLoadersToDisappear(page);
 
       // Validate deleted role is no longer visible
       await expect(
