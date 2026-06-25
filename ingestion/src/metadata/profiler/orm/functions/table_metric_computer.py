@@ -1177,7 +1177,6 @@ table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricCompute
 table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
-table_metric_computer_factory.register(Dialects.Athena, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)

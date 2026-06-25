@@ -77,9 +77,9 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
-          <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
+          <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
             <File06
-              className="tw:text-gray-500"
+              className="tw:text-quaternary"
               height={40}
               strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}
