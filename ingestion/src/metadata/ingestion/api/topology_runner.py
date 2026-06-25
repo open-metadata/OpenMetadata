@@ -207,7 +207,7 @@ class TopologyRunnerMixin(Generic[C]):
         node's context value is not set."""
         result = None
         stage = self._node_primary_stage(node)
-        if stage is not None and stage.context:
+        if stage is not None and stage.context and parent_path is not None:
             value = getattr(self.context.get(), stage.context, None)
             if value is not None:
                 result = [*parent_path, model_str(value)]
