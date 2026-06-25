@@ -119,7 +119,7 @@ const selectDocumentByName = async (page: Page, fileName: string) => {
   const row = getDocumentRowByName(page, fileName);
   await expect(row).toBeVisible();
   await row.scrollIntoViewIfNeeded();
-  await row.getByRole('checkbox', { name: fileName }).click();
+  await row.getByTestId('document-checkbox').click();
 };
 
 const expectSelectedCount = async (page: Page, count: number) => {
@@ -1154,7 +1154,7 @@ test.describe('Context Center', () => {
       await navigateToDocuments(page);
 
       await page.getByTestId('add-folder-btn').click();
-      await page.getByTestId('folder-name-input').fill(folderName);
+      await page.getByTestId('folder-name-input').getByRole('textbox').fill(folderName);
       const folderCreateResPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/contextCenter/drive/folders') &&
