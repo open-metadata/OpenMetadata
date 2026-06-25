@@ -1,0 +1,130 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+.csv-cell-chips {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.csv-cell-empty {
+  color: @grey-400;
+}
+
+// Chip pills for tags / glossary / domains / data products / related metrics.
+.csv-chip {
+  background: @grey-36;
+  border-radius: 6px;
+  color: @grey-700;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: @font-medium;
+  max-width: 160px;
+  overflow: hidden;
+  padding: 2px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &-tag {
+    background: #f4f3ff;
+    color: #5925dc;
+  }
+
+  &-glossary {
+    background: @primary-50;
+    color: @primary-7;
+  }
+
+  &-tier {
+    background: @yellow-10;
+    color: @yellow-11;
+  }
+
+  &-domain {
+    background: @primary-50;
+    color: @primary-7;
+  }
+
+  &-prop {
+    background: @grey-36;
+    color: @grey-700;
+  }
+}
+
+.csv-cell-chips-custom-properties {
+  gap: 8px;
+}
+
+.csv-chip-value {
+  color: @grey-900;
+  font-weight: @font-semibold;
+}
+
+// Owner / reviewer avatar chips.
+.csv-owner-chip {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+  max-width: 180px;
+}
+
+.csv-owner-name {
+  color: @grey-800;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-owner-avatar {
+  align-items: center;
+  border-radius: 50%;
+  color: @white;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+
+  &.avatar-0 {
+    background: #7f56d9;
+  }
+
+  &.avatar-1 {
+    background: #1570ef;
+  }
+
+  &.avatar-2 {
+    background: #16b364;
+  }
+
+  &.avatar-3 {
+    background: #ef6820;
+  }
+
+  &.avatar-4 {
+    background: #ee46bc;
+  }
+
+  &.avatar-5 {
+    background: #0ba5ec;
+  }
+}

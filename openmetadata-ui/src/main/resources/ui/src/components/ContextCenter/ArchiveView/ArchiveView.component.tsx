@@ -48,11 +48,19 @@ const ArchiveRowSkeleton: FC = () => (
 
 interface ArchiveRowProps {
   item: ArchiveItem;
+  canRestore?: boolean;
+  canDelete?: boolean;
   onRestore: (item: ArchiveItem) => void;
   onDelete: (item: ArchiveItem) => void;
 }
 
-const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
+const ArchiveRow: FC<ArchiveRowProps> = ({
+  item,
+  canRestore,
+  canDelete,
+  onDelete,
+  onRestore,
+}) => {
   const { t } = useTranslation();
 
   const Icon = item.type === 'article' ? File06 : FolderIcon;
@@ -64,12 +72,16 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
       <div
         className={classNames(
           'tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-          item.type === 'article' ? 'tw:bg-brand-50' : 'tw:bg-purple-50'
+          item.type === 'article'
+            ? 'tw:bg-utility-brand-50'
+            : 'tw:bg-utility-purple-50'
         )}>
         <Icon
           className={classNames(
             'tw:size-4',
-            item.type === 'article' ? 'tw:text-brand-700' : 'tw:text-purple-500'
+            item.type === 'article'
+              ? 'tw:text-utility-brand-700'
+              : 'tw:text-utility-purple-500'
           )}
         />
       </div>
@@ -78,7 +90,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
         <Typography className="tw:truncate" size="text-sm" weight="medium">
           {item.name}
         </Typography>
-        <Typography className="tw:text-gray-500" size="text-xs">
+        <Typography className="tw:text-quaternary" size="text-xs">
           {item.updatedBy && (
             <>
               {t('label.archived-by', { name: item.updatedBy })}
@@ -94,22 +106,26 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
       </div>
 
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
-        <Button
-          color="secondary"
-          data-testid="restore-btn"
-          iconLeading={RefreshCcw01}
-          size="sm"
-          onPress={() => onRestore(item)}>
-          {t('label.restore')}
-        </Button>
-        <Button
-          color="secondary-destructive"
-          data-testid="delete-btn"
-          iconLeading={Trash01}
-          size="sm"
-          onPress={() => onDelete(item)}>
-          {t('label.delete')}
-        </Button>
+        {canRestore && (
+          <Button
+            color="secondary"
+            data-testid="restore-btn"
+            iconLeading={RefreshCcw01}
+            size="sm"
+            onPress={() => onRestore(item)}>
+            {t('label.restore')}
+          </Button>
+        )}
+        {canDelete && (
+          <Button
+            color="secondary-destructive"
+            data-testid="delete-btn"
+            iconLeading={Trash01}
+            size="sm"
+            onPress={() => onDelete(item)}>
+            {t('label.delete')}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -118,6 +134,8 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
 const ArchiveView: FC<ArchiveViewProps> = ({
   data,
   isLoading,
+  canRestore,
+  canDelete,
   onDelete,
   onRestore,
 }) => {
@@ -145,6 +163,8 @@ const ArchiveView: FC<ArchiveViewProps> = ({
       data-testid="archive-view">
       {data.map((item) => (
         <ArchiveRow
+          canDelete={canDelete}
+          canRestore={canRestore}
           item={item}
           key={item.id}
           onDelete={onDelete}
