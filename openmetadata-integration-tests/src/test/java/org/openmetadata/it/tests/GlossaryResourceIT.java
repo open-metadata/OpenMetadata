@@ -61,7 +61,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
   private static final String GLOSSARY_TERM_CSV_HEADER =
-      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n";
+      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n";
 
   {
     supportsImportExport = true;
@@ -1105,9 +1105,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    * Helper method to create CSV content for glossary terms import.
    * Returns CSV with header and 3 glossary terms with all required columns.
    *
-   * CSV Format (14 columns):
+   * CSV Format (15 columns):
    * parent,name*,displayName,description,synonyms,relatedTerms,references,tags,
-   * reviewers,owner,glossaryStatus,color,iconURL,extension
+   * reviewers,owner,glossaryStatus,color,iconURL,domains,extension
    *
    * Note: parent column is for PARENT GLOSSARY TERM, not glossary.
    * For top-level terms, leave parent EMPTY.
@@ -1127,15 +1127,15 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
     csv.append(
         String.format(
-            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm1")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm2")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm3")));
 
     return csv.toString();
@@ -1341,7 +1341,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTerm")
             + ",New Term,Test Term,,\""
             + inReviewTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
     log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1394,7 +1394,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTermWithApproved")
             + ",New Term With Approved,Test Term,,\""
             + approvedTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
 
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1424,6 +1424,51 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     }
   }
 
+  /**
+   * Regression test: glossary terms must keep their assigned domains through a CSV export/import
+   * round-trip (the UI "bulk edit" flow). Domains were silently dropped because the glossary CSV
+   * had no domains column.
+   */
+  @Test
+  void test_importExportCsv_preservesDomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("termWithDomain"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that must keep its domain through CSV import");
+    GlossaryTerm term = client.glossaryTerms().create(createTerm);
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(testDomain().getId())
+            .withType("domain")
+            .withName(testDomain().getName())
+            .withFullyQualifiedName(domainFqn);
+    term.setDomains(List.of(domainRef));
+    client.glossaryTerms().update(term.getId(), term);
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getName());
+    assertTrue(
+        exportedCsv.contains(domainFqn),
+        "Exported glossary CSV should contain the term's domain. CSV:\n" + exportedCsv);
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
+    assertFalse(
+        resultCsv.contains("failure"),
+        "Re-importing the exported CSV should succeed. Result: " + resultCsv);
+
+    GlossaryTerm reimported =
+        client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
+    assertNotNull(reimported.getDomains(), "Domain must be preserved after CSV re-import");
+    assertEquals(1, reimported.getDomains().size());
+    assertEquals(domainFqn, reimported.getDomains().getFirst().getFullyQualifiedName());
+  }
+
   // ===================================================================
   // CSV IMPORT/EXPORT SUPPORT
   // ===================================================================
@@ -1451,6 +1496,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       csv.append(escapeCSVValue("Approved")).append(","); // glossaryStatus
       csv.append(escapeCSVValue("#FF5733")).append(","); // color
       csv.append(escapeCSVValue("")).append(","); // iconURL
+      csv.append(escapeCSVValue("")).append(","); // domains
       csv.append(escapeCSVValue(formatExtensionForCsv(null))); // extension
       csv.append("\n");
     }
@@ -1462,9 +1508,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     StringBuilder csv = new StringBuilder();
     csv.append(GLOSSARY_TERM_CSV_HEADER);
     // Missing required name field
-    csv.append(",,Term,Description,,,,,,,,,\n");
+    csv.append(",,Term,Description,,,,,,,,,,\n");
     // Invalid glossary status
-    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,\n");
+    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,,\n");
     return csv.toString();
   }
 
