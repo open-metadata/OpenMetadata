@@ -45,8 +45,7 @@ public final class TagAndTierSourcesStep implements EnrichmentStep {
     target.entityMap().put("tierSources", sources.getTierSources());
 
     // Get nested tags for complex entities (e.g. tables, topics, etc.)
-    List<TagLabel> allTags =
-        Entity.getEntityTags(target.entity().getEntityReference().getType(), target.entity());
+    List<TagLabel> allTags = Entity.getEntityTags(target.context().entityType(), target.entity());
     if (allTags != null) {
       List<TagLabel> safeTags =
           allTags.stream()

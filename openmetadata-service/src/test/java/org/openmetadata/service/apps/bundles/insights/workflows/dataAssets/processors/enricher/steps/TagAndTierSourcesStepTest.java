@@ -11,7 +11,6 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -127,7 +126,16 @@ class TagAndTierSourcesStepTest {
             0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
-    step.apply(target);
+    try (org.mockito.MockedStatic<org.openmetadata.service.Entity> entityStatic =
+        org.mockito.Mockito.mockStatic(org.openmetadata.service.Entity.class)) {
+      entityStatic
+          .when(
+              () ->
+                  org.openmetadata.service.Entity.getEntityTags(
+                      target.context().entityType(), entity))
+          .thenReturn(entity.getTags() == null ? List.of() : entity.getTags());
+      step.apply(target);
+    }
     return entityMap;
   }
 
