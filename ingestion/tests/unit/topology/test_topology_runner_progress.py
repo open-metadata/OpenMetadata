@@ -140,3 +140,38 @@ def test_runner_has_no_pull_hooks():
     assert not hasattr(TopologyRunnerMixin, "container_expected_count")
     assert not hasattr(TopologyRunnerMixin, "prefetch_global_totals")
     assert not hasattr(TopologyRunnerMixin, "progress_snapshot")
+
+
+class _CtxWalkRunner(_WalkRunner):
+    """Like _WalkRunner but writes each entity into the node's context key, so
+    consumer-derived paths and _scope_path_for_node resolve to real names."""
+
+    def _process_stage(self, stage, node_entity):
+        if getattr(stage, "context", None):
+            setattr(self.context.get(), stage.context, node_entity)
+        return iter(())
+
+
+def test_scope_path_for_node_appends_context_value():
+    runner = _WalkRunner(enabled=True)
+    database_node = get_topology_node("database", runner.topology)
+    key = runner._node_primary_stage(database_node).context
+    setattr(runner.context.get(), key, "salesdb")
+    assert runner._scope_path_for_node(database_node, []) == ["salesdb"]
+
+
+def test_scope_path_for_node_is_none_without_context_value():
+    runner = _WalkRunner(enabled=True)
+    database_node = get_topology_node("database", runner.topology)
+    assert runner._scope_path_for_node(database_node, []) is None
+
+
+def test_completed_container_is_closed_through_runner():
+    runner = _CtxWalkRunner(enabled=True)
+    closed: list = []
+    runner.progress.close = lambda path: closed.append(list(path))
+    container = get_topology_node("database", runner.topology)
+    list(runner._process_node(container))
+    # producer yields "a","b"; each database entity is closed at its own path
+    assert ["a"] in closed
+    assert ["b"] in closed

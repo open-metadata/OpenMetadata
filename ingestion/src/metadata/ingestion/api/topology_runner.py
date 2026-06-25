@@ -200,6 +200,19 @@ class TopologyRunnerMixin(Generic[C]):
         nodes, and never for the structural service root."""
         return self.progress_tracking_enabled and bool(entity_type_name) and not self._is_root_node(node)
 
+    def _scope_path_for_node(self, node: TopologyNode, parent_path: List[str]) -> Optional[List[str]]:  # noqa: UP006,UP045
+        """The path of the container entity currently in context: its parent
+        ancestors plus this node's own context value. Used to prune a scope
+        from the progress tree once its children finish. ``None`` when the
+        node's context value is not set."""
+        result = None
+        stage = self._node_primary_stage(node)
+        if stage is not None and stage.context:
+            value = getattr(self.context.get(), stage.context, None)
+            if value is not None:
+                result = [*parent_path, model_str(value)]
+        return result
+
     def _multithread_process_node(self, node: TopologyNode, threads: int) -> Iterable[Entity]:
         """Multithread Processing of a Node with progress tracking"""
         child_nodes = self._get_child_nodes(node)
@@ -297,7 +310,10 @@ class TopologyRunnerMixin(Generic[C]):
             if track_progress and is_leaf:
                 self.progress.advance(parent_path, entity_type_name)
 
+            scope_path = self._scope_path_for_node(node, parent_path) if track_progress and not is_leaf else None
             yield from self.process_nodes(child_nodes)
+            if scope_path is not None:
+                self.progress.close(scope_path)
 
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
@@ -367,10 +383,13 @@ class TopologyRunnerMixin(Generic[C]):
             if parent_path is not None and entity_type_name and not child_nodes:
                 self.progress.advance(parent_path, entity_type_name)
 
-            # If the Entity has child nodes that need processing we proceed to processing them with the same logic as above.
-
+            scope_path = (
+                self._scope_path_for_node(node, parent_path) if parent_path is not None and child_nodes else None
+            )
             for child_result in self.process_nodes(child_nodes):
                 self.queue.put(child_result)
+            if scope_path is not None:
+                self.progress.close(scope_path)
 
         # Merge thread-local metrics into global state before thread exits
         operation_metrics.merge_thread_metrics()
