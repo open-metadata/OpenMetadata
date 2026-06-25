@@ -92,11 +92,8 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-<<<<<<< HEAD
-import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
-=======
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
->>>>>>> bf6404c19e (code refactor)
+import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
