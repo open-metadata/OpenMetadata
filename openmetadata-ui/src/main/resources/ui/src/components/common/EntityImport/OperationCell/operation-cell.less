@@ -1,0 +1,174 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import '../../../../styles/variables.less';
+
+// Operation summary — a horizontal counter shared by the Import preview and the
+// Bulk Edit preview (N create · M update · K skip ...).
+.bulk-edit-operation-summary {
+  align-items: stretch;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  display: inline-flex;
+  flex-shrink: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.bulk-edit-operation-summary-item {
+  align-items: flex-start;
+  background: @white;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 18px;
+
+  &:not(:last-child) {
+    border-right: 1px solid @grey-15;
+  }
+}
+
+.bulk-edit-operation-summary-count {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  font-weight: @font-bold;
+  letter-spacing: -0.01em;
+  line-height: 22px;
+
+  &-create {
+    color: @primary-6;
+  }
+
+  &-update {
+    color: @green-10;
+  }
+
+  &-no_change {
+    color: @grey-600;
+  }
+
+  &-skip {
+    color: @red-10;
+  }
+}
+
+.bulk-edit-operation-summary-label {
+  color: @grey-600;
+  font-size: 12px;
+  font-weight: @font-medium;
+  line-height: 16px;
+}
+
+// Operation badge — a single CREATE / UPDATE / SKIP / NO CHANGE pill, with an
+// optional rename hint (oldName → new) rendered below the badge.
+.bulk-edit-operation-cell {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.bulk-edit-operation-badge {
+  align-items: center;
+  background: @grey-36;
+  border: 1px solid @grey-15;
+  border-radius: 999px;
+  color: @grey-600;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  gap: 6px;
+  letter-spacing: 0.04em;
+  line-height: 14px;
+  padding: 3px 10px 3px 8px;
+  text-transform: uppercase;
+  white-space: nowrap;
+
+  &-create {
+    background: @primary-50;
+    border-color: @primary-2;
+    color: @primary-7;
+  }
+
+  &-update {
+    background: @green-9;
+    border-color: @green-12;
+    color: @green-10;
+  }
+
+  &-skip {
+    background: @red-9;
+    border-color: @red-19;
+    color: @red-10;
+  }
+
+  &-no_change {
+    background: @grey-26;
+    border-color: @grey-15;
+    color: @grey-600;
+  }
+}
+
+.bulk-edit-operation-dot {
+  background: @grey-400;
+  border-radius: 50%;
+  height: 7px;
+  width: 7px;
+
+  .bulk-edit-operation-badge-create & {
+    background: @primary-5;
+  }
+
+  .bulk-edit-operation-badge-update & {
+    background: @green-500;
+  }
+
+  .bulk-edit-operation-badge-skip & {
+    background: @red-14;
+  }
+
+  .bulk-edit-operation-badge-no_change & {
+    background: @grey-400;
+  }
+}
+
+.bulk-edit-operation-rename-hint {
+  align-items: center;
+  color: @grey-500;
+  display: inline-flex;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 11px;
+  gap: 4px;
+  line-height: 14px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.bulk-edit-operation-old-name {
+  max-width: 104px;
+  overflow: hidden;
+  text-decoration: line-through;
+  text-overflow: ellipsis;
+}
+
+.bulk-edit-operation-new-name {
+  color: @primary-6;
+
+  &::before {
+    content: '→';
+    margin-right: 4px;
+  }
+}
