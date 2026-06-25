@@ -323,7 +323,13 @@ test.describe('Domains', () => {
   });
 
   test('Create DataProducts and add remove assets', async ({ page }) => {
-    test.slow(true);
+    // The 7-step body legitimately takes ~9 min in a clean run. Cap the
+    // test at 10 min via an explicit setTimeout rather than test.slow(true).
+    // The describe at line 116 already calls test.slow(true) at its scope,
+    // and stacking slow() at the test scope was producing 27-min runaway
+    // hangs (browser would close, the test would keep waiting). Explicit
+    // setTimeout is enforced firmly by Playwright.
+    test.setTimeout(10 * 60 * 1000);
 
     const { afterAction, apiContext } = await getApiContext(page);
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
