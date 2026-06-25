@@ -469,7 +469,7 @@ export const ENTITY_ICON_MAPPER: Record<
     borderClass: 'tw:border-utility-fuchsia-200',
     icon: File02,
   },
-   [EntityType.SEARCH_INDEX]: {
+  [EntityType.SEARCH_INDEX]: {
     iconClass: 'tw:text-utility-warning-600',
     bgClass: 'tw:bg-utility-warning-50',
     borderClass: 'tw:border-utility-warning-300',
@@ -505,7 +505,7 @@ export const ENTITY_ICON_MAPPER: Record<
     borderClass: 'tw:border-utility-error-200',
     icon: Folder,
   },
-   contextPlugin: {
+  contextPlugin: {
     iconClass: 'tw:text-utility-fuchsia-600',
     bgClass: 'tw:bg-utility-fuchsia-50',
     borderClass: 'tw:border-utility-fuchsia-200',
@@ -528,5 +528,5 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-tertiery',
     borderClass: 'tw:border-utility-gray-200',
     icon: SlashCircle01,
-  }
+  },
 };

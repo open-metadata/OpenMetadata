@@ -621,7 +621,9 @@ const ContextCenterMemoriesPage: FC = () => {
                     }
                     weight="medium">
                     {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                      t('label.all-entity', { entity: t('label.asset-plural') })}
+                      t('label.all-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
                   </Typography>
                 </div>
                 <ChevronDown
@@ -709,7 +711,10 @@ const ContextCenterMemoriesPage: FC = () => {
                 ))}
               </Dropdown.Menu>
               {authorOptions.length === 0 && (
-                <Box align="center" className="tw:pb-4 tw:pt-1.5" justify="center">
+                <Box
+                  align="center"
+                  className="tw:pb-4 tw:pt-1.5"
+                  justify="center">
                   <Typography className="tw:text-quaternary" size="text-xs">
                     {t('label.no-data-found')}
                   </Typography>

@@ -10,24 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  DataAssetOption
-} from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import { DataAssetOption } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
   DataAssetMultiSelectPopoverProps,
   DataAssetPickerOption,
 } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
 import { useAsyncDataAssetOptions } from './useAsyncDataAssetOptions';
-
 
 const DataAssetMultiSelectPopover: FC<DataAssetMultiSelectPopoverProps> = ({
   onChange,

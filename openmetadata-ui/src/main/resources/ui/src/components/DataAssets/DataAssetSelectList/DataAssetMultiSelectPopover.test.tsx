@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import DataAssetMultiSelectPopover from './DataAssetMultiSelectPopover';
@@ -21,7 +26,9 @@ jest.mock('../../../utils/Assets/AssetsUtils', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(<span>icon</span>),
 }));
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockImplementation((src) => src.displayName ?? src.name),
+  getEntityName: jest
+    .fn()
+    .mockImplementation((src) => src.displayName ?? src.name),
 }));
 jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest

@@ -92,7 +92,10 @@ describe('useAsyncDataAssetOptions', () => {
   it('sets totalCount from the search response total', async () => {
     (searchQuery as jest.Mock).mockResolvedValue(
       buildSearchResponse(
-        [mockHit('1', 'orders', 'Orders'), mockHit('2', 'products', 'Products')],
+        [
+          mockHit('1', 'orders', 'Orders'),
+          mockHit('2', 'products', 'Products'),
+        ],
         50
       )
     );
@@ -237,11 +240,11 @@ describe('useAsyncDataAssetOptions', () => {
   });
 
   it('passes queryFilter to searchQuery', async () => {
-    (searchQuery as jest.Mock).mockResolvedValue(
-      buildSearchResponse([], 0)
-    );
+    (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([], 0));
 
-    const queryFilter = { query: { bool: { filter: [{ term: { deleted: false } }] } } };
+    const queryFilter = {
+      query: { bool: { filter: [{ term: { deleted: false } }] } },
+    };
 
     const { result } = renderHook(() =>
       useAsyncDataAssetOptions({ ...DEFAULT_PARAMS, queryFilter })

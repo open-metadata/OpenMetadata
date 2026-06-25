@@ -118,9 +118,16 @@ const LinkedAssetCard: FC<{
   return (
     <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5">
       <div className="tw:shrink-0">
-        {getEntityIconWithBg(asset.reference?.type, { className: 'tw:w-8 tw:h-8' }, { size: 18 })}
+        {getEntityIconWithBg(
+          asset.reference?.type,
+          { className: 'tw:w-8 tw:h-8' },
+          { size: 18 }
+        )}
       </div>
-      <Box align='center' className="tw:flex-1 tw:min-w-0 tw:gap-2.5" justify='between'>
+      <Box
+        align="center"
+        className="tw:flex-1 tw:min-w-0 tw:gap-2.5"
+        justify="between">
         <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
           <Typography
             ellipsis

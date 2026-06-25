@@ -94,7 +94,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     [allowAllOption, options]
   );
 
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -102,7 +101,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
         close();
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-         setFocusedIndex((prev) =>
+        setFocusedIndex((prev) =>
           prev < navigableOptions.length - 1 ? prev + 1 : prev
         );
       } else if (e.key === 'ArrowUp') {
@@ -141,9 +140,10 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     if (focusedIndex < 0 || !scrollContainerRef.current) {
       return;
     }
-    const items = scrollContainerRef.current.querySelectorAll<HTMLElement>(
-      '[data-picker-item]'
-    );
+    const items =
+      scrollContainerRef.current.querySelectorAll<HTMLElement>(
+        '[data-picker-item]'
+      );
     items[focusedIndex]?.scrollIntoView({ block: 'nearest' });
   }, [focusedIndex]);
 

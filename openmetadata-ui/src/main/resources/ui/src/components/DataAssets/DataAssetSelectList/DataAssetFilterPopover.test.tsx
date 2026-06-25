@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
-import { DataAssetPickerOption } from './DataAssetPicker.interface';
 import DataAssetFilterPopover from './DataAssetFilterPopover';
+import { DataAssetPickerOption } from './DataAssetPicker.interface';
 
 jest.mock('../../../utils/Assets/AssetsUtils', () => ({
   getEntityIconWithBg: jest.fn().mockReturnValue(<span>icon</span>),
@@ -184,9 +183,7 @@ describe('DataAssetFilterPopover', () => {
     openPopover();
 
     fireEvent.click(
-      screen
-        .getByText('label.all-entity:label.asset-plural')
-        .closest('button')!
+      screen.getByText('label.all-entity:label.asset-plural').closest('button')!
     );
 
     expect(onChange).toHaveBeenCalledWith('');
