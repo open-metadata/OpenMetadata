@@ -2399,15 +2399,17 @@ public class TableRepository extends EntityRepository<Table> {
                   "processedLineage",
                   original.getProcessedLineage(),
                   updated.getProcessedLineage()));
-      compareAndUpdate(
-          "schemaDefinition",
-          () -> {
-            updateProcessedLineage(origTable, updatedTable);
-            recordChange(
-                "schemaDefinition",
-                original.getSchemaDefinition(),
-                updated.getSchemaDefinition());
-          });
+      if (operation.isPatch()) {
+        compareAndUpdate(
+            "schemaDefinition",
+            () -> {
+              updateProcessedLineage(origTable, updatedTable);
+              recordChange(
+                  "schemaDefinition",
+                  original.getSchemaDefinition(),
+                  updated.getSchemaDefinition());
+            });
+      }
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
