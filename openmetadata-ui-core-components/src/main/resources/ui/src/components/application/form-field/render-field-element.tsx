@@ -323,6 +323,7 @@ export const renderFieldElement = (
           isInvalid={isInvalid}
           isSelected={field.value ?? false}
           name={field.name}
+          onFocus={onFocus}
           {...rest}
           onBlur={() => {
             field.onBlur();

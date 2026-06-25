@@ -26,7 +26,7 @@ export type {
   CoverImageUploadLabels,
   CoverImageUploadRenderPreviewContext,
   CoverImageUploadValidationMessages,
-  CoverImageUploadValue
+  CoverImageUploadValue,
 } from './fields/cover-image-upload-field';
 
 export enum HelperTextType {
@@ -84,6 +84,7 @@ export interface FieldPropsMap {
   acceptedFileTypes?: string[];
   allowsCreation?: boolean;
   allowsMultiple?: boolean;
+  hideDropdown?: boolean;
   allowUrl?: boolean;
   backgroundColor?: string;
   children?: ReactNode;

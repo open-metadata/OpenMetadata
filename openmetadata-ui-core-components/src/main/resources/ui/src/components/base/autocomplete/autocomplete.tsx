@@ -56,9 +56,11 @@ interface AutocompleteContextValue {
   onInputChange: (value: string) => void;
   onCreateItem?: (value: string) => void;
   allowsCreation: boolean;
+  hideDropdown: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
   multiple: boolean;
+  visibleItemCount: number;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -69,8 +71,10 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   onInputChange: () => {},
   onCreateItem: undefined,
   allowsCreation: false,
+  hideDropdown: false,
   maxVisibleItems: undefined,
   multiple: true,
+  visibleItemCount: 0,
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -103,6 +107,7 @@ export interface AutocompleteProps
   maxVisibleItems?: number;
   multiple?: boolean;
   allowsCreation?: boolean;
+  hideDropdown?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -145,7 +150,8 @@ const InnerAutocomplete = ({
     if (
       event.key === 'Enter' &&
       context.allowsCreation &&
-      inputValue.trim() !== ''
+      inputValue.trim() !== '' &&
+      (context.hideDropdown || context.visibleItemCount === 0)
     ) {
       event.preventDefault();
       context.onCreateItem?.(inputValue.trim());
@@ -275,7 +281,11 @@ const InnerAutocomplete = ({
           placeholder={placeholder}
           onBlur={(event) => {
             const inputValue = event.target.value.trim();
-            if (context.allowsCreation && inputValue !== '') {
+            if (
+              context.allowsCreation &&
+              inputValue !== '' &&
+              (context.hideDropdown || context.visibleItemCount === 0)
+            ) {
               context.onCreateItem?.(inputValue);
             }
           }}
@@ -349,6 +359,7 @@ export const AutocompleteBase = ({
   onSearchChange,
   maxVisibleItems,
   allowsCreation = false,
+  hideDropdown = false,
   name: _name,
   className: _className,
   ...props
@@ -437,6 +448,9 @@ export const AutocompleteBase = ({
         return exists ? prev : [...prev, newItem];
       });
       setInternalSelected((prev) => {
+        if (!multiple && prev.length >= 1) {
+          return [newItem];
+        }
         const exists = prev.some((item) => item.id === value);
 
         return exists ? prev : [...prev, newItem];
@@ -444,7 +458,7 @@ export const AutocompleteBase = ({
       onItemInserted?.(value);
       setFilterText('');
     },
-    [onItemInserted]
+    [onItemInserted, multiple]
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -474,9 +488,11 @@ export const AutocompleteBase = ({
       onRemove,
       onCreateItem,
       allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItemCount: visibleItems.length,
     }),
     [
       selectedKeys,
@@ -485,9 +501,11 @@ export const AutocompleteBase = ({
       onRemove,
       onCreateItem,
       allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItems.length,
     ]
   );
 
@@ -525,17 +543,19 @@ export const AutocompleteBase = ({
                 />
               </div>
 
-              <Popover
-                className={popoverClassName}
-                size="md"
-                style={{ width: popoverWidth }}
-                triggerRef={triggerRef}>
-                <AriaListBox
-                  className="tw:size-full tw:outline-hidden"
-                  selectionMode="multiple">
-                  {children}
-                </AriaListBox>
-              </Popover>
+              {!hideDropdown && (
+                <Popover
+                  className={popoverClassName}
+                  size="md"
+                  style={{ width: popoverWidth }}
+                  triggerRef={triggerRef}>
+                  <AriaListBox
+                    className="tw:size-full tw:outline-hidden"
+                    selectionMode="multiple">
+                    {children}
+                  </AriaListBox>
+                </Popover>
+              )}
 
               {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
             </div>

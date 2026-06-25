@@ -536,10 +536,10 @@ export const AllowsCreationSingleSelect: StoryObj = {
       <div style={{ width: 360 }}>
         <Autocomplete
           allowsCreation
-          multiple={false}
           hint="Type a value and press Enter or click away to set it."
           items={ITEMS_WITH_SUPPORTING_TEXT}
           label="Single Tag"
+          multiple={false}
           placeholder="Search or create a tag..."
           selectedItems={selectedItems}>
           {(item) => (
