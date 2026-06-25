@@ -21,10 +21,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import org.openmetadata.schema.configuration.SearchIndexMappings;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +44,29 @@ public final class SearchIndexMappingsSeeder {
   private static final Logger LOG = LoggerFactory.getLogger(SearchIndexMappingsSeeder.class);
 
   private SearchIndexMappingsSeeder() {}
+
+  /**
+   * Persists the default search index mappings setting if it is not already present. Insert-if-absent
+   * — never clobbers admin-customized mappings. Shared by fresh-install seeding ({@code
+   * SettingsCache}) and the upgrade data migration. Failures are logged, not propagated, so a seed
+   * hiccup never aborts startup or a migration.
+   */
+  public static void seedIfAbsent() {
+    try {
+      if (Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.SEARCH_INDEX_MAPPINGS.toString())
+          == null) {
+        Settings setting =
+            new Settings()
+                .withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS)
+                .withConfigValue(buildDefaultBlob());
+        Entity.getSystemRepository().createNewSetting(setting);
+        LOG.info("Seeded default search index mappings setting");
+      }
+    } catch (Exception seedFailed) {
+      LOG.error("Failed to seed default search index mappings", seedFailed);
+    }
+  }
 
   public static List<String> supportedLanguages() {
     return Arrays.stream(IndexMappingLanguage.values())
