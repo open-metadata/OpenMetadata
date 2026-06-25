@@ -429,6 +429,12 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindList("ids") List<String> ids,
       @Define("cond") String cond);
 
+  // Lightweight bulk existence check: returns only the ids (of the given set) that exist in the
+  // table, without hydrating the json column. Used by relationship cleanup to validate large
+  // batches of endpoints with one query per entity type instead of a read per relationship.
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
+  List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
+
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
       @Define("table") String table,
