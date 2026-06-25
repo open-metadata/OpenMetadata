@@ -49,6 +49,7 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
+    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",

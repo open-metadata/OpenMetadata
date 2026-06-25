@@ -22,9 +22,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -39,7 +41,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +59,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -89,6 +94,7 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -110,6 +116,8 @@ import org.openmetadata.service.util.email.EmailUtil;
 @LatencyPhase
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
+  private static final String MAPPINGS_KEY = "mappings";
+  private static final String PROPERTIES_KEY = "properties";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -297,6 +305,116 @@ public class SystemResource {
                 nullOrEmpty(rule.getIgnoredEntities())
                     || !rule.getIgnoredEntities().contains(entityType))
         .toList();
+  }
+
+  @GET
+  @Path("/settings/searchIndexMappings")
+  @Operation(
+      operationId = "listSearchIndexMappings",
+      summary = "List editable search index mappings",
+      description =
+          "List the entity types that have a stored, editable search index mapping, grouped by "
+              + "search index mapping language.")
+  public Map<String, List<String>> listSearchIndexMappings(
+      @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    Map<String, List<String>> summary = new LinkedHashMap<>();
+    SearchIndexMappings stored = systemRepository.getSearchIndexMappings();
+    if (stored != null && stored.getLanguages() != null) {
+      stored
+          .getLanguages()
+          .forEach(
+              (language, byEntity) -> summary.put(language, new ArrayList<>(byEntity.keySet())));
+    }
+    return summary;
+  }
+
+  @GET
+  @Path("/settings/searchIndexMappings/{language}/{entityType}")
+  @Operation(
+      operationId = "getSearchIndexMapping",
+      summary = "Get the search index mapping for an entity in a language",
+      description =
+          "Get the stored, editable index mapping for an entity type and language. When "
+              + "'fallback' is true, returns the hardened default mapping if none is stored yet.")
+  public Map<String, Object> getSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType,
+      @QueryParam("fallback") @DefaultValue("false") boolean fallback) {
+    authorizer.authorizeAdmin(securityContext);
+    Map<String, Object> mapping =
+        systemRepository.getSearchIndexMapping(
+            language.toLowerCase(Locale.ROOT), entityType, fallback);
+    if (mapping == null) {
+      throw new NotFoundException(
+          String.format(
+              "No stored search index mapping for language '%s' and entity '%s'",
+              language, entityType));
+    }
+    return mapping;
+  }
+
+  @PUT
+  @Path("/settings/searchIndexMappings/{language}/{entityType}")
+  @Operation(
+      operationId = "updateSearchIndexMapping",
+      summary = "Update the search index mapping for an entity in a language",
+      description =
+          "Persist an admin-edited index mapping for an entity type and language. The submitted "
+              + "mapping is field-safety hardened before storage. The change takes effect on the "
+              + "next reindex of that entity.")
+  public Response updateSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType,
+      Map<String, Object> mapping) {
+    authorizer.authorizeAdmin(securityContext);
+    validateSearchIndexMappingRequest(language, mapping);
+    Settings updated =
+        systemRepository.upsertSearchIndexMapping(
+            language.toLowerCase(Locale.ROOT), entityType, mapping);
+    return Response.ok(updated).build();
+  }
+
+  @PUT
+  @Path("/settings/searchIndexMappings/reset/{language}/{entityType}")
+  @Operation(
+      operationId = "resetSearchIndexMapping",
+      summary = "Reset the search index mapping for an entity to its default",
+      description =
+          "Replace the stored mapping for an entity type and language with the hardened default "
+              + "derived from the bundled resource mapping. Applies on the next reindex.")
+  public Response resetSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType) {
+    authorizer.authorizeAdmin(securityContext);
+    Settings reset =
+        systemRepository.resetSearchIndexMapping(language.toLowerCase(Locale.ROOT), entityType);
+    if (reset == null) {
+      throw new NotFoundException(
+          String.format("No default search index mapping for entity '%s'", entityType));
+    }
+    return Response.ok(reset).build();
+  }
+
+  private void validateSearchIndexMappingRequest(String language, Map<String, Object> mapping) {
+    if (!SearchIndexMappingsSeeder.supportedLanguages()
+        .contains(language.toLowerCase(Locale.ROOT))) {
+      throw new BadRequestException("Unsupported search index mapping language: " + language);
+    }
+    if (!hasMappingProperties(mapping)) {
+      throw new BadRequestException("Index mapping must contain a 'mappings.properties' object");
+    }
+  }
+
+  private boolean hasMappingProperties(Map<String, Object> mapping) {
+    boolean valid = false;
+    if (mapping != null && mapping.get(MAPPINGS_KEY) instanceof Map<?, ?> mappings) {
+      valid = mappings.get(PROPERTIES_KEY) instanceof Map;
+    }
+    return valid;
   }
 
   @GET

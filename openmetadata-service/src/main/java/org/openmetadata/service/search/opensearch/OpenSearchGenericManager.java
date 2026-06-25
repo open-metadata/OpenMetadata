@@ -14,9 +14,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import org.openmetadata.service.search.SearchClusterMetrics;
-import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexSettings;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.HealthStatus;
@@ -135,9 +133,7 @@ public class OpenSearchGenericManager implements GenericClient {
       return;
     }
     try {
-      String hardenedContent =
-          SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
-      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(hardenedContent);
+      String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(mappingContent);
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode body = mapper.createObjectNode();
       body.putArray("index_patterns").add(indexPattern);

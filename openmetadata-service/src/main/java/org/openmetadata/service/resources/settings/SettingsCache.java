@@ -27,6 +27,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_INDEX_MAPPINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -77,6 +78,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.AISettingsHandler;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -524,6 +526,19 @@ public class SettingsCache {
               .withConfigValue(
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    // Initialize admin-editable, per-language/per-entity search index mappings (hardened at seed)
+    if (Entity.getSystemRepository().getConfigWithKey(SEARCH_INDEX_MAPPINGS.toString()) == null) {
+      try {
+        Settings setting =
+            new Settings()
+                .withConfigType(SEARCH_INDEX_MAPPINGS)
+                .withConfigValue(SearchIndexMappingsSeeder.buildDefaultBlob());
+        Entity.getSystemRepository().createNewSetting(setting);
+      } catch (Exception e) {
+        LOG.error("Failed to seed default search index mappings. Message: {}", e.getMessage(), e);
+      }
     }
   }
 

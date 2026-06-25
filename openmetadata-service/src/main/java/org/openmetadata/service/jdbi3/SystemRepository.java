@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMGoogleConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -100,7 +102,10 @@ import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
 import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftState;
+import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchHealthStatus;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
+import org.openmetadata.service.search.SearchIndexSettings;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -346,6 +351,84 @@ public class SystemRepository {
     Settings oldValue = getConfigWithKey(type.toString());
     dao.delete(type.value());
     return (new RestUtil.DeleteResponse<>(oldValue, ENTITY_DELETED)).toResponse();
+  }
+
+  public SearchIndexMappings getSearchIndexMappings() {
+    SearchIndexMappings result = null;
+    Settings stored = getConfigWithKey(SettingsType.SEARCH_INDEX_MAPPINGS.toString());
+    if (stored != null) {
+      result = JsonUtils.convertValue(stored.getConfigValue(), SearchIndexMappings.class);
+    }
+    return result;
+  }
+
+  /**
+   * The stored mapping for a (language, entityType); when {@code fallbackToDefault} and no stored
+   * slice exists, the hardened resource default is returned instead.
+   */
+  public Map<String, Object> getSearchIndexMapping(
+      String language, String entityType, boolean fallbackToDefault) {
+    Map<String, Object> result = storedSearchIndexMapping(language, entityType);
+    if (result == null && fallbackToDefault) {
+      result = SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
+    }
+    return result;
+  }
+
+  public Settings upsertSearchIndexMapping(
+      String language, String entityType, Map<String, Object> mapping) {
+    return spliceSearchIndexMapping(language, entityType, hardenMapping(mapping));
+  }
+
+  public Settings resetSearchIndexMapping(String language, String entityType) {
+    Settings result = null;
+    Map<String, Object> defaultMapping =
+        SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
+    if (defaultMapping != null) {
+      result = spliceSearchIndexMapping(language, entityType, defaultMapping);
+    }
+    return result;
+  }
+
+  private Settings spliceSearchIndexMapping(
+      String language, String entityType, Map<String, Object> mapping) {
+    SearchIndexMappings blob = getOrBuildSearchIndexMappings();
+    blob.getLanguages()
+        .computeIfAbsent(language, key -> new LinkedHashMap<>())
+        .put(entityType, mapping);
+    Settings setting =
+        new Settings().withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS).withConfigValue(blob);
+    createOrUpdate(setting);
+    return setting;
+  }
+
+  private SearchIndexMappings getOrBuildSearchIndexMappings() {
+    SearchIndexMappings blob = getSearchIndexMappings();
+    if (blob == null) {
+      blob = SearchIndexMappingsSeeder.buildDefaultBlob();
+    }
+    if (blob.getLanguages() == null) {
+      blob.setLanguages(new LinkedHashMap<>());
+    }
+    return blob;
+  }
+
+  private Map<String, Object> storedSearchIndexMapping(String language, String entityType) {
+    Map<String, Object> result = null;
+    SearchIndexMappings blob = getSearchIndexMappings();
+    if (blob != null && blob.getLanguages() != null) {
+      Map<String, Object> byEntity = blob.getLanguages().get(language);
+      if (byEntity != null && byEntity.get(entityType) != null) {
+        result = JsonUtils.getMap(byEntity.get(entityType));
+      }
+    }
+    return result;
+  }
+
+  private Map<String, Object> hardenMapping(Map<String, Object> mapping) {
+    String hardened =
+        SearchIndexSettings.harden(JsonUtils.pojoToJson(mapping), SearchFieldLimits.active());
+    return JsonUtils.getMapFromJson(hardened);
   }
 
   public Response patchSetting(String settingName, JsonPatch patch) {

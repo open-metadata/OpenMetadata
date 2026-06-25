@@ -1,0 +1,3 @@
+-- Data migration only.
+-- Java migration seeds the default, field-safety-hardened search index mappings
+-- (settings type: searchIndexMappings) so they can be edited per language/entity.
