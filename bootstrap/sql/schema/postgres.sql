@@ -290,7 +290,7 @@ ALTER TABLE public.domain_entity OWNER TO openmetadata_user;
 
 CREATE TABLE public.entity_extension (
     id character varying(36) NOT NULL,
-    extension character varying(256) NOT NULL,
+    extension character varying(512) NOT NULL,
     jsonschema character varying(256) NOT NULL,
     json jsonb NOT NULL
 );
