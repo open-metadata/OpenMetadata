@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
@@ -43,24 +44,20 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
-import { getServiceLogo } from '../../../utils/CommonUtils';
-import {
-  getColumnSorter,
-  getEntityName,
-  highlightSearchText,
-} from '../../../utils/EntityUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../utils/EntitySearchUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import {
-  getAddServicePath,
-  getServiceDetailsPath,
-} from '../../../utils/RouterUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import {
-  getOptionalFields,
   getResourceEntityFromServiceCategory,
   getServiceTypesFromServiceCategory,
-} from '../../../utils/ServiceUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+} from '../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getOptionalFields } from '../../../utils/ServiceUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
@@ -74,7 +71,6 @@ import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEdit
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
-
 interface ServicesProps {
   serviceName: ServiceCategory;
 }
@@ -85,7 +81,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const navigate = useNavigate();
   const handleAddServiceClick = () => {
-    navigate(getAddServicePath(serviceName));
+    navigate(connectionsRouterClassBase.getAddServicePath(serviceName));
   };
 
   const [isLoading, setIsLoading] = useState(true);
@@ -566,7 +562,6 @@ const Services = ({ serviceName }: ServicesProps) => {
                   <Button
                     className="m-b-xs"
                     data-testid="add-service-button"
-                    size="middle"
                     type="primary"
                     onClick={handleAddServiceClick}>
                     {t('label.add-new-entity', {

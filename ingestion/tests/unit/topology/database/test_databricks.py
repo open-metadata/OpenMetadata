@@ -15,7 +15,7 @@ Test databricks using the topology
 
 # pylint: disable=invalid-name,import-outside-toplevel
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -301,7 +301,7 @@ class DatabricksUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     @patch("metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version")
-    def __init__(self, methodName, test_connection, db_init_version) -> None:
+    def __init__(self, methodName, test_connection, db_init_version) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         db_init_version.return_value = None
@@ -316,43 +316,64 @@ class DatabricksUnitTest(TestCase):
 
         self.databricks_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
+    def _no_live_connection(self):
+        """Patch the source's ``connection`` property to fail fast.
+
+        The yield paths read schema/table comments through ``self.connection``
+        (a real databricks session) inside a try/except. In CI the dummy host is
+        refused immediately and the except clause yields the same result; this
+        reproduces that fast failure without a socket so the test never stalls on
+        platforms where the connect blocks instead of being refused.
+        """
+        return patch.object(
+            type(self.databricks_source),
+            "connection",
+            new_callable=PropertyMock,
+            side_effect=ConnectionError("unit test: no live connection"),
+        )
+
     def test_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_database_schema_names())  # noqa: SIM300
 
     def test_raw_database_schema_names(self):
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_raw_database_schema_names())
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.databricks_source.get_raw_database_schema_names())  # noqa: SIM300
 
     def test_yield_schema(self):
         schema_list = []
-        yield_schemas = self.databricks_source.yield_database_schema(schema_name=model_str(MOCK_DATABASE_SCHEMA.name))
+        with self._no_live_connection():
+            yield_schemas = self.databricks_source.yield_database_schema(
+                schema_name=model_str(MOCK_DATABASE_SCHEMA.name)
+            )
 
-        for schema in yield_schemas:
-            if isinstance(schema, CreateDatabaseSchemaRequest):
-                schema_list.append(schema)
+            for schema in yield_schemas:
+                if isinstance(schema, CreateDatabaseSchemaRequest):
+                    schema_list.append(schema)  # noqa: PERF401
 
-        for _, (exptected, original) in enumerate(zip(EXPTECTED_DATABASE_SCHEMA, schema_list)):
+        for _, (exptected, original) in enumerate(zip(EXPTECTED_DATABASE_SCHEMA, schema_list)):  # noqa: B905
             self.assertEqual(exptected, original)
 
     def test_yield_table(self):
         table_list = []
-        yield_tables = self.databricks_source.yield_table(("2d725b6e-1588-4814-9d8b-eff384cd1053", "Regular"))
+        with self._no_live_connection():
+            yield_tables = self.databricks_source.yield_table(("2d725b6e-1588-4814-9d8b-eff384cd1053", "Regular"))
 
-        for table in yield_tables:
-            if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+            for table in yield_tables:
+                if isinstance(table, CreateTableRequest):
+                    table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_yield_table_2(self):
         table_list = []
-        yield_tables = self.databricks_source.yield_table(("3df43ed7-5f2f-46bb-9793-384c6374a81d", "Regular"))
+        with self._no_live_connection():
+            yield_tables = self.databricks_source.yield_table(("3df43ed7-5f2f-46bb-9793-384c6374a81d", "Regular"))
 
-        for table in yield_tables:
-            if isinstance(table, CreateTableRequest):
-                table_list.append(table)
+            for table in yield_tables:
+                if isinstance(table, CreateTableRequest):
+                    table_list.append(table)  # noqa: PERF401
 
-        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
+        for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_get_schema_definition(self):
@@ -402,6 +423,7 @@ class DatabricksUnitTest(TestCase):
         from metadata.ingestion.source.database.databricks.metadata import get_columns
 
         mock_connection = Mock()
+        mock_connection.info = {}
         mock_dialect = Mock()
         mock_get_column_rows.return_value = MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS
 
@@ -434,37 +456,39 @@ class DatabricksConnectionTest(TestCase):
             DatabricksScheme,
         )
         from metadata.ingestion.source.database.databricks.connection import (
+            DatabricksConnection as DatabricksConnectionHandler,
+        )
+        from metadata.ingestion.source.database.databricks.connection import (
             DatabricksEngineWrapper,
             get_connection,
             get_connection_url,
-            test_connection,
         )
 
         self.DatabricksEngineWrapper = DatabricksEngineWrapper
         self.get_connection_url = get_connection_url
         self.get_connection = get_connection
-        self.test_connection = test_connection
+        self.DatabricksConnectionHandler = DatabricksConnectionHandler
         self.DatabricksConnection = DatabricksConnection
         self.DatabricksScheme = DatabricksScheme
 
     def test_get_connection_url(self):
         """Test get_connection_url function"""
         connection = self.DatabricksConnection(
-            scheme=self.DatabricksScheme.databricks_connector,
+            scheme=self.DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
         )
 
         url = self.get_connection_url(connection)
-        expected_url = "databricks+connector://test-host:443"
+        expected_url = "databricks://test-host:443"
         self.assertEqual(url, expected_url)
 
     @patch("metadata.ingestion.source.database.databricks.connection.create_generic_db_connection")
     def test_get_connection(self, mock_create_connection):
         """Test get_connection function"""
         connection = self.DatabricksConnection(
-            scheme=self.DatabricksScheme.databricks_connector,
+            scheme=self.DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
@@ -788,7 +812,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Create test connection
         service_connection = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="test-host:443",
             authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
@@ -805,11 +829,9 @@ class DatabricksConnectionTest(TestCase):
         mock_metadata = Mock()
 
         # Test the function
-        result = self.test_connection(
-            metadata=mock_metadata,
-            connection=mock_engine,
-            service_connection=service_connection,
-        )
+        handler = self.DatabricksConnectionHandler(service_connection)
+        handler._client = mock_engine
+        result = handler.test_connection(metadata=mock_metadata)
 
         # Verify the result
         self.assertEqual(result, mock_result)
@@ -971,6 +993,7 @@ class DatabricksConnectionTest(TestCase):
         # Create a mock dialect instance
         mock_dialect = Mock()
         mock_connection = Mock()
+        mock_connection.info = {}
 
         # Mock identifier_preparer
         mock_identifier_preparer = Mock()

@@ -27,11 +27,9 @@ import {
 } from '../../../generated/tests/testCase';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
-import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageUtils';
-import {
-  getBreadcrumbsFromFqn,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getBreadcrumbsFromFqn } from '../../../utils/EntityPureUtils';
 import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { LineageNodeType } from '../../Lineage/Lineage.interface';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -84,9 +82,11 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
         childrenCount > 0 ? 'with-footer' : ''
       )}>
       <Col className="d-flex items-center" flex="auto">
-        <div className="d-flex entity-service-icon m-r-xs">
-          {getServiceIcon(node)}
-        </div>
+        {!node.isTempTable && (
+          <div className="d-flex entity-service-icon m-r-xs">
+            {getServiceIcon(node)}
+          </div>
+        )}
         <Space align="start" className="flex-1" direction="vertical" size={0}>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"

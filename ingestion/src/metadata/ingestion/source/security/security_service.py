@@ -13,10 +13,10 @@ Base class for ingesting security services
 """
 
 from abc import ABC
-from typing import Set
+from typing import Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.entity.services.securityService import (
     SecurityConnection,
@@ -61,7 +61,6 @@ class SecurityServiceTopology(ServiceTopology):
                 processor="yield_create_request_security_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=[],  # Security services typically don't have child entities like policies, roles, etc.
@@ -69,7 +68,7 @@ class SecurityServiceTopology(ServiceTopology):
     )
 
 
-from metadata.utils.helpers import clean_uri
+from metadata.utils.helpers import clean_uri  # noqa: E402
 
 
 class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
@@ -85,14 +84,14 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = SecurityServiceTopology()
     context = TopologyContextManager(topology)
-    security_source_state: Set = set()
+    security_source_state: Set = set()  # noqa: RUF012, UP006
 
     def __init__(
         self,
         config: WorkflowSource,
         metadata: OpenMetadata,
     ):
-        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)
+        config.serviceConnection.root.config.hostPort = clean_uri(config.serviceConnection.root.config.hostPort)  # pyright: ignore[reportAttributeAccessIssue]
         super().__init__()
         self.config = config
         self.metadata = metadata

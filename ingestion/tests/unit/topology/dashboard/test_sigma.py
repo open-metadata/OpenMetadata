@@ -215,7 +215,7 @@ MOCK_TABLE_ENTITY = Table(
 )
 
 MOCK_NODE_DETAILS = NodeDetails(
-    **{
+    **{  # noqa: PIE804
         "id": "node1",
         "name": "test_table",
         "type": "table",
@@ -238,7 +238,7 @@ class SigmaUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.sigma.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
@@ -273,9 +273,9 @@ class SigmaUnitTest(TestCase):
         results = self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
             if isinstance(result, Either) and result.right:
-                chart_list.append(result.right)
+                chart_list.append(result.right)  # noqa: PERF401
 
-        for expected, original in zip(EXPECTED_CHARTS, chart_list):
+        for expected, original in zip(EXPECTED_CHARTS, chart_list):  # noqa: B905
             self.assertEqual(expected, original)
 
     def test_include_owners_flag_enabled(self):
@@ -325,7 +325,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks
         self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -349,7 +349,7 @@ class SigmaUnitTest(TestCase):
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
         self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -373,7 +373,7 @@ class SigmaUnitTest(TestCase):
 
         self.sigma.client.get_workbook_queries = lambda *_: queries_response
         self.sigma.client.get_lineage_details = lambda *_: None
-        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"])]
+        self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
@@ -384,6 +384,51 @@ class SigmaUnitTest(TestCase):
         # Verify file-based lineage was attempted (get_lineage_details called)
         # but no lineage created since get_lineage_details returns None
         self.assertEqual(len(results), 0)
+
+    def test_nonviz_elements_skipped_in_lineage(self):
+        """
+        Test that non-visualization elements (text boxes, dividers, controls)
+        are skipped in both the query-based and file-based lineage paths to
+        avoid Sigma API 500 errors on elements with no upstream data.
+        """
+        # A non-viz element has no vizualizationType
+        non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
+
+        # Test 1: query-based path
+        self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        self.sigma.data_models = [non_viz_element]
+        self.sigma._get_datamodel = MagicMock()
+
+        results = list(self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
+        # No lineage should be yielded and _get_datamodel should never be called
+        self.assertEqual(results, [])
+        self.sigma._get_datamodel.assert_not_called()
+
+        # Test 2: file-based fallback path
+        self.sigma.client.get_workbook_queries = lambda *_: None
+        self.sigma.data_models = [non_viz_element]
+        self.sigma._get_datamodel = MagicMock()
+
+        results = list(self.sigma.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS))
+        self.assertEqual(results, [])
+        self.sigma._get_datamodel.assert_not_called()
+
+    def test_yield_datamodel_skips_nonviz_elements(self):
+        """
+        Verify that yield_datamodel skips non-visualization elements (no vizualizationType)
+        so that DataModel entries are not created for text boxes, buttons, etc.
+        """
+        self.sigma.source_config.includeDataModels = True
+
+        viz_element = Elements(elementId="viz1", name="chart1", vizualizationType="table")
+        non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
+
+        self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
+
+        results = [r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right]
+        # Only the visualization element should produce a DataModel request
+        self.assertEqual(len(results), 1)
+        self.assertEqual(str(results[0].name.root), "viz1")
 
     def test_get_column_info_with_truncation(self):
         """

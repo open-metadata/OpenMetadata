@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -70,16 +71,26 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { getEntityMissingError, getFeedCounts } from '../../utils/CommonUtils';
+import {
+  databaseQueryFn,
+  databaseQueryKey,
+  DATABASE_DEFAULT_FIELDS,
+} from '../../rest/queries/databaseQuery';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
 import databaseClassBase from '../../utils/Database/DatabaseClassBase';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -90,11 +101,13 @@ import {
   getExplorePath,
   getVersionPath,
 } from '../../utils/RouterUtils';
-import { getTierTags } from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import { getTierTags } from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
 
@@ -106,14 +119,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const { entityFqn: decodedDatabaseFQN } = useFqn({
     type: EntityType.DATABASE,
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
   const { customizedPage, isLoading: loading } = useCustomPages(
     PageType.Database
   );
-  const [database, setDatabase] = useState<Database>({} as Database);
-  const [serviceType, setServiceType] = useState<string>();
-  const [isDatabaseDetailsLoading, setIsDatabaseDetailsLoading] =
-    useState<boolean>(true);
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -125,18 +135,79 @@ const DatabaseDetails: FunctionComponent = () => {
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
+  const { currentUser } = useApplicationStore();
+  const USERId = currentUser?.id ?? '';
+
+  const [databasePermission, setDatabasePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+
+  const hasViewBasicPermission = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        databasePermission,
+        PermissionOperation.ViewBasic
+      ) === true,
+    [databasePermission]
+  );
+
+  const databaseCacheKey = useMemo(
+    () => databaseQueryKey(decodedDatabaseFQN, DATABASE_DEFAULT_FIELDS),
+    [decodedDatabaseFQN]
+  );
+
+  const {
+    data: database,
+    isLoading: databaseLoading,
+    error: databaseError,
+  } = useQuery({
+    queryKey: databaseCacheKey,
+    queryFn: databaseQueryFn(decodedDatabaseFQN, DATABASE_DEFAULT_FIELDS),
+    enabled: Boolean(
+      decodedDatabaseFQN && hasViewBasicPermission && !permissionsLoading
+    ),
+  });
+
+  const isError = useMemo(() => Boolean(databaseError), [databaseError]);
+
+  useEffect(() => {
+    const status = (databaseError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        databaseError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.database'),
+          entityName: decodedDatabaseFQN,
+        })
+      );
+    }
+  }, [databaseError, navigate, decodedDatabaseFQN, t]);
+
+  const setDatabase = useCallback(
+    (
+      updater:
+        | Database
+        | undefined
+        | ((prev: Database | undefined) => Database | undefined)
+    ) => {
+      queryClient.setQueryData<Database | undefined>(databaseCacheKey, updater);
+    },
+    [queryClient, databaseCacheKey]
+  );
+
+  const refetchDatabase = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: databaseCacheKey }),
+    [queryClient, databaseCacheKey]
+  );
+
   const {
     version: currentVersion,
     deleted,
     id: databaseId,
-  } = useMemo(() => database, [database]);
-
-  const { currentUser } = useApplicationStore();
-  const USERId = currentUser?.id ?? '';
+    serviceType,
+  } = useMemo(() => database ?? ({} as Database), [database]);
   const tier = getTierTags(database?.tags ?? []);
-
-  const [databasePermission, setDatabasePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const extraDropdownContent = useMemo(
     () =>
@@ -144,13 +215,14 @@ const DatabaseDetails: FunctionComponent = () => {
         EntityType.DATABASE,
         decodedDatabaseFQN,
         databasePermission,
-        database,
+        database ?? ({} as Database),
         navigate
       ),
     [decodedDatabaseFQN, databasePermission, database]
   );
-  const fetchDatabasePermission = async () => {
-    setIsLoading(true);
+
+  const fetchDatabasePermission = useCallback(async () => {
+    setPermissionsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
@@ -160,17 +232,33 @@ const DatabaseDetails: FunctionComponent = () => {
     } catch {
       // Error
     } finally {
-      setIsLoading(false);
+      setPermissionsLoading(false);
     }
-  };
+  }, [decodedDatabaseFQN, getEntityPermissionByFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
   }, []);
 
-  const getEntityFeedCount = () => {
+  const getEntityFeedCount = useCallback(() => {
     getFeedCounts(EntityType.DATABASE, decodedDatabaseFQN, handleFeedCount);
-  };
+  }, [decodedDatabaseFQN, handleFeedCount]);
+
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDatabaseFQN) {
+      fetchEntityTaskCountsInto(decodedDatabaseFQN, setFeedCount);
+    }
+  }, [decodedDatabaseFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDatabaseFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DATABASE,
+        decodedDatabaseFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDatabaseFQN]);
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
     if (isEmpty(decodedDatabaseFQN)) {
@@ -178,7 +266,6 @@ const DatabaseDetails: FunctionComponent = () => {
     }
 
     try {
-      setIsLoading(true);
       const { paging } = await getDatabaseSchemas({
         databaseName: decodedDatabaseFQN,
         limit: 0,
@@ -187,54 +274,28 @@ const DatabaseDetails: FunctionComponent = () => {
       setSchemaInstanceCount(paging.total);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
     }
   }, [decodedDatabaseFQN]);
 
-  const getDetailsByFQN = () => {
-    setIsDatabaseDetailsLoading(true);
-    getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.TAGS,
-        TabSpecificField.DOMAINS,
-        TabSpecificField.VOTES,
-        TabSpecificField.EXTENSION,
-        TabSpecificField.DATA_PRODUCTS,
-        TabSpecificField.FOLLOWERS,
-      ].join(','),
-      include: Include.All,
-    })
-      .then((res) => {
-        if (res) {
-          const { serviceType } = res;
-          setDatabase(res);
-          setServiceType(serviceType);
-        }
-      })
-      .catch((error) => {
-        // Error
-        if (
-          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-        ) {
-          navigate(ROUTES.FORBIDDEN, { replace: true });
-        }
-      })
-      .finally(() => {
-        setIsLoading(false);
-        setIsDatabaseDetailsLoading(false);
-      });
-  };
+  const getDetailsByFQN = useCallback(
+    () => refetchDatabase(),
+    [refetchDatabase]
+  );
 
-  const saveUpdatedDatabaseData = (updatedData: Database) => {
-    let jsonPatch: Operation[] = [];
-    if (database) {
-      jsonPatch = compare(database, updatedData);
-    }
+  const saveUpdatedDatabaseData = useCallback(
+    (updatedData: Database) => {
+      if (!database) {
+        return Promise.reject(new Error('Database not loaded'));
+      }
+      let jsonPatch: Operation[] = [];
+      if (database) {
+        jsonPatch = compare(database, updatedData);
+      }
 
-    return patchDatabaseDetails(database.id ?? '', jsonPatch);
-  };
+      return patchDatabaseDetails(database.id ?? '', jsonPatch);
+    },
+    [database]
+  );
 
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
@@ -251,23 +312,29 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
 
-  const settingsUpdateHandler = async (data: Database) => {
-    try {
-      const res = await saveUpdatedDatabaseData(data);
+  const settingsUpdateHandler = useCallback(
+    async (data: Database) => {
+      try {
+        const res = await saveUpdatedDatabaseData(data);
 
-      setDatabase(res);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.database'),
-        })
-      );
-    }
-  };
+        setDatabase(res);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.database'),
+          })
+        );
+      }
+    },
+    [saveUpdatedDatabaseData, setDatabase, t]
+  );
 
   const handleUpdateOwner = useCallback(
     async (owners: Database['owners']) => {
+      if (!database) {
+        return;
+      }
       const updatedData = {
         ...database,
         owners,
@@ -275,15 +342,16 @@ const DatabaseDetails: FunctionComponent = () => {
 
       await settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owners, settingsUpdateHandler]
+    [database, settingsUpdateHandler]
   );
 
   useEffect(() => {
-    getEntityFeedCount();
-  }, []);
+    fetchTaskCounts();
+    fetchActivityCount();
+  }, [decodedDatabaseFQN]);
 
   useEffect(() => {
-    if (withinPageSearch && serviceType) {
+    if (withinPageSearch && serviceType && database) {
       navigate(
         getExplorePath({
           search: withinPageSearch,
@@ -295,21 +363,13 @@ const DatabaseDetails: FunctionComponent = () => {
         { replace: true }
       );
     }
-  }, [withinPageSearch]);
+  }, [withinPageSearch, serviceType, database]);
 
   useEffect(() => {
-    if (
-      getPrioritizedViewPermission(
-        databasePermission,
-        PermissionOperation.ViewBasic
-      )
-    ) {
-      getDetailsByFQN();
+    if (hasViewBasicPermission && decodedDatabaseFQN) {
       fetchDatabaseSchemaCount();
-    } else {
-      setIsDatabaseDetailsLoading(false);
     }
-  }, [databasePermission, decodedDatabaseFQN]);
+  }, [hasViewBasicPermission, decodedDatabaseFQN, fetchDatabaseSchemaCount]);
 
   useEffect(() => {
     fetchDatabasePermission();
@@ -322,6 +382,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const handleUpdateTier = useCallback(
     (newTier?: Tag) => {
+      if (!database) {
+        return Promise.resolve();
+      }
       const tierTag = updateTierTag(database?.tags ?? [], newTier);
       const updatedTableDetails = {
         ...database,
@@ -370,6 +433,9 @@ const DatabaseDetails: FunctionComponent = () => {
     [database, currentUser]
   );
   const handleRestoreDatabase = useCallback(async () => {
+    if (!database) {
+      return;
+    }
     try {
       const { version: newVersion } = await restoreDatabase(database.id ?? '');
       showSuccessToast(
@@ -386,7 +452,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [database.id]);
+  }, [database?.id]);
 
   const versionHandler = useCallback(() => {
     currentVersion &&
@@ -404,22 +470,17 @@ const DatabaseDetails: FunctionComponent = () => {
     editCustomAttributePermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
-    hasViewBasicPermission,
   } = useMemo(
     () => ({
       editCustomAttributePermission:
         getPrioritizedEditPermission(
           databasePermission,
           PermissionOperation.EditCustomFields
-        ) && !database.deleted,
+        ) && !database?.deleted,
       viewAllPermission: databasePermission.ViewAll,
       viewCustomPropertiesPermission: getPrioritizedViewPermission(
         databasePermission,
         PermissionOperation.ViewCustomFields
-      ),
-      hasViewBasicPermission: getPrioritizedViewPermission(
-        databasePermission,
-        PermissionOperation.ViewBasic
       ),
     }),
     [databasePermission, database]
@@ -430,28 +491,31 @@ const DatabaseDetails: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as Database;
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as Database;
 
-    setDatabase((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setDatabase((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setDatabase]
+  );
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
     const tabs = databaseClassBase.getDatabaseDetailPageTabs({
       activeTab: activeTab as EntityTabs,
-      database,
+      database: database ?? ({} as Database),
       viewAllPermission,
       viewCustomPropertiesPermission,
       schemaInstanceCount,
       feedCount,
       handleFeedCount,
       getEntityFeedCount,
-      deleted: database.deleted ?? false,
+      deleted: database?.deleted ?? false,
       editCustomAttributePermission,
       getDetailsByFQN,
       labelMap: tabLabelMap,
@@ -492,6 +556,9 @@ const DatabaseDetails: FunctionComponent = () => {
     }
   };
   const followDatabase = useCallback(async () => {
+    if (!databaseId) {
+      return;
+    }
     try {
       const res = await addFollowers(
         databaseId,
@@ -515,8 +582,11 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [USERId, databaseId]);
+  }, [USERId, databaseId, followers, database, setDatabase, t]);
   const unfollowDatabase = useCallback(async () => {
+    if (!databaseId) {
+      return;
+    }
     try {
       const res = await removeFollowers(
         databaseId,
@@ -544,7 +614,7 @@ const DatabaseDetails: FunctionComponent = () => {
         })
       );
     }
-  }, [USERId, database]);
+  }, [USERId, databaseId, database, setDatabase, t]);
 
   const handleFollowClick = useCallback(async () => {
     isFollowing ? await unfollowDatabase() : await followDatabase();
@@ -579,8 +649,16 @@ const DatabaseDetails: FunctionComponent = () => {
     [tabs[0], activeTab]
   );
 
-  if (isLoading || isDatabaseDetailsLoading || loading) {
+  if (permissionsLoading || databaseLoading || loading) {
     return <Loader />;
+  }
+
+  if (isError) {
+    return (
+      <ErrorPlaceHolder>
+        {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
+      </ErrorPlaceHolder>
+    );
   }
 
   if (!hasViewBasicPermission) {
@@ -593,6 +671,10 @@ const DatabaseDetails: FunctionComponent = () => {
         type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
       />
     );
+  }
+
+  if (!database) {
+    return <Loader />;
   }
 
   return (

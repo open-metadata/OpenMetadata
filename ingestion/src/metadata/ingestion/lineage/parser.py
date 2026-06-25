@@ -18,7 +18,7 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union  # noqa: UP035
 
 import sqlparse
 from cached_property import cached_property
@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -122,7 +121,7 @@ class LineageParser:
         return hashlib.md5(query.encode()).hexdigest()[:length]
 
     @cached_property
-    def involved_tables(self) -> Optional[List[Table]]:
+    def involved_tables(self) -> Optional[List[Table]]:  # noqa: UP006, UP045
         """
         Use the LineageRunner parser and combine
         source and intermediate tables into
@@ -146,7 +145,7 @@ class LineageParser:
             return None
 
     @cached_property
-    def intermediate_tables(self) -> List[Table]:
+    def intermediate_tables(self) -> List[Table]:  # noqa: UP006
         """
         Get a list of intermediate tables
         """
@@ -156,7 +155,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def source_tables(self) -> List[Union[Table, DataFunction, Location]]:
+    def source_tables(self) -> List[Union[Table, DataFunction, Location]]:  # noqa: UP006, UP007
         """
         Get a list of source tables
         """
@@ -166,7 +165,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def target_tables(self) -> List[Union[Table, Location]]:
+    def target_tables(self) -> List[Union[Table, Location]]:  # noqa: UP006, UP007
         """
         Get a list of target tables
         """
@@ -177,7 +176,7 @@ class LineageParser:
 
     # pylint: disable=protected-access
     @cached_property
-    def column_lineage(self) -> List[Tuple[Column, Column]]:
+    def column_lineage(self) -> List[Tuple[Column, Column]]:  # noqa: UP006
         """
         Get a list of tuples of column lineage
         """
@@ -206,7 +205,7 @@ class LineageParser:
         return column_lineage
 
     @cached_property
-    def clean_table_list(self) -> List[str]:
+    def clean_table_list(self) -> List[str]:  # noqa: UP006
         """
         Clean the table name if it has <default>.
         :return: clean table names
@@ -214,7 +213,7 @@ class LineageParser:
         return [get_formatted_entity_name(str(table)) for table in self.involved_tables]
 
     @cached_property
-    def table_aliases(self) -> Dict[str, str]:
+    def table_aliases(self) -> Dict[str, str]:  # noqa: UP006
         """
         Prepare a dictionary in the shape of {alias: table_name} from
         the parser tables, with detailed logging for debugging.
@@ -251,10 +250,10 @@ class LineageParser:
 
     def get_table_name_from_list(
         self,
-        database_name: Optional[str],
-        schema_name: Optional[str],
+        database_name: Optional[str],  # noqa: UP045
+        schema_name: Optional[str],  # noqa: UP045
         table_name: str,
-    ) -> Optional[str]:
+    ) -> Optional[str]:  # noqa: UP045
         """
         Find the table name (in any format in my come)
         from the list using the given ingredients.
@@ -284,7 +283,7 @@ class LineageParser:
         logger.debug(f"[{self.query_hash}] Cannot find table {db_schema_table} in involved tables")
         return None
 
-    def get_comparison_elements(self, identifier: Identifier) -> Tuple[Optional[str], Optional[str]]:
+    def get_comparison_elements(self, identifier: Identifier) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
         """
         Return the tuple table_name, column_name from each comparison element
         :param identifier: comparison identifier
@@ -334,7 +333,7 @@ class LineageParser:
 
     @staticmethod
     def stateful_add_table_joins(
-        statement_joins: Dict[str, List[TableColumnJoin]],
+        statement_joins: Dict[str, List[TableColumnJoin]],  # noqa: UP006
         source: TableColumn,
         target: TableColumn,
     ) -> None:
@@ -353,7 +352,7 @@ class LineageParser:
             table_columns = [join_info.tableColumn for join_info in statement_joins[source.table]]
             existing_table_column = find_in_iter(element=source, container=table_columns)
             if existing_table_column:
-                existing_join_info = [
+                existing_join_info = [  # noqa: RUF015
                     join_info
                     for join_info in statement_joins[source.table]
                     if join_info.tableColumn == existing_table_column
@@ -365,7 +364,7 @@ class LineageParser:
 
     def stateful_add_joins_from_statement(
         self,
-        join_data: Dict[str, List[TableColumnJoin]],
+        join_data: Dict[str, List[TableColumnJoin]],  # noqa: UP006
         sql_statement: str,
     ) -> None:
         """
@@ -376,10 +375,10 @@ class LineageParser:
         """
         # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
         statement: Statement = sqlparse.parse(sql_statement)[0]
-        comparisons: List[Comparison] = []
+        comparisons: List[Comparison] = []  # noqa: UP006
         for sub in statement.get_sublists():
             if isinstance(sub, Parenthesis):
-                sub = (
+                sub = (  # noqa: PLW2901
                     sub._groupable_tokens[0]  # pylint: disable=protected-access
                     if len(sub._groupable_tokens)  # pylint: disable=protected-access
                     else sub
@@ -415,7 +414,7 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
 
     @cached_property
-    def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
+    def table_joins(self) -> Dict[str, List[TableColumnJoin]]:  # noqa: UP006
         """
         For each table involved in the query, find its joins against any
         other table.
@@ -431,14 +430,15 @@ class LineageParser:
         return join_data
 
     def retrieve_tables(
-        self, tables: List[Union[Table, DataFunction, Location]]
-    ) -> List[Union[Table, DataFunction, Location]]:
+        self,
+        tables: List[Union[Table, DataFunction, Location]],  # noqa: UP006, UP007
+    ) -> List[Union[Table, DataFunction, Location]]:  # noqa: UP006, UP007
         if not self._clean_query:
             return []
         return [self.clean_table_name(table) for table in tables if isinstance(table, (Table, DataFunction, Location))]
 
     @classmethod
-    def clean_raw_query(cls, raw_query: str) -> Optional[str]:
+    def clean_raw_query(cls, raw_query: str) -> Optional[str]:  # noqa: UP045
         """
         Given a raw query from any input (e.g., view definition,
         query from logs, etc.), perform a cleaning step
@@ -479,14 +479,13 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self,
         query: str,
         dialect: Dialect,
         timeout_seconds: int,
         parser_type: QueryParserType,
-    ) -> Optional[LineageRunner]:
+    ) -> Optional[LineageRunner]:  # noqa: UP045
         """Evaluate and return the best available parser for the query."""
         start_time = time.time()
         result = self._evaluate_best_parser_impl(query, dialect, timeout_seconds, parser_type)
@@ -497,13 +496,13 @@ class LineageParser:
 
         return result
 
-    def _evaluate_best_parser_impl(
+    def _evaluate_best_parser_impl(  # noqa: C901
         self,
         query: str,
         dialect: Dialect,
         timeout_seconds: int,
         parser_type: QueryParserType,
-    ) -> Optional[LineageRunner]:
+    ) -> Optional[LineageRunner]:  # noqa: UP045
         if query is None:
             return None
 
@@ -513,7 +512,6 @@ class LineageParser:
             f" {self.masked_query or self.query}"
         )
 
-        @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -563,7 +561,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
                 return lr_sqlglot
 
-        @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -613,7 +610,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
                 return lr_sqlfluff
 
-        @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -669,8 +665,8 @@ class LineageParser:
 
     @staticmethod
     def clean_table_name(
-        table: Union[Table, DataFunction, Location],
-    ) -> Union[Table, DataFunction, Location]:
+        table: Union[Table, DataFunction, Location],  # noqa: UP007
+    ) -> Union[Table, DataFunction, Location]:  # noqa: UP007
         """
         Clean table name by:
         - Removing brackets from the beginning and end of the table and schema name

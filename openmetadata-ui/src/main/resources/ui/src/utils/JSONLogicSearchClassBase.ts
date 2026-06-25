@@ -32,6 +32,7 @@ import { SEMANTIC_TAG_OPERATORS } from '../constants/DataContract.constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
   GLOSSARY_ENTITY_FIELDS_KEYS,
+  KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
   TABLE_ENTITY_FIELDS_KEYS,
 } from '../constants/JSONLogicSearch.constants';
 import {
@@ -44,10 +45,8 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
-} from './QueryBuilderUtils';
+import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -322,11 +321,32 @@ class JSONLogicSearchClassBase {
           },
         },
       },
+      [EntityReferenceFields.COLUMN_TAG]: {
+        label: t('label.column-tag-plural'),
+        type: '!group',
+        mode: 'some',
+        defaultField: 'tagFQN',
+        subfields: {
+          tagFQN: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            operators: this.defaultSelectOperators,
+            fieldSettings: {
+              asyncFetch: this.searchAutocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                fieldName: 'fullyQualifiedName',
+                fieldLabel: 'name',
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        },
+      },
       [EntityReferenceFields.TIER]: {
         label: t('label.tier'),
         type: '!group',
         mode: 'some',
-        fieldName: 'tags',
         defaultField: 'tagFQN',
         subfields: {
           tagFQN: {
@@ -450,6 +470,13 @@ class JSONLogicSearchClassBase {
           showSearch: true,
           useAsyncSearch: false,
         },
+      },
+
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['is_null', 'is_not_null'],
       },
 
       [EntityReferenceFields.REVIEWERS]: {
@@ -656,6 +683,10 @@ class JSONLogicSearchClassBase {
     const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
       [SearchIndex.TABLE]: getFieldsByKeys(
         TABLE_ENTITY_FIELDS_KEYS,
+        this.mapFields
+      ),
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: getFieldsByKeys(
+        KNOWLEDGE_PAGE_ENTITY_FIELDS_KEYS,
         this.mapFields
       ),
       [SearchIndex.GLOSSARY_TERM]: getFieldsByKeys(

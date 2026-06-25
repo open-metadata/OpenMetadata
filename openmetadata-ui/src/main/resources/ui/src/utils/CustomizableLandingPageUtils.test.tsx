@@ -21,7 +21,7 @@ import {
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
   getWidgetWidthLabelFromKey,
-} from './CustomizableLandingPageUtils';
+} from './CustomizableLandingPagePureUtils';
 
 describe('CustomizableLandingPageUtils', () => {
   describe('getNewWidgetPlacement', () => {
@@ -71,7 +71,7 @@ describe('CustomizableLandingPageUtils', () => {
 
     it('should handle null widget data', () => {
       const result = getAddWidgetHandler(
-        null as any,
+        null as unknown as Document,
         'ExtraWidget.EmptyWidgetPlaceholder',
         1,
         3

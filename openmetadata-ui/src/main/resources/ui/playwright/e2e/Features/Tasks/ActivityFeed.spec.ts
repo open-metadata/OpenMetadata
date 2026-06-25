@@ -14,8 +14,10 @@
 import { expect, test } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
 
 /**
@@ -35,7 +37,9 @@ test.describe('Activity Feed - Home Page Widget', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await adminUser.create(apiContext);
@@ -64,8 +68,7 @@ test.describe('Activity Feed - Home Page Widget', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [regularUser.responseData.name],
@@ -77,7 +80,9 @@ test.describe('Activity Feed - Home Page Widget', () => {
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await table.delete(apiContext);
@@ -161,7 +166,9 @@ test.describe('Activity Feed - Filters', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await adminUser.create(apiContext);
@@ -190,8 +197,7 @@ test.describe('Activity Feed - Filters', () => {
       await apiContext.post('/api/v1/tasks', {
         data: {
           name: `Test Task - ${Date.now()}`,
-          about: table.entityResponseData?.fullyQualifiedName,
-          aboutType: 'table',
+          about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
           category: 'MetadataUpdate',
           assignees: [regularUser.responseData.name],
@@ -203,7 +209,9 @@ test.describe('Activity Feed - Filters', () => {
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await table.delete(apiContext);
@@ -348,7 +356,9 @@ test.describe('Activity Feed - Entity Page', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await adminUser.create(apiContext);
@@ -378,8 +388,7 @@ test.describe('Activity Feed - Entity Page', () => {
         await apiContext.post('/api/v1/tasks', {
           data: {
             name: `Test Task - ${Date.now()}-${i}`,
-            about: table.entityResponseData?.fullyQualifiedName,
-            aboutType: 'table',
+            about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
             type: i % 2 === 0 ? 'DescriptionRequest' : 'TagRequest',
             category: 'MetadataUpdate',
             assignees: [adminUser.responseData.name],
@@ -392,7 +401,9 @@ test.describe('Activity Feed - Entity Page', () => {
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await table.delete(apiContext);
@@ -454,7 +465,7 @@ test.describe('Activity Feed - Entity Page', () => {
 
     // Find tabs/filters
     const allButton = page.getByRole('button', { name: /all/i });
-    const tasksButton = page.getByRole('button', { name: /tasks/i });
+    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
 
     // Click Tasks
     if (await tasksButton.isVisible()) {
@@ -577,7 +588,9 @@ test.describe('Activity Feed - Real-time Updates', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await adminUser.create(apiContext);
@@ -589,7 +602,9 @@ test.describe('Activity Feed - Real-time Updates', () => {
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await table.delete(apiContext);
@@ -610,7 +625,7 @@ test.describe('Activity Feed - Real-time Updates', () => {
     await waitForPageLoaded(page);
 
     // Count initial tasks
-    const tasksButton = page.getByRole('button', { name: /tasks/i });
+    const tasksButton = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksButton.isVisible()) {
       await tasksButton.click();
       await waitForPageLoaded(page);
@@ -620,15 +635,14 @@ test.describe('Activity Feed - Real-time Updates', () => {
     const initialCount = await initialTaskCards.count();
 
     // Create new task via API
-    const { apiContext, afterAction } = await performAdminLogin(
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
       page.context().browser()!
     );
 
     await apiContext.post('/api/v1/tasks', {
       data: {
         name: `Test Task - ${Date.now()}`,
-        about: table.entityResponseData?.fullyQualifiedName,
-        aboutType: 'table',
+        about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
         type: 'DescriptionUpdate',
         category: 'MetadataUpdate',
         assignees: [adminUser.responseData.name],
@@ -658,7 +672,9 @@ test.describe('Activity Feed - Real-time Updates', () => {
   test('updating entity should create activity in feed', async ({
     browser,
   }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       // Update description via API for reliable test
@@ -707,7 +723,9 @@ test.describe('Activity Feed - Following', () => {
   const table = new TableClass();
 
   test.beforeAll('Setup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await adminUser.create(apiContext);
@@ -721,7 +739,9 @@ test.describe('Activity Feed - Following', () => {
   });
 
   test.afterAll('Cleanup test data', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     try {
       await table.delete(apiContext);

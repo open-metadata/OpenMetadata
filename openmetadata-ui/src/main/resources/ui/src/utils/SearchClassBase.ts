@@ -11,28 +11,28 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
-import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
+import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
@@ -48,6 +48,7 @@ import {
   DATA_ASSET_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
+  KNOWLEDGE_PAGE_DROPDOWN_ITEMS,
   ML_MODEL_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
@@ -70,18 +71,21 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { QuickLink } from '../generated/api/data/createPage';
 import { TestSuite } from '../generated/tests/testCase';
+import { PageType } from '../interface/knowledge-center.interface';
 import {
+  KnowledgePageSearchSource,
   SearchSourceAlias,
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  getEntityBreadcrumbs,
-  getEntityLinkFromType,
-  getEntityName,
-} from './EntityUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
+import { getPageSummaryComponent } from './KnowledgeComponentUtils';
+import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
 import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
@@ -128,6 +132,7 @@ class SearchClassBase {
       [EntityType.SPREADSHEET]: SearchIndex.SPREADSHEET,
       [EntityType.WORKSHEET]: SearchIndex.WORKSHEET,
       [EntityType.TABLE_COLUMN]: SearchIndex.COLUMN,
+      [EntityType.KNOWLEDGE_PAGE]: SearchIndex.KNOWLEDGE_PAGE_INDEX,
     };
   }
 
@@ -174,6 +179,7 @@ class SearchClassBase {
       [SearchIndex.SPREADSHEET]: EntityType.SPREADSHEET,
       [SearchIndex.WORKSHEET]: EntityType.WORKSHEET,
       [SearchIndex.COLUMN]: EntityType.TABLE_COLUMN,
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: EntityType.KNOWLEDGE_PAGE,
     };
   }
 
@@ -232,6 +238,10 @@ class SearchClassBase {
         value: SearchIndex.WORKSHEET,
         label: t('label.worksheet'),
       },
+      {
+        label: t('label.knowledge-center'),
+        value: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+      },
     ];
   }
 
@@ -250,7 +260,7 @@ class SearchClassBase {
             EntityType.TABLE_COLUMN,
           ],
         },
-        icon: DatabaseIcon,
+        icon: getEntityIcon(EntityType.DATABASE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.dashboard-plural'),
@@ -263,37 +273,37 @@ class SearchClassBase {
             EntityType.CHART,
           ],
         },
-        icon: DashboardIcon,
+        icon: getEntityIcon(EntityType.DASHBOARD, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.pipeline-plural'),
         key: SearchIndex.PIPELINE,
         data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
-        icon: PipelineIcon,
+        icon: getEntityIcon(EntityType.PIPELINE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.topic-plural'),
         key: SearchIndex.TOPIC,
         data: { isRoot: true, childEntities: [EntityType.TOPIC] },
-        icon: TopicIcon,
+        icon: getEntityIcon(EntityType.TOPIC, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.ml-model-plural'),
         key: SearchIndex.MLMODEL,
         data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
-        icon: MlModelIcon,
+        icon: getEntityIcon(EntityType.MLMODEL, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.container-plural'),
         key: SearchIndex.CONTAINER,
         data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
-        icon: ContainerIcon,
+        icon: getEntityIcon(EntityType.CONTAINER, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
-        icon: SearchIcon,
+        icon: getEntityIcon(EntityType.SEARCH_INDEX, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.api-uppercase-plural'),
@@ -302,7 +312,7 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
         },
-        icon: IconAPIService,
+        icon: getEntityIcon(EntityType.API_COLLECTION, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.drive-plural'),
@@ -316,7 +326,7 @@ class SearchClassBase {
             EntityType.WORKSHEET,
           ],
         },
-        icon: DriveIcon,
+        icon: getEntityIcon(EntityType.DIRECTORY, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.governance'),
@@ -329,13 +339,16 @@ class SearchClassBase {
             EntityType.METRIC,
           ],
         },
-        icon: GovernIcon,
+        icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.glossary-plural'),
             key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
-            icon: GlossaryIcon,
+            icon: getEntityIcon(
+              EntityType.GLOSSARY_TERM,
+              'service-icon w-4 h-4'
+            ),
             data: {
               entityType: EntityType.GLOSSARY_TERM,
               isStatic: true,
@@ -346,7 +359,7 @@ class SearchClassBase {
             title: t('label.tag-plural'),
             key: EntityType.TAG,
             isLeaf: true,
-            icon: ClassificationIcon,
+            icon: getEntityIcon(EntityType.TAG, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.TAG,
               isStatic: true,
@@ -357,7 +370,7 @@ class SearchClassBase {
             title: t('label.metric-plural'),
             key: EntityType.METRIC,
             isLeaf: true,
-            icon: MetricIcon,
+            icon: getEntityIcon(EntityType.METRIC, 'service-icon w-4 h-4'),
             data: {
               entityType: EntityType.METRIC,
               isStatic: true,
@@ -370,15 +383,42 @@ class SearchClassBase {
         title: t('label.domain-plural'),
         key: 'Domain',
         data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
-        icon: DomainIcon,
+        icon: getEntityIcon(EntityType.DOMAIN, 'service-icon w-4 h-4'),
         children: [
           {
             title: t('label.data-product-plural'),
             key: EntityType.DATA_PRODUCT,
             isLeaf: true,
-            icon: DataProductIcon,
+            icon: getEntityIcon(
+              EntityType.DATA_PRODUCT,
+              'service-icon w-4 h-4'
+            ),
             data: {
               entityType: EntityType.DATA_PRODUCT,
+              isStatic: true,
+            },
+          },
+        ],
+      },
+      {
+        title: t('label.knowledge-center'),
+        key: 'KnowledgeCenter',
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.KNOWLEDGE_PAGE],
+        },
+        icon: getEntityIcon(EntityType.KNOWLEDGE_PAGE, 'service-icon w-4 h-4'),
+        children: [
+          {
+            title: t('label.knowledge-page'),
+            key: EntityType.KNOWLEDGE_PAGE,
+            isLeaf: true,
+            icon: getEntityIcon(
+              EntityType.KNOWLEDGE_PAGE,
+              'service-icon w-4 h-4'
+            ),
+            data: {
+              entityType: EntityType.KNOWLEDGE_PAGE,
               isStatic: true,
             },
           },
@@ -423,6 +463,7 @@ class SearchClassBase {
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.COLUMNS,
         icon: ColumnIcon,
+        iconClassName: 'text-grey-500',
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: t('label.stored-procedure-plural'),
@@ -548,28 +589,35 @@ class SearchClassBase {
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DIRECTORIES,
-        icon: MetricIcon,
+        icon: DirectoryIcon,
       },
       [SearchIndex.FILE]: {
         label: t('label.file-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.FILES,
-        icon: MetricIcon,
+        icon: FileIcon,
       },
       [SearchIndex.SPREADSHEET]: {
         label: t('label.spreadsheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SPREADSHEETS,
-        icon: MetricIcon,
+        icon: SpreadsheetIcon,
       },
       [SearchIndex.WORKSHEET]: {
         label: t('label.worksheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.WORKSHEETS,
-        icon: MetricIcon,
+        icon: WorksheetIcon,
+      },
+      [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
+        label: t('label.knowledge-center'),
+        sortingFields: entitySortingFields,
+        sortField: INITIAL_SORT_FIELD,
+        path: 'knowledgePages',
+        icon: KnowledgeCenterIconComponent,
       },
     };
   }
@@ -615,6 +663,8 @@ class SearchClassBase {
         return COMMON_DROPDOWN_ITEMS;
       case SearchIndex.DATA_ASSET:
         return DATA_ASSET_DROPDOWN_ITEMS;
+      case SearchIndex.KNOWLEDGE_PAGE_INDEX:
+        return KNOWLEDGE_PAGE_DROPDOWN_ITEMS;
 
       default:
         return [];
@@ -622,7 +672,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutTier() {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.TEST_CASE];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.TEST_CASE,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 
   public getServiceIcon(source: SearchSourceAlias) {
@@ -634,7 +689,12 @@ class SearchClassBase {
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {
-    return [EntityType.TEST_CASE, EntityType.DOMAIN, EntityType.TABLE_COLUMN];
+    return [
+      EntityType.TEST_CASE,
+      EntityType.DOMAIN,
+      EntityType.TABLE_COLUMN,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 
   public getEntityBreadcrumbs(
@@ -671,6 +731,16 @@ class SearchClassBase {
       }
     }
 
+    if (entity?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const pageEntity = entity as KnowledgePageSearchSource;
+      const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
+      const link = isQuickLink
+        ? (pageEntity?.page as QuickLink)?.url
+        : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
+
+      return link ?? '';
+    }
+
     if (entity.fullyQualifiedName && entity.entityType) {
       return getEntityLinkFromType(
         entity.fullyQualifiedName,
@@ -694,10 +764,21 @@ class SearchClassBase {
     _source: SearchSourceAlias,
     openEntityInNewPage?: boolean
   ) {
+    if (_source?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      const isQuickLink =
+        (_source as KnowledgePageSearchSource).pageType === PageType.QUICK_LINK;
+
+      return isQuickLink || openEntityInNewPage ? '_blank' : '_self';
+    }
+
     return openEntityInNewPage ? '_blank' : '_self';
   }
 
   public getEntitySummaryComponent(_entity: SourceType): JSX.Element | null {
+    if (_entity?.entityType === EntityType.KNOWLEDGE_PAGE) {
+      return getPageSummaryComponent(_entity as KnowledgePageSearchSource);
+    }
+
     return null;
   }
 
@@ -723,7 +804,12 @@ class SearchClassBase {
   }
 
   public staticKeysHavingCounts(): string[] {
-    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
+    return [
+      EntityType.GLOSSARY_TERM,
+      EntityType.TAG,
+      EntityType.DATA_PRODUCT,
+      EntityType.KNOWLEDGE_PAGE,
+    ];
   }
 }
 

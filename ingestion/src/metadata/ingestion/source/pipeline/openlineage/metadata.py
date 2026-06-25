@@ -19,17 +19,15 @@ import time
 import traceback
 from collections import defaultdict
 from itertools import groupby, product
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 from urllib.parse import quote, urlparse
 
 from cachetools import LRUCache
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     KafkaBrokerConfig,
@@ -57,7 +55,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -65,10 +62,15 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
     LineageNode,
     OpenLineageEvent,
     PipelineFQN,
+    ResolvedTable,
+    SymlinkType,
     TableDetails,
     TableFQN,
     TopicDetails,
     TopicFQN,
+)
+from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
+    OpenLineageOwnerResolver,
 )
 from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
     build_service_name,
@@ -93,6 +95,85 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Maximum number of entries in the per-event table resolution cache.
+# A dataset is resolved several times while a single event is processed, so
+# the result is memoized to avoid repeated work and duplicate warning logs.
+# The cache is reset for every event and capped at this size, so it can never
+# grow without bound or exhaust memory.
+RESOLUTION_CACHE_MAXSIZE = 1000
+
+# Kinesis Producer Library (KPL) aggregated-record framing.
+# When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
+# multiple user records into one Kinesis record framed as:
+#   <4-byte magic> + <protobuf AggregatedRecord> + <16-byte md5 checksum>
+# Such records are not JSON and must be de-aggregated before parsing (issue #28814).
+KPL_AGGREGATED_MAGIC = b"\xf3\x89\x9a\xc2"
+KPL_MD5_DIGEST_SIZE = 16
+PROTOBUF_RECORDS_FIELD = 3  # AggregatedRecord.records
+PROTOBUF_RECORD_DATA_FIELD = 3  # Record.data
+
+
+def _read_varint(buffer: bytes, position: int) -> tuple[int, int]:
+    result = 0
+    shift = 0
+    while True:
+        byte = buffer[position]
+        position += 1
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            break
+        shift += 7
+    return result, position
+
+
+def _iter_protobuf_fields(buffer: bytes) -> Iterable[tuple[int, bytes | None]]:
+    """Yield (field_number, payload) for each field; payload is set only for length-delimited fields."""
+    position = 0
+    length = len(buffer)
+    while position < length:
+        tag, position = _read_varint(buffer, position)
+        field_number = tag >> 3
+        wire_type = tag & 0x7
+        payload = None
+        if wire_type == 0:  # varint
+            _, position = _read_varint(buffer, position)
+        elif wire_type == 2:  # length-delimited
+            size, position = _read_varint(buffer, position)
+            payload = buffer[position : position + size]
+            position += size
+        elif wire_type == 1:  # 64-bit
+            position += 8
+        elif wire_type == 5:  # 32-bit
+            position += 4
+        else:
+            raise ValueError(f"Unsupported protobuf wire type {wire_type}")
+        yield field_number, payload
+
+
+def _extract_record_data(record: bytes) -> bytes | None:
+    """Return the `data` field of a single KPL AggregatedRecord.Record."""
+    data = None
+    for field_number, payload in _iter_protobuf_fields(record):
+        if field_number == PROTOBUF_RECORD_DATA_FIELD and payload is not None:
+            data = payload
+    return data
+
+
+def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
+    """Return the user payload(s) of a Kinesis record, de-aggregating KPL records when present."""
+    if not data.startswith(KPL_AGGREGATED_MAGIC):
+        return [data]
+    if len(data) < len(KPL_AGGREGATED_MAGIC) + KPL_MD5_DIGEST_SIZE:
+        raise ValueError("Truncated KPL-aggregated Kinesis record: missing protobuf body or checksum")
+    protobuf = data[len(KPL_AGGREGATED_MAGIC) : -KPL_MD5_DIGEST_SIZE]
+    payloads = []
+    for field_number, record in _iter_protobuf_fields(protobuf):
+        if field_number == PROTOBUF_RECORDS_FIELD and record is not None:
+            record_data = _extract_record_data(record)
+            if record_data is not None:
+                payloads.append(record_data)
+    return payloads
+
 
 class OpenlineageSource(PipelineServiceSource):
     """
@@ -109,11 +190,11 @@ class OpenlineageSource(PipelineServiceSource):
     """
 
     _db_service_names_warned: bool = False
-    _service_cache: Dict[str, str]
-    _current_pipeline_service: Optional[str] = None
+    _service_cache: Dict[str, str]  # noqa: UP006
+    _current_pipeline_service: Optional[str] = None  # noqa: UP045
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: OpenLineageConnection = config.serviceConnection.root.config
@@ -124,96 +205,237 @@ class OpenlineageSource(PipelineServiceSource):
     def prepare(self):
         self._service_cache = {}
         self._current_pipeline_service = None
+        self._owner_resolver = OpenLineageOwnerResolver(
+            self.metadata,
+            include_owners=self.source_config.includeOwners,
+            ownership_update_mode=self.source_config.ownershipUpdateMode,
+        )
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
-        self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()
+        self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+        self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()  # noqa: UP006
 
     def close(self) -> None:
         self.metadata.compute_percentile(Pipeline, self.today)
         self.metadata.close()
 
     @staticmethod
-    def _get_entity_details(data: Dict) -> EntityDetails:
+    def _get_entity_details(data: Dict) -> EntityDetails:  # noqa: UP006
         """
-        Determine the entity type (table or topic) from an OpenLineage input/output entry
-        based on the namespace prefix.
+        Determine whether an OpenLineage dataset is a topic or a table.
+
+        Topics are detected by the ``kafka://`` namespace. Table identity is
+        not resolved here - it is candidate-based (top-level plus symlinks)
+        and handled by :meth:`_resolve_table`.
 
         :param data: single input/output entry from an OpenLineage event
-        :return: EntityDetails with entity_type and corresponding details (TableDetails or TopicDetails)
+        :return: EntityDetails carrying the entity type (and topic details)
         """
-        namespace = data.get("namespace", "")
-
-        # Kafka topic detection
-        if namespace.startswith("kafka://"):
+        if (data.get("namespace") or "").startswith("kafka://"):
             return EntityDetails(
                 entity_type="topic",
                 topic_details=OpenlineageSource._get_topic_details(data),
             )
-        else:
-            return EntityDetails(
-                entity_type="table",
-                table_details=OpenlineageSource._get_table_details(data),
-            )
-
-    @classmethod
-    def _get_table_details(cls, data: Dict) -> TableDetails:
-        """
-        extracts table entity schema and name from input/output entry collected from Open Lineage.
-
-        :param data: single entry from inputs/outputs objects
-        :return: TableDetails object with schema and name
-        """
-        symlinks = data.get("facets", {}).get("symlinks", {}).get("identifiers", [])
-
-        # for some OL events name can be extracted from dataset facet but symlinks is preferred so - if present - we
-        # use it instead
-        if len(symlinks) > 0:
-            try:
-                # @todo verify if table can have multiple identifiers pointing at it
-                name = symlinks[0]["name"]
-            except (KeyError, IndexError):
-                raise ValueError("input table name cannot be retrieved from symlinks.identifiers facet.")
-        else:
-            try:
-                name = data["name"]
-            except KeyError:
-                raise ValueError("input table name cannot be retrieved from name attribute.")
-
-        namespace = data.get("namespace", "")
-
-        # AWS Glue: arn:aws:glue:{region}:{account} / table/{database}/{table}
-        # Source: https://openlineage.io/docs/spec/naming/
-        if namespace.startswith("arn:aws:glue:"):
-            result = OpenlineageSource._parse_glue_table_name(name)
-            if result:
-                return result
-
-        # Azure Data Explorer (Kusto): azurekusto://{host} / {database}/{table}
-        if namespace.startswith("azurekusto://"):
-            result = OpenlineageSource._parse_slash_table_name(name)
-            if result:
-                return result
-
-        # Azure Cosmos DB: azurecosmos://{host}/dbs/{db} / colls/{collection}
-        if namespace.startswith("azurecosmos://"):
-            result = OpenlineageSource._parse_cosmos_table_name(namespace, name)
-            if result:
-                return result
-
-        name_parts = name.split(".")
-
-        if len(name_parts) < 2:
-            raise ValueError(f"input table name should be of 'schema.table' format! Received: {name}")
-
-        # we take last two elements to explicitly collect schema and table names
-        # in BigQuery Open Lineage events name_parts would be list of 3 elements as first one is GCP Project ID
-        # however, concept of GCP Project ID is not represented in Open Metadata and hence - we need to skip this part
-        # Normalize to lowercase for case-insensitive FQN matching: different connectors
-        # may store names in different cases (e.g. Trino lowercases, Spark preserves original)
-        return TableDetails(name=name_parts[-1].lower(), schema=name_parts[-2].lower())
+        return EntityDetails(entity_type="table")
 
     @staticmethod
-    def _get_topic_details(data: Dict) -> TopicDetails:
+    def _parse_dotted_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
+        """
+        Parse a dot-separated name used by SQL engines.
+
+        Two-part names (``schema.table``) come from sources that lack a
+        native database layer above the schema (MySQL, Hive, Teradata,
+        Cassandra, Synapse). Three-part names (``db.schema.table``) come
+        from sources with a database layer (Snowflake, BigQuery, Postgres,
+        Redshift, Trino, Athena, Oracle); when present, the database
+        segment is captured so OpenMetadata can disambiguate the same
+        schema.table across multiple databases within the same service.
+
+        Names are lowercased for case-insensitive FQN matching.
+
+        Source: https://openlineage.io/docs/spec/naming/
+        """
+        parts = name.split(".")
+        if len(parts) < 2:
+            return None
+        database = parts[-3].lower() if len(parts) >= 3 else None
+        return TableDetails(
+            name=parts[-1].lower(),
+            schema=parts[-2].lower(),
+            database=database,
+        )
+
+    @staticmethod
+    def _parse_table_identity(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+        """
+        Parse a single OpenLineage ``(namespace, name)`` identity to a table.
+
+        Returns ``None`` for identities this connector cannot resolve to a
+        table (object-store paths, malformed names) so callers can try the
+        next candidate instead of aborting the whole event.
+
+        Source: https://openlineage.io/docs/spec/naming/
+        """
+        if not name:
+            return None
+        parsed = None
+        if namespace.startswith("arn:aws:glue:"):
+            parsed = OpenlineageSource._parse_glue_table_name(name)
+        elif namespace.startswith("azurekusto://"):
+            parsed = OpenlineageSource._parse_slash_table_name(name)
+        elif namespace.startswith("azurecosmos://"):
+            parsed = OpenlineageSource._parse_cosmos_table_name(namespace, name)
+        # Fall back to dotted parsing when the namespace-specific parser does
+        # not match, so a non-conformant name on a known namespace (for
+        # example a dotted schema.table emitted under a Glue namespace) is
+        # still resolved instead of being dropped.
+        return parsed or OpenlineageSource._parse_dotted_table_name(name)
+
+    @staticmethod
+    def _symlink_identifiers(data: Dict) -> List[Dict]:  # noqa: UP006
+        """
+        Safely extract the symlink identifier dictionaries from a dataset.
+
+        Malformed events are tolerated by returning an empty list instead of
+        raising. A missing, null, or wrongly typed facets, symlinks, or
+        identifiers field, and non-dictionary identifier entries, are all
+        skipped, so a single bad event never aborts processing.
+
+        Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
+        """
+        facets = data.get("facets")
+        symlinks = facets.get("symlinks") if isinstance(facets, dict) else None
+        identifiers = symlinks.get("identifiers") if isinstance(symlinks, dict) else None
+        if not isinstance(identifiers, list):
+            return []
+        return [identifier for identifier in identifiers if isinstance(identifier, dict)]
+
+    @staticmethod
+    def _raw_table_identities(data: Dict) -> List[Tuple[str, str]]:  # noqa: UP006
+        """
+        Ordered raw ``(namespace, name)`` identity candidates for a dataset.
+
+        Symlink identifiers (logical/catalog identity, which OpenMetadata
+        database services hold) come first, then the top-level identity.
+        Only identifiers explicitly typed ``LOCATION`` (physical paths) are
+        excluded, as this connector resolves tables and topics, never
+        containers. Identifiers with a missing or non-``LOCATION`` type are
+        still tried, and non-table candidates simply fail to parse so that
+        the next candidate is used.
+
+        Source: https://openlineage.io/spec/facets/1-0-1/SymlinksDatasetFacet.json
+        """
+        # ``or ""`` instead of a dict default so an explicit ``null`` value
+        # (versus a missing key) is also normalized to an empty string. Without
+        # this, a malformed symlink with ``"namespace": null`` would propagate
+        # ``None`` into ``_parse_table_identity`` and crash on ``startswith``.
+        identities: List[Tuple[str, str]] = [  # noqa: UP006
+            (identifier.get("namespace") or "", identifier.get("name") or "")
+            for identifier in OpenlineageSource._symlink_identifiers(data)
+            if identifier.get("type") != SymlinkType.LOCATION.value
+        ]
+        identities.append((data.get("namespace") or "", data.get("name") or ""))
+        return identities
+
+    @classmethod
+    def _iter_table_candidates(cls, data: Dict) -> List[Tuple[TableDetails, str]]:  # noqa: UP006
+        """
+        Parsed, de-duplicated table candidates in resolution priority order.
+
+        Each entry is ``(table_details, namespace)`` where namespace is the
+        identity's own namespace (used for namespace-aware service lookup).
+        """
+        candidates: List[Tuple[TableDetails, str]] = []  # noqa: UP006
+        seen: set = set()
+        for namespace, name in cls._raw_table_identities(data):
+            details = cls._parse_table_identity(namespace, name)
+            if not details:
+                continue
+            # namespace is part of the key: it drives namespace-aware
+            # service resolution, so same schema.table under different
+            # namespaces are distinct resolution paths, not duplicates.
+            # database is part of the key so two three-part identities under
+            # the same namespace with different db/catalog values stay as
+            # separate candidates and both are tried in order.
+            key = (namespace, details.database, details.schema, details.name)
+            if key not in seen:
+                seen.add(key)
+                candidates.append((details, namespace))
+        return candidates
+
+    def _resolve_table(self, data: Dict) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+        """
+        Resolve an OpenLineage dataset to an existing OpenMetadata table.
+
+        The same dataset is resolved multiple times while a single event is
+        processed. The result is memoized in a per-event cache so that the
+        resolution work, and its warning log, run only once per dataset. The
+        cache is reset at the start of every event, which ensures that a
+        table registered by an earlier event is never served a stale result.
+
+        The cache key is the full tuple of raw identities (top-level plus
+        symlink), not just the top-level name, so symlink-only datasets do
+        not collide on an empty or near-empty top-level identity.
+        """
+        ol_name = self._get_ol_table_name(data)
+        cache_key = tuple(self._raw_table_identities(data))
+        if cache_key in self._resolution_cache:
+            return self._resolution_cache[cache_key]
+
+        resolved = self._resolve_table_uncached(data, ol_name)
+        self._resolution_cache[cache_key] = resolved
+        return resolved
+
+    def _resolve_table_uncached(self, data: Dict, ol_name: str) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+        """
+        Run candidate-based resolution for :meth:`_resolve_table`.
+
+        Each identity candidate is tried in priority order, starting with the
+        symlink identifiers and falling back to the top-level identity. The
+        first candidate that resolves to a table in a configured service is
+        returned. When no candidate resolves, a single detailed warning is
+        logged so that the event can be diagnosed from the logs, and the
+        method returns None without aborting the rest of the event.
+        """
+        candidates = self._iter_table_candidates(data)
+        if not candidates:
+            self._log_unresolvable_dataset(data, ol_name)
+            return None
+
+        attempts: List[str] = []  # noqa: UP006
+        for details, namespace in candidates:
+            table_fqn = self._get_table_fqn(details, namespace=namespace)
+            if table_fqn:
+                return ResolvedTable(fqn=table_fqn, details=details)
+            attempts.append(
+                f"[namespace='{namespace}' database='{details.database or ''}' "
+                f"schema='{details.schema}' table='{details.name}']"
+            )
+
+        self._log_unmatched_dataset(ol_name, attempts)
+        return None
+
+    @staticmethod
+    def _log_unresolvable_dataset(data: Dict, ol_name: str) -> None:  # noqa: UP006
+        symlinks = OpenlineageSource._symlink_identifiers(data)
+        logger.warning(
+            f"OpenLineage dataset '{ol_name}' has no resolvable table identity "
+            f"(namespace='{data.get('namespace', '')}', name='{data.get('name', '')}', "
+            f"symlinks={symlinks}). Object-store/LOCATION-only datasets are not "
+            "supported for table lineage by the OpenLineage connector."
+        )
+
+    @staticmethod
+    def _log_unmatched_dataset(ol_name: str, attempts: List[str]) -> None:  # noqa: UP006
+        logger.warning(
+            f"OpenLineage dataset '{ol_name}' matched no table in configured services. "
+            f"Tried {len(attempts)} candidate(s): {'; '.join(attempts)}. Ensure the "
+            "source is ingested and 'dbServiceNames'/'namespaceToServiceMapping' are "
+            "configured so the table can be located."
+        )
+
+    @staticmethod
+    def _get_topic_details(data: Dict) -> TopicDetails:  # noqa: UP006
         """
         Extract topic name and broker hostname from an OpenLineage event.
 
@@ -224,12 +446,12 @@ class OpenlineageSource(PipelineServiceSource):
         try:
             namespace = data["namespace"]
         except KeyError:
-            raise ValueError("Topic namespace is not present")
+            raise ValueError("Topic namespace is not present")  # noqa: B904
 
         try:
             name = data["name"]
         except KeyError:
-            raise ValueError("Topic name is not present")
+            raise ValueError("Topic name is not present")  # noqa: B904
 
         parsed = urlparse(namespace)
         broker_hostname = parsed.hostname
@@ -242,7 +464,7 @@ class OpenlineageSource(PipelineServiceSource):
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
     @staticmethod
-    def _parse_glue_table_name(name: str) -> Optional[TableDetails]:
+    def _parse_glue_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
         """
         Parse AWS Glue OL dataset name: ``table/{database}/{table}``.
 
@@ -260,7 +482,7 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
 
     @staticmethod
-    def _parse_slash_table_name(name: str) -> Optional[TableDetails]:
+    def _parse_slash_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
         """
         Parse slash-separated ``{database}/{table}`` OL dataset names.
 
@@ -276,7 +498,7 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
 
     @staticmethod
-    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:
+    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
         """
         Parse Azure Cosmos DB OL dataset names.
 
@@ -317,7 +539,7 @@ class OpenlineageSource(PipelineServiceSource):
                 logger.debug(f"Could not fetch DB service: {service_name}")
         return type_map
 
-    def _resolve_db_services_for_namespace(self, namespace: str) -> Optional[List[str]]:
+    def _resolve_db_services_for_namespace(self, namespace: str) -> Optional[List[str]]:  # noqa: UP006, UP045
         """
         Resolve which DB services to search for a given OL dataset namespace.
 
@@ -358,7 +580,7 @@ class OpenlineageSource(PipelineServiceSource):
             self._namespace_to_service_cache[namespace] = result
         return result
 
-    def _get_table_fqn(self, table_details: TableDetails, namespace: Optional[str] = None) -> Optional[str]:
+    def _get_table_fqn(self, table_details: TableDetails, namespace: Optional[str] = None) -> Optional[str]:  # noqa: UP045
         if not self.get_db_service_names():
             if not self._db_service_names_warned:
                 logger.warning(
@@ -371,25 +593,26 @@ class OpenlineageSource(PipelineServiceSource):
 
         try:
             resolved_services = self._resolve_db_services_for_namespace(namespace)
-
             try:
                 return self._get_table_fqn_from_om(table_details, services=resolved_services)
             except FQNNotFoundException:
-                try:
-                    schema_fqn = self._get_schema_fqn_from_om(table_details.schema, services=resolved_services)
-                    return f"{schema_fqn}.{table_details.name}"
-                except FQNNotFoundException:
-                    logger.debug(
-                        f"Table '{table_details.name}' in schema '{table_details.schema}' "
-                        f"not found in services {resolved_services or self.get_db_service_names()}. "
-                        "Skipping lineage edge."
-                    )
-                    return None
+                logger.debug(
+                    f"Table '{table_details.name}' in schema '{table_details.schema}' "
+                    f"not found in services {resolved_services or self.get_db_service_names()}. "
+                    "Skipping lineage edge."
+                )
+                return None
+            except AmbiguousServiceException as exc:
+                # User-configuration issue, not a code failure. Log a single
+                # actionable line without a traceback so the warnings status
+                # stays useful.
+                logger.warning(str(exc))
+                return None
         except Exception:
             logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
             return None
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails, services: Optional[List[str]] = None) -> str:
+    def _get_table_fqn_from_om(self, table_details: TableDetails, services: Optional[List[str]] = None) -> str:  # noqa: UP006, UP045
         """
         Looks for matching Table entity in OM across all configured DB services.
         Raises AmbiguousServiceException if the table exists in multiple services
@@ -419,7 +642,7 @@ class OpenlineageSource(PipelineServiceSource):
             return found[0]
         raise FQNNotFoundException(f"Table FQN not found for {table_details}")
 
-    def _build_broker_to_service_map(self) -> Dict[str, str]:
+    def _build_broker_to_service_map(self) -> Dict[str, str]:  # noqa: UP006
         """
         Build a cache mapping broker hostnames to messaging service FQNs.
         Reads each messaging service's connection config to extract bootstrapServers.
@@ -439,7 +662,7 @@ class OpenlineageSource(PipelineServiceSource):
                         bootstrap_servers = svc.connection.config.bootstrapServers or ""
                         svc_fqn = svc.fullyQualifiedName.root
                         for broker in bootstrap_servers.split(","):
-                            broker = broker.strip()
+                            broker = broker.strip()  # noqa: PLW2901
                             if broker:
                                 self._broker_to_service[broker] = svc_fqn
                     except Exception:
@@ -451,7 +674,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         return self._broker_to_service
 
-    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:
+    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:  # noqa: UP045
         """
         Find the messaging service FQN whose bootstrapServers contains the given broker hostname.
 
@@ -461,7 +684,7 @@ class OpenlineageSource(PipelineServiceSource):
         broker_map = self._build_broker_to_service_map()
         return broker_map.get(broker_hostname)
 
-    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:
+    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:  # noqa: UP045
         """
         Look up a Topic entity by finding the messaging service from the broker hostname,
         then constructing the topic FQN as {service_fqn}.{topic_name}.
@@ -481,41 +704,12 @@ class OpenlineageSource(PipelineServiceSource):
             if not topic:
                 logger.warning(f"Topic not found in OpenMetadata: {topic_fqn}")
 
-            return topic
+            return topic  # noqa: TRY300
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error finding topic for {topic_details.name}: {exc}")
             return None
-
-    def _get_schema_fqn_from_om(self, schema: str, services: Optional[List[str]] = None) -> Optional[str]:
-        """
-        Based on partial schema name look for any matching DatabaseSchema object in open metadata.
-
-        :param schema: schema name
-        :param services: optional list of service names to search
-        :return: fully qualified name of a DatabaseSchema in Open Metadata
-        """
-        result = None
-        services = services or self.get_db_service_names()
-
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=DatabaseSchema,
-                service_name=db_service,
-                database_name=None,
-                schema_name=schema,
-                skip_es_search=False,
-            )
-
-            if result:
-                return result
-
-        if not result:
-            raise FQNNotFoundException(f"Schema '{schema}' not found in services: {services}")
-
-        return result
 
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
@@ -539,7 +733,11 @@ class OpenlineageSource(PipelineServiceSource):
         return f"{namespace}-{name}"
 
     @classmethod
-    def _filter_event_by_types(cls, event: OpenLineageEvent, event_types: List[EventType]) -> Optional[Dict]:
+    def _filter_event_by_types(
+        cls,
+        event: OpenLineageEvent,
+        event_types: List[EventType],  # noqa: UP006
+    ) -> Optional[OpenLineageEvent]:  # noqa: UP045
         """
         returns event if it's of one of the particular event_types.
         for example - for lineage events we will be only looking for EventType.COMPLETE event type.
@@ -548,116 +746,54 @@ class OpenlineageSource(PipelineServiceSource):
         :param event_types: list of event types we are looking for.
         :return: Open Lineage event if matches one of the event_types, otherwise None
         """
-        return event if event.event_type in event_types else {}
+        return event if event.event_type in event_types else None
 
     @classmethod
-    def _get_om_table_columns(cls, table_input: Dict) -> Optional[List]:
+    def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
         """
+        Build a stable per-dataset key from the namespace and name.
 
-        :param table_input:
-        :return:
+        At most one slash is removed at the namespace and name boundary, so
+        a name with or without a leading slash maps to the same key. URI
+        schemes such as ``s3://`` are left intact, so distinct datasets do
+        not collide when this value is used as a resolution-cache key.
         """
-        try:
-            fields = table_input["facets"]["schema"]["fields"]
+        namespace = table.get("namespace") or ""
+        name = table.get("name") or ""
+        if namespace.endswith("/"):
+            namespace = namespace[:-1]
+        if name.startswith("/"):
+            name = name[1:]
+        return f"{namespace}/{name}"
 
-            columns = [
-                Column(
-                    name=f.get("name"),
-                    dataTypeDisplay=f.get("type").upper(),
-                    dataType=ColumnTypeParser.get_column_type(f.get("type").upper()),
-                )
-                for f in fields
-            ]
-            return columns
-        except KeyError:
-            return None
-
-    def get_create_table_request(self, table: Dict) -> Optional[Either]:
-        """
-        If certain table from Open Lineage events doesn't already exist in Open Metadata, register appropriate entity.
-        This makes sense especially for output facet of OpenLineage event - as database service ingestion is a scheduled
-        process we might fall into situation where we received Open Lineage event about creation of a table that is yet
-        to be ingested by database service ingestion process. To avoid missing on such lineage scenarios, we will create
-        table entity beforehand.
-
-        :param table: single object from inputs/outputs facet
-        :return: request to create the entity (if needed)
-        """
-        if not self.get_db_service_names():
-            return None
-
-        om_table_fqn = None
-
-        try:
-            table_details = OpenlineageSource._get_table_details(table)
-        except ValueError as e:
-            return Either(
-                left=StackTraceError(
-                    name="",
-                    error=f"Failed to get partial table name: {e}",
-                    stackTrace=traceback.format_exc(),
-                )
-            )
-        try:
-            om_table_fqn = self._get_table_fqn_from_om(table_details)
-
-            # if fqn found then it means table is already registered and we don't need to render create table request
-            return None
-        except FQNNotFoundException:
-            pass
-
-        # If OM Table FQN was not found based on OL Partial Name - we need to register it.
-        if not om_table_fqn:
-            try:
-                om_schema_fqn = self._get_schema_fqn_from_om(table_details.schema)
-            except FQNNotFoundException:
-                logger.warning(
-                    f"Schema '{table_details.schema}' not found in configured services "
-                    f"{self.get_db_service_names()}. Skipping table creation for "
-                    f"'{table_details.name}'."
-                )
-                return None
-
-            # After finding schema fqn (based on partial schema name) we know where we can create table
-            # and we move forward with creating request.
-            if om_schema_fqn:
-                columns = OpenlineageSource._get_om_table_columns(table) or []
-
-                request = CreateTableRequest(
-                    name=table_details.name,
-                    columns=columns,
-                    databaseSchema=om_schema_fqn,
-                )
-
-                return Either(right=request)
-
-        return None
-
-    @classmethod
-    def _get_ol_table_name(cls, table: Dict) -> str:
-        return "/".join(table.get(f) for f in ["namespace", "name"]).replace("//", "/")
-
-    def _build_ol_name_to_fqn_map(self, tables: List):
+    def _build_ol_name_to_fqn_map(self, tables: List):  # noqa: UP006
+        # Register every raw identity (top-level plus each non-LOCATION symlink)
+        # under the same resolved FQN. Different OL emitters reference the
+        # same dataset in columnLineage.inputFields by either the top-level
+        # identity or the symlink identity; without aliasing both, a symlink-
+        # keyed inputFields row would silently miss the lookup and drop the
+        # column edge.
         result = {}
 
         for table in tables:
-            entity_details = self._get_entity_details(table)
-            if entity_details.entity_type != "table":
+            if self._get_entity_details(table).entity_type != "table":
                 continue
-            table_fqn = self._get_table_fqn(
-                entity_details.table_details,
-                namespace=table.get("namespace"),
-            )
-
-            if table_fqn:
-                result[OpenlineageSource._get_ol_table_name(table)] = table_fqn
+            resolved = self._resolve_table(table)
+            if not resolved:
+                continue
+            for namespace, name in self._raw_table_identities(table):
+                if not name:
+                    continue
+                ol_name = self._get_ol_table_name({"namespace": namespace, "name": name})
+                result[ol_name] = resolved.fqn
 
         return result
 
     @classmethod
     def _create_output_lineage_dict(
-        cls, lineage_info: List[Tuple[str, str, str, str]]
-    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:
+        cls,
+        lineage_info: List[Tuple[str, str, str, str]],  # noqa: UP006
+    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
         result = defaultdict(lambda: defaultdict(list))
         for (output_table, input_table, output_column), group in groupby(lineage_info, lambda x: x[:3]):
             input_columns = [input_col for _, _, _, input_col in group]
@@ -666,31 +802,47 @@ class OpenlineageSource(PipelineServiceSource):
 
         return result
 
-    def _get_column_lineage(self, inputs: List, outputs: List) -> Dict[str, Dict[str, List[ColumnLineage]]]:
-        _result: List = []
+    def _get_column_lineage(self, inputs: List, outputs: List) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
+        _result: List = []  # noqa: UP006
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
         for table in outputs:
-            entity_details = self._get_entity_details(table)
             # Column-level lineage is only supported for tables for now.
-            if entity_details.entity_type != "table":
+            if self._get_entity_details(table).entity_type != "table":
                 continue
 
-            output_table_fqn = self._get_table_fqn(
-                entity_details.table_details,
-                namespace=table.get("namespace"),
-            )
-            for field_name, field_spec in table.get("facets", {}).get("columnLineage", {}).get("fields", {}).items():
-                for input_field in field_spec.get("inputFields", []):
+            resolved = self._resolve_table(table)
+            if not resolved:
+                continue
+            output_table_fqn = resolved.fqn
+            # Tolerate a missing, null, or wrongly typed facets/columnLineage/
+            # fields field at any level, mirroring the symlinks-facet
+            # defensiveness so a single malformed event never aborts the run.
+            facets = table.get("facets") if isinstance(table.get("facets"), dict) else None
+            column_lineage_facet = facets.get("columnLineage") if isinstance(facets, dict) else None
+            fields = column_lineage_facet.get("fields") if isinstance(column_lineage_facet, dict) else None
+            if not isinstance(fields, dict):
+                fields = {}
+            for field_name, field_spec in fields.items():
+                if not isinstance(field_spec, dict):
+                    continue
+                for input_field in field_spec.get("inputFields", []) or []:
+                    if not isinstance(input_field, dict):
+                        continue
                     input_table_ol_name = OpenlineageSource._get_ol_table_name(input_field)
-
+                    input_table_fqn = ol_name_to_fqn_map.get(input_table_ol_name)
+                    # Skip when the input table did not resolve; otherwise the
+                    # row would carry None as the input FQN and produce a
+                    # bogus 'None.column' identifier downstream.
+                    if not input_table_fqn:
+                        continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
-                            ol_name_to_fqn_map.get(input_table_ol_name),
+                            input_table_fqn,
                             f"{output_table_fqn}.{field_name.lower()}",
-                            f"{ol_name_to_fqn_map.get(input_table_ol_name)}.{input_field.get('field', '').lower()}",
+                            f"{input_table_fqn}.{input_field.get('field', '').lower()}",
                         )
                     )
 
@@ -729,13 +881,24 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_name = self.get_pipeline_name(pipeline_details)
         self._current_pipeline_service = self._resolve_pipeline_service(pipeline_details)
         try:
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self._current_pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+            owners = self._owner_resolver.get_pipeline_job_owners(
+                pipeline_details.job,
+                pipeline_fqn=pipeline_fqn,
+            )
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
-            request = CreatePipelineRequest(
+            request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=pipeline_name,
                 service=self._current_pipeline_service,
                 description=description,
                 tasks=[],
+                owners=owners,
             )
 
             yield Either(right=request)
@@ -792,7 +955,7 @@ class OpenlineageSource(PipelineServiceSource):
     def _cleanup_pipeline_as_node_edges(
         self,
         pipeline_entity: Pipeline,
-        event_entity_map: Dict[str, str],
+        event_entity_map: Dict[str, str],  # noqa: UP006
     ) -> None:
         """
         When a pipeline transitions from single-sided (pipeline-as-node) to both-sided
@@ -846,40 +1009,35 @@ class OpenlineageSource(PipelineServiceSource):
                 f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
             )
 
-    def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:
+    def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+        # Start every event with a fresh resolution cache so results never
+        # leak across events and the cache cannot grow without bound.
+        self._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+
         inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
 
-        input_edges: List[LineageNode] = []
-        output_edges: List[LineageNode] = []
+        input_edges: List[LineageNode] = []  # noqa: UP006
+        output_edges: List[LineageNode] = []  # noqa: UP006
 
         for spec in [(inputs, input_edges), (outputs, output_edges)]:
             entities, entity_list = spec
             for entity_data in entities:
                 entity_details = self._get_entity_details(entity_data)
                 if entity_details.entity_type == "table":
-                    create_table_request = self.get_create_table_request(entity_data)
+                    resolved = self._resolve_table(entity_data)
 
-                    if create_table_request:
-                        yield create_table_request
-
-                    table_fqn = self._get_table_fqn(
-                        entity_details.table_details,
-                        namespace=entity_data.get("namespace"),
-                    )
-
-                    if table_fqn:
-                        table_entity = self._get_by_name_cached(Table, table_fqn)
+                    if resolved:
+                        table_entity = self._get_by_name_cached(Table, resolved.fqn)
                         if table_entity:
                             entity_list.append(
                                 LineageNode(
-                                    fqn=TableFQN(value=table_fqn),
+                                    fqn=TableFQN(value=resolved.fqn),
                                     uuid=table_entity.id.root,
                                     node_type="table",
                                 )
                             )
                         else:
-                            logger.warning(f"Table entity not found for: {table_fqn}")
-                            self.status.warning(table_fqn, "Table entity not found in OpenMetadata")
+                            logger.warning(f"Table entity not found for: {resolved.fqn}")
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
@@ -899,22 +1057,26 @@ class OpenlineageSource(PipelineServiceSource):
                             f"Ensure the topic exists in OpenMetadata and the messaging service "
                             f"has matching bootstrapServers."
                         )
-                        self.status.warning(
-                            entity_details.topic_details.name,
-                            "Topic entity not found in OpenMetadata",
-                        )
 
         column_lineage = self._get_column_lineage(inputs, outputs)
 
         edges = [LineageEdge(from_node=n[0], to_node=n[1]) for n in product(input_edges, output_edges)]
 
         service_name = self._current_pipeline_service or self.context.get().pipeline_service
+        pipeline_name = getattr(self.context.get(), "pipeline", None)
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
             service_name=service_name,
-            pipeline_name=self.context.get().pipeline,
+            pipeline_name=pipeline_name,
         )
+
+        if not pipeline_fqn:
+            logger.warning(
+                f"Could not build pipeline FQN for service '{service_name}' and "
+                f"pipeline '{pipeline_name}', skipping lineage."
+            )
+            return
 
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
@@ -991,7 +1153,7 @@ class OpenlineageSource(PipelineServiceSource):
                 )
             )
 
-    def get_pipelines_list(self) -> Optional[List[Any]]:
+    def get_pipelines_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """Get List of all pipelines"""
         broker = self.service_connection.brokerConfig
 
@@ -1038,7 +1200,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         except Exception as e:
             logger.debug(traceback.format_exc())
-            raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")
+            raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")  # noqa: B904, RUF010
 
         finally:
             # Close down consumer to commit final offsets.
@@ -1057,7 +1219,6 @@ class OpenlineageSource(PipelineServiceSource):
             iterator_type = broker.consumerOffsets.value
             pool_timeout = broker.poolTimeout
             session_timeout = broker.sessionTimeout
-            empty_response_time = 0.0
 
             for shard in shards:
                 shard_id = shard["ShardId"]
@@ -1067,6 +1228,9 @@ class OpenlineageSource(PipelineServiceSource):
                     ShardIteratorType=iterator_type,
                 )
                 shard_iterator = iterator_resp["ShardIterator"]
+                # Reset the inactivity timer for each shard; otherwise the timeout
+                # accrued draining the first shard leaves every later shard skipped.
+                empty_response_time = 0.0
 
                 while shard_iterator and empty_response_time <= session_timeout:
                     response = kinesis_client.get_records(
@@ -1084,27 +1248,34 @@ class OpenlineageSource(PipelineServiceSource):
                     empty_response_time = 0.0
                     for record in records:
                         try:
-                            data = json.loads(record["Data"])
-                            _result = message_to_open_lineage_event(data)
-                            result = self._filter_event_by_types(
-                                _result,
-                                [
-                                    EventType.COMPLETE,
-                                    EventType.RUNNING,
-                                    EventType.START,
-                                ],
-                            )
-                            if result:
-                                yield result
+                            payloads = deaggregate_kinesis_record(record["Data"])
                         except Exception as e:
-                            logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
+                            logger.warning(f"Failed to de-aggregate Kinesis record: {e}")
                             logger.debug(traceback.format_exc())
+                            continue
+                        for payload in payloads:
+                            try:
+                                data = json.loads(payload)
+                                _result = message_to_open_lineage_event(data)
+                                result = self._filter_event_by_types(
+                                    _result,
+                                    [
+                                        EventType.COMPLETE,
+                                        EventType.RUNNING,
+                                        EventType.START,
+                                    ],
+                                )
+                                if result:
+                                    yield result
+                            except Exception as e:
+                                logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
+                                logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
-            raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")
+            raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

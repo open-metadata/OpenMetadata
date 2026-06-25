@@ -34,6 +34,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ..conftest import _safe_delete  # noqa: TID252
+
 
 @pytest.fixture(scope="module")
 def metadata():
@@ -69,7 +71,13 @@ def db_service(metadata, create_postgres_service, postgres_container):  # noqa: 
 
     service = metadata.get_by_name(DatabaseService, service_entity.fullyQualifiedName.root)
     if service:
-        metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="module")
@@ -80,7 +88,7 @@ def database(metadata, db_service):
             service=db_service.fullyQualifiedName,
         )
     )
-    return database_entity
+    return database_entity  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -91,7 +99,7 @@ def schema(metadata, database):
             database=database.fullyQualifiedName,
         )
     )
-    return schema_entity
+    return schema_entity  # noqa: RET504
 
 
 @pytest.fixture(scope="module")
@@ -224,7 +232,7 @@ def patch_passwords(db_service, monkeymodule):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
-            if isinstance(result, DatabaseService):
+            if isinstance(result, DatabaseService):  # noqa: SIM102
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
                     result.connection.config.authType.password = db_service.connection.config.authType.password
             return result

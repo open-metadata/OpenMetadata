@@ -12,10 +12,20 @@
  */
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
+import {
+  Button,
+  Card,
+  Drawer,
+  Form,
+  FormInstance,
+  Input,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useMemo, useState } from 'react';
+import React, { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -33,13 +43,16 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { handleSearchFilterOption } from '../../../utils/CommonUtils';
-import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { handleSearchFilterOption } from '../../../utils/FilterQueryUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import FormItemLabel from '../../common/Form/FormItemLabel';
-import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
+);
 
 interface TestDefinitionFormProps {
   initialValues?: TestDefinition;
@@ -345,8 +358,19 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
         </Form.Item>
 
         <Form.Item
+          dependencies={['testPlatforms']}
           label={t('label.supported-data-type-plural')}
-          name="supportedDataTypes">
+          name="supportedDataTypes"
+          rules={[
+            ({ getFieldValue }: Pick<FormInstance, 'getFieldValue'>) => ({
+              required: (getFieldValue('testPlatforms') ?? []).includes(
+                TestPlatform.OpenMetadata
+              ),
+              message: t('message.field-text-is-required', {
+                fieldText: t('label.supported-data-type-plural'),
+              }),
+            }),
+          ]}>
           <Select
             disabled={isReadOnlyField}
             mode="multiple"

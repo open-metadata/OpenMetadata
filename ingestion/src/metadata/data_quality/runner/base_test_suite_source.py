@@ -33,14 +33,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    ProfileSampleConfigType,
-    SampleConfig,
-    StaticSamplingConfig,
+from metadata.sampler.config import (
+    get_exclude_columns,
+    get_include_columns,
+    get_profile_sample_config,
+    get_sample_data_count_config,
+    get_sample_query,
 )
-from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
+from metadata.sampler.sampler_interface import SamplerInterface  # noqa: TC001
 from metadata.utils.bigquery_utils import copy_service_config
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
@@ -67,7 +72,7 @@ class BaseTestSuiteRunner:
         self.ometa_client = ometa_client
 
     @property
-    def interface(self) -> Optional[TestSuiteInterface]:
+    def interface(self) -> Optional[TestSuiteInterface]:  # noqa: UP045
         return self._interface
 
     @interface.setter
@@ -97,9 +102,9 @@ class BaseTestSuiteRunner:
                 config_copy.catalog = database.name  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
-        config_copy = cast(DatabaseConnection, config_copy)
+        config_copy = cast(DatabaseConnection, config_copy)  # noqa: TC006
 
-        return config_copy
+        return config_copy  # noqa: RET504
 
     def create_data_quality_interface(self) -> TestSuiteInterface:
         """Create data quality interface
@@ -118,24 +123,34 @@ class BaseTestSuiteRunner:
             source_type=self._interface_type,
             source_config_type=self.service_conn_config.type.value,
         )
-        # This is shared between the sampler and DQ interfaces
+        default_sample_config = SampleConfig(
+            profileSampleConfig=self.source_config.profileSampleConfig
+            if self.source_config.profileSampleConfig
+            else None,
+        )
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
             entity=self.entity,
-            schema_entity=schema_entity,
-            database_entity=database_entity,
-            default_sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=ProfileSampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=self.source_config.profileSample,
-                        profileSampleType=self.source_config.profileSampleType,
-                        samplingMethodType=self.source_config.samplingMethodType,
-                    ),
-                )
-                if self.source_config.profileSample
-                else None,
+            config=DatabaseSamplerConfig(
+                sample_config=get_profile_sample_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_config=default_sample_config,
+                ),
+                sample_data_count=get_sample_data_count_config(
+                    entity=self.entity,
+                    schema_entity=schema_entity,
+                    database_entity=database_entity,
+                    entity_config=None,
+                    default_sample_data_count=SAMPLE_DATA_DEFAULT_COUNT,
+                ),
+                partition_details=get_partition_details(self.entity),
+                sample_query=get_sample_query(entity=self.entity, entity_config=None),
+                include_columns=get_include_columns(self.entity, entity_config=None) or [],
+                exclude_columns=get_exclude_columns(self.entity, entity_config=None) or [],
             ),
         )
 

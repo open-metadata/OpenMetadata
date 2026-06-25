@@ -19,46 +19,52 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.metabaseConnection import (
-    MetabaseConnection,
+    MetabaseConnection as MetabaseConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MetabaseConnection) -> MetabaseClient:
+def get_connection(connection: MetabaseConnectionConfig) -> MetabaseClient:
     """
     Create connection
     """
     return MetabaseClient(connection)
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: MetabaseClient,
-    service_connection: MetabaseConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+class MetabaseConnection(BaseConnection[MetabaseConnectionConfig, MetabaseClient]):
+    def _get_client(self) -> MetabaseClient:
+        return get_connection(self.service_connection)
 
-    def custom_executor():
-        collections = client.get_collections_list_test_conn()
-        return client.get_dashboards_list_test_conn(collections)
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    test_fn = {"GetDashboards": custom_executor}
+        def custom_executor():
+            collections = client.get_collections_list_test_conn()
+            return client.get_dashboards_list_test_conn(collections)
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {"GetDashboards": custom_executor}
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

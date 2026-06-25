@@ -35,7 +35,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
@@ -55,7 +55,6 @@ import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import SourceList from '../MlModelDetail/SourceList.component';
 import { MlModelVersionProp } from './MlModelVersion.interface';
-
 const MlModelVersion: FC<MlModelVersionProp> = ({
   version,
   currentVersionData,
@@ -66,9 +65,6 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   tier,
   slashedMlModelName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -395,12 +391,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.MLMODEL}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

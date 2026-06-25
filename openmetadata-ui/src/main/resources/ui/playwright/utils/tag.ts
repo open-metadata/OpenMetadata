@@ -59,22 +59,24 @@ export const visitClassificationPage = async (
   );
   await page.goto(`/tags/${encodeURIComponent(classificationName)}`);
 
-  await page
-    .getByTestId('tags-container')
-    .locator('.table-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
 
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
   );
 
   await fetchTags;
-  await page
-    .getByTestId('tags-container')
-    .locator('.table-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await expect(
+    page
+      .getByTestId('tags-container')
+      .locator('.table-container')
+      .getByTestId('loader')
+  ).toHaveCount(0, { timeout: 30000 });
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -616,6 +618,7 @@ export const selectTagInTagSuggestion = async (
   }
 ) => {
   const tagInput = page.getByRole('combobox', { name: 'Tags' });
+  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
 
   const tagSearchResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -626,13 +629,11 @@ export const selectTagInTagSuggestion = async (
     );
   });
 
+  await tagInput.click();
   await tagInput.fill(searchTerm);
   await tagSearchResponse;
 
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
-  const tagOption = page.getByTestId(`tag-option-${tagFqn}`);
-  await tagOption.waitFor({ state: 'visible' });
   await tagOption.click();
   await page.keyboard.press('Escape');
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'hidden' });
+  await tagOption.waitFor({ state: 'hidden' });
 };

@@ -118,26 +118,6 @@ public final class DatabaseSchemas {
     return getClient().databaseSchemas().getVersionList(id);
   }
 
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset) {
-    return getClient().databaseSchemas().getVersionList(id, limit, offset);
-  }
-
-  public static org.openmetadata.schema.type.EntityHistory getVersionList(
-      java.util.UUID id, int limit, int offset, String fieldChanged) {
-    return getClient().databaseSchemas().getVersionList(id, limit, offset, fieldChanged);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs) {
-    return getClient().databaseSchemas().getEntityHistory(startTs, endTs);
-  }
-
-  public static org.openmetadata.schema.utils.ResultList getEntityHistory(
-      long startTs, long endTs, int limit, String before, String after) {
-    return getClient().databaseSchemas().getEntityHistory(startTs, endTs, limit, before, after);
-  }
-
   public static DatabaseSchema getVersion(String id, Double version) {
     return getClient().databaseSchemas().getVersion(id, version);
   }
@@ -267,6 +247,11 @@ public final class DatabaseSchemas {
 
     public DatabaseSchemaDeleter delete() {
       return new DatabaseSchemaDeleter(client, identifier);
+    }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<DatabaseSchema> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.databaseSchemas(), identifier);
     }
   }
 

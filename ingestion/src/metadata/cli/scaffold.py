@@ -163,8 +163,8 @@ class ConnectorProfile:
         self.display_name: str = ""
         self.service_type: str = ""
         self.connection_type: str = "rest_api"
-        self.scheme: Optional[str] = None
-        self.default_port: Optional[int] = None
+        self.scheme: Optional[str] = None  # noqa: UP045
+        self.default_port: Optional[int] = None  # noqa: UP045
         self.auth_types: list[str] = ["basic"]
         self.capabilities: list[str] = ["metadata"]
         self.description: str = ""
@@ -173,7 +173,7 @@ class ConnectorProfile:
         self.sdk_package: str = ""
         self.api_endpoints: str = ""
         self.docker_image: str = ""
-        self.docker_port: Optional[int] = None
+        self.docker_port: Optional[int] = None  # noqa: UP045
 
     @property
     def camel(self) -> str:
@@ -191,7 +191,7 @@ class ConnectorProfile:
 # ---------------------------------------------------------------------------
 
 
-def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) -> str:
+def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) -> str:  # noqa: UP045
     if choices:
         options = ", ".join(choices)
         suffix = f" [{options}]"
@@ -205,21 +205,21 @@ def _prompt(label: str, default: str = "", choices: Optional[list[str]] = None) 
         try:
             value = input(f"  {label}{suffix}").strip()
         except (EOFError, KeyboardInterrupt):
-            print()
+            print()  # noqa: T201
             if default:
                 return default
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         if not value and default:
             return default
         if choices and value not in choices:
-            print(f"    Invalid choice. Must be one of: {', '.join(choices)}")
+            print(f"    Invalid choice. Must be one of: {', '.join(choices)}")  # noqa: T201
             continue
         if value:
             return value
-        print("    This field is required.")
+        print("    This field is required.")  # noqa: T201
 
 
-def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] = None) -> list[str]:
+def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] = None) -> list[str]:  # noqa: UP045
     default_str = ",".join(defaults) if defaults else ""
     suffix = f" [{', '.join(choices)}]"
     if default_str:
@@ -230,19 +230,19 @@ def _prompt_multi(label: str, choices: list[str], defaults: Optional[list[str]] 
         try:
             value = input(f"  {label}{suffix}").strip()
         except (EOFError, KeyboardInterrupt):
-            print()
+            print()  # noqa: T201
             if defaults:
                 return defaults
-            raise SystemExit(1)
+            raise SystemExit(1)  # noqa: B904
         if not value and defaults:
             return defaults
         if not value:
-            print("    At least one value is required.")
+            print("    At least one value is required.")  # noqa: T201
             continue
         parts = [v.strip() for v in value.replace(" ", ",").split(",") if v.strip()]
         invalid = [p for p in parts if p not in choices]
         if invalid:
-            print(f"    Invalid: {', '.join(invalid)}. Must be from: {', '.join(choices)}")
+            print(f"    Invalid: {', '.join(invalid)}. Must be from: {', '.join(choices)}")  # noqa: T201
             continue
         return parts
 
@@ -253,13 +253,13 @@ def _prompt_optional(label: str, hint: str = "") -> str:
     try:
         return input(f"  {label}{suffix}").strip()
     except (EOFError, KeyboardInterrupt):
-        print()
+        print()  # noqa: T201
         return ""
 
 
 def _prompt_multiline(label: str, hint: str = "") -> str:
-    print(f"  {label}" + (f" ({hint})" if hint else ""))
-    print("  Enter text below. Type a blank line to finish:")
+    print(f"  {label}" + (f" ({hint})" if hint else ""))  # noqa: T201
+    print("  Enter text below. Type a blank line to finish:")  # noqa: T201
     lines = []
     try:
         while True:
@@ -270,48 +270,48 @@ def _prompt_multiline(label: str, hint: str = "") -> str:
     except EOFError:
         pass
     except KeyboardInterrupt:
-        print()
+        print()  # noqa: T201
     return "\n".join(lines)
 
 
 def collect_interactive() -> ConnectorProfile:
     profile = ConnectorProfile()
 
-    print()
-    print("=" * 60)
-    print("  OpenMetadata Connector Scaffold")
-    print("=" * 60)
-    print()
-    print("  This will guide you through creating a new connector.")
-    print("  Generated files include JSON schemas, directory structure,")
-    print("  and a CONNECTOR_CONTEXT.md for AI agents to implement from.")
-    print()
+    print()  # noqa: T201
+    print("=" * 60)  # noqa: T201
+    print("  OpenMetadata Connector Scaffold")  # noqa: T201
+    print("=" * 60)  # noqa: T201
+    print()  # noqa: T201
+    print("  This will guide you through creating a new connector.")  # noqa: T201
+    print("  Generated files include JSON schemas, directory structure,")  # noqa: T201
+    print("  and a CONNECTOR_CONTEXT.md for AI agents to implement from.")  # noqa: T201
+    print()  # noqa: T201
 
     # --- Basic info ---
-    print("--- Basic Info ---")
+    print("--- Basic Info ---")  # noqa: T201
     profile.name = _prompt("Connector name (snake_case, e.g. 'my_db')")
     while not re.match(r"^[a-z][a-z0-9_]*$", profile.name):
-        print("    Must be snake_case: lowercase letters, numbers, underscores.")
+        print("    Must be snake_case: lowercase letters, numbers, underscores.")  # noqa: T201
         profile.name = _prompt("Connector name")
 
     profile.display_name = _prompt("Display name", default=profile.camel)
     profile.description = _prompt_optional("Short description", "e.g. 'Cloud-native OLAP database'")
-    print()
+    print()  # noqa: T201
 
     # --- Classification ---
-    print("--- Service Type ---")
+    print("--- Service Type ---")  # noqa: T201
     for i, st in enumerate(SERVICE_TYPES, 1):
         ref = REFERENCE_CONNECTORS.get(st, "")
-        print(f"    {i}. {st:<12} (like {ref})")
+        print(f"    {i}. {st:<12} (like {ref})")  # noqa: T201
     profile.service_type = _prompt("Service type", choices=SERVICE_TYPES)
-    print()
+    print()  # noqa: T201
 
     # --- Connection type ---
     if profile.service_type == "database":
-        print("--- Connection Type ---")
-        print("    sqlalchemy  — Uses SQLAlchemy engine (most common for SQL DBs)")
-        print("    rest_api    — Uses REST API client (like Salesforce)")
-        print("    sdk_client  — Uses vendor SDK")
+        print("--- Connection Type ---")  # noqa: T201
+        print("    sqlalchemy  — Uses SQLAlchemy engine (most common for SQL DBs)")  # noqa: T201
+        print("    rest_api    — Uses REST API client (like Salesforce)")  # noqa: T201
+        print("    sdk_client  — Uses vendor SDK")  # noqa: T201
         profile.connection_type = _prompt("Connection type", default="sqlalchemy", choices=CONNECTION_TYPES)
         if profile.connection_type == "sqlalchemy":
             profile.scheme = _prompt_optional("SQLAlchemy scheme", "e.g. 'mysql+pymysql', 'postgresql+psycopg2'")
@@ -320,28 +320,28 @@ def collect_interactive() -> ConnectorProfile:
                 try:
                     profile.default_port = int(port)
                 except ValueError:
-                    print("    Invalid port number, skipping.")
-        print()
+                    print("    Invalid port number, skipping.")  # noqa: T201
+        print()  # noqa: T201
     else:
-        print("--- Connection Type ---")
-        print("    rest_api    — Uses REST API client (most common)")
-        print("    sdk_client  — Uses vendor SDK")
+        print("--- Connection Type ---")  # noqa: T201
+        print("    rest_api    — Uses REST API client (most common)")  # noqa: T201
+        print("    sdk_client  — Uses vendor SDK")  # noqa: T201
         profile.connection_type = _prompt("Connection type", default="rest_api", choices=["rest_api", "sdk_client"])
-        print()
+        print()  # noqa: T201
 
     # --- Auth ---
-    print("--- Authentication ---")
-    print("    Available: basic, iam, azure, jwt, token, oauth")
+    print("--- Authentication ---")  # noqa: T201
+    print("    Available: basic, iam, azure, jwt, token, oauth")  # noqa: T201
     profile.auth_types = _prompt_multi("Auth types", AUTH_CHOICES, ["basic"])
-    print()
+    print()  # noqa: T201
 
     # --- Capabilities ---
-    print("--- Capabilities ---")
+    print("--- Capabilities ---")  # noqa: T201
     if profile.service_type == "database" and profile.connection_type == "sqlalchemy":
-        print("    Available: metadata, lineage, usage, profiler, stored_procedures, data_diff")
-        print("    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)")
-        print("    usage    — Query-log-based usage (generates usage.py)")
-        print("    profiler — Column profiling + data quality (needs SQLAlchemy)")
+        print("    Available: metadata, lineage, usage, profiler, stored_procedures, data_diff")  # noqa: T201
+        print("    lineage  — Query-log-based lineage (generates lineage.py + query_parser.py)")  # noqa: T201
+        print("    usage    — Query-log-based usage (generates usage.py)")  # noqa: T201
+        print("    profiler — Column profiling + data quality (needs SQLAlchemy)")  # noqa: T201
         profile.capabilities = _prompt_multi(
             "Capabilities",
             CAPABILITY_CHOICES,
@@ -349,21 +349,21 @@ def collect_interactive() -> ConnectorProfile:
         )
     elif profile.service_type == "database":
         profile.capabilities = ["metadata"]
-        print("    Default: metadata")
-        print("    Note: lineage, usage, and profiler require SQLAlchemy connections.")
-        print("    For REST/SDK database connectors, these are not auto-generated.")
+        print("    Default: metadata")  # noqa: T201
+        print("    Note: lineage, usage, and profiler require SQLAlchemy connections.")  # noqa: T201
+        print("    For REST/SDK database connectors, these are not auto-generated.")  # noqa: T201
     else:
         profile.capabilities = ["metadata"]
-        print("    Default: metadata")
-        print("    Note: Lineage, usage, and data models for non-database connectors")
-        print("    are implemented as method overrides in metadata.py (no extra files).")
-        print("    See CONNECTOR_CONTEXT.md for details.")
-    print()
+        print("    Default: metadata")  # noqa: T201
+        print("    Note: Lineage, usage, and data models for non-database connectors")  # noqa: T201
+        print("    are implemented as method overrides in metadata.py (no extra files).")  # noqa: T201
+        print("    See CONNECTOR_CONTEXT.md for details.")  # noqa: T201
+    print()  # noqa: T201
 
     # --- Documentation & API info (for AI context) ---
-    print("--- Source Documentation (for AI context generation) ---")
-    print("  This info helps AI agents implement the connector logic.")
-    print()
+    print("--- Source Documentation (for AI context generation) ---")  # noqa: T201
+    print("  This info helps AI agents implement the connector logic.")  # noqa: T201
+    print()  # noqa: T201
 
     profile.docs_url = _prompt_optional("API/SDK documentation URL", "e.g. https://docs.example.com/api")
     profile.sdk_package = _prompt_optional("Python SDK package", "e.g. 'boto3', 'looker-sdk', PyPI name")
@@ -372,13 +372,13 @@ def collect_interactive() -> ConnectorProfile:
         "Any additional notes about the source?",
         "auth quirks, pagination, rate limits, special types, etc.",
     )
-    print()
+    print()  # noqa: T201
 
     # --- Docker image for integration tests ---
-    print("--- Integration Tests ---")
-    print("  Provide a Docker image so AI agents can generate real")
-    print("  testcontainers-based integration tests.")
-    print()
+    print("--- Integration Tests ---")  # noqa: T201
+    print("  Provide a Docker image so AI agents can generate real")  # noqa: T201
+    print("  testcontainers-based integration tests.")  # noqa: T201
+    print()  # noqa: T201
     profile.docker_image = _prompt_optional(
         "Docker image",
         "e.g. 'metabase/metabase:latest', 'mcr.microsoft.com/mssql/server:2022-latest'",
@@ -389,8 +389,8 @@ def collect_interactive() -> ConnectorProfile:
             try:
                 profile.docker_port = int(port_str)
             except ValueError:
-                print("    Invalid port number, skipping.")
-    print()
+                print("    Invalid port number, skipping.")  # noqa: T201
+    print()  # noqa: T201
 
     return profile
 
@@ -931,11 +931,6 @@ class {camel}Connection(BaseConnection[{camel}ConnectionConfig, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
-    def get_connection_dict(self) -> dict:
-        raise NotImplementedError(
-            "get_connection_dict is not implemented for {camel}"
-        )
-
     def test_connection(
         self,
         metadata: OpenMetadata,
@@ -1291,7 +1286,7 @@ def _get_base_info(p: ConnectorProfile):
     return base_class, base_module, ref, base_file
 
 
-def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
+def generate_connector_context(p: ConnectorProfile, root: Path) -> str:  # noqa: C901
     """Generate the CONNECTOR_CONTEXT.md that any AI agent can read to implement the connector."""
     camel = p.camel
     base_class, base_module, ref, base_class_file = _get_base_info(p)
@@ -1401,7 +1396,7 @@ def generate_connector_context(p: ConnectorProfile, root: Path) -> str:
     ref_files.append(f"{ref_dir}/service_spec.py")
 
     for rf in ref_files:
-        s.append(f"- `{rf}`")
+        s.append(f"- `{rf}`")  # noqa: PERF401
     s.append("")
     s.append("Also read the base class to understand the topology and abstract methods:")
     s.append(f"- `{base_class_file}`")

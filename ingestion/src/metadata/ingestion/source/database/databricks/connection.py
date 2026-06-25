@@ -16,6 +16,7 @@ Source connection handler
 from copy import deepcopy
 from functools import partial
 from typing import Optional
+from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -26,7 +27,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-    DatabricksConnection,
+    DatabricksConnection as DatabricksConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -36,12 +37,16 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     init_empty_connection_arguments,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.log_filters import (
+    suppress_user_agent_entry_deprecation_log,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -58,6 +63,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+suppress_user_agent_entry_deprecation_log()
+
 
 class DatabricksEngineWrapper:
     """Wrapper to store engine and schemas to avoid multiple calls"""
@@ -69,7 +76,7 @@ class DatabricksEngineWrapper:
         self.first_schema = None
         self.first_catalog = None
 
-    def get_schemas(self, schema_name: Optional[str] = None):
+    def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
         """Get schemas and cache them"""
         if schema_name is not None:
             with self.engine.connect() as connection:
@@ -100,7 +107,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return tables
+            return tables  # noqa: RET504
         return []
 
     def get_views(self):
@@ -110,10 +117,10 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return views
+            return views  # noqa: RET504
         return []
 
-    def get_catalogs(self, catalog_name: Optional[str] = None):
+    def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
         """Get catalogs"""
         catalogs = []
         if catalog_name is not None:
@@ -128,11 +135,15 @@ class DatabricksEngineWrapper:
         return catalogs
 
 
-def get_connection_url(connection: DatabricksConnection) -> str:
-    return f"{connection.scheme.value}://{connection.hostPort}"
+def get_connection_url(connection: DatabricksConnectionConfig) -> str:
+    scheme = connection.scheme.value if connection.scheme else "databricks"
+    url = f"{scheme}://{connection.hostPort}"
+    if connection.catalog:
+        url = f"{url}?catalog={quote_plus(connection.catalog)}"
+    return url
 
 
-def get_connection(connection: DatabricksConnection) -> Engine:
+def get_connection(connection: DatabricksConnectionConfig) -> Engine:
     """
     Create connection
     """
@@ -159,90 +170,95 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     return engine
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    connection: Engine,
-    service_connection: DatabricksConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        return get_connection(self.service_connection)
 
-    def test_database_query(engine: Engine, statement: str):
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
         """
-        Method used to execute the given query and fetch a result
-        to test if user has access to the tables specified
-        in the sql statement
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
         """
-        try:
-            connection = engine.connect()
-            connection.execute(text(statement)).fetchone()
-        except DatabaseError as soe:
-            logger.debug(f"Failed to fetch catalogs due to: {soe}")
+        connection = self.client
+        service_connection = self.service_connection
 
-    # Create wrapper to avoid multiple schema calls
-    engine_wrapper = DatabricksEngineWrapper(connection)
+        def test_database_query(engine: Engine, statement: str):
+            """
+            Method used to execute the given query and fetch a result
+            to test if user has access to the tables specified
+            in the sql statement
+            """
+            try:
+                connection = engine.connect()
+                connection.execute(text(statement)).fetchone()
+            except DatabaseError as soe:
+                logger.debug(f"Failed to fetch catalogs due to: {soe}")
 
-    # Helper function to get first catalog for tag queries
-    def get_first_catalog():
-        catalogs = engine_wrapper.get_catalogs(catalog_name=service_connection.catalog)
-        return catalogs[0] if catalogs else service_connection.catalog or "main"
+        # Create wrapper to avoid multiple schema calls
+        engine_wrapper = DatabricksEngineWrapper(connection)
 
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, connection),
-        "GetSchemas": partial(engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema),
-        "GetTables": engine_wrapper.get_tables,
-        "GetViews": engine_wrapper.get_views,
-        "GetDatabases": partial(engine_wrapper.get_catalogs, catalog_name=service_connection.catalog),
-        "GetQueries": partial(
-            test_database_query,
-            engine=connection,
-            statement=DATABRICKS_SQL_STATEMENT_TEST.format(query_history=service_connection.queryHistoryTable),
-        ),
-        "GetViewDefinitions": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_VIEW_DEFINITIONS,
-        ),
-        "GetCatalogTags": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_CATALOG_TAGS.format(database_name=get_first_catalog()),
-        ),
-        "GetSchemaTags": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_SCHEMA_TAGS.format(database_name=get_first_catalog()),
-        ),
-        "GetTableTags": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_TABLE_TAGS.format(database_name=get_first_catalog()),
-        ),
-        "GetColumnTags": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_COLUMN_TAGS.format(database_name=get_first_catalog()),
-        ),
-        "GetTableLineage": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_TABLE_LINEAGE,
-        ),
-        "GetColumnLineage": partial(
-            test_database_query,
-            engine=connection,
-            statement=TEST_COLUMN_LINEAGE,
-        ),
-    }
+        # Helper function to get first catalog for tag queries
+        def get_first_catalog():
+            catalogs = engine_wrapper.get_catalogs(catalog_name=service_connection.catalog)
+            return catalogs[0] if catalogs else service_connection.catalog or "main"
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=service_connection.connectionTimeout or timeout_seconds,
-    )
+        test_fn = {
+            "CheckAccess": partial(test_connection_engine_step, connection),
+            "GetSchemas": partial(engine_wrapper.get_schemas, schema_name=service_connection.databaseSchema),
+            "GetTables": engine_wrapper.get_tables,
+            "GetViews": engine_wrapper.get_views,
+            "GetDatabases": partial(engine_wrapper.get_catalogs, catalog_name=service_connection.catalog),
+            "GetQueries": partial(
+                test_database_query,
+                engine=connection,
+                statement=DATABRICKS_SQL_STATEMENT_TEST.format(query_history=service_connection.queryHistoryTable),
+            ),
+            "GetViewDefinitions": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_VIEW_DEFINITIONS,
+            ),
+            "GetCatalogTags": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_CATALOG_TAGS.format(database_name=get_first_catalog()),
+            ),
+            "GetSchemaTags": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_SCHEMA_TAGS.format(database_name=get_first_catalog()),
+            ),
+            "GetTableTags": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_TABLE_TAGS.format(database_name=get_first_catalog()),
+            ),
+            "GetColumnTags": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_COLUMN_TAGS.format(database_name=get_first_catalog()),
+            ),
+            "GetTableLineage": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_TABLE_LINEAGE,
+            ),
+            "GetColumnLineage": partial(
+                test_database_query,
+                engine=connection,
+                statement=TEST_COLUMN_LINEAGE,
+            ),
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=service_connection.connectionTimeout or timeout_seconds,
+        )

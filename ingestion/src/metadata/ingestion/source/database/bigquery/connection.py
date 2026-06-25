@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
-    BigQueryConnection,
+    BigQueryConnection as BigQueryConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -45,6 +45,7 @@ from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     execute_inspector_func,
     test_connection_engine_step,
@@ -60,7 +61,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def _add_location(url: str, connection: BigQueryConnection) -> str:
+def _add_location(url: str, connection: BigQueryConnectionConfig) -> str:
     """
     Attach the `usageLocation` value to the URL when available.
     """
@@ -81,7 +82,7 @@ def _add_location(url: str, connection: BigQueryConnection) -> str:
     return f"{url}{separator}location={encoded_location}"
 
 
-def get_connection_url(connection: BigQueryConnection) -> str:
+def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C901
     """
     Build the connection URL and set the project
     environment variable when needed
@@ -139,92 +140,93 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     return _add_location(url, connection)
 
 
-def get_connection(connection: BigQueryConnection) -> Engine:
-    """
-    Prepare the engine and the GCP credentials
-    """
-    set_google_credentials(gcp_credentials=connection.credentials)
-    kwargs = {}
-    if connection.billingProjectId:
-        kwargs["billing_project_id"] = connection.billingProjectId
+class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        connection = self.service_connection
+        set_google_credentials(gcp_credentials=connection.credentials)
+        kwargs = {}
+        if connection.billingProjectId:
+            kwargs["billing_project_id"] = connection.billingProjectId
 
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-        **kwargs,
-    )
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: BigQueryConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-
-    def get_tags(taxonomies):
-        for taxonomy in taxonomies:
-            policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
-            return policy_tags
-
-    def test_tags():
-        if not service_connection.includePolicyTags:
-            logger.info("'includePolicyTags' is set to false, so skipping this test.")
-            return None
-
-        taxonomy_project_ids = []
-        if engine.url.host:
-            taxonomy_project_ids.append(engine.url.host)
-        if service_connection.taxonomyProjectID:
-            taxonomy_project_ids.extend(service_connection.taxonomyProjectID)
-        if not taxonomy_project_ids:
-            logger.info("'taxonomyProjectID' is not set, so skipping this test.")
-            return None
-
-        taxonomy_location = service_connection.taxonomyLocation
-        if not taxonomy_location:
-            logger.info("'taxonomyLocation' is not set, so skipping this test.")
-            return None
-
-        taxonomies = []
-        for project_id in taxonomy_project_ids:
-            taxonomies.extend(
-                PolicyTagManagerClient().list_taxonomies(parent=f"projects/{project_id}/locations/{taxonomy_location}")
-            )
-        return get_tags(taxonomies)
-
-    def test_connection_inner(engine):
-        test_fn = {
-            "CheckAccess": partial(test_connection_engine_step, engine),
-            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-            "GetTables": partial(get_table_view_names, engine),
-            "GetViews": partial(get_table_view_names, engine),
-            "GetTags": test_tags,
-            "GetQueries": partial(
-                test_query,
-                engine=engine,
-                statement=BIGQUERY_TEST_STATEMENT.format(
-                    region=service_connection.usageLocation,
-                    creation_date=datetime.now().strftime("%Y-%m-%d"),
-                ),
-            ),
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+        return create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+            **kwargs,
         )
 
-    return test_connection_inner(engine)
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        engine = self.client
+        service_connection = self.service_connection
+
+        def get_tags(taxonomies):  # noqa: RET503  # pyright: ignore[reportMissingParameterType]
+            for taxonomy in taxonomies:
+                policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
+                return policy_tags  # noqa: RET504
+
+        def test_tags():
+            if not service_connection.includePolicyTags:
+                logger.info("'includePolicyTags' is set to false, so skipping this test.")
+                return None
+
+            taxonomy_project_ids = []
+            if engine.url.host:
+                taxonomy_project_ids.append(engine.url.host)
+            if service_connection.taxonomyProjectID:
+                taxonomy_project_ids.extend(service_connection.taxonomyProjectID)
+            if not taxonomy_project_ids:
+                logger.info("'taxonomyProjectID' is not set, so skipping this test.")
+                return None
+
+            taxonomy_location = service_connection.taxonomyLocation
+            if not taxonomy_location:
+                logger.info("'taxonomyLocation' is not set, so skipping this test.")
+                return None
+
+            taxonomies = []
+            for project_id in taxonomy_project_ids:
+                taxonomies.extend(
+                    PolicyTagManagerClient().list_taxonomies(
+                        parent=f"projects/{project_id}/locations/{taxonomy_location}"
+                    )
+                )
+            return get_tags(taxonomies)
+
+        def test_connection_inner(engine):  # pyright: ignore[reportMissingParameterType]
+            test_fn = {
+                "CheckAccess": partial(test_connection_engine_step, engine),
+                "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
+                "GetTables": partial(get_table_view_names, engine),
+                "GetViews": partial(get_table_view_names, engine),
+                "GetTags": test_tags,
+                "GetQueries": partial(
+                    test_query,
+                    engine=engine,
+                    statement=BIGQUERY_TEST_STATEMENT.format(
+                        region=service_connection.usageLocation,
+                        creation_date=datetime.now().strftime("%Y-%m-%d"),
+                    ),
+                ),
+            }
+
+            return test_connection_steps(
+                metadata=metadata,
+                test_fn=test_fn,
+                service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+                automation_workflow=automation_workflow,
+                timeout_seconds=timeout_seconds,
+            )
+
+        return test_connection_inner(engine)
 
 
 def get_table_view_names(connection, schema=None):

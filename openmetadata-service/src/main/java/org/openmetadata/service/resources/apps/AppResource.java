@@ -271,8 +271,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("agentType", agentTypes);
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<App> applications =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    applications
+        .getData()
+        .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
+    return applications;
   }
 
   @GET
@@ -588,12 +593,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 && ingestionPipelineRepository.isIngestionRunnerStreamableLogsEnabled(
                     ingestionPipeline.getIngestionRunner()));
     if (useStreamableLogs) {
+      PipelineStatus latestStatus =
+          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
       String effectiveRunId =
-          !nullOrEmpty(runId)
-              ? runId
-              : (ingestionPipeline.getPipelineStatuses() != null
-                  ? ingestionPipeline.getPipelineStatuses().getRunId()
-                  : null);
+          !nullOrEmpty(runId) ? runId : (latestStatus != null ? latestStatus.getRunId() : null);
       if (!nullOrEmpty(effectiveRunId)) {
         UUID runUuid;
         try {
@@ -695,24 +698,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -1520,11 +1507,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           service.setIngestionRunner(app.getIngestionRunner());
         }
 
+        IngestionPipelineRepository ingestionPipelineRepository =
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         PipelineServiceClientResponse status =
-            pipelineServiceClient.deployPipeline(ingestionPipeline, service);
+            ingestionPipelineRepository.deployIngestionPipeline(ingestionPipeline, service);
         if (status.getCode() == 200) {
-          IngestionPipelineRepository ingestionPipelineRepository =
-              (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
           ingestionPipelineRepository.createOrUpdate(
               uriInfo, ingestionPipeline, securityContext.getUserPrincipal().getName());
         } else {
@@ -1633,6 +1620,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
               limits.invalidateCache(entityType);
             }
 
+            repository.storeChangeEventForAsyncOperation(
+                deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
             WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {

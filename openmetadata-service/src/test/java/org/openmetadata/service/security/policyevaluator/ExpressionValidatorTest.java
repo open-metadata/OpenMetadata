@@ -49,6 +49,99 @@ public class ExpressionValidatorTest {
     }
   }
 
+  /**
+   * Bare references to no-arg boolean functions (e.g. {@code !isOwner}) parse as SpEL {@link
+   * org.springframework.expression.spel.ast.PropertyOrFieldReference} nodes, not method calls.
+   * SpEL resolves them to the matching {@code @Function} getter, so they are functionally
+   * identical to the parenthesised form and are documented as valid in {@code RuleEvaluator}'s
+   * {@code @Function} examples. The AST validator must accept them when the referenced name is
+   * an approved function. Customer-reported regression (Orsted): policies using {@code !isOwner}
+   * failed to save with "disallowed SpEL construct: PropertyOrFieldReference ('isOwner')".
+   */
+  @Test
+  void bareReferencesToApprovedFunctionsAreAllowed() {
+    String[] bareExpressions = {
+      "isOwner",
+      "!isOwner",
+      "noOwner",
+      "!noOwner",
+      "isReviewer",
+      "!isReviewer",
+      "matchTeam",
+      "hasDomain",
+      "noOwner() || isOwner",
+      "!noOwner && isOwner",
+      "!noOwner() && !isOwner"
+    };
+
+    for (String expression : bareExpressions) {
+      assertDoesNotThrow(
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Bare reference to an approved function '" + expression + "' should be allowed");
+    }
+  }
+
+  /**
+   * A bare reference is only safe because the name is gated on {@link
+   * ExpressionValidator#getAllowedFunctions()}. Standalone references to names that are not
+   * approved functions must still be rejected so the relaxation cannot be used to read
+   * arbitrary properties.
+   */
+  @Test
+  void bareReferencesToUnknownNamesAreRejected() {
+    String[] disallowedBareReferences = {"System", "entity", "someObject", "Runtime"};
+
+    for (String expression : disallowedBareReferences) {
+      Exception exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> ExpressionValidator.validateExpressionSafety(expression),
+              "Bare reference to non-function '" + expression + "' must be rejected");
+      assertTrue(
+          exception.getMessage().contains("is not allowed in policy expressions"),
+          "Exception should mention that the reference is not an allowed function");
+    }
+  }
+
+  /**
+   * Bare references are only meaningful for no-arg boolean functions. An arg-taking function such
+   * as {@code matchAnyTag} used bare would pass the node check but fail at SpEL evaluation (no
+   * such property/getter), so it is rejected up front - even though its parenthesised form is a
+   * valid allowed function.
+   */
+  @Test
+  void bareReferencesToArgTakingFunctionsAreRejected() {
+    String[] argTakingBareReferences = {"matchAnyTag", "matchAllTags", "inAnyTeam", "hasAnyRole"};
+
+    for (String expression : argTakingBareReferences) {
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> ExpressionValidator.validateExpressionSafety(expression),
+          "Bare reference to arg-taking function '" + expression + "' must be rejected");
+    }
+
+    assertDoesNotThrow(
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyTag('PII.Sensitive')"),
+        "The parenthesised call form of the same function must still be allowed");
+  }
+
+  @Test
+  void combinedBooleanWrappedConditionIsSafe() {
+    // Boolean wrappers (()/&&/||/!) only add safe nodes, so combining safe fragments stays safe.
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(matchAnyTag('Tier.Tier1')) && (!noOwner()) || (isOwner())"),
+        "Boolean-wrapped combination of safe fragments should stay safe");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "(isOwner()) && (T(java.lang.Runtime).getRuntime())"),
+        "Unsafe fragment in a combined condition must still be blocked");
+  }
+
   // T( - SpEL Type Reference
   @Test
   void testTypeReference_Positive() {
@@ -506,5 +599,110 @@ public class ExpressionValidatorTest {
     assertDoesNotThrow(
         () -> ExpressionValidator.validateExpressionSafety("  "),
         "Whitespace expression should not throw an exception");
+  }
+
+  /**
+   * Regex-based validation rejected expressions whose string-literal arguments contained
+   * tokens that looked like SpEL syntax (parens, identifier ( ... ), {@code System.}, etc.).
+   * The AST-based validator parses string content as {@link
+   * org.springframework.expression.spel.ast.StringLiteral} nodes and does not inspect them
+   * as code. Customer-reported regression: a test-suite name like
+   * {@code 'AENG - CSP work item bug checks (duration exceeded)'} now validates.
+   */
+  @Test
+  void testStringLiteralContentIsNotInterpretedAsSyntax() {
+    // Parens — the customer-reported case
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('AENG - CSP work item bug checks (duration exceeded)')"),
+        "Identifier followed by '(' inside a string literal should be allowed");
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('service.db.schema.table(beta)')"),
+        "Trailing parenthesised qualifier inside a string literal should be allowed");
+
+    // Dangerous-looking tokens that are inert when inside a string literal
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('this contains System.exit(0) as text')"),
+        "Dangerous-looking syntax inside a string literal should be allowed (cannot execute)");
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('a name containing T(java.lang.Runtime)')"),
+        "SpEL type-reference syntax inside a string literal should be allowed (cannot execute)");
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('table with new ProcessBuilder() in its name')"),
+        "Constructor syntax inside a string literal should be allowed (cannot execute)");
+
+    // SpEL doubled-single-quote escape inside a string literal
+    assertDoesNotThrow(
+        () -> ExpressionValidator.validateExpressionSafety("matchAnyEntityFqn('it''s a name')"),
+        "Escaped single quote (doubled) inside a string literal should be allowed");
+
+    // Multiple parens-containing names in one expression
+    assertDoesNotThrow(
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyEntityFqn('first (a)') && matchAnyEntityFqn('second (b)')"),
+        "Multiple string literals each containing parens should all be allowed");
+  }
+
+  /**
+   * Unsafe SpEL constructs remain blocked even when nested inside otherwise-safe
+   * combinators — the AST walker rejects them at the node level, not by surface-string
+   * pattern matching.
+   */
+  @Test
+  void testUnsafeConstructsRejectedInsideCombinators() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            ExpressionValidator.validateExpressionSafety(
+                "matchAnyTag('PII') ? T(java.lang.Runtime).getRuntime() : isOwner()"),
+        "Type reference inside a ternary branch should be blocked");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("noOwner() && (new java.io.File('x'))"),
+        "Constructor inside a parenthesised sub-expression should be blocked");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("!System.exit(0)"),
+        "Property access on System remains blocked even under negation");
+  }
+
+  /** Malformed SpEL must surface as an IllegalArgumentException, not a crash. */
+  @Test
+  void testMalformedExpressionsThrow() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("noOwner( && isOwner()"),
+        "Unbalanced parens should throw");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("'unterminated"),
+        "Unterminated string should throw");
+  }
+
+  /**
+   * Arithmetic is not in the policy/alert allowlist. Data Insight evaluates it via {@link
+   * org.openmetadata.service.util.DataInsightFormulaEvaluator#evaluate}, which bypasses
+   * this validator.
+   */
+  @Test
+  void testArithmeticIsRejectedByPolicyValidator() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("1 + 2"),
+        "Addition should be rejected by the policy/alert validator");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ExpressionValidator.validateExpressionSafety("((0.0 / 1500.0) * 100)"),
+        "Substituted DI chart formula shape should be rejected by the policy/alert validator");
   }
 }

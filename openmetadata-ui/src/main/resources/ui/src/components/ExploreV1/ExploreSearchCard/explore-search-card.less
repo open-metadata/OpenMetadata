@@ -13,22 +13,63 @@
 @import '../../../styles/variables.less';
 
 .explore-search-card {
-  padding: 20px;
+  padding: 12px 16px;
   position: relative;
-  border-radius: 12px;
-  border-left: 4px solid transparent;
-  opacity: 0.95;
-  background-color: @grey-9 !important;
-  border: 0.5px solid #eaecf5;
-  margin: 0 0 20px;
+  border-radius: 10px;
+  background-color: @white;
+  border: 1px solid @border-color;
+  margin: 0 0 10px;
   overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
   .no-owner-text {
     font-size: @size-sm;
     font-weight: @font-regular;
   }
+
+  // Density: the design fits ~5 cards per viewport — compact title,
+  // single-line breadcrumb, tight description and meta rows.
+  .entity-breadcrumb {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+
+    .ant-breadcrumb {
+      font-size: 12px;
+    }
+  }
+
+  [data-testid='entity-header-display-name'] {
+    font-size: 15px;
+    line-height: 20px;
+  }
+
+  .p-t-sm {
+    padding-top: 4px;
+  }
+
+  .description-text {
+    margin-bottom: 6px;
+    font-size: 13px;
+
+    .ant-typography {
+      margin-bottom: 0;
+      font-size: 13px;
+    }
+  }
+
+  &:hover {
+    border-color: @primary-1;
+    box-shadow: 0 1px 3px rgba(10, 13, 18, 0.1);
+  }
+
+  // Selection highlights the box only — clean blue border on a white card,
+  // no left accent bar and no tinted fill (matches the redesign). The widths
+  // are explicit so no legacy left-accent rule can thicken one edge.
   &.highlight-card {
-    border-left: 4px solid @primary-color;
-    background: @primary-50 !important;
+    border: 1px solid @primary-color;
+    background-color: @white;
   }
 
   &:last-child {

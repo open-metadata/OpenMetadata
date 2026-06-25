@@ -23,19 +23,18 @@ import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityFieldDisplay } from '../../../../utils/FeedUtils';
 import {
   entityDisplayName,
-  getEntityFieldDisplay,
   prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
 import './feed-card-header-v1.style.less';
-
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
   createdBy,

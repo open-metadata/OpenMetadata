@@ -208,7 +208,7 @@ class TestSsrsSource:
         assert ssrs_source.get_project_name(MOCK_REPORTS[2]) is None
 
     def test_yield_dashboard(self, ssrs_source):
-        for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):
+        for report, expected in zip(MOCK_REPORTS[:2], EXPECTED_DASHBOARDS):  # noqa: B905
             ssrs_source.context.get().__dict__["project_name"] = ssrs_source.get_project_name(report)
             results = list(ssrs_source.yield_dashboard(report))
             assert len(results) == 1

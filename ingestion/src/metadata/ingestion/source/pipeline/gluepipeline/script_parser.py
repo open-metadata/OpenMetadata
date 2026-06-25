@@ -18,7 +18,7 @@ source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
 
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -124,7 +124,7 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
 S3_PATH_PATTERN = re.compile(r"s3[an]?://[^\s\"',\]\}]+")
 
 
-def _extract_kwarg(block: str, key: str) -> Optional[str]:
+def _extract_kwarg(block: str, key: str) -> Optional[str]:  # noqa: UP045
     pattern = re.compile(
         rf'{key}\s*=\s*["\']([^"\']+)["\']',
     )
@@ -132,7 +132,7 @@ def _extract_kwarg(block: str, key: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def _extract_dict_value(block: str, key: str) -> Optional[str]:
+def _extract_dict_value(block: str, key: str) -> Optional[str]:  # noqa: UP045
     pattern = re.compile(
         rf'["\']?{key}["\']?\s*:\s*["\']([^"\']+)["\']',
     )
@@ -140,7 +140,7 @@ def _extract_dict_value(block: str, key: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def _extract_s3_paths(block: str) -> List[str]:
+def _extract_s3_paths(block: str) -> List[str]:  # noqa: UP006
     return list(set(S3_PATH_PATTERN.findall(block)))
 
 
@@ -152,20 +152,20 @@ class CatalogRef:
 
 @dataclass
 class JDBCRef:
-    connection_name: Optional[str] = None
-    jdbc_url: Optional[str] = None
-    database: Optional[str] = None
-    table: Optional[str] = None
+    connection_name: Optional[str] = None  # noqa: UP045
+    jdbc_url: Optional[str] = None  # noqa: UP045
+    database: Optional[str] = None  # noqa: UP045
+    table: Optional[str] = None  # noqa: UP045
 
 
 @dataclass
 class ScriptLineageResult:
-    s3_sources: List[str] = field(default_factory=list)
-    s3_targets: List[str] = field(default_factory=list)
-    catalog_sources: List[CatalogRef] = field(default_factory=list)
-    catalog_targets: List[CatalogRef] = field(default_factory=list)
-    jdbc_sources: List[JDBCRef] = field(default_factory=list)
-    jdbc_targets: List[JDBCRef] = field(default_factory=list)
+    s3_sources: List[str] = field(default_factory=list)  # noqa: UP006
+    s3_targets: List[str] = field(default_factory=list)  # noqa: UP006
+    catalog_sources: List[CatalogRef] = field(default_factory=list)  # noqa: UP006
+    catalog_targets: List[CatalogRef] = field(default_factory=list)  # noqa: UP006
+    jdbc_sources: List[JDBCRef] = field(default_factory=list)  # noqa: UP006
+    jdbc_targets: List[JDBCRef] = field(default_factory=list)  # noqa: UP006
 
     @property
     def has_lineage(self) -> bool:
@@ -239,7 +239,7 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
             logger.debug(f"Failed to parse from_options block: {exc}")
 
 
-def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
+def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):  # noqa: C901
     for match in WRITE_JDBC_CONF_PATTERN.finditer(source_code):
         try:
             block = match.group(1)
@@ -301,14 +301,14 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult):
 def _parse_spark_read(source_code: str, result: ScriptLineageResult):
     for match in SPARK_READ_FORMAT_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
                 logger.debug(f"Found Spark read S3 source: {path}")
 
     for match in SPARK_READ_FORMAT_LOAD_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_sources:
                 result.s3_sources.append(path)
                 logger.debug(f"Found Spark read.format().load() S3 source: {path}")
@@ -335,14 +335,14 @@ def _parse_spark_read(source_code: str, result: ScriptLineageResult):
 def _parse_spark_write(source_code: str, result: ScriptLineageResult):
     for match in SPARK_WRITE_FORMAT_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
                 logger.debug(f"Found Spark write S3 target: {path}")
 
     for match in SPARK_WRITE_FORMAT_SAVE_PATTERN.finditer(source_code):
         path = match.group(1)
-        if path.startswith(("s3://", "s3a://", "s3n://")):
+        if path.startswith(("s3://", "s3a://", "s3n://")):  # noqa: SIM102
             if path not in result.s3_targets:
                 result.s3_targets.append(path)
                 logger.debug(f"Found Spark write.format().save() S3 target: {path}")

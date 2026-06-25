@@ -86,6 +86,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -619,11 +620,27 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
     List<GlossaryTerm> childTerms = getAllTerms(updated);
 
+    // A glossary rename cascades the FQN to every child term, so their open approval tasks (keyed
+    // by
+    // aboutFqnHash) and workflow-instance relatedEntity must follow the rename exactly as a term
+    // move/rename does — otherwise the tasks become unfindable at the new FQN and the workflow
+    // history card goes stale.
+    Map<String, String> taskFqnHashUpdates = new HashMap<>();
     for (GlossaryTerm child : childTerms) {
-      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
+      String childNewFqn = child.getFullyQualifiedName();
+      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, childNewFqn);
       Entity.getFeedRepository()
           .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+      if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        taskFqnHashUpdates.put(
+            FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
+      }
     }
+    // The glossary FQN is the prefix of every child term's FQN, so one subtree repoint covers them
+    // all; child approval tasks (opaque hash) are rewritten per term.
+    updateTaskAboutFqnHashes(taskFqnHashUpdates);
+    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {
@@ -642,12 +659,24 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       renameAllowed = true;
     }
 
+    @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+    }
+
+    private boolean managedFieldChanged() {
+      return !Objects.equals(original.getName(), updated.getName())
+          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+          || !Objects.equals(original.getDescription(), updated.getDescription());
     }
 
     public void updateName(Glossary updated) {
@@ -675,7 +704,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       // Glossary name changed - update tag names starting from glossary and all the children tags
       LOG.info("Glossary FQN changed from {} to {}", oldFqn, newFqn);
       // Drop cache entries for every glossary term under this glossary BEFORE we rewrite the DB.
-      invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+      // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+      // re-populated with the pre-rename row between this call and glossaryTermDAO.updateFqn.
+      // The pass below runs after updateFqn but inside this transaction — see
+      // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+      List<EntityDAO.EntityIdFqnPair> renamedTerms =
+          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().updateTagPrefix(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
       recordChange("name", FullyQualifiedName.unquoteName(oldFqn), updated.getName());
@@ -695,6 +729,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           condition ->
               PolicyConditionUpdater.renamePrefixInCondition(
                   condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+      // Cascade rename into the search index — child term FQNs and the embedded glossary denorm
+      // (glossary.name / glossary.fullyQualifiedName) must reflect the new name. This used to be
+      // driven by entityRelationshipReindex, which has no caller since PR #19550, so the call has
+      // to happen inline here (mirroring Domain / Classification / GlossaryTerm renames).
+      updateAssetIndexes(original, updated);
+
+      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     public void invalidateGlossary(UUID classificationId) {

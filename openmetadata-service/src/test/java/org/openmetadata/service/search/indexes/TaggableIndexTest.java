@@ -70,6 +70,66 @@ class TaggableIndexTest {
     assertNotNull(doc.get("glossaryTags"));
   }
 
+  /**
+   * Locks in the doc-shape separation that both the live-indexing path
+   * ({@code SearchRepository.updateEntityIndex}) and the SearchIndexApp reindex path
+   * ({@code BulkSink.addEntity}) produce — they converge on this same {@code applyTagFields}.
+   *
+   * <p>Tier is lifted out of {@code tags[]} onto the {@code tier} field; classification +
+   * glossary tags stay in {@code tags[]}. Consumers (UI, DQ filters, RBAC) must filter via the
+   * dedicated fields ({@code tier.tagFQN}, {@code certification.tagLabel.tagFQN}) — treating
+   * {@code tags[]} as an all-encompassing bag was the wrong contract.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tierIsLiftedOutOfTagsArrayOntoDedicatedField() {
+    TagLabel pii =
+        new TagLabel().withTagFQN("PII.Sensitive").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel glossary =
+        new TagLabel()
+            .withTagFQN("BusinessGlossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY);
+    TagLabel tier =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+
+    entityStaticMock
+        .when(() -> Entity.getEntityTags(anyString(), any(Dashboard.class)))
+        .thenReturn(new java.util.ArrayList<>(List.of(pii, glossary, tier)));
+
+    Dashboard dashboard =
+        new Dashboard()
+            .withId(UUID.randomUUID())
+            .withName("tier-separated")
+            .withFullyQualifiedName("svc.tier-separated");
+
+    DashboardIndex index = new DashboardIndex(dashboard);
+    Map<String, Object> doc = new HashMap<>();
+
+    index.applyTagFields(doc);
+
+    List<TagLabel> tags = (List<TagLabel>) doc.get("tags");
+    assertEquals(
+        2,
+        tags.size(),
+        "Tier must NOT be in tags[]; only classification and glossary tags belong there");
+    assertTrue(
+        tags.stream().noneMatch(t -> t.getTagFQN().startsWith("Tier.")),
+        "no Tier.* TagLabel may leak into tags[]; consumers must filter via tier.tagFQN");
+
+    TagLabel tierField = (TagLabel) doc.get("tier");
+    assertNotNull(tierField, "tier field must carry the lifted Tier TagLabel");
+    assertEquals("Tier.Tier1", tierField.getTagFQN());
+
+    List<String> classificationTags = (List<String>) doc.get("classificationTags");
+    assertTrue(
+        classificationTags.contains("PII.Sensitive"),
+        "non-Tier classification FQNs go on classificationTags");
+
+    List<String> glossaryTags = (List<String>) doc.get("glossaryTags");
+    assertTrue(
+        glossaryTags.contains("BusinessGlossary.Revenue"), "glossary FQNs go on glossaryTags");
+  }
+
   @Test
   void testApplyTagFieldsWithEmptyTags() {
     entityStaticMock

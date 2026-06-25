@@ -29,6 +29,38 @@ import { searchQuery } from '../../../rest/searchAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <button {...props}>{children}</button>
+    )),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    )),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    )),
+    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+      <div role="menuitem" onClick={onClick} {...props}>
+        {children}
+      </div>
+    )),
+  },
+}));
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
+}));
+
 const mockTableQueriesProp: TableQueriesProp = {
   tableId: 'id',
 };

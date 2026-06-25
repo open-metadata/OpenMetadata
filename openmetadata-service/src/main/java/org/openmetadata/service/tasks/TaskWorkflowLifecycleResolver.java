@@ -208,7 +208,8 @@ public final class TaskWorkflowLifecycleResolver {
       case TestCaseResolution -> "TestCaseResolutionTaskWorkflow";
       case IncidentResolution -> "IncidentResolutionTaskWorkflow";
       case PipelineReview -> "PipelineReviewTaskWorkflow";
-      case DataQualityReview -> "RecognizerFeedbackReviewWorkflow";
+      case DataQualityReview -> "DataQualityReviewTaskWorkflow";
+      case RecognizerFeedbackApproval -> "RecognizerFeedbackReviewWorkflow";
       case CustomTask -> "CustomTaskWorkflow";
       default -> "CustomTaskWorkflow";
     };
@@ -233,7 +234,8 @@ public final class TaskWorkflowLifecycleResolver {
       case "TestCaseResolutionTaskWorkflow" -> TaskEntityType.TestCaseResolution;
       case "IncidentResolutionTaskWorkflow" -> TaskEntityType.IncidentResolution;
       case "PipelineReviewTaskWorkflow" -> TaskEntityType.PipelineReview;
-      case "RecognizerFeedbackReviewWorkflow" -> TaskEntityType.DataQualityReview;
+      case "DataQualityReviewTaskWorkflow" -> TaskEntityType.DataQualityReview;
+      case "RecognizerFeedbackReviewWorkflow" -> TaskEntityType.RecognizerFeedbackApproval;
       case "GenericReviewTaskWorkflow" -> TaskEntityType.RequestApproval;
       case "GenericIncidentTaskWorkflow" -> TaskEntityType.IncidentResolution;
       case "CustomTaskWorkflow" -> TaskEntityType.CustomTask;
@@ -257,7 +259,7 @@ public final class TaskWorkflowLifecycleResolver {
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;
-      case DataQualityReview, PipelineReview -> TaskCategory.Review;
+      case DataQualityReview, PipelineReview, RecognizerFeedbackApproval -> TaskCategory.Review;
       case CustomTask -> TaskCategory.Custom;
     };
   }
@@ -271,11 +273,11 @@ public final class TaskWorkflowLifecycleResolver {
         "DomainUpdateTaskWorkflow",
         "GlossaryApprovalTaskWorkflow",
         "RequestApprovalTaskWorkflow",
-        "DataAccessRequestTaskWorkflow",
         "SuggestionTaskWorkflow",
         "TestCaseResolutionTaskWorkflow",
         "IncidentResolutionTaskWorkflow",
         "PipelineReviewTaskWorkflow",
+        "DataQualityReviewTaskWorkflow",
         "RecognizerFeedbackReviewWorkflow",
         "CustomTaskWorkflow",
         // Keep legacy generic defaults seedable during cutover so older bindings remain valid.
@@ -412,6 +414,7 @@ public final class TaskWorkflowLifecycleResolver {
       case Rejected, AutoRejected -> "reject";
       case Completed -> "complete";
       case Cancelled -> "cancel";
+      case Revoked -> "revoke";
       case TimedOut -> "timeout";
     };
   }
@@ -574,7 +577,7 @@ public final class TaskWorkflowLifecycleResolver {
                       "recommendation", stringProperty(),
                       "attachments", Map.of("type", "array", "items", objectProperty()))))
           : null;
-      case DataQualityReview -> taskCategory == TaskCategory.Review
+      case DataQualityReview, RecognizerFeedbackApproval -> taskCategory == TaskCategory.Review
           ? defaultSchema(
               taskType,
               taskCategory,

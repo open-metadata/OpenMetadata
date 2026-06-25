@@ -13,10 +13,10 @@ Base class for ingesting mlmodel services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -75,7 +75,6 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -89,7 +88,6 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -114,7 +112,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MlModelServiceTopology()
     context = TopologyContextManager(topology)
-    mlmodel_source_state: Set = set()
+    mlmodel_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -157,15 +155,15 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         """Method to return MlModel Entities"""
 
     @abstractmethod
-    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:
+    def _get_hyper_params(self, *args, **kwargs) -> Optional[List[MlHyperParameter]]:  # noqa: UP006, UP045
         """Get the Hyper Parameters from the MlModel"""
 
     @abstractmethod
-    def _get_ml_store(self, *args, **kwargs) -> Optional[MlStore]:
+    def _get_ml_store(self, *args, **kwargs) -> Optional[MlStore]:  # noqa: UP045
         """Get the Ml Store from the model version object"""
 
     @abstractmethod
-    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:
+    def _get_ml_features(self, *args, **kwargs) -> Optional[List[MlFeature]]:  # noqa: UP006, UP045
         """Pick up features"""
 
     @abstractmethod
@@ -185,7 +183,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedMlModels,
+                recursive=self.source_config.markDeletedMlModels,
                 params={"service": self.context.get().mlmodel_service},
             )
 
@@ -206,7 +204,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def get_db_service_prefixes(self) -> List[str]:
+    def get_db_service_prefixes(self) -> List[str]:  # noqa: UP006
         """
         Get the list of db service prefixes
         """
@@ -217,8 +215,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
     def parse_db_service_prefix(
-        self, db_service_prefix: Optional[str]
-    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:
+        self,
+        db_service_prefix: Optional[str],  # noqa: UP045
+    ) -> Tuple[Optional[str], Optional[str], Optional[str], Optional[str]]:  # noqa: UP006, UP045
         """
         Parse the db service prefix
         Returns:
@@ -228,7 +227,9 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         return tuple(prefix_parts + ([None] * (4 - len(prefix_parts))))
 
     def yield_mlmodel_lineage_details(
-        self, mlmodel_details: Any, db_service_prefix: Optional[str] = None
+        self,
+        mlmodel_details: Any,
+        db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between MLModel and source tables.
@@ -246,7 +247,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 yield from self.yield_lineage_request(lineage)
 
     def yield_lineage_request(
-        self, lineage: Optional[Either[AddLineageRequest]] = None
+        self,
+        lineage: Optional[Either[AddLineageRequest]] = None,  # noqa: UP045
     ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Method to yield lineage request

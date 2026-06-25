@@ -14,7 +14,7 @@ Min Metric definition
 """
 
 from functools import partial
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional  # noqa: UP035
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
@@ -121,36 +121,38 @@ class Min(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[Optional[float], Optional[float]](
+        return PandasComputation[Optional[float], Optional[float]](  # noqa: UP045
             create_accumulator=lambda: None,
             update_accumulator=lambda acc, df: Min.update_accumulator(acc, df, self.col),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_min: Optional[float], df: "pd.DataFrame", column) -> Optional[float]:
+    def update_accumulator(current_min: Optional[float], df: "pd.DataFrame", column) -> Optional[float]:  # noqa: UP045
         """Computes one DataFrame chunk and updates the running minimum
 
         Maintains a single minimum value (not a list). Compares chunk's min
         with current minimum and returns the smaller value.
         """
-        import pandas as pd
+        import pandas as pd  # noqa: PLC0415
+        from pandas import Timestamp  # noqa: PLC0415
 
-        chunk_min = None
+        chunk_min: float | None = None
 
         if is_quantifiable(column.type):
-            chunk_min = df[column.name].min()
+            raw = df[column.name].min()
+            chunk_min = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
                 min_val = pd.to_datetime(df[column.name]).min()
-                if not pd.isnull(min_val):
+                if isinstance(min_val, Timestamp) and not pd.isnull(min_val):
                     chunk_min = int(min_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 min_val = pd.to_timedelta(df[column.name]).min()
                 if not pd.isnull(min_val):
                     chunk_min = min_val.seconds
 
-        if chunk_min is None or pd.isnull(chunk_min):
+        if chunk_min is None:
             return current_min
 
         if current_min is None:
@@ -158,7 +160,7 @@ class Min(StaticMetric):
 
         return min(current_min, chunk_min)
 
-    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:  # noqa: UP045
         """nosql function"""
         if is_quantifiable(self.col.type):
             return partial(adaptor.min, column=self.col)

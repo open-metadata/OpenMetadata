@@ -1,5 +1,6 @@
+import copy
 from itertools import groupby
-from typing import List, Optional, Sequence, Union, final
+from typing import List, Optional, Sequence, final  # noqa: UP035
 
 from presidio_analyzer import (
     AnalyzerEngine,
@@ -39,9 +40,9 @@ TARGET_MAP = {
 class TagAnalysis(BaseModel):
     tag: Tag
     score: float
-    explanation: Optional[str]
-    recognizer_results: List[RecognizerResult] = []
-    target: Optional[recognizer.Target] = None
+    explanation: Optional[str]  # noqa: UP045
+    recognizer_results: List[RecognizerResult] = []  # noqa: UP006
+    target: Optional[recognizer.Target] = None  # noqa: UP045
 
     @final
     class Config:
@@ -79,6 +80,12 @@ class TagAnalyzer:
             get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
         )
 
+    def _supports_language(self, created: EntityRecognizer) -> bool:
+        return self._language is ClassificationLanguage.any or created.supported_language in {
+            ClassificationLanguage.any.value,
+            self._language.value,
+        }
+
     def get_recognizers_by(self, target: recognizer.Target) -> list[EntityRecognizer]:
         if self.tag.autoClassificationEnabled is False:
             return []
@@ -94,12 +101,7 @@ class TagAnalyzer:
                 continue
 
             created = PresidioRecognizerFactory.create_recognizer(recognizer)
-            if created is not None:
-                if (
-                    self._language is not ClassificationLanguage.any
-                    and created.supported_language != self._language.value
-                ):
-                    continue
+            if created is not None and self._supports_language(created):
                 recognizers.append(created)
 
         return recognizers
@@ -116,13 +118,36 @@ class TagAnalyzer:
     def _column_name(self) -> str:
         return self._column.name.root
 
+    def _normalize_recognizer_language(
+        self, recognizer_obj: EntityRecognizer, effective_language: str
+    ) -> EntityRecognizer:
+        """Normalize recognizer with 'any' language replaced by effective_language.
+
+        Presidio's RecognizerRegistry uses strict equality on supported_language,
+        so 'any' will not match specific language codes like 'en'. This method
+        translates 'any' to a concrete language for Presidio's filter to work.
+        """
+        if recognizer_obj.supported_language != ClassificationLanguage.any.value:
+            return recognizer_obj
+        recognizer_copy = copy.copy(recognizer_obj)
+        recognizer_copy.supported_language = effective_language
+        return recognizer_copy
+
     def build_analyzer_with(
         self,
         recognizers: list[EntityRecognizer],
-        nlp_engine: Optional[NlpEngine] = None,
+        nlp_engine: Optional[NlpEngine] = None,  # noqa: UP045
+        effective_language: Optional[str] = None,  # noqa: UP045
     ) -> AnalyzerEngine:
-        supported_languages = [rec.supported_language for rec in recognizers]
-        recognizer_registry = RecognizerRegistry(recognizers=recognizers, supported_languages=supported_languages)
+        effective_lang = effective_language or self._language.value
+        if effective_lang == ClassificationLanguage.any.value:
+            raise ValueError(
+                "build_analyzer_with requires a concrete language when the analyzer language is 'any'. "
+                "Pass effective_language explicitly."
+            )
+        normalized_recs = [self._normalize_recognizer_language(rec, effective_lang) for rec in recognizers]
+        supported_languages = [rec.supported_language for rec in normalized_recs]
+        recognizer_registry = RecognizerRegistry(recognizers=normalized_recs, supported_languages=supported_languages)
         effective_nlp = nlp_engine if nlp_engine is not None else self._nlp_engine
         return AnalyzerEngine(
             registry=recognizer_registry,
@@ -132,9 +157,9 @@ class TagAnalyzer:
 
     def _analyze_with(
         self,
-        text_or_values: Union[str, Sequence[str]],
+        text_or_values: str | Sequence[str],
         recognizers: list[EntityRecognizer],
-        context: Optional[list[str]] = None,
+        context: Optional[list[str]] = None,  # noqa: UP045
     ) -> list[RecognizerResult]:
         values = [text_or_values] if isinstance(text_or_values, str) else list(text_or_values)
         results: list[RecognizerResult] = []
@@ -155,54 +180,63 @@ class TagAnalyzer:
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
             lang_recognizers = list(group)
+            if lang == ClassificationLanguage.any.value:
+                effective_lang = ClassificationLanguage.en.value
+                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage.en)
+            else:
+                effective_lang = lang
+                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage(lang))
+
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
-                nlp_engine=load_nlp_engine(classification_language=ClassificationLanguage(lang)),
+                nlp_engine=effective_nlp,
+                effective_language=effective_lang,
             )
             for value in values:
                 results.extend(
                     analyzer.analyze(
                         value,
-                        language=lang,
+                        language=effective_lang,
                         context=context,
                         return_decision_process=True,
                     )
                 )
         return results
 
-    def analyze_content(self, values: Sequence[str]) -> TagAnalysis:
-        recognizers = self.content_recognizers
-
-        if not recognizers:
-            return self._build_tag_analysis([], 1, recognizer.Target.content)
-
-        context = split_column_name(self._column_name)
-        results = self._analyze_with(values, recognizers, context=context)
-
-        return self._build_tag_analysis(results, len(values), recognizer.Target.content)
-
-    def analyze_column(self) -> TagAnalysis:
-        recognizers = self.column_recognizers
-
-        if not recognizers:
-            return self._build_tag_analysis([], 1, recognizer.Target.column_name)
-
-        results = self._analyze_with(self._column_name, recognizers)
-
-        return self._build_tag_analysis(results, 1, recognizer.Target.column_name)
-
-    def _build_tag_analysis(
+    def analyze(
         self,
-        results: list[RecognizerResult],
-        analysis_count: int,
-        target: recognizer.Target,
+        str_values: Sequence[str],
+        run_column_analysis: bool = False,
     ) -> TagAnalysis:
+        content_results: list[RecognizerResult] = []
+        content_score = 0.0
+        if str_values:
+            content_recognizers = self.content_recognizers
+            if content_recognizers:
+                context = split_column_name(self._column_name)
+                content_results = self._analyze_with(str_values, content_recognizers, context=context)
+                content_score = min(sum(r.score for r in content_results) / len(str_values), 1.0)
+
+        column_results: list[RecognizerResult] = []
+        column_score = 0.0
+        if run_column_analysis:
+            column_recognizers = self.column_recognizers
+            if column_recognizers:
+                column_results = self._analyze_with(self._column_name, column_recognizers)
+                column_score = min(sum(r.score for r in column_results), 1.0)
+
+        column_wins = column_score >= content_score and bool(column_results)
+        score = max(content_score, column_score)
+        target = recognizer.Target.column_name if column_wins else recognizer.Target.content
+        winning_results = column_results if column_wins else content_results
+        all_results = (column_results + content_results) if column_wins else (content_results + column_results)
+
         return TagAnalysis(
             tag=self.tag,
-            score=sum(r.score for r in results) / analysis_count,
-            explanation=explain_recognition_results(results) if results else None,
-            recognizer_results=results,
-            target=target,
+            score=score,
+            explanation=explain_recognition_results(all_results) if all_results else None,
+            recognizer_results=winning_results,
+            target=target if winning_results else None,
         )
 
     def __repr__(self) -> str:

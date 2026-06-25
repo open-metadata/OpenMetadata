@@ -13,7 +13,7 @@ Client to interact with the Airflow REST API
 """
 
 import traceback
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 from urllib.parse import quote
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
@@ -57,7 +57,7 @@ class AirflowApiClient:
 
     def __init__(self, config: AirflowConnection):
         self.config = config
-        self._detected_version: Optional[str] = None
+        self._detected_version: Optional[str] = None  # noqa: UP045
 
         rest_config = config.connection
         auth_config = rest_config.authConfig
@@ -72,6 +72,10 @@ class AirflowApiClient:
             # Use standard REST client for other authentication types
             self.mwaa_client = None
             auth_token_mode = "Bearer"
+            # getattr() avoids the union-type attribute-access errors that direct
+            # rest_config.verifySSL access raises against the connection-config Union.
+            _verify_value = getattr(rest_config, "verifySSL", None)
+            verify_ssl: bool = True if _verify_value is None else bool(_verify_value)
 
             if isinstance(auth_config, AccessToken):
                 auth_token_fn = build_access_token_callback(auth_config.token.get_secret_value())
@@ -80,7 +84,7 @@ class AirflowApiClient:
                     host=clean_uri(str(config.hostPort)),
                     username=auth_config.username,
                     password=auth_config.password.get_secret_value(),
-                    verify=rest_config.verifySSL,
+                    verify=verify_ssl,
                 )
             elif isinstance(auth_config, GcpServiceAccount):
                 auth_token_fn = build_gcp_token_callback(auth_config.credentials)
@@ -93,7 +97,7 @@ class AirflowApiClient:
                 auth_header="Authorization" if auth_token_fn else None,
                 auth_token=auth_token_fn,
                 auth_token_mode=auth_token_mode,
-                verify=rest_config.verifySSL,
+                verify=verify_ssl,
             )
             self.client = TrackedREST(client_config, source_name="airflow_api")
 
@@ -120,7 +124,7 @@ class AirflowApiClient:
         for version in ("v2", "v1"):
             try:
                 self.client.get(f"/{version}/version")
-                return version
+                return version  # noqa: TRY300
             except HTTPError as exc:
                 if exc.response is not None and exc.response.status_code in (401, 403):
                     raise
@@ -146,7 +150,7 @@ class AirflowApiClient:
             try:
                 return response.json()
             except Exception as exc:
-                logger.warning(f"Failed to parse JSON response: {exc}")
+                logger.error(f"Failed to parse JSON response: {exc}")
                 logger.warning(f"Response content type: {response.headers.get('content-type')}")
                 logger.debug(f"Response status code: {response.status_code}")
                 logger.debug(f"Response text: {response.text[:500]}")
@@ -192,8 +196,8 @@ class AirflowApiClient:
         )
         return self._parse_response(response)
 
-    def _paginate(self, path: str, key: str, limit: int = 100) -> List[dict]:
-        result: List[dict] = []
+    def _paginate(self, path: str, key: str, limit: int = 100) -> List[dict]:  # noqa: UP006
+        result: List[dict] = []  # noqa: UP006
         offset = 0
         while True:
             separator = "&" if "?" in path else "?"
@@ -217,7 +221,7 @@ class AirflowApiClient:
                 break
         return result
 
-    def get_all_dags(self) -> List[dict]:
+    def get_all_dags(self) -> List[dict]:  # noqa: UP006
         if self.mwaa_client:
             return self.mwaa_client.get_all_dags()
 
@@ -283,7 +287,7 @@ class AirflowApiClient:
             tasks=tasks,
         )
 
-    def get_dag_runs(self, dag_id: str, limit: int = 10) -> List[AirflowApiDagRun]:
+    def get_dag_runs(self, dag_id: str, limit: int = 10) -> List[AirflowApiDagRun]:  # noqa: UP006
         if self.mwaa_client:
             return self.mwaa_client.get_dag_runs(dag_id, limit=limit)
 
@@ -308,7 +312,7 @@ class AirflowApiClient:
             )
         return result
 
-    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:
+    def get_task_instances_for_run(self, dag_id: str, dag_run_id: str) -> List[AirflowApiTaskInstance]:  # noqa: UP006
         if self.mwaa_client:
             return self.mwaa_client.get_task_instances_for_run(dag_id, dag_run_id)
 

@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { FAILED_TO_FIND_INDEX_ERROR } from '../constants/explore.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import {
   extractTermKeys,
   getExploreQueryFilterMust,
@@ -22,7 +25,14 @@ import {
   getSelectedValuesFromQuickFilter,
   getSubLevelHierarchyKey,
   updateTreeData,
-} from './ExploreUtils';
+} from './ExplorePureUtils';
+import { fetchEntityData } from './ExploreUtils';
+
+jest.mock('../rest/searchAPI');
+jest.mock('./ToastUtils');
+
+const mockSearchQuery = searchQuery as jest.Mock;
+const mockNlqSearch = nlqSearch as jest.Mock;
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {
@@ -688,6 +698,165 @@ describe('Explore Utils', () => {
           { key: 'storedProcedure', label: 'storedProcedure' },
         ],
       });
+    });
+  });
+});
+
+describe('fetchEntityData', () => {
+  const COUNT_RESPONSE = {
+    aggregations: {
+      entityType: { buckets: [{ key: 'table', doc_count: 42 }] },
+    },
+    hits: { hits: [], total: { value: 42 } },
+  };
+  const RESULTS_RESPONSE = {
+    hits: { hits: [{ _id: '1' }], total: { value: 42 } },
+    aggregations: { 'sterms#tags.tagFQN': { buckets: [] } },
+  };
+
+  const buildParams = (overrides = {}) =>
+    ({
+      searchQueryParam: '',
+      tabsInfo: {},
+      updatedQuickFilters: undefined,
+      queryFilter: {},
+      searchIndex: SearchIndex.TABLE,
+      showDeleted: false,
+      sortValue: 'name',
+      sortOrder: 'asc',
+      page: 1,
+      size: 15,
+      isNLPRequestEnabled: false,
+      tab: 'tables',
+      TABS_SEARCH_INDEXES: [SearchIndex.TABLE],
+      EntityTypeSearchIndexMapping: { [EntityType.TABLE]: SearchIndex.TABLE },
+      setSearchHitCounts: jest.fn(),
+      setSearchResults: jest.fn(),
+      setUpdatedAggregations: jest.fn(),
+      setShowIndexNotFoundAlert: jest.fn(),
+      onNlqAppliedFilters: jest.fn(),
+      ...overrides,
+    } as unknown as Parameters<typeof fetchEntityData>[0]);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('issues a single search on the given index when there is no query', async () => {
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams();
+
+    await fetchEntityData(params);
+
+    expect(mockSearchQuery).toHaveBeenCalledTimes(1);
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: SearchIndex.TABLE })
+    );
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+    expect(params.setUpdatedAggregations).toHaveBeenCalledWith(
+      RESULTS_RESPONSE.aggregations
+    );
+  });
+
+  it('runs a count then a results query and maps tab hit counts when a query is present', async () => {
+    mockSearchQuery
+      .mockResolvedValueOnce(COUNT_RESPONSE)
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({ searchQueryParam: 'customer' });
+
+    await fetchEntityData(params);
+
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+    expect(mockSearchQuery.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        searchIndex: SearchIndex.DATA_ASSET,
+        pageSize: 0,
+      })
+    );
+    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+      [SearchIndex.TABLE]: 42,
+    });
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+  });
+
+  it('ANDs the browse/filter scope into the query_filter sent to search', async () => {
+    mockSearchQuery.mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      updatedQuickFilters: {
+        query: {
+          bool: {
+            must: [{ term: { 'service.displayName.keyword': 'redshift' } }],
+          },
+        },
+      },
+      queryFilter: {
+        query: { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+      },
+    });
+
+    await fetchEntityData(params);
+
+    const sentQueryFilter = JSON.stringify(
+      mockSearchQuery.mock.calls[0][0].queryFilter
+    );
+
+    expect(sentQueryFilter).toContain('redshift');
+    expect(sentQueryFilter).toContain('Tier.Tier1');
+  });
+
+  it('raises the index-not-found alert on an elasticsearch index error', async () => {
+    mockSearchQuery.mockRejectedValueOnce({
+      response: { data: { message: FAILED_TO_FIND_INDEX_ERROR } },
+    });
+    const params = buildParams();
+
+    await fetchEntityData(params);
+
+    expect(params.setShowIndexNotFoundAlert).toHaveBeenCalledWith(true);
+  });
+
+  it('uses NLQ search and surfaces applied filters when NLP is enabled', async () => {
+    mockNlqSearch.mockResolvedValueOnce(COUNT_RESPONSE).mockResolvedValueOnce({
+      ...RESULTS_RESPONSE,
+      applied_quick_filters: { fieldList: ['owner'] },
+    });
+    const params = buildParams({
+      searchQueryParam: 'customer',
+      isNLPRequestEnabled: true,
+    });
+
+    await fetchEntityData(params);
+
+    expect(mockNlqSearch).toHaveBeenCalled();
+    expect(mockSearchQuery).not.toHaveBeenCalled();
+    expect(params.onNlqAppliedFilters).toHaveBeenCalledWith({
+      fieldList: ['owner'],
+    });
+  });
+
+  it('issues the results query without waiting for the count when a tab is selected', async () => {
+    let resolveCount: (value: unknown) => void = () => undefined;
+    mockSearchQuery
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveCount = resolve;
+          })
+      )
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({ searchQueryParam: 'customer', tab: 'tables' });
+
+    const pending = fetchEntityData(params);
+
+    // Results query is already in flight while the count is still pending.
+    expect(mockSearchQuery).toHaveBeenCalledTimes(2);
+
+    resolveCount(COUNT_RESPONSE);
+    await pending;
+
+    expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+    expect(params.setSearchHitCounts).toHaveBeenCalledWith({
+      [SearchIndex.TABLE]: 42,
     });
   });
 });

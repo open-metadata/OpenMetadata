@@ -23,7 +23,7 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockReturnValue('test'),
   escapeESReservedCharacters: jest.fn().mockReturnValue('test'),
 }));
@@ -38,10 +38,6 @@ jest.mock('./SearchUtils', () => ({
       },
     },
   })),
-}));
-
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn().mockReturnValue('Tab Label'),
 }));
 
 jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
@@ -247,10 +243,10 @@ describe('TagClassBase', () => {
   });
 
   describe('getCommonWidgetList', () => {
-    it('returns 3 widgets', () => {
+    it('returns 4 widgets', () => {
       const widgets = tagClassBase.getCommonWidgetList();
 
-      expect(widgets).toHaveLength(3);
+      expect(widgets).toHaveLength(4);
     });
 
     it('first widget is DESCRIPTION', () => {
@@ -267,6 +263,13 @@ describe('TagClassBase', () => {
 
       expect(keys).toContain(DetailPageWidgetKeys.DOMAIN);
       expect(keys).toContain(DetailPageWidgetKeys.OWNERS);
+    });
+
+    it('KNOWLEDGE_ARTICLE_WIDGET widget to be included', () => {
+      const widgets = tagClassBase.getCommonWidgetList();
+      const keys = widgets.map((w) => w.fullyQualifiedName);
+
+      expect(keys).toContain(DetailPageWidgetKeys.KNOWLEDGE_ARTICLE);
     });
   });
 
@@ -338,8 +341,8 @@ describe('TagClassBase', () => {
         editDomainPermission: true,
       });
 
-      const domainChild = (element.props as { children: React.ReactElement[] })
-        .children[0];
+      const divChildren = element.props.children as React.ReactElement[];
+      const domainChild = divChildren[0];
 
       expect(domainChild.props.hasPermission).toBe(true);
     });
@@ -350,8 +353,8 @@ describe('TagClassBase', () => {
         editDomainPermission: false,
       });
 
-      const ownerChild = (element.props as { children: React.ReactElement[] })
-        .children[1];
+      const divChildren = element.props.children as React.ReactElement[];
+      const ownerChild = divChildren[1];
 
       expect(ownerChild.props.hasPermission).toBe(true);
     });
@@ -370,6 +373,7 @@ describe('TagClassBase', () => {
       const element = tagClassBase.getWidgetsFromKey(widgetConfig);
 
       expect(React.isValidElement(element)).toBe(true);
+
       expect(element.props).toMatchObject({
         entityType: EntityType.TAG,
         showTaskHandler: false,

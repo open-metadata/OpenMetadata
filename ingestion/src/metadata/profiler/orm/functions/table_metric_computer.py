@@ -18,7 +18,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type
+from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -71,7 +71,7 @@ ERROR_MSG = "Schema/Table name not found in table args. Falling back to default 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):
+    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -118,7 +118,7 @@ class AbstractTableMetricComputer(ABC):
             self._schema_name = self.runner.schema_name
             self._table_name = self.runner.table_name
         except AttributeError:
-            raise AttributeError(ERROR_MSG)
+            raise AttributeError(ERROR_MSG)  # noqa: B904
 
     def _build_table(self, table, schema) -> Table:
         """build table object from table name and schema name
@@ -134,7 +134,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:
+    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
         """get column names and count from table
 
         Args:
@@ -149,9 +149,9 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: List[Column],
+        columns: List[Column],  # noqa: UP006
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,
+        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -347,7 +347,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("table_id") == self.table_name,
         ]
         schema = (
-            self.schema_name.startswith(f"{self._entity.database.name}.")
+            self.schema_name.startswith(f"{self._entity.database.name}.")  # noqa: RUF021
             and self.schema_name
             or f"{self._entity.database.name}.{self.schema_name}"
         )
@@ -369,7 +369,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):
+    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -454,7 +454,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
                 sa_text(TIMESCALE_IS_HYPERTABLE),
                 {"schema": self.schema_name, "table": self.table_name},
             ).first()
-            return result is not None
+            return result is not None  # noqa: TRY300
         except Exception:
             return False
 
@@ -830,7 +830,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:
+    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -845,8 +845,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn
-        from metadata.profiler.metrics.static.column_names import ColunNameFn
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -882,6 +882,203 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         return namedtuple("Row", d.keys())(**d)
 
 
+class ExasolTableMetricComputer(BaseTableMetricComputer):
+    """Exasol Table Metric Computer"""
+
+    def _compute_table_metrics(self):
+        """Compute table metrics from Exasol catalog views."""
+        schema_name = self.schema_name.upper()
+        table_name = self.table_name.upper()
+
+        row_data = cte(
+            self._build_query(
+                [
+                    Column("TABLE_SCHEMA"),
+                    Column("TABLE_NAME"),
+                    Column("TABLE_ROW_COUNT"),
+                ],
+                self._build_table("EXA_ALL_TABLES", "SYS"),
+                [
+                    Column("TABLE_SCHEMA") == schema_name,
+                    Column("TABLE_NAME") == table_name,
+                ],
+            )
+        )
+
+        size_data = cte(
+            self._build_query(
+                [
+                    Column("ROOT_NAME"),
+                    Column("OBJECT_NAME"),
+                    Column("RAW_OBJECT_SIZE"),
+                ],
+                self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
+                [
+                    Column("ROOT_NAME") == schema_name,
+                    Column("OBJECT_NAME") == table_name,
+                ],
+            )
+        )
+
+        columns = [
+            row_data.c.TABLE_ROW_COUNT.label(ROW_COUNT),
+            size_data.c.RAW_OBJECT_SIZE.label(SIZE_IN_BYTES),
+            *self._get_col_names_and_count(),
+        ]
+
+        query = (
+            select(*columns)
+            .select_from(row_data)
+            .outerjoin(
+                size_data,
+                and_(
+                    row_data.c.TABLE_SCHEMA == size_data.c.ROOT_NAME,
+                    row_data.c.TABLE_NAME == size_data.c.OBJECT_NAME,
+                ),
+            )
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None:
+            return super().compute()
+        return res
+
+    def _compute_view_metrics(self):
+        """Compute view metrics using the generic fallback path."""
+        return super().compute()
+
+    def compute(self):
+        """Compute table or view metrics for Exasol.
+
+        Exasol exposes table row counts through SYS.EXA_ALL_TABLES, but views
+        are cataloged separately and do not have a ROW_COUNT. Views therefore
+        use the generic fallback path rather than the catalog-based query.
+        """
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return self._compute_view_metrics()
+        return self._compute_table_metrics()
+
+
+class TeradataTableMetricComputer(BaseTableMetricComputer):
+    """Teradata Table Metric Computer"""
+
+    def compute(self):
+        """Compute table metrics for Teradata using DBC.TableSizeV.
+
+        TableSizeV may return one row per AMP, so we SUM the values
+        to get the total row count and size.
+        """
+        columns = [
+            func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES),
+            func.sum(Column("RowCount")).cast(BigInteger).label(ROW_COUNT),
+            *self._get_col_names_and_count(),
+        ]
+        where_clause = [
+            func.trim(Column("DatabaseName")) == self.schema_name,
+            func.trim(Column("TableName")) == self.table_name,
+        ]
+        query = self._build_query(
+            columns,
+            self._build_table("TableSizeV", "DBC"),
+            where_clause,
+        )
+
+        res = self.runner._session.execute(query).first()
+        if not res:
+            return None
+        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+            return super().compute()
+        return res
+
+
+class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
+    """Base class for metric computers that get row count from database stats commands
+    (SHOW STATS, DESCRIBE FORMATTED, etc.) and fall back to COUNT(*)."""
+
+    def _build_result(self, row_count: int):
+        col_keys = inspect(self.runner.raw_dataset).c.keys()
+        Result = namedtuple("Result", [ROW_COUNT, COLUMN_COUNT, COLUMN_NAMES])
+        return Result(
+            rowCount=row_count,
+            columnCount=len(col_keys),
+            columnNames=",".join(col_keys),
+        )
+
+
+class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Trino/Presto/Athena Table Metric Computer using SHOW STATS."""
+
+    def compute(self):
+        """Extract row_count from SHOW STATS FOR. The summary row
+        (where column_name IS NULL) contains the table-level row_count."""
+        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        rows = self.runner._session.execute(query)
+        for row in rows:
+            row_dict = row._asdict()
+            if row_dict.get("column_name") is None:
+                row_count = row_dict.get("row_count")
+                if row_count is not None:
+                    return self._build_result(int(row_count))
+        return super().compute()
+
+
+class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Hive Table Metric Computer using DESCRIBE FORMATTED."""
+
+    def compute(self):
+        """Parse numRows from DESCRIBE FORMATTED output.
+        Hive returns 3-column rows: (col_name, data_type, comment).
+        After ANALYZE, a row with data_type='numRows' contains the count in comment."""
+        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        rows = self.runner._session.execute(query).fetchall()
+        for row in rows:
+            try:
+                key = (row[1] or "").strip()
+                value = (row[2] or "").strip() if len(row) > 2 else ""
+                if key == "numRows" and value.isdigit():
+                    num_rows = int(value)
+                    if num_rows >= 0:
+                        return self._build_result(num_rows)
+            except (IndexError, TypeError):
+                continue
+        return super().compute()
+
+
+class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Impala Table Metric Computer using SHOW TABLE STATS."""
+
+    def compute(self):
+        """Sum #Rows across partitions from SHOW TABLE STATS."""
+        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        rows = self.runner._session.execute(query).fetchall()
+        total_rows = 0
+        for row in rows:
+            row_dict = row._asdict()
+            num_rows = row_dict.get("#Rows") or row_dict.get("#rows")
+            if num_rows is not None and int(num_rows) >= 0:
+                total_rows += int(num_rows)
+        if total_rows > 0:
+            return self._build_result(total_rows)
+        return super().compute()
+
+
+class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
+    """Databricks Table Metric Computer using DESCRIBE DETAIL."""
+
+    def compute(self):
+        """Extract numRecords from DESCRIBE DETAIL."""
+        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        result = self.runner._session.execute(query).first()
+        if result:
+            row_dict = result._asdict()
+            num_records = row_dict.get("numRecords")
+            if num_records is not None:
+                return self._build_result(int(num_records))
+        return super().compute()
+
+
 class TableMetricComputer:
     """Table Metric Construct"""
 
@@ -889,7 +1086,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],
+        metrics: List[Metrics],  # noqa: UP006
         conn_config,
         entity: OMTable,
     ):
@@ -916,7 +1113,7 @@ class TableMetricComputer:
         TimescaleDB uses the PostgreSQL SQLAlchemy dialect but requires its own
         metric computer. We detect this by checking the connection config type.
         """
-        if dialect == Dialects.Postgres:
+        if dialect == Dialects.Postgres:  # noqa: SIM102
             if isinstance(conn_config, TimescaleConnectionConfig):
                 return Dialects.Timescale
         return dialect
@@ -948,7 +1145,7 @@ class TableMetricComputerFactory:
         try:
             construct_instance: AbstractTableMetricComputer = construct(**kwargs)
             construct_instance._set_table_and_schema_name()
-            return construct_instance
+            return construct_instance  # noqa: TRY300
         except Exception:
             # if an error occurs, fallback to the base construct
             logger.debug(traceback.format_exc())
@@ -976,3 +1173,10 @@ table_metric_computer_factory.register(Dialects.Vertica, VerticaTableMetricCompu
 table_metric_computer_factory.register(Dialects.Hana, SAPHanaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Informix, InformixTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Timescale, TimescaleTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
+table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)

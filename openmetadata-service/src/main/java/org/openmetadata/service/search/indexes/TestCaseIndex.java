@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchIndexUtils;
 
@@ -32,9 +33,21 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
+    fields.add(TestCaseRepository.TEST_SUITE_FIELD);
+    fields.add(Entity.FIELD_TEST_SUITES);
+    fields.add(TestCaseRepository.TEST_DEFINITION_FIELD);
+    fields.add(Entity.TEST_CASE_RESULT);
+    fields.add(TestCaseRepository.INCIDENTS_FIELD);
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     TaggableIndex.super.removeNonIndexableFields(esDoc);
-    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
+    List<Map<String, Object>> testSuites =
+        (List<Map<String, Object>>) esDoc.get(Entity.FIELD_TEST_SUITES);
     if (testSuites != null) {
       for (Map<String, Object> testSuite : testSuites) {
         SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
@@ -64,8 +77,8 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {
-    // Denormalize parent relationships and inherit domains from the linked table.
-    // addTestSuiteParentEntityRelations already fetches the Table with "domains",
+    // Denormalize parent relationships and inherit domains/certification from the linked table.
+    // addTestSuiteParentEntityRelations already fetches the Table with these fields,
     // so we reuse it to avoid an extra DB query per test case.
     EntityInterface linkedTable = denormalizeTestSuiteParents(doc, testCase);
 
@@ -73,6 +86,19 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         && linkedTable != null
         && !nullOrEmpty(linkedTable.getDomains())) {
       doc.put("domains", getEntitiesWithDisplayName(linkedTable.getDomains()));
+    }
+
+    if (testCase.getCertification() == null
+        && linkedTable != null
+        && linkedTable.getCertification() != null) {
+      doc.put("certification", linkedTable.getCertification());
+    }
+
+    if (nullOrEmpty(testCase.getDataProducts())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDataProducts())) {
+      doc.put(
+          Entity.FIELD_DATA_PRODUCTS, getEntitiesWithDisplayName(linkedTable.getDataProducts()));
     }
   }
 

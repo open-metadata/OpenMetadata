@@ -12,35 +12,36 @@
  */
 
 import Icon, { SearchOutlined } from '@ant-design/icons';
-import { Divider, Space, Tooltip, Typography } from 'antd';
+import {
+  Atom01,
+  BarChart01,
+  BookOpen01,
+  CodeBrowser,
+  CodeSnippet01,
+  Compass03,
+  Cube01,
+  Database01,
+  File05,
+  Folder,
+  GitBranch01,
+  LayoutAlt01,
+  Rows01,
+  Shield01,
+  Table as TableStrokeIcon,
+} from '@untitledui/icons';
+import { Space, Tooltip, Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import classNames from 'classnames';
-import {
-  get,
-  isEmpty,
-  isUndefined,
-  lowerCase,
-  omit,
-  toString,
-  uniqBy,
-  uniqueId,
-  upperCase,
-} from 'lodash';
-import { EntityTags } from 'Models';
-import { CSSProperties, Fragment, lazy, Suspense } from 'react';
-import { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ImportIcon } from '..//assets/svg/ic-import.svg';
+import { uniqBy } from 'lodash';
+import { ComponentType, Fragment, type CSSProperties } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
 import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
-import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
-import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as QueryIcon } from '../assets/svg/customproperties/sql-query.svg';
-import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -75,33 +76,21 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestCase } from '../assets/svg/ic-checklist.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
-import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
-import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
+import { ReactComponent as KnowledgePageIcon } from '../assets/svg/ic-knowledge-page.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
-import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -117,171 +106,25 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
-import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
-import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
-import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { ExportTypes } from '../constants/Export.constants';
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
-import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
+import { DE_ACTIVE_COLOR } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
-import { MlFeature } from '../generated/entity/data/mlmodel';
-import { Task } from '../generated/entity/data/pipeline';
-import { SearchIndexField } from '../generated/entity/data/searchIndex';
+import { ConstraintTypes } from '../enums/table.enum';
 import {
-  Column,
   ConstraintType,
   DataType,
-  JoinedWith,
-  Table,
   TableConstraint,
-  TableJoins,
 } from '../generated/entity/data/table';
-import { EntityReference } from '../generated/entity/type';
-import { PageType } from '../generated/system/ui/uiCustomization';
-import { Field } from '../generated/type/schema';
-import {
-  LabelType,
-  State,
-  TagLabel,
-  TagSource,
-} from '../generated/type/tagLabel';
-import LimitWrapper from '../hoc/LimitWrapper';
-import { useApplicationStore } from '../hooks/useApplicationStore';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import {
-  FrequentlyJoinedTables,
-  Joined,
-} from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
-import { exportTableDetailsInCSV } from '../rest/tableAPI';
-import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
-import { extractContainerColumns } from './ContainerDetailUtils';
-import { extractDataModelColumns } from './DashboardDataModelUtils';
-import EntityLink from './EntityLink';
-import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { extractMlModelFeatures } from './MlModelDetailsUtils';
-import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
-import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
-import { TableDetailPageTabProps } from './TableClassBase';
-import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
-import { extractTopicFields } from './TopicDetailsUtils';
-
-const SampleDataTableComponent = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../components/Database/SampleDataTable/SampleDataTable.component')
-  )
-);
-
-const TableQueries = withSuspenseFallback(
-  lazy(() => import('../components/Database/TableQueries/TableQueries'))
-);
-
-const ContractTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/DataContract/ContractTab/ContractTab').then(
-      (module) => ({ default: module.ContractTab })
-    )
-  )
-);
-
-const DataObservabilityTab = withSuspenseFallback(
-  lazy(
-    () =>
-      import(
-        '../components/Database/Profiler/DataObservability/DataObservabilityTab'
-      )
-  )
-);
-
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
-  )
-);
-
-const TableConstraints = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../pages/TableDetailsPageV1/TableConstraints/TableConstraints')
-  )
-);
-
-const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
-);
-
-export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
-  const percentile = Math.round(pctRank * 10) / 10;
-  const ordinalPercentile = ordinalize(percentile);
-  const usagePercentile = `${
-    isLiteral ? t('label.usage') : ''
-  } ${ordinalPercentile} ${t('label.pctile-lowercase')}`;
-
-  return usagePercentile;
-};
-
-export const isTierTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`);
-
-export const isCertificationTag = (tagFQN: string) =>
-  tagFQN.startsWith(`Certification${FQN_SEPARATOR_CHAR}`);
-
-export const getTierTags = (tags: Array<TagLabel>) => {
-  return tags.find((item) => isTierTag(item.tagFQN));
-};
-
-export const getTagsWithoutTier = (
-  tags: Array<EntityTags>
-): Array<EntityTags> => {
-  return tags.filter((item) => !isTierTag(item.tagFQN));
-};
-
-export const getCertificationTag = (tags: Array<TagLabel>) => {
-  return tags.find((item) => isCertificationTag(item.tagFQN));
-};
-
-export const getTagsWithoutCertification = (
-  tags: Array<EntityTags>
-): Array<EntityTags> => {
-  return tags.filter((item) => !isCertificationTag(item.tagFQN));
-};
 
 export const getConstraintIcon = ({
   constraint = '',
@@ -441,32 +284,39 @@ export const getColumnDataTypeIcon = ({
   return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
 };
 
-const entityIconMapping: Record<string, SvgComponent> = {
-  [SearchIndex.DATABASE]: DatabaseIcon,
+// Data-asset entity types use the Untitled-UI stroke icon set (the explore
+// redesign's design system); services, governance, and admin entities keep
+// their existing branded SVGs. Both component shapes satisfy the permissive
+// className/style signature below.
+const entityIconMapping: Record<
+  string,
+  ComponentType<{ className?: string; style?: CSSProperties }>
+> = {
+  [SearchIndex.DATABASE]: Database01,
   [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
-  [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
-  [SearchIndex.TOPIC]: TopicIcon,
+  [SearchIndex.DATABASE_SCHEMA]: Database01,
+  [SearchIndex.TOPIC]: Rows01,
   [EntityType.MESSAGING_SERVICE]: TopicIcon,
-  [SearchIndex.DASHBOARD]: DashboardIcon,
+  [SearchIndex.DASHBOARD]: LayoutAlt01,
   [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
-  [SearchIndex.MLMODEL]: MlModelIcon,
+  [SearchIndex.MLMODEL]: Atom01,
   [EntityType.MLMODEL_SERVICE]: MlModelIcon,
-  [SearchIndex.PIPELINE]: PipelineIcon,
+  [SearchIndex.PIPELINE]: GitBranch01,
   [EntityType.PIPELINE_SERVICE]: PipelineIcon,
-  [SearchIndex.CONTAINER]: ContainerIcon,
+  [SearchIndex.CONTAINER]: Cube01,
   [EntityType.STORAGE_SERVICE]: ContainerIcon,
-  [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
-  [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
+  [SearchIndex.DASHBOARD_DATA_MODEL]: LayoutAlt01,
+  [SearchIndex.STORED_PROCEDURE]: CodeSnippet01,
   [EntityType.CLASSIFICATION]: ClassificationIcon,
-  [SearchIndex.TAG]: TagIcon,
+  [SearchIndex.TAG]: Shield01,
   [SearchIndex.GLOSSARY]: GlossaryIcon,
-  [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
-  [SearchIndex.DOMAIN]: DomainIcon,
-  [SearchIndex.CHART]: ChartIcon,
-  [SearchIndex.TABLE]: TableIcon,
-  [SearchIndex.COLUMN]: ColumnIcon,
+  [SearchIndex.GLOSSARY_TERM]: BookOpen01,
+  [SearchIndex.DOMAIN]: Compass03,
+  [SearchIndex.CHART]: BarChart01,
+  [SearchIndex.TABLE]: TableStrokeIcon,
+  [SearchIndex.COLUMN]: TableStrokeIcon,
   [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
-  [SearchIndex.DATA_PRODUCT]: DataProductIcon,
+  [SearchIndex.DATA_PRODUCT]: Cube01,
   [EntityType.TEST_CASE]: IconTestCase,
   [EntityType.TEST_SUITE]: IconTestSuite,
   [EntityType.DATA_CONTRACT]: DataQualityIcon,
@@ -489,17 +339,20 @@ const entityIconMapping: Record<string, SvgComponent> = {
   ['services']: ServicesIcon,
   ['automator']: AutomatorBotIcon,
   ['notification']: NotificationIcon,
-  [EntityType.API_ENDPOINT]: APIEndpointIcon,
-  [EntityType.METRIC]: MetricIcon,
+  [EntityType.API_ENDPOINT]: CodeBrowser,
+  [EntityType.METRIC]: BarChart01,
   [EntityType.API_SERVICE]: APIServiceIcon,
-  [EntityType.API_COLLECTION]: APICollectionIcon,
+  [EntityType.API_COLLECTION]: CodeBrowser,
   ['location']: LocationIcon,
   [EntityType.QUERY]: QueryIcon,
-  [EntityType.DIRECTORY]: DirectoryIcon,
-  [EntityType.FILE]: FileIcon,
-  [EntityType.SPREADSHEET]: SpreadsheetIcon,
-  [EntityType.WORKSHEET]: WorksheetIcon,
+  [EntityType.DIRECTORY]: Folder,
+  [EntityType.FILE]: File05,
+  [EntityType.SPREADSHEET]: TableStrokeIcon,
+  [EntityType.WORKSHEET]: TableStrokeIcon,
   [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+  [EntityType.KNOWLEDGE_PAGE]: BookOpen01,
+  [EntityType.KNOWLEDGE_CENTER]: KnowledgePageIcon,
+  [EntityType.knowledgePanels]: KnowledgePageIcon,
 };
 
 export const getEntityIcon = (
@@ -517,7 +370,7 @@ export const getEntityIcon = (
     case EntityType.SEARCH_SERVICE:
     case SearchIndex.SEARCH_SERVICE:
       Icon = SearchOutlined;
-      className = 'text-sm text-inherit';
+      className = classNames('text-sm text-inherit', iconClass);
 
       break;
 
@@ -559,58 +412,6 @@ export const getServiceIcon = (source: {
       />
     );
   }
-};
-
-export const makeData = <T extends Column | SearchIndexField>(
-  columns: T[] = []
-): Array<T & { id: string }> => {
-  return columns.map((column) => ({
-    ...column,
-    id: uniqueId(column.name),
-    children: column.children ? makeData<T>(column.children as T[]) : undefined,
-  }));
-};
-
-export const getDataTypeString = (dataType: string): string => {
-  switch (upperCase(dataType)) {
-    case DataType.String:
-    case DataType.Char:
-    case DataType.Text:
-    case DataType.Varchar:
-    case DataType.Mediumtext:
-    case DataType.Mediumblob:
-    case DataType.Blob:
-      return PrimaryTableDataTypes.VARCHAR;
-    case DataType.Timestamp:
-    case DataType.Time:
-      return PrimaryTableDataTypes.TIMESTAMP;
-    case DataType.Date:
-      return PrimaryTableDataTypes.DATE;
-    case DataType.Int:
-    case DataType.Float:
-    case DataType.Smallint:
-    case DataType.Bigint:
-    case DataType.Numeric:
-    case DataType.Tinyint:
-    case DataType.Decimal:
-      return PrimaryTableDataTypes.NUMERIC;
-    case DataType.Boolean:
-    case DataType.Enum:
-      return PrimaryTableDataTypes.BOOLEAN;
-    default:
-      return dataType;
-  }
-};
-
-export const generateEntityLink = (fqn: string, includeColumn = false) => {
-  if (includeColumn) {
-    const tableFqn = getTableFQNFromColumnFQN(fqn);
-    const columnName = getPartialNameFromTableFQN(fqn, [FqnPart.NestedColumn]);
-
-    return EntityLink.getTableEntityLink(tableFqn, columnName);
-  }
-
-  return EntityLink.getTableEntityLink(fqn);
 };
 
 export function getTableExpandableConfig<T>(
@@ -705,490 +506,6 @@ export const prepareConstraintIcon = ({
   );
 };
 
-export const getAllRowKeysByKeyName = <
-  T extends Column | Field | SearchIndexField
->(
-  data: T[],
-  keyName: keyof T
-) => {
-  let keys: string[] = [];
-
-  data.forEach((item) => {
-    if (item.children && item.children.length > 0) {
-      keys.push(toString(item[keyName]));
-      keys = [
-        ...keys,
-        ...getAllRowKeysByKeyName(item.children as T[], keyName),
-      ];
-    }
-  });
-
-  return keys;
-};
-
-export const searchInFields = <T extends SearchIndexField | Column>(
-  searchIndex: Array<T>,
-  searchText: string
-): Array<T> => {
-  const searchedValue: Array<T> = searchIndex.reduce(
-    (searchedFields, field) => {
-      const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
-
-      if (isContainData) {
-        return [...searchedFields, field];
-      } else if (!isUndefined(field.children)) {
-        const searchedChildren = searchInFields(
-          field.children as T[],
-          searchText
-        );
-        if (searchedChildren.length > 0) {
-          return [
-            ...searchedFields,
-            {
-              ...field,
-              children: searchedChildren,
-            },
-          ];
-        }
-      }
-
-      return searchedFields;
-    },
-    [] as Array<T>
-  );
-
-  return searchedValue;
-};
-
-export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
-  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
-    ...omit(tag, 'isRemovable'),
-    labelType: LabelType.Manual,
-    state: State.Confirmed,
-    source: tag.source ?? 'Classification',
-    tagFQN: tag.tagFQN,
-  }));
-
-  return mappedNewTags;
-};
-
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags(newFieldTags);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  description: string,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.description = description;
-    } else {
-      updateFieldDescription(
-        changedFieldFQN,
-        description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldDisplayName = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  displayName: string,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.displayName = displayName;
-    } else {
-      updateFieldDisplayName(
-        changedFieldFQN,
-        displayName,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldExtension = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  extension: Record<string, unknown>,
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.extension = extension;
-    } else {
-      updateFieldExtension(
-        changedFieldFQN,
-        extension,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const getTableDetailPageBaseTabs = ({
-  queryCount,
-  isTourOpen,
-  tablePermissions,
-  activeTab,
-  deleted,
-  tableDetails,
-  feedCount,
-  getEntityFeedCount,
-  handleFeedCount,
-  viewCustomPropertiesPermission,
-  editCustomAttributePermission,
-  viewSampleDataPermission,
-  viewQueriesPermission,
-  editLineagePermission,
-  fetchTableDetails,
-  isViewTableType,
-  labelMap,
-}: TableDetailPageTabProps): TabProps[] => {
-  return [
-    {
-      label: (
-        <TabsLabel
-          count={tableDetails?.columns.length}
-          id={EntityTabs.SCHEMA}
-          isActive={activeTab === EntityTabs.SCHEMA}
-          name={get(labelMap, EntityTabs.SCHEMA, t('label.column-plural'))}
-        />
-      ),
-      key: EntityTabs.SCHEMA,
-      children: <GenericTab type={PageType.Table} />,
-    },
-    {
-      label: (
-        <TabsLabel
-          count={feedCount.totalCount}
-          id={EntityTabs.ACTIVITY_FEED}
-          isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={get(
-            labelMap,
-            EntityTabs.ACTIVITY_FEED,
-            t('label.activity-feed-and-task-plural')
-          )}
-        />
-      ),
-      key: EntityTabs.ACTIVITY_FEED,
-      children: (
-        <ActivityFeedTab
-          refetchFeed
-          columns={tableDetails?.columns}
-          entityFeedTotalCount={feedCount.totalCount}
-          entityType={EntityType.TABLE}
-          feedCount={feedCount}
-          layoutType={ActivityFeedLayoutType.THREE_PANEL}
-          owners={tableDetails?.owners}
-          onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={fetchTableDetails}
-          onUpdateFeedCount={handleFeedCount}
-        />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.SAMPLE_DATA}
-          name={get(labelMap, EntityTabs.SAMPLE_DATA, t('label.sample-data'))}
-        />
-      ),
-
-      key: EntityTabs.SAMPLE_DATA,
-      children:
-        !isTourOpen && !viewSampleDataPermission ? (
-          <ErrorPlaceHolder
-            className="border-none"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.sample-data'),
-            })}
-            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-          />
-        ) : (
-          <SampleDataTableComponent
-            isTableDeleted={deleted}
-            owners={tableDetails?.owners ?? []}
-            permissions={tablePermissions}
-            tableId={tableDetails?.id ?? ''}
-          />
-        ),
-    },
-    {
-      label: (
-        <TabsLabel
-          count={queryCount}
-          id={EntityTabs.TABLE_QUERIES}
-          isActive={activeTab === EntityTabs.TABLE_QUERIES}
-          name={get(
-            labelMap,
-            EntityTabs.TABLE_QUERIES,
-            t('label.query-plural')
-          )}
-        />
-      ),
-      key: EntityTabs.TABLE_QUERIES,
-      children: viewQueriesPermission ? (
-        <TableQueries
-          isTableDeleted={deleted}
-          tableId={tableDetails?.id ?? ''}
-        />
-      ) : (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.query-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.PROFILER}
-          name={get(
-            labelMap,
-            EntityTabs.PROFILER,
-            t('label.data-observability')
-          )}
-        />
-      ),
-      key: EntityTabs.PROFILER,
-      children: (
-        <DataObservabilityTab
-          permissions={tablePermissions}
-          table={tableDetails}
-        />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.LINEAGE}
-          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
-        />
-      ),
-      key: EntityTabs.LINEAGE,
-      children: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          isBeta
-          id={EntityTabs.KNOWLEDGE_GRAPH}
-          name={get(
-            labelMap,
-            EntityTabs.KNOWLEDGE_GRAPH,
-            t('label.knowledge-graph')
-          )}
-        />
-      ),
-      key: EntityTabs.KNOWLEDGE_GRAPH,
-      children: (
-        <Suspense fallback={<Loader />}>
-          <KnowledgeGraph
-            depth={1}
-            entity={
-              tableDetails
-                ? {
-                    ...tableDetails,
-                    type: EntityType.TABLE,
-                  }
-                : undefined
-            }
-            entityType={EntityType.TABLE}
-          />
-        </Suspense>
-      ),
-      isHidden: !useApplicationStore.getState().rdfEnabled,
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.DBT}
-          name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
-        />
-      ),
-      isHidden: !(
-        tableDetails?.dataModel?.sql ||
-        tableDetails?.dataModel?.rawSql ||
-        tableDetails?.dataModel?.path ||
-        tableDetails?.dataModel?.dbtSourceProject
-      ),
-      key: EntityTabs.DBT,
-      children: (
-        <QueryViewer
-          isActive={activeTab === EntityTabs.DBT}
-          sqlQuery={
-            get(tableDetails, 'dataModel.sql', '') ??
-            get(tableDetails, 'dataModel.rawSql', '')
-          }
-          title={
-            <Space className="p-y-xss" size="small">
-              <div>
-                <Typography.Text className="text-grey-muted">
-                  {`${t('label.dbt-source-project')}: `}
-                </Typography.Text>
-                <Typography.Text data-testid="dbt-source-project-id">
-                  {tableDetails?.dataModel?.dbtSourceProject ??
-                    NO_DATA_PLACEHOLDER}
-                </Typography.Text>
-              </div>
-
-              <Divider
-                className="self-center vertical-divider"
-                type="vertical"
-              />
-
-              <div>
-                <Typography.Text className="text-grey-muted">
-                  {`${t('label.path')}: `}
-                </Typography.Text>
-                <Typography.Text>
-                  {tableDetails?.dataModel?.path}
-                </Typography.Text>
-              </div>
-            </Space>
-          }
-        />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={
-            isViewTableType
-              ? EntityTabs.VIEW_DEFINITION
-              : EntityTabs.SCHEMA_DEFINITION
-          }
-          name={get(
-            labelMap,
-            EntityTabs.VIEW_DEFINITION,
-            isViewTableType
-              ? t('label.view-definition')
-              : t('label.schema-definition')
-          )}
-        />
-      ),
-      isHidden: isUndefined(tableDetails?.schemaDefinition),
-      key: EntityTabs.VIEW_DEFINITION,
-      children: (
-        <QueryViewer
-          isActive={[
-            EntityTabs.VIEW_DEFINITION,
-            EntityTabs.SCHEMA_DEFINITION,
-          ].includes(activeTab)}
-          sqlQuery={tableDetails?.schemaDefinition ?? ''}
-        />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.CONTRACT}
-          name={get(labelMap, EntityTabs.CONTRACT, t('label.contract'))}
-        />
-      ),
-      key: EntityTabs.CONTRACT,
-      children: <ContractTab />,
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.CUSTOM_PROPERTIES}
-          name={get(
-            labelMap,
-            EntityTabs.CUSTOM_PROPERTIES,
-            t('label.custom-property-plural')
-          )}
-        />
-      ),
-      key: EntityTabs.CUSTOM_PROPERTIES,
-      children: (
-        <CustomPropertyTable<EntityType.TABLE>
-          entityType={EntityType.TABLE}
-          hasEditAccess={editCustomAttributePermission}
-          hasPermission={viewCustomPropertiesPermission}
-        />
-      ),
-    },
-  ];
-};
-
-export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
-  const tableFQNGrouping = [
-    ...(joins?.columnJoins?.flatMap(
-      (cjs) =>
-        cjs.joinedWith?.map<JoinedWith>((jw) => ({
-          fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
-          joinCount: jw.joinCount,
-        })) ?? []
-    ) ?? []),
-    ...(joins?.directTableJoins ?? []),
-  ].reduce(
-    (result, jw) => ({
-      ...result,
-      [jw.fullyQualifiedName]:
-        (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-    }),
-    {} as Record<string, number>
-  );
-
-  return Object.entries(tableFQNGrouping)
-    .map<JoinedWith & { name: string }>(([fullyQualifiedName, joinCount]) => ({
-      fullyQualifiedName,
-      joinCount,
-      name: getPartialNameFromTableFQN(
-        fullyQualifiedName,
-        [FqnPart.Database, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    }))
-    .sort((a, b) => b.joinCount - a.joinCount);
-};
-
-/**
- * @param constraints contains column names for constraints which
- * @param type constraint type
- * @returns constraint object with columns and constraint type or empty array if constraints are empty
- */
-export const createTableConstraintObject = (
-  constraints: string[],
-  type: ConstraintType
-) =>
-  isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
-
 export const tableConstraintRendererBasedOnType = (
   constraintType: ConstraintType,
   columns?: string[]
@@ -1225,684 +542,4 @@ export const tableConstraintRendererBasedOnType = (
       </Space>
     </div>
   );
-};
-
-/**
- * Recursive function to get all columns from table column and its children
- * @param columns Table Columns for creating options in table constraint form
- * @returns column options with label and value
- */
-export const getColumnOptionsFromTableColumn = (
-  columns: Column[],
-  useFullyQualifiedName = false
-) => {
-  const options: {
-    label: string;
-    value: string;
-  }[] = [];
-
-  columns.forEach((item) => {
-    options.push({
-      label: item.name,
-      value: useFullyQualifiedName
-        ? item.fullyQualifiedName ?? item.name
-        : item.name,
-    });
-
-    if (!isEmpty(item.children)) {
-      options.push(
-        ...getColumnOptionsFromTableColumn(
-          item.children ?? [],
-          useFullyQualifiedName
-        )
-      );
-    }
-  });
-
-  return options;
-};
-
-export const ExtraTableDropdownOptions = (
-  fqn: string,
-  permission: OperationPermission,
-  deleted: boolean,
-  navigate: NavigateFunction
-) => {
-  const { showModal } = useEntityExportModalProvider();
-  const { ViewAll, EditAll } = permission;
-
-  return [
-    ...(EditAll && !deleted
-      ? [
-          {
-            label: (
-              <LimitWrapper resource="table">
-                <ManageButtonItemLabel
-                  description={t('message.import-entity-help', {
-                    entity: t('label.table'),
-                  })}
-                  icon={ImportIcon}
-                  id="import-button"
-                  name={t('label.import')}
-                  onClick={() =>
-                    navigate(getEntityImportPath(EntityType.TABLE, fqn))
-                  }
-                />
-              </LimitWrapper>
-            ),
-            key: 'import-button',
-          },
-        ]
-      : []),
-    ...(ViewAll && !deleted
-      ? [
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.export-entity-help', {
-                  entity: t('label.table'),
-                })}
-                icon={ExportIcon}
-                id="export-button"
-                name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportTableDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
-              />
-            ),
-            key: 'export-button',
-          },
-        ]
-      : []),
-  ];
-};
-export const getTableWidgetFromKey = (
-  widgetConfig: WidgetConfig
-): JSX.Element | null => {
-  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
-    return <SchemaTable />;
-  } else if (
-    widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_CONSTRAINTS)
-  ) {
-    return <TableConstraints />;
-  } else if (
-    widgetConfig.i.startsWith(DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES)
-  ) {
-    return <FrequentlyJoinedTables />;
-  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
-    return <PartitionedKeys />;
-  } else {
-    return (
-      <CommonWidgets
-        entityType={EntityType.TABLE}
-        widgetConfig={widgetConfig}
-      />
-    );
-  }
-};
-
-/**
- * Helper function to find a column by entity link in a nested structure
- * Recursively searches through the column hierarchy to find a matching column
- *
- * @param tableFqn - The fully qualified name of the table
- * @param columns - Array of columns to search through
- * @param entityLink - The entity link to match against
- * @returns The matching column or null if not found
- */
-export const findColumnByEntityLink = (
-  tableFqn: string,
-  columns: Column[],
-  entityLink: string
-): Column | null => {
-  for (const column of columns) {
-    const columnName = EntityLink.getTableColumnNameFromColumnFqn(
-      column.fullyQualifiedName ?? '',
-      false
-    );
-
-    // Generate the entity link for this column and compare with the target entity link
-    const columnEntityLink = EntityLink.getTableEntityLink(
-      tableFqn,
-      columnName
-    );
-    if (columnEntityLink === entityLink) {
-      return column;
-    }
-
-    // If this column has children, recursively search them
-    if (column.children && column.children.length > 0) {
-      const found = findColumnByEntityLink(
-        tableFqn,
-        column.children,
-        entityLink
-      );
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
-};
-
-/**
- * Helper function to update a column in a nested structure
- * Recursively traverses the column hierarchy to find and update the target column
- *
- * @param columns - Array of columns to search through
- * @param targetFqn - The fully qualified name of the column to update
- * @param update - The properties to update on the matching column
- * @returns Updated array of columns with the target column modified
- */
-export const updateColumnInNestedStructure = (
-  columns: Column[],
-  targetFqn: string,
-  update: Partial<Column>,
-  field?: string
-): Column[] => {
-  return columns.map((column: Column) => {
-    if (column.fullyQualifiedName === targetFqn) {
-      const newCol = omit(column, field ?? '');
-
-      return {
-        ...(newCol as Column),
-        ...update,
-      };
-    }
-    // If this column has children, recursively search them
-    else if (column.children && column.children.length > 0) {
-      return {
-        ...column,
-        children: updateColumnInNestedStructure(
-          column.children,
-          targetFqn,
-          update,
-          field
-        ),
-      };
-    } else {
-      return column;
-    }
-  });
-};
-
-export const pruneEmptyChildren = (columns: Column[]): Column[] => {
-  return columns.map((column) => {
-    // If column has no children or empty children array, remove children property
-    if (!column.children || column.children.length === 0) {
-      return omit(column, 'children');
-    }
-
-    // If column has children, recursively prune them
-    const prunedChildren = pruneEmptyChildren(column.children);
-
-    // If after pruning, children array becomes empty, remove children property
-    if (prunedChildren.length === 0) {
-      return omit(column, 'children');
-    }
-
-    return {
-      ...column,
-      children: prunedChildren,
-    };
-  });
-};
-
-export const getSchemaFieldCount = <T extends { children?: T[] }>(
-  fields: T[]
-): number => {
-  let count = 0;
-
-  const countFields = (items: T[]): void => {
-    items.forEach((item) => {
-      count++;
-      if (item.children && item.children.length > 0) {
-        countFields(item.children);
-      }
-    });
-  };
-
-  countFields(fields);
-
-  return count;
-};
-
-export const getSchemaDepth = <T extends { children?: T[] }>(
-  fields: T[]
-): number => {
-  if (!fields || fields.length === 0) {
-    return 0;
-  }
-
-  let maxDepth = 1;
-
-  const calculateDepth = (items: T[], currentDepth: number): void => {
-    items.forEach((item) => {
-      maxDepth = Math.max(maxDepth, currentDepth);
-      if (item.children && item.children.length > 0) {
-        calculateDepth(item.children, currentDepth + 1);
-      }
-    });
-  };
-
-  calculateDepth(fields, 1);
-
-  return maxDepth;
-};
-
-export const isLargeSchema = <T extends { children?: T[] }>(
-  fields: T[],
-  threshold = 500
-): boolean => {
-  return getSchemaFieldCount(fields) > threshold;
-};
-
-export const shouldCollapseSchema = <T extends { children?: T[] }>(
-  fields: T[],
-  threshold = 50
-): boolean => {
-  return getSchemaFieldCount(fields) > threshold;
-};
-
-export const getExpandAllKeysToDepth = <
-  T extends { children?: T[]; fullyQualifiedName?: string }
->(
-  fields: T[],
-  maxDepth = 3
-): string[] => {
-  const keys: string[] = [];
-
-  const collectKeys = (items: T[], currentDepth = 0): void => {
-    if (currentDepth >= maxDepth) {
-      return;
-    }
-
-    items.forEach((item) => {
-      if (item.children && item.children.length > 0) {
-        if (item.fullyQualifiedName) {
-          keys.push(item.fullyQualifiedName);
-        }
-        // Continue collecting keys from children up to maxDepth
-        collectKeys(item.children, currentDepth + 1);
-      }
-    });
-  };
-
-  collectKeys(fields);
-
-  return keys;
-};
-
-export const getSafeExpandAllKeys = <
-  T extends { children?: T[]; fullyQualifiedName?: string }
->(
-  fields: T[],
-  isLargeSchema: boolean,
-  allKeys: string[]
-): string[] => {
-  if (!isLargeSchema) {
-    return allKeys;
-  }
-
-  // For large schemas, expand to exactly 2 levels deep
-  return getExpandAllKeysToDepth(fields, 2);
-};
-
-/**
- * Flattens a nested structure of columns/fields into a single array
- * Recursively includes all children in the flattened result
- */
-export const flattenColumns = <T extends { children?: T[] }>(
-  items: T[]
-): T[] => {
-  const result: T[] = [];
-  items.forEach((item) => {
-    result.push(item);
-    if (item.children && item.children.length > 0) {
-      result.push(...flattenColumns(item.children));
-    }
-  });
-
-  return result;
-};
-
-/**
- * Finds a field/column by fullyQualifiedName in a nested structure
- * Recursively searches through children
- */
-export const findFieldByFQN = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  items: T[],
-  targetFqn: string
-): T | undefined => {
-  for (const item of items) {
-    if (item.fullyQualifiedName === targetFqn) {
-      return item;
-    }
-    if (item.children && item.children.length > 0) {
-      const found = findFieldByFQN(item.children, targetFqn);
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return undefined;
-};
-
-/**
- * Checks if a field exists in a nested structure by FQN
- * Recursively searches through children, including partial matches
- */
-export const fieldExistsByFQN = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  items: T[],
-  targetFqn: string
-): boolean => {
-  for (const item of items) {
-    if (
-      item.fullyQualifiedName === targetFqn ||
-      targetFqn.startsWith((item.fullyQualifiedName ?? '') + '.')
-    ) {
-      return true;
-    }
-    if (item.children?.length && fieldExistsByFQN(item.children, targetFqn)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-/**
- * Gets all parent keys that need to be expanded to show a target field
- * Returns an array of FQNs representing the path to the target field
- */
-export const getParentKeysToExpand = <
-  T extends { fullyQualifiedName?: string; children?: T[]; name?: string }
->(
-  items: T[],
-  targetFqn: string,
-  parentKeys: string[] = []
-): string[] => {
-  for (const item of items) {
-    if (item.fullyQualifiedName === targetFqn) {
-      return parentKeys;
-    }
-
-    // Check if we should explore children
-    const shouldExploreChildren =
-      item.children?.length &&
-      (item.fullyQualifiedName
-        ? targetFqn.startsWith(item.fullyQualifiedName + '.')
-        : true); // If no FQN, always check children
-
-    if (shouldExploreChildren) {
-      const newParentKeys = [
-        ...parentKeys,
-        item.fullyQualifiedName ?? item.name ?? '',
-      ];
-      const result = getParentKeysToExpand(
-        item.children!,
-        targetFqn,
-        newParentKeys
-      );
-      if (result.length > 0) {
-        return result;
-      }
-    }
-  }
-
-  return [];
-};
-
-/**
- * Gets the data type display value for a column/field
- * Returns dataTypeDisplay if available, otherwise falls back to dataType
- */
-export const getDataTypeDisplay = (
-  column: { dataTypeDisplay?: string; dataType?: string } | null
-): string | undefined => {
-  if (!column) {
-    return undefined;
-  }
-
-  return column.dataTypeDisplay || String(column.dataType || '');
-};
-
-/**
- * Normalize tags to ensure glossary terms don't have style property
- * This prevents backend JSON patch errors when trying to remove non-existent style properties
- * @param tags Array of tags to normalize
- * @returns Normalized tags array
- */
-export const normalizeTags = (tags: TagLabel[]): TagLabel[] => {
-  // Handle empty array case
-  if (!tags || tags.length === 0) {
-    return [];
-  }
-
-  return tags.map((tag) => {
-    if (tag.source === TagSource.Glossary) {
-      // Remove style property from glossary terms to avoid backend patch errors
-      return omit(tag, 'style') as TagLabel;
-    }
-
-    // Keep style property for classification tags
-    return tag;
-  });
-};
-
-/**
- * Merge tags with glossary terms, preserving existing glossary terms
- * Used when updating classification tags to ensure glossary terms are not lost
- * @param columnTags Existing tags from the column
- * @param updatedTags New tags to merge (classification tags)
- * @returns Merged tags array with glossary terms preserved
- */
-export const mergeTagsWithGlossary = (
-  columnTags: Column['tags'],
-  updatedTags: Column['tags']
-): Column['tags'] => {
-  const existingGlossaryTags =
-    columnTags?.filter((tag) => tag.source === TagSource.Glossary) || [];
-  const updatedTagsWithoutGlossary =
-    updatedTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize existing glossary tags to remove style property before merging
-  const normalizedExistingGlossaryTags = normalizeTags(existingGlossaryTags);
-  const normalizedUpdatedTags = normalizeTags(updatedTagsWithoutGlossary);
-
-  return [...normalizedUpdatedTags, ...normalizedExistingGlossaryTags];
-};
-
-/**
- * Merge glossary terms with non-glossary tags
- * Used when updating glossary terms to ensure classification tags are not lost
- * @param columnTags Existing tags from the column
- * @param updatedGlossaryTerms New glossary terms to merge
- * @returns Merged tags array with classification tags preserved
- */
-export const mergeGlossaryWithTags = (
-  columnTags: Column['tags'],
-  updatedGlossaryTerms: Column['tags']
-): Column['tags'] => {
-  const nonGlossaryTags =
-    columnTags?.filter((tag) => tag.source !== TagSource.Glossary) || [];
-
-  // Normalize both arrays before merging to ensure consistent format
-  const normalizedNonGlossaryTags = normalizeTags(nonGlossaryTags);
-  const normalizedGlossaryTerms = normalizeTags(updatedGlossaryTerms || []);
-
-  return [...normalizedNonGlossaryTags, ...normalizedGlossaryTerms];
-};
-
-/**
- * Find the original index of a column in the allColumns array
- * @param column Column to find
- * @param allColumns Array of all columns
- * @returns Index of the column in allColumns, or -1 if not found
- */
-export const findOriginalColumnIndex = <
-  T extends { fullyQualifiedName?: string }
->(
-  column: T,
-  allColumns: T[]
-): number => {
-  return allColumns.findIndex(
-    (col) => col.fullyQualifiedName === column.fullyQualifiedName
-  );
-};
-
-/**
- * Finds the parent column of a target column in a nested structure
- * @param targetColumn The column to find the parent for
- * @param columns Array of columns to search through
- * @param parent Current parent column (used internally for recursion)
- * @returns The parent column, null if no parent found, or undefined if column not found
- */
-export const findParentColumn = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  targetColumn: T,
-  columns: T[],
-  parent?: T | null
-): T | null | undefined => {
-  for (const col of columns) {
-    if (col.fullyQualifiedName === targetColumn.fullyQualifiedName) {
-      return parent ?? null;
-    }
-    if (col.children && col.children.length > 0) {
-      const found = findParentColumn(targetColumn, col.children, col);
-      if (found !== undefined) {
-        return found;
-      }
-    }
-  }
-
-  return undefined;
-};
-
-/**
- * Builds a breadcrumb path from a column to its root parent
- * Returns an array of columns representing the path from root to the target column
- * @param column The column to build the breadcrumb path for
- * @param allColumns Array of all columns to search through
- * @returns Array of columns from root to target column
- */
-export const buildColumnBreadcrumbPath = <
-  T extends { fullyQualifiedName?: string; children?: T[] }
->(
-  column: T | null,
-  allColumns: T[]
-): T[] => {
-  if (!column?.fullyQualifiedName) {
-    return [];
-  }
-
-  const breadcrumbs: T[] = [column];
-  let currentColumn: T | null = column;
-  const visited = new Set<string>();
-  visited.add(column.fullyQualifiedName);
-
-  while (currentColumn) {
-    const parent: T | null | undefined = findParentColumn(
-      currentColumn,
-      allColumns
-    );
-    if (parent === undefined || parent === null) {
-      break;
-    }
-
-    // Prevent infinite loops by checking if we've already visited this parent
-    if (parent.fullyQualifiedName && visited.has(parent.fullyQualifiedName)) {
-      break;
-    }
-
-    breadcrumbs.unshift(parent);
-    if (parent.fullyQualifiedName) {
-      visited.add(parent.fullyQualifiedName);
-    }
-    currentColumn = parent;
-  }
-
-  return breadcrumbs;
-};
-
-export const extractTableColumns = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Column[] => {
-  const table = data as Partial<Table>;
-
-  return (table.columns ?? []).map(
-    (column) => ({ ...column, tags: column.tags ?? [] } as Column)
-  );
-};
-
-/**
- * Extract columns/fields from entity data based on entity type
- * @param data Entity data
- * @param entityType Type of entity
- * @returns Array of columns/fields/tasks/features
- */
-export const extractColumnsFromData = <T extends Omit<EntityReference, 'type'>>(
-  data: T,
-  entityType: EntityType
-): Array<Column | SearchIndexField | Field | Task | MlFeature> => {
-  switch (entityType) {
-    case EntityType.TABLE:
-      return extractTableColumns(data);
-    case EntityType.API_ENDPOINT:
-      return extractApiEndpointFields(data);
-    case EntityType.DASHBOARD_DATA_MODEL:
-      return extractDataModelColumns(data);
-    case EntityType.MLMODEL:
-      return extractMlModelFeatures(data);
-    case EntityType.PIPELINE:
-      return extractPipelineTasks(data);
-    case EntityType.TOPIC:
-      return extractTopicFields(data);
-    case EntityType.CONTAINER:
-      return extractContainerColumns(data);
-    case EntityType.SEARCH_INDEX:
-      return extractSearchIndexFields(data);
-    case EntityType.WORKSHEET:
-      return extractTableColumns(data);
-    default:
-      return [];
-  }
-};
-
-export const getHighlightedRowClassName = <
-  T extends { fullyQualifiedName?: string }
->(
-  record: T,
-  highlightedFqn?: string
-): string => {
-  if (highlightedFqn && record.fullyQualifiedName === highlightedFqn) {
-    return 'highlighted-row';
-  }
-
-  return '';
-};
-
-export const getNestedSectionTitle = (
-  entityType: EntityType | undefined
-): string => {
-  switch (entityType) {
-    case EntityType.TOPIC:
-    case EntityType.API_ENDPOINT:
-      return 'label.schema-field-plural';
-    case EntityType.SEARCH_INDEX:
-      return 'label.field-plural';
-    default:
-      return 'label.nested-column-plural';
-  }
 };

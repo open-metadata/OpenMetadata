@@ -21,9 +21,9 @@ import { PipelineType } from '../../../../generated/entity/services/ingestionPip
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
   getIngestionTypes,
-  getMenuItems,
   getSupportedPipelineTypes,
-} from '../../../../utils/IngestionUtils';
+} from '../../../../utils/IngestionConfigUtils';
+import { getMenuItems } from '../../../../utils/IngestionUtils';
 import { getAddIngestionPath } from '../../../../utils/RouterUtils';
 import { AddIngestionButtonProps } from './AddIngestionButton.interface';
 
@@ -33,6 +33,7 @@ function AddIngestionButton({
   serviceCategory,
   serviceName,
   ingestionList,
+  extraMenuItems,
 }: Readonly<AddIngestionButtonProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -64,7 +65,7 @@ function AddIngestionButton({
     [pipelineType, supportedPipelineTypes, ingestionList]
   );
 
-  if (isEmpty(types)) {
+  if (isEmpty(types) && isEmpty(extraMenuItems)) {
     return null;
   }
 
@@ -72,9 +73,14 @@ function AddIngestionButton({
     <LimitWrapper resource="ingestionPipeline">
       <Dropdown
         menu={{
-          items: getMenuItems(types, isDataInSightIngestionExists),
+          items: [
+            ...getMenuItems(types, isDataInSightIngestionExists),
+            ...(extraMenuItems ?? []),
+          ],
           onClick: (item) => {
-            handleAddIngestionClick(item.key as PipelineType);
+            if ((types as string[]).includes(item.key)) {
+              handleAddIngestionClick(item.key as PipelineType);
+            }
           },
         }}
         placement="bottomRight"

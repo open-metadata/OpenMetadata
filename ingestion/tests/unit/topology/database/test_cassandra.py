@@ -36,7 +36,7 @@ from metadata.ingestion.source.database.cassandra.metadata import CassandraSourc
 from metadata.ingestion.source.database.common_nosql_source import TableNameAndType
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
-with open(mock_file_path) as file:
+with open(mock_file_path) as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
 
 mock_cassandra_config = {
@@ -167,11 +167,11 @@ def custom_column_compare(self, other):
 
 
 class CassandraUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
+    @patch("metadata.ingestion.source.database.cassandra.connection.CassandraConnection._get_client")
     @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:
+    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
-        get_connection.return_value = False
+        get_client.return_value = False
         test_connection.return_value = False
 
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_cassandra_config)
@@ -184,7 +184,7 @@ class CassandraUnitTest(TestCase):
         self.cassandra_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(self.cassandra_source.get_database_names())
+        assert EXPECTED_DATABASE_NAMES == list(self.cassandra_source.get_database_names())  # noqa: SIM300
 
     def test_database_schema_names(self):
         with patch.object(
@@ -192,7 +192,7 @@ class CassandraUnitTest(TestCase):
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
-            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.cassandra_source.get_database_schema_names())
+            assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.cassandra_source.get_database_schema_names())  # noqa: SIM300
 
     def test_table_names(self):
         with patch.object(
@@ -200,9 +200,9 @@ class CassandraUnitTest(TestCase):
             "query_table_names_and_types",
             return_value=MOCK_TABLE_NAMES,
         ):
-            assert EXPECTED_TABLE_NAMES == list(self.cassandra_source.get_tables_name_and_type())
+            assert EXPECTED_TABLE_NAMES == list(self.cassandra_source.get_tables_name_and_type())  # noqa: SIM300
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
         with patch.object(CassandraSource, "get_table_columns", return_value=MOCK_TABLE_COLUMNS_DATA):
-            assert MOCK_CREATE_TABLE == next(self.cassandra_source.yield_table(EXPECTED_TABLE_NAMES[0])).right
+            assert MOCK_CREATE_TABLE == next(self.cassandra_source.yield_table(EXPECTED_TABLE_NAMES[0])).right  # noqa: SIM300

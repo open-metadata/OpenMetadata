@@ -30,11 +30,12 @@ from metadata.generated.schema.entity.services.connections.database.deltalake.st
     StorageConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeConnection,
+    DeltaLakeConnection as DeltaLakeConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -57,17 +58,17 @@ def get_deltalake_client(connection, config):
 
 
 @get_deltalake_client.register
-def _(connection: MetastoreConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.pyspark import (
+def _(connection: MetastoreConfig, config: DeltaLakeConnectionConfig):
+    from metadata.ingestion.source.database.deltalake.clients.pyspark import (  # noqa: PLC0415
         DeltalakePySparkClient,
     )
 
     return DeltalakePySparkClient.from_config(config)
 
 
-@get_deltalake_client.register
-def _(connection: StorageConfig, config: DeltaLakeConnection):
-    from metadata.ingestion.source.database.deltalake.clients.s3 import (
+@get_deltalake_client.register  # noqa: RET503
+def _(connection: StorageConfig, config: DeltaLakeConnectionConfig):
+    from metadata.ingestion.source.database.deltalake.clients.s3 import (  # noqa: PLC0415
         DeltalakeS3Client,
     )
 
@@ -75,34 +76,35 @@ def _(connection: StorageConfig, config: DeltaLakeConnection):
         return DeltalakeS3Client.from_config(config)
 
 
-def get_connection(connection: DeltaLakeConnection) -> DeltalakeClient:
-    """Create Deltalake Client"""
-    return DeltalakeClient(
-        client=get_deltalake_client(connection.configSource, connection),
-        config=connection,
-    )
+class DeltaLakeConnection(BaseConnection[DeltaLakeConnectionConfig, DeltalakeClient]):
+    def _get_client(self) -> DeltalakeClient:
+        connection = self.service_connection
+        return DeltalakeClient(
+            client=get_deltalake_client(connection.configSource, connection),
+            config=connection,
+        )
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        connection = self.client
+        service_connection = self.service_connection
+        test_fn = {
+            "GetDatabases": connection.client.get_test_get_databases_fn(service_connection.configSource),
+            "GetTables": connection.client.get_test_get_tables_fn(service_connection.configSource),
+        }
 
-def test_connection(
-    metadata: OpenMetadata,
-    connection: DeltalakeClient,
-    service_connection: DeltaLakeConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-    test_fn = {
-        "GetDatabases": connection.client.get_test_get_databases_fn(service_connection.configSource),
-        "GetTables": connection.client.get_test_get_tables_fn(service_connection.configSource),
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

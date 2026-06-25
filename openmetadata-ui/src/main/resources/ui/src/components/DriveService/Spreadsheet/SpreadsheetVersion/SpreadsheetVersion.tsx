@@ -31,13 +31,13 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDriveAssetByFqn } from '../../../../rest/driveAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
@@ -54,7 +54,6 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { SpreadsheetVersionProps } from './SpreadsheetVersion.interface';
-
 const SpreadsheetVersion = ({
   version,
   currentVersionData,
@@ -65,9 +64,6 @@ const SpreadsheetVersion = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -326,12 +322,9 @@ const SpreadsheetVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.SPREADSHEET}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

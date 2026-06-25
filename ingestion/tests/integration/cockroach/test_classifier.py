@@ -41,7 +41,7 @@ def _run_classifier_with_retry(
             )
             run_workflow(MetadataWorkflow, ingestion_config)
             run_workflow(AutoClassificationWorkflow, classifier_config)
-            return
+            return  # noqa: TRY300
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
@@ -94,7 +94,7 @@ def test_bytes_column_sample_data(
 ):
     table = metadata.get_by_name(
         Table,
-        "{database_service}.roach.public.kv".format(database_service=db_service.fullyQualifiedName.root),
+        "{database_service}.roach.public.kv".format(database_service=db_service.fullyQualifiedName.root),  # noqa: UP032
     )
     assert table is not None
     sample_data = metadata.get_sample_data(table)

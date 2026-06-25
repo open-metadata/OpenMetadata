@@ -25,7 +25,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -40,7 +40,6 @@ import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVers
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import APIEndpointSchema from '../APIEndpointSchema/APIEndpointSchema';
 import { APIEndpointVersionProp } from './APIEndpointVersion.interface';
-
 const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   version,
   currentVersionData,
@@ -49,9 +48,6 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   tier,
   slashedApiEndpointName,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   backHandler,
   versionHandler,
   entityPermissions,
@@ -234,12 +230,9 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
       <EntityVersionTimeLine
         currentVersion={version ?? ''}
         entityType={EntityType.API_ENDPOINT}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

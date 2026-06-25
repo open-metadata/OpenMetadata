@@ -22,7 +22,7 @@ import {
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -115,18 +115,23 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/SchedularUtils', () => ({
+jest.mock('../../../../utils/CronExpressionUtils', () => ({
   getCronDefaultValue: jest.fn().mockReturnValue('0 0 * * *'),
   getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
 }));
 
 describe('AppSchedule component', () => {
-  it('should render necessary elements for mockProps1', () => {
+  it('should render necessary elements for mockProps1', async () => {
     render(<AppSchedule {...mockProps1} />);
 
     expect(screen.getByText('label.schedule-type')).toBeInTheDocument();
-    expect(screen.getByText('label.schedule-interval')).toBeInTheDocument();
-    expect(screen.getByTestId('cron-string')).toBeInTheDocument();
+    // label.schedule-interval is gated on cronString being non-empty, which
+    // now resolves async after cronstrue lazy-loads (PR-7 of bundle-size
+    // follow-up). findBy* awaits the async render.
+    expect(
+      await screen.findByText('label.schedule-interval')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('cron-string')).toBeInTheDocument();
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
@@ -188,6 +193,21 @@ describe('AppSchedule component', () => {
     expect(
       screen.getByText('message.application-disabled-message')
     ).toBeInTheDocument();
+  });
+
+  it('should show runtime disabled reason when app is unavailable', () => {
+    render(
+      <AppSchedule
+        {...mockProps1}
+        disabled
+        disabledReason="message.cache-service-not-configured-message"
+      />
+    );
+
+    expect(
+      screen.getByText('message.cache-service-not-configured-message')
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
   });
 
   it('if failed in fetch pipelineDetails, should not show AppRunsHistory', () => {

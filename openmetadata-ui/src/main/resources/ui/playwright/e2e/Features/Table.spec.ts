@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
+import { TaskClass } from '../../support/entity/TaskClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -63,7 +64,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(await page.locator('.ant-table-row').count()).toBe(15);
+    expect(
+      await page
+        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
+        .count()
+    ).toBe(15);
   });
 
   test('Table search with sorting should work', async ({
@@ -700,35 +705,27 @@ test.describe('Large Table Column Search & Copy Link', () => {
     );
     expect(clipboardText).toContain(targetColumnName);
 
-    // 5. Visit the copied Link
-    await Promise.all([
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('fields=') &&
-          response.request().method() === 'GET'
-      ),
-      page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(
-              `/api/v1/tables/name/${encodeURIComponent(
-                createdTable.fullyQualifiedName
-              )}/columns`
-            ) &&
-          response.url().includes('profile') &&
-          response.request().method() === 'GET',
-        { timeout: 150_000 } // TODO: Reduce timeout once the latency issue is fixed
-      ),
-      page.goto(clipboardText),
-    ]);
+    // 5. Visit the copied Link — assert single-column GET fires with
+    // entityType/fields query params.
+    const columnGetResponsePromise = page.waitForResponse((response) => {
+      if (
+        !response.url().includes('/api/v1/columns/name/') ||
+        response.request().method() !== 'GET'
+      ) {
+        return false;
+      }
+      const url = new URL(response.url());
+
+      return (
+        url.searchParams.get('entityType') === 'table' &&
+        url.searchParams.get('fields') ===
+          'tags,customMetrics,extension,profile'
+      );
+    });
+    await page.goto(clipboardText);
+    const columnGetResponse = await columnGetResponsePromise;
+
+    expect(columnGetResponse.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
     // 6. Verify Side Panel is open
@@ -857,5 +854,83 @@ test.describe('dbt Tab Visibility for Seed Files', () => {
     await expect(
       page.getByTestId('query-entity-copy-button')
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Table source URL header button', () => {
+  const sourceUrlTable = new TableClass();
+  const SOURCE_URL = 'https://example.com/table/source';
+
+  test.beforeAll('Setup table with source URL', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.create(apiContext);
+    await sourceUrlTable.patch({
+      apiContext,
+      patchData: [{ op: 'add', path: '/sourceUrl', value: SOURCE_URL }],
+    });
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await sourceUrlTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('source URL button links to the configured source', async ({ page }) => {
+    await redirectToHomePage(page);
+    await sourceUrlTable.visitEntityPage(page);
+
+    const sourceUrlButton = page.getByTestId('source-url-button');
+    await expect(sourceUrlButton).toBeVisible();
+    await expect(sourceUrlButton).toHaveAttribute('href', SOURCE_URL);
+    await expect(sourceUrlButton).toHaveAttribute('target', '_blank');
+  });
+});
+
+test.describe('Table open-task header stat', () => {
+  const openTaskTable = new TableClass();
+  let openTask: TaskClass;
+
+  test.beforeAll('Setup table with an open task', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTaskTable.create(apiContext);
+
+    const loggedInUser = await (
+      await apiContext.get('/api/v1/users/loggedInUser')
+    ).json();
+    openTask = new TaskClass({
+      about: `<#E::table::${openTaskTable.entityResponseData.fullyQualifiedName}>`,
+      assignees: [loggedInUser.name],
+    });
+    await openTask.create(apiContext);
+
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await openTask.delete(apiContext);
+    await openTaskTable.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('open-task stat shows the count and links to the Tasks tab', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await openTaskTable.visitEntityPage(page);
+
+    const openTaskStat = page.getByTestId('open-task-stat');
+    await expect(openTaskStat).toBeVisible();
+    await expect(openTaskStat).toContainText('1');
+
+    await openTaskStat.click();
+
+    await page.waitForURL('**/activity_feed/tasks');
+    await expect(page).toHaveURL(/\/activity_feed\/tasks/);
   });
 });

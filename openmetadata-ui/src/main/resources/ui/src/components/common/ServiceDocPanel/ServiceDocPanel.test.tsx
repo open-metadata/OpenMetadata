@@ -10,15 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { NodeViewProps } from '@tiptap/core';
+import React from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
-import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
+import CodeBlockComponent from '../../BlockEditor/Extensions/CodeBlock/CodeBlockComponent';
 import ServiceDocPanel from './ServiceDocPanel';
 
 jest.mock('../Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
+
+jest.mock('@tiptap/react', () => ({
+  NodeViewWrapper: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => React.createElement('pre', props, children),
+  NodeViewContent: ({ as: Tag = 'div' }: { as?: string }) =>
+    React.createElement(Tag),
+}));
 
 jest.mock('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component', () =>
   jest
@@ -32,19 +48,30 @@ jest.mock('../../../rest/miscAPI', () => ({
   fetchMarkdownFile: jest.fn(),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
+jest.mock('../../../utils/ServicePureUtils', () => ({
   getActiveFieldNameForAppDocs: jest.fn(),
+}));
+
+jest.mock('../../../utils/ServiceUtils', () => ({
   processDocMarkdown: jest.fn((content: string) => content),
 }));
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest.fn().mockReturnValue(<div className="service-doc-content" />)
+  jest.fn(({ markdown }: { markdown: string }) => (
+    <div
+      className="service-doc-content"
+      dangerouslySetInnerHTML={{ __html: markdown }}
+    />
+  ))
 );
+
+let mockLanguage = 'en-US';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
+    t: (key: string) => key,
     i18n: {
-      language: 'en-US',
+      language: mockLanguage,
     },
   }),
 }));
@@ -56,6 +83,9 @@ const mockGetActiveFieldNameForAppDocs =
   getActiveFieldNameForAppDocs as jest.MockedFunction<
     typeof getActiveFieldNameForAppDocs
   >;
+const mockProcessDocMarkdown = processDocMarkdown as jest.MockedFunction<
+  typeof processDocMarkdown
+>;
 
 const mockScrollIntoView = jest.fn();
 const mockQuerySelector = jest.fn();
@@ -96,6 +126,7 @@ const mockSelectedEntity = {
 describe('ServiceDocPanel Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLanguage = 'en-US';
     mockFetchMarkdownFile.mockResolvedValue('markdown content');
     mockQuerySelectorAll.mockReturnValue([]);
     mockQuerySelector.mockReturnValue(null);
@@ -153,6 +184,18 @@ describe('ServiceDocPanel Component', () => {
         );
       });
     });
+
+    it('should normalize short language codes before fetching markdown', async () => {
+      mockLanguage = 'en';
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+          'en-US/DatabaseService/mysql.md'
+        );
+      });
+    });
   });
 
   describe('Error Handling', () => {
@@ -164,6 +207,279 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('service-requirements')).toBeInTheDocument();
         expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Admonition Rendering', () => {
+    it('should render a note admonition block', async () => {
+      mockProcessDocMarkdown.mockReturnValue(
+        '<div class="admonition admonition-note"><p>This is a note</p></div>'
+      );
+
+      const { container } = render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.admonition.admonition-note')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should render a warning admonition block', async () => {
+      mockProcessDocMarkdown.mockReturnValue(
+        '<div class="admonition admonition-warning"><p>This is a warning</p></div>'
+      );
+
+      const { container } = render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.admonition.admonition-warning')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should pass fetched markdown through processDocMarkdown', async () => {
+      mockFetchMarkdownFile.mockResolvedValue('$$note\nsome note\n$$');
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          '$$note\nsome note\n$$'
+        );
+      });
+    });
+
+    it('should render focused field docs without carrying requirements forward', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+          '$$section',
+          '### Warehouse $(id="warehouse")',
+          'Warehouse guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/database"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Warehouse guidance.')
+        );
+      });
+    });
+
+    it('should render full requirements on focused docs landing state', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '$$note',
+          'Use Snowflake 8.0.0 and up.',
+          '$$',
+          '### Usage & Lineage',
+          'Grant lineage privileges.',
+          '### Profiler & Data Quality',
+          'Grant profiler privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(<ServiceDocPanel {...defaultProps} focusedMode />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.metadata')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.lineage')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant lineage privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.profiler')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant profiler privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
+        );
+      });
+    });
+
+    it('should render full requirements for service name focused docs', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '$$note',
+          'Use Snowflake 8.0.0 and up.',
+          '$$',
+          '### Usage & Lineage',
+          'Grant lineage privileges.',
+          '### Profiler & Data Quality',
+          'Grant profiler privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="serviceName"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.metadata')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.lineage')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant lineage privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.profiler')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant profiler privileges.')
+        );
+      });
+    });
+
+    it('should show setup requirements when a focused field has no matching docs section', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Salesforce',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Username $(id="username")',
+          'Username guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/account"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('label.setup-guide')).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Username guidance.')
+        );
+      });
+    });
+  });
+
+  describe('Brand Name Replacement', () => {
+    const originalEnv = process.env;
+
+    afterEach(() => {
+      process.env = originalEnv;
+    });
+
+    it('should replace OpenMetadata with BRAND_NAME when env var is set', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'Collate' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to Collate using Collate SDK'
+        );
+      });
+    });
+
+    it('should keep OpenMetadata when BRAND_NAME env var is not set', async () => {
+      process.env = { ...originalEnv };
+      delete process.env.BRAND_NAME;
+      mockFetchMarkdownFile.mockResolvedValue(
+        'Connect to OpenMetadata using OpenMetadata SDK'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'Connect to OpenMetadata using OpenMetadata SDK'
+        );
+      });
+    });
+
+    it('should replace all occurrences of OpenMetadata with BRAND_NAME', async () => {
+      process.env = { ...originalEnv, BRAND_NAME: 'MyBrand' };
+      mockFetchMarkdownFile.mockResolvedValue(
+        'OpenMetadata is great. Use OpenMetadata for metadata management.'
+      );
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          'MyBrand is great. Use MyBrand for metadata management.'
+        );
       });
     });
   });
@@ -326,5 +642,89 @@ describe('ServiceDocPanel Component', () => {
         expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="field2"]');
       });
     });
+  });
+});
+
+describe('CodeBlockComponent', () => {
+  const mockWriteText = jest.fn().mockResolvedValue(undefined);
+
+  const mockNode = {
+    textContent: 'SELECT * FROM table;',
+  } as unknown as NodeViewProps['node'];
+
+  const mockNodeViewProps = {
+    node: mockNode,
+  } as unknown as NodeViewProps;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      writable: true,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it('should render the copy button', () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
+  });
+
+  it('should set data-copied to false initially', () => {
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'false'
+    );
+  });
+
+  it('should copy node text content to clipboard on click', async () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledWith('SELECT * FROM table;');
+    });
+  });
+
+  it('should set data-copied to true after clicking copy', async () => {
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+        'data-copied',
+        'true'
+      );
+    });
+  });
+
+  it('should remain in copied state after rapid clicks', async () => {
+    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByTestId('code-block-copy-icon'));
+
+    await waitFor(() => {
+      expect(mockWriteText).toHaveBeenCalledTimes(2);
+    });
+
+    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
+      'data-copied',
+      'true'
+    );
   });
 });

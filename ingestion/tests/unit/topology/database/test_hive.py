@@ -59,11 +59,7 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.database.hive.connection import (
-    get_connection,
-    get_connection_url,
-)
-from metadata.ingestion.source.database.hive.connection import (
-    test_connection as hive_test_connection,
+    HiveConnection as HiveConnectionHandler,
 )
 from metadata.ingestion.source.database.hive.metadata import HiveSource
 
@@ -338,7 +334,7 @@ class HiveUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(
         self,
-        methodName,
+        methodName,  # noqa: N803
         test_connection,
     ) -> None:
         super().__init__(methodName)
@@ -357,13 +353,13 @@ class HiveUnitTest(TestCase):
         self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
-        assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]
+        assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
 
         self.hive.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
         self.hive.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
-        assert EXPECTED_DATABASE_SCHEMA == [
+        assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.hive.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
 
@@ -372,7 +368,7 @@ class HiveUnitTest(TestCase):
     def test_yield_table(self):
         self.hive.inspector.get_columns = lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         results = [either.right for either in self.hive.yield_table(("sample_table", "Regular"))]
-        assert EXPECTED_TABLE == results
+        assert EXPECTED_TABLE == results  # noqa: SIM300
 
     def test_col_data_type(self):
         """
@@ -395,7 +391,7 @@ class HiveUnitTest(TestCase):
                 schema="sample_schema",
             )
         )
-        for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):
+        for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):  # noqa: B905
 
             def custom_eq(self, __value: object) -> bool:
                 return self.length == __value.length and self.collation == __value.collation
@@ -551,7 +547,7 @@ class HiveUnitTest(TestCase):
         mock_create_connection.return_value = mock_engine
 
         # Test SSL connection
-        result = get_connection(mock_hive_connection_ssl)
+        result = HiveConnectionHandler(mock_hive_connection_ssl).client
 
         # Verify SSL manager was called
         mock_ssl_manager.assert_called_once()
@@ -585,7 +581,7 @@ class HiveUnitTest(TestCase):
             useSSL=False,
         )
 
-        result = get_connection(non_ssl_connection)
+        result = HiveConnectionHandler(non_ssl_connection).client
 
         # Verify SSL manager was called but returned None
         mock_ssl_manager.assert_called_once()
@@ -609,7 +605,7 @@ class HiveUnitTest(TestCase):
             useSSL=True,
         )
 
-        url = get_connection_url(ssl_connection)
+        url = HiveConnectionHandler.get_connection_url(ssl_connection)
         self.assertEqual(url, "hive://username@localhost:1466")
 
         # Test HTTPS scheme connection
@@ -622,7 +618,7 @@ class HiveUnitTest(TestCase):
             auth=Auth.BASIC,
         )
 
-        url = get_connection_url(https_connection)
+        url = HiveConnectionHandler.get_connection_url(https_connection)
         self.assertEqual(url, "hive+https://username:password@localhost:1000")
 
     def test_custom_hive_connection_ssl_initialization(self):
@@ -904,7 +900,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_conn,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once_with(postgres_conn)
         mock_test_db_schema.assert_called_once()
@@ -935,7 +933,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_conn,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once_with(mysql_conn)
         mock_test_db_schema.assert_called_once()
@@ -967,7 +967,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=postgres_dict,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, PostgresConnection)
@@ -997,7 +999,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=mysql_dict,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_called_once()
         self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
@@ -1021,8 +1025,10 @@ class HiveUnitTest(TestCase):
             metastoreConnection=invalid_dict,
         )
 
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
         with self.assertRaises(ValueError) as context:
-            hive_test_connection(mock_metadata, mock_engine, hive_conn)
+            handler.test_connection(mock_metadata)
 
         self.assertEqual(str(context.exception), "Invalid metastore connection")
 
@@ -1042,7 +1048,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection={},
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
@@ -1065,7 +1073,9 @@ class HiveUnitTest(TestCase):
             metastoreConnection=None,
         )
 
-        hive_test_connection(mock_metadata, mock_engine, hive_conn)
+        handler = HiveConnectionHandler(hive_conn)
+        handler._client = mock_engine
+        handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()

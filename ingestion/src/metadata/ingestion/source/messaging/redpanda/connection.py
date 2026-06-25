@@ -19,11 +19,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
-    RedpandaConnection,
+    RedpandaConnection as RedpandaConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.messaging.kafka.connection import KafkaClient
 from metadata.ingestion.source.messaging.kafka.connection import (
@@ -38,29 +39,20 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-def get_connection(connection: RedpandaConnection) -> KafkaClient:
-    """
-    Create connection
-    """
-    return get_kafka_connection(connection)
+class RedpandaConnection(BaseConnection[RedpandaConnectionConfig, KafkaClient]):
+    def _get_client(self) -> KafkaClient:
+        return get_kafka_connection(self.service_connection)
 
-
-def test_connection(
-    metadata: OpenMetadata,
-    client: KafkaClient,
-    service_connection: RedpandaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-
-    return test_kafka_connection(
-        metadata=metadata,
-        client=client,
-        service_connection=service_connection,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_kafka_connection(
+            metadata=metadata,
+            client=self.client,
+            service_connection=self.service_connection,
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

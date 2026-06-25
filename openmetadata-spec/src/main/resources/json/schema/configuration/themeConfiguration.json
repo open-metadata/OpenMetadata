@@ -40,6 +40,11 @@
       "description": "Color used for informational messages in the UI, in hex code format or empty",
       "type": "string",
       "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
+    "panelBackgroundColor": {
+      "description": "Default background color for the landing page welcome panel, in hex code format or empty. Individual users and per-persona settings can still override this value.",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
     }
   },
   "required": ["primaryColor", "errorColor", "successColor","warningColor","infoColor"],

@@ -13,10 +13,10 @@ Base class for ingesting api services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Set
+from typing import Any, Iterable, Set  # noqa: UP035
 
 from pydantic import Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
@@ -73,7 +73,6 @@ class ApiServiceTopology(ServiceTopology):
                 processor="yield_create_request_api_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["api_collection"],
@@ -87,14 +86,12 @@ class ApiServiceTopology(ServiceTopology):
                 context="api_collections",
                 processor="yield_api_collection",
                 consumer=["api_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
                 processor="yield_api_endpoint",
                 consumer=["api_service"],
-                use_cache=True,
             ),
         ],
     )
@@ -113,8 +110,8 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = ApiServiceTopology()
     context = TopologyContextManager(topology)
-    api_collection_source_state: Set = set()
-    api_endpoint_source_state: Set = set()
+    api_collection_source_state: Set = set()  # noqa: RUF012, UP006
+    api_endpoint_source_state: Set = set()  # noqa: RUF012, UP006
 
     def __init__(
         self,
@@ -172,7 +169,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=APICollection,
                 entity_source_state=self.api_collection_source_state,
-                mark_deleted_entity=self.source_config.markDeletedApiCollections,
+                recursive=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
 

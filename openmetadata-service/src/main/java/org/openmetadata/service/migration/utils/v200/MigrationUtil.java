@@ -1,29 +1,40 @@
 package org.openmetadata.service.migration.utils.v200;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
-import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -31,54 +42,149 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class MigrationUtil {
 
-  private static final String TABLE_COLUMN_ASSET_TYPE = "tableColumn";
+  private static final String DATA_CONSUMER_ROLE = "DataConsumer";
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
+  private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+
+  /**
+   * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
+   * point at the same target entity (e.g. a few glossary terms each with hundreds of tasks); going
+   * through {@link EntityRepository#get} for every task would re-load the entity and re-walk its
+   * inheritance chain. This cache shortens the lookup to a Map probe for the common case.
+   *
+   * <p>Bounded LRU via {@link LinkedHashMap#removeEldestEntry} so a pathological install with
+   * millions of unique target entities cannot OOM the migration step. Cached lists are wrapped
+   * unmodifiable so a downstream caller mutating the returned list cannot corrupt the cache.
+   *
+   * <p>The migration runs single-threaded on startup so no synchronization is required.
+   */
+  private static final int DOMAIN_CACHE_MAX_SIZE = 10_000;
+
+  private static final Map<String, List<EntityReference>> DOMAIN_CACHE =
+      new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<EntityReference>> eldest) {
+          return size() > DOMAIN_CACHE_MAX_SIZE;
+        }
+      };
 
   private MigrationUtil() {}
 
-  public static void addTableColumnSearchSettings() {
+  /**
+   * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
+   * upgrades. Role→Policy attachments are modelled as {@code Relationship.HAS} edges in {@code
+   * entity_relationship} (the {@code policies} field on Role JSON is derived from those edges, not
+   * stored), so this migration writes the relationship directly via {@code
+   * relationshipDAO().insert(...)} which upserts and is therefore idempotent.
+   *
+   * <p>Migrations run before service startup, so {@code initSeedDataFromResources()} has not yet
+   * created {@code TaskAuthorPolicy}. The helper loads the seed JSON from the classpath and
+   * persists it via {@link PolicyRepository#initializeEntity} (create-if-missing) before adding
+   * the role relationship.
+   */
+  public static void addTaskAuthorPolicyToDataConsumerRole(CollectionDAO collectionDAO) {
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      LOG.info("Adding tableColumn search settings configuration for column search support");
-
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-
-      if (searchSettings == null) {
+      Policy policy = ensureTaskAuthorPolicySeeded(policyRepository);
+      if (policy == null) {
         LOG.warn(
-            "Search settings not found in database. "
-                + "Default settings will be loaded on next startup which includes tableColumn.");
+            "{} seed not found on classpath, skipping DataConsumer attachment", TASK_AUTHOR_POLICY);
         return;
       }
-
-      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
-      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
-
-      if (defaultSettings == null) {
-        LOG.error("Failed to load default search settings from file, skipping migration");
-        return;
-      }
-
-      boolean assetTypeAdded =
-          SearchSettingsMergeUtil.addMissingAssetTypeConfiguration(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      boolean allowedFieldsAdded =
-          SearchSettingsMergeUtil.addMissingAllowedFields(
-              currentSettings, defaultSettings, TABLE_COLUMN_ASSET_TYPE);
-
-      if (assetTypeAdded || allowedFieldsAdded) {
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info(
-            "Successfully added tableColumn search settings: "
-                + "assetTypeConfiguration={}, allowedFields={}",
-            assetTypeAdded,
-            allowedFieldsAdded);
-      } else {
-        LOG.info("tableColumn search settings already exist, no updates needed");
-      }
-
-    } catch (Exception e) {
-      LOG.error("Error adding tableColumn search settings", e);
-      throw new RuntimeException("Failed to add tableColumn search settings", e);
+      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
+      collectionDAO
+          .relationshipDAO()
+          .insert(
+              role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS.ordinal());
+      LOG.info("Attached {} to {}", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping TaskAuthorPolicy backfill: {} not found ({})",
+          DATA_CONSUMER_ROLE,
+          ex.getMessage());
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to attach {} to {}: {}",
+          TASK_AUTHOR_POLICY,
+          DATA_CONSUMER_ROLE,
+          ex.getMessage(),
+          ex);
     }
+  }
+
+  /**
+   * Ensure {@code DataConsumerPolicy} contains the {@code DataConsumerPolicy-CreateTask-Rule} that
+   * grants authenticated users the {@code Create} operation on the {@code task} resource. The rule
+   * was added to the seed JSON in #28044 but the migration step was omitted, so existing
+   * installations upgrading from 1.x would not pick it up automatically.
+   */
+  public static void addCreateTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists = false;
+      for (Rule rule : policy.getRules()) {
+        if (CREATE_TASK_RULE_NAME.equals(rule.getName())) {
+          ruleExists = true;
+          break;
+        }
+      }
+      if (!ruleExists) {
+        Rule createTaskRule =
+            new Rule()
+                .withName(CREATE_TASK_RULE_NAME)
+                .withDescription(
+                    "Allow authenticated users to create tasks"
+                        + " (data access requests, suggestions, etc.).")
+                .withResources(List.of("task"))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(createTaskRule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_TASK_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping CreateTask rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_TASK_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
+  private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
+    Policy existing = null;
+    try {
+      existing = repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+    } catch (EntityNotFoundException ignored) {
+      // Not seeded yet — fall through to seed-from-classpath path.
+    }
+    if (existing != null) {
+      return existing;
+    }
+    try {
+      List<Policy> seeds = repository.getEntitiesFromSeedData();
+      for (Policy seed : seeds) {
+        if (TASK_AUTHOR_POLICY.equals(seed.getName())) {
+          repository.initializeEntity(seed);
+          return repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to load TaskAuthorPolicy seed data: {}", e.getMessage());
+    }
+    return null;
   }
 
   /**
@@ -86,7 +192,7 @@ public class MigrationUtil {
    * suggestion becomes a Task with type=Suggestion and category=MetadataUpdate. The about
    * EntityReference and aboutFqnHash are properly computed from the entityLink.
    */
-  public static void migrateSuggestionsToTaskEntity(Handle handle) {
+  public static void migrateSuggestionsToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of suggestions to task_entity");
 
     boolean tableExists;
@@ -123,8 +229,23 @@ public class MigrationUtil {
         JsonNode suggestionJson = JsonUtils.readTree(jsonStr);
 
         String suggestionId = suggestionJson.get("id").asText();
+        boolean alreadyExists = taskExists(handle, suggestionId);
 
-        if (taskExists(handle, suggestionId)) {
+        if (alreadyExists) {
+          String createdByUserId = null;
+          if (suggestionJson.has("createdBy")
+              && suggestionJson.get("createdBy").has("id")
+              && !suggestionJson.get("createdBy").get("id").isNull()) {
+            createdByUserId = suggestionJson.get("createdBy").get("id").asText();
+          }
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          String entityLinkStr =
+              suggestionJson.has("entityLink") ? suggestionJson.get("entityLink").asText() : null;
+          if (entityLinkStr != null) {
+            setAboutFromEntityLink(aboutJson, entityLinkStr, suggestionJson);
+          }
+          insertTaskLinkRelationships(
+              handle, suggestionId, null, null, null, createdByUserId, aboutJson, connectionType);
           skipped++;
           continue;
         }
@@ -166,7 +287,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated suggestions correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -216,8 +337,10 @@ public class MigrationUtil {
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        insertTask(handle, suggestionId, taskJson.toString(), fqnHash);
-        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
+        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains, connectionType);
+        insertTaskLinkRelationships(
+            handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating suggestion: {}", e.getMessage());
@@ -234,13 +357,23 @@ public class MigrationUtil {
    * Migrate thread-based tasks from thread_entity to the new task_entity table. Each thread with
    * type='Task' becomes a proper Task entity with correct type mapping, payload, and aboutFqnHash.
    */
-  public static void migrateThreadTasksToTaskEntity(Handle handle) {
+  public static void migrateThreadTasksToTaskEntity(Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of thread-based tasks to task_entity");
-
+    String threadTable;
+    if (tableExists(handle, "thread_entity")) {
+      threadTable = "thread_entity";
+    } else if (tableExists(handle, "thread_entity_legacy")) {
+      threadTable = "thread_entity_legacy";
+    } else {
+      LOG.info(
+          "Neither thread_entity nor thread_entity_legacy exists, skipping thread task migration");
+      return;
+    }
     List<Map<String, Object>> threads =
         handle
             .createQuery(
-                "SELECT json FROM thread_entity WHERE type = 'Task' ORDER BY createdAt ASC")
+                String.format(
+                    "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC", threadTable))
             .mapToMap()
             .list();
 
@@ -261,11 +394,7 @@ public class MigrationUtil {
         JsonNode threadJson = JsonUtils.readTree(jsonStr);
 
         String threadId = threadJson.get("id").asText();
-
-        if (taskExists(handle, threadId)) {
-          skipped++;
-          continue;
-        }
+        boolean alreadyExists = taskExists(handle, threadId);
 
         JsonNode taskDetails = threadJson.get("task");
         if (taskDetails == null) {
@@ -287,6 +416,31 @@ public class MigrationUtil {
           entityLink = MessageParser.EntityLink.parse(aboutLink);
         } catch (Exception e) {
           LOG.warn("Cannot parse entityLink '{}', skipping thread {}", aboutLink, threadId);
+          skipped++;
+          continue;
+        }
+
+        if (alreadyExists) {
+          String createdByName = threadJson.path("createdBy").asText("system");
+          String createdByUserId = lookupUserId(handle, createdByName);
+          ObjectNode aboutJson = JsonUtils.getObjectNode();
+          setAboutFromEntityLink(aboutJson, aboutLink, threadJson);
+          insertTaskLinkRelationships(
+              handle,
+              threadId,
+              taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+              taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+              taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+              createdByUserId,
+              aboutJson,
+              connectionType);
+          // Re-run domain inheritance for existing rows. The original v200 promotion
+          // used a raw SQL lookup that missed inherited domains (e.g. glossary terms
+          // inheriting from their parent glossary); now that the lookup walks the
+          // entity API, force-migrate must also reconcile domain relationships for
+          // tasks that were already promoted before this fix.
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
           skipped++;
           continue;
         }
@@ -315,7 +469,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated tasks correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -373,8 +527,17 @@ public class MigrationUtil {
           taskJson.set("resolution", resolution);
         }
 
-        insertTask(handle, threadId, taskJson.toString(), fqnHash);
-        insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
+        insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
+        insertTaskLinkRelationships(
+            handle,
+            threadId,
+            taskDetails.has("assignees") ? taskDetails.get("assignees") : null,
+            taskDetails.has("reviewers") ? taskDetails.get("reviewers") : null,
+            taskDetails.has("watchers") ? taskDetails.get("watchers") : null,
+            createdByUserId,
+            taskJson,
+            connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating thread task: {}", e.getMessage());
@@ -475,7 +638,8 @@ public class MigrationUtil {
    * thread_entity. User conversations stay in thread_entity; only generated activity entries are
    * migrated.
    */
-  public static void migrateLegacyActivityThreadsToActivityStream(Handle handle) {
+  public static void migrateLegacyActivityThreadsToActivityStream(
+      Handle handle, ConnectionType connectionType) {
     LOG.info("Starting migration of legacy thread activity to activity_stream");
 
     if (!tableExists(handle, "thread_entity")) {
@@ -511,7 +675,7 @@ public class MigrationUtil {
           continue;
         }
 
-        insertActivityEvent(handle, event);
+        insertActivityEvent(handle, event, connectionType);
         migrated++;
       } catch (Exception e) {
         LOG.warn("Error migrating legacy activity thread to activity_stream: {}", e.getMessage());
@@ -533,6 +697,10 @@ public class MigrationUtil {
       ObjectNode aboutRef = JsonUtils.getObjectNode();
       if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
         aboutRef.put("id", sourceJson.get("entityId").asText());
+      } else if (sourceJson.has("entityRef")
+          && sourceJson.get("entityRef").has("id")
+          && !sourceJson.get("entityRef").get("id").isNull()) {
+        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -576,7 +744,7 @@ public class MigrationUtil {
           ? "GlossaryApproval"
           : "RequestApproval";
       case "RequestTestCaseFailureResolution" -> "TestCaseResolution";
-      case "RecognizerFeedbackApproval" -> "DataQualityReview";
+      case "RecognizerFeedbackApproval" -> "RecognizerFeedbackApproval";
       default -> "CustomTask";
     };
   }
@@ -911,7 +1079,7 @@ public class MigrationUtil {
       handle
           .createQuery(String.format("SELECT 1 FROM %s LIMIT 1", tableName))
           .mapTo(Integer.class)
-          .one();
+          .findFirst();
       return true;
     } catch (Exception e) {
       return false;
@@ -960,19 +1128,25 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertActivityEvent(Handle handle, ActivityEvent event) {
+  private static void insertActivityEvent(
+      Handle handle, ActivityEvent event, ConnectionType connectionType) {
     String entityFqnHash =
         event.getEntity().getFullyQualifiedName() != null
             ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
             : null;
     String aboutFqnHash =
-        event.getAbout() != null ? FullyQualifiedName.buildHash(event.getAbout()) : null;
+        nullOrEmpty(event.getAbout())
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
     String domains =
         event.getDomains() == null || event.getDomains().isEmpty()
             ? null
             : JsonUtils.pojoToJson(
                 event.getDomains().stream().map(domain -> domain.getId().toString()).toList());
 
+    String domainsBind = connectionType == ConnectionType.POSTGRES ? ":domains::jsonb" : ":domains";
+    String jsonBind = connectionType == ConnectionType.POSTGRES ? ":json::jsonb" : ":json";
     handle
         .createUpdate(
             "INSERT INTO activity_stream "
@@ -980,7 +1154,11 @@ public class MigrationUtil {
                 + "actorId, actorName, timestamp, summary, fieldName, oldValue, newValue, domains, json) "
                 + "VALUES (:id, :eventType, :entityType, :entityId, :entityFqnHash, :about, "
                 + ":aboutFqnHash, :actorId, :actorName, :timestamp, :summary, :fieldName, "
-                + ":oldValue, :newValue, :domains, :json)")
+                + ":oldValue, :newValue, "
+                + domainsBind
+                + ", "
+                + jsonBind
+                + ")")
         .bind("id", event.getId().toString())
         .bind("eventType", event.getEventType().value())
         .bind("entityType", event.getEntity().getType())
@@ -1021,13 +1199,13 @@ public class MigrationUtil {
         > 0;
   }
 
-  private static void insertTask(Handle handle, String id, String json, String fqnHash) {
-    handle
-        .createUpdate("INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)")
-        .bind("id", id)
-        .bind("json", json)
-        .bind("fqnHash", fqnHash)
-        .execute();
+  private static void insertTask(
+      Handle handle, String id, String json, String fqnHash, ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json::jsonb, :fqnHash)"
+            : "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)";
+    handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
   }
 
   private static String lookupUserId(Handle handle, String userName) {
@@ -1050,11 +1228,11 @@ public class MigrationUtil {
 
   /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
-   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but using raw SQL,
-   * since migrations run before the EntityRepository layer is fully initialized for new tasks.
+   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
+   * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
+   * its parent glossary) are included.
    */
-  private static List<EntityReference> resolveDomainsForTaskAbout(
-      Handle handle, ObjectNode taskJson) {
+  private static List<EntityReference> resolveDomainsForTaskAbout(ObjectNode taskJson) {
     JsonNode about = taskJson.get("about");
     if (about == null || !about.has("type")) {
       return Collections.emptyList();
@@ -1068,76 +1246,49 @@ public class MigrationUtil {
       return Collections.emptyList();
     }
 
-    return queryDomainsForEntity(handle, entityId, entityType);
+    return resolveDomainsViaRepository(entityId, entityType);
   }
 
   /**
-   * Query the entity_relationship table for any DOMAIN --HAS--> entity rows
-   * and join with domain_entity to build EntityReferences.
+   * Resolve an entity's effective domains via {@link EntityRepository#get} so that
+   * <em>inherited</em> domains are included. Glossary terms, columns, and other entities that
+   * inherit their domain from a parent do not have a direct {@code domain --HAS--> entity} row in
+   * {@code entity_relationship}; the inheritance is computed at read time. A raw SQL query on
+   * {@code entity_relationship} would miss those cases entirely.
+   *
+   * <p>Results are cached in {@link #DOMAIN_CACHE} so that the (typical) pattern of many tasks
+   * sharing a small set of target entities resolves each unique entity exactly once. Transient
+   * lookup failures are not cached so a later task on the same entity can retry.
    */
-  private static List<EntityReference> queryDomainsForEntity(
-      Handle handle, String entityId, String entityType) {
+  private static List<EntityReference> resolveDomainsViaRepository(
+      String entityId, String entityType) {
+    String cacheKey = entityType + "::" + entityId;
+    List<EntityReference> cached = DOMAIN_CACHE.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
-      List<Map<String, Object>> rows =
-          handle
-              .createQuery(
-                  "SELECT d.json AS domainJson FROM entity_relationship er "
-                      + "JOIN domain_entity d ON d.id = er.fromId "
-                      + "WHERE er.toId = :entityId "
-                      + "AND er.toEntity = :entityType "
-                      + "AND er.fromEntity = :domainEntity "
-                      + "AND er.relation = :hasRelation")
-              .bind("entityId", entityId)
-              .bind("entityType", entityType)
-              .bind("domainEntity", Entity.DOMAIN)
-              .bind("hasRelation", Relationship.HAS.ordinal())
-              .mapToMap()
-              .list();
-
-      List<EntityReference> domains = new ArrayList<>();
-      for (Map<String, Object> row : rows) {
-        EntityReference domainRef = buildDomainReference(row.get("domainJson"));
-        if (domainRef != null) {
-          domains.add(domainRef);
-        }
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      if (!repo.isSupportsDomains()) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
       }
+      Object entity =
+          repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
+      if (!(entity instanceof EntityInterface ei)) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
+      }
+      // Snapshot via List.copyOf so the cache entry is genuinely independent of the
+      // (potentially-mutable) list returned by the repository.
+      List<EntityReference> domains =
+          ei.getDomains() == null ? Collections.emptyList() : List.copyOf(ei.getDomains());
+      DOMAIN_CACHE.put(cacheKey, domains);
       return domains;
     } catch (Exception e) {
       LOG.debug(
           "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
       return Collections.emptyList();
-    }
-  }
-
-  private static EntityReference buildDomainReference(Object domainJsonObject) {
-    if (domainJsonObject == null) {
-      return null;
-    }
-    try {
-      JsonNode domainJson = JsonUtils.readTree(domainJsonObject.toString());
-      if (!domainJson.has("id")) {
-        return null;
-      }
-      EntityReference ref =
-          new EntityReference()
-              .withId(UUID.fromString(domainJson.get("id").asText()))
-              .withType(Entity.DOMAIN);
-      if (domainJson.has("name") && !domainJson.get("name").isNull()) {
-        ref.setName(domainJson.get("name").asText());
-      }
-      if (domainJson.has("fullyQualifiedName") && !domainJson.get("fullyQualifiedName").isNull()) {
-        ref.setFullyQualifiedName(domainJson.get("fullyQualifiedName").asText());
-      }
-      if (domainJson.has("displayName") && !domainJson.get("displayName").isNull()) {
-        ref.setDisplayName(domainJson.get("displayName").asText());
-      }
-      if (domainJson.has("description") && !domainJson.get("description").isNull()) {
-        ref.setDescription(domainJson.get("description").asText());
-      }
-      return ref;
-    } catch (Exception e) {
-      LOG.debug("Could not parse domain JSON: {}", e.getMessage());
-      return null;
     }
   }
 
@@ -1152,28 +1303,122 @@ public class MigrationUtil {
     taskJson.set("domains", JsonUtils.valueToTree(domains));
   }
 
+  private static void insertEntityRelationship(
+      Handle handle,
+      String fromId,
+      String fromEntity,
+      String toId,
+      String toEntity,
+      Relationship relation,
+      ConnectionType connectionType) {
+    String sql =
+        connectionType == ConnectionType.POSTGRES
+            ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
+            : "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
+                + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), fromEntity = VALUES(fromEntity)";
+    try {
+      handle
+          .createUpdate(sql)
+          .bind("fromId", fromId)
+          .bind("toId", toId)
+          .bind("fromEntity", fromEntity)
+          .bind("toEntity", toEntity)
+          .bind("relation", relation.ordinal())
+          .execute();
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not insert entity_relationship {}->{} relation={}: {}",
+          fromId,
+          toId,
+          relation,
+          e.getMessage());
+    }
+  }
+
+  private static void insertTaskUserListRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode users,
+      Relationship relation,
+      ConnectionType connectionType) {
+    if (users == null || !users.isArray()) {
+      return;
+    }
+    for (JsonNode u : users) {
+      String id = u.path("id").asText(null);
+      if (id == null || id.isEmpty()) {
+        continue;
+      }
+      String type = u.path("type").asText("user");
+      insertEntityRelationship(handle, id, type, taskId, Entity.TASK, relation, connectionType);
+    }
+  }
+
+  private static void insertTaskLinkRelationships(
+      Handle handle,
+      String taskId,
+      JsonNode assignees,
+      JsonNode reviewers,
+      JsonNode watchers,
+      String createdByUserId,
+      ObjectNode taskJson,
+      ConnectionType connectionType) {
+    insertTaskUserListRelationships(
+        handle, taskId, assignees, Relationship.ASSIGNED_TO, connectionType);
+    insertTaskUserListRelationships(
+        handle, taskId, reviewers, Relationship.REVIEWS, connectionType);
+    insertTaskUserListRelationships(handle, taskId, watchers, Relationship.FOLLOWS, connectionType);
+    if (createdByUserId != null) {
+      insertEntityRelationship(
+          handle,
+          createdByUserId,
+          Entity.USER,
+          taskId,
+          Entity.TASK,
+          Relationship.CREATED,
+          connectionType);
+    }
+    JsonNode about = taskJson.get("about");
+    if (about != null && about.has("id") && !about.get("id").isNull() && about.has("type")) {
+      String aboutId = about.get("id").asText();
+      String aboutType = about.get("type").asText();
+      if (!aboutId.isEmpty() && !aboutType.isEmpty()) {
+        insertEntityRelationship(
+            handle,
+            aboutId,
+            aboutType,
+            taskId,
+            Entity.TASK,
+            Relationship.MENTIONED_IN,
+            connectionType);
+      }
+    }
+  }
+
   /**
    * Insert DOMAIN --HAS--> task rows so {@code TaskRepository.getDomains()} returns
-   * the inherited domains when the task is read.
+   * the inherited domains when the task is read. Idempotent via {@link #insertEntityRelationship}
+   * (ON CONFLICT DO NOTHING / ON DUPLICATE KEY UPDATE) — re-runs no longer rely on a catch-all
+   * exception handler to swallow duplicate-key violations, so genuine failures propagate.
    */
   private static void insertTaskDomainRelationships(
-      Handle handle, String taskId, List<EntityReference> domains) {
+      Handle handle, String taskId, List<EntityReference> domains, ConnectionType connectionType) {
     if (domains == null || domains.isEmpty()) {
       return;
     }
     for (EntityReference domain : domains) {
       try {
-        handle
-            .createUpdate(
-                "INSERT INTO entity_relationship "
-                    + "(fromId, toId, fromEntity, toEntity, relation) "
-                    + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
-            .bind("fromId", domain.getId().toString())
-            .bind("toId", taskId)
-            .bind("fromEntity", Entity.DOMAIN)
-            .bind("toEntity", Entity.TASK)
-            .bind("relation", Relationship.HAS.ordinal())
-            .execute();
+        insertEntityRelationship(
+            handle,
+            domain.getId().toString(),
+            Entity.DOMAIN,
+            taskId,
+            Entity.TASK,
+            Relationship.HAS,
+            connectionType);
       } catch (Exception e) {
         LOG.debug(
             "Could not insert domain relationship for task {} -> domain {}: {}",

@@ -181,16 +181,14 @@ export const findPageWithAlert = async (
 ) => {
   const { id } = alertDetails;
   await waitForAllLoadersToDisappear(page);
-  const alertRow = page.locator(`[data-row-key="${id}"]`);
+  // Support both core-ui Table (id attr) and legacy Ant Design Table (data-row-key)
+  const alertRow = page.locator(`[id="${id}"], [data-row-key="${id}"]`);
   const nextButton = page.locator('[data-testid="next"]');
   if ((await alertRow.isHidden()) && (await nextButton.isEnabled())) {
     const getAlerts = page.waitForResponse('/api/v1/events/subscriptions?*');
     await nextButton.click();
     await getAlerts;
-    await page
-      .locator('.ant-table-wrapper')
-      .getByTestId('loader')
-      .waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(page);
     await findPageWithAlert(page, alertDetails);
   }
 };
@@ -250,7 +248,7 @@ export const visitEditAlertPage = async (
 
   await findPageWithAlert(page, alertDetails);
   await page.click(
-    `[data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
+    `[id="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"], [data-row-key="${alertId}"] [data-testid="alert-edit-${alertDetails.name}"]`
   );
 
   // Check alert name
@@ -272,7 +270,7 @@ export const visitAlertDetailsPage = async (
     '/api/v1/events/subscriptions/name/*/eventsRecord?listCountOnly=true'
   );
   await page
-    .locator(`[data-row-key="${alertDetails.id}"]`)
+    .locator(`[id="${alertDetails.id}"], [data-row-key="${alertDetails.id}"]`)
     .getByText(getEntityDisplayName(alertDetails))
     .click();
   await getAlertDetails;
@@ -400,6 +398,11 @@ export const addEntityFQNFilter = async ({
 
   // Ensure no dropdowns visible before searching
   await ensureNoDropdownVisible(page);
+
+  // Focus the combobox before filling — Ant Design Select with mode="multiple"
+  // renders the search input as readonly until it receives focus, which makes
+  // page.fill() fail with "element is not editable".
+  await page.click('[data-testid="fqn-list-select"] [role="combobox"]');
 
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');

@@ -10,44 +10,340 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ArrowUpRight, BookOpen01, Key01, Lock01 } from '@untitledui/icons';
 import { Col, Row } from 'antd';
-import { first, last, noop } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { first, last, noop, startCase } from 'lodash';
+import {
+  FC,
+  lazy,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
 import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
 } from '../../../constants/regex.constants';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
+import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
+import { languageMap } from '../../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import {
-  getActiveFieldNameForAppDocs,
-  processDocMarkdown,
-} from '../../../utils/ServiceUtils';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
+import { processDocMarkdown } from '../../../utils/ServiceUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './service-doc-panel.less';
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
+  focusedMode?: boolean;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
   selectedEntity?: SearchedDataProps['data'][number]['_source'];
 }
 
+const supportedLocales = Object.values(SupportedLocales) as string[];
+const AUTH_FIELD_NAMES = new Set([
+  'authType',
+  'password',
+  'privateKey',
+  'snowflakePrivatekeyPassphrase',
+  'passphrase',
+  'token',
+  'apiKey',
+  'secretKey',
+  'clientSecret',
+  'consumerSecret',
+  'securityToken',
+]);
+const NESTED_FOCUS_FIELDS = new Set([
+  'connectionOptions',
+  'connectionArguments',
+  'sampleDataStorageConfig',
+  'policyAgentConfig',
+]);
+const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
+
+interface FocusedDocDetails {
+  eyebrow: string;
+  title: string;
+  description: string;
+  markdown: string;
+  beforeRequirements?: ReactNode;
+}
+
+interface RequirementLabels {
+  autoClassification: string;
+  lineage: string;
+  metadata: string;
+  profiler: string;
+}
+
+const getSupportedLanguage = (language: string): SupportedLocales => {
+  if (supportedLocales.includes(language)) {
+    return language as SupportedLocales;
+  }
+
+  return languageMap[language.split('-')[0]] ?? SupportedLocales.English;
+};
+
+const isUsableMarkdown = (content: string) => {
+  const trimmedContent = content.trimStart().toLowerCase();
+
+  return (
+    Boolean(trimmedContent) &&
+    !trimmedContent.startsWith('<!--') &&
+    !trimmedContent.startsWith('<!doctype') &&
+    !trimmedContent.startsWith('<html')
+  );
+};
+
+const extractRequirementsMarkdown = (content: string): string => {
+  const startIndex = content.search(/^## Requirements\b/m);
+  if (startIndex < 0) {
+    return '';
+  }
+
+  const fromRequirements = content.slice(startIndex);
+  const nextHeadingIndex = fromRequirements.slice(1).search(/\n##\s/);
+
+  return (
+    nextHeadingIndex < 0
+      ? fromRequirements
+      : fromRequirements.slice(0, nextHeadingIndex + 1)
+  ).trim();
+};
+
+const stripMarkdownScaffold = (content: string): string =>
+  content
+    .replace(/^\$\$section\s*$/gm, '')
+    .replace(/^\$\$\s*$/gm, '')
+    .replace(/\s*\$\(id="[^"]+"\)/g, '')
+    .trim();
+
+const stripRequirementMarkdownScaffold = (content: string): string =>
+  content.replace(/\s*\$\(id="[^"]+"\)/g, '').trim();
+
+const extractFocusedRequirementsMarkdown = (
+  content: string,
+  labels: RequirementLabels
+): string => {
+  const requirementsMarkdown = extractRequirementsMarkdown(content);
+  const body = stripRequirementMarkdownScaffold(
+    requirementsMarkdown.replace(/^## Requirements\s*/m, '')
+  );
+
+  if (!body) {
+    return '';
+  }
+
+  const firstSubHeadingIndex = body.search(/^###\s/m);
+  const markdownWithMetadataHeading =
+    firstSubHeadingIndex > 0
+      ? [
+          `### ${labels.metadata}`,
+          body.slice(0, firstSubHeadingIndex).trim(),
+          body.slice(firstSubHeadingIndex).trim(),
+        ].join('\n\n')
+      : body;
+
+  return markdownWithMetadataHeading
+    .replace(/^### Usage & Lineage\b/gm, `### ${labels.lineage}`)
+    .replace(/^### Profiler & Data Quality\b/gm, `### ${labels.profiler}`)
+    .replace(/^### Auto Classification\b/gm, `### ${labels.autoClassification}`)
+    .trim();
+};
+
+const extractHeadingSection = (
+  content: string,
+  heading: string,
+  level: number
+): string => {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const startIndex = content.search(
+    new RegExp(`^#{${level}}\\s+${escapedHeading}\\b`, 'm')
+  );
+
+  if (startIndex < 0) {
+    return '';
+  }
+
+  const section = content.slice(startIndex);
+  const nextHeadingIndex = section
+    .slice(1)
+    .search(new RegExp(`\\n#{1,${level}}\\s`));
+
+  return stripMarkdownScaffold(
+    (nextHeadingIndex < 0
+      ? section
+      : section.slice(0, nextHeadingIndex + 1)
+    ).trim()
+  );
+};
+
+const extractSectionById = (content: string, fieldName: string): string => {
+  const section = content
+    .split('$$section')
+    .slice(1)
+    .map((block) => `$$section${block}`)
+    .find((block) => block.includes(`$(id="${fieldName}")`));
+
+  return section?.trim() ?? '';
+};
+
+const getFocusedFieldNames = (fieldName?: string): string[] => {
+  if (!fieldName) {
+    return [];
+  }
+
+  return AUTH_FIELD_NAMES.has(fieldName)
+    ? [
+        'password',
+        'privateKey',
+        'snowflakePrivatekeyPassphrase',
+        'token',
+        'apiKey',
+        'secretKey',
+        'clientSecret',
+        'consumerSecret',
+        'securityToken',
+      ]
+    : [fieldName];
+};
+
+const getFieldMarkdown = (
+  markdownContent: string,
+  fieldName?: string
+): string => {
+  if (!fieldName) {
+    return '';
+  }
+
+  if (LINEAGE_FIELDS.has(fieldName)) {
+    return extractHeadingSection(markdownContent, 'Usage & Lineage', 3);
+  }
+
+  return stripMarkdownScaffold(
+    getFocusedFieldNames(fieldName)
+      .map((name) => extractSectionById(markdownContent, name))
+      .filter(Boolean)
+      .join('\n\n')
+  );
+};
+
+const getFocusedMarkdown = (
+  markdownContent: string,
+  fieldName?: string
+): string => {
+  const fieldMarkdown = getFieldMarkdown(markdownContent, fieldName);
+
+  return fieldMarkdown || markdownContent;
+};
+
+const getConnectorDocsUrl = (markdownContent: string) => {
+  const docsPath = markdownContent.match(
+    /https:\/\/docs\.open-metadata\.org\/(?:latest\/|v[\d.x]+\/)?connectors\/([^"'\s)]+)/
+  )?.[1];
+
+  return docsPath ? `${CONNECTORS_DOCS}/${docsPath}` : CONNECTORS_DOCS;
+};
+
+const getMarkdownHeading = (markdown: string) =>
+  markdown.match(/^#{1,6}\s+(.+)$/m)?.[1];
+
+const stripLeadingMarkdownHeading = (markdown: string) =>
+  markdown.replace(/^#{1,6}\s+.+\n?/m, '').trim();
+
+const getServiceTypeDisplay = (serviceType: string, serviceLabel: string) =>
+  serviceType.endsWith('Service')
+    ? startCase(serviceType)
+    : `${startCase(serviceType)} ${serviceLabel}`;
+
+const MarkdownBlock = ({
+  markdown,
+  className,
+}: {
+  markdown: string;
+  className?: string;
+}) => {
+  const processedMarkdown = useMemo(
+    () => processDocMarkdown(markdown),
+    [markdown]
+  );
+
+  if (!markdown) {
+    return null;
+  }
+
+  return (
+    <RichTextEditorPreviewerV1
+      className={`service-doc-content focused-doc-markdown${
+        className ? ` ${className}` : ''
+      }`}
+      enableSeeMoreVariant={false}
+      extensionOptions={{
+        enableAdmonitionNode: true,
+        enableCodeBlockCopy: true,
+        enableSectionNode: true,
+      }}
+      markdown={processedMarkdown}
+    />
+  );
+};
+
+const AuthGuidance = ({
+  passwordLabel,
+  keyPairLabel,
+  passwordDescription,
+  keyPairDescription,
+}: {
+  passwordLabel: string;
+  keyPairLabel: string;
+  passwordDescription: string;
+  keyPairDescription: string;
+}) => (
+  <div className="focused-doc-auth-grid">
+    <div className="focused-doc-auth-card focused-doc-auth-card-password">
+      <div className="focused-doc-auth-title-row">
+        <Lock01 size={16} />
+        <span>{passwordLabel}</span>
+      </div>
+      <p>{passwordDescription}</p>
+    </div>
+    <div className="focused-doc-auth-card focused-doc-auth-card-keypair">
+      <div className="focused-doc-auth-title-row">
+        <Key01 size={16} />
+        <span>{keyPairLabel}</span>
+      </div>
+      <p>{keyPairDescription}</p>
+    </div>
+  </div>
+);
+
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
   activeField,
+  focusedMode = false,
   isWorkflow,
   workflowType,
   selectedEntity,
 }) => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -65,6 +361,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
        * so we need to split and get the fieldName
        */
       const fieldNameArr = activeFieldValue.split('/');
+      const nestedField = fieldNameArr.find((field) =>
+        NESTED_FOCUS_FIELDS.has(field)
+      );
+      if (nestedField) {
+        return nestedField;
+      }
 
       /**
        * If active field ends with number then return the first index value
@@ -94,8 +396,9 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       const supportedServiceType =
         serviceType === 'Api' ? 'ApiEntity' : serviceType;
       let response = '';
-      const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      let filePath = `${i18n.language}/${supportedServiceType}/${serviceName}.md`;
+      const language = getSupportedLanguage(i18n.language);
+      const isEnglishLanguage = language === SupportedLocales.English;
+      let filePath = `${language}/${supportedServiceType}/${serviceName}.md`;
       let fallbackFilePath = `${SupportedLocales.English}/${supportedServiceType}/${serviceName}.md`;
 
       if (isWorkflow && workflowType) {
@@ -110,13 +413,24 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           : fetchMarkdownFile(fallbackFilePath),
       ]);
 
-      if (translation.status === 'fulfilled') {
+      if (
+        translation.status === 'fulfilled' &&
+        isUsableMarkdown(translation.value)
+      ) {
         response = translation.value;
-      } else if (fallbackTranslation.status === 'fulfilled') {
+      } else if (
+        fallbackTranslation.status === 'fulfilled' &&
+        isUsableMarkdown(fallbackTranslation.value)
+      ) {
         response = fallbackTranslation.value;
       }
 
-      setMarkdownContent(response);
+      setMarkdownContent(
+        response.replaceAll(
+          'OpenMetadata',
+          process.env.BRAND_NAME ?? 'OpenMetadata'
+        )
+      );
     } catch {
       setMarkdownContent('');
     } finally {
@@ -129,17 +443,20 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     fetchRequirement();
   }, [serviceName, serviceType]);
 
+  const activeFieldName = useMemo(
+    () =>
+      serviceType === 'Applications'
+        ? getActiveFieldNameForAppDocs(activeField)
+        : getActiveFieldName(activeField),
+    [activeField, getActiveFieldName, serviceType]
+  );
+
   useEffect(() => {
-    if (!isMarkdownReady) {
+    if (!isMarkdownReady || focusedMode) {
       return;
     }
 
-    const fieldName =
-      serviceType === 'Applications'
-        ? getActiveFieldNameForAppDocs(activeField)
-        : getActiveFieldName(activeField);
-
-    if (fieldName) {
+    if (activeFieldName) {
       // Use requestAnimationFrame to ensure DOM is ready
       requestAnimationFrame(() => {
         // Remove all previous highlights first
@@ -151,11 +468,11 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         });
 
         const element = document.querySelector(
-          `[data-id="${CSS.escape(fieldName)}"]`
+          `[data-id="${CSS.escape(activeFieldName)}"]`
         );
         if (element) {
           element.scrollIntoView({
-            block: fieldName === 'selected-entity' ? 'start' : 'center',
+            block: activeFieldName === 'selected-entity' ? 'start' : 'center',
             behavior: 'smooth',
             inline: 'center',
           });
@@ -163,14 +480,183 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         }
       });
     }
-  }, [activeField, serviceType, isMarkdownReady]);
+  }, [activeFieldName, focusedMode, isMarkdownReady]);
+
+  const displayMarkdown = useMemo(
+    () =>
+      focusedMode
+        ? getFocusedMarkdown(markdownContent, activeFieldName)
+        : markdownContent,
+    [activeFieldName, focusedMode, markdownContent]
+  );
 
   const processedHtml = useMemo(
-    () => processDocMarkdown(markdownContent),
+    () => (focusedMode ? '' : processDocMarkdown(displayMarkdown)),
+    [displayMarkdown, focusedMode]
+  );
+
+  const activeFieldMarkdown = useMemo(
+    () => getFieldMarkdown(markdownContent, activeFieldName),
+    [activeFieldName, markdownContent]
+  );
+
+  const focusedDocDetails = useMemo<FocusedDocDetails>(() => {
+    const fieldTitle = getMarkdownHeading(activeFieldMarkdown);
+    const fieldBody = stripLeadingMarkdownHeading(activeFieldMarkdown);
+
+    if (activeFieldName === 'serviceName') {
+      return {
+        eyebrow: t('label.connection'),
+        title: t('label.name-this-service'),
+        description: t('message.service-name-doc-description', {
+          serviceName,
+        }),
+        markdown: [
+          `### ${t('label.service-name')}`,
+          t('message.service-name-rule'),
+        ].join('\n\n'),
+      };
+    }
+
+    if (activeFieldName === 'serviceDescription') {
+      return {
+        eyebrow: t('label.connection'),
+        title: t('label.description'),
+        description: t('message.service-description-doc-description'),
+        markdown: '',
+      };
+    }
+
+    if (activeFieldName && AUTH_FIELD_NAMES.has(activeFieldName)) {
+      return {
+        eyebrow: t('label.authentication'),
+        title: t('message.authentication-doc-title'),
+        description: t('message.authentication-doc-description'),
+        markdown: fieldBody,
+        beforeRequirements: (
+          <AuthGuidance
+            keyPairDescription={t('message.key-pair-auth-doc-description')}
+            keyPairLabel={t('label.key-pair')}
+            passwordDescription={t('message.password-auth-doc-description')}
+            passwordLabel={t('label.password')}
+          />
+        ),
+      };
+    }
+
+    if (activeFieldName && !activeFieldMarkdown) {
+      return {
+        eyebrow: t('label.connection'),
+        title: t('label.setup-guide'),
+        description: t('message.openmetadata-docs-description'),
+        markdown: '',
+      };
+    }
+
+    return {
+      eyebrow: LINEAGE_FIELDS.has(activeFieldName ?? '')
+        ? t('label.advanced-config')
+        : isWorkflow
+        ? t('label.configuration')
+        : t('label.connection'),
+      title:
+        fieldTitle ??
+        (activeFieldName ? startCase(activeFieldName) : t('label.setup-guide')),
+      description:
+        fieldBody || fieldTitle
+          ? t('message.focused-docs-fallback-description')
+          : t('message.openmetadata-docs-description'),
+      markdown: fieldBody,
+    };
+  }, [activeFieldMarkdown, activeFieldName, isWorkflow, serviceName, t]);
+
+  const showFocusedRequirements =
+    !activeFieldName ||
+    activeFieldName === 'serviceName' ||
+    !activeFieldMarkdown;
+
+  const focusedRequirementsMarkdown = useMemo(
+    () =>
+      showFocusedRequirements
+        ? extractFocusedRequirementsMarkdown(markdownContent, {
+            autoClassification: t('label.auto-classification'),
+            lineage: t('label.lineage'),
+            metadata: t('label.metadata'),
+            profiler: t('label.profiler'),
+          })
+        : '',
+    [markdownContent, showFocusedRequirements, t]
+  );
+
+  const connectorDocsUrl = useMemo(
+    () => getConnectorDocsUrl(markdownContent),
     [markdownContent]
   );
 
   const docsPanel = useMemo(() => {
+    if (focusedMode) {
+      return (
+        <div className="focused-service-docs">
+          <div className="focused-service-docs-header">
+            <div className="focused-service-docs-logo-wrap">
+              {getServiceLogo(serviceName, 'focused-service-docs-logo')}
+            </div>
+            <div className="focused-service-docs-title-wrap">
+              <div className="focused-service-docs-title">{serviceName}</div>
+              <div className="focused-service-docs-subtitle">
+                {getServiceTypeDisplay(serviceType, t('label.service'))}
+              </div>
+            </div>
+          </div>
+
+          <div className="focused-service-docs-intro">
+            <div className="focused-service-docs-eyebrow">
+              {focusedDocDetails.eyebrow}
+            </div>
+            <h1>{focusedDocDetails.title}</h1>
+            <p>{focusedDocDetails.description}</p>
+          </div>
+
+          {focusedDocDetails.beforeRequirements}
+          {focusedDocDetails.markdown && (
+            <MarkdownBlock
+              className="focused-service-docs-field-markdown"
+              markdown={focusedDocDetails.markdown}
+            />
+          )}
+
+          {focusedRequirementsMarkdown && (
+            <div className="focused-service-docs-section">
+              <h1>{t('label.requirement-plural')}</h1>
+              <MarkdownBlock
+                className="focused-service-docs-requirements-markdown"
+                markdown={focusedRequirementsMarkdown}
+              />
+            </div>
+          )}
+
+          <div className="focused-service-docs-link-section">
+            <a
+              className="focused-service-docs-link"
+              href={connectorDocsUrl}
+              rel="noreferrer"
+              target="_blank">
+              <BookOpen01 size={16} />
+              <span>
+                {t('message.view-service-openmetadata-docs', {
+                  serviceName,
+                })}
+              </span>
+              <ArrowUpRight size={15} />
+            </a>
+            <span className="tw:text-xs tw:text-tertiary">
+              {t('message.openmetadata-docs-description')}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <>
         <div className="entity-summary-in-docs" data-id="selected-entity">
@@ -184,21 +670,39 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           )}
         </div>
         <RichTextEditorPreviewerV1
-          className="service-doc-content"
+          className={`service-doc-content${
+            focusedMode ? ' service-doc-content-focused' : ''
+          }`}
           enableSeeMoreVariant={false}
-          extensionOptions={{ enableSectionNode: true }}
+          extensionOptions={{
+            enableAdmonitionNode: true,
+            enableCodeBlockCopy: true,
+            enableSectionNode: true,
+          }}
           markdown={processedHtml}
         />
       </>
     );
-  }, [processedHtml, serviceName, selectedEntity]);
+  }, [
+    connectorDocsUrl,
+    focusedDocDetails,
+    focusedMode,
+    processedHtml,
+    focusedRequirementsMarkdown,
+    selectedEntity,
+    serviceName,
+    serviceType,
+    t,
+  ]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <Row data-testid="service-requirements">
+    <Row
+      className={focusedMode ? 'service-doc-panel-focused' : undefined}
+      data-testid="service-requirements">
       <Col span={24}>{docsPanel}</Col>
     </Row>
   );

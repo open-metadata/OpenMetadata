@@ -12,12 +12,15 @@
 Source connection handler
 """
 
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Dict, Optional
+from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
+from typing_extensions import assert_never
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -29,7 +32,11 @@ from metadata.generated.schema.entity.services.connections.database.sapHana.sapH
     SapHanaSQLConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
-    SapHanaConnection,
+    SapHanaConnection as SapHanaConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
+    SapHanaScheme,
+    SapHanaType,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -39,6 +46,8 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_options_dict,
 )
+from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.strategies import ClientStrategy
 from metadata.ingestion.connections.test_connections import (
     execute_inspector_func,
     test_connection_engine_step,
@@ -48,126 +57,109 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
 
-def get_database_connection_url(connection: SapHanaConnection) -> str:
-    """
-    Build the SQLConnection URL for the database connection
-    """
+class SapHanaStrategy(ClientStrategy[SapHanaConnectionConfig, Engine], ABC):
+    """Builds the SAP HANA engine for one connection mode."""
 
-    conn = connection.connection
+    @property
+    def _scheme(self) -> str:
+        scheme = self._connection.scheme
+        return scheme.value if scheme else SapHanaScheme.hana.value
 
-    if not isinstance(conn, SapHanaSQLConnection):
-        raise ValueError("Database Connection requires the SQL connection details")
+    @abstractmethod
+    def get_url(self) -> str:
+        """Return the SQLAlchemy URL for this connection mode."""
 
-    url = (
-        f"{connection.scheme.value}://"
-        f"{quote_plus(conn.username)}:"
-        f"{quote_plus(conn.password.get_secret_value())}@"
-        f"{conn.hostPort}"
-    )
-
-    if hasattr(connection, "database"):
-        url += f"/{connection.database}" if connection.database else ""
-
-    options = get_connection_options_dict(connection)
-    if options:
-        if hasattr(conn, "database") and not conn.database:
-            url += "/"
-        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
-        url = f"{url}?{params}"
-    return url
-
-
-def get_hdb_connection_url(connection: SapHanaConnection) -> str:
-    """
-    Build the SQLConnection URL for the database connection
-    """
-
-    if not isinstance(connection.connection, SapHanaHDBConnection):
-        raise ValueError("Database Connection requires the SQL connection details")
-
-    return f"{connection.scheme.value}://userkey={connection.connection.userKey}"
-
-
-def get_connection(connection: SapHanaConnection) -> Engine:
-    """
-    Create connection
-    """
-
-    if isinstance(connection.connection, SapHanaSQLConnection):
+    def build(self) -> Engine:
         return create_generic_db_connection(
-            connection=connection,
-            get_connection_url_fn=get_database_connection_url,
+            connection=self._connection,
+            get_connection_url_fn=lambda _connection: self.get_url(),
             get_connection_args_fn=get_connection_args_common,
         )
 
-    if isinstance(connection.connection, SapHanaHDBConnection):
-        return create_generic_db_connection(
-            connection=connection,
-            get_connection_url_fn=get_hdb_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+
+class SapHanaSQLStrategy(SapHanaStrategy):
+    """Direct host/port connection with username and password."""
+
+    def __init__(self, connection: SapHanaConnectionConfig, sql: SapHanaSQLConnection) -> None:
+        super().__init__(connection)
+        self._sql = sql
+
+    def get_url(self) -> str:
+        url = (
+            f"{self._scheme}://"
+            f"{quote_plus(self._sql.username)}:"
+            f"{quote_plus(self._sql.password.get_secret_value())}@"
+            f"{self._sql.hostPort}"
+        )
+        if self._sql.database:
+            url += f"/{self._sql.database}"
+        options = get_connection_options_dict(self._connection)
+        if options:
+            if not self._sql.database:
+                url += "/"
+            params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+            url = f"{url}?{params}"
+        return url
+
+
+class SapHanaHDBStrategy(SapHanaStrategy):
+    """Connection through a stored secure user store (HDB) key."""
+
+    def __init__(self, connection: SapHanaConnectionConfig, hdb: SapHanaHDBConnection) -> None:
+        super().__init__(connection)
+        self._hdb = hdb
+
+    def get_url(self) -> str:
+        return f"{self._scheme}://userkey={self._hdb.userKey}"
+
+
+class SapHanaConnection(BaseConnection[SapHanaConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        match self.service_connection.connection:
+            case SapHanaSQLConnection() as sql:
+                strategy: SapHanaStrategy = SapHanaSQLStrategy(self.service_connection, sql)
+            case SapHanaHDBConnection() as hdb:
+                strategy = SapHanaHDBStrategy(self.service_connection, hdb)
+            case _:
+                assert_never(self.service_connection.connection)
+        return strategy.build()
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        service_type = self.service_connection.type
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=self._build_test_functions(),
+            service_type=service_type.value if service_type else SapHanaType.SapHana.value,
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
         )
 
-    raise ValueError("Unrecognized SAP Hana connection type!")
+    def _build_test_functions(self) -> dict[str, Callable]:
+        engine = self.client
 
+        def list_from_schema(inspector_fn_str: str) -> None:
+            inspector = inspect(engine)
+            inspector_fn = getattr(inspector, inspector_fn_str)
+            database_schema = getattr(self.service_connection.connection, "databaseSchema", None)
+            if database_schema:
+                inspector_fn(database_schema)
+            else:
+                for schema in inspector.get_schema_names() or []:
+                    inspector_fn(schema)
+                    break
 
-def _build_test_fn_dict(engine: Engine, service_connection: SapHanaConnection) -> Dict[str, Callable]:
-    """
-    Build the test connection steps dict
-    """
-
-    def custom_executor(engine_: Engine, inspector_fn_str: str):
-        """
-        Check if we can list tables or views from a given schema
-        or a random one
-        """
-
-        inspector = inspect(engine_)
-        inspector_fn = getattr(inspector, inspector_fn_str)
-
-        # HDB connection won't have a databaseSchema
-        if getattr(service_connection.connection, "databaseSchema"):
-            inspector_fn(service_connection.connection.databaseSchema)
-        else:
-            schema_name = inspector.get_schema_names() or []
-            for schema in schema_name:
-                inspector_fn(schema)
-                break
-
-    if isinstance(service_connection.connection, SapHanaSQLConnection):
         return {
             "CheckAccess": partial(test_connection_engine_step, engine),
             "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-            "GetTables": partial(custom_executor, engine, "get_table_names"),
-            "GetViews": partial(custom_executor, engine, "get_view_names"),
+            "GetTables": partial(list_from_schema, "get_table_names"),
+            "GetViews": partial(list_from_schema, "get_view_names"),
         }
-
-    if isinstance(service_connection.connection, SapHanaHDBConnection):
-        return {
-            "CheckAccess": partial(test_connection_engine_step, engine),
-            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-            "GetTables": partial(custom_executor, engine, "get_table_names"),
-            "GetViews": partial(custom_executor, engine, "get_view_names"),
-        }
-
-    raise ValueError(f"Unknown connection type for {service_connection.connection}")
-
-
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: SapHanaConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=_build_test_fn_dict(engine, service_connection),
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )

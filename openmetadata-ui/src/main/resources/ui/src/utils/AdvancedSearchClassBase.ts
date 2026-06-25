@@ -13,18 +13,18 @@
 
 import {
   AntdConfig,
-  AsyncFetchListValuesResult,
-  BasicConfig,
-  Field,
-  Fields,
-  ListItem,
-  ListValues,
-  SelectFieldSettings,
+  type AsyncFetchListValuesResult,
+  type BasicConfig,
+  type Field,
+  type Fields,
+  type ListItem,
+  type ListValues,
+  type SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
-  CustomPropertyEnumConfig,
   SearchOutputType,
+  type CustomPropertyEnumConfig,
 } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   CP_TYPE_WITHOUT_KEYWORD_FIELD,
@@ -42,20 +42,18 @@ import {
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { Config } from '../generated/api/data/createCustomProperty';
-import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
+import type { Config } from '../generated/api/data/createCustomProperty';
+import { EntityStatus } from '../generated/entity/data/searchIndex';
+import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import {
-  getCustomPropertyAdvanceSearchEnumOptions,
-  renderAdvanceSearchButtons,
-} from './AdvancedSearchUtils';
+import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
+import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
-import { parseBucketsData } from './SearchUtils';
-
+import { parseBucketsData } from './SearchPureUtils';
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
@@ -86,6 +84,17 @@ class AdvancedSearchClassBase {
     },
     text: {
       ...this.baseConfig.types.text,
+      widgets: {
+        ...this.baseConfig.types.text.widgets,
+        text: {
+          ...(this.baseConfig.types.text.widgets?.text ?? {}),
+          operators: [
+            ...(this.baseConfig.types.text.widgets?.text?.operators ?? []),
+            'match_phrase',
+            'not_match_phrase',
+          ],
+        },
+      },
       valueSources: ['value'],
     },
   };
@@ -135,6 +144,8 @@ class AdvancedSearchClassBase {
             return {
               [fieldName]: { value: newValue, case_insensitive: true },
             };
+          case 'match_phrase':
+            return { [fieldName]: newValue };
           default:
             return { [fieldName]: { value: newValue } };
         }
@@ -161,6 +172,24 @@ class AdvancedSearchClassBase {
     multiselect_not_contains: {
       ...this.baseConfig.operators.multiselect_not_contains,
       sqlOp: 'NOT IN',
+    },
+    match_phrase: {
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
+      reversedOp: 'not_match_phrase',
+      elasticSearchQueryType: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      sqlOp: 'CONTAINS',
+    },
+    not_match_phrase: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      reversedOp: 'match_phrase',
+      valueSources: ['value'],
+      cardinality: 1,
+      isNotOp: true,
+      sqlOp: 'NOT CONTAINS',
     },
   } as BasicConfig['operators'];
 
@@ -433,18 +462,6 @@ class AdvancedSearchClassBase {
    * Fields specific to Glossary
    */
   glossaryTermQueryBuilderFields: Fields = {
-    [EntityFields.GLOSSARY_TERM_STATUS]: {
-      label: t('label.status'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.GLOSSARY_TERM,
-          entityField: EntityFields.GLOSSARY_TERM_STATUS,
-        }),
-        useAsyncSearch: true,
-      },
-    },
     [EntityFields.GLOSSARY]: {
       label: t('label.glossary'),
       type: 'select',
@@ -983,8 +1000,20 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         subfields: {},
       },
-      descriptionStatus: {
+      description: {
         label: t('label.description'),
+        type: 'text',
+        operators: [
+          'match_phrase',
+          'not_match_phrase',
+          'is_null',
+          'is_not_null',
+        ],
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+      },
+      descriptionStatus: {
+        label: t('label.description-status'),
         type: 'select',
         operators: LIST_VALUE_OPERATORS,
         mainWidgetProps: this.mainWidgetProps,
@@ -1048,6 +1077,21 @@ class AdvancedSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityFields.ENTITY_STATUS]: {
+        label: t('label.status'),
+        type: 'select',
+        operators: LIST_VALUE_OPERATORS,
+        mainWidgetProps: this.mainWidgetProps,
+        valueSources: ['value'],
+        fieldSettings: {
+          listValues: Object.values(EntityStatus).map((status) => ({
+            value: status,
+            title: status,
+          })),
+          showSearch: true,
+          useAsyncSearch: false,
+        },
+      },
     };
   }
 
@@ -1069,6 +1113,31 @@ class AdvancedSearchClassBase {
               asyncFetch: this.autocomplete({
                 searchIndex: entitySearchIndex,
                 entityField: EntityFields.COLUMN,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        }
+      : {};
+  };
+
+  // columns.tags.tagFQN is only present in indices that have a columns field,
+  // so we gate it the same way as getColumnConfig
+  public getColumnTagConfig = (entitySearchIndex: SearchIndex[]) => {
+    const shouldAddField = entitySearchIndex.every((index) =>
+      SEARCH_INDICES_WITH_COLUMNS_FIELD.includes(index)
+    );
+
+    return shouldAddField
+      ? {
+          [EntityFields.COLUMN_TAG]: {
+            label: t('label.column-tag-plural'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+                entityField: EntityFields.FULLY_QUALIFIED_NAME,
               }),
               useAsyncSearch: true,
             },
@@ -1191,6 +1260,7 @@ class AdvancedSearchClassBase {
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
       ...this.getColumnConfig(entitySearchIndex),
+      ...this.getColumnTagConfig(entitySearchIndex),
     };
 
     // Sort the fields according to the label
@@ -1397,7 +1467,7 @@ class AdvancedSearchClassBase {
       case 'hyperlink-cp': {
         return [
           {
-            subfieldsKey: `${field.name}.url.keyword`,
+            subfieldsKey: `${field.name}.url`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.url')}`,
@@ -1405,7 +1475,7 @@ class AdvancedSearchClassBase {
             },
           },
           {
-            subfieldsKey: `${field.name}.displayText.keyword`,
+            subfieldsKey: `${field.name}.displayText`,
             dataObject: {
               type: 'text',
               label: `${label} ${t('label.display-text')}`,
@@ -1424,7 +1494,7 @@ class AdvancedSearchClassBase {
         }
 
         return columns.map((columnName) => ({
-          subfieldsKey: `${field.name}.rows.${columnName}.keyword`,
+          subfieldsKey: `${field.name}.rows.${columnName}`,
           dataObject: {
             type: 'text',
             label: `${label} - ${columnName}`,

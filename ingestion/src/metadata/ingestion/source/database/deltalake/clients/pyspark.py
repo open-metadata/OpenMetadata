@@ -16,7 +16,7 @@ Deltalake PySpark Client
 import re
 import traceback
 from enum import Enum
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional  # noqa: UP035
 
 from pyspark.sql.utils import AnalysisException, ParseException
 
@@ -66,8 +66,8 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
     @classmethod
     def from_config(cls, config: DeltaLakeConnection) -> "DeltalakeBaseClient":
         """Returns a Deltalake Client based on the DeltalakeConfig passed."""
-        import pyspark
-        from delta import configure_spark_with_delta_pip
+        import pyspark  # noqa: PLC0415
+        from delta import configure_spark_with_delta_pip  # noqa: PLC0415
 
         builder = (
             pyspark.sql.SparkSession.builder.appName(config.configSource.appName or "OpenMetadata")
@@ -214,7 +214,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             )
         return column
 
-    def fetch_view_schema(self, view_name: str) -> Optional[Dict]:
+    def fetch_view_schema(self, view_name: str) -> Optional[Dict]:  # noqa: UP006, UP045
         try:
             describe_output = self._spark.sql(f"describe extended {view_name}").collect()
         except Exception as exc:
@@ -233,8 +233,8 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
                 col_details = True
         return view_detail.get("View Text")
 
-    def get_columns(self, schema: str, table: str) -> List[Column]:
-        field_dict: Dict[str, Any] = {}
+    def get_columns(self, schema: str, table: str) -> List[Column]:  # noqa: UP006
+        field_dict: Dict[str, Any] = {}  # noqa: UP006
         table_name = f"{schema}.{table}"
 
         try:
@@ -246,7 +246,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
             logger.warning(f"Unexpected exception getting columns for [{table_name}]: {exc}")
             return []
 
-        parsed_columns: List[Column] = []
+        parsed_columns: List[Column] = []  # noqa: UP006
         partition_cols = False
         for row in raw_columns:
             col_name = row["col_name"]
@@ -261,7 +261,7 @@ class DeltalakePySparkClient(DeltalakeBaseClient):
 
     def close(self, service_connection: DeltaLakeConnection):
         """Closes the Client connection."""
-        pass
+        pass  # noqa: PIE790
 
     def get_test_get_databases_fn(self, config: MetastoreConfig) -> Callable:
         """Returns a Callable used to test the GetDatabases condition."""

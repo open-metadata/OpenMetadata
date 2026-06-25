@@ -43,6 +43,8 @@ import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 @Execution(ExecutionMode.CONCURRENT)
 public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearchIndex> {
 
+  private String defaultListService;
+
   {
     supportsSearchIndex = false;
     supportsDomains = false;
@@ -106,7 +108,11 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected SearchIndex createEntity(CreateSearchIndex createRequest) {
-    return SdkClients.adminClient().searchIndexes().create(createRequest);
+    SearchIndex searchIndex = SdkClients.adminClient().searchIndexes().create(createRequest);
+    if (defaultListService == null && searchIndex.getService() != null) {
+      defaultListService = searchIndex.getService().getFullyQualifiedName();
+    }
+    return searchIndex;
   }
 
   @Override
@@ -162,6 +168,10 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
 
   @Override
   protected ListResponse<SearchIndex> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().searchIndexes().list(params);
   }
 
@@ -183,17 +193,6 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
   @Override
   protected EntityHistory getVersionHistory(UUID id) {
     return SdkClients.adminClient().searchIndexes().getVersionList(id);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryPaginated(UUID id, int limit, int offset) {
-    return SdkClients.adminClient().searchIndexes().getVersionList(id, limit, offset);
-  }
-
-  @Override
-  protected EntityHistory getVersionHistoryWithFieldChanged(
-      UUID id, int limit, int offset, String fieldChanged) {
-    return SdkClients.adminClient().searchIndexes().getVersionList(id, limit, offset, fieldChanged);
   }
 
   @Override

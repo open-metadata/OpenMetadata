@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Page, Request, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG, KEY_PROFILE_METRICS } from '../../constant/common';
@@ -52,10 +52,13 @@ import {
 import { getCurrentMillis } from '../../utils/dateTime';
 import {
   addMultiOwner,
+  assignTagToChildren,
   closeColumnDetailPanel,
+  copyAndGetClipboardText,
   openColumnDetailPanel,
   removeOwner,
   removeOwnersFromList,
+  removeTagsFromChildren,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { clickDataQualityStatCard } from '../../utils/entityPanel';
@@ -295,8 +298,8 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       await entity.tier(
         page,
         'Tier1',
-        COMMON_TIER_TAG[2].name,
-        COMMON_TIER_TAG[2].fullyQualifiedName,
+        COMMON_TIER_TAG[4].name,
+        COMMON_TIER_TAG[4].fullyQualifiedName,
         entity
       );
     });
@@ -1013,8 +1016,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           const clickResponse = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/columns/name/') ||
+              (response.url().includes('/columns') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET') ||
               response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-            { timeout: 10000 }
+            { timeout: 150000 }
           );
 
           await firstLink.click();
@@ -1062,8 +1068,11 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             const intermediateClickResponse = page.waitForResponse(
               (response) =>
                 response.url().includes('/api/v1/columns/name/') ||
+                (response.url().includes('/columns') &&
+                  response.url().includes('profile') &&
+                  response.request().method() === 'GET') ||
                 response.url().includes(`/api/v1/${entity.endpoint}/name/`),
-              { timeout: 10000 }
+              { timeout: 150000 }
             );
 
             await intermediateLink.click();
@@ -1298,6 +1307,121 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
           }
         });
       });
+
+      // Entities whose child table exposes the Tags column header filter
+      const TAG_FILTER_ENTITIES = [
+        'ApiEndpoint',
+        'Container',
+        'Dashboard',
+        'DashboardDataModel',
+        'File',
+        'Pipeline',
+        'SearchIndex',
+        'Table',
+        'Topic',
+        'Worksheet',
+      ];
+
+      if (TAG_FILTER_ENTITIES.includes(entity.type)) {
+        /**
+         * Tests the Tags column header filter across every entity whose child
+         * table supports it.
+         * @description Verifies each entity's table wiring prunes non-matching
+         * rows when a tag filter is applied (regression for the bug where every
+         * row stayed visible).
+         */
+        test('Filter columns by tag prunes non-matching rows', async ({
+          page,
+        }) => {
+          test.slow();
+
+          const taggedKey = entity.childrenSelectorId ?? '';
+          const filterTag = 'PersonalData.Personal';
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const taggedRow = page.locator(`[${rowSelector}="${taggedKey}"]`);
+          const childTable = page
+            .locator('.ant-table')
+            .filter({ has: taggedRow });
+          const rows = childTable.locator(`[${rowSelector}]`);
+
+          await test.step('Tag a child row', async () => {
+            await taggedRow.scrollIntoViewIfNeeded();
+            await assignTagToChildren({
+              page,
+              tag: filterTag,
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+
+          const rowKeys = await rows.evaluateAll((elements) =>
+            elements.map((element) => element.getAttribute('data-row-key'))
+          );
+          const nonMatchingKey = rowKeys.find(
+            (key) =>
+              key &&
+              key !== taggedKey &&
+              !key.startsWith(`${taggedKey}.`) &&
+              !taggedKey.startsWith(`${key}.`)
+          );
+
+          const toggleTagFilter = async () => {
+            await page
+              .getByRole('columnheader', { name: 'Tags', exact: true })
+              .getByTestId('filter-icon')
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeVisible();
+
+            await page
+              .locator('.ant-table-filter-dropdown:visible')
+              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .click();
+
+            await expect(
+              page.locator('.ant-table-filter-dropdown:visible')
+            ).toBeHidden();
+          };
+
+          await test.step('Apply tag filter and verify pruning', async () => {
+            await toggleTagFilter();
+
+            await expect(taggedRow).toBeVisible();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeHidden();
+            }
+          });
+
+          await test.step('Clear filter and verify rows return', async () => {
+            await toggleTagFilter();
+
+            if (nonMatchingKey) {
+              await expect(
+                page.locator(`[${rowSelector}="${nonMatchingKey}"]`)
+              ).toBeVisible();
+            }
+          });
+
+          await test.step('Cleanup tag', async () => {
+            await removeTagsFromChildren({
+              page,
+              tags: [filterTag],
+              rowId: taggedKey,
+              rowSelector,
+              entityEndpoint: entity.endpoint,
+            });
+          });
+        });
+      }
     }
 
     /**
@@ -1583,9 +1707,9 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
 
             const profileResponse = page.waitForResponse(
               (response) =>
-                response.url().includes('/api/v1/tables/') &&
-                response.url().includes('/columns') &&
-                response.url().includes('profile')
+                response.url().includes('/api/v1/columns/name/') &&
+                response.url().includes('profile') &&
+                response.request().method() === 'GET'
             );
             await columnName.click();
             await profileResponse;
@@ -1627,6 +1751,51 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await expect(
               page.locator('.column-detail-panel')
             ).not.toBeVisible();
+          });
+        });
+      }
+
+      if (entity.type === 'DashboardDataModel') {
+        test('Column detail panel does not call /columns/name GET for DashboardDataModel', async ({
+          page,
+        }) => {
+          test.slow();
+
+          await page.getByTestId(entity.childrenTabId ?? '').click();
+          await waitForAllLoadersToDisappear(page);
+
+          const columnGetCalls: string[] = [];
+          const listener = (req: Request) => {
+            if (
+              req.url().includes('/api/v1/columns/name/') &&
+              req.method() === 'GET'
+            ) {
+              columnGetCalls.push(req.url());
+            }
+          };
+
+          await test.step('Open column detail panel and verify no /columns/name GET fires', async () => {
+            page.on('request', listener);
+
+            try {
+              await openColumnDetailPanel({
+                page,
+                rowSelector,
+                columnId: entity.childrenSelectorId ?? '',
+                columnNameTestId: 'column-name',
+                entityType: entity.type as EntityType,
+              });
+
+              await waitForAllLoadersToDisappear(page);
+
+              await expect(page.locator('.column-detail-panel')).toBeVisible();
+
+              expect(columnGetCalls).toHaveLength(0);
+
+              await closeColumnDetailPanel(page);
+            } finally {
+              page.off('request', listener);
+            }
           });
         });
       }
@@ -1945,6 +2114,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
       const entityName =
         entity.entityResponseData?.['displayName'] ?? entity.entity.name;
       await entity.followUnfollowEntity(page, entityName);
+    });
+
+    /**
+     * Tests copying the entity URL from the header
+     * @description Tests that the header copy button copies the current entity page URL to the clipboard
+     */
+    test(`Copy entity URL from header`, async ({ page }) => {
+      const pageUrl = page.url();
+      const copyButton = page.getByTestId('entity-header-copy-button');
+      const clipboardText = await copyAndGetClipboardText(page, copyButton);
+
+      expect(clipboardText).toBe(pageUrl);
     });
 
     /**

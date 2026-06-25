@@ -24,7 +24,7 @@ import shutil
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional  # noqa: UP035
 
 from pydantic import ValidationError
 
@@ -103,7 +103,7 @@ class MetadataUsageBulkSink(BulkSink):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: Optional[str] = None,  # noqa: UP045
     ):
         config = MetadataUsageSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -136,7 +136,7 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Method to publish SQL Queries, Table Usage
         """
-        for _, value_dict in self.table_usage_map.items():
+        for _, value_dict in self.table_usage_map.items():  # noqa: PERF102
             table_usage_request = None
             try:
                 table_usage_request = UsageRequest(
@@ -168,16 +168,16 @@ class MetadataUsageBulkSink(BulkSink):
         """
         Iterate through files in the given directory
         """
-        check_dir = os.path.isdir(self.config.filename)
+        check_dir = os.path.isdir(self.config.filename)  # noqa: PTH112
         if check_dir:
-            for filename in os.listdir(self.config.filename):
-                full_file_name = os.path.join(self.config.filename, filename)
-                if not os.path.isfile(full_file_name):
+            for filename in os.listdir(self.config.filename):  # noqa: PTH208
+                full_file_name = os.path.join(self.config.filename, filename)  # noqa: PTH118
+                if not os.path.isfile(full_file_name):  # noqa: PTH113
                     continue
                 # if usage_files is True, then we want to iterate through files does not end with query
                 # if usage_files is False, then we want to iterate through files that end with query
                 if filename.endswith("query") ^ usage_files:
-                    with open(full_file_name, encoding=UTF_8) as file:
+                    with open(full_file_name, encoding=UTF_8) as file:  # noqa: PTH123
                         yield file
 
     def handle_table_usage(self) -> None:
@@ -236,7 +236,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.handle_table_usage()
         self.handle_query_cost()
 
-    def get_table_usage_and_joins(self, table_entities: List[Table], table_usage: TableUsageCount):
+    def get_table_usage_and_joins(self, table_entities: List[Table], table_usage: TableUsageCount):  # noqa: UP006
         """
         For the list of tables, compute usage with already existing seen
         tables and publish the join information.
@@ -302,7 +302,7 @@ class MetadataUsageBulkSink(BulkSink):
 
             for column in column_join.joinedWith:
                 joined_column_fqn = self.__get_column_fqn(table_usage.databaseName, table_usage.databaseSchema, column)
-                if str(joined_column_fqn) in joined_with.keys():
+                if str(joined_column_fqn) in joined_with.keys():  # noqa: SIM118
                     column_joined_with = joined_with[str(joined_column_fqn)]
                     column_joined_with.joinCount += 1
                     joined_with[str(joined_column_fqn)] = column_joined_with
@@ -324,7 +324,7 @@ class MetadataUsageBulkSink(BulkSink):
             )
         return table_joins
 
-    def __get_column_fqn(self, database: str, database_schema: str, table_column: TableColumn) -> Optional[str]:
+    def __get_column_fqn(self, database: str, database_schema: str, table_column: TableColumn) -> Optional[str]:  # noqa: RET503, UP045
         """
         Method to get column fqn
         """
@@ -389,6 +389,6 @@ class MetadataUsageBulkSink(BulkSink):
             self.metadata.compute_percentile(Database, self.today)
         except APIError as err:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to publish compute.percentile: {err}")
+            logger.error(f"Failed to publish compute.percentile: {err}")
 
         self.metadata.close()

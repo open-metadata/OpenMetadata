@@ -14,7 +14,7 @@ Entity Fetcher Strategy
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, Iterator, List, Optional, cast
+from typing import Dict, Iterable, Iterator, List, Optional, cast  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -40,7 +40,7 @@ from metadata.profiler.source.fetcher.profiler_source_factory import (
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.db_utils import Table
 from metadata.utils.filters import (
-    filter_by_classification,
+    filter_by_classifications,
     filter_by_container,
     filter_by_schema,
     filter_by_table,
@@ -57,15 +57,15 @@ class RegexFilter(BaseModel):
     mode: str
 
 
-def _combine_patterns(patterns: List[str]) -> str:
+def _combine_patterns(patterns: List[str]) -> str:  # noqa: UP006
     if len(patterns) == 1:
         return patterns[0]
     return "|".join(f"({p})" for p in patterns)
 
 
 def _build_regex_from_filter(
-    filter_pattern: Optional[FilterPattern],
-) -> Optional[RegexFilter]:
+    filter_pattern: Optional[FilterPattern],  # noqa: UP045
+) -> Optional[RegexFilter]:  # noqa: UP045
     """Build a RegexFilter from a FilterPattern for server-side filtering.
 
     When both includes and excludes are set, includes take precedence.
@@ -89,7 +89,7 @@ class FetcherStrategy(ABC):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ) -> None:
         self.config = config
@@ -112,25 +112,17 @@ class FetcherStrategy(ABC):
             return False
 
         use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
+        tag_names = [
+            name
+            for name in (tag.tagFQN.root if use_fqn_for_filtering else tag.name for tag in (entity.tags or []))
+            if name
+        ]
 
-        if not entity.tags:
-            # if we are not explicitly including entities with tags we'll add the ones without tags
-            if not classification_filter_pattern.includes:
-                return False
-            return True
-
-        for tag in entity.tags:
-            tag_name = tag.tagFQN.root if use_fqn_for_filtering else tag.name
-            if not tag_name:
-                continue
-            if filter_by_classification(classification_filter_pattern, tag_name):
-                self.status.filter(
-                    tag_name,
-                    f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
-                )  # type: ignore
-                return True
-
-        return False
+        is_filtered = filter_by_classifications(classification_filter_pattern, tag_names)
+        if is_filtered:
+            entity_fqn = entity.fullyQualifiedName.root if entity.fullyQualifiedName else ""
+            self.status.filter(entity_fqn, "Classification pattern not allowed")
+        return is_filtered
 
     @abstractmethod
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
@@ -145,17 +137,17 @@ class DatabaseFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
         self.database_filter_pattern = _build_regex_from_filter(self.source_config.databaseFilterPattern)
         self.schema_filter_pattern = _build_regex_from_filter(self.source_config.schemaFilterPattern)
         self.table_filter_pattern = _build_regex_from_filter(self.source_config.tableFilterPattern)
-        self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker
+        self.source_config = cast(EntityFilterConfigInterface, self.source_config)  # Satisfy typechecker  # noqa: TC006
 
-    def _build_database_params(self) -> Dict[str, str]:
-        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore
+    def _build_database_params(self) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {"service": self.config.source.serviceName}  # type: ignore  # noqa: UP006
         db_filter = self.database_filter_pattern
         if db_filter:
             params["databaseRegex"] = db_filter.regex
@@ -200,8 +192,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 f"\n\t- excludes: {self.source_config.databaseFilterPattern.excludes if self.source_config.databaseFilterPattern else None}"  # pylint: disable=line-too-long
             )
 
-    def _build_table_params(self, database: Database) -> Dict[str, str]:
-        params: Dict[str, str] = {
+    def _build_table_params(self, database: Database) -> Dict[str, str]:  # noqa: UP006
+        params: Dict[str, str] = {  # noqa: UP006
             "service": self.config.source.serviceName,  # type: ignore
             "database": database.fullyQualifiedName.root,  # type: ignore
         }
@@ -213,7 +205,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             schema_filter is not None and table_filter is not None and schema_filter.mode != table_filter.mode
         )
 
-        regex_mode: Optional[str] = None
+        regex_mode: Optional[str] = None  # noqa: UP045
         if schema_filter and (not conflicting_modes or schema_filter.mode == "include"):
             params["databaseSchemaRegex"] = schema_filter.regex
             regex_mode = schema_filter.mode
@@ -326,7 +318,7 @@ class StorageFetcherStrategy(FetcherStrategy):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
-        global_profiler_config: Optional[Settings],
+        global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
@@ -392,13 +384,13 @@ class StorageFetcherStrategy(FetcherStrategy):
         containers = [
             container
             for container in containers
-            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))
-            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))
-            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))
+            if (not self.source_config.bucketFilterPattern or not self._filter_buckets(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.containerFilterPattern or not self._filter_containers(container))  # pyright: ignore[reportAttributeAccessIssue]
+            and (not self.source_config.classificationFilterPattern or not self.filter_classifications(container))  # pyright: ignore[reportAttributeAccessIssue]
             and container.dataModel is not None
         ]
 
-        return containers
+        return containers  # noqa: RET504
 
     def _get_container_entities(self) -> Iterable[Container]:
         """Get all container entities from the storage service
@@ -413,10 +405,10 @@ class StorageFetcherStrategy(FetcherStrategy):
                 "service": self.config.source.serviceName,
             },
         )
-        containers = cast(Iterable[Container], containers)
+        containers = cast(Iterable[Container], containers)  # noqa: TC006
         containers = self._filter_entities(containers)
 
-        return cast(Iterable[Container], containers)
+        return cast(Iterable[Container], containers)  # noqa: TC006
 
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch container entities from storage service"""

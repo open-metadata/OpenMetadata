@@ -16,7 +16,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -62,7 +62,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -98,6 +98,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
+    get_dbt_test_definition_name,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     validate_custom_property_value,
@@ -114,7 +115,7 @@ from metadata.utils.time_utils import datetime_to_timestamp
 logger = ingestion_logger()
 
 
-class InvalidServiceException(Exception):
+class InvalidServiceException(Exception):  # noqa: N818
     """
     The service passed in config is not found
     """
@@ -139,7 +140,7 @@ class DbtSource(DbtServiceSource):
         self._load_omd_custom_properties()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -170,7 +171,7 @@ class DbtSource(DbtServiceSource):
         except Exception as exc:
             logger.warning(f"Error loading custom properties: {exc}")
 
-    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:
+    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:  # noqa: UP045
         """
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
@@ -187,7 +188,7 @@ class DbtSource(DbtServiceSource):
                     domain_ref_data = format_domain_reference(domain_entity)
                     if domain_ref_data:
                         entity_ref = EntityReference(**domain_ref_data)
-                        return entity_ref
+                        return entity_ref  # noqa: RET504
                 else:
                     logger.warning(f"Domain '{domain_name}' not found in OpenMetadata")
 
@@ -197,7 +198,7 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:  # noqa: C901, UP045
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -216,14 +217,14 @@ class DbtSource(DbtServiceSource):
                         dbt_owner = openmetadata_owner
 
             # PRIORITY 2: Check old format meta.owner
-            if not dbt_owner:
+            if not dbt_owner:  # noqa: SIM102
                 if manifest_node and manifest_node.meta:
                     old_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
                     if old_owner:
                         dbt_owner = old_owner
 
             # PRIORITY 3: Check catalog node
-            if not dbt_owner:
+            if not dbt_owner:  # noqa: SIM102
                 if catalog_node:
                     try:
                         catalog_owner = catalog_node.metadata.owner
@@ -319,7 +320,7 @@ class DbtSource(DbtServiceSource):
                     else:
                         logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
 
-    def filter_tags(self, tags: List[str]) -> List[str]:
+    def filter_tags(self, tags: List[str]) -> List[str]:  # noqa: UP006
         """
         Filter tags based on tag filter pattern if configured
         """
@@ -420,8 +421,10 @@ class DbtSource(DbtServiceSource):
             logger.debug(traceback.format_exc())
 
     def _validate_custom_properties(
-        self, table_entity: Table, custom_properties: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self,
+        table_entity: Table,
+        custom_properties: Dict[str, Any],  # noqa: UP006
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Validates and converts custom properties with comprehensive type checking.
 
@@ -547,7 +550,7 @@ class DbtSource(DbtServiceSource):
                         dbt_tags_list.extend(self.filter_tags(model_tags))
 
                     # snapshot nodes may have columns=None (columns are inferred at runtime)
-                    for _, column in (manifest_node.columns or {}).items():
+                    for _, column in (manifest_node.columns or {}).items():  # noqa: PERF102
                         column_tags = column.tags
                         if column_tags:
                             dbt_tags_list.extend(self.filter_tags(column_tags))
@@ -666,8 +669,8 @@ class DbtSource(DbtServiceSource):
             )
             self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = freshness_test_result
 
-    def _get_table_entity(self, table_fqn) -> Optional[Table]:
-        def search_table(fqn_search_string: str) -> Optional[Table]:
+    def _get_table_entity(self, table_fqn) -> Optional[Table]:  # noqa: UP045
+        def search_table(fqn_search_string: str) -> Optional[Table]:  # noqa: UP045
             table_entities = get_entity_from_es_result(
                 entity_list=self.metadata.es_search_from_fqn(
                     entity_type=Table,
@@ -720,7 +723,7 @@ class DbtSource(DbtServiceSource):
         return None
 
     # pylint: disable=too-many-locals, too-many-branches
-    def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:
+    def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:  # noqa: C901
         """
         Yield the data models
         """
@@ -946,7 +949,7 @@ class DbtSource(DbtServiceSource):
 
         return upstream_nodes
 
-    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:  # noqa: UP006
         """
         Method to parse the DBT columns
         """
@@ -1038,7 +1041,7 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:
+    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:  # noqa: UP045
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
@@ -1094,7 +1097,7 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)
+                from_entity: Optional[Table] = self._get_table_entity(table_fqn=upstream_node)  # noqa: UP045
                 if from_entity and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
@@ -1127,7 +1130,7 @@ class DbtSource(DbtServiceSource):
                                 name="DBT Lineage upstream nodes",
                                 error=(
                                     "Error to create DBT lineage from upstream nodes ",
-                                    f"{str(data_model_link.datamodel.upstream)}",
+                                    f"{str(data_model_link.datamodel.upstream)}",  # noqa: RUF010
                                 ),
                                 stackTrace=traceback.format_exc(),
                             )
@@ -1137,7 +1140,7 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
-    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
@@ -1201,7 +1204,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(
+                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1334,7 +1337,7 @@ class DbtSource(DbtServiceSource):
                 column_descriptions = []
                 for column in data_model.columns:
                     if column.description:
-                        column_descriptions.append(
+                        column_descriptions.append(  # noqa: PERF401
                             ColumnDescription(
                                 column_fqn=fqn.build(
                                     self.metadata,
@@ -1399,8 +1402,9 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
+                test_definition_name = get_dbt_test_definition_name(manifest_node)
                 check_test_definition_exists = self.metadata.get_by_name(
-                    fqn=manifest_node.name,
+                    fqn=test_definition_name,
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
@@ -1409,7 +1413,7 @@ class DbtSource(DbtServiceSource):
                         entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
-                            name=manifest_node.name,
+                            name=test_definition_name,
                             description=manifest_node.description,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
@@ -1458,7 +1462,7 @@ class DbtSource(DbtServiceSource):
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(manifest_node.name),
+                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
@@ -1560,7 +1564,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise err
+                            raise err  # noqa: TRY201
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

@@ -27,17 +27,17 @@ import {
 } from '../../../../generated/entity/data/worksheet';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { TagSource } from '../../../../generated/type/tagLabel';
-import { getPartialNameFromTableFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnsDataWithVersionChanges,
   getCommonExtraInfoForVersionDetails,
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
-import { pruneEmptyChildren } from '../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -50,7 +50,6 @@ import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityV
 import VersionTable from '../../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { WorksheetVersionProps } from './WorksheetVersion.interface';
-
 const WorksheetVersion = ({
   version,
   currentVersionData,
@@ -61,9 +60,6 @@ const WorksheetVersion = ({
   tier,
   breadCrumbList,
   versionList,
-  onLoadMore,
-  hasMore,
-  isLoadingMore,
   deleted = false,
   backHandler,
   versionHandler,
@@ -284,12 +280,9 @@ const WorksheetVersion = ({
       <EntityVersionTimeLine
         currentVersion={toString(version)}
         entityType={EntityType.WORKSHEET}
-        hasMore={hasMore}
-        isLoadingMore={isLoadingMore}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
-        onLoadMore={onLoadMore}
       />
     </>
   );

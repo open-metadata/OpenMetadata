@@ -313,7 +313,7 @@ EXPECTED_COLUMN_VALUE = [
 
 class PostgresUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
@@ -485,13 +485,13 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], DatabaseSchema)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"database": "test_service.test_db"})
 
                 # Verify the entity_source_state contains both processed and filtered schemas
                 expected_source_state = {
                     "test_schema_fqn",
-                    "test_schema_fqn",
+                    "test_schema_fqn",  # noqa: B033
                     "another_schema_fqn",
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
@@ -553,7 +553,7 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], Database)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"service": "test_service"})
 
                 # Verify the entity_source_state contains both processed and filtered databases
@@ -613,7 +613,7 @@ class PostgresUnitTest(TestCase):
                 expected_source_state = {
                     "test_service.test_db.schema1",
                     "test_service.test_db.schema2",
-                    "test_service.test_db.schema1",
+                    "test_service.test_db.schema1",  # noqa: B033
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
@@ -652,7 +652,7 @@ class PostgresUnitTest(TestCase):
                 expected_source_state = {
                     "test_service.db1",
                     "test_service.db2",
-                    "test_service.db1",
+                    "test_service.db1",  # noqa: B033
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
@@ -736,7 +736,7 @@ class PostgresUnitTest(TestCase):
             mock_filtered_schemas.side_effect = Exception("Test exception")
 
             # Call the method and expect it to handle the exception gracefully
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception):  # noqa: B017
                 list(self.postgres_source.mark_schemas_as_deleted())
 
     def test_mark_deleted_databases_exception_handling(self):
@@ -757,7 +757,7 @@ class PostgresUnitTest(TestCase):
             mock_filtered_dbs.side_effect = Exception("Test exception")
 
             # Call the method and expect it to handle the exception gracefully
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception):  # noqa: B017
                 list(self.postgres_source.mark_databases_as_deleted())
 
     def test_mark_deleted_schemas_with_multiple_schemas(self):
@@ -801,8 +801,8 @@ class PostgresUnitTest(TestCase):
                     "test_service.test_db.schema1",
                     "test_service.test_db.schema2",
                     "test_service.test_db.schema3",
-                    "test_service.test_db.schema1",
-                    "test_service.test_db.schema2",
+                    "test_service.test_db.schema1",  # noqa: B033
+                    "test_service.test_db.schema2",  # noqa: B033
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
@@ -843,8 +843,8 @@ class PostgresUnitTest(TestCase):
                     "test_service.db1",
                     "test_service.db2",
                     "test_service.db3",
-                    "test_service.db1",
-                    "test_service.db2",
+                    "test_service.db1",  # noqa: B033
+                    "test_service.db2",  # noqa: B033
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 

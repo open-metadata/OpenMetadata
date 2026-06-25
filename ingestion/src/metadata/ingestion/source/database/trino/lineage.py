@@ -13,7 +13,7 @@ Trino lineage module
 """
 
 import traceback
-from typing import Dict, Iterable, Iterator, List, Optional
+from typing import Dict, Iterable, Iterator, List, Optional  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -61,7 +61,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         for engine in self.get_engine():
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             while total_fetched < max_results:
                 batch_size = min(TRINO_QUERY_BATCH_SIZE, max_results - total_fetched)
                 row_count = 0
@@ -98,8 +98,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     f"for lineage queries"
                 )
 
-    def get_cross_database_fqn_from_service_names(self) -> List[str]:
-        database_service_names = self.source_config.crossDatabaseServiceNames
+    def get_cross_database_fqn_from_service_names(self) -> List[str]:  # noqa: UP006
+        database_service_names = self.source_config.crossDatabaseServiceNames  # pyright: ignore[reportAttributeAccessIssue]
         return [
             database.fullyQualifiedName.root
             for service in database_service_names
@@ -126,8 +126,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         self,
         cross_database_fqn: str,
         trino_table: Table,
-        cross_database_schema_mapping: Dict[str, Dict[str, str]],
-    ) -> Optional[str]:
+        cross_database_schema_mapping: Dict[str, Dict[str, str]],  # noqa: UP006
+    ) -> Optional[str]:  # noqa: UP045
         trino_schema_name = None
         if trino_table.databaseSchema and trino_table.databaseSchema.name:
             trino_schema_name = trino_table.databaseSchema.name.root
@@ -174,8 +174,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         self,
         cross_database_schema_fqn: str,
         trino_table: Table,
-        cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]],
-    ) -> Optional[Table]:
+        cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]],  # noqa: UP006
+    ) -> Optional[Table]:  # noqa: UP045
         if cross_database_schema_fqn not in cross_database_table_schema_mapping:
             cross_database_table_schema_mapping[cross_database_schema_fqn] = {}
 
@@ -223,11 +223,11 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         trino_database_fqn: str,
         trino_table: Table,
         *,
-        all_cross_database_fqns: List[str],
-        cross_database_table_fqn_mapping: Dict[str, Optional[Table]],
-        cross_database_schema_fqn_mapping: Dict[str, Dict[str, str]],
-        cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]],
-    ) -> Optional[Either[AddLineageRequest]]:
+        all_cross_database_fqns: List[str],  # noqa: UP006
+        cross_database_table_fqn_mapping: Dict[str, Optional[Table]],  # noqa: UP006, UP045
+        cross_database_schema_fqn_mapping: Dict[str, Dict[str, str]],  # noqa: UP006
+        cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]],  # noqa: UP006
+    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         trino_table_fqn = trino_table.fullyQualifiedName.root
         trino_database_prefix = f"{trino_database_fqn}."
         if not trino_table_fqn.startswith(trino_database_prefix):
@@ -262,8 +262,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         try:
             all_cross_database_fqns = self.get_cross_database_fqn_from_service_names()
             cross_database_table_fqn_mapping = {}
-            cross_database_schema_fqn_mapping: Dict[str, Dict[str, str]] = {}
-            cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]] = {}
+            cross_database_schema_fqn_mapping: Dict[str, Dict[str, str]] = {}  # noqa: UP006
+            cross_database_table_schema_mapping: Dict[str, Dict[str, List[Table]]] = {}  # noqa: UP006
 
             # Get all databases for the specified Trino service
             trino_databases = self.metadata.list_all_entities(

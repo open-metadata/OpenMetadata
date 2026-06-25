@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
@@ -41,7 +41,7 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
       python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
     steps:
@@ -70,7 +70,7 @@ jobs:
     steps:
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -99,6 +99,11 @@ jobs:
           install-server: 'false'
 
       - name: Run Static Checks
+        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
+        # supported version) so type-checking results are identical across the
+        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
+        # redundant work and keep the baseline file deterministic.
+        if: matrix.py-version == '3.10'
         run: |
           source env/bin/activate
           cd ingestion
@@ -158,7 +163,7 @@ jobs:
           docker-images: false
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -191,8 +196,18 @@ jobs:
         run: |
           source env/bin/activate
           cd ingestion
-          nox --no-venv -s integration-tests -- --standalone --durations=5 ${{ matrix.shard.nox-args }}
+          read -r -a shard_args <<< "$NOX_ARGS"
+          set +e
+          nox --no-venv -s integration-tests -- --standalone --durations=5 "${shard_args[@]}" 2>&1 | tee integration-test-run.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ] && { [ "$status" -eq 139 ] || [ "$status" -eq 245 ] || grep -Eq "failed with exit code -11|Segmentation fault|exit code 139" integration-test-run.log; }; then
+            nox --no-venv -s integration-tests -- --standalone --durations=5 "${shard_args[@]}"
+          else
+            exit "$status"
+          fi
         env:
+          NOX_ARGS: ${{ matrix.shard.nox-args }}
           TESTCONTAINERS_RYUK_DISABLED: true
         shell: bash
 
@@ -208,7 +223,7 @@ jobs:
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
 
   # Single required-check gate for branch protection.
   # Skipped (= "Success") when all test jobs pass or are legitimately skipped.
@@ -300,6 +315,7 @@ jobs:
       - name: Retry 'Push Results in PR to Sonar'
         uses: SonarSource/sonarqube-scan-action@v7
         if: ${{ github.event_name == 'pull_request_target' && steps.push-to-sonar.outcome != 'success' }}
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}

@@ -143,8 +143,9 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
-    return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+    ListFilter filter = new ListFilter(null);
+    EntityUtil.applyDomainSelfRestriction(securityContext, filter);
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -326,24 +327,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id,
-      @Parameter(description = "Limit the number of versions returned")
-          @QueryParam("limit")
-          @DefaultValue("0")
-          @Min(0)
-          @Max(1000)
-          int limit,
-      @Parameter(description = "Offset of the versions to return")
-          @QueryParam("offset")
-          @DefaultValue("0")
-          @Min(0)
-          int offset,
-      @Parameter(
-              description =
-                  "Filter versions by field changes. Returns only versions where the specified field was added, updated, or deleted")
-          @QueryParam("fieldChanged")
-          String fieldChanged) {
-    return super.listVersionsInternal(securityContext, id, limit, offset, fieldChanged);
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
   }
 
   @GET
@@ -686,7 +671,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("offset")
           int offset) {
 
-    return repository.buildHierarchy(fieldsParam, limitParam, directChildrenOf, offset);
+    return repository.buildHierarchy(
+        fieldsParam, limitParam, directChildrenOf, offset, securityContext);
   }
 
   @PUT

@@ -13,17 +13,18 @@ Source connection handler for BurstIQ
 """
 
 import hashlib
-from typing import Dict, Optional
+from typing import Dict, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
-    BurstIQConnection,
+    BurstIQConnection as BurstIQConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.burstiq.client import BurstIQClient
@@ -32,10 +33,10 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_CLIENT_CACHE: Dict[str, BurstIQClient] = {}
+_CLIENT_CACHE: Dict[str, BurstIQClient] = {}  # noqa: UP006
 
 
-def get_connection(connection: BurstIQConnection) -> BurstIQClient:
+def get_connection(connection: BurstIQConnectionConfig) -> BurstIQClient:
     """
     Create or return a cached BurstIQ client connection.
 
@@ -52,56 +53,61 @@ def get_connection(connection: BurstIQConnection) -> BurstIQClient:
     return _CLIENT_CACHE[key]
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: BurstIQClient,
-    service_connection: BurstIQConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection to BurstIQ. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
+class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
+    def _get_client(self) -> BurstIQClient:
+        return get_connection(self.service_connection)
 
-    Args:
-        metadata: OpenMetadata client
-        client: BurstIQClient instance
-        service_connection: BurstIQConnection configuration
-        automation_workflow: Optional automation workflow
-        timeout_seconds: Timeout for connection test
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection to BurstIQ. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
 
-    Returns:
-        TestConnectionResult
-    """
+        Args:
+            metadata: OpenMetadata client
+            client: BurstIQClient instance
+            service_connection: BurstIQConnection configuration
+            automation_workflow: Optional automation workflow
+            timeout_seconds: Timeout for connection test
 
-    def test_authenticate():
-        """Test authentication with BurstIQ credentials"""
-        client.test_authenticate()
+        Returns:
+            TestConnectionResult
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    def test_get_dictionaries():
-        """Test fetching dictionaries from BurstIQ"""
-        dictionaries = client.get_dictionaries(limit=1)
-        if not dictionaries:
-            raise ConnectionError("Failed to fetch dictionaries from BurstIQ")
+        def test_authenticate():
+            """Test authentication with BurstIQ credentials"""
+            client.test_authenticate()
 
-    def test_get_edges():
-        """Test fetching edges used for lineage"""
-        edges = client.get_edges(limit=1)
-        # Edges might not exist, so don't fail if empty
-        logger.info(f"Found {len(edges)} edges in BurstIQ")
+        def test_get_dictionaries():
+            """Test fetching dictionaries from BurstIQ"""
+            dictionaries = client.get_dictionaries(limit=1)
+            if not dictionaries:
+                raise ConnectionError("Failed to fetch dictionaries from BurstIQ")
 
-    test_fn = {
-        "CheckAccess": test_authenticate,
-        "GetDictionaries": test_get_dictionaries,
-        "GetEdges": test_get_edges,
-    }
+        def test_get_edges():
+            """Test fetching edges used for lineage"""
+            edges = client.get_edges(limit=1)
+            # Edges might not exist, so don't fail if empty
+            logger.info(f"Found {len(edges)} edges in BurstIQ")
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=service_connection.connectionTimeout
-        if hasattr(service_connection, "connectionTimeout")
-        else timeout_seconds,
-    )
+        test_fn = {
+            "CheckAccess": test_authenticate,
+            "GetDictionaries": test_get_dictionaries,
+            "GetEdges": test_get_edges,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=service_connection.connectionTimeout  # pyright: ignore[reportAttributeAccessIssue]
+            if hasattr(service_connection, "connectionTimeout")
+            else timeout_seconds,
+        )

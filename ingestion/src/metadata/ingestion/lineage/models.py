@@ -13,7 +13,7 @@ Models related to lineage parsing
 """
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional  # noqa: UP035
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -128,6 +128,7 @@ class Dialect(Enum):
     SOQL = "soql"
     SPARKSQL = "sparksql"
     SQLITE = "sqlite"
+    STARROCKS = "starrocks"
     TERADATA = "teradata"
     TSQL = "tsql"
     MARIADB = "mariadb"
@@ -135,7 +136,7 @@ class Dialect(Enum):
     VERTICA = "vertica"
 
 
-MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
+MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {  # noqa: UP006
     str(AthenaType.Athena.value): Dialect.ATHENA,
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
@@ -161,7 +162,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(VerticaType.Vertica.value): Dialect.VERTICA,
     str(GreenplumType.Greenplum.value): Dialect.POSTGRES,
     str(DorisType.Doris.value): Dialect.MYSQL,
-    str(StarrocksType.StarRocks.value): Dialect.MYSQL,
+    str(StarrocksType.StarRocks.value): Dialect.STARROCKS,
     str(MicrosoftFabricType.MicrosoftFabric.value): Dialect.TSQL,
     str(InformixType.Informix.value): Dialect.ANSI,
 }
@@ -197,7 +198,7 @@ class QueryParsingError(BaseModel):
     )
 
     query: str = Field(..., description="query text of the failed query")
-    error: Optional[str] = Field(None, description="error message of the failed query")
+    error: Optional[str] = Field(None, description="error message of the failed query")  # noqa: UP045
 
 
 class QueryParsingFailures(metaclass=Singleton):
@@ -205,7 +206,7 @@ class QueryParsingFailures(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the list of parsing failures."""
-        self._query_list: List[QueryParsingError] = []
+        self._query_list: List[QueryParsingError] = []  # noqa: UP006
 
     def add(self, parsing_error: QueryParsingError):
         self._query_list.append(parsing_error)

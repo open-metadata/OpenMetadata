@@ -16,7 +16,10 @@ from unittest.mock import MagicMock, Mock
 
 from metadata.ingestion.source.database.redshift.utils import (
     _get_all_relation_info,
+    _get_args_and_kwargs,
+    _update_coltype,
     get_view_definition,
+    ischema_names,
 )
 
 
@@ -292,6 +295,182 @@ class TestGetAllRelationInfoCache(unittest.TestCase):
         self.assertEqual({k.name for k in r2}, {"t2"})
 
         self.assertEqual(self.mock_connection.execute.call_count, 2)
+
+
+class TestRedshiftColumnTypeParsing(unittest.TestCase):
+    """Test Redshift column type argument parsing."""
+
+    def test_timestamp_without_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs("0", "timestamp without time zone", "timestamp(0) without time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp without time zone"],
+            args,
+            kwargs,
+            "timestamp without time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_timestamp_with_time_zone_precision_uses_keyword_argument(self):
+        """Timestamp with time zone keeps precision and timezone keywords."""
+        args, kwargs = _get_args_and_kwargs("0", "timestamp with time zone", "timestamp(0) with time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": True})
+
+        coltype = _update_coltype(
+            ischema_names["timestamp with time zone"],
+            args,
+            kwargs,
+            "timestamp with time zone",
+            "created_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertTrue(coltype.timezone)
+
+    def test_time_without_time_zone_precision_uses_keyword_argument(self):
+        """Time precision must not be passed as positional timezone."""
+        args, kwargs = _get_args_and_kwargs("0", "time without time zone", "time(0) without time zone")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 0, "timezone": False})
+
+        coltype = _update_coltype(
+            ischema_names["time without time zone"],
+            args,
+            kwargs,
+            "time without time zone",
+            "started_at",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 0)
+        self.assertFalse(coltype.timezone)
+
+    def test_numeric_and_character_varying_positional_arguments_are_unchanged(self):
+        """Non-time types keep their established positional parsing."""
+        numeric_args, numeric_kwargs = _get_args_and_kwargs("10,2", "numeric", "numeric(10,2)")
+        varchar_args, varchar_kwargs = _get_args_and_kwargs("255", "character varying", "character varying(255)")
+
+        self.assertEqual(numeric_args, (10, 2))
+        self.assertEqual(numeric_kwargs, {})
+        self.assertEqual(varchar_args, (255,))
+        self.assertEqual(varchar_kwargs, {})
+
+
+class TestRedshiftIntervalParsing(unittest.TestCase):
+    """Test Redshift interval column type argument parsing."""
+
+    def test_interval_with_precision_uses_keyword_argument(self):
+        """interval(N) must route precision through kwargs, not positional args."""
+        args, kwargs = _get_args_and_kwargs("6", "interval", "interval(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertIsNone(coltype.fields)
+
+    def test_interval_with_fields_and_precision_uses_keyword_arguments(self):
+        """interval <fields>(N) must route both precision and fields through kwargs."""
+        args, kwargs = _get_args_and_kwargs("6", "interval day to second", "interval day to second(6)")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {"precision": 6, "fields": "day to second"})
+
+        coltype = _update_coltype(
+            ischema_names["interval"],
+            args,
+            kwargs,
+            "interval",
+            "duration",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 6)
+        self.assertEqual(coltype.fields, "day to second")
+
+    def test_interval_without_precision_keeps_args_empty(self):
+        """Bare interval must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "interval", "interval")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+
+class TestRedshiftNumericParsing(unittest.TestCase):
+    """Test Redshift numeric column type argument parsing."""
+
+    def test_numeric_with_precision_only_does_not_crash(self):
+        """numeric(N) without scale must parse precision-only without ValueError."""
+        args, kwargs = _get_args_and_kwargs("10", "numeric", "numeric(10)")
+
+        self.assertEqual(args, (10,))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertIsNone(coltype.scale)
+
+    def test_numeric_with_precision_and_scale_unchanged(self):
+        """Regression: numeric(P,S) must continue to parse both as positional args."""
+        args, kwargs = _get_args_and_kwargs("10,2", "numeric", "numeric(10,2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
+
+        coltype = _update_coltype(
+            ischema_names["numeric"],
+            args,
+            kwargs,
+            "numeric",
+            "amount",
+            False,
+        )
+
+        self.assertEqual(coltype.precision, 10)
+        self.assertEqual(coltype.scale, 2)
+
+    def test_numeric_without_charlen_keeps_args_empty(self):
+        """Bare numeric must produce empty args and empty kwargs."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric")
+
+        self.assertEqual(args, ())
+        self.assertEqual(kwargs, {})
+
+    def test_numeric_with_space_after_comma_falls_back_to_init_args(self):
+        """numeric(P, S) with a space must still parse precision and scale."""
+        args, kwargs = _get_args_and_kwargs(None, "numeric", "numeric(10, 2)")
+
+        self.assertEqual(args, (10, 2))
+        self.assertEqual(kwargs, {})
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ This skill is loaded automatically at session start. It ensures you follow the r
 | New connector | `/connector-standards` then `/connector-building` then `/test-enforcement` |
 | UI component | `/tdd` then `/test-enforcement` (must include Jest + Playwright if user-facing) |
 | Code review / PR review | `/code-review` then `/test-enforcement` |
+| Opening / finalizing a PR | `/test-enforcement` then `/verification` then `/pr-checklist` |
 | Connector review | `/connector-review` |
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/verification` |
@@ -43,6 +44,8 @@ This skill is loaded automatically at session start. It ensures you follow the r
 
 5. **Review before merging.** Use `/code-review` for two-stage review (spec compliance + code quality).
 
+6. **Fill the PR template completely.** Use `/pr-checklist` before `gh pr create` to gather every required section: linked issue, high-level design (large PRs), tests + coverage, UI screen recording, and manual test steps.
+
 ### OpenMetadata Cross-Layer Checklist
 
 When your task touches multiple layers, ensure all are synchronized:
@@ -53,7 +56,7 @@ When your task touches multiple layers, ensure all are synchronized:
 - [ ] Backend API changes → update frontend API client
 - [ ] New UI strings → add to `locale/languages/en-us.json` then run `yarn i18n`
 - [ ] Java files → run `mvn spotless:apply`
-- [ ] Python files → run `make py_format && make lint`
+- [ ] Python files → run `make py_format && make py_format_check`
 - [ ] TypeScript/React files → run `yarn organize-imports:cli && yarn lint:fix && yarn pretty:base --write`
 - [ ] New source files → ensure Apache 2.0 license header (run `yarn license-header-fix`)
 - [ ] Application changes → run `yarn generate:app-docs`

@@ -69,12 +69,12 @@ permissions:
 
 concurrency:
   group: sso-playwright-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   sso-auth-tests:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
 
     strategy:
@@ -95,7 +95,7 @@ jobs:
           docker-images: false
 
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -156,6 +156,7 @@ jobs:
           AUTHENTICATION_AUTHORITY: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090' || 'https://accounts.google.com' }}
           AUTHENTICATION_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           AUTHENTICATION_CALLBACK_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || '' }}
+          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING: ${{ matrix.provider == 'mock-oidc' && '[username:sub,email:email]' || '' }}
           OIDC_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           OIDC_TYPE: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || '' }}
           OIDC_CLIENT_SECRET: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test-secret' || '' }}
@@ -225,7 +226,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   sso-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     needs: sso-auth-tests
     runs-on: ubuntu-latest
     steps:

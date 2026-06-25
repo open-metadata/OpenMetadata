@@ -19,7 +19,7 @@ import zipfile
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import singledispatchmethod
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -73,7 +73,7 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_lines(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream JSON Lines in batches. Memory efficient."""
-        from pandas import DataFrame
+        from pandas import DataFrame  # noqa: PLC0415
 
         batch = []
         while True:
@@ -99,8 +99,8 @@ class JSONDataFrameReader(DataFrameReader):
     @staticmethod
     def _stream_json_array(file_obj, batch_size: int = CHUNKSIZE) -> Iterator["DataFrame"]:  # noqa: F821
         """Stream large JSON arrays using ijson. Memory efficient."""
-        import ijson
-        from pandas import DataFrame
+        import ijson  # noqa: PLC0415
+        from pandas import DataFrame  # noqa: PLC0415
 
         batch = []
         for record in ijson.items(file_obj, "item"):
@@ -112,15 +112,24 @@ class JSONDataFrameReader(DataFrameReader):
             yield DataFrame.from_records(batch)
 
     @staticmethod
+    def _is_iceberg_delta_shape(obj: Any) -> bool:
+        return (
+            isinstance(obj, dict)
+            and isinstance(obj.get("schema"), dict)
+            and isinstance(obj["schema"].get("fields"), list)
+        )
+
+    @staticmethod
     def _read_json_object(
         content: bytes,
-    ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:  # noqa: F821
+    ) -> tuple[Generator["DataFrame", Any, None], Optional[str]]:  # noqa: F821, UP045
         """Load entire JSON object/array. Non-streaming fallback for small files."""
-        from pandas import DataFrame
+        from pandas import DataFrame  # noqa: PLC0415
 
         content = content.decode(UTF_8, errors="ignore") if isinstance(content, bytes) else content
         data = json.loads(content)
-        raw_data = content if isinstance(data, dict) and data.get("$schema") else None
+        is_json_schema = isinstance(data, dict) and data.get("$schema")
+        raw_data = content if (is_json_schema or JSONDataFrameReader._is_iceberg_delta_shape(data)) else None
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
@@ -140,7 +149,11 @@ class JSONDataFrameReader(DataFrameReader):
             return True
         try:
             obj = json.loads(first_line)
-            return isinstance(obj, dict) and not obj.get("$schema")
+            if not isinstance(obj, dict):
+                return False
+            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
+                return False
+            return True  # noqa:TRY300
         except json.JSONDecodeError:
             return False
 
@@ -149,20 +162,20 @@ class JSONDataFrameReader(DataFrameReader):
         file_obj_getter,
         key: str,
         bucket_name: str,
-        file_size: Optional[int] = None,
+        file_size: Optional[int] = None,  # noqa: UP045
     ) -> DatalakeColumnWrapper:
         """
         Smart JSON reading with automatic format detection and streaming.
         Handles JSON Lines, arrays, and objects efficiently.
         """
-        with file_obj_getter() as f:
+        with file_obj_getter() as f:  # noqa: SIM117
             with self._decompress(f, key) as decompressed:
                 is_json_lines = self._is_json_lines(decompressed)
 
         if is_json_lines:
 
             def chunk_generator():
-                with file_obj_getter() as f:
+                with file_obj_getter() as f:  # noqa: SIM117
                     with self._decompress(f, key) as decompressed:
                         yield from self._stream_json_lines(decompressed)
 
@@ -174,7 +187,7 @@ class JSONDataFrameReader(DataFrameReader):
             try:
 
                 def ijson_chunk_generator():
-                    with file_obj_getter() as f:
+                    with file_obj_getter() as f:  # noqa: SIM117
                         with self._decompress(f, key) as decompressed:
                             yield from self._stream_json_array(decompressed)
 
@@ -182,7 +195,7 @@ class JSONDataFrameReader(DataFrameReader):
             except Exception as exc:
                 logger.warning(f"ijson streaming failed: {exc}. Loading entire file (may cause OOM).")
 
-        with file_obj_getter() as f:
+        with file_obj_getter() as f:  # noqa: SIM117
             with self._decompress(f, key) as decompressed:
                 content = decompressed.read()
         dataframes, raw_data = self._read_json_object(content)
@@ -206,7 +219,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: GCSConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from gcsfs import GCSFileSystem
+        from gcsfs import GCSFileSystem  # noqa: PLC0415
 
         gcs = GCSFileSystem()
         file_path = f"gs://{bucket_name}/{key}"
@@ -220,7 +233,7 @@ class JSONDataFrameReader(DataFrameReader):
 
     @_read_json_dispatch.register
     def _(self, _: AzureConfig, key: str, bucket_name: str) -> DatalakeColumnWrapper:
-        from adlfs import AzureBlobFileSystem
+        from adlfs import AzureBlobFileSystem  # noqa: PLC0415
 
         storage_options = return_azure_storage_options(self.config_source)
         adlfs_fs = AzureBlobFileSystem(
@@ -245,11 +258,11 @@ class JSONDataFrameReader(DataFrameReader):
     ) -> DatalakeColumnWrapper:
         @contextmanager
         def get_stream():
-            with open(key, "rb") as f:
+            with open(key, "rb") as f:  # noqa: PTH123
                 yield f
 
         return self._read_json_smart(get_stream, key, bucket_name)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:
+    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
         self._file_size = file_size
         return self._read_json_dispatch(self.config_source, key=key, bucket_name=bucket_name)

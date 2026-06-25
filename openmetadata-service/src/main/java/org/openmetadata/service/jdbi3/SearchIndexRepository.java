@@ -313,6 +313,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   private void setFieldFQN(String parentFQN, List<SearchIndexField> fields) {
     fields.forEach(
         c -> {
+          FullyQualifiedName.validateFqnName(c.getName());
           String fieldFqn = FullyQualifiedName.add(parentFQN, c.getName());
           c.setFullyQualifiedName(fieldFqn);
           if (c.getChildren() != null) {

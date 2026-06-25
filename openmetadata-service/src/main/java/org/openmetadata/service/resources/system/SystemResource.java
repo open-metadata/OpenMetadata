@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
@@ -40,20 +41,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -66,6 +73,10 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.cache.CacheMetrics;
+import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -73,6 +84,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -82,6 +94,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -104,6 +117,7 @@ public class SystemResource {
   private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
+  private final AISettingsHandler aiSettingsHandler = new AISettingsHandler();
   private boolean isNlqEnabled = false;
 
   public SystemResource(Authorizer authorizer) {
@@ -168,6 +182,18 @@ public class SystemResource {
     systemRepository.createOrUpdate(settings);
     LOG.info("Default searchSettings loaded successfully.");
     return searchSettings;
+  }
+
+  public AISettings loadDefaultAiSettings() throws IOException {
+    List<String> jsonDataFiles =
+        EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
+    if (jsonDataFiles.isEmpty()) {
+      throw new IllegalArgumentException("Default AI settings file not found.");
+    }
+    String json =
+        CommonUtil.getResourceAsStream(
+            EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+    return JsonUtils.readValue(json, AISettings.class);
   }
 
   @GET
@@ -407,10 +433,34 @@ public class SystemResource {
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
     }
+
+    if (AI_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      try {
+        AISettings defaults = loadDefaultAiSettings();
+        AISettings incoming =
+            JsonUtils.convertValue(settingName.getConfigValue(), AISettings.class);
+        aiSettingsHandler.validateAISettings(incoming);
+        settingName.setConfigValue(aiSettingsHandler.mergeAISettings(defaults, incoming));
+      } catch (IOException e) {
+        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
+      }
+    }
+
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    reinitMcpChatServiceIfNeeded(settingName.getConfigType());
 
     return response;
+  }
+
+  private void reinitMcpChatServiceIfNeeded(SettingsType configType) {
+    if (configType == AI_SETTINGS) {
+      AISettings aiSettings =
+          SettingsCache.getSettingOrDefault(AI_SETTINGS, null, AISettings.class);
+      McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
+      McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
+    }
   }
 
   @PUT
@@ -443,11 +493,26 @@ public class SystemResource {
 
     authorizer.authorizeAdmin(securityContext);
 
-    if (!SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+    Object defaults;
+    if (SettingsType.SEARCH_SETTINGS.value().equalsIgnoreCase(name)) {
+      defaults = loadDefaultSearchSettings(true);
+    } else if (AI_SETTINGS.value().equalsIgnoreCase(name)) {
+      try {
+        AISettings defaultAiSettings = loadDefaultAiSettings();
+        Settings setting =
+            new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
+        systemRepository.createOrUpdate(setting);
+        SettingsCache.invalidateSettings(AI_SETTINGS.value());
+        reinitMcpChatServiceIfNeeded(AI_SETTINGS);
+        defaults = defaultAiSettings;
+      } catch (IOException e) {
+        LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+        throw new SystemSettingsException("Failed to load default AI settings: " + e.getMessage());
+      }
+    } else {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
-    SearchSettings settings = loadDefaultSearchSettings(true);
-    return Response.ok(settings).build();
+    return Response.ok(defaults).build();
   }
 
   @PUT
@@ -602,7 +667,19 @@ public class SystemResource {
   @Operation(
       operationId = "healthCheck",
       summary = "Health check endpoint",
-      description = "Simple health check endpoint that returns 200 OK",
+      description =
+          "Pure process-aliveness probe — returns 200 OK as long as the JVM can run this"
+              + " handler and Jetty can serve a response. Intentionally does NOT probe the"
+              + " database, search backend, cache, or any other downstream system. Coupling"
+              + " the liveness probe to downstream latency creates restart loops: a slow"
+              + " (but otherwise healthy) database trips the probe, kubelet kills the pod,"
+              + " the new pod cold-starts and re-storms the database, and the cycle"
+              + " accelerates. Killing the process never speeds up the database.\n\n"
+              + "If you need DB/cache health visibility for routing decisions, use a"
+              + " separate readiness probe (which doesn't trigger a pod kill) or scrape"
+              + " HikariCP pool stats from the metrics endpoint.\n\n"
+              + "For production, prefer the admin-port `/healthcheck` over this endpoint —"
+              + " admin runs on its own thread pool insulated from API saturation.",
       responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
   public Response healthCheck() {
     return Response.ok("OK").build();
@@ -821,6 +898,32 @@ public class SystemResource {
         securityConfig, applicationConfig, currentUsername);
   }
 
+  @POST
+  @Path("/security/test-login/validate-token")
+  @Operation(
+      operationId = "testLoginValidateToken",
+      summary = "Validate an OIDC id_token against a candidate security configuration",
+      description =
+          "Admin-only. Validates a browser-obtained OIDC id_token against a candidate (unsaved) "
+              + "security configuration and reports the identity, roles, teams and domain outcome a "
+              + "real login would produce. Performs no side effects: no user is created, no token is "
+              + "issued, and no session is started.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class)))
+      })
+  public TestLoginResult testLoginValidateToken(
+      @Context SecurityContext securityContext, @Valid TestLoginTokenRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginService.resolveFromIdToken(
+        request.getSecurityConfiguration(), request.getIdToken());
+  }
+
   @GET
   @Path("/mcp/config")
   @Operation(
@@ -941,8 +1044,190 @@ public class SystemResource {
   public Response getCacheStats(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
 
-    Map<String, Object> stats = CacheBundle.getCacheProvider().getStats();
+    CacheProvider cacheProvider = CacheBundle.getCacheProvider();
+    Map<String, Object> stats = cacheProvider.getStats();
+    // Gate on the *configured* provider, not the runtime available() flag. When the cache
+    // is configured but temporarily unavailable (circuit breaker tripped, init failed,
+    // Redis restarting) the app-level CacheMetrics counters are still meaningful for
+    // diagnosing the outage — that's exactly when an operator wants to inspect them.
+    // We only suppress the metrics block when CACHE_PROVIDER=none because the metrics
+    // singleton is never initialized in that mode and CacheMetrics.getInstance() would
+    // log a WARN on every poll.
+    CacheConfig cacheConfig = CacheBundle.getCacheConfig();
+    boolean cacheConfigured =
+        cacheConfig != null && cacheConfig.provider != CacheConfig.Provider.none;
+    if (cacheConfigured) {
+      CacheMetrics metrics = CacheMetrics.getInstance();
+      if (metrics != null) {
+        stats.put("metrics", metrics.snapshot());
+      }
+    }
     return Response.ok(stats).build();
+  }
+
+  // Minimum literal prefix required on cache patterns before the first wildcard. Stops a
+  // careless or malicious admin from issuing `*` / `om:*` (broad scans/deletes that can
+  // block the Redis cluster on a large keyspace). Tuned to require at least `om:<env>:<layer>:`
+  // worth of literal context — i.e. ~6 characters before any wildcard.
+  private static final int CACHE_PATTERN_MIN_LITERAL_PREFIX = 6;
+
+  // Disallow patterns that are pure wildcards or have a tiny literal prefix. ReDoS-safe:
+  // single linear scan; no backtracking.
+  private static String validateCachePattern(String pattern) {
+    if (pattern == null || pattern.isBlank()) {
+      return "pattern query param required";
+    }
+    int firstWildcard = -1;
+    for (int i = 0; i < pattern.length(); i++) {
+      char c = pattern.charAt(i);
+      if (c == '*' || c == '?' || c == '[') {
+        firstWildcard = i;
+        break;
+      }
+    }
+    int literalPrefixLen = firstWildcard < 0 ? pattern.length() : firstWildcard;
+    if (literalPrefixLen < CACHE_PATTERN_MIN_LITERAL_PREFIX) {
+      return "pattern must have at least "
+          + CACHE_PATTERN_MIN_LITERAL_PREFIX
+          + " literal characters before any wildcard (got "
+          + literalPrefixLen
+          + ")";
+    }
+    return null;
+  }
+
+  @GET
+  @Path("/cache/keys")
+  @Operation(
+      operationId = "scanCacheKeys",
+      summary = "SCAN keys matching a pattern (admin)",
+      description =
+          "Issues a Redis SCAN with the given glob-style pattern (e.g.,"
+              + " 'om:prod:e:table:*') and returns the total match count. The"
+              + " pattern must have at least 6 literal characters before any"
+              + " wildcard (enforced by validateCachePattern) so unbounded scans"
+              + " like '*' or 'om:*' are rejected. Returns -1 count if the cache"
+              + " provider doesn't support SCAN (Noop).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Match count"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response scanCacheKeys(
+      @Context SecurityContext securityContext, @QueryParam("pattern") String pattern) {
+    authorizer.authorizeAdmin(securityContext);
+    String invalid = validateCachePattern(pattern);
+    if (invalid != null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", invalid)).build();
+    }
+    long count = CacheBundle.getCacheProvider().scanCount(pattern);
+    return Response.ok(Map.of("pattern", pattern, "count", count)).build();
+  }
+
+  @POST
+  @Path("/cache/invalidate")
+  @Operation(
+      operationId = "invalidateCacheByPattern",
+      summary = "Invalidate cache keys matching a pattern (admin)",
+      description =
+          "Issues a Redis SCAN+UNLINK against the supplied pattern. Use sparingly and with a"
+              + " precise pattern; broad globs (e.g., 'om:prod:*') block the cluster on a"
+              + " large keyspace. Returns the number of keys deleted, or 0 if the provider"
+              + " doesn't support pattern deletion (Noop).",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Number of keys deleted"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response invalidateCacheByPattern(
+      @Context SecurityContext securityContext, @QueryParam("pattern") String pattern) {
+    authorizer.authorizeAdmin(securityContext);
+    String invalid = validateCachePattern(pattern);
+    if (invalid != null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity(Map.of("error", invalid)).build();
+    }
+    long deleted = CacheBundle.getCacheProvider().scanDelete(pattern);
+    return Response.ok(Map.of("pattern", pattern, "deleted", deleted)).build();
+  }
+
+  @POST
+  @Path("/cache/invalidate/entity")
+  @Operation(
+      operationId = "invalidateCacheForEntity",
+      summary = "Invalidate every cache layer for a single entity (admin)",
+      description =
+          "Fans an invalidation out to every registered Invalidatable cache layer (lineage,"
+              + " not-found, future layers). Use type+id, or type+fqn, or both. Effective on"
+              + " all pods via the existing pub-sub channel.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Invalidated"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response invalidateCacheForEntity(
+      @Context SecurityContext securityContext,
+      @QueryParam("type") String type,
+      @QueryParam("id") String idStr,
+      @QueryParam("fqn") String fqn) {
+    authorizer.authorizeAdmin(securityContext);
+    // Normalize empty/whitespace query params to null up front so a request like
+    // `?type=X&id=&fqn=` doesn't slip past the required-params check on a non-null but
+    // blank `id` and then fall through to "neither id nor fqn was actually supplied".
+    String normalizedIdStr = (idStr == null || idStr.isBlank()) ? null : idStr;
+    String normalizedFqn = (fqn == null || fqn.isBlank()) ? null : fqn;
+    if (type == null || type.isBlank() || (normalizedIdStr == null && normalizedFqn == null)) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(Map.of("error", "type and one of (id, fqn) are required"))
+          .build();
+    }
+    UUID id = null;
+    if (normalizedIdStr != null) {
+      try {
+        id = UUID.fromString(normalizedIdStr);
+      } catch (IllegalArgumentException e) {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(Map.of("error", "id is not a valid UUID"))
+            .build();
+      }
+    }
+    // If the caller only supplied fqn, resolve to id so id-keyed cache layers (CachedLineage,
+    // CACHE_WITH_ID, NotFoundCache id-side) can be invalidated too. Without this resolution
+    // the endpoint silently misses those layers and the "invalidate every cache layer for this
+    // entity" contract isn't met.
+    //
+    // Use fromCache=false: this is an admin force-invalidate path, so any stale signal from
+    // L1, NotFoundCache, or the Redis L2 entity cache must not short-circuit the resolution.
+    // The whole point of the endpoint is to recover from a poisoned cache state — going
+    // straight to the DB guarantees we'll find the entity if it actually exists, even when
+    // NotFoundCache mistakenly says it doesn't.
+    //
+    // Lookup failures (entity truly missing, FQN typo) are logged at DEBUG; the request still
+    // proceeds with fqn-only invalidation. fqn-keyed layers benefit and an "invalidate
+    // something that's gone" is harmless for the id-keyed layers.
+    if (id == null && normalizedFqn != null) {
+      try {
+        EntityRepository<?> repository = Entity.getEntityRepository(type);
+        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
+        if (resolved != null) {
+          id = resolved.getId();
+        }
+      } catch (Exception lookupFailure) {
+        LOG.debug(
+            "Could not resolve id for type={} fqn={} during cache invalidation; "
+                + "proceeding with fqn-only invalidation",
+            type,
+            normalizedFqn,
+            lookupFailure);
+      }
+    }
+    // Reach every cache layer that holds entries keyed by this entity:
+    //   1. INVALIDATABLES registry (lineage cache, not-found cache, future Redis-backed layers)
+    //      via CacheBundle.invalidateEntity.
+    //   2. Guava L1 caches (CACHE_WITH_ID, CACHE_WITH_NAME) — the hot path on every entity
+    //      GET; without explicit eviction here, an admin force-invalidate wouldn't actually
+    //      take effect on the originating pod's in-memory cache. The static
+    //      EntityRepository.invalidateCacheForEntity also propagates over the pub-sub channel
+    //      to other pods so multi-replica deploys all evict simultaneously.
+    CacheBundle.invalidateEntity(type, id, normalizedFqn);
+    EntityRepository.invalidateCacheForEntity(type, id, normalizedFqn);
+    return Response.ok(Map.of("invalidated", true, "type", type)).build();
   }
 
   private void validateGlossaryTermRelationSettingsUpdate(Settings newSettings) {
@@ -974,6 +1259,23 @@ public class SystemResource {
 
     if (removedRelationTypes.isEmpty()) {
       return;
+    }
+
+    // System-defined relation types are part of the seeded contract and must never be deleted,
+    // even when no glossary term currently references them. The "in-use" check below is not
+    // enough on its own — a settings update submitted before any term uses the type would
+    // otherwise silently strip it from the cached settings.
+    List<String> removedSystemDefinedTypes =
+        currentConfig.getRelationTypes().stream()
+            .filter(rt -> !newRelationTypeNames.contains(rt.getName()))
+            .filter(rt -> Boolean.TRUE.equals(rt.getIsSystemDefined()))
+            .map(GlossaryTermRelationType::getName)
+            .toList();
+
+    if (!removedSystemDefinedTypes.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot delete system-defined relation types: "
+              + String.join(", ", removedSystemDefinedTypes));
     }
 
     GlossaryTermRepository glossaryTermRepository =

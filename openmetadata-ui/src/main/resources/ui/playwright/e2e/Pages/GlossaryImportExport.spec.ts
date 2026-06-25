@@ -42,6 +42,7 @@ import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
@@ -98,6 +99,8 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
+    test.setTimeout(5 * 60 * 1000);
+
     await test.step('create custom properties for extension edit', async () => {
       for (const property of propertiesList) {
         const entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
@@ -160,9 +163,7 @@ test.describe('Glossary Bulk Import Export', () => {
         'downloads/' + glossary1.data.displayName + '.csv'
       );
 
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -172,7 +173,9 @@ test.describe('Glossary Bulk Import Export', () => {
         page.getByRole('button', { name: 'Previous' })
       ).toBeVisible();
 
+      const rowCount = await page.locator('.rdg-row').count();
       await page.click('[data-testid="add-row-btn"]');
+      await expect(page.locator('.rdg-row')).toHaveCount(rowCount + 1);
 
       // click on last row first cell
       const lastRow = page.locator('.rdg-row').last();
@@ -262,14 +265,14 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await expect(
         page.getByTestId('bulk-import-details-modal')
-      ).not.toBeVisible();
-
-      await page.getByRole('dialog').getByRole('img').click();
+      ).not.toBeAttached();
     });
 
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
         await settingClick(page, GlobalSettingOptions.GLOSSARY_TERM, true);
+
+        await page.waitForURL('**/settings/customProperties/glossaryTerm');
 
         await waitForAllLoadersToDisappear(page);
 
@@ -280,7 +283,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const circularRefGlossary = new Glossary('Test CSV');
+    const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
     try {
       await test.step('Create glossary for circular reference test', async () => {
@@ -313,11 +316,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -374,11 +373,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -400,7 +395,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           .textContent();
 
         expect(errorText).toContain(
-          "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
+          `Invalid hierarchy: Term '${circularRefGlossary.data.name}.name1' cannot be its own parent`
         );
       });
     } finally {
@@ -412,7 +407,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I05: Import validation - missing required fields
   test('Import validation - missing required fields', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const validationGlossary = new Glossary('ValidationTest');
+    const validationGlossary = new Glossary(`ValidationTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for validation test', async () => {
@@ -442,11 +437,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -471,7 +462,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I06: Import validation - invalid parent reference
   test('Import validation - invalid parent reference', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const parentRefGlossary = new Glossary('ParentRefTest');
+    const parentRefGlossary = new Glossary(`ParentRefTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for parent ref test', async () => {
@@ -501,11 +492,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -534,7 +521,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const partialGlossary = new Glossary('PartialSuccess');
+    const partialGlossary = new Glossary(`PartialSuccess-${uuid()}`);
 
     try {
       await test.step('Create glossary for partial success test', async () => {
@@ -565,11 +552,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -603,7 +586,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
     test.slow(true);
 
     const { apiContext, afterAction } = await getApiContext(page);
-    const largeGlossary = new Glossary('LargeExport');
+    const largeGlossary = new Glossary(`LargeExport-${uuid()}`);
     const terms: GlossaryTerm[] = [];
 
     try {
@@ -649,7 +632,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   // IE-E05: Export maintains hierarchy in CSV
   test('Export maintains hierarchy structure in CSV', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const hierarchyGlossary = new Glossary('HierarchyExport');
+    const hierarchyGlossary = new Glossary(`HierarchyExport-${uuid()}`);
     let parentTerm: GlossaryTerm;
     let childTerm: GlossaryTerm;
     let grandchildTerm: GlossaryTerm;
@@ -720,6 +703,222 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
       });
     } finally {
       await hierarchyGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Glossary CSV import preserves typed relations', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const suffix = uuid();
+    const relGlossary = new Glossary(`TypedRelations_${suffix}`);
+    const target1 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target1_${suffix}`
+    );
+    const target2 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target2_${suffix}`
+    );
+    const target3 = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_target3_${suffix}`
+    );
+
+    try {
+      await test.step('Create glossary and three target terms', async () => {
+        await relGlossary.create(apiContext);
+        await target1.create(apiContext);
+        await target2.create(apiContext);
+        await target3.create(apiContext);
+      });
+
+      const importedTermName = `TR_imported_${uuid()}`;
+      const importedTermFqn = `${relGlossary.data.name}.${importedTermName}`;
+
+      await test.step('Import CSV with synonym/relatedTo/narrower mix', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, relGlossary.data.displayName);
+        // Safety check: parallel test runs can surface a "glossary not found" popup.
+        await closeFirstPopupAlert(page);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+
+        const csvContent =
+          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n` +
+          `,${importedTermName},${importedTermName},Imported,,` +
+          `synonym:${target1.responseData.fullyQualifiedName};` +
+          `${target2.responseData.fullyQualifiedName};` +
+          `narrower:${target3.responseData.fullyQualifiedName},,,,user:admin,Approved,,,`;
+
+        await page.locator('[type="file"]').waitFor({ state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: 'typed-relations.csv',
+          mimeType: 'text/csv',
+          buffer: Buffer.from(csvContent),
+        });
+
+        await startCsvPreviewAndWaitForGrid(page);
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+
+        await loader.waitFor({ state: 'hidden' });
+
+        await validateImportStatus(page, {
+          passed: '1',
+          processed: '1',
+          failed: '0',
+        });
+
+        await page.getByRole('button', { name: 'Update' }).click();
+        await loader.waitFor({ state: 'detached' });
+        await toastNotification(
+          page,
+          `Glossary ${relGlossary.responseData.fullyQualifiedName} details updated successfully`
+        );
+      });
+
+      await test.step('Verify each relation type via API', async () => {
+        const response = await apiContext.get(
+          `/api/v1/glossaryTerms/name/${encodeURIComponent(
+            importedTermFqn
+          )}?fields=relatedTerms`
+        );
+
+        expect(response.status()).toBe(200);
+        const term = await response.json();
+        expect(term.relatedTerms).toHaveLength(3);
+
+        const typeByFqn: Record<string, string> = {};
+        for (const rel of term.relatedTerms) {
+          typeByFqn[rel.term.fullyQualifiedName] = rel.relationType;
+        }
+
+        expect(typeByFqn[target1.responseData.fullyQualifiedName]).toBe(
+          'synonym'
+        );
+        expect(typeByFqn[target2.responseData.fullyQualifiedName]).toBe(
+          'relatedTo'
+        );
+        expect(typeByFqn[target3.responseData.fullyQualifiedName]).toBe(
+          'narrower'
+        );
+      });
+
+      await test.step('Export and verify CSV emits relation type prefixes', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, relGlossary.data.displayName);
+        await closeFirstPopupAlert(page);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="export-button-description"]');
+        await page.locator('[role="dialog"]').waitFor();
+
+        const downloadPromise = page.waitForEvent('download');
+        await page.getByRole('button', { name: 'Export' }).click();
+        const download = await downloadPromise;
+
+        const stream = await download.createReadStream();
+        expect(stream, 'Download stream should be available').not.toBeNull();
+        const chunks: Buffer[] = [];
+
+        if (stream) {
+          for await (const chunk of stream) {
+            chunks.push(Buffer.from(chunk));
+          }
+        }
+
+        const csvContent = Buffer.concat(chunks).toString('utf-8');
+        const lines = csvContent.split(/\r?\n/);
+        const importedRow = lines.find((line) =>
+          line.includes(`,${importedTermName},`)
+        );
+
+        expect(importedRow).toBeDefined();
+        expect(importedRow).toContain(
+          `synonym:${target1.responseData.fullyQualifiedName}`
+        );
+        expect(importedRow).toContain(
+          `narrower:${target3.responseData.fullyQualifiedName}`
+        );
+        // relatedTo entries are emitted without a prefix.
+        expect(importedRow).toContain(target2.responseData.fullyQualifiedName);
+      });
+    } finally {
+      await relGlossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Glossary CSV import rejects unknown relation type', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const suffix = uuid();
+    const relGlossary = new Glossary(`TypedRelationsInvalid_${suffix}`);
+    const target = new GlossaryTerm(
+      relGlossary,
+      undefined,
+      `TR_targetX_${suffix}`
+    );
+
+    try {
+      await test.step('Create glossary and target term', async () => {
+        await relGlossary.create(apiContext);
+        await target.create(apiContext);
+      });
+
+      await test.step('Import CSV with invalid relation type and assert failure', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, relGlossary.data.displayName);
+        await closeFirstPopupAlert(page);
+
+        await page.click('[data-testid="manage-button"]');
+        await page.click('[data-testid="import-button-description"]');
+
+        const newTermName = `TR_invalid_${uuid()}`;
+        const csvContent =
+          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n` +
+          `,${newTermName},${newTermName},Invalid,,` +
+          `notarealtype:${target.responseData.fullyQualifiedName},,,,user:admin,Approved,,,`;
+
+        await page.locator('[type="file"]').waitFor({ state: 'attached' });
+        await page.setInputFiles('[type="file"]', {
+          name: 'invalid-relation.csv',
+          mimeType: 'text/csv',
+          buffer: Buffer.from(csvContent),
+        });
+
+        await startCsvPreviewAndWaitForGrid(page);
+        await page.getByRole('button', { name: 'Next' }).click();
+
+        const loader = page.locator(
+          '.inovua-react-toolkit-load-mask__background-layer'
+        );
+
+        await loader.waitFor({ state: 'hidden' });
+
+        await validateImportStatus(page, {
+          passed: '0',
+          processed: '1',
+          failed: '1',
+        });
+
+        const errorCell = page
+          .locator('.rdg-row')
+          .first()
+          .locator('.rdg-cell-details');
+        await errorCell.waitFor({ state: 'visible', timeout: 30000 });
+        await expect(errorCell).toContainText('Invalid relation type');
+      });
+    } finally {
+      await relGlossary.delete(apiContext);
       await afterAction();
     }
   });

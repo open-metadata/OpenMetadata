@@ -13,10 +13,10 @@ Base class for ingesting messaging services
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, cast
+from typing import Any, Iterable, List, Optional, Set, cast  # noqa: UP035
 
 from pydantic import BaseModel, Field
-from typing_extensions import Annotated
+from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -83,7 +83,6 @@ class MessagingServiceTopology(ServiceTopology):
                 processor="yield_create_request_messaging_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             )
         ],
         children=["topic"],
@@ -97,7 +96,6 @@ class MessagingServiceTopology(ServiceTopology):
                 context="topic",
                 processor="yield_topic",
                 consumer=["messaging_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=TopicSampleData,
@@ -128,7 +126,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
-    topic_source_state: Set = set()
+    topic_source_state: Set = set()  # noqa: RUF012, UP006
 
     @retry_with_docker_host()
     def __init__(
@@ -162,11 +160,11 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
             settings = self.metadata.get_profiler_config_settings()
             if not settings or not settings.config_value:
                 return False
-            profiler_config = cast(ProfilerConfiguration, settings.config_value)
+            profiler_config = cast(ProfilerConfiguration, settings.config_value)  # noqa: TC006
             sample_data_config = profiler_config.sampleDataConfig
             if sample_data_config is None:
                 return False
-            sample_data_config = cast(SampleDataIngestionConfig, sample_data_config)
+            sample_data_config = cast(SampleDataIngestionConfig, sample_data_config)  # noqa: TC006
             if not sample_data_config.storeSampleData:
                 logger.info(
                     "Global profiler configuration disables storing of sample data. Overriding source configuration."
@@ -194,7 +192,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     @abstractmethod
-    def get_topic_list(self) -> Optional[List[Any]]:
+    def get_topic_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
         """
         Get List of all topics
         """
@@ -238,7 +236,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Topic,
                 entity_source_state=self.topic_source_state,
-                mark_deleted_entity=self.source_config.markDeletedTopics,
+                recursive=self.source_config.markDeletedTopics,
                 params={"service": self.context.get().messaging_service},
             )
 

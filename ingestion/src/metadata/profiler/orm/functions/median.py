@@ -33,7 +33,7 @@ class MedianFn(FunctionElement):
     def default_fn(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         col = compiler.process(elements.clauses.clauses[0])
         percentile = elements.clauses.clauses[2].value
-        return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
+        return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (  # noqa: UP031
             percentile,
             col,
         )
@@ -48,19 +48,19 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "approx_percentile(%s, %s)" % (col, percentile)
+    return "approx_percentile(%s, %s)" % (col, percentile)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.BigQuery)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "percentile_cont(%s , %s) OVER()" % (col, percentile)
+    return "percentile_cont(%s , %s) OVER()" % (col, percentile)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.Databricks)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "percentile_approx(%s , %s)" % (col, percentile)
+    return "percentile_approx(%s , %s)" % (col, percentile)  # noqa: UP031
 
 
 # pylint: disable=unused-argument
@@ -68,7 +68,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
+    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (  # noqa: UP031
         percentile,
         f"(({col})::float8)",
     )
@@ -94,14 +94,14 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "approx_percentile(%s, %.2f)" % (col, percentile)
+    return "approx_percentile(%s, %.2f)" % (col, percentile)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.Trino)
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "IF(count(%s) = 0, NULL, approx_percentile(%s, %.2f))" % (
+    return "IF(count(%s) = 0, NULL, approx_percentile(%s, %.2f))" % (  # noqa: UP031
         col,
         col,
         percentile,
@@ -114,7 +114,7 @@ def _(elements, compiler, **kwargs):
     """Median computation for MSSQL & Vertica"""
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (
+    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC) OVER()" % (  # noqa: UP031
         percentile,
         col,
     )
@@ -124,7 +124,7 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     """Median computation for Hive"""
     col, _, percentile = [compiler.process(element, **kwargs) for element in elements.clauses]
-    return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)
+    return "percentile(cast(%s as BIGINT), %s)" % (col, percentile)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.Impala)
@@ -192,35 +192,32 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
         FROM (
             SELECT
                 {col},
-                ROW_NUMBER() OVER () AS row_num
-            FROM
-                `{table}` AS median_inner,
-                (SELECT @counter := COUNT(*)
-                 FROM `{table}` AS median_count
-                 WHERE median_count.{dimension_col} = `{table}`.{dimension_col}) t_count
+                ROW_NUMBER() OVER (ORDER BY {col}) AS row_num,
+                COUNT(*) OVER () AS total_count
+            FROM `{table}` AS median_inner
             WHERE median_inner.{dimension_col} = `{table}`.{dimension_col}
-            ORDER BY {col}
             ) temp
-        WHERE temp.row_num = ROUND({percentile} * @counter)
+        WHERE temp.row_num = ROUND({percentile} * temp.total_count)
         )
-        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)
-    else:
-        # NON-CORRELATED MODE: Original behavior (profiler)
+        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)  # noqa: UP032
+    else:  # noqa: RET505
+        # NON-CORRELATED MODE: window-function-based count to avoid
+        # user-variable side-effect ordering (MySQL doesn't guarantee
+        # when `SELECT @v := COUNT(*)` inside a derived table is
+        # evaluated relative to the outer WHERE).
         return """
         (SELECT
             {col}
         FROM (
             SELECT
                 {col},
-                ROW_NUMBER() OVER () AS row_num
-            FROM
-                `{table}`,
-                (SELECT @counter := COUNT(*) FROM `{table}`) t_count
-            ORDER BY {col}
+                ROW_NUMBER() OVER (ORDER BY {col}) AS row_num,
+                COUNT(*) OVER () AS total_count
+            FROM `{table}`
             ) temp
-        WHERE temp.row_num = ROUND({percentile} * @counter)
+        WHERE temp.row_num = ROUND({percentile} * temp.total_count)
         )
-        """.format(col=col, table=table, percentile=percentile)
+        """.format(col=col, table=table, percentile=percentile)  # noqa: UP032
 
 
 @compiles(MedianFn, Dialects.SQLite)
@@ -267,8 +264,8 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
            CAST(cnt * {percentile} + 1 AS INTEGER)
          )
         )
-        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)
-    else:
+        """.format(col=col, table=table, percentile=percentile, dimension_col=dimension_col)  # noqa: UP032
+    else:  # noqa: RET505
         # NON-CORRELATED MODE: Original behavior (profiler)
         return """
         (SELECT
@@ -283,14 +280,14 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
                 WHERE {col} IS NOT NULL
             )
         )
-        """.format(col=col, table=table, percentile=percentile)
+        """.format(col=col, table=table, percentile=percentile)  # noqa: UP032
 
 
 @compiles(MedianFn, Dialects.Doris)
 def _(elements, compiler, **kwargs):
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
-    return "percentile_approx(%s, %.2f)" % (col, percentile)
+    return "percentile_approx(%s, %.2f)" % (col, percentile)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.PinotDB)
@@ -303,7 +300,7 @@ def _(elements, compiler, **kw):  # pylint: disable=unused-argument
     col = compiler.process(elements.clauses.clauses[0])
     percentile = elements.clauses.clauses[2].value
     percentile_int = int(percentile * 100)
-    return "PERCENTILE(%s, %d)" % (col, percentile_int)
+    return "PERCENTILE(%s, %d)" % (col, percentile_int)  # noqa: UP031
 
 
 @compiles(MedianFn, Dialects.Informix)
@@ -337,7 +334,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     else:
         raise ValueError(f"Unsupported percentile {percentile} for Informix — expected 0.25, 0.5, or 0.75")
 
-    return (
+    return (  # noqa: UP032
         "(SELECT AVG(CASE WHEN rn = {pos1} OR rn = {pos2} "
         "THEN CAST(_col_val_ AS DECIMAL(32,4)) END) "
         "FROM (SELECT {col} AS _col_val_, "

@@ -18,7 +18,7 @@ from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union  # noqa: UP035
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -35,9 +35,11 @@ from metadata.ingestion.api.models import Entity
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.user import OMetaUserProfile
+from metadata.ingestion.ometa.utils import model_str
 
 METADATA_LOGGER = "metadata"
 BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
@@ -64,6 +66,7 @@ class Loggers(Enum):
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
     REVERSE_INGESTION = "ReverseIngestion"
+    DIAGNOSTICS = "Diagnostics"
 
     @DynamicClassAttribute
     def value(self):
@@ -187,7 +190,22 @@ def query_runner_logger():
     return logging.getLogger(Loggers.QUERY_RUNNER.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):
+def diag_logger():
+    """
+    Method to get the DIAGNOSTICS logger.
+
+    The diagnostics subsystem (heartbeats, watchdog warnings,
+    non-signal-context dumps) emits through this logger so output is
+    picked up by whatever handlers the workflow has configured —
+    console, StreamableLogHandler (S3), file, etc. Signal-handler
+    paths still write to raw stderr because Python's logging module is
+    not signal-safe (per-handler RLocks).
+    """
+
+    return logging.getLogger(Loggers.DIAGNOSTICS.value)
+
+
+def set_loggers_level(level: Union[int, str] = logging.INFO):  # noqa: UP007
     """
     Set all loggers levels
     :param level: logging level
@@ -196,7 +214,7 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None,
+    color: Optional[ANSI] = None,  # noqa: UP045
     bold: bool = False,
     message: str = "",
     level=logging.INFO,
@@ -208,10 +226,10 @@ def log_ansi_encoded_string(
 
 
 @singledispatch
-def get_log_name(record: Entity) -> Optional[str]:
+def get_log_name(record: Entity) -> Optional[str]:  # noqa: UP045
     try:
         if hasattr(record, "name"):
-            return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"  # noqa: B009
         if hasattr(record, "table") and hasattr(record.table, "name"):
             return f"{type(record).__name__} [{record.table.name.root}]"
         return f"{type(record).__name__} [{record.entity.name.root}]"
@@ -236,14 +254,28 @@ def _(record: AddLineageRequest) -> str:
     a string that we can log
     """
 
-    # id and type will always be informed
-    id_ = record.edge.fromEntity.id.root
-    type_ = record.edge.fromEntity.type
+    from_entity = record.edge.fromEntity
+    type_ = from_entity.type
 
     # name can be informed or not
-    name_str = f"name: {record.edge.fromEntity.name}, " if record.edge.fromEntity.name else ""
+    name_str = f"name: {from_entity.name}, " if from_entity.name else ""
 
-    return f"{type_} [{name_str}id: {id_}]"
+    if from_entity.id:
+        identifier = f"id: {model_str(from_entity.id)}"
+    elif from_entity.fullyQualifiedName:
+        identifier = f"fullyQualifiedName: {model_str(from_entity.fullyQualifiedName)}"
+    else:
+        identifier = "unresolved reference"
+
+    return f"{type_} [{name_str}{identifier}]"
+
+
+@get_log_name.register
+def _(record: OMetaFQNLineageRequest) -> str:
+    return (
+        f"{type(record).__name__} "
+        f"[{record.from_entity_type}: {record.from_entity_fqn} -> {record.to_entity_type}: {record.to_entity_fqn}]"
+    )
 
 
 @get_log_name.register
@@ -273,7 +305,7 @@ def _(record: TableAndTests) -> str:
 @get_log_name.register
 def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return ",".join(set(result.testCase.name.root for result in record.test_results))
+    return ",".join(set(result.testCase.name.root for result in record.test_results))  # noqa: C401
 
 
 @get_log_name.register
@@ -356,7 +388,7 @@ def sanitize_url_credentials(message: str) -> str:
     return re.sub(r"https://[^@]+@", "https://****@", message)
 
 
-def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:  # noqa: UP006, UP007
     config_copy = deepcopy(config)
 
     def traverse_and_modify(obj):

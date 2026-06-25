@@ -1,0 +1,231 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/contextFile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContextFile",
+  "$comment": "@om-entity-type",
+  "description": "An uploaded file (PDF, spreadsheet, document) stored in the Context Center Drive.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.data.ContextFile",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "fileType": {
+      "javaType": "org.openmetadata.schema.entity.data.ContextFileType",
+      "description": "Type of file based on content.",
+      "type": "string",
+      "enum": ["PDF", "Spreadsheet", "Presentation", "Image", "Document", "CSV", "Text", "Archive", "Other"],
+      "javaEnums": [
+        { "name": "PDF" },
+        { "name": "Spreadsheet" },
+        { "name": "Presentation" },
+        { "name": "Image" },
+        { "name": "Document" },
+        { "name": "CSV" },
+        { "name": "Text" },
+        { "name": "Archive" },
+        { "name": "Other" }
+      ]
+    },
+    "processingStatus": {
+      "javaType": "org.openmetadata.schema.entity.data.ProcessingStatus",
+      "description": "Processing state of the file after upload.",
+      "type": "string",
+      "enum": ["Uploaded", "Analyzing", "ExtractingContext", "Processed", "Failed", "Unsupported"],
+      "javaEnums": [
+        { "name": "Uploaded" },
+        { "name": "Analyzing" },
+        { "name": "ExtractingContext" },
+        { "name": "Processed" },
+        { "name": "Failed" },
+        { "name": "Unsupported" }
+      ],
+      "default": "Uploaded"
+    },
+    "sourceType": {
+      "javaType": "org.openmetadata.schema.entity.data.ContextFileSourceType",
+      "description": "How this file was added to the drive.",
+      "type": "string",
+      "enum": ["Upload", "DriveSync", "Confluence", "Notion"],
+      "javaEnums": [
+        { "name": "Upload" },
+        { "name": "DriveSync" },
+        { "name": "Confluence" },
+        { "name": "Notion" }
+      ],
+      "default": "Upload"
+    },
+    "extractionStats": {
+      "javaType": "org.openmetadata.schema.entity.data.ExtractionStats",
+      "description": "Statistics from the most recent knowledge-pill extraction run.",
+      "type": "object",
+      "properties": {
+        "chunksTotal": {
+          "description": "Number of chunks the document text splits into.",
+          "type": "integer"
+        },
+        "chunksProcessed": {
+          "description": "Number of chunks the LLM successfully processed.",
+          "type": "integer"
+        },
+        "pillsCreated": {
+          "description": "Number of knowledge pills persisted by the run.",
+          "type": "integer"
+        },
+        "lastExtractedAt": {
+          "description": "Time of the last extraction run in Unix epoch time milliseconds.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "sourceHash": {
+          "description": "Hash of the source content used for the most recent extraction. Lets the processing engine skip re-extraction when the content is unchanged.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the file.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the file.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the file.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name (original filename or user-provided title).",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the file.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "fileType": {
+      "description": "Type of file (PDF, Spreadsheet, etc.).",
+      "$ref": "#/definitions/fileType"
+    },
+    "fileSize": {
+      "description": "File size in bytes.",
+      "type": "integer",
+      "format": "int64",
+      "minimum": 0
+    },
+    "contentType": {
+      "description": "MIME type of the file.",
+      "type": "string"
+    },
+    "fileExtension": {
+      "description": "File extension (e.g., pdf, xlsx).",
+      "type": "string"
+    },
+    "assetId": {
+      "description": "Legacy reference to the current Asset entity storing the file blob. Prefer headContentId for new flows.",
+      "type": "string"
+    },
+    "headContentId": {
+      "description": "Identifier of the current ContextFileContent snapshot for this file.",
+      "type": "string"
+    },
+    "processingStatus": {
+      "description": "Current processing state after upload.",
+      "$ref": "#/definitions/processingStatus"
+    },
+    "processingError": {
+      "description": "Reason the most recent processing attempt failed. Cleared when a new attempt starts.",
+      "type": "string"
+    },
+    "extractionStats": {
+      "description": "Statistics from the most recent knowledge-pill extraction run.",
+      "$ref": "#/definitions/extractionStats"
+    },
+    "extractedText": {
+      "description": "Full text extracted from the file for search and AI context.",
+      "type": "string"
+    },
+    "pageCount": {
+      "description": "Number of pages (PDF) or sheets (spreadsheet).",
+      "type": "integer"
+    },
+    "memoryCount": {
+      "description": "Number of knowledge pills (context memories) extracted from this file.",
+      "type": "integer",
+      "default": 0
+    },
+    "sourceType": {
+      "description": "How this file was added.",
+      "$ref": "#/definitions/sourceType"
+    },
+    "sourceId": {
+      "description": "ID of the file in the external source system.",
+      "type": "string"
+    },
+    "sourceUrl": {
+      "description": "URL to view the file in the external source system.",
+      "type": "string",
+      "format": "uri"
+    },
+    "folder": {
+      "description": "Parent folder containing this file.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "owners": {
+      "description": "Owners of this file.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with this file.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "domains": {
+      "description": "Domains this file belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "followers": {
+      "description": "Followers of this file.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on this file.",
+      "$ref": "../../type/votes.json"
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

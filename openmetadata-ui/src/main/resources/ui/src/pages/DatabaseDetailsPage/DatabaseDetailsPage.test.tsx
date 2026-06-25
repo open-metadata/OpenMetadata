@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import { findByTestId, findByText } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -19,6 +19,7 @@ import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
 } from '../../rest/databaseAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
 
 const mockDatabase = {
@@ -189,12 +190,15 @@ jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
-  getTableExpandableConfig: jest.fn().mockReturnValue({}),
   extractColumnsFromData: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
@@ -301,9 +305,11 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Test DatabaseDetails page', () => {
   it('Component should render', async () => {
-    const { container } = render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
@@ -331,9 +337,11 @@ describe('Test DatabaseDetails page', () => {
         },
       })
     );
-    const { container } = render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
 
     const errorPlaceholder = await findByTestId(
       container,
@@ -353,9 +361,11 @@ describe('Test DatabaseDetails page', () => {
         },
       })
     );
-    const { container } = render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
 
     const entityHeader = await findByText(container, 'DataAssetsHeader');
     const descriptionContainer = await findByText(container, 'Description');
@@ -370,9 +380,11 @@ describe('Test DatabaseDetails page', () => {
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {
-    render(<DatabaseDetailsPage />, {
-      wrapper: MemoryRouter,
-    });
+    renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
 
     await findByText(document.body, 'DataAssetsHeader');
 

@@ -601,6 +601,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
+                      .conflicts(Conflicts.Proceed)
                       .script(
                           s ->
                               s.source(ss -> ss.scriptString(UPDATE_FQN_PREFIX_SCRIPT))
@@ -1086,7 +1087,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                  req.index(
+                          Entity.getSearchRepository()
+                              .getWriteFanoutTargets(
+                                  Entity.getSearchRepository()
+                                      .getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)))
                       .query(termQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1167,7 +1172,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(idsQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1236,7 +1241,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(domainIndexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(
@@ -1295,7 +1300,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
-                  req.index(indexName)
+                  req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(

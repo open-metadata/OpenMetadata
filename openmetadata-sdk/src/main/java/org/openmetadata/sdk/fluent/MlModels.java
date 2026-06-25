@@ -178,6 +178,10 @@ public final class MlModels {
     public MlModelDeleter delete() {
       return new MlModelDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<MlModel> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.mlModels(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
