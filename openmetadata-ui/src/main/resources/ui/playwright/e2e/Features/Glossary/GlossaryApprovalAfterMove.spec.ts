@@ -46,27 +46,98 @@ const queryOpenApprovalTasks = async (
   return { count: data.length, taskId: data[0]?.task?.id?.toString() ?? null };
 };
 
-const waitForTermStatus = async (
+// Returns the latest stage displayName of the GlossaryTermApprovalWorkflow
+// instance anchored to the given term FQN, or null if no instance is found.
+// Used both to gate the move on workflow readiness (waitForApprovalWorkflowReady)
+// and as diagnostics when the term fails to reach its expected status.
+const queryApprovalWorkflowStage = async (
   apiContext: APIRequestContext,
-  termId: string,
-  expectedStatus: string
+  termFqn: string
+): Promise<string | null> => {
+  const entityLink = encodeURIComponent(`<#E::glossaryTerm::${termFqn}>`);
+  const startTs = Date.now() - 24 * 60 * 60 * 1000;
+  const endTs = Date.now();
+
+  const instances = await apiContext
+    .get(
+      `/api/v1/governance/workflowInstances?entityLink=${entityLink}&startTs=${startTs}&endTs=${endTs}&workflowName=GlossaryTermApprovalWorkflow`
+    )
+    .then((r) => r.json());
+
+  const instanceId = instances?.data?.[0]?.id;
+  if (!instanceId) {
+    return null;
+  }
+
+  const states = await apiContext
+    .get(
+      `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${instanceId}?startTs=${startTs}&endTs=${endTs}`
+    )
+    .then((r) => r.json());
+
+  return states?.data?.[0]?.stage?.displayName ?? null;
+};
+const waitForApprovalWorkflowReady = async (
+  apiContext: APIRequestContext,
+  termFqn: string
 ) => {
   await expect
     .poll(
       async () => {
-        const res = await apiContext
-          .get(`/api/v1/glossaryTerms/${termId}?fields=entityStatus`)
-          .then((r) => r.json());
+        const [stage, { count }] = await Promise.all([
+          queryApprovalWorkflowStage(apiContext, termFqn),
+          queryOpenApprovalTasks(apiContext, termFqn),
+        ]);
 
-        return res?.entityStatus;
+        return stage !== null && count === 1;
       },
       {
-        message: `term ${termId} to reach ${expectedStatus}`,
+        message: `approval workflow for ${termFqn} to be parked at the review task before moving`,
         timeout: 120_000,
         intervals: [3_000, 5_000, 10_000],
       }
     )
-    .toBe(expectedStatus);
+    .toBe(true);
+};
+
+const waitForTermStatus = async (
+  apiContext: APIRequestContext,
+  termId: string,
+  termFqn: string,
+  expectedStatus: string
+) => {
+  try {
+    await expect
+      .poll(
+        async () => {
+          const res = await apiContext
+            .get(`/api/v1/glossaryTerms/${termId}?fields=entityStatus`)
+            .then((r) => r.json());
+
+          return res?.entityStatus;
+        },
+        {
+          message: `term ${termId} to reach ${expectedStatus}`,
+          timeout: 120_000,
+          intervals: [5_000],
+        }
+      )
+      .toBe(expectedStatus);
+  } catch (error) {
+    const [stage, { count }] = await Promise.all([
+      queryApprovalWorkflowStage(apiContext, termFqn),
+      queryOpenApprovalTasks(apiContext, termFqn),
+    ]);
+
+    throw new Error(
+      `Term ${termId} never reached "${expectedStatus}". ` +
+        `Last GlossaryTermApprovalWorkflow stage: ${stage ?? 'none found'}; ` +
+        `open approval tasks remaining at ${termFqn}: ${count}. ` +
+        `If the workflow is still at "Review" with 0 open tasks, the approval did not ` +
+        `resume after the move (backend issue), not test slowness.\n` +
+        `Original error: ${(error as Error).message}`
+    );
+  }
 };
 
 const reviewerRef = () => ({
@@ -167,6 +238,10 @@ test.describe(
         });
 
         await test.step('Move Securities Lending under Product and Service', async () => {
+          await waitForApprovalWorkflowReady(
+            adminApiContext,
+            child.responseData.fullyQualifiedName
+          );
           await moveParentUnderContainer(adminApiContext, parent, container);
         });
 
@@ -231,6 +306,7 @@ test.describe(
           await waitForTermStatus(
             adminApiContext,
             child.responseData.id,
+            newChildFqn,
             'Approved'
           );
           const { count } = await queryOpenApprovalTasks(
@@ -278,6 +354,10 @@ test.describe(
         });
 
         await test.step('Move Securities Lending under Product and Service', async () => {
+          await waitForApprovalWorkflowReady(
+            adminApiContext,
+            child.responseData.fullyQualifiedName
+          );
           await moveParentUnderContainer(adminApiContext, parent, container);
         });
 
@@ -342,6 +422,7 @@ test.describe(
           await waitForTermStatus(
             adminApiContext,
             child.responseData.id,
+            newChildFqn,
             'Rejected'
           );
           const { count } = await queryOpenApprovalTasks(
