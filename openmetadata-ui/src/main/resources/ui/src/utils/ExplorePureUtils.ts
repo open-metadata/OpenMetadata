@@ -444,9 +444,9 @@ const isBrowsePathField = (
  * The param is untrusted URL input — malformed elements are dropped so
  * crafted/legacy deep links degrade to an empty browse path.
  */
-export function parseBrowsePathFields(
+export const parseBrowsePathFields = (
   browsePath?: unknown
-): ExploreQuickFilterField[] {
+): ExploreQuickFilterField[] => {
   let result: ExploreQuickFilterField[] = [];
   if (isString(browsePath) && !isEmpty(browsePath)) {
     try {
@@ -460,7 +460,7 @@ export function parseBrowsePathFields(
   }
 
   return result;
-}
+};
 
 /**
  * Extract a query_filter object's `must` clauses as an array.
@@ -517,7 +517,9 @@ const getTermKeysFromQuery = (query: unknown): string[] => {
 
   return [
     ...termKeys,
-    ...Object.values(record).flatMap((value) => getTermKeysFromQuery(value)),
+    ...Object.entries(record)
+      .filter(([key]) => key !== 'term')
+      .flatMap(([, value]) => getTermKeysFromQuery(value)),
   ];
 };
 

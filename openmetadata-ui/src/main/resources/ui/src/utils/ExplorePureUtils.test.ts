@@ -341,6 +341,30 @@ describe('hasServiceDrillDownFilter', () => {
       true
     );
   });
+
+  it('does not inspect nested term keys inside a term value object', () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [
+            {
+              term: {
+                customField: {
+                  term: {
+                    serviceType: 'BigQuery',
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    expect(hasServiceDrillDownFilter(undefined, undefined, queryFilter)).toBe(
+      false
+    );
+  });
 });
 
 const browseFields: ExploreQuickFilterField[] = [

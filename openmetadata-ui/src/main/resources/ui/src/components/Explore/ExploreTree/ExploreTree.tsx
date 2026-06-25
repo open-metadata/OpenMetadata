@@ -183,7 +183,9 @@ const ExploreTree = ({
           childEntities:
             (treeNode as ExploreTreeNode).data?.childEntities ?? [],
           activeQuickFilter: parsedSearch.quickFilter,
-          activeBrowsePath: parsedSearch.browsePath,
+          activeBrowsePath: isEmpty(filterField)
+            ? parsedSearch.browsePath
+            : undefined,
           activeQueryFilter: additionalQueryFilter,
         });
 
