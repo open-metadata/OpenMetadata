@@ -51,6 +51,7 @@ jest.mock('../../constants/profiler.constant', () => ({
     tier: 'tier',
     tags: 'tags',
     service: 'serviceName',
+    dataProduct: 'dataProductFqn',
   },
   DEFAULT_SELECTED_RANGE: {
     key: 'last7Days',
@@ -101,8 +102,9 @@ describe('DataQualityUtils', () => {
         startTimestamp: 1234567890,
         entityLink: 'table1',
         testPlatforms: [TestPlatform.Dbt],
+        dataProductFqn: 'domain.dataProduct',
       } as ListTestCaseParamsBySearch;
-      const filters = ['lastRunRange', 'tableFqn'];
+      const filters = ['lastRunRange', 'tableFqn', 'dataProductFqn'];
 
       const result = buildTestCaseParams(params, filters);
 
@@ -110,6 +112,7 @@ describe('DataQualityUtils', () => {
         endTimestamp: 1234567890,
         startTimestamp: 1234567890,
         entityLink: 'table1',
+        dataProductFqn: 'domain.dataProduct',
       });
     });
   });
@@ -249,6 +252,7 @@ describe('DataQualityUtils', () => {
       tier: 'Tier.Tier1',
       serviceName: 'sample_data',
       tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+      dataProductFqn: 'domain.dataProduct',
     } as unknown as TestCaseSearchParams;
 
     it('should correctly process values and selectedFilter', () => {
@@ -262,6 +266,7 @@ describe('DataQualityUtils', () => {
         'tier',
         'serviceName',
         'tableFqn',
+        'dataProductFqn',
       ];
 
       const expected = {
@@ -274,6 +279,7 @@ describe('DataQualityUtils', () => {
         tags: ['PII.None'],
         tier: 'Tier.Tier1',
         serviceName: 'sample_data',
+        dataProductFqn: 'domain.dataProduct',
       };
 
       const result = getTestCaseFiltersValue(

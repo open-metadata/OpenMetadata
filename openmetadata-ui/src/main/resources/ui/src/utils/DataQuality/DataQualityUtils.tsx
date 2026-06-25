@@ -100,6 +100,7 @@ export const buildTestCaseParams = (
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
     ...filterParams('serviceName', TEST_CASE_FILTERS.service),
     ...filterParams('dataQualityDimension', TEST_CASE_FILTERS.dimension),
+    ...filterParams('dataProductFqn', TEST_CASE_FILTERS.dataProduct),
   };
 };
 
