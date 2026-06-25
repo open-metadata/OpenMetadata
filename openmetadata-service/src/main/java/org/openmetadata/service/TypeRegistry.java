@@ -17,7 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.resources.types.TypeResource.PROPERTIES_FIELD;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.networknt.schema.Schema;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -45,6 +48,35 @@ public class TypeRegistry {
 
   /** Custom property map (fully qualified customPropertyName) to (jsonSchema) */
   protected static final Map<String, Schema> CUSTOM_PROPERTY_SCHEMAS = new ConcurrentHashMap<>();
+
+  /**
+   * Negative cache of custom-property FQNs that were missing in this process even after a fresh
+   * read from the shared database. In a multi-replica deployment a custom property created on one
+   * replica is not pushed to the in-memory registry of its peers; this lets a peer self-heal by
+   * re-reading the owning type from the database on a cache miss, while the negative entry bounds
+   * how often a genuinely-unknown field re-triggers that database read.
+   *
+   * <p>Bounded staleness: an entry is only written after an actual database reload still did not
+   * find the property, so a property that already exists is never wrongly pinned. The one exception
+   * is a field queried <em>before</em> it is created on a peer (e.g. a typo'd-then-fixed name); it
+   * stays pinned as unknown until this entry expires. The common create-then-use ordering never
+   * queries the field before it exists, so it self-heals on first use.
+   */
+  protected static final Cache<String, Boolean> MISSING_CUSTOM_PROPERTIES =
+      Caffeine.newBuilder().maximumSize(10_000).expireAfterWrite(Duration.ofSeconds(60)).build();
+
+  /**
+   * Coalescing window of entity types whose custom properties were re-read from the database
+   * recently. A single self-heal reload pulls the <em>whole</em> owning type, so once a type has
+   * been refreshed, further misses for other fields of that same type within the window reuse that
+   * read instead of issuing one database round-trip per field. This bounds read amplification (a
+   * request or import with many distinct unknown fields, or a caller rotating field names, cannot
+   * fan out into one reload per field) and, via {@link Cache#get(Object, java.util.function.Function)},
+   * collapses a thundering herd of concurrent first-time misses for the same type into a single
+   * reload. The window is short so a newly-created property still propagates within seconds.
+   */
+  protected static final Cache<String, Boolean> RECENTLY_REFRESHED_TYPES =
+      Caffeine.newBuilder().maximumSize(1_000).expireAfterWrite(Duration.ofSeconds(2)).build();
 
   private static final TypeRegistry INSTANCE = new TypeRegistry();
 
@@ -108,6 +140,7 @@ public class TypeRegistry {
       String entityType, String propertyName, CustomProperty customProperty) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
     CUSTOM_PROPERTIES.put(customPropertyFQN, customProperty);
+    MISSING_CUSTOM_PROPERTIES.invalidate(customPropertyFQN);
 
     try {
       Schema jsonSchema =
@@ -131,7 +164,60 @@ public class TypeRegistry {
 
   public Schema getSchema(String entityType, String propertyName) {
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
+    ensureCustomPropertyLoaded(entityType, customPropertyFQN);
     return CUSTOM_PROPERTY_SCHEMAS.get(customPropertyFQN);
+  }
+
+  /**
+   * Self-heals the registry when a custom property is missing locally. Other replicas do not learn
+   * about a custom property created on a peer, so on a miss we re-read the owning type from the
+   * shared database (source of truth) and repopulate the registry. A short-lived negative cache
+   * prevents a genuinely-unknown field from re-reading the database on every request.
+   */
+  private void ensureCustomPropertyLoaded(String entityType, String customPropertyFQN) {
+    boolean present = CUSTOM_PROPERTIES.containsKey(customPropertyFQN);
+    boolean recentlyMissed = MISSING_CUSTOM_PROPERTIES.getIfPresent(customPropertyFQN) != null;
+    if (!present && !recentlyMissed) {
+      boolean reloaded = reloadTypeCoalesced(entityType);
+      if (reloaded && !CUSTOM_PROPERTIES.containsKey(customPropertyFQN)) {
+        MISSING_CUSTOM_PROPERTIES.put(customPropertyFQN, Boolean.TRUE);
+      }
+    }
+  }
+
+  /**
+   * Re-reads the owning type from the database at most once per coalescing window, sharing a single
+   * reload across concurrent callers for the same type. Returns {@code true} only when this call
+   * performed the reload, so the caller knows the registry was just repopulated and a still-missing
+   * property is genuinely unknown (safe to negative-cache).
+   */
+  private boolean reloadTypeCoalesced(String entityType) {
+    boolean[] reloaded = {false};
+    RECENTLY_REFRESHED_TYPES.get(
+        entityType,
+        key -> {
+          reloaded[0] = true;
+          refreshTypeFromDb(key);
+          return Boolean.TRUE;
+        });
+    return reloaded[0];
+  }
+
+  private void refreshTypeFromDb(String entityType) {
+    TypeRepository repository = Entity.getTypeRepository();
+    if (repository != null) {
+      try {
+        EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+        Type type = repository.getByName(null, entityType, fields);
+        addType(type);
+        LOG.info("Refreshed type '{}' from database after custom property cache miss", entityType);
+      } catch (RuntimeException e) {
+        LOG.debug(
+            "Could not refresh type '{}' from database on cache miss: {}",
+            entityType,
+            e.getMessage());
+      }
+    }
   }
 
   public void validateCustomProperties(Type type) {
@@ -163,6 +249,7 @@ public class TypeRegistry {
 
   public static String getCustomPropertyType(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
+    instance().ensureCustomPropertyLoaded(entityType, fqn);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
     if (property == null) {
       throw EntityNotFoundException.byMessage(
@@ -173,6 +260,7 @@ public class TypeRegistry {
 
   public static String getCustomPropertyConfig(String entityType, String propertyName) {
     String fqn = getCustomPropertyFQN(entityType, propertyName);
+    instance().ensureCustomPropertyLoaded(entityType, fqn);
     CustomProperty property = CUSTOM_PROPERTIES.get(fqn);
     if (property != null
         && property.getCustomPropertyConfig() != null

@@ -14,28 +14,114 @@
 package org.openmetadata.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.networknt.schema.Schema;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
- * Tests {@link TypeRegistry#getPropertyName(String)}.
+ * Tests {@link TypeRegistry#getPropertyName(String)} and the self-healing custom-property lookup.
  *
  * <p>The OpenMetadata FQN system normalises quotes — a property named {@code "/random/"} (with
  * literal quote characters) and a property named {@code custom.test} (with dots) end up with FQN
  * segments that look the same after normalisation. To return the original name to API consumers,
  * {@code getPropertyName} prefers the registered {@link CustomProperty#getName()} over re-deriving
  * from the FQN. These tests pin that behaviour.
+ *
+ * <p>The remaining tests cover the multi-replica self-heal: a custom property created on a peer
+ * replica is absent from this process's registry, so a cache miss re-reads the owning type from the
+ * shared database, while a negative cache bounds repeated reads for genuinely-unknown fields.
  */
 class TypeRegistryTest {
 
   private static final String ENTITY_TYPE = "table";
   private static final String FQN_PREFIX_TABLE = "table.customProperties";
 
+  private static final String STRING_TYPE = "string";
+
   @AfterEach
   void cleanRegistry() {
     TypeRegistry.CUSTOM_PROPERTIES.clear();
+    TypeRegistry.CUSTOM_PROPERTY_SCHEMAS.clear();
+    TypeRegistry.TYPES.clear();
+    TypeRegistry.MISSING_CUSTOM_PROPERTIES.invalidateAll();
+    TypeRegistry.RECENTLY_REFRESHED_TYPES.invalidateAll();
+    Entity.setTypeRepository(null);
+  }
+
+  /**
+   * Simulates the multi-replica desync: a custom property created on a peer replica exists in the
+   * shared database but is absent from this process's registry. A cache miss must self-heal by
+   * re-reading the owning type from the database so the property resolves instead of surfacing as
+   * an unknown field.
+   */
+  @Test
+  void getSchema_selfHealsFromDatabaseOnCacheMiss() {
+    seedBasePropertyType();
+    String propertyName = "relationships";
+    repositoryReturningTableWith(propertyName);
+
+    String fqn = TypeRegistry.getCustomPropertyFQN(ENTITY_TYPE, propertyName);
+    assertNull(
+        TypeRegistry.CUSTOM_PROPERTY_SCHEMAS.get(fqn),
+        "Precondition: stale replica does not know the custom property");
+
+    Schema schema = TypeRegistry.instance().getSchema(ENTITY_TYPE, propertyName);
+
+    assertNotNull(schema, "Schema should be self-healed from the database on a cache miss");
+  }
+
+  /**
+   * A burst of misses for distinct unknown fields of the same type must reuse one database reload
+   * rather than one round-trip per field (read-amplification / thundering-herd guard).
+   */
+  @Test
+  void getSchema_coalescesDatabaseReadsAcrossDistinctUnknownFields() {
+    seedBasePropertyType();
+    TypeRepository repository = repositoryReturningTableWith("knownProp");
+
+    assertNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "unknownA"));
+    assertNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "unknownB"));
+    assertNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "unknownC"));
+
+    verify(repository, times(1)).getByName(any(), eq(ENTITY_TYPE), any());
+  }
+
+  private void seedBasePropertyType() {
+    TypeRegistry.TYPES.put(
+        STRING_TYPE, new Type().withName(STRING_TYPE).withSchema("{\"type\":\"string\"}"));
+  }
+
+  private TypeRepository repositoryReturningTableWith(String propertyName) {
+    Type tableType =
+        new Type()
+            .withName(ENTITY_TYPE)
+            .withCategory(Category.Entity)
+            .withCustomProperties(
+                List.of(
+                    new CustomProperty()
+                        .withName(propertyName)
+                        .withPropertyType(new EntityReference().withName(STRING_TYPE))));
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(ENTITY_TYPE), any())).thenReturn(tableType);
+    Entity.setTypeRepository(repository);
+    return repository;
   }
 
   @Test
