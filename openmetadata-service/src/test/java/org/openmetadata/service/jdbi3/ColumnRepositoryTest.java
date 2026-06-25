@@ -80,15 +80,46 @@ class ColumnRepositoryTest {
   }
 
   @Test
-  void blankDisplayNameStillClearsDisplayName() {
-    // displayName retains its existing "blank clears" behavior; only description was the data-loss
-    // vector. This guards against an accidental change to displayName handling.
+  void blankDisplayNameDoesNotClearExistingDisplayName() {
+    // displayName follows the same "blank = no change" contract as description, so a partial update
+    // that omits it (sends blank) never wipes the existing display name.
     Column column = columnWithDescription("Full name.").withDisplayName("Full Name");
     UpdateColumn update = new UpdateColumn().withDisplayName("  ");
 
     ColumnRepository.applyColumnUpdates(column, update, TABLE_COLUMN, true);
 
+    assertEquals("Full Name", column.getDisplayName());
+    assertEquals("Full name.", column.getDescription());
+  }
+
+  @Test
+  void removeDescriptionClearsExistingDescription() {
+    Column column = columnWithDescription("Full name.");
+    UpdateColumn update = new UpdateColumn().withRemoveDescription(true);
+
+    ColumnRepository.applyColumnUpdates(column, update, TABLE_COLUMN, true);
+
+    assertNull(column.getDescription());
+  }
+
+  @Test
+  void removeDisplayNameClearsExistingDisplayName() {
+    Column column = columnWithDescription("Full name.").withDisplayName("Full Name");
+    UpdateColumn update = new UpdateColumn().withRemoveDisplayName(true);
+
+    ColumnRepository.applyColumnUpdates(column, update, TABLE_COLUMN, true);
+
     assertNull(column.getDisplayName());
     assertEquals("Full name.", column.getDescription());
+  }
+
+  @Test
+  void removeDescriptionTakesPrecedenceOverProvidedDescription() {
+    Column column = columnWithDescription("Full name.");
+    UpdateColumn update = new UpdateColumn().withDescription("ignored").withRemoveDescription(true);
+
+    ColumnRepository.applyColumnUpdates(column, update, TABLE_COLUMN, true);
+
+    assertNull(column.getDescription());
   }
 }

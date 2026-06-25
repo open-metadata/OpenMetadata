@@ -347,16 +347,26 @@ public class ColumnRepository {
       UpdateColumn updateColumn,
       String columnEntityType,
       boolean supportsConstraints) {
-    Optional.ofNullable(updateColumn.getDisplayName())
-        .ifPresent(name -> column.setDisplayName(name.trim().isEmpty() ? null : name));
+    // displayName and description follow the same contract as constraint: a blank/whitespace-only
+    // value means "no change", and clearing is explicit via removeDisplayName / removeDescription.
+    // Treating empty as a clear previously nulled existing values whenever a partial column update
+    // omitted them (e.g. editing a single nested column), silently wiping descriptions on
+    // sibling/child columns of a struct.
+    if (Boolean.TRUE.equals(updateColumn.getRemoveDisplayName())) {
+      column.setDisplayName(null);
+    } else {
+      Optional.ofNullable(updateColumn.getDisplayName())
+          .filter(name -> !name.trim().isEmpty())
+          .ifPresent(column::setDisplayName);
+    }
 
-    // A blank/whitespace-only description means "no change", not "delete". Treating empty as a
-    // clear previously nulled an existing description whenever a partial column update omitted it
-    // (e.g. editing a single nested column), silently wiping descriptions on sibling/child columns
-    // of a struct. Skip blanks so this endpoint never destroys existing descriptions.
-    Optional.ofNullable(updateColumn.getDescription())
-        .filter(desc -> !desc.trim().isEmpty())
-        .ifPresent(column::setDescription);
+    if (Boolean.TRUE.equals(updateColumn.getRemoveDescription())) {
+      column.setDescription(null);
+    } else {
+      Optional.ofNullable(updateColumn.getDescription())
+          .filter(desc -> !desc.trim().isEmpty())
+          .ifPresent(column::setDescription);
+    }
 
     Optional.ofNullable(updateColumn.getTags())
         .ifPresent(tags -> column.setTags(addDerivedTags(tags)));
