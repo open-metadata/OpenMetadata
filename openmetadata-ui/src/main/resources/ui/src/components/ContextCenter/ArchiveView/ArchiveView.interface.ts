@@ -24,6 +24,8 @@ export interface ArchiveItem {
 export interface ArchiveViewProps {
   data: ArchiveItem[];
   isLoading: boolean;
+  canRestore?: boolean;
+  canDelete?: boolean;
   onRestore: (item: ArchiveItem) => void;
   onDelete: (item: ArchiveItem) => void;
 }

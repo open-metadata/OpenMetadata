@@ -213,7 +213,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
       data-testid={`knowledge-card-${displayName || name}`}>
       <Link
         className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
@@ -234,7 +234,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             {isQuickLink && !readonly && quickLinkActions}
           </Box>
           <Typography
-            className="tw:text-gray-500"
+            className="tw:text-quaternary"
             data-testid="updated-at"
             size="text-xs">
             {t('label.last-edited-time', {
@@ -253,7 +253,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           </Typography>
         ) : (
           <Typography
-            className="tw:text-gray-400"
+            className="tw:text-utility-gray-400"
             data-testid="no-description"
             size="text-sm">
             {t('label.no-description')}
@@ -276,7 +276,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             />
           ) : (
             <Typography
-              className="tw:text-gray-400"
+              className="tw:text-utility-gray-400"
               data-testid="owner-name"
               size="text-xs"
               weight="medium">
@@ -284,11 +284,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             </Typography>
           )}
 
-          <Dot className="tw:text-gray-400" size="micro" />
+          <Dot className="tw:text-fg-quaternary" size="micro" />
           <div className="tw:max-w-40">
             <Typography
               ellipsis
-              className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
+              className={
+                firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
+              }
               data-testid="domain-name"
               size="text-xs">
               {firstDomain?.displayName ??

@@ -33,7 +33,7 @@ import {
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
   <Box align="center" className="tw:py-1.5" justify="between">
-    <Typography className="tw:text-gray-500" size="text-sm">
+    <Typography className="tw:text-quaternary" size="text-sm">
       {label}
     </Typography>
     <Typography className="tw:text-primary" size="text-sm" weight="medium">
@@ -70,7 +70,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         <Card className="tw:p-4 tw:shrink-0">
           <Box align="center" className="tw:mb-3" justify="between">
             <Typography
-              className="tw:text-gray-500 tw:uppercase"
+              className="tw:text-quaternary tw:uppercase"
               size="text-xs"
               weight="semibold">
               {t('label.detail-plural')}
@@ -90,7 +90,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             </Box>
           </Box>
           <Box align="center" className="tw:py-1.5" justify="between">
-            <Typography className="tw:text-gray-500" size="text-sm">
+            <Typography className="tw:text-quaternary" size="text-sm">
               {t('label.status')}
             </Typography>
             <DocumentStatusBadge
@@ -114,11 +114,11 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           )}
           {file.processingError && (
             <Box className="tw:py-1.5" direction="col" gap={1}>
-              <Typography className="tw:text-gray-500" size="text-sm">
+              <Typography className="tw:text-quaternary" size="text-sm">
                 {t('label.error')}
               </Typography>
               <Typography
-                className="tw:text-error-600 tw:break-words"
+                className="tw:text-error-primary tw:break-words"
                 data-testid="processing-error"
                 size="text-sm">
                 {file.processingError}

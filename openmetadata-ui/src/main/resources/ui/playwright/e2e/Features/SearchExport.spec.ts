@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { performAdminLogin } from '../../utils/admin';
 import { clickOutside, redirectToExplorePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -23,6 +23,55 @@ import {
   openExportScopeModal,
 } from '../../utils/explore';
 import { test } from '../fixtures/pages';
+
+const startAsyncExport = async (page: Page) => {
+  const exportAsyncPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/export/async') &&
+      response.status() === 202
+  );
+
+  await getExportModalContent(page)
+    .getByRole('button', { name: 'Export' })
+    .click();
+
+  const { jobId } = (await (await exportAsyncPromise).json()) as {
+    jobId: string;
+  };
+
+  await expect(page.getByText('Export started')).toBeVisible();
+  await expect(getExportModalContent(page)).not.toBeVisible();
+
+  return jobId;
+};
+
+const fetchCompletedExportCsv = async (
+  apiContext: APIRequestContext,
+  jobId: string
+): Promise<string> => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
+        const jobs = (await response.json()) as Array<{
+          jobId: string;
+          status: string;
+        }>;
+
+        return jobs.find((job) => job.jobId === jobId)?.status;
+      },
+      { timeout: 90_000 }
+    )
+    .toBe('COMPLETED');
+
+  const resultResponse = await apiContext.get(
+    `/api/v1/csvAsyncJobs/${jobId}/result`
+  );
+
+  expect(resultResponse.status()).toBe(200);
+
+  return resultResponse.text();
+};
 
 test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
   test.beforeAll(async ({ browser }) => {
@@ -109,6 +158,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
   test('Search mode visible export downloads CSV with tab-specific row count', async ({
     page,
+    browser,
   }) => {
     test.slow();
 
@@ -132,18 +182,15 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       await test.step('Read displayed count from Visible Results card', () =>
         getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
-    const exportResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/export') &&
-        response.status() === 200
-    );
-
-    await modalContent.getByRole('button', { name: 'Export' }).click();
+    const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the displayed tab count', async () => {
-      const csvText = await (await exportResponsePromise).text();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(expectedCount);
+
+      await afterAction();
     });
   });
 
@@ -190,6 +237,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
   test('Filtered search visible export downloads CSV with the filtered record count', async ({
     page,
+    browser,
   }) => {
     test.slow();
 
@@ -255,23 +303,21 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       expect(visibleExportCount).toBe(filteredCount);
     });
 
-    const exportResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/export') &&
-        response.status() === 200
-    );
-
-    await modalContent.getByRole('button', { name: 'Export' }).click();
+    const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the filtered record count', async () => {
-      const csvText = await (await exportResponsePromise).text();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(filteredCount);
+
+      await afterAction();
     });
   });
 
   test('Browse mode visible export downloads CSV with current page row count', async ({
     page,
+    browser,
   }) => {
     test.slow();
 
@@ -304,18 +350,15 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
       await test.step('Read displayed count from Visible Results card', () =>
         getExportCountFromModal(modalContent, 'export-scope-visible-count'));
 
-    const exportResponsePromise = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/search/export') &&
-        response.status() === 200
-    );
-
-    await modalContent.getByRole('button', { name: 'Export' }).click();
+    const jobId = await startAsyncExport(page);
 
     await test.step('CSV row count matches the displayed page count', async () => {
-      const csvText = await (await exportResponsePromise).text();
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      const csvText = await fetchCompletedExportCsv(apiContext, jobId);
 
       expect(countCsvResponseRows(csvText)).toBe(expectedCount);
+
+      await afterAction();
     });
   });
 
@@ -358,7 +401,7 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
     });
   });
 
-  test('Export downloads CSV with correct filename and closes modal', async ({
+  test('Export queues a background job and downloads from the jobs tray', async ({
     page,
   }) => {
     test.slow();
@@ -375,21 +418,37 @@ test.describe('Search Export', { tag: ['@Features', '@Discovery'] }, () => {
 
     await openExportScopeModal(page);
 
-    await test.step('Clicking Export triggers CSV download with correct filename', async () => {
+    const jobId = await startAsyncExport(page);
+
+    await test.step('Jobs tray surfaces the export job', async () => {
+      await page
+        .getByRole('button', { name: /Background jobs|jobs running/ })
+        .click();
+
+      await expect(page.getByText(/Exporting|Exported/).first()).toBeVisible();
+    });
+
+    await test.step('Download from the tray serves the job result CSV', async () => {
+      const downloadButton = page
+        .getByRole('button', { name: 'Download' })
+        .first();
+
+      await expect(downloadButton).toBeVisible({ timeout: 90_000 });
+
+      const resultResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/v1/csvAsyncJobs/${jobId}/result`) &&
+          response.status() === 200
+      );
       const downloadPromise = page.waitForEvent('download');
 
-      await getExportModalContent(page)
-        .getByRole('button', { name: 'Export' })
-        .click();
+      await downloadButton.click();
+      await resultResponsePromise;
 
       const download = await downloadPromise;
 
-      expect(download.suggestedFilename()).toContain('Search_Results_');
+      expect(download.suggestedFilename()).toContain(jobId);
       expect(download.suggestedFilename()).toContain('.csv');
-    });
-
-    await test.step('Modal closes after successful export', async () => {
-      await expect(getExportModalContent(page)).not.toBeVisible();
     });
   });
 });
