@@ -23,7 +23,7 @@ Safe for concurrent use across the topology's parallel schema workers.
 
 import threading
 from collections.abc import Iterable
-from typing import NamedTuple, cast
+from typing import Any, NamedTuple, cast
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -70,7 +70,7 @@ class ScopeAlreadyClearedError(RuntimeError):
 class TagRegistry:
     """Registry for Tag and Classification ingestion bookkeeping."""
 
-    def __init__(self, metadata: OpenMetadata) -> None:
+    def __init__(self, metadata: OpenMetadata[Any, Any]) -> None:
         self._metadata = metadata
 
         self._known_tag_fqns: set[str] = set()

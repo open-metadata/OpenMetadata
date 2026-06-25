@@ -10,6 +10,15 @@
 #  limitations under the License.
 """Tag and Classification domain utilities."""
 
+# pyright: reportImportCycles=false
+# The classes here type-hint and call the OpenMetadata client, whose transitive
+# imports loop back to this package
+# (ometa_api -> topology -> database_service -> metadata.domain.tags). The cycle is
+# runtime-safe: topology imports database_service lazily and fqn imports OpenMetadata
+# only under TYPE_CHECKING. Every other module in the chain is already excluded from
+# basedpyright (see [tool.basedpyright].ignore), so suppress the rule here to keep the
+# rest of this package type-checked.
+
 from metadata.domain.tags.canonicalizer import Canonical, TagCanonicalizer
 from metadata.domain.tags.registry import ScopeAlreadyClearedError, TagRegistry
 
