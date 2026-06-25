@@ -112,13 +112,25 @@ public class MigrationUtil {
    * regenerated definition.
    */
   public static void redeployGovernanceWorkflows() {
-    WorkflowDefinitionRepository repository =
-        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    List<WorkflowDefinition> workflows =
-        repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
-    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     int redeployed = 0;
-    for (WorkflowDefinition workflow : workflows) {
+    int total = 0;
+    try {
+      final WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      final List<WorkflowDefinition> workflows =
+          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+      total = workflows.size();
+      redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
+    } catch (Exception e) {
+      LOG.warn("[1.13.1] Skipping governance workflow redeploy; continuing", e);
+    }
+    LOG.info("[1.13.1] Redeployed {} of {} governance workflow definition(s)", redeployed, total);
+  }
+
+  private static int redeployEach(
+      final WorkflowHandler workflowHandler, final List<WorkflowDefinition> workflows) {
+    int redeployed = 0;
+    for (final WorkflowDefinition workflow : workflows) {
       try {
         workflowHandler.deploy(new Workflow(workflow));
         redeployed++;
@@ -129,10 +141,7 @@ public class MigrationUtil {
             e);
       }
     }
-    LOG.info(
-        "[1.13.1] Redeployed {} of {} governance workflow definition(s)",
-        redeployed,
-        workflows.size());
+    return redeployed;
   }
 
   public static List<RepairSummary> repairChildFqns(CollectionDAO collectionDAO) {
