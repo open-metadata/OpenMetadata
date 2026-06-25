@@ -207,6 +207,49 @@
     font-size: 12px;
   }
 
+  .lvm-footer-left,
+  .lvm-footer-right {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+
+    // "·" separator between footer items (kept in CSS, not the markup).
+    > :not(:first-child)::before {
+      content: '·';
+      margin: 0 7px;
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &--success {
+      color: var(--lvm-level-ok);
+    }
+
+    &--error {
+      color: var(--lvm-level-error);
+    }
+
+    &--warning {
+      color: var(--lvm-level-warn);
+    }
+
+    &--muted {
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+
   // LazyLog measures the nearest sized container; force it to fill the body and
   // adopt the terminal palette (ANSI colors in the log text render on top).
   // LazyLog forces `font-family: "Monaco"` and `font-size: 12px` on its own

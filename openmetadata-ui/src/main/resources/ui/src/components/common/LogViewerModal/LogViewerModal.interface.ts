@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
+export type LogViewerStatusTone = 'success' | 'error' | 'warning' | 'muted';
+
+export interface LogViewerStatus {
+  label: string;
+  tone?: LogViewerStatusTone; // default 'muted'
+}
 
 export interface LogViewerModalProps {
   open: boolean;
@@ -24,6 +29,9 @@ export interface LogViewerModalProps {
   enableCopy?: boolean;
   colorize?: boolean;
   onDownload?: () => void;
-  footerLeft?: ReactNode;
-  footerRight?: ReactNode;
+  // Footer status bar — the component renders it from these explicit fields.
+  status?: LogViewerStatus;
+  totalLines?: number;
+  runId?: string;
+  lastRun?: string;
 }

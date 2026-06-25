@@ -17,8 +17,11 @@ details → "View full logs"), the design was refined:
   icon + monospace title on the left; the search input, a **labeled** "Copy"
   button (icon + text, via `useClipboard`), an optional download icon button,
   and a plain ✕ close on the right. `CopyToClipboardButton` is no longer used.
-- **Footer status bar added** via `footerLeft` / `footerRight` slots
-  (e.g. `● exit 0 · N lines · STATUS` and `run_id · timestamp`).
+- **Footer status bar** owned by the component via explicit props — `status`
+  (`{ label, tone }`, tone drives a coloured dot + label), `totalLines`, `runId`,
+  `lastRun` — rendering `● Succeeded · N lines` on the left and `runId · lastRun`
+  on the right. (Earlier `footerLeft` / `footerRight` slots were replaced so
+  callers no longer assemble or colour the footer themselves.)
 - **Per-level line colouring** (`colorize`, default on). A parser
   (`LogViewerModal.utils.tsx`) feeds `LazyLog`'s `formatPart` hook: it matches
   the OpenMetadata log shape `[timestamp] LEVEL {logger} - message`, mutes the
@@ -92,8 +95,11 @@ interface LogViewerModalProps {
   enableCopy?: boolean;          // default true (labeled Copy button in header)
   colorize?: boolean;            // default true (per-level line colouring; see LogViewerModal.utils)
   onDownload?: () => void;       // optional download icon button; rendered only when provided
-  footerLeft?: ReactNode;        // optional left footer content (e.g. status · lines · state)
-  footerRight?: ReactNode;       // optional right footer content (e.g. run id · timestamp)
+  // Footer status bar — the component renders it from these explicit fields.
+  status?: { label: string; tone?: 'success' | 'error' | 'warning' | 'muted' };
+  totalLines?: number;           // e.g. 8 -> "· 8 lines"
+  runId?: string;                // e.g. "run_7f63999d"
+  lastRun?: string;              // e.g. "2026-06-22 10:10 UTC"
 }
 ```
 

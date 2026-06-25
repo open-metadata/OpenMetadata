@@ -39,10 +39,15 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
   enableCopy = true,
   colorize = true,
   onDownload,
-  footerLeft,
-  footerRight,
+  status,
+  totalLines,
+  runId,
+  lastRun,
 }: LogViewerModalProps) => {
   const { t } = useTranslation();
+  const hasFooter = Boolean(
+    status || totalLines !== undefined || runId || lastRun
+  );
   const [searchText, setSearchText] = useState('');
   const { hasCopied, onCopyToClipBoard } = useClipboard(logs);
 
@@ -184,15 +189,35 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                 />
               )}
             </div>
-            {(footerLeft || footerRight) && (
+            {hasFooter && (
               <div
                 className="lvm-footer tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-2"
                 data-testid="log-viewer-footer">
-                <div className="lvm-footer-left tw:flex tw:min-w-0 tw:items-center tw:gap-2 tw:truncate">
-                  {footerLeft}
+                <div className="lvm-footer-left">
+                  {status && (
+                    <span
+                      className={classNames(
+                        'lvm-status',
+                        `lvm-status--${status.tone ?? 'muted'}`
+                      )}
+                      data-testid="log-viewer-status">
+                      <span aria-hidden className="lvm-status-dot" />
+                      {status.label}
+                    </span>
+                  )}
+                  {totalLines !== undefined && (
+                    <span data-testid="log-viewer-total-lines">
+                      {`${totalLines} ${t('label.line-plural').toLowerCase()}`}
+                    </span>
+                  )}
                 </div>
-                <div className="lvm-footer-right tw:truncate">
-                  {footerRight}
+                <div className="lvm-footer-right">
+                  {runId && (
+                    <span data-testid="log-viewer-run-id">{runId}</span>
+                  )}
+                  {lastRun && (
+                    <span data-testid="log-viewer-last-run">{lastRun}</span>
+                  )}
                 </div>
               </div>
             )}

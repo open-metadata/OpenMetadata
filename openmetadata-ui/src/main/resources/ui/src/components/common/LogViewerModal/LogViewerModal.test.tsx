@@ -248,7 +248,7 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('log-viewer-match-count')).toHaveTextContent('0');
   });
 
-  it('renders the footer only when footer content is provided', () => {
+  it('renders the footer from explicit status, line count, run id, and last run props', () => {
     const { rerender } = render(<LogViewerModal {...defaultProps} />);
 
     expect(screen.queryByTestId('log-viewer-footer')).not.toBeInTheDocument();
@@ -256,14 +256,25 @@ describe('LogViewerModal', () => {
     rerender(
       <LogViewerModal
         {...defaultProps}
-        footerLeft={<span>exit 0</span>}
-        footerRight={<span>run_123</span>}
+        lastRun="2026-06-22 10:10 UTC"
+        runId="run_7f63999d"
+        status={{ label: 'Succeeded', tone: 'success' }}
+        totalLines={8}
       />
     );
 
-    const footer = screen.getByTestId('log-viewer-footer');
-
-    expect(footer).toHaveTextContent('exit 0');
-    expect(footer).toHaveTextContent('run_123');
+    expect(screen.getByTestId('log-viewer-status')).toHaveTextContent(
+      'Succeeded'
+    );
+    expect(screen.getByTestId('log-viewer-status')).toHaveClass(
+      'lvm-status--success'
+    );
+    expect(screen.getByTestId('log-viewer-total-lines')).toHaveTextContent('8');
+    expect(screen.getByTestId('log-viewer-run-id')).toHaveTextContent(
+      'run_7f63999d'
+    );
+    expect(screen.getByTestId('log-viewer-last-run')).toHaveTextContent(
+      '2026-06-22 10:10 UTC'
+    );
   });
 });
