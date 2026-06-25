@@ -191,7 +191,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       double threshold) {
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embed(query);
+      float[] queryVector = embeddingClient.embedQuery(query);
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
       int rawOffset = 0;
       long totalHits = -1L;
