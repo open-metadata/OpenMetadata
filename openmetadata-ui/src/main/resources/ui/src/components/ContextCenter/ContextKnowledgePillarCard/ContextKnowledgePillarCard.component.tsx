@@ -132,7 +132,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
       data-testid={dataTestId}
       onClick={onClick}>
       <div>
