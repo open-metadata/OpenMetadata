@@ -793,7 +793,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateInheritedFieldsToChildrenSkipsUnregisteredChildAliases() throws IOException {
+  void propagateInheritedFieldsToChildrenIncludesUnregisteredChildAliases() throws IOException {
     IndexMapping mappingWithUnregisteredChild =
         IndexMapping.builder()
             .indexName("test_case_search_index")
@@ -823,7 +823,8 @@ class SearchRepositoryBehaviorTest {
     ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
     verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
 
-    assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
+    assertEquals(
+        List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
   }
 
   @Test

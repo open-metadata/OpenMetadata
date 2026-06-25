@@ -1901,7 +1901,7 @@ public class SearchRepository {
     Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
     List<String> entityChildren =
         filterChildAliasesByCapability(
-            indexMapping, capability -> capability != null && !capability.isTimeSeries());
+            indexMapping, capability -> capability == null || !capability.isTimeSeries());
     if (nullOrEmpty(entityChildren)) {
       return;
     }

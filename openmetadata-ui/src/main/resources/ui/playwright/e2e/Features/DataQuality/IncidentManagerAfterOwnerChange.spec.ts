@@ -27,7 +27,11 @@ import { createNewPage, redirectToHomePage } from '../../../utils/common';
 import { sidebarClick } from '../../../utils/sidebar';
 
 type IncidentListResponse = {
-  data?: Array<{ testCaseReference?: { fullyQualifiedName?: string } }>;
+  data?: Array<{
+    domains?: unknown;
+    owners?: unknown;
+    testCaseReference?: { fullyQualifiedName?: string };
+  }>;
 };
 
 type TestCaseSearchResponse = {
@@ -159,6 +163,23 @@ test('Incident Manager renders after a test case owner change', async ({
     });
 
     expect(exactIncidentListResponse.status()).toBe(200);
+    const exactIncidentListBody =
+      (await exactIncidentListResponse.json()) as IncidentListResponse;
+    expect(Array.isArray(exactIncidentListBody.data)).toBe(true);
+
+    const exactIncident = exactIncidentListBody.data?.find(
+      (incident) =>
+        incident.testCaseReference?.fullyQualifiedName === testCaseFqn
+    );
+
+    if (!exactIncident) {
+      throw new Error(
+        'Expected patched test case incident in latest incident response'
+      );
+    }
+
+    expect(exactIncident).not.toHaveProperty('owners');
+    expect(exactIncident).not.toHaveProperty('domains');
 
     const pageIncidentListResponse = page.waitForResponse(
       (response) =>
