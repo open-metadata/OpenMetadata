@@ -486,8 +486,8 @@ class DbtcloudSource(PipelineServiceSource):
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=ctx.pipeline_service,
-                pipeline_name=ctx.pipeline,
+                service_name=ctx.pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=ctx.pipeline,  # pyright: ignore[reportAttributeAccessIssue]
             )
 
             # using cached runs from context instead of making another API call
