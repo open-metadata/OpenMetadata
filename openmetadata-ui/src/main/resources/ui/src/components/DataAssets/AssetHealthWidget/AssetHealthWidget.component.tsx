@@ -76,7 +76,7 @@ const AssetHealthWidget = () => {
   if (isLoading) {
     return (
       <div
-        className="tw:flex tw:flex-col tw:gap-3 tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:p-4"
+        className="tw:flex tw:flex-col tw:gap-3 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-4"
         data-testid="asset-health-widget-loading">
         <Skeleton height={20} variant="rounded" width={120} />
         <Skeleton height={48} variant="rounded" />
@@ -87,7 +87,7 @@ const AssetHealthWidget = () => {
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:rounded-[10px] tw:border tw:border-utility-gray-blue-100 tw:bg-primary"
+      className="tw:flex tw:flex-col tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
       data-testid="asset-health-widget">
       <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:pb-3 tw:pt-4">
         <div className="tw:flex tw:items-center tw:gap-2">
@@ -105,7 +105,7 @@ const AssetHealthWidget = () => {
           {t(header.labelKey)}
         </Badge>
       </div>
-      <div className="tw:h-px tw:bg-utility-gray-blue-100" />
+      <div className="tw:border-b tw:border-secondary" />
       <div className="tw:flex tw:flex-col">
         {rows.map((row) => (
           <AssetHealthRowItem
