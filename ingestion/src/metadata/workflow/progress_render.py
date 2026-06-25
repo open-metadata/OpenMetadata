@@ -62,24 +62,24 @@ class ProgressReporter:
         snapshot = self._registry.snapshot()
         if snapshot is None:
             return ""
-        header = " · ".join(
-            f"{entity_type} {processed}/{expected}" if expected is not None else f"{entity_type} {processed}"
-            for entity_type, processed, expected in self._registry.rollup_by_type()
-        )
+        header = f"Ingested: {self._registry.assets_ingested():,} assets"
         lines: List[str] = []  # noqa: UP006
         _render_joined(snapshot, [], lines)
         tree = "\n".join(lines)
         return f"{header}\n{tree}" if tree else header
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
-        """The bare ``progressNode`` tree for ``ProgressUpdate.progress``.
-
-        ``ProgressUpdate`` (and ``ProgressNode``) are generated with
-        ``extra='forbid'``, so the payload MUST be exactly the progressNode
-        tree — a ``{rollup, tree}`` wrapper fails validation and the error is
-        swallowed at debug level, silently dropping every SSE update. The
-        rollup header stays CLI-only (see the plan's "Out of scope" section)."""
-        return snapshot_to_progress_payload(self._registry.snapshot())
+        """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,
+        which is ``extra='forbid'``). The run-root ``processed`` carries the
+        monotonic asset total; ``expected`` is unknown (no global count)."""
+        snapshot = self._registry.snapshot()
+        result = None
+        if snapshot is not None:
+            tree = snapshot_to_progress_payload(snapshot)
+            tree["processed"] = self._registry.assets_ingested()
+            tree["expected"] = None
+            result = tree
+        return result
 
 
 def _render_joined(node: ProgressNodeSnapshot, ancestors: "List[str]", lines: "List[str]") -> None:  # noqa: UP006

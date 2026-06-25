@@ -232,54 +232,14 @@ class TestRegistryPrimitives:
         assert [snap.label for _, snap in completed] == ["s3", "s4"]  # last two
 
 
-class TestSetTotalAndRollup:
-    def test_set_total_is_not_clobbered_by_lazy_open(self):
+class TestOpenKeepsKnownExpected:
+    def test_lazy_open_does_not_clobber_known_expected(self):
         registry = ProgressRegistry()
-        registry.set_total(["db1"], "DatabaseSchema", 3)
-        registry.open(["db1"], "DatabaseSchema", None)  # topology lazy open after push
-        snap = registry.snapshot()
-        db1 = snap.children[0]
-        assert db1.expected == 3
-
-    def test_rollup_counts_containers_by_completion_and_leaves_by_processed(self):
-        registry = ProgressRegistry()
-        registry.set_total([], "Database", 2)
-        registry.open([], "Database", None)
-        for db in ("db1", "db2"):
-            registry.set_total([db], "DatabaseSchema", 1)
-            registry.open([db], "DatabaseSchema", None)
-        registry.open(["db1", "s1"], "Table", 2)
-        registry.advance(["db1", "s1"], "Table")
-        registry.advance(["db1", "s1"], "Table")  # s1 complete (2/2) -> db1 complete (1/1)
-        registry.open(["db2", "s2"], "Table", 5)
-        registry.advance(["db2", "s2"], "Table")  # s2 partial (1/5)
-
-        rollup = {t: (p, e) for t, p, e in registry.rollup_by_type()}
-        assert rollup["Database"] == (1, 2)  # db1 complete, db2 not
-        assert rollup["DatabaseSchema"] == (1, 2)  # s1 complete, s2 not
-        assert rollup["Table"] == (3, 7)  # 2 + 1 processed, 2 + 5 expected
-
-    def test_rollup_expected_is_none_when_no_node_knows_it(self):
-        registry = ProgressRegistry()
-        registry.open([], "Database", None)
-        registry.open(["db1", "s1"], "Table", None)
-        registry.advance(["db1", "s1"], "Table")
-        rollup = {t: e for t, _, e in registry.rollup_by_type()}
-        assert rollup["Table"] is None
-
-    def test_rollup_order_is_depth_first_appearance(self):
-        registry = ProgressRegistry()
-        registry.set_total([], "Database", 1)
-        registry.open([], "Database", None)
-        registry.set_total(["db1"], "DatabaseSchema", 1)
-        registry.open(["db1"], "DatabaseSchema", None)
-        registry.open(["db1", "s1"], "Table", 1)
-        registry.advance(["db1", "s1"], "Table")
-        assert [t for t, _, _ in registry.rollup_by_type()] == [
-            "Database",
-            "DatabaseSchema",
-            "Table",
-        ]
+        registry.open(["db", "s"], "Table", 5)
+        registry.open(["db", "s"], "Table", None)
+        snapshot = registry.snapshot()
+        schema = snapshot.children[0].children[0]
+        assert schema.expected == 5
 
 
 class TestAssetCounterAndClose:

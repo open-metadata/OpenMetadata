@@ -87,9 +87,7 @@ def test_label_only_grouping_node_renders_without_count():
 
 def _snowflake_like_registry() -> ProgressRegistry:
     registry = ProgressRegistry()
-    registry.set_total([], "Database", 2)
     registry.open([], "Database", None)
-    registry.set_total(["sales"], "DatabaseSchema", 1)
     registry.open(["sales"], "DatabaseSchema", None)
     registry.open(["sales", "public"], "Table", 310)
     for _ in range(45):
@@ -98,52 +96,31 @@ def _snowflake_like_registry() -> ProgressRegistry:
 
 
 class TestProgressReporter:
-    def test_cli_header_is_generic_rollup(self):
-        text = ProgressReporter(_snowflake_like_registry()).cli()
-        header = text.splitlines()[0]
-        assert "Database 0/2" in header
-        assert "DatabaseSchema 0/1" in header
-        assert "Table 45/310" in header
+    def test_cli_header_is_assets_ingested(self):
+        registry = _snowflake_like_registry()
+        text = ProgressReporter(registry).cli()
+        assert text.splitlines()[0] == f"Ingested: {registry.assets_ingested():,} assets"
 
-    def test_cli_shows_ancestor_joined_active_scope(self):
+    def test_cli_still_shows_active_scope(self):
         text = ProgressReporter(_snowflake_like_registry()).cli()
         assert "sales.public" in text
         assert "45/310" in text
 
-    def test_payload_is_bare_progress_node_tree(self):
-        payload = ProgressReporter(_snowflake_like_registry()).payload()
-        assert set(payload) == {
-            "label",
-            "entityType",
-            "processed",
-            "expected",
-            "active",
-            "overflow",
-            "children",
-        }
-        assert payload["entityType"] == "Database"
+    def test_payload_root_carries_asset_total(self):
+        registry = _snowflake_like_registry()
+        payload = ProgressReporter(registry).payload()
+        assert payload["processed"] == registry.assets_ingested()
+        assert payload["expected"] is None
 
     def test_payload_validates_against_progress_update_model(self):
-        reporter = ProgressReporter(_snowflake_like_registry())
         update = ProgressUpdate(
             runId="r",
             timestamp=1,
             updateType="PROCESSING",
-            progress=reporter.payload(),
+            progress=ProgressReporter(_snowflake_like_registry()).payload(),
         )
         assert update.progress is not None
-        assert update.progress.entityType == "Database"
+        assert update.progress.processed == 45
 
     def test_payload_is_none_before_anything_starts(self):
         assert ProgressReporter(ProgressRegistry()).payload() is None
-
-    def test_powerbi_like_single_tier_scope(self):
-        registry = ProgressRegistry()
-        registry.set_total([], "Workspace", 2)
-        registry.open([], "Workspace", None)
-        registry.open(["Marketing"], "Dashboard", 40)
-        for _ in range(8):
-            registry.advance(["Marketing"], "Dashboard")
-        rollup = {t: (p, e) for t, p, e in registry.rollup_by_type()}
-        assert rollup["Workspace"] == (0, 2)
-        assert rollup["Dashboard"] == (8, 40)

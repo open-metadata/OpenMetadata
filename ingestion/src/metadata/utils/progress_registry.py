@@ -79,15 +79,6 @@ class ProgressRegistry:
             if expected is not None or child_type not in node.expected_by_type:
                 node.expected_by_type[child_type] = expected
 
-    def set_total(self, path: List[str], child_type: str, total: int) -> None:  # noqa: UP006
-        """Connector push: the producer knows it will yield ``total`` children of
-        ``child_type`` at ``path``. Wins over a lazy topology ``open(None)``."""
-        with self._lock:
-            node = self._navigate(path)
-            if node.child_type is None:
-                node.child_type = child_type
-            node.expected_by_type[child_type] = total
-
     def advance(self, path: List[str], child_type: Optional[str] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
             node = self._navigate(path)
@@ -147,50 +138,6 @@ class ProgressRegistry:
                 expected_by_type=dict(self._root.expected_by_type),
                 processed_by_type=dict(self._root.processed_by_type),
             )
-
-    def rollup_by_type(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
-        """Generic per-entity-type header. Container types (nodes with children)
-        count complete children; leaf types sum ``processed_by_type``. Connector-
-        agnostic: Database/Schema/Table and Workspace/Dashboard/Chart alike."""
-        with self._lock:
-            order: List[str] = []  # noqa: UP006
-            expected: Dict[str, Optional[int]] = {}  # noqa: UP006,UP045
-            processed: Dict[str, int] = {}  # noqa: UP006
-            self._rollup_visit(self._root, order, expected, processed)
-            return [(t, processed[t], expected[t]) for t in order]
-
-    def _rollup_visit(
-        self,
-        node: ProgressNode,
-        order: "List[str]",  # noqa: UP006
-        expected: "Dict[str, Optional[int]]",  # noqa: UP006,UP045
-        processed: "Dict[str, int]",  # noqa: UP006
-    ) -> None:
-        """Accumulate per-type processed/expected over the subtree.
-
-        WARNING: when a single node registers two or more *container* child
-        types (a node whose children are themselves containers — e.g. a
-        dashboard service root counting both DataModel and Dashboard), this
-        counts every complete child once per registered type, a double-count.
-        Unreachable in the DB topology (a schema's Table/StoredProcedure are
-        leaves, so the leaf branch runs and there are no child nodes). Must be
-        fixed — correct per-type attribution of complete children — before any
-        connector with that shape enables ``progress_tracking_enabled``. See
-        the PowerBI scope follow-up in the plan's "Out of scope" section.
-        """
-        for child_type, exp in node.expected_by_type.items():
-            if child_type not in expected:
-                order.append(child_type)
-                expected[child_type] = None
-                processed[child_type] = 0
-            if exp is not None:
-                expected[child_type] = (expected[child_type] or 0) + exp
-            if node.children:
-                processed[child_type] += sum(1 for child in node.children.values() if self._is_complete(child))
-            else:
-                processed[child_type] += node.processed_by_type.get(child_type, 0)
-        for child in node.children.values():
-            self._rollup_visit(child, order, expected, processed)
 
     def _navigate(self, path: List[str]) -> ProgressNode:  # noqa: UP006
         node = self._root
