@@ -37,6 +37,7 @@ import {
   searchDataModelColumnsByFQN,
   updateDataModelColumn,
 } from '../../../../../rest/dataModelsAPI';
+import { normalizeColumnUpdatePayload } from '../../../../../utils/ColumnUpdateUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
@@ -215,7 +216,10 @@ const ModelTab = () => {
     column: Partial<Column>,
     field: keyof Column
   ) => {
-    const response = await updateDataModelColumn(columnFqn, column);
+    const response = await updateDataModelColumn(
+      columnFqn,
+      normalizeColumnUpdatePayload(column)
+    );
     const cleanResponse = isEmpty(response.children)
       ? omit(response, 'children')
       : response;

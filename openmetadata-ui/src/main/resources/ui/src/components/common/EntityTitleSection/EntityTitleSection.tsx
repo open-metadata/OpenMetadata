@@ -27,6 +27,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
+import { normalizeColumnUpdatePayload } from '../../../utils/ColumnUpdateUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -71,9 +72,9 @@ export const EntityTitleSection = ({
         if (entityType === EntityType.TABLE_COLUMN) {
           const res = await updateTableColumn(
             entityDetails.fullyQualifiedName ?? '',
-            {
+            normalizeColumnUpdatePayload({
               displayName: data.displayName,
-            }
+            })
           );
           onDisplayNameUpdate?.(res.displayName ?? data.displayName ?? '');
 

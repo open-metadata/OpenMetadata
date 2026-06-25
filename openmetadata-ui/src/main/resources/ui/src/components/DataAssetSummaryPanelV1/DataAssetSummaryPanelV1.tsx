@@ -31,6 +31,7 @@ import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { updateTableColumn } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
+import { normalizeColumnUpdatePayload } from '../../utils/ColumnUpdateUtils';
 import { getEntityOverview } from '../../utils/DataAssetSummaryPanelUtils';
 import {
   getCurrentMillis,
@@ -96,9 +97,9 @@ export const DataAssetSummaryPanelV1 = ({
         if (entityType === EntityType.TABLE_COLUMN) {
           const res = await updateTableColumn(
             dataAsset.fullyQualifiedName ?? '',
-            {
+            normalizeColumnUpdatePayload({
               description: newDescription,
-            }
+            })
           );
           onDescriptionUpdate?.(res.description || newDescription);
 

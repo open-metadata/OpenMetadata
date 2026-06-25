@@ -73,6 +73,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { normalizeColumnUpdatePayload } from '../../../utils/ColumnUpdateUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -436,7 +437,10 @@ const SchemaTable = () => {
     column: Partial<Column>,
     field: keyof Column
   ) => {
-    const response = await updateTableColumn(columnFqn, column);
+    const response = await updateTableColumn(
+      columnFqn,
+      normalizeColumnUpdatePayload(column)
+    );
     const cleanResponse = isEmpty(response.children)
       ? omit(response, 'children')
       : response;

@@ -27,7 +27,10 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import { updateTableColumn } from '../../../rest/tableAPI';
-import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
+import {
+  handleColumnFieldUpdate as handleColumnFieldUpdateUtil,
+  normalizeColumnUpdatePayload,
+} from '../../../utils/ColumnUpdateUtils';
 import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
 import {
   getLayoutFromCustomizedPage,
@@ -286,7 +289,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       // This ensures custom properties and other column fields are updated correctly
       if (type === EntityType.TABLE) {
         try {
-          apiResponseColumn = await updateTableColumn(fqn, update);
+          apiResponseColumn = await updateTableColumn(
+            fqn,
+            normalizeColumnUpdatePayload(update)
+          );
         } catch (error) {
           // If called from ColumnDetailPanel, re-throw error so it can show local toast
           if (skipGlobalError) {

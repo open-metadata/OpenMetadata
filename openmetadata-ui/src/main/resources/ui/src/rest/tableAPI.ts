@@ -30,7 +30,6 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { normalizeColumnUpdatePayload } from '../utils/ColumnUpdateUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
@@ -351,10 +350,7 @@ export const updateTableColumn = async (fqn: string, data: UpdateColumn) => {
   const response = await APIClient.put<
     UpdateColumn,
     AxiosResponse<Table['columns'][number]>
-  >(
-    `/columns/name/${getEncodedFqn(fqn)}?entityType=table`,
-    normalizeColumnUpdatePayload(data)
-  );
+  >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
 
   return response.data;
 };

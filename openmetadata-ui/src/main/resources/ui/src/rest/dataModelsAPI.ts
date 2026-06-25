@@ -22,7 +22,6 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
-import { normalizeColumnUpdatePayload } from '../utils/ColumnUpdateUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
@@ -162,7 +161,7 @@ export const updateDataModelColumn = async (
 ) => {
   const response = await APIClient.put<Column>(
     `/columns/name/${getEncodedFqn(fqn)}?entityType=dashboardDataModel`,
-    normalizeColumnUpdatePayload(column)
+    column
   );
 
   return response.data;

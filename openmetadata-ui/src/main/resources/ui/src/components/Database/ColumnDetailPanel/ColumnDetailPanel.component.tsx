@@ -35,6 +35,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
+import { normalizeColumnUpdatePayload } from '../../../utils/ColumnUpdateUtils';
 import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -345,7 +346,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         : // Fallback to direct API call for Table entities when used outside GenericProvider
           ((await updateTableColumn(
             activeColumn.fullyQualifiedName,
-            update
+            normalizeColumnUpdatePayload(update)
           )) as T);
 
       if (response) {
