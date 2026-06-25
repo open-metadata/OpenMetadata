@@ -19,6 +19,14 @@ details → "View full logs"), the design was refined:
   and a plain ✕ close on the right. `CopyToClipboardButton` is no longer used.
 - **Footer status bar added** via `footerLeft` / `footerRight` slots
   (e.g. `● exit 0 · N lines · STATUS` and `run_id · timestamp`).
+- **Per-level line colouring** (`colorize`, default on). A parser
+  (`LogViewerModal.utils.tsx`) feeds `LazyLog`'s `formatPart` hook: it matches
+  the OpenMetadata log shape `[timestamp] LEVEL {logger} - message`, mutes the
+  timestamp/logger and colours the level by severity (INFO / DEBUG / WARN /
+  ERROR / OK / AI). Non-matching lines (Argo, Python warnings, continuation
+  lines) and any embedded ANSI are passed through untouched. Note: JSON-escaped
+  log payloads (`<`, `\"`, and escape bytes) must be decoded by the caller
+  before being passed in.
 - **Explicit terminal palette.** The consuming app's Tailwind utilities
   (`bg-primary` etc.) do not flip under `.dark-mode`, so the surface is themed
   from a local CSS-variable palette in the scoped `.less` (dark default + light
@@ -82,6 +90,7 @@ interface LogViewerModalProps {
   follow?: boolean;              // default false; live-tail auto-scroll to newest line
   enableSearch?: boolean;        // default true (header "Search logs" input + line filter)
   enableCopy?: boolean;          // default true (labeled Copy button in header)
+  colorize?: boolean;            // default true (per-level line colouring; see LogViewerModal.utils)
   onDownload?: () => void;       // optional download icon button; rendered only when provided
   footerLeft?: ReactNode;        // optional left footer content (e.g. status · lines · state)
   footerRight?: ReactNode;       // optional right footer content (e.g. run id · timestamp)

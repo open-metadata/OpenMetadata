@@ -25,6 +25,7 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import { LogViewerModalProps } from './LogViewerModal.interface';
+import { formatLogPart } from './LogViewerModal.utils';
 
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
   open,
@@ -36,6 +37,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
   follow = false,
   enableSearch = true,
   enableCopy = true,
+  colorize = true,
   onDownload,
   footerLeft,
   footerRight,
@@ -176,6 +178,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                   enableSearch={false}
                   extraLines={1}
                   follow={follow}
+                  formatPart={colorize ? formatLogPart : undefined}
                   text={filteredLogs}
                 />
               )}

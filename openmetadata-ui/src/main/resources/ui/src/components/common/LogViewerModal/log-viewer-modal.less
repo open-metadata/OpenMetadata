@@ -30,6 +30,12 @@
     --lvm-text-muted: #5e7388;
     --lvm-chip-bg: #161e28;
     --lvm-chip-text: #a9b6c4;
+    --lvm-level-info: #8aa0b8;
+    --lvm-level-warn: #fdb022;
+    --lvm-level-error: #f97066;
+    --lvm-level-debug: #5e7388;
+    --lvm-level-ok: #5cd68a;
+    --lvm-level-ai: #7cc4ff;
   }
 
   &.theme-light {
@@ -42,6 +48,12 @@
     --lvm-text-muted: #6b7280;
     --lvm-chip-bg: #ffffff;
     --lvm-chip-text: #414651;
+    --lvm-level-info: #5a6b85;
+    --lvm-level-warn: #b54708;
+    --lvm-level-error: #d92d20;
+    --lvm-level-debug: #6b7280;
+    --lvm-level-ok: #067647;
+    --lvm-level-ai: #1570ef;
   }
 
   .lvm-surface {
@@ -198,6 +210,40 @@
 
     .react-lazylog-line-number {
       color: var(--lvm-text-muted);
+    }
+  }
+
+  // Per-level colouring for parsed log lines (see LogViewerModal.utils).
+  .lvm-log-ts,
+  .lvm-log-logger {
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-log-level {
+    font-weight: 600;
+
+    &--info {
+      color: var(--lvm-level-info);
+    }
+
+    &--warn {
+      color: var(--lvm-level-warn);
+    }
+
+    &--error {
+      color: var(--lvm-level-error);
+    }
+
+    &--debug {
+      color: var(--lvm-level-debug);
+    }
+
+    &--ok {
+      color: var(--lvm-level-ok);
+    }
+
+    &--ai {
+      color: var(--lvm-level-ai);
     }
   }
 }

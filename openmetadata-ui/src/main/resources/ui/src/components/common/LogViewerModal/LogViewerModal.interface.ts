@@ -22,6 +22,7 @@ export interface LogViewerModalProps {
   follow?: boolean;
   enableSearch?: boolean;
   enableCopy?: boolean;
+  colorize?: boolean;
   onDownload?: () => void;
   footerLeft?: ReactNode;
   footerRight?: ReactNode;

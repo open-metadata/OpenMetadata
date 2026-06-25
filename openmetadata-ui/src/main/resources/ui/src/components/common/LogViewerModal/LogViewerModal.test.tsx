@@ -21,8 +21,19 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@melloware/react-logviewer', () => ({
-  LazyLog: ({ text, follow }: { text: string; follow?: boolean }) => (
-    <pre data-follow={String(follow)} data-testid="lazy-log">
+  LazyLog: ({
+    text,
+    follow,
+    formatPart,
+  }: {
+    text: string;
+    follow?: boolean;
+    formatPart?: (text: string) => ReactNode;
+  }) => (
+    <pre
+      data-colorized={String(Boolean(formatPart))}
+      data-follow={String(follow)}
+      data-testid="lazy-log">
       {text}
     </pre>
   ),
@@ -166,6 +177,22 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('lazy-log')).toHaveAttribute(
       'data-follow',
       'true'
+    );
+  });
+
+  it('colourises the logs by default and not when colorize is false', () => {
+    const { rerender } = render(<LogViewerModal {...defaultProps} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-colorized',
+      'true'
+    );
+
+    rerender(<LogViewerModal {...defaultProps} colorize={false} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-colorized',
+      'false'
     );
   });
 
