@@ -81,7 +81,7 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
             ? 'tw:bg-utility-brand-50'
             : 'tw:bg-utility-purple-50'
         )}
-        justify='center'>
+        justify="center">
         <Icon
           className={classNames(
             'tw:size-4',
