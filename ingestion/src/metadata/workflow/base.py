@@ -70,7 +70,7 @@ logger = ingestion_logger()
 # Type of service linked to the Ingestion Pipeline
 T = TypeVar("T")
 
-REPORTS_INTERVAL_SECONDS = 10
+REPORTS_INTERVAL_SECONDS = 60
 
 
 class InvalidWorkflowJSONException(Exception):  # noqa: N818
