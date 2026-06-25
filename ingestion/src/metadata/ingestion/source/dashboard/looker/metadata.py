@@ -219,6 +219,22 @@ class LookerSource(DashboardServiceSource):
 
         self._added_lineage: Optional[Dict] = {}  # noqa: UP006, UP045
 
+    @property
+    def _ui_base(self) -> str:
+        """
+        Base URL for human-facing "View in Looker" links.
+
+        ``hostPort`` configures the Looker connection and may be an API
+        endpoint rather than the browser UI host. Reusing it for ``sourceUrl``
+        then produces links that point at the API instead of the Looker UI.
+        Set the ``LOOKER_UI_BASE`` environment variable to the UI base URL to
+        build those links from it; falls back to ``hostPort`` when unset, so
+        behavior is unchanged.
+        """
+        return clean_uri(
+            os.environ.get("LOOKER_UI_BASE") or str(self.service_connection.hostPort)
+        )
+
     @classmethod
     def create(
         cls,
@@ -622,7 +638,7 @@ class LookerSource(DashboardServiceSource):
                     # In Looker, you need to create Explores and Views within a Project
                     project=model.project_name,
                     sourceUrl=SourceUrl(
-                        f"{clean_uri(self.service_connection.hostPort)}/explore/{model.model_name}/{model.name}"
+                        f"{self._ui_base}/explore/{model.model_name}/{model.name}"
                     ),
                 )
                 yield Either(right=explore_datamodel)
@@ -1248,7 +1264,7 @@ class LookerSource(DashboardServiceSource):
             # Dashboards are created from the UI directly. They are not linked to a project
             # like LookML assets, but rather just organised in folders.
             project=self.get_project_name(dashboard_details),
-            sourceUrl=SourceUrl(f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"),
+            sourceUrl=SourceUrl(f"{self._ui_base}/dashboards/{dashboard_details.id}"),
             service=self.context.get().dashboard_service,
             owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
