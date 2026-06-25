@@ -258,6 +258,8 @@ const ContextCenterArchivePage: FC = () => {
         </div>
 
         <ArchiveView
+          canDelete={permissions?.Delete}
+          canRestore={permissions?.EditAll}
           data={filteredItems}
           isLoading={isLoading}
           onDelete={handleDeleteClick}

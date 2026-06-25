@@ -134,6 +134,8 @@ interface MemoryRowProps {
   currentUserName?: string;
   isAdminUser?: boolean;
   memory: ContextMemory;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
@@ -143,6 +145,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
   memory,
+  canEdit,
+  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
@@ -300,7 +304,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
             <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
-          {canActOnMemory && onEditMemory && (
+          {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
               <TooltipTrigger>
                 <ButtonUtility
@@ -313,7 +317,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               </TooltipTrigger>
             </Tooltip>
           )}
-          {canActOnMemory && (
+          {canActOnMemory && canDelete && (
             <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
           )}
         </Box>
@@ -329,6 +333,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isLoading,
   onDeleteMemory,
   onEditMemory,
+  canEdit,
+  canDelete,
   onViewMemory,
 }) => {
   const { t } = useTranslation();
@@ -369,6 +375,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
+          canDelete={canDelete}
+          canEdit={canEdit}
           currentUserName={currentUserName}
           isAdminUser={isAdminUser}
           key={memory.id}

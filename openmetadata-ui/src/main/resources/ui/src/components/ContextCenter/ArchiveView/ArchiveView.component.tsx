@@ -48,11 +48,19 @@ const ArchiveRowSkeleton: FC = () => (
 
 interface ArchiveRowProps {
   item: ArchiveItem;
+  canRestore?: boolean;
+  canDelete?: boolean;
   onRestore: (item: ArchiveItem) => void;
   onDelete: (item: ArchiveItem) => void;
 }
 
-const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
+const ArchiveRow: FC<ArchiveRowProps> = ({
+  item,
+  canRestore,
+  canDelete,
+  onDelete,
+  onRestore,
+}) => {
   const { t } = useTranslation();
 
   const Icon = item.type === 'article' ? File06 : FolderIcon;
@@ -94,22 +102,26 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
       </div>
 
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
-        <Button
-          color="secondary"
-          data-testid="restore-btn"
-          iconLeading={RefreshCcw01}
-          size="sm"
-          onPress={() => onRestore(item)}>
-          {t('label.restore')}
-        </Button>
-        <Button
-          color="secondary-destructive"
-          data-testid="delete-btn"
-          iconLeading={Trash01}
-          size="sm"
-          onPress={() => onDelete(item)}>
-          {t('label.delete')}
-        </Button>
+        {canRestore && (
+          <Button
+            color="secondary"
+            data-testid="restore-btn"
+            iconLeading={RefreshCcw01}
+            size="sm"
+            onPress={() => onRestore(item)}>
+            {t('label.restore')}
+          </Button>
+        )}
+        {canDelete && (
+          <Button
+            color="secondary-destructive"
+            data-testid="delete-btn"
+            iconLeading={Trash01}
+            size="sm"
+            onPress={() => onDelete(item)}>
+            {t('label.delete')}
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -118,6 +130,8 @@ const ArchiveRow: FC<ArchiveRowProps> = ({ item, onDelete, onRestore }) => {
 const ArchiveView: FC<ArchiveViewProps> = ({
   data,
   isLoading,
+  canRestore,
+  canDelete,
   onDelete,
   onRestore,
 }) => {
@@ -145,6 +159,8 @@ const ArchiveView: FC<ArchiveViewProps> = ({
       data-testid="archive-view">
       {data.map((item) => (
         <ArchiveRow
+          canDelete={canDelete}
+          canRestore={canRestore}
           item={item}
           key={item.id}
           onDelete={onDelete}

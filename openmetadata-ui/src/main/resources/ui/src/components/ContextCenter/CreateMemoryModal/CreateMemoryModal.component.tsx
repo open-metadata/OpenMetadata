@@ -195,6 +195,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   onCreated,
   onUpdated,
   onDeleted,
+  isAdminUser,
+  canCreate = false,
+  canEdit = false,
   viewOnly = false,
   canDelete = false,
   currentUserName,
@@ -253,6 +256,16 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         )
       : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
   }, [memorySource]);
+
+  const { showEditButton, showSubmitButton } = useMemo(() => {
+    const canEditMemory = (isOwner || isAdminUser) && canEdit;
+    const showEditButton = isViewOnly && canEditMemory;
+
+    const showSubmitButton =
+      !isViewOnly && (memoryToEdit ? canEditMemory : canCreate);
+
+    return { showEditButton, showSubmitButton };
+  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate, memoryToEdit]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -970,7 +983,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 {/* Footer */}
                 <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
                   <div>
-                    {(isEditMode || (isViewOnly && canDelete)) && (
+                    {Boolean(memoryToEdit) && canDelete && (
                       <Button
                         color="tertiary-destructive"
                         iconLeading={Trash01}
@@ -990,7 +1003,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       onClick={handleClose}>
                       {t('label.cancel')}
                     </Button>
-                    {isViewOnly && (isOwner || canDelete) ? (
+                    {showEditButton && (
                       <Button
                         color="primary"
                         iconLeading={EditIcon}
@@ -998,7 +1011,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSwitchToEdit}>
                         {t('label.edit')}
                       </Button>
-                    ) : !isViewOnly ? (
+                    )}
+
+                    {showSubmitButton && (
                       <Button
                         color="primary"
                         isDisabled={
@@ -1009,7 +1024,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSubmit}>
                         {submitLabel}
                       </Button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </ConfigProvider>

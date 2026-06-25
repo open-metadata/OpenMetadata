@@ -34,6 +34,8 @@ import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component'
 export interface DocumentFolderViewProps {
   files?: ContextFile[];
   selectedFolderId?: string;
+  canCreate?: boolean;
+  canDelete?: boolean;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersLoaded?: (folders: Folder[]) => void;
 }
@@ -41,6 +43,8 @@ export interface DocumentFolderViewProps {
 const DocumentFolderView = ({
   files = [],
   selectedFolderId,
+  canCreate = false,
+  canDelete = false,
   onSelectFolder,
   onFoldersLoaded,
 }: DocumentFolderViewProps) => {
@@ -129,14 +133,16 @@ const DocumentFolderView = ({
               </Typography>
             </div>
           </div>
-          <ButtonUtility
-            color="secondary"
-            data-testid="add-folder-btn"
-            icon={Plus}
-            size="sm"
-            tooltip={t('label.add-entity', { entity: t('label.folder') })}
-            onClick={() => setIsCreateModalOpen(true)}
-          />
+          {canCreate && (
+            <ButtonUtility
+              color="secondary"
+              data-testid="add-folder-btn"
+              icon={Plus}
+              size="sm"
+              tooltip={t('label.add-entity', { entity: t('label.folder') })}
+              onClick={() => setIsCreateModalOpen(true)}
+            />
+          )}
         </div>
 
         <div className="tw:flex-1 tw:overflow-y-auto">
@@ -188,18 +194,20 @@ const DocumentFolderView = ({
                           </div>
                         </button>
 
-                        <ButtonUtility
-                          className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0"
-                          color="tertiary"
-                          data-testid={`delete-folder-btn-${folder.id}`}
-                          icon={Trash01}
-                          size="xs"
-                          tooltip={t('label.delete')}
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            setFolderToDelete(folder);
-                          }}
-                        />
+                        {canDelete && (
+                          <ButtonUtility
+                            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0"
+                            color="tertiary"
+                            data-testid={`delete-folder-btn-${folder.id}`}
+                            icon={Trash01}
+                            size="xs"
+                            tooltip={t('label.delete')}
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              setFolderToDelete(folder);
+                            }}
+                          />
+                        )}
                       </div>
                     </Tree.ItemContent>
 
