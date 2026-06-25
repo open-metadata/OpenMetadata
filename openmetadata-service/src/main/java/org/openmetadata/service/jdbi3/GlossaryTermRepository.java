@@ -144,13 +144,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
+    this(true);
+  }
+
+  protected GlossaryTermRepository(boolean registerEntity) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
         Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        Set.of(),
+        registerEntity);
     supportsSearch = true;
     renameAllowed = true;
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);

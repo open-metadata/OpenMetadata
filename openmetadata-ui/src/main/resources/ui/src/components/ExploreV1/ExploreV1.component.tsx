@@ -49,10 +49,7 @@ import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import {
-  exportSearchResultsCsvStream,
-  searchQuery,
-} from '../../rest/searchAPI';
+import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
@@ -63,7 +60,12 @@ import {
   truncateBrowsePath,
 } from '../../utils/ExplorePureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import {
+  CsvJobsTray,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -270,7 +272,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       return (currentPage - 1) * pageSize;
     })();
 
-    const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
+    const params: Parameters<typeof exportSearchResultsAsync>[0] = {
       q: searchQueryParam || '*',
       index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
       sort_field: sortValue,
@@ -291,13 +293,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
     setIsExporting(true);
 
     try {
-      const blob = await exportSearchResultsCsvStream(params);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Search_Results_${new Date().toISOString()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // The export runs as a background job; the Background jobs tray surfaces
+      // progress and the Download action once it completes.
+      await exportSearchResultsAsync(params);
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      showSuccessToast(t('message.search-export-job-started'));
       setShowExportScopeModal(false);
     } catch (error) {
       const message = await parseExportErrorMessage(
@@ -937,6 +937,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </CoreCard>
         </Radio.Group>
       </Modal>
+      <CsvJobsTray />
     </div>
   );
 };
