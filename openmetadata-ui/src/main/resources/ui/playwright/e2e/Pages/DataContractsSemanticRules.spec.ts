@@ -2488,7 +2488,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
