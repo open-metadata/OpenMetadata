@@ -14,6 +14,7 @@ Test Domo Dashboard using the topology
 """
 
 import json
+import re
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
@@ -465,3 +466,173 @@ class MetabaseUnitTest(TestCase):
         )
         self.assertIsNotNone(chart_with_empty_stages.dataset_query)
         self.assertIsNone(chart_with_empty_stages.dataset_query.native)
+
+    @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
+    @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
+    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
+    def test_yield_lineage_optional_clause_blocks(self, *_):
+        """
+        Lineage is correctly produced for native queries that use Metabase's
+        [[...]] optional clause syntax. The blocks must be stripped before the
+        query reaches LineageParser so that table references in FROM/JOIN
+        clauses (outside the blocks) are correctly found.
+        """
+        self.metabase.client.get_database = lambda *_: None
+
+        cases = [
+            (
+                "simple [[WHERE]] block",
+                "SELECT id, name FROM test_table [[WHERE name LIKE {{name_filter}}]]",
+            ),
+            (
+                "multiple [[AND]] blocks",
+                "SELECT * FROM test_table WHERE 1=1 [[AND col_a = {{a}}]] [[AND col_b = {{b}}]] [[AND col_c = {{c}}]]",
+            ),
+            (
+                "multiline [[...]] block",
+                "SELECT * FROM test_table\n[[ AND (\n  ({{filter}} = 'TRUE' AND col > 0) OR\n  ({{filter}} = 'FALSE' AND col <= 0)\n)]]\nLIMIT 100",
+            ),
+            (
+                "JOIN outside blocks with [[AND]] filters",
+                "SELECT d.id, c.id FROM test_table d LEFT JOIN other_table c ON d.id = c.id WHERE 1=1 [[AND d.name LIKE {{d}}]] [[AND c.name LIKE {{c}}]]",
+            ),
+            (
+                "complex query replicating customer report",
+                "SELECT * FROM test_table WHERE 1=1 [[AND {{f_a}}]] [[AND {{f_b}}]] [[AND col LIKE CONCAT('%', {{f_c}}, '%')]] [[ AND (\n  ({{f_d}} = 'TRUE' AND due_date <= NOW()) OR\n  ({{f_d}} = 'FALSE' AND due_date > NOW())\n)]] AND source != 'val'",
+            ),
+        ]
+
+        for description, query in cases:
+            chart = MetabaseChart(
+                name=description,
+                id="opt_lineage",
+                database_id=1,
+                dataset_query=DatasetQuery(type="native", native=Native(query=query)),
+                dashboard_ids=[],
+            )
+            self.metabase.charts_dict = {"opt_lineage": chart}
+            dashboard = MetabaseDashboardDetails(name="test", id="1", card_ids=["opt_lineage"])
+
+            with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
+                result = list(
+                    self.metabase.yield_dashboard_lineage_details(dashboard_details=dashboard, db_service_prefix=None)
+                )
+                lineage_results = [r.right for r in result if r.right is not None]
+                self.assertTrue(
+                    len(lineage_results) > 0,
+                    f"Expected lineage for case: {description}",
+                )
+
+        self.metabase.charts_dict = {str(chart.id): chart for chart in MOCK_CHARTS}
+
+
+_STRIP = lambda q: re.sub(r"\[\[.*?\]\]", "", q, flags=re.DOTALL)  # noqa: E731
+
+
+class TestMetabaseOptionalClauseStripping:
+    """
+    Pure unit tests for the [[...]] optional clause stripping regex.
+    These verify the preprocessing step that runs before LineageParser.
+    """
+
+    def test_no_optional_blocks_query_unchanged(self):
+        q = "SELECT id, name FROM dashboard_entity ORDER BY id DESC LIMIT 50"
+        assert _STRIP(q) == q
+
+    def test_single_where_block_fully_removed(self):
+        q = "SELECT id FROM dashboard_entity [[WHERE name LIKE 'test']]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "WHERE" not in result
+        assert "dashboard_entity" in result
+
+    def test_multiple_and_blocks_all_removed(self):
+        q = "SELECT * FROM t WHERE 1=1 [[AND a = {{x}}]] [[AND b = {{y}}]] [[AND c = {{z}}]]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "{{" not in result
+        assert "FROM t" in result
+        assert "WHERE 1=1" in result
+
+    def test_multiline_block_stripped_via_dotall(self):
+        q = "SELECT * FROM orders\n[[ AND (\n  ({{f}} = 'TRUE' AND due_date <= NOW()) OR\n  ({{f}} = 'FALSE' AND due_date > NOW())\n)]]\nLIMIT 100"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "due_date" not in result
+        assert "FROM orders" in result
+        assert "LIMIT 100" in result
+
+    def test_template_variable_inside_block_removed(self):
+        q = "SELECT * FROM orders [[WHERE status = {{status}}]]"
+        result = _STRIP(q)
+        assert "{{status}}" not in result
+        assert "WHERE" not in result
+        assert "FROM orders" in result
+
+    def test_join_table_inside_block_not_in_result(self):
+        q = "SELECT d.id FROM dashboard_entity d [[LEFT JOIN chart_entity c ON d.id = c.id WHERE c.name LIKE {{f}}]]"
+        result = _STRIP(q)
+        assert "dashboard_entity" in result
+        assert "chart_entity" not in result
+
+    def test_both_tables_inside_block_neither_visible(self):
+        q = "SELECT 1 [[FROM dashboard_entity d JOIN chart_entity c ON d.id = c.id WHERE d.name = {{f}}]]"
+        result = _STRIP(q)
+        assert "dashboard_entity" not in result
+        assert "chart_entity" not in result
+
+    def test_entire_query_in_block_gives_empty_string(self):
+        q = "[[SELECT * FROM dashboard_entity WHERE name = {{filter}}]]"
+        assert _STRIP(q) == ""
+
+    def test_whitespace_only_after_stripping(self):
+        q = "\n  [[SELECT * FROM dashboard_entity WHERE name = {{filter}}]]\n  "
+        result = _STRIP(q)
+        assert not result.strip()
+
+    def test_empty_optional_block_removed(self):
+        q = "SELECT * FROM t [[]]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "FROM t" in result
+
+    def test_complex_customer_query_all_seven_blocks_stripped(self):
+        q = """SELECT *
+FROM my_schema.my_table
+WHERE 1 = 1
+  [[AND {{filter_a}}]]
+  [[AND {{filter_b}}]]
+  [[AND {{filter_c}}]]
+  [[AND {{filter_d}}]]
+  [[AND {{filter_e}}]]
+  [[AND column_name LIKE CONCAT('%', {{filter_f}}, '%')]]
+  [[ AND (
+      ({{filter_g}} = 'TRUE'  AND due_date <= CURRENT_DATE()) OR
+      ({{filter_g}} = 'FALSE' AND due_date >  CURRENT_DATE()) OR
+      ({{filter_g}} = NULL)
+  )]]
+  AND source != 'value'"""
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "my_schema.my_table" in result
+        assert "source != 'value'" in result
+        assert "filter_a" not in result
+        assert "filter_g" not in result
+        assert "due_date" not in result
+        assert "CURRENT_DATE" not in result
+
+    def test_non_greedy_strips_each_block_independently(self):
+        q = "SELECT * FROM t WHERE 1=1 [[AND a = 1]] middle [[AND b = 2]]"
+        result = _STRIP(q)
+        assert "middle" in result
+        assert "AND a" not in result
+        assert "AND b" not in result
+
+    def test_whitespace_preserved_outside_blocks(self):
+        q = "SELECT id\nFROM t\n[[WHERE x = 1]]\nORDER BY id"
+        result = _STRIP(q)
+        assert "FROM t" in result
+        assert "ORDER BY id" in result
+        assert "WHERE" not in result
