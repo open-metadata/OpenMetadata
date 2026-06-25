@@ -359,12 +359,16 @@ test.describe('Data Contracts', () => {
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        await triggerContractValidation(page);
+        await toastPromise;
 
         await page.reload();
 
@@ -442,9 +446,7 @@ test.describe('Data Contracts', () => {
 
           await page.getByTestId('pipeline-name').fill('test-pipeline');
 
-          await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
@@ -906,7 +908,7 @@ test.describe('Data Contracts', () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
@@ -1135,9 +1137,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1310,9 +1319,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1467,7 +1483,7 @@ test.describe('Data Contracts', () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -1496,7 +1512,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
     await page.getByTestId('contract-edit-button').click();
@@ -2081,7 +2097,7 @@ test.describe('Data Contracts', () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2091,9 +2107,6 @@ test.describe('Data Contracts', () => {
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'update.yaml',
@@ -2115,16 +2128,17 @@ description:
         ).toBeVisible();
 
         // Verify merge is default selected
-        const mergeRadio = page.locator('input[type="radio"][value="merge"]');
-        await expect(mergeRadio).toBeVisible();
-        await expect(mergeRadio).toBeChecked();
+        await expect(page.getByTestId('import-mode-merge')).toBeVisible();
+        await expect(
+          page.locator('input[type="radio"][value="merge"]')
+        ).toBeChecked();
 
         // Import with merge mode
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=merge**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
@@ -2164,7 +2178,7 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2174,9 +2188,6 @@ description:
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'replace.yaml',
@@ -2197,17 +2208,14 @@ description:
         ).toBeVisible();
 
         // Select replace mode
-        const replaceRadio = page.locator(
-          'input[type="radio"][value="replace"]'
-        );
-        await expect(replaceRadio).toBeVisible();
-        await replaceRadio.click();
+        await expect(page.getByTestId('import-mode-replace')).toBeVisible();
+        await page.getByTestId('import-mode-replace').click();
 
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=replace**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');

@@ -37,12 +37,14 @@ import java.util.UUID;
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.openmetadata.schema.api.data.CreateContextFile;
+import org.openmetadata.schema.api.data.MoveContextFileRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -52,7 +54,7 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
-import org.openmetadata.service.drive.ContextFileExtractionService;
+import org.openmetadata.service.drive.ContextFileProcessingService;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -60,22 +62,26 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
-@Tag(name = "Drive Files", description = "APIs for managing files in the Context Center Drive.")
-@Path("/v1/drive/files")
+@Tag(
+    name = "Context Center Drive Files",
+    description = "APIs for managing files in the Context Center Drive.")
+@Path("/v1/contextCenter/drive/files")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "driveFiles")
+@Collection(name = "contextCenterDriveFiles")
 public class ContextFileResource extends EntityResource<ContextFile, ContextFileRepository> {
-  public static final String COLLECTION_PATH = "v1/drive/files/";
+  public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
   private final ContextFileMapper mapper = new ContextFileMapper();
-  private final ContextFileExtractionService extractionService;
+  private final ContextFileProcessingService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
 
   public ContextFileResource(Authorizer authorizer, Limits limits) {
     super(CONTEXT_FILE_ENTITY, authorizer, limits);
-    this.extractionService = new ContextFileExtractionService(repository);
+    this.extractionService = new ContextFileProcessingService(repository);
   }
 
   @Override
@@ -84,6 +90,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (config.getObjectStorage() != null) {
       maxFileSize = config.getObjectStorage().getMaxFileSize();
     }
+    extractionService.recoverInterruptedProcessing();
   }
 
   public static class ContextFileList extends ResultList<ContextFile> {}
@@ -416,6 +423,40 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/move")
+  @Operation(
+      operationId = "moveDriveFile",
+      summary = "Move a drive file to a different folder",
+      description =
+          "Move a drive file to a new parent folder. When the request body omits `folder` "
+              + "(or sets it to null), the file is moved to the drive root.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The moved drive file",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextFile.class)))
+      })
+  public Response moveFile(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("id") UUID id,
+      @Valid MoveContextFileRequest moveRequest) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    EntityReference newFolder = moveRequest == null ? null : moveRequest.getFolder();
+    ContextFile moved =
+        repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
+    return Response.ok(addHref(uriInfo, moved)).build();
   }
 
   private Asset resolveAsset(ContextFile file) {

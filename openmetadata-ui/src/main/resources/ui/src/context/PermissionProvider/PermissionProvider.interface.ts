@@ -94,6 +94,8 @@ export enum ResourceEntity {
   AUDIT_LOG = 'auditLog',
   TABLE_COLUMN = 'tableColumn',
   DATA_CONTRACT = 'dataContract',
+  TASK = 'task',
+  CONTEXT_MEMORY = 'contextMemory',
 }
 
 export interface PermissionContextType {

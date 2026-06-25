@@ -195,9 +195,20 @@ jest.mock('../../../../rest/metadataTypeAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockPropertyTypes })),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  errorMsg: jest.fn(),
-  requiredField: jest.fn(),
+jest.mock('../../../../utils/formUtils', () => ({
+  generateFormFields: jest.fn((fields) =>
+    fields.map((field: any) => {
+      const testId =
+        field.type === 'description' ? 'editor' : field.props?.['data-testid'];
+
+      return (
+        <div key={field.name}>
+          <label>{field.label}</label>
+          <input data-testid={testId} name={field.name} />
+        </div>
+      );
+    })
+  ),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({

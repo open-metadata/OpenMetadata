@@ -55,7 +55,7 @@ jest.mock(
       ))
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -174,7 +174,7 @@ describe('Knowledge center widget', () => {
       expect(knowledgePage[0]).toHaveAttribute('target', '_self');
       expect(knowledgePage[0]).toHaveAttribute(
         'href',
-        '/knowledge-center/Article_oRKYYTCu'
+        '/context-center/articles/Article_oRKYYTCu'
       );
     });
   });

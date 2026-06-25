@@ -388,6 +388,10 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  public boolean existsById(UUID id) {
+    return timeSeriesDao.existsById(id);
+  }
+
   public void deleteById(UUID id, boolean hardDelete) {
     if (!hardDelete) {
       // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
@@ -463,7 +467,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
               searchListFilter, limit, offset, entityType, searchSortFilter, q, queryString);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+        T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
         try {
           setInheritedFields(entity);
         } catch (RuntimeException e) {
@@ -524,9 +528,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
                 hitList -> {
                   for (Map<String, Object> hit : (List<Map<String, Object>>) hitList) {
                     Map<String, Object> source = extractAndFilterSource(hit);
-                    T entity =
-                        setFieldsInternal(
-                            JsonUtils.readOrConvertValue(source, entityClass), fields);
+                    T entity = setFieldsInternal(readTimeSeriesSource(source), fields);
                     if (entity != null) {
                       try {
                         setInheritedFields(entity);
@@ -684,7 +686,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     SearchResultListMapper results =
         searchRepository.listWithOffset(searchListFilter, 1, 0, entityType, searchSortFilter, q);
     for (Map<String, Object> json : results.getResults()) {
-      T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
+      T entity = setFieldsInternal(readTimeSeriesSource(json), fields);
       setInheritedFields(entity);
       clearFieldsInternal(entity, fields);
       return entity;
@@ -694,6 +696,24 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
   protected void setIncludeSearchFields(SearchListFilter searchListFilter) {
     // Nothing to do in the default implementation
+  }
+
+  /**
+   * Deserializes a search hit source into the time-series entity type. Strict by default so any
+   * genuine schema drift fails loudly. Targeted scrub of the legacy {@code deleted} field — the
+   * one known-pollution field stamped onto time-series docs by the soft-delete script before
+   * the Phase 1 fix — keeps that specific case from breaking reads, without the blanket
+   * unknown-field tolerance that {@link JsonUtils#readOrConvertValueLenient} would impose.
+   * Once a recreate-style reindex has cleaned the index, the scrub is a no-op.
+   */
+  @SuppressWarnings("unchecked")
+  private T readTimeSeriesSource(Object source) {
+    if (source instanceof Map<?, ?> mapSource && mapSource.containsKey(Entity.FIELD_DELETED)) {
+      Map<String, Object> scrubbed = new HashMap<>((Map<String, Object>) mapSource);
+      scrubbed.remove(Entity.FIELD_DELETED);
+      return JsonUtils.readOrConvertValue(scrubbed, entityClass);
+    }
+    return JsonUtils.readOrConvertValue(source, entityClass);
   }
 
   protected void setExcludeSearchFields(SearchListFilter searchListFilter) {

@@ -45,12 +45,18 @@ export interface InputBaseProps extends TextFieldProps {
   wrapperClassName?: string;
   /** Class name for the tooltip. */
   tooltipClassName?: string;
+  /** Class name for the hint text. */
+  hintClassName?: string;
   /** Keyboard shortcut to display. */
   shortcut?: string | boolean;
   ref?: Ref<HTMLInputElement>;
   groupRef?: Ref<HTMLDivElement>;
   /** Icon component to display on the left side of the input. */
   icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  /** Optional slot rendered inside the input group, after the input and before trailing icons. */
+  trailingSlot?: ReactNode;
+  /** Passes `data-testid` directly to the inner `<input>` element (not the wrapper). */
+  inputDataTestId?: string;
 }
 
 const TextFieldContext = createContext<TextFieldProps>({});
@@ -60,8 +66,10 @@ export const InputBase = ({
   tooltip,
   shortcut,
   groupRef,
+  trailingSlot,
+  inputDataTestId,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   isInvalid,
   isDisabled,
   icon: Icon,
@@ -152,7 +160,7 @@ export const InputBase = ({
         {...(inputProps as AriaInputProps)}
         className={cx(
           cx(
-            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary',
+            'tw:m-0 tw:w-full tw:bg-transparent tw:text-primary tw:ring-0 tw:outline-hidden tw:placeholder:text-sm tw:placeholder:text-tertiary tw:autofill:rounded-lg tw:autofill:text-primary',
             fontSizeClass[fontSize]
           ),
           isDisabled && 'tw:cursor-not-allowed tw:text-disabled',
@@ -160,9 +168,13 @@ export const InputBase = ({
           context?.inputClassName,
           inputClassName
         )}
+        data-testid={inputDataTestId}
         placeholder={placeholder}
         ref={ref}
       />
+
+      {/* Custom trailing slot (e.g. password reveal button) */}
+      {trailingSlot}
 
       {/* Tooltip and help icon */}
       {tooltip && !isInvalid && (
@@ -261,12 +273,14 @@ interface InputProps extends InputBaseProps, BaseProps {
 
 export const Input = ({
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   placeholder,
   icon: Icon,
   label,
   hint,
   shortcut,
+  trailingSlot,
+  inputDataTestId,
   hideRequiredIndicator,
   className,
   ref,
@@ -276,6 +290,7 @@ export const Input = ({
   inputClassName,
   wrapperClassName,
   tooltipClassName,
+  hintClassName,
   ...props
 }: InputProps) => {
   return (
@@ -303,6 +318,8 @@ export const Input = ({
               placeholder,
               icon: Icon,
               shortcut,
+              trailingSlot,
+              inputDataTestId,
               iconClassName,
               inputClassName,
               wrapperClassName,
@@ -311,7 +328,11 @@ export const Input = ({
             }}
           />
 
-          {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
+          {hint && (
+            <HintText className={hintClassName} isInvalid={isInvalid}>
+              {hint}
+            </HintText>
+          )}
         </>
       )}
     </TextField>

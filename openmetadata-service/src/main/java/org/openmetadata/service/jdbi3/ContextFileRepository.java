@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,14 +11,18 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
@@ -59,11 +65,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          findTo(
+                  file.getId(),
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -121,6 +139,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. The pills track the file's lifecycle: soft-deleted with it,
+  // hard-deleted with it, restored with it. Mirrors KnowledgePageRepository.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, true);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID fileId, String updatedBy) {
+    contextMemoryRepository().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  }
+
   @Override
   public void restorePatchAttributes(ContextFile original, ContextFile updated) {
     updated.withFolder(original.getFolder());
@@ -136,6 +181,52 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }
 
+  public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
+    ContextFile original =
+        Entity.getEntity(CONTEXT_FILE_ENTITY, id, "folder,owners,tags", Include.NON_DELETED);
+    ContextFile updated = JsonUtils.deepCopy(original, ContextFile.class);
+
+    EntityReference resolvedFolder = null;
+    if (newFolderRef != null && newFolderRef.getId() != null) {
+      Folder folder =
+          Entity.getEntity(FOLDER_ENTITY, newFolderRef.getId(), "", Include.NON_DELETED);
+      resolvedFolder = folder.getEntityReference();
+    }
+    updated.setFolder(resolvedFolder);
+    setFullyQualifiedName(updated);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);
+    updater.update();
+    emitMoveChangeEvent(original, updated);
+    return updated;
+  }
+
+  private void emitMoveChangeEvent(ContextFile original, ContextFile updated) {
+    if (updated.getChangeDescription() == null
+        || isNullOrEmptyChangeDescription(updated.getChangeDescription())) {
+      return;
+    }
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withPreviousVersion(original.getVersion())
+              .withCurrentVersion(updated.getVersion())
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updated);
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.error("Failed to insert change event for context file move", e);
+    }
+  }
+
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
@@ -146,8 +237,36 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      updateFolder();
+    }
+
+    private void updateFolder() {
+      EntityReference oldFolder = original.getFolder();
+      EntityReference newFolder = updated.getFolder();
+      if (!recordChange("folder", oldFolder, newFolder, true, entityReferenceMatch)) {
+        return;
+      }
+      if (oldFolder != null) {
+        deleteRelationship(
+            oldFolder.getId(),
+            FOLDER_ENTITY,
+            updated.getId(),
+            CONTEXT_FILE_ENTITY,
+            Relationship.CONTAINS);
+      }
+      if (newFolder != null) {
+        addRelationship(
+            newFolder.getId(),
+            updated.getId(),
+            FOLDER_ENTITY,
+            CONTEXT_FILE_ENTITY,
+            Relationship.CONTAINS);
+      }
     }
   }
 

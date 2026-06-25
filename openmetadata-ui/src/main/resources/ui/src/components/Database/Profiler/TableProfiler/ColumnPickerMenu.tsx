@@ -15,7 +15,7 @@ import { ChevronDown } from '@untitledui/icons';
 import { find } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { Column } from '../../../../generated/entity/data/container';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 
 interface ColumnPickerMenuProps {
   activeColumnFqn: string;

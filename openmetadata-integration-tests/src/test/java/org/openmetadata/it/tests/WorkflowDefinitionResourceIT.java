@@ -4,6 +4,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -5992,6 +5993,215 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  @Order(43)
+  void test_PortChangesOnDataProductTriggerWorkflow(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_PortChangesOnDataProductTriggerWorkflow");
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    Domain domain;
+    try {
+      domain = client.domains().getByName("port_test_domain");
+    } catch (Exception e) {
+      domain =
+          client
+              .domains()
+              .create(
+                  new CreateDomain()
+                      .withName("port_test_domain")
+                      .withDescription("Domain for port trigger tests")
+                      .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    }
+
+    CreateUser createReviewer =
+        new CreateUser()
+            .withName("port_rvwr_" + suffix)
+            .withEmail("port_rvwr_" + suffix + "@example.com")
+            .withDisplayName("Port Test Reviewer")
+            .withPassword("password123");
+    User reviewer = client.users().create(createReviewer);
+    EntityReference reviewerRef = reviewer.getEntityReference();
+    OpenMetadataClient reviewerClient =
+        SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
+
+    String portWorkflowName = "PortTriggerWf_" + suffix;
+
+    CreateDatabaseService createDbService =
+        new CreateDatabaseService()
+            .withName("port_dbs_" + suffix)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+            .withConnection(
+                new org.openmetadata.schema.api.services.DatabaseConnection()
+                    .withConfig(new MysqlConnection()))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService dbService = client.databaseServices().create(createDbService);
+
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName("port_db")
+            .withService(dbService.getFullyQualifiedName())
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDatabase);
+
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName("port_sc")
+            .withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName("port_in_table")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Table inputTable = client.tables().create(createTable);
+
+    CreateTable createTable2 =
+        new CreateTable()
+            .withName("port_out_table")
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("value").withDataType(ColumnDataType.STRING)))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    Table outputTable = client.tables().create(createTable2);
+    LOG.debug("Created tables: {}, {}", inputTable.getName(), outputTable.getName());
+
+    org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
+        new org.openmetadata.schema.api.domains.CreateDataProduct()
+            .withName("port_dp_" + suffix)
+            .withDescription("Data product for port trigger test")
+            .withDomains(List.of(domain.getFullyQualifiedName()))
+            .withReviewers(List.of(reviewerRef));
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client.dataProducts().create(createDataProduct);
+    LOG.debug("Created data product: {}", dataProduct.getName());
+
+    org.openmetadata.schema.type.api.BulkAssets assetsBulk =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(inputTable.getEntityReference(), outputTable.getEntityReference()));
+    client.dataProducts().bulkAddAssets(dataProduct.getFullyQualifiedName(), assetsBulk);
+
+    simulateWork(5000);
+
+    // Create workflow AFTER entity setup so it only catches port-change events
+    String portWorkflowJson =
+        String.format(
+            """
+                {
+                  "name": "%s",
+                  "displayName": "Port Trigger Workflow",
+                  "description": "Verifies inputPorts and outputPorts changes trigger workflow",
+                  "trigger": {
+                    "type": "eventBasedEntity",
+                    "config": {
+                      "entityTypes": ["dataProduct"],
+                      "events": ["Updated"],
+                      "include": ["inputPorts", "outputPorts"],
+                      "filter": {}
+                    },
+                    "output": ["relatedEntity", "updatedBy"]
+                  },
+                  "nodes": [
+                    {"type": "startEvent", "subType": "startEvent", "name": "Start", "displayName": "Start"},
+                    {"type": "endEvent",   "subType": "endEvent",   "name": "End",   "displayName": "End"},
+                    {
+                      "type": "userTask",
+                      "subType": "userApprovalTask",
+                      "name": "UserApproval",
+                      "displayName": "User Approval",
+                      "config": {
+                        "assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                        "approvalThreshold": 1,
+                        "rejectionThreshold": 1
+                      },
+                      "input": ["relatedEntity"],
+                      "inputNamespaceMap": {"relatedEntity": "global"},
+                      "output": ["updatedBy"],
+                      "branches": ["true", "false"]
+                    }
+                  ],
+                  "edges": [
+                    {"from": "Start", "to": "UserApproval"},
+                    {"from": "UserApproval", "to": "End", "condition": "true"},
+                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                  ],
+                  "config": {"storeStageStatus": true}
+                }
+                """,
+            portWorkflowName);
+
+    CreateWorkflowDefinition portWorkflow =
+        org.openmetadata.schema.utils.JsonUtils.readValue(
+            portWorkflowJson, CreateWorkflowDefinition.class);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST, BASE_PATH, portWorkflow, RequestOptions.builder().build());
+    LOG.debug("Created port trigger workflow: {}", portWorkflowName);
+    waitForWorkflowDeployment(client, portWorkflowName);
+
+    org.openmetadata.schema.api.tasks.ResolveTask resolveApproved =
+        new org.openmetadata.schema.api.tasks.ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved);
+
+    // inputPorts add — ChangeEvent fieldsAdded[inputPorts] must trigger the workflow
+    org.openmetadata.schema.type.api.BulkAssets inputPortAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(inputTable.getEntityReference()));
+    client.dataProducts().bulkAddInputPorts(dataProduct.getFullyQualifiedName(), inputPortAssets);
+    LOG.debug("Added inputTable as inputPort");
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                !listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName())
+                    .getData()
+                    .isEmpty());
+    Task inputPortTask =
+        listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName()).getData().get(0);
+    reviewerClient.tasks().resolve(inputPortTask.getId().toString(), resolveApproved);
+    LOG.info("inputPorts add triggered and resolved approval task");
+
+    // outputPorts add — outputTable is a data product asset, satisfying the prerequisite
+    // Using a different table so it doesn't conflict with inputTable already in inputPorts
+    org.openmetadata.schema.type.api.BulkAssets outputPortAssets =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(outputTable.getEntityReference()));
+    client.dataProducts().bulkAddOutputPorts(dataProduct.getFullyQualifiedName(), outputPortAssets);
+    LOG.debug("Added outputTable as outputPort");
+    await()
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                !listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName())
+                    .getData()
+                    .isEmpty());
+    Task outputPortTask =
+        listOpenApprovalTasks(reviewerClient, dataProduct.getFullyQualifiedName()).getData().get(0);
+    reviewerClient.tasks().resolve(outputPortTask.getId().toString(), resolveApproved);
+    LOG.info("outputPorts add triggered and resolved approval task");
+
+    try {
+      WorkflowDefinition wd = client.workflowDefinitions().getByName(portWorkflowName, null);
+      client.workflowDefinitions().delete(wd.getId());
+      LOG.debug("Deleted port trigger workflow");
+    } catch (Exception e) {
+      LOG.warn("Error deleting port trigger workflow: {}", e.getMessage());
+    }
+
+    LOG.info("test_PortChangesOnDataProductTriggerWorkflow completed successfully");
+  }
+
+  @Test
   @Order(38)
   void test_CreateWorkflowWithoutEntityTypes() {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -9185,6 +9395,8 @@ public class WorkflowDefinitionResourceIT {
             });
     LOG.info("✓ Approval task created for tag change");
 
+    UUID tagChangeTaskId = listOpenApprovalTasks(client, tableFqn).getData().getFirst().getId();
+
     // Test 2: Update table with domain - should also trigger workflow
     String domainPatchJson =
         String.format(
@@ -9198,7 +9410,9 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.info("✓ Table updated with domain: {}", domain.getFullyQualifiedName());
 
-    // Wait for workflow to process and check if approval task was created for domain change
+    // Wait for workflow to process. The domain change also triggers the workflow (OR logic across
+    // include fields), creating a NEW approval task that supersedes the tag-change task — one live
+    // approval per (entity, workflow). So exactly one task stays open, and it is a different task.
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
@@ -9206,12 +9420,15 @@ public class WorkflowDefinitionResourceIT {
         .untilAsserted(
             () -> {
               ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              assertTrue(
-                  tasks.getData().size() >= 2,
-                  "Approval task should be created for domain field change");
+              assertEquals(
+                  1, tasks.getData().size(), "Exactly one approval task should remain open");
+              assertNotEquals(
+                  tagChangeTaskId,
+                  tasks.getData().getFirst().getId(),
+                  "Domain change should create a new approval task that supersedes the tag-change task");
             });
     LOG.info(
-        "✓ Approval task created for domain change - OR logic verified for multiple include fields");
+        "✓ Domain change created a new approval task that superseded the prior one - OR logic verified");
 
     // Cleanup workflow
     try {
@@ -10070,5 +10287,347 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("✓ Deleted test users");
 
     LOG.info("test_SelfApprovalPrevention completed successfully");
+  }
+
+  /**
+   * Bug 2: a no-op change event must not invalidate a pending approval.
+   *
+   * <p>CE1 (admin) changes a gated field (tag) → approval task T1 is created and parked. CE2 is a
+   * genuinely separate session: a DIFFERENT user (the schema owner) edits a non-gated trigger field
+   * (description). It passes the entity-level trigger filter but fails checkChangeDescription, so it
+   * creates no task. Using a different user is essential — OpenMetadata consolidates consecutive
+   * same-user edits within the session window into a single change-set, which would fold the
+   * pending gated tag into CE2 and make it (correctly) re-trigger approval. With a separate session,
+   * CE2 is a true no-op: T1 must survive AND stay resolvable. Resolving it is the discriminator —
+   * before the fix, the trigger-time terminate killed CE1's Flowable process, leaving T1 orphaned.
+   */
+  @Test
+  void test_NoOpEventDoesNotInvalidatePendingApproval(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NoOpEventDoesNotInvalidatePendingApproval");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    SupersedeFixtures fx = createTagApprovalFixtures(client, ns, suffix, "noop");
+    try {
+      String schemaFqn = fx.schema.getFullyQualifiedName();
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Task originalTask = awaitSingleOpenApprovalTask(client, schemaFqn);
+      LOG.debug("CE1 created approval task {}", originalTask.getId());
+
+      // CE2: a different user (the owner) edits the description — a trigger field, so it passes the
+      // entity filter, but it is not gated, so the workflow creates no task. The different user
+      // keeps it out of admin's session consolidation, so CE2 carries only the description change.
+      patchDescription(ownerClient, fx.schema.getId(), "no-op edit by owner " + suffix);
+
+      await("no-op event must leave the original approval task untouched")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                ListResponse<Task> open = listOpenApprovalTasks(client, schemaFqn);
+                assertEquals(
+                    1, open.getData().size(), "Exactly one approval task should remain open");
+                assertEquals(
+                    originalTask.getId(),
+                    open.getData().getFirst().getId(),
+                    "The original pending approval task must be the one still open");
+              });
+
+      ownerClient
+          .tasks()
+          .resolve(
+              originalTask.getId().toString(),
+              new org.openmetadata.schema.api.tasks.ResolveTask()
+                  .withResolutionType(TaskResolutionType.Approved));
+
+      await("surviving task must resolve and drive the workflow to Approved")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Approved));
+
+      LOG.info("test_NoOpEventDoesNotInvalidatePendingApproval completed successfully");
+    } finally {
+      cleanupSupersedeFixtures(client, fx);
+    }
+  }
+
+  /**
+   * Bug 1: a new approval run supersedes the stale pending task.
+   *
+   * <p>CE1 creates and parks an approval task. CE3 makes another gated change, producing a new
+   * approval run. When the new run materializes its task, the prior task must be Cancelled (no
+   * orphaned OM task) and exactly one new open task must remain. The new task must be resolvable,
+   * proving its Flowable process is live.
+   */
+  @Test
+  void test_NewApprovalRunSupersedesStalePendingTask(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_NewApprovalRunSupersedesStalePendingTask");
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    String suffix = String.valueOf(System.currentTimeMillis());
+
+    SupersedeFixtures fx = createTagApprovalFixtures(client, ns, suffix, "supersede");
+    try {
+      String schemaFqn = fx.schema.getFullyQualifiedName();
+
+      patchAddTag(client, fx.schema.getId(), "PII.Sensitive");
+      Task firstTask = awaitSingleOpenApprovalTask(client, schemaFqn);
+      LOG.debug("CE1 created approval task {}", firstTask.getId());
+
+      patchAddTag(client, fx.schema.getId(), "PII.None");
+
+      await("new approval run must supersede the prior task")
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                ListResponse<Task> open = listOpenApprovalTasks(client, schemaFqn);
+                assertEquals(1, open.getData().size(), "Exactly one approval task should be open");
+                assertNotEquals(
+                    firstTask.getId(),
+                    open.getData().getFirst().getId(),
+                    "A new approval task should have replaced the prior one");
+                assertTrue(
+                    hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Cancelled),
+                    "The superseded approval task must be Cancelled, not orphaned");
+              });
+
+      Task supersedingTask = listOpenApprovalTasks(client, schemaFqn).getData().getFirst();
+      OpenMetadataClient ownerClient =
+          SdkClients.createClient(fx.owner.getName(), fx.owner.getEmail(), new String[] {});
+      ownerClient
+          .tasks()
+          .resolve(
+              supersedingTask.getId().toString(),
+              new org.openmetadata.schema.api.tasks.ResolveTask()
+                  .withResolutionType(TaskResolutionType.Approved));
+
+      await("superseding task must resolve and drive the workflow to Approved")
+          .atMost(Duration.ofSeconds(45))
+          .pollInterval(Duration.ofSeconds(2))
+          .until(() -> hasApprovalTaskWithStatus(client, schemaFqn, TaskEntityStatus.Approved));
+
+      LOG.info("test_NewApprovalRunSupersedesStalePendingTask completed successfully");
+    } finally {
+      cleanupSupersedeFixtures(client, fx);
+    }
+  }
+
+  private static class SupersedeFixtures {
+    final User owner;
+    final DatabaseService dbService;
+    final Database database;
+    final DatabaseSchema schema;
+    final WorkflowDefinition workflow;
+
+    SupersedeFixtures(
+        User owner,
+        DatabaseService dbService,
+        Database database,
+        DatabaseSchema schema,
+        WorkflowDefinition workflow) {
+      this.owner = owner;
+      this.dbService = dbService;
+      this.database = database;
+      this.schema = schema;
+      this.workflow = workflow;
+    }
+  }
+
+  private SupersedeFixtures createTagApprovalFixtures(
+      OpenMetadataClient client, TestNamespace ns, String suffix, String label) throws Exception {
+    User owner =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(label + "_owner_" + suffix)
+                    .withEmail(label + "_owner_" + suffix + "@example.com")
+                    .withDisplayName("Supersede Owner"));
+
+    DatabaseService dbService =
+        client
+            .databaseServices()
+            .create(
+                new CreateDatabaseService()
+                    .withName(ns.prefix(label + "-db-service"))
+                    .withServiceType(DatabaseServiceType.Mysql)
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withHostPort("localhost:3306")
+                                    .withUsername("test")
+                                    .withAuthType(new basicAuth().withPassword("test")))));
+
+    Database database =
+        client
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix(label + "-database"))
+                    .withService(dbService.getFullyQualifiedName()));
+
+    DatabaseSchema schema =
+        client
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix(label + "-schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+
+    String workflowName = "SupersedeApprovalWorkflow_" + label + "_" + suffix;
+    CreateWorkflowDefinition workflowRequest =
+        MAPPER.readValue(tagApprovalWorkflowJson(workflowName), CreateWorkflowDefinition.class);
+    WorkflowDefinition workflow = client.workflowDefinitions().create(workflowRequest);
+    trackWorkflow(workflowName, workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflowName);
+
+    return new SupersedeFixtures(owner, dbService, database, schema, workflow);
+  }
+
+  private String tagApprovalWorkflowJson(String workflowName) {
+    return """
+        {
+          "name": "%s",
+          "displayName": "Supersede Approval Workflow",
+          "description": "Creates an approval task only when gated tags change",
+          "type": "eventBasedEntity",
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": { "events": ["Updated"], "entityTypes": ["databaseSchema"] },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            { "name": "start", "type": "startEvent", "subType": "startEvent" },
+            {
+              "name": "checkChangeDesc",
+              "type": "automatedTask",
+              "subType": "checkChangeDescriptionTask",
+              "displayName": "Check Gated Tags Changed",
+              "config": { "condition": "OR", "rules": { "tags": ["PII.Sensitive", "PII.None"] } },
+              "input": ["relatedEntity"],
+              "inputNamespaceMap": { "relatedEntity": "global" },
+              "branches": ["true", "false"]
+            },
+            {
+              "name": "userApproval",
+              "type": "userTask",
+              "subType": "userApprovalTask",
+              "displayName": "Approve Changes",
+              "input": ["relatedEntity"],
+              "output": ["updatedBy"],
+              "branches": ["true", "false"],
+              "config": {
+                "assignees": { "addReviewers": true, "addOwners": true, "candidates": [] },
+                "approvalThreshold": 1,
+                "rejectionThreshold": 1
+              },
+              "inputNamespaceMap": { "relatedEntity": "global" }
+            },
+            {
+              "name": "setApproved",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Approved",
+              "config": { "fieldName": "status", "fieldValue": "Approved" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setRejected",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Rejected",
+              "config": { "fieldName": "status", "fieldValue": "Rejected" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "userApproval" }
+            },
+            {
+              "name": "setDraft",
+              "type": "automatedTask",
+              "subType": "setEntityAttributeTask",
+              "displayName": "Set Status to Draft",
+              "config": { "fieldName": "status", "fieldValue": "Draft" },
+              "input": ["relatedEntity", "updatedBy"],
+              "inputNamespaceMap": { "relatedEntity": "global", "updatedBy": "global" }
+            },
+            { "name": "end", "type": "endEvent", "subType": "endEvent" }
+          ],
+          "edges": [
+            { "from": "start", "to": "checkChangeDesc" },
+            { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
+            { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "true" },
+            { "from": "userApproval", "to": "setRejected", "condition": "false" },
+            { "from": "setApproved", "to": "end" },
+            { "from": "setRejected", "to": "end" },
+            { "from": "setDraft", "to": "end" }
+          ]
+        }
+        """
+        .formatted(workflowName);
+  }
+
+  private void patchAddTag(OpenMetadataClient client, UUID schemaId, String tagFqn)
+      throws Exception {
+    String patch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[{\"tagFQN\":\"%s\","
+                + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]",
+            tagFqn);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private void patchDescription(OpenMetadataClient client, UUID schemaId, String description)
+      throws Exception {
+    String patch =
+        String.format("[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"%s\"}]", description);
+    client.databaseSchemas().patch(schemaId, MAPPER.readTree(patch));
+  }
+
+  private Task awaitSingleOpenApprovalTask(OpenMetadataClient client, String schemaFqn) {
+    await("approval task to be created for " + schemaFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(() -> !listOpenApprovalTasks(client, schemaFqn).getData().isEmpty());
+    try {
+      return listOpenApprovalTasks(client, schemaFqn).getData().getFirst();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private boolean hasApprovalTaskWithStatus(
+      OpenMetadataClient client, String schemaFqn, TaskEntityStatus status) {
+    boolean found;
+    try {
+      Map<String, String> filters = new HashMap<>();
+      filters.put("status", status.value());
+      filters.put("category", TaskCategory.Approval.value());
+      filters.put("aboutEntity", schemaFqn);
+      found = !client.tasks().listWithFilters(filters).getData().isEmpty();
+    } catch (Exception e) {
+      found = false;
+    }
+    return found;
+  }
+
+  private void cleanupSupersedeFixtures(OpenMetadataClient client, SupersedeFixtures fx) {
+    try {
+      client.workflowDefinitions().delete(fx.workflow.getId().toString());
+      client.databaseSchemas().delete(fx.schema.getId().toString());
+      client.databases().delete(fx.database.getId().toString());
+      client.databaseServices().delete(fx.dbService.getId().toString());
+      client.users().delete(fx.owner.getId().toString());
+    } catch (Exception e) {
+      LOG.warn("Cleanup error: {}", e.getMessage());
+    }
   }
 }

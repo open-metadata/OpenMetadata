@@ -1,0 +1,358 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/context/contextMemory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ContextMemory",
+  "$comment": "@om-entity-type",
+  "description": "Reusable context memory for Context Center and AI-assisted retrieval.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.context.ContextMemory",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "definitions": {
+    "memoryType": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryType",
+      "description": "High-level type of reusable memory.",
+      "type": "string",
+      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"],
+      "javaEnums": [
+        { "name": "PREFERENCE" },
+        { "name": "USE_CASE" },
+        { "name": "NOTE" },
+        { "name": "RUNBOOK" },
+        { "name": "FAQ" }
+      ],
+      "default": "Note"
+    },
+    "memoryScope": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryScope",
+      "description": "Scope where the memory should be applied.",
+      "type": "string",
+      "enum": ["UserGlobal", "EntityScoped"],
+      "javaEnums": [
+        { "name": "USER_GLOBAL" },
+        { "name": "ENTITY_SCOPED" }
+      ],
+      "default": "EntityScoped"
+    },
+    "memoryStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryStatus",
+      "description": "Lifecycle state of the memory. Any status may be set at creation (e.g. importing an already-archived memory); the Draft -> Active -> Archived transition rules are only enforced on subsequent updates.",
+      "type": "string",
+      "enum": ["Draft", "Active", "Archived"],
+      "javaEnums": [
+        { "name": "DRAFT" },
+        { "name": "ACTIVE" },
+        { "name": "ARCHIVED" }
+      ],
+      "default": "Active"
+    },
+    "sourceType": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
+      "description": "How the memory was created.",
+      "type": "string",
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction"],
+      "javaEnums": [
+        { "name": "MANUAL" },
+        { "name": "CHAT_PROMOTION" },
+        { "name": "REMEMBER_REQUEST" },
+        { "name": "FILE_EXTRACTION" },
+        { "name": "PAGE_EXTRACTION" }
+      ],
+      "default": "Manual"
+    },
+    "shareVisibility": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryVisibility",
+      "description": "Visibility level for the memory.",
+      "type": "string",
+      "enum": ["Private", "Entity", "Shared"],
+      "javaEnums": [
+        { "name": "PRIVATE" },
+        { "name": "ENTITY" },
+        { "name": "SHARED" }
+      ],
+      "default": "Private"
+    },
+    "shareRole": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryShareRole",
+      "description": "Role granted to a shared principal.",
+      "type": "string",
+      "enum": ["Viewer", "Editor"],
+      "javaEnums": [
+        { "name": "VIEWER" },
+        { "name": "EDITOR" }
+      ],
+      "default": "Viewer"
+    },
+    "sharedPrincipal": {
+      "javaType": "org.openmetadata.schema.entity.context.MemorySharedPrincipal",
+      "description": "A principal granted access to the memory.",
+      "type": "object",
+      "properties": {
+        "principal": {
+          "description": "Principal receiving access. Supported principal types are user, team, and domain.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "role": {
+          "description": "Role granted to the principal.",
+          "$ref": "#/definitions/shareRole"
+        }
+      },
+      "additionalProperties": false
+    },
+    "shareConfig": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryShareConfig",
+      "description": "Visibility and sharing configuration for the memory.",
+      "type": "object",
+      "properties": {
+        "visibility": {
+          "$ref": "#/definitions/shareVisibility"
+        },
+        "sharedWith": {
+          "description": "Explicit principals the memory is shared with.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sharedPrincipal"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "machineRepresentationStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MachineRepresentationStatus",
+      "description": "Availability state of the machine-oriented representation.",
+      "type": "string",
+      "enum": ["Pending", "Ready", "Stale", "Failed"],
+      "javaEnums": [
+        { "name": "PENDING" },
+        { "name": "READY" },
+        { "name": "STALE" },
+        { "name": "FAILED" }
+      ],
+      "default": "Pending"
+    },
+    "machineRepresentation": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryRepresentation",
+      "description": "Optional machine-oriented representation used for prompt packing.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "Representation format identifier.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version of the representation format.",
+          "type": "string"
+        },
+        "content": {
+          "description": "Compressed or transformed memory content.",
+          "type": "string"
+        },
+        "generatedFromHash": {
+          "description": "Hash of the canonical source content used to generate this representation.",
+          "type": "string"
+        },
+        "generatedAt": {
+          "description": "Timestamp when the representation was generated.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "#/definitions/machineRepresentationStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "memoryProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryProcessingStatus",
+      "description": "Lifecycle status of the asynchronous Memory Agent derivation for a memory.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
+    },
+    "memoryStats": {
+      "type": "object",
+      "description": "Telemetry + hash-gate for the Memory Agent derivation of this memory.",
+      "javaType": "org.openmetadata.schema.entity.context.MemoryStats",
+      "properties": {
+        "status": {
+          "description": "Status of the most recent Memory Agent derivation run on this memory.",
+          "$ref": "#/definitions/memoryProcessingStatus"
+        },
+        "error": {
+          "description": "Error message from the most recent failed Memory Agent derivation run, if any.",
+          "type": "string"
+        },
+        "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
+        "derivedTermCount": { "type": "integer", "default": 0 },
+        "derivedMetricCount": { "type": "integer", "default": 0 },
+        "reusedCount": { "type": "integer", "default": 0 },
+        "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Stable system name for the memory.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the memory.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name of the memory.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional markdown description for the memory.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "title": {
+      "description": "Short title shown in Context Center.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "Optional summary of the memory.",
+      "type": "string"
+    },
+    "question": {
+      "description": "Canonical question or instruction represented by this memory.",
+      "type": "string"
+    },
+    "answer": {
+      "description": "Canonical answer or retained guidance represented by this memory.",
+      "type": "string"
+    },
+    "memoryType": {
+      "$ref": "#/definitions/memoryType"
+    },
+    "memoryScope": {
+      "$ref": "#/definitions/memoryScope"
+    },
+    "status": {
+      "$ref": "#/definitions/memoryStatus"
+    },
+    "shareConfig": {
+      "$ref": "#/definitions/shareConfig"
+    },
+    "primaryEntity": {
+      "description": "Primary entity this memory should attach to for reuse.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "relatedEntities": {
+      "description": "Additional related entities this memory applies to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceType": {
+      "$ref": "#/definitions/sourceType"
+    },
+    "sourceConversation": {
+      "description": "Conversation identifier that produced this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceHumanMessage": {
+      "description": "Human message identifier used to produce this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceAssistantMessage": {
+      "description": "Assistant message identifier used to produce this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceFile": {
+      "description": "Deprecated: use sourceEntity. The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceEntity": {
+      "description": "The Context Center entity (file or page) this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "rootMemory": {
+      "description": "Root memory in an append-style memory thread.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "parentMemory": {
+      "description": "Immediate parent memory in an append-style thread.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "machineRepresentation": {
+      "$ref": "#/definitions/machineRepresentation"
+    },
+    "memoryStats": {
+      "$ref": "#/definitions/memoryStats"
+    },
+    "derivedEntities": {
+      "description": "Derived: glossary terms and metrics created by the Memory Agent from this memory (DERIVED_FROM edges, agent-owned).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reusedEntities": {
+      "description": "Derived: glossary terms and metrics reused (not created) by the Memory Agent from this memory (RELATED_TO edges).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "usageCount": {
+      "description": "How many times this memory has been used in AI-assisted retrieval.",
+      "type": "integer",
+      "default": 0
+    },
+    "lastUsedAt": {
+      "description": "Last time the memory was used by AI-assisted retrieval.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "owners": {
+      "description": "Owners of this memory.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with this memory.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Domains this memory belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

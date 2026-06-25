@@ -22,8 +22,9 @@ To be extended by any other workflow:
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Type, cast  # noqa: UP035
+from typing import List, Optional, Tuple, Type, cast  # noqa: UP035
 
+from metadata.__version__ import get_client_version
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
@@ -39,8 +40,10 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.ingestion.ometa.utils import sanitize_user_agent
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
+    get_pipeline_type_from_source_config,
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
@@ -86,6 +89,50 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             workflow_config=config.workflowConfig,
             service_type=self.service_type,
         )
+
+    def _build_user_agent(self) -> Optional[str]:  # noqa: UP045
+        """
+        HTTP User-Agent identifying the connector, workflow type and service to the
+        OpenMetadata server, e.g. ``snowflake_metadata (service: prod-snowflake; v1.10.0.0)``.
+        Every part is best-effort: anything that cannot be resolved is left out, and on
+        any unexpected error we return ``None`` so the client keeps its default agent.
+        """
+        try:
+            connector = self.config.source.type
+            if not connector:
+                return None
+            workflow_type = self._resolve_workflow_type()
+            agent = f"{connector}_{workflow_type}" if workflow_type else connector
+            context = self._user_agent_context()
+        except Exception as exc:
+            logger.debug(f"Could not build the connector User-Agent header: {exc}")
+            return None
+        return f"{agent} ({context})" if context else agent
+
+    def _resolve_workflow_type(self) -> Optional[str]:  # noqa: UP045
+        """
+        Clean workflow type token (metadata/lineage/usage/...), falling back to the raw
+        source-config discriminator (e.g. ``AutoClassification``) when the pipeline type
+        is not mapped, and to ``None`` if even that is unavailable.
+        """
+        source_config = self.config.source.sourceConfig
+        try:
+            return get_pipeline_type_from_source_config(source_config).value
+        except Exception as exc:
+            logger.debug(f"Using the raw source-config type for the User-Agent: {exc}")
+            return getattr(getattr(source_config.config, "type", None), "value", None)
+
+    def _user_agent_context(self) -> str:
+        """Best-effort ``service: ...; v...`` detail, omitting any unavailable part."""
+        parts = []
+        service_name = sanitize_user_agent(self.config.source.serviceName)
+        if service_name:
+            parts.append(f"service: {service_name}")
+        try:
+            parts.append(f"v{get_client_version()}")
+        except Exception as exc:
+            logger.debug(f"Could not resolve the ingestion client version: {exc}")
+        return "; ".join(parts)
 
     @abstractmethod
     def set_steps(self):

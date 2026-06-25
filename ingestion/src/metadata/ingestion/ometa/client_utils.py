@@ -13,7 +13,7 @@ OMeta client create helpers
 """
 
 import traceback
-from typing import List  # noqa: UP035
+from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -29,17 +29,23 @@ logger = ometa_logger()
 
 def create_ometa_client(
     metadata_config: OpenMetadataConnection,
+    user_agent: Optional[str] = None,  # noqa: UP045
 ) -> OpenMetadata[T, C]:  # pyright: ignore[reportInvalidTypeVarUse]
     """Create an OpenMetadata client
 
     Args:
         metadata_config (OpenMetadataConnection): OM connection config
+        user_agent (Optional[str]): Value for the HTTP User-Agent header, identifying
+            the workflow issuing the requests (e.g. ``snowflake_metadata``)
 
     Returns:
         OpenMetadata: an OM client
     """
     try:
-        metadata = OpenMetadata[T, C](metadata_config)
+        metadata = OpenMetadata[T, C](
+            metadata_config,
+            additional_client_config_arguments=({"user_agent": user_agent} if user_agent else None),
+        )
         metadata.health_check()
         return metadata  # noqa: TRY300
     except Exception as exc:

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React, { ReactNode } from 'react';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { PageProcessingStatus } from '../generated/entity/data/page';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { Votes } from '../generated/type/votes';
@@ -55,6 +58,8 @@ export interface KnowledgePage {
   children?: EntityReference[];
   deleted: boolean;
   entityStatus?: EntityStatus;
+  processingStatus?: PageProcessingStatus;
+  processingError?: string;
 }
 
 export type CreateKnowledgePage = Pick<
@@ -108,12 +113,35 @@ export interface MovedEntity {
   sourceNodeParent?: PageHierarchy;
 }
 
+export interface KnowledgeCenterPageHandlers {
+  onFollowChange: () => Promise<void>;
+  onVoteChange: (data: VotingDataProps) => Promise<void>;
+  onSetThreadLink: (link: string) => void;
+  onToggleDelete: () => void;
+  onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
+  contentChangeState: ContentChangeState;
+}
+
+export interface ArticleTab {
+  key: string | number;
+  name: string;
+  label: ReactNode;
+  children?: ReactNode;
+}
+
 export interface KnowledgeCenterPageProps {
   title: string;
   rightPanel: React.ReactNode;
   header: React.ReactNode;
   data?: KnowledgePage;
   activeTab?: string;
+  feedCount?: number;
+  tabs?: ArticleTab[];
+  onTabChange?: (key: string) => void;
+  isRightPanelOpen?: boolean;
+  onToggleRightPanel?: () => void;
+  handlers?: KnowledgeCenterPageHandlers;
 }
 
 export interface KnowledgeCenterPageRef {

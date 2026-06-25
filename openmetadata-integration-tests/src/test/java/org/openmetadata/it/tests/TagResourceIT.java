@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,16 +27,19 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
 import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -1891,6 +1895,241 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                   StreamSupport.stream(owners.spliterator(), false)
                       .anyMatch(o -> testUser1().getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the classification");
+            });
+  }
+
+  // ===================================================================
+  // BULK REMOVE TAG FROM ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunTrue_doesNotRemove(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_true");
+    Table table = createTableTaggedWith(ns, tag, "dr_true");
+
+    AddTagToAssetsRequest dryRunRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunFalse_removes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_false");
+    Table table = createTableTaggedWith(ns, tag, "dr_false");
+
+    AddTagToAssetsRequest realRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, realRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag should be removed from asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(() -> assertFalse(tableHasTag(client, tableId, tagFqn)));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddTagToAssetsRequest dryRunAdd =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must NOT be applied to asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWith(ns, tag, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset when dryRun is omitted (default preview)")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  private Tag createTagForBulk(TestNamespace ns, String suffix) {
+    Classification classification = createClassification(ns);
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("br_" + suffix));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag for bulk remove dryRun test");
+    return createEntity(createTag);
+  }
+
+  private Table createBareTable(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "br_svc_" + suffix);
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("br_tbl_" + suffix));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWith(TestNamespace ns, Tag tag, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(tagLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertNotNull(tagged.getTags(), "Patched table should expose tags");
+    assertTrue(
+        tableHasTag(client, table.getId(), tag.getFullyQualifiedName()),
+        "Patched table should already have the tag applied");
+    return tagged;
+  }
+
+  private boolean tableHasTag(OpenMetadataClient client, UUID tableId, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "tags");
+    return refreshed.getTags() != null
+        && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // ===================================================================
+  // Issue #28696 (tag analogue): renaming a tag so the new name keeps the old
+  // name as a PREFIX must rewrite that tag's FQN on linked assets and must NOT
+  // corrupt a sibling tag under the same classification that merely shares the
+  // textual prefix. Tag asset propagation runs through the shared, now
+  // boundary-aware UPDATE_FQN_PREFIX_SCRIPT (propagateToRelatedEntities, gated
+  // on the displayName change a UI rename sends) — single-pass, so the exact
+  // rename was already fine; the sibling assertion is what the boundary fix
+  // protects.
+  // ===================================================================
+  @Test
+  void test_renameTagPrefixExtension_rewritesAssetTagButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("tag renamed via prefix extension (#28696)"));
+    Tag sibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptagx")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("sibling tag sharing the textual prefix"));
+    String oldTagFqn = tag.getFullyQualifiedName();
+    String siblingFqn = sibling.getFullyQualifiedName();
+
+    Table asset = createTableTaggedWith(ns, tag, "p");
+    Table assetSibling = createTableTaggedWith(ns, sibling, "px");
+
+    awaitTableTag(client, mapper, asset.getId().toString(), oldTagFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+
+    tag.setName("ptag renamed");
+    tag.setDisplayName("Renamed Tag");
+    Tag renamed = patchEntity(tag.getId().toString(), tag);
+    String newTagFqn = renamed.getFullyQualifiedName();
+    assertTrue(
+        !oldTagFqn.equals(newTagFqn) && newTagFqn.startsWith(oldTagFqn),
+        "rename must extend the FQN as a prefix: " + newTagFqn);
+
+    // The renamed tag's FQN follows on the linked asset...
+    awaitTableTag(client, mapper, asset.getId().toString(), newTagFqn);
+    // ...and the prefix-sharing sibling tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
             });
   }
 }

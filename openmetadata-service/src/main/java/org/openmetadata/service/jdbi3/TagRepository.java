@@ -353,7 +353,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || nullOrEmpty(request.getAssets())) {
+    if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -376,7 +376,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          addTagToColumn(ref, tagLabel, success, failures, result);
+          addTagToColumn(ref, tagLabel, dryRun, success, failures, result);
         } catch (Exception ex) {
           failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
           result.withFailedRequest(failures);
@@ -405,8 +405,9 @@ public class TagRepository extends EntityRepository<Tag> {
         result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
-      // Validate and Store Tags
-      if (nullOrEmpty(result.getFailedRequest())) {
+      // Validate and Store Tags — skip the write side-effects on dryRun so the preview
+      // surfaces the same validation outcome a real call would without mutating state.
+      if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
@@ -438,6 +439,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private void addTagToColumn(
       EntityReference columnRef,
       TagLabel tagLabel,
+      boolean dryRun,
       List<BulkResponse> success,
       List<BulkResponse> failures,
       BulkOperationResult result) {
@@ -470,7 +472,7 @@ public class TagRepository extends EntityRepository<Tag> {
         new ArrayList<>(Collections.singleton(tagLabel)),
         false);
 
-    if (nullOrEmpty(result.getFailedRequest())) {
+    if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
       List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
       columnTags.add(tagLabel);
       applyTags(getUniqueTags(columnTags), columnFqn);
@@ -503,11 +505,20 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest assetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
+
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -519,7 +530,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          removeTagFromColumn(ref, tag, success, result);
+          removeTagFromColumn(ref, tag, dryRun, success, result);
         } catch (Exception ex) {
           LOG.error("Error removing tag from column: {}", ref.getFullyQualifiedName(), ex);
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -531,15 +542,21 @@ public class TagRepository extends EntityRepository<Tag> {
       EntityInterface asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(
-              tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
+      // surfaces the same lookup errors a real call would without mutating state.
+      if (!dryRun) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagsByTagAndTargetEntity(
+                tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
-      searchRepository.updateEntity(ref);
+      if (!dryRun) {
+        // Update ES
+        searchRepository.updateEntity(ref);
+      }
     }
 
     return result.withSuccessRequest(success);
@@ -549,7 +566,11 @@ public class TagRepository extends EntityRepository<Tag> {
    * Remove a tag from a column through its parent table.
    */
   private void removeTagFromColumn(
-      EntityReference columnRef, Tag tag, List<BulkResponse> success, BulkOperationResult result) {
+      EntityReference columnRef,
+      Tag tag,
+      boolean dryRun,
+      List<BulkResponse> success,
+      BulkOperationResult result) {
     String columnFqn = columnRef.getFullyQualifiedName();
     if (columnFqn == null) {
       throw new IllegalArgumentException("Column FQN is required");
@@ -558,19 +579,23 @@ public class TagRepository extends EntityRepository<Tag> {
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
-    // Get the table
+    // Get the table — also validates that the column's parent table exists
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
 
-    // Remove the tag from the column
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+    if (!dryRun) {
+      // Remove the tag from the column
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+    }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-    // Update the parent table's search index
-    searchRepository.updateEntity(table.getEntityReference());
+    if (!dryRun) {
+      // Update the parent table's search index
+      searchRepository.updateEntity(table.getEntityReference());
+    }
   }
 
   @Override
@@ -584,9 +609,13 @@ public class TagRepository extends EntityRepository<Tag> {
     super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+      EntityReference originalRef = original.getEntityReference();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
+          "reindexAcrossIndices",
+          originalRef.getId() != null ? originalRef.getId().toString() : null,
+          originalRef.getFullyQualifiedName(),
+          TAG);
     }
   }
 
@@ -888,6 +917,11 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
+    }
+
+    @Override
     public void updateReviewers() {
       super.updateReviewers();
       if (original.getReviewers() != null
@@ -961,7 +995,12 @@ public class TagRepository extends EntityRepository<Tag> {
 
         LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
         // Drop cache entries for every child tag under this renamed tag BEFORE the DB rewrite.
-        invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+        // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+        // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
+        // The pass below runs after updateFqn but inside this transaction — see
+        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+        List<EntityDAO.EntityIdFqnPair> renamedTags =
+            invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
         // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
         invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
@@ -978,6 +1017,8 @@ public class TagRepository extends EntityRepository<Tag> {
             condition ->
                 PolicyConditionUpdater.renamePrefixInCondition(
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+        finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
       }
 
       if (classificationChanged) {

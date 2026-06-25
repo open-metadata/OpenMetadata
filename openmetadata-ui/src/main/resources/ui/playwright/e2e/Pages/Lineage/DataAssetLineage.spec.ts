@@ -140,8 +140,8 @@ test.describe('Data asset lineage', () => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      // 7 minute timeout
-      test.setTimeout(7 * 60 * 1000);
+      // 5 minute timeout
+      test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
         const { apiContext } = await getApiContext(page);

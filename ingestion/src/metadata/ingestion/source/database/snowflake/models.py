@@ -14,9 +14,9 @@ Snowflake models
 
 import urllib
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
+from typing import Any, List, Optional  # noqa: UP035
 
-from pydantic import BaseModel, Field, TypeAdapter, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 from requests.utils import quote  # pyright: ignore[reportPrivateImportUsage]
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -165,6 +165,29 @@ class SnowflakeQueryResult(QueryResult):
     rows_inserted: Optional[int] = None  # noqa: UP045
     rows_updated: Optional[int] = None  # noqa: UP045
     rows_deleted: Optional[int] = None  # noqa: UP045
+
+
+class AccessHistoryRow(BaseModel):
+    """One row from SNOWFLAKE_ACCESS_HISTORY_LINEAGE — a directed table edge
+    with pre-aggregated column pairs (VARIANT) and a representative query text."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    downstream_table: Optional[str] = None  # noqa: UP045
+    upstream_table: Optional[str] = None  # noqa: UP045
+    column_pairs: Optional[Any] = None  # noqa: UP045
+    query_text: Optional[str] = None  # noqa: UP045
+
+
+class CopyHistoryRow(BaseModel):
+    """One row from SNOWFLAKE_COPY_HISTORY_LINEAGE — a stage→table load event."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    downstream_database: Optional[str] = None  # noqa: UP045
+    downstream_schema: Optional[str] = None  # noqa: UP045
+    downstream_table: Optional[str] = None  # noqa: UP045
+    stage_location: Optional[str] = None  # noqa: UP045
 
 
 class SnowflakeDynamicTableRefreshEntry(BaseModel):

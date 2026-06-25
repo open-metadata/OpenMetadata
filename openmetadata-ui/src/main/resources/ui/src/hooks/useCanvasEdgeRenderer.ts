@@ -12,7 +12,8 @@
  */
 import { Theme } from '@mui/material';
 import { RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import { Edge, Position, useNodes, useReactFlow, useViewport } from 'reactflow';
+import type { Edge } from 'reactflow';
+import { Position, useNodes, useReactFlow, useViewport } from 'reactflow';
 import {
   CanvasButton,
   createCanvasButton,
@@ -28,8 +29,8 @@ import {
   setupCanvas,
 } from '../utils/CanvasUtils';
 import { computeEdgeStyle } from '../utils/EdgeStyleUtils';
-import { getEdgePathData } from '../utils/EntityLineageUtils';
-import { getEntityName } from '../utils/EntityUtils';
+import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
+import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
 
 interface UseCanvasEdgeRendererProps {

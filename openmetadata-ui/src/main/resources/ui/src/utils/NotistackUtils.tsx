@@ -10,180 +10,99 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { X } from '@untitledui/icons';
+import { ShowToastOptions, toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
-import type { EnqueueSnackbar } from 'notistack';
 import React from 'react';
-import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
-const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
-  <ButtonUtility
-    color="tertiary"
-    data-testid="alert-icon-close"
-    icon={<X size={16} />}
-    size="sm"
-    onClick={closeSnackbar}
-  />
-);
+const isSuppressedAuthError = (
+  error: AxiosError,
+  message: string | React.ReactNode
+): boolean => {
+  const method = error.config?.method?.toUpperCase();
 
-/**
- * Display an error using notistack
- * @param enqueueSnackbar notistack's enqueueSnackbar function
- * @param error error text or AxiosError object
- * @param fallbackText Fallback error message to be displayed
- * @param anchorOrigin Optional position for the snackbar (defaults to top-right)
- */
-export const showNotistackError = (
-  enqueueSnackbar: EnqueueSnackbar,
+  return (
+    (error.response?.status === ClientErrors.UNAUTHORIZED ||
+      (error.response?.status === ClientErrors.FORBIDDEN &&
+        method === 'GET')) &&
+    typeof message === 'string' &&
+    !message.includes('principal domain')
+  );
+};
+
+const resolveErrorMessage = (
   error: AxiosError | string | React.ReactNode,
-  fallbackText?: string,
-  anchorOrigin?: {
-    vertical: 'top' | 'bottom';
-    horizontal: 'left' | 'center' | 'right';
-  },
-  closeSnackbar?: (key?: string | number) => void
-) => {
-  let errorMessage: string | React.ReactNode;
+  fallbackText?: string
+): { message: string | React.ReactNode; suppressed: boolean } => {
+  let message: string | React.ReactNode;
+  let suppressed = false;
 
   if (React.isValidElement(error)) {
-    errorMessage = error;
+    message = error;
   } else if (isString(error)) {
-    errorMessage = error.toString();
+    message = error.toString();
   } else if (
     error &&
     typeof error === 'object' &&
     'config' in error &&
     'response' in error
   ) {
-    const axiosError = error;
-    const method = axiosError.config?.method?.toUpperCase();
+    const axiosError = error as AxiosError;
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
-        : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(axiosError, fallback);
-
-    // do not show error toasts for 401
-    // since they will be intercepted and the user will be redirected to the signin page
-    // except for principal domain mismatch errors
-    if (
-      axiosError &&
-      (axiosError.response?.status === ClientErrors.UNAUTHORIZED ||
-        (axiosError.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
-      typeof errorMessage === 'string' &&
-      !errorMessage.includes('principal domain')
-    ) {
-      return;
-    }
+        : String(i18n.t('server.unexpected-error'));
+    message = getErrorText(axiosError, fallback);
+    suppressed = isSuppressedAuthError(axiosError, message);
   } else {
-    errorMessage = fallbackText ?? String(i18n.t('server.unexpected-error'));
+    message = fallbackText ?? String(i18n.t('server.unexpected-error'));
   }
 
-  enqueueSnackbar(
-    React.createElement(NotificationMessage, {
-      message: errorMessage,
-      variant: 'error',
-    }),
-    {
-      variant: 'error',
-      anchorOrigin: anchorOrigin || { vertical: 'top', horizontal: 'right' },
-      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
-      action: closeSnackbar
-        ? (snackbarId: string | number) =>
-            React.createElement(CloseButton, {
-              closeSnackbar: () => closeSnackbar(snackbarId),
-            })
-        : undefined,
-    }
-  );
+  return { message, suppressed };
 };
 
 /**
- * Display a success message using notistack
- * @param enqueueSnackbar notistack's enqueueSnackbar function
+ * Display an error toast.
+ * @param error error text or AxiosError object
+ * @param fallbackText Fallback error message to be displayed
+ */
+export const showNotistackError = (
+  error: AxiosError | string | React.ReactNode,
+  fallbackText?: string
+) => {
+  const { message, suppressed } = resolveErrorMessage(error, fallbackText);
+
+  if (!suppressed) {
+    toast.error(message);
+  }
+};
+
+/**
+ * Display a success toast.
  * @param message success message
  */
-export const showNotistackSuccess = (
-  enqueueSnackbar: EnqueueSnackbar,
-  message: string | React.ReactNode,
-  closeSnackbar?: (key?: string | number) => void
-) => {
-  enqueueSnackbar(
-    React.createElement(NotificationMessage, {
-      message,
-      variant: 'success',
-    }),
-    {
-      variant: 'success',
-      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
-      action: closeSnackbar
-        ? (snackbarId: string | number) =>
-            React.createElement(CloseButton, {
-              closeSnackbar: () => closeSnackbar(snackbarId),
-            })
-        : undefined,
-    }
-  );
+export const showNotistackSuccess = (message: string | React.ReactNode) => {
+  toast.success(message);
 };
 
 /**
- * Display an info message using notistack
- * @param enqueueSnackbar notistack's enqueueSnackbar function
+ * Display an info toast.
  * @param message info message
  */
-export const showNotistackInfo = (
-  enqueueSnackbar: EnqueueSnackbar,
-  message: string | React.ReactNode,
-  closeSnackbar?: (key?: string | number) => void
-) => {
-  enqueueSnackbar(
-    React.createElement(NotificationMessage, {
-      message,
-      variant: 'info',
-    }),
-    {
-      variant: 'info',
-      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
-      action: closeSnackbar
-        ? (snackbarId: string | number) =>
-            React.createElement(CloseButton, {
-              closeSnackbar: () => closeSnackbar(snackbarId),
-            })
-        : undefined,
-    }
-  );
+export const showNotistackInfo = (message: string | React.ReactNode) => {
+  toast.info(message);
 };
 
 /**
- * Display a warning message using notistack
- * @param enqueueSnackbar notistack's enqueueSnackbar function
+ * Display a warning toast.
  * @param message warning message
  */
 export const showNotistackWarning = (
-  enqueueSnackbar: EnqueueSnackbar,
   message: string | React.ReactNode,
-  closeSnackbar?: (key?: string | number) => void
+  options?: ShowToastOptions
 ) => {
-  enqueueSnackbar(
-    React.createElement(NotificationMessage, {
-      message,
-      variant: 'warning',
-    }),
-    {
-      variant: 'warning',
-      SnackbarProps: { 'data-testid': 'alert-bar' } as Record<string, string>,
-      action: closeSnackbar
-        ? (snackbarId: string | number) =>
-            React.createElement(CloseButton, {
-              closeSnackbar: () => closeSnackbar(snackbarId),
-            })
-        : undefined,
-    }
-  );
+  toast.warning(message, options);
 };

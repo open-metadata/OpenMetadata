@@ -48,13 +48,12 @@ import {
   PageType,
 } from '../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../rest/knowledgeCenterAPI';
-import { getKnowledgePagePath } from '../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../utils/KnowledgePagePureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../KnowledgePageVersionPage/KnowledgePageVersionPage';
 import './knowledge-center-page.less';
-
 const KnowledgeCenterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -258,6 +257,14 @@ const KnowledgeCenterPage = () => {
     fetchPermission();
   }, []);
 
+  const centerContent = useMemo(() => {
+    if (version) {
+      return renderVersionPage();
+    }
+
+    return renderDetailOrListPage();
+  }, [version, renderVersionPage, renderDetailOrListPage]);
+
   return (
     <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
       {page.header}
@@ -277,7 +284,7 @@ const KnowledgeCenterPage = () => {
         leftSidebarTitle={leftSidebarTitle}
         pageTitle={page.title}
         rightSidebar={page.rightPanel}>
-        {version ? renderVersionPage() : renderDetailOrListPage()}
+        {centerContent}
       </KnowledgeCenterLayout>
       {addQuickLinkModalElement}
     </PageLayoutV1>

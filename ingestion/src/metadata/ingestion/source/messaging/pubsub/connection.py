@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.messaging.pubSubConnection import (
-    PubSubConnection,
+    PubSubConnection as PubSubConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -33,6 +33,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
@@ -52,7 +53,7 @@ class PubSubClient:
     project_id: str
 
 
-def _get_project_id(connection: PubSubConnection) -> Optional[str]:  # noqa: UP045
+def _get_project_id(connection: PubSubConnectionConfig) -> Optional[str]:  # noqa: UP045
     """
     Get project ID from connection config or from credentials.
     Returns None if project ID cannot be determined.
@@ -82,7 +83,7 @@ def _get_project_id(connection: PubSubConnection) -> Optional[str]:  # noqa: UP0
     return None
 
 
-def get_connection(connection: PubSubConnection) -> PubSubClient:
+def get_connection(connection: PubSubConnectionConfig) -> PubSubClient:
     """
     Create Pub/Sub client connection.
 
@@ -127,44 +128,49 @@ def get_connection(connection: PubSubConnection) -> PubSubClient:
             del os.environ[PUBSUB_EMULATOR_HOST]
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: PubSubClient,
-    service_connection: PubSubConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+class PubSubConnection(BaseConnection[PubSubConnectionConfig, PubSubClient]):
+    def _get_client(self) -> PubSubClient:
+        return get_connection(self.service_connection)
 
-    def list_topics_test():
-        project_path = f"projects/{client.project_id}"
-        try:
-            topics_iter = client.publisher.list_topics(request={"project": project_path})
-            next(iter(topics_iter), None)
-        except GoogleAPIError as err:  # noqa: TRY203
-            raise err  # noqa: TRY201
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    def schema_registry_test():
-        if client.schema_client:
+        def list_topics_test():
             project_path = f"projects/{client.project_id}"
             try:
-                schemas_iter = client.schema_client.list_schemas(request={"parent": project_path})
-                next(iter(schemas_iter), None)
+                topics_iter = client.publisher.list_topics(request={"project": project_path})
+                next(iter(topics_iter), None)
             except GoogleAPIError as err:  # noqa: TRY203
                 raise err  # noqa: TRY201
 
-    test_fn = {
-        "GetTopics": list_topics_test,
-        "CheckSchemaRegistry": schema_registry_test,
-    }
+        def schema_registry_test():
+            if client.schema_client:
+                project_path = f"projects/{client.project_id}"
+                try:
+                    schemas_iter = client.schema_client.list_schemas(request={"parent": project_path})
+                    next(iter(schemas_iter), None)
+                except GoogleAPIError as err:  # noqa: TRY203
+                    raise err  # noqa: TRY201
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "GetTopics": list_topics_test,
+            "CheckSchemaRegistry": schema_registry_test,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

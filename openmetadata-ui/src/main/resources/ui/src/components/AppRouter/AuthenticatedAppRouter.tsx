@@ -61,18 +61,23 @@ const TagPage = withSuspenseFallback(
 const DomainRouter = withSuspenseFallback(
   React.lazy(() => import('./DomainRouter'))
 );
+
 const DataProductListPage = withSuspenseFallback(
   React.lazy(() => import('../DataProduct/DataProductListPage'))
 );
+
 const SettingsRouter = withSuspenseFallback(
   React.lazy(() => import('./SettingsRouter'))
 );
+
 const EntityRouter = withSuspenseFallback(
   React.lazy(() => import('./EntityRouter'))
 );
+
 const ClassificationRouter = withSuspenseFallback(
   React.lazy(() => import('./ClassificationRouter'))
 );
+
 const GlossaryRouter = withSuspenseFallback(
   React.lazy(() => import('./GlossaryRouter/GlossaryRouter'))
 );
@@ -112,15 +117,14 @@ const MarketPlacePage = withSuspenseFallback(
 const DataMarketplacePage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        /* webpackChunkName: "DataMarketplacePage" */ '../../pages/DataMarketplacePage/DataMarketplacePage.component'
-      )
+      import('../../pages/DataMarketplacePage/DataMarketplacePage.component')
   )
 );
 
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
+
 const ServicePage = withSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceDetailsPage/ServiceDetailsPage'))
 );
@@ -128,9 +132,11 @@ const ServicePage = withSuspenseFallback(
 const SwaggerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/SwaggerPage'))
 );
+
 const TourPageComponent = withSuspenseFallback(
   React.lazy(() => import('../../pages/TourPage/TourPage.component'))
 );
+
 const UserPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/UserPage/UserPage.component'))
 );
@@ -147,6 +153,7 @@ const AddIngestionPage = withSuspenseFallback(
     () => import('../../pages/AddIngestionPage/AddIngestionPage.component')
   )
 );
+
 const AddServicePage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/AddServicePage/AddServicePage.component')
@@ -180,11 +187,13 @@ const CreateUserPage = withSuspenseFallback(
     () => import('../../pages/CreateUserPage/CreateUserPage.component')
   )
 );
+
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
   )
 );
+
 const ServiceVersionPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
 );
@@ -201,19 +210,14 @@ const OntologyExplorerPage = withSuspenseFallback(
 
 const WorkflowsListPage = withSuspenseFallback(
   React.lazy(
-    () =>
-      import(
-        /* webpackChunkName: "WorkflowsPage" */ '../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage'
-      )
+    () => import('../../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsPage')
   )
 );
 
 const WorkflowBuilderPage = withSuspenseFallback(
   React.lazy(
     () =>
-      import(
-        /* webpackChunkName: "WorkflowBuilderPage" */ '../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder'
-      )
+      import('../../pages/WorkflowDefinitions/WorkflowBuilder/WorkflowBuilder')
   )
 );
 
@@ -266,6 +270,7 @@ const EditKPIPage = withSuspenseFallback(
 const QueryPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/QueryPage/QueryPage.component'))
 );
+
 const AddQueryPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AddQueryPage/AddQueryPage.component'))
 );
@@ -309,24 +314,8 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
-const KnowledgeCenterPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/KnowledgeCenterPage/KnowledgeCenterPage')
-  )
-);
-
-const KnowledgeCenterFilterPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/KnowledgeCenterFilterPage/KnowledgeCenterFilterPage')
-  )
-);
-
-const KnowledgePageVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/KnowledgePageVersionPage/KnowledgePageVersionPage')
-  )
+const ContextCenterRouter = withSuspenseFallback(
+  React.lazy(() => import('./ContextCenterRouter/ContextCenterRouter'))
 );
 
 const MetricListPage = withSuspenseFallback(
@@ -346,6 +335,10 @@ const ColumnBulkOperationsPage = withSuspenseFallback(
     () =>
       import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
+);
+
+const McpChatPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/McpChatPage/McpChatPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -843,6 +836,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
+      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
+      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
 
       <Route
         element={<EntityRouter />}
@@ -857,21 +852,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<Navigate to={ROUTES.MY_DATA} />}
         path={ROUTES.FORGOT_PASSWORD}
       />
-      {[
-        ROUTES.KNOWLEDGE_CENTER,
-        ROUTES.KNOWLEDGE_PAGE,
-        ROUTES.KNOWLEDGE_PAGE_WITH_TAB,
-        ROUTES.KNOWLEDGE_PAGE_WITH_SUB_TAB,
-      ].map((route) => (
-        <Route element={<KnowledgeCenterPage />} key={route} path={route} />
-      ))}
       <Route
-        element={<KnowledgePageVersionPage onPageChange={() => undefined} />}
-        path={ROUTES.KNOWLEDGE_PAGE_VERSION}
-      />
-      <Route
-        element={<KnowledgeCenterFilterPage />}
-        path={ROUTES.KNOWLEDGE_CENTER_FILTER}
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
       />
       <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>

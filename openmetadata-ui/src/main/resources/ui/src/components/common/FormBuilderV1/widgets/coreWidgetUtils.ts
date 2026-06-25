@@ -12,7 +12,7 @@
  */
 
 import { WidgetProps } from '@rjsf/utils';
-import { startCase } from 'lodash';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 export const getWidgetHint = ({
   rawErrors,
@@ -31,6 +31,6 @@ export const getWidgetLabel = ({
   return hideLabel
     ? undefined
     : looksLikeRawKey(label)
-    ? startCase(label)
+    ? getFormDisplayLabel(label)
     : label;
 };

@@ -25,7 +25,7 @@ import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEm
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../../../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,13 +36,11 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
-
-import { ROUTES } from '../../../constants/constants';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -86,8 +84,10 @@ const KnowledgeCenterWidget = ({
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.KNOWLEDGE_CENTER}
-        actionButtonText={t('label.create-articles')}
+        actionButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
+        actionButtonText={t('label.create-entity', {
+          entity: t('label.article'),
+        })}
         description={t('message.no-article-data')}
         icon={
           <KnowledgeCenterNoDataPlaceholder
@@ -171,7 +171,7 @@ const KnowledgeCenterWidget = ({
   const footer = useMemo(() => {
     return (
       <WidgetFooter
-        moreButtonLink={ROUTES.KNOWLEDGE_CENTER}
+        moreButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
@@ -189,7 +189,7 @@ const KnowledgeCenterWidget = ({
         isEditView={isEditView}
         title={t('label.knowledge-center')}
         widgetKey={widgetKey}
-        onTitleClick={() => navigate(ROUTES.KNOWLEDGE_CENTER)}
+        onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />
     );
   }, [

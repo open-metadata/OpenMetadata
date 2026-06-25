@@ -95,11 +95,17 @@ export class DatabaseSchemaClass extends EntityClass {
     };
   }
 
-  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
     const serviceResponse = await apiContext.patch(
       `/api/v1/databaseSchemas/${this.entityResponseData?.['id']}`,
       {
-        data: payload,
+        data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },

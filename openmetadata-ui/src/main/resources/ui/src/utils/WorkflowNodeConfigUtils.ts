@@ -227,6 +227,7 @@ export const configureNodeInputOutput = (
         | {
             addReviewers?: boolean;
             addOwners?: boolean;
+            emptyAssigneeStrategy?: 'none' | 'assignAdmins';
             candidates?: Array<{
               id: string;
               type: string;
@@ -239,6 +240,8 @@ export const configureNodeInputOutput = (
       config.config.assignees = {
         addReviewers: assigneesFromNode?.addReviewers ?? true,
         addOwners: assigneesFromNode?.addOwners ?? false,
+        emptyAssigneeStrategy:
+          assigneesFromNode?.emptyAssigneeStrategy ?? 'none',
         candidates: assigneesFromNode?.candidates ?? [],
       };
       config.config.approvalThreshold =

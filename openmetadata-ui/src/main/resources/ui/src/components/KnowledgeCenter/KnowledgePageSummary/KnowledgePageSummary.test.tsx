@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { KnowledgePage, PageType } from 'interface/knowledge-center.interface';
-import { MOCK_KNOWLEDGE_PAGE_DATA } from 'pages/KnowledgePage/KnowledgePage.mock';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  KnowledgePage,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
+import { MOCK_KNOWLEDGE_PAGE_DATA } from '../../../pages/KnowledgePage/KnowledgePage.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
 jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
@@ -43,7 +46,7 @@ jest.mock(
     })
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: {
     explore: 'Explore',
     lineage: 'Lineage',

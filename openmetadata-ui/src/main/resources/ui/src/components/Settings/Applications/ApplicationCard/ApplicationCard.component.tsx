@@ -43,9 +43,12 @@ const ApplicationCard = ({
         'application-card card-body-border-none',
         {
           'application-card-disabled': isUnavailable,
+          'tw:cursor-pointer tw:transition-shadow tw:hover:shadow-xl':
+            !isUnavailable && Boolean(onClick),
         }
       )}
-      data-testid={`${kebabCase(appName)}-card`}>
+      data-testid={`${kebabCase(appName)}-card`}
+      onClick={!isUnavailable ? onClick : undefined}>
       <div className="d-flex items-center gap-3">
         <div className="application-logo">
           <AppLogo appName={appName} />
@@ -70,11 +73,7 @@ const ApplicationCard = ({
               markdown={description}
             />
           )}
-          <Button
-            className="p-0"
-            data-testid="config-btn"
-            type="link"
-            onClick={onClick}>
+          <Button className="p-0" data-testid="config-btn" type="link">
             {linkTitle}
           </Button>
         </div>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Request } from '@playwright/test';
 import { get } from 'lodash';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -235,11 +235,14 @@ test.describe.serial('Lineage Settings Tests', () => {
       await performExpand(page, container, false, metric);
       await performExpand(page, topic, true, table);
 
+      await performZoomOut(page);
+
       await performCollapse(page, mlModel, false, [
         searchIndex,
         container,
         metric,
       ]);
+      await performZoomOut(page);
       await performCollapse(page, dashboard, true, [table, topic]);
     });
 
@@ -261,6 +264,58 @@ test.describe.serial('Lineage Settings Tests', () => {
       await verifyNodePresent(page, searchIndex);
       await verifyNodePresent(page, topic);
     });
+  });
+
+  test('Verify lineage time filter and tab switch reuse loaded graph', async ({
+    page,
+  }) => {
+    await table.visitEntityPage(page);
+    await visitLineageTab(page);
+    await verifyNodePresent(page, table);
+
+    const lineageTimeFilteredResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/lineage/getLineage') &&
+        url.searchParams.has('startTime') &&
+        url.searchParams.has('endTime')
+      );
+    });
+
+    await page.getByTestId('lineage-time-filter').click();
+    await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
+
+    const response = await lineageTimeFilteredResponse;
+    const responseUrl = new URL(response.url());
+    const startTime = responseUrl.searchParams.get('startTime');
+    const endTime = responseUrl.searchParams.get('endTime');
+
+    expect(Number(startTime)).toBeLessThan(Number(endTime));
+    await expect(page.getByTestId('lineage-time-filter')).toContainText(
+      'Last 7 days'
+    );
+
+    const isLineageFetchRequest = (request: Request) => {
+      const url = new URL(request.url());
+
+      return url.pathname.endsWith('/api/v1/lineage/getLineage');
+    };
+
+    const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
+
+    await lineageTabPanel.getByRole('tab', { name: 'Impact Analysis' }).click();
+    await expect(page).toHaveURL(/mode=impact_analysis/);
+    await waitForAllLoadersToDisappear(page);
+
+    const lineageFetchAfterViewSwitch = page
+      .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+
+    await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
+    await expect(page).not.toHaveURL(/mode=impact_analysis/);
+    expect(await lineageFetchAfterViewSwitch).toBe(false);
   });
 
   test('Verify lineage settings for PipelineViewMode as Edge', async ({
@@ -291,6 +346,7 @@ test.describe.serial('Lineage Settings Tests', () => {
     // Select pipeline from Modal
     await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
     await editLineageClick(dataStewardPage);
+    await waitForAllLoadersToDisappear(dataStewardPage);
     await verifyPipelineDataInDrawer(
       dataStewardPage,
       table,

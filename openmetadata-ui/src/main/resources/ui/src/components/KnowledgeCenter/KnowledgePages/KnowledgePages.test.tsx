@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_KNOWLEDGE_PAGES } from 'pages/KnowledgePage/KnowledgePage.mock';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import { MOCK_KNOWLEDGE_PAGES } from '../../../pages/KnowledgePage/KnowledgePage.mock';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
 
 const mockProps = {
@@ -29,6 +28,9 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+}));
+
+jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,
@@ -36,7 +38,7 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(
@@ -166,7 +168,7 @@ describe('KnowledgePages', () => {
 
     expect(viewAllLink).toHaveAttribute(
       'href',
-      `/knowledge-center-filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
+      `/context-center/filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
     );
   });
 

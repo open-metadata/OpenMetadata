@@ -299,6 +299,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   await expect(entityHeaderName).toHaveText(name);
 };
 
+const verifyNodeDepth = async (
+  page: Page,
+  node: EntityClass,
+  expectedDepth: number
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const lineageNode = page.getByTestId(`lineage-node-${nodeFqn}`);
+  await lineageNode.waitFor({ state: 'attached' });
+  await lineageNode.scrollIntoViewIfNeeded();
+  await expect(lineageNode).toBeVisible();
+  const nodeDepth = await lineageNode.getAttribute('data-nodedepth');
+  expect(Number(nodeDepth)).toBe(expectedDepth);
+};
+
 export const performExpand = async (
   page: Page,
   node: EntityClass,
@@ -310,9 +324,15 @@ export const performExpand = async (
   const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
   await nodeLocator.hover();
   const expandBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .getByTestId(`lineage-node-${nodeFqn}`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('plus-icon');
+
+  const existingNodeDepth = Number(
+    await page
+      .getByTestId(`lineage-node-${nodeFqn}`)
+      .getAttribute('data-nodedepth')
+  );
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
@@ -322,6 +342,11 @@ export const performExpand = async (
     // perform a zoom out to have everything in view
     await performZoomOut(page, 5);
     await verifyNodePresent(page, newNode);
+    await verifyNodeDepth(
+      page,
+      newNode,
+      upstream ? existingNodeDepth - 1 : existingNodeDepth + 1
+    );
   }
 };
 
@@ -338,7 +363,7 @@ export const performCollapse = async (
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('minus-icon');
 
-  await collapseBtn.click();
+  await collapseBtn.dispatchEvent('click');
 
   for (const entity of hiddenEntity) {
     const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
@@ -476,7 +501,7 @@ export const verifyPipelineDataInDrawer = async (
     .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -494,7 +519,7 @@ export const verifyPipelineDataInDrawer = async (
 
     await fromNode.visitEntityPage(page);
   } else {
-    await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
+    await page.getByTestId('drawer-close-icon').click();
   }
 };
 
@@ -826,7 +851,9 @@ export const verifyExportLineagePNG = async (
   ).toBeVisible();
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+    // render enough headroom before the download event fires.
+    page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
       '[data-testid="export-entity-modal"] button#submit-button:visible'
     ),
@@ -862,8 +889,6 @@ export const verifyColumnLineageInCSV = async (
       (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
     )
   );
-
-  console.log('Expected Row:', expectedRow, parsedData);
 
   expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };

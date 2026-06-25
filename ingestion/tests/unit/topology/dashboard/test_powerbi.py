@@ -1,6 +1,6 @@
 import uuid
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,6 +16,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -24,6 +26,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     DataflowMashup,
+    Datamart,
     Dataset,
     Datasource,
     DatasourceConnectionDetails,
@@ -33,9 +36,11 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
+    PowerBIUser,
     ReportPage,
     Tile,
     UpstreaDataflow,
+    UpstreamDatamart,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
@@ -665,6 +670,30 @@ MOCK_DATAMODEL_ENTITY = DashboardDataModel(
     id=uuid.uuid4(),
     dataModelType=DataModelType.PowerBIDataFlow.value,
     columns=[],
+)
+MOCK_DATAMART = Datamart(
+    id="datamart_b",
+    name="sales_datamart",
+    description="Sales datamart",
+    modifiedBy="jane.doe@example.com",
+    users=[
+        PowerBIUser(
+            displayName="Jane Doe",
+            emailAddress="jane.doe@example.com",
+            datamartUserAccessRight="ReadWriteReshare",
+            userType="Member",
+        )
+    ],
+    upstreamDatamarts=[
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_a",
+        ),
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_b",
+        ),
+    ],
 )
 
 
@@ -2233,3 +2262,186 @@ class PowerBIUnitTest(TestCase):
 
         dash_3_result = next(d for d in dashboards if d.name.root == "dash-3")
         assert len(dash_3_result.charts) == 0
+
+    @pytest.mark.order(51)
+    def test_tsql_dialect_required_for_bracket_quoted_identifiers(self):
+        """
+        Regression guard, outcome-based: the queries PowerBI dataflows produce
+        through `Sql.Database` / `Value.NativeQuery` use T-SQL bracket-quoted
+        identifiers (e.g. [Column Name], [db].[schema].[table]). Parsing
+        these under ANSI fails at the sqlglot/sqlfluff layer; parsing under
+        TSQL succeeds. `_extract_tables_from_sql` must therefore use TSQL.
+
+        We cannot observe this difference through `_parse_sql_source`'s return
+        value alone: LineageParser falls back to the permissive SqlParse
+        analyzer, which recovers source tables even when the higher-fidelity
+        parsers fail. Instead we run LineageParser directly on the
+        representative queries and assert that the connector's chosen dialect
+        is the one for which the real parsers succeed.
+        """
+        from metadata.ingestion.lineage.models import Dialect
+        from metadata.ingestion.lineage.parser import LineageParser
+
+        bracket_queries = [
+            "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+            "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+            "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+            "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+            "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+        ]
+
+        for sql in bracket_queries:
+            ansi_parser = LineageParser(sql, dialect=Dialect.ANSI, timeout_seconds=10)
+            tsql_parser = LineageParser(sql, dialect=Dialect.TSQL, timeout_seconds=10)
+
+            assert ansi_parser.query_parsing_success is False, (
+                f"Expected ANSI to fail on bracket-quoted T-SQL: {sql!r}. "
+                "If ANSI now parses this, the dialect choice in "
+                "_extract_tables_from_sql may no longer matter and this "
+                "test should be re-evaluated."
+            )
+            assert tsql_parser.query_parsing_success is True, (
+                f"Expected TSQL to parse bracket-quoted T-SQL: {sql!r}. "
+                "If this fails, the underlying parsers (sqlglot/sqlfluff) "
+                "have regressed and PowerBI dataflow lineage will be lost."
+            )
+
+    @pytest.mark.order(52)
+    def test_extract_tables_from_sql_tsql_bracket_queries(self):
+        """
+        End-to-end smoke test: 5 representative T-SQL queries from the
+        production PowerBI ingestion log that previously failed parsing under
+        the ANSI dialect. With the TSQL dialect, each must successfully parse
+        and yield the expected source table.
+
+        Cases:
+          1. Bracket-quoted column with embedded space  ([FUNCT_ACCOUNT ALT_L2])
+          2. Multi-word bracket-quoted column           ([ORGANIZATION ID AND DESCRIPTION])
+          3. Three-part fully-bracketed table reference ([db].[schema].[table])
+          4. Bracket-quoted table with space + parens   (cub.[v_md_SourceSystem (FAC)])
+          5. T-SQL TOP clause with bracket-quoted col   (SELECT TOP n ... [YEAR])
+        """
+        cases = [
+            (
+                "bracket-quoted column with space",
+                "SELECT CE_UNIQUE_ID, [FUNCT_ACCOUNT ALT_L2] FROM cub.v_md_FunctAccount_with_CostElement",
+                "v_md_FunctAccount_with_CostElement",
+            ),
+            (
+                "multi-word bracket-quoted column",
+                "SELECT ORGANIZATION_ID, [Level], [ORGANIZATION ID AND DESCRIPTION] FROM cub.v_md_Organization_FLAT",
+                "v_md_Organization_FLAT",
+            ),
+            (
+                "three-part bracketed table reference",
+                "SELECT * FROM [NBS_GENIE].[QS].[Company_v2]",
+                "Company_v2",
+            ),
+            (
+                "bracketed table name with space and parens",
+                "SELECT SORT_ORDER, SOURCE FROM cub.[v_md_SourceSystem (FAC)]",
+                "v_md_SourceSystem (FAC)",
+            ),
+            (
+                "T-SQL TOP clause with bracket-quoted reserved word",
+                "SELECT TOP 100 IBI_DETAILS_ID, [YEAR] FROM cub.v_fact_IBI_vs_BPC_Delta WHERE [YEAR] = 2024",
+                "v_fact_IBI_vs_BPC_Delta",
+            ),
+        ]
+
+        for label, sql, expected_table in cases:
+            m_expression = (
+                f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
+            )
+            result = self.powerbi._parse_sql_source(m_expression)
+            assert result is not None, f"[{label}] _parse_sql_source returned None"
+            assert any(expected_table.lower() in t["table"].lower() for t in result), (
+                f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
+            )
+
+    def test_yield_dashboard_lineage_yields_barrier_first(self):
+        """The override must emit a ``Barrier`` as its first record so the sink
+        flushes before ``super().yield_dashboard_lineage`` runs its
+        ``get_by_name`` lookups. Subsequent yields come from ``super``.
+        """
+        ws_id = "test-workspace-id"
+        mock_workspace = MagicMock()
+        mock_workspace.id = ws_id
+        mock_ctx = MagicMock()
+        mock_ctx.get.return_value = MagicMock(workspace=mock_workspace)
+
+        sentinel_super_records = [
+            Either(right=MagicMock(name="lineage-1")),
+            Either(right=MagicMock(name="lineage-2")),
+        ]
+
+        with (
+            patch.object(self.powerbi, "context", mock_ctx),
+            patch(
+                "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
+                return_value=iter(sentinel_super_records),
+            ),
+        ):
+            emitted = list(self.powerbi.yield_dashboard_lineage(MagicMock()))
+
+        # First record is a Barrier carrying the workspace id in its reason.
+        assert len(emitted) == 1 + len(sentinel_super_records)
+        first = emitted[0]
+        assert isinstance(first.right, Barrier)
+        assert ws_id in (first.right.reason or "")
+
+        # Subsequent records are exactly what super yielded, in order.
+        for actual, expected in zip(emitted[1:], sentinel_super_records, strict=True):
+            assert actual is expected
+
+    @pytest.mark.order(53)
+    @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
+    @patch.object(fqn, "build", return_value="powerbi.datamart_a")
+    def test_upstream_datamart_lineage(self, *_):
+        """`create_datamart_upstream_datamart_lineage` should emit one lineage
+        request per non-self upstream datamart reference. The self-reference in
+        MOCK_DATAMART (targetDatamartId == datamart_b == datamart.id) must be
+        filtered out.
+        """
+        MOCK_DATAMART_ENTITY = DashboardDataModel(  # noqa: N806
+            name="datamart_b",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDatamart.value,
+            columns=[],
+        )
+
+        lineage_requests = list(
+            self.powerbi.create_datamart_upstream_datamart_lineage(MOCK_DATAMART, MOCK_DATAMART_ENTITY)
+        )
+
+        successful = [r for r in lineage_requests if r.right is not None]
+        assert len(successful) == 1
+
+    @pytest.mark.order(54)
+    def test_yield_datamodel_for_datamart(self):
+        """`yield_datamodel` should emit a CreateDashboardDataModelRequest with
+        dataModelType=PowerBIDatamart, no columns, and the datamart-specific
+        sourceUrl when the workspace contains a Datamart.
+        """
+        mock_context = MagicMock()
+        mock_context.workspace = Group(
+            id="ws-1",
+            name="Test Workspace",
+            datasets=[],
+            dataflows=[],
+            datamarts=[MOCK_DATAMART],
+        )
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+        self.powerbi.source_config.includeDataModels = True
+        self.powerbi.source_config.includeOwners = False
+        self.powerbi.state.set_filtered_datamodels(None)
+
+        results = list(self.powerbi.yield_datamodel(mock_context.workspace))
+        successful = [r.right for r in results if r.right is not None]
+
+        assert len(successful) == 1
+        request = successful[0]
+        assert request.dataModelType == DataModelType.PowerBIDatamart
+        assert request.columns == []
+        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")

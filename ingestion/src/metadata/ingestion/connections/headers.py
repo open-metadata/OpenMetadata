@@ -15,8 +15,7 @@ Custom OM connection headers
 
 import json
 from functools import singledispatch
-
-import pkg_resources
+from importlib.metadata import version as _pkg_version
 
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
@@ -51,7 +50,7 @@ def _(_, conn, cursor, statement, parameters, context, executemany):
     We need a custom logic to pass the statement in the middle of the query.
     To simplify, we are updating the queries as SELECT /*...*/ * FROM XYZ
     """
-    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    version = _pkg_version("openmetadata-ingestion")
     st_list = statement.split(" ")
     statement_with_header = f"{st_list[0]} {render_query_header(version)} {' '.join(st_list[1:])}"
     return statement_with_header, parameters
@@ -62,6 +61,6 @@ def inject_query_header(conn, cursor, statement, parameters, context, executeman
     Inject the query header for OpenMetadata Queries
     """
 
-    version = pkg_resources.require("openmetadata-ingestion")[0].version
+    version = _pkg_version("openmetadata-ingestion")
     statement_with_header = render_query_header(version) + "\n" + statement
     return statement_with_header, parameters

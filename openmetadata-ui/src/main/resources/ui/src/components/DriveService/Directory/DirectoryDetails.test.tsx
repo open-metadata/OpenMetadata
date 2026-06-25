@@ -35,10 +35,18 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
+jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn(),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: (
+    ...args: [EntityType, string, (data: FeedCounts) => void]
+  ) => mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: [string, (data: FeedCounts) => void]) =>
+    mockFetchEntityTaskCountsInto(...args),
   getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
     mockGetFeedCounts(...args),
 }));
@@ -318,11 +326,15 @@ describe('DirectoryDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderDirectoryDetails();
 
     await waitFor(() => {
-      expect(mockGetFeedCounts).toHaveBeenCalledWith(
+      expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+        'test-service.test-directory',
+        expect.any(Function)
+      );
+      expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
         EntityType.DIRECTORY,
         'test-service.test-directory',
         expect.any(Function)

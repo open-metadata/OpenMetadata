@@ -59,7 +59,7 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -197,6 +197,13 @@ function AddObservabilityPage() {
     () =>
       filterResources.find((resource) => resource.name === selectedTrigger)
         ?.supportedFilters,
+    [filterResources, selectedTrigger]
+  );
+
+  const containerEntities = useMemo(
+    () =>
+      filterResources.find((resource) => resource.name === selectedTrigger)
+        ?.containerEntities,
     [filterResources, selectedTrigger]
   );
 
@@ -339,6 +346,7 @@ function AddObservabilityPage() {
                             </Col>
                             <Col span={24}>
                               <ObservabilityFormFiltersItem
+                                containerEntities={containerEntities}
                                 supportedFilters={supportedFilters}
                               />
                             </Col>

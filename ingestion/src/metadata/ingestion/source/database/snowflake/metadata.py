@@ -385,9 +385,13 @@ class SnowflakeSource(
 
     def get_database_names_raw(self) -> Iterable[str]:
         results = self.connection.execute(text(SNOWFLAKE_GET_DATABASES)).fetchall()
-        for res in results:
-            row = list(res)
-            yield row[1]
+        database_names = [list(res)[1] for res in results]
+        logger.info(
+            "SHOW DATABASES returned %d database(s) visible to the ingestion role",
+            len(database_names),
+        )
+        logger.debug("Databases visible to the ingestion role: %s", database_names)
+        yield from database_names
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
@@ -410,10 +414,20 @@ class SnowflakeSource(
                     database_name=new_database,
                 )
 
+                filter_name: str = (
+                    database_fqn if self.source_config.useFqnForFiltering and database_fqn else new_database
+                )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
+                    filter_name,
                 ):
+                    logger.info(
+                        "Filtering out database '%s': did not pass databaseFilterPattern "
+                        "(matched against '%s', useFqnForFiltering=%s)",
+                        new_database,
+                        filter_name,
+                        self.source_config.useFqnForFiltering,
+                    )
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
@@ -974,7 +988,7 @@ class SnowflakeSource(
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.get_global().deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()
@@ -1016,7 +1030,18 @@ class SnowflakeSource(
                 pass
 
         try:
-            columns = inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
+            # Do NOT forward `table_type` here. SQLAlchemy's @reflection.cache
+            # decorator on the underlying get_columns / _get_schema_columns
+            # builds its cache key from **kw, so a varying `table_type`
+            # (Regular for base tables, View for views) produces distinct
+            # cache keys for the SAME schema. For a huge schema (e.g. ~13k
+            # wide tables), the table→view transition then cache-misses on
+            # _get_schema_columns and re-materializes the whole schema's
+            # column metadata (~1.6 GB) — which is what OOM-killed the pod
+            # in the COM_US_IMDNA_ADL.AWB_INTERM incident. The Snowflake
+            # dialect's get_columns ignores `table_type`; the Stage/Stream
+            # branches above already consumed it.
+            columns = inspector.get_columns(table_name, schema_name, db_name=db_name)
         except sa_exc.NoSuchTableError:
             logger.warning(
                 f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."

@@ -87,7 +87,7 @@ jest.mock('../../../utils/TasksUtils', () => ({
   isDescriptionTask: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityFQNFromAbout: jest.fn().mockReturnValue('entityFQN'),
   getEntityTypeFromAbout: jest.fn().mockReturnValue('table'),
 }));
@@ -101,7 +101,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockReturnValue(1234567890),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('Sensitive'),
 }));
 
@@ -110,11 +110,13 @@ jest.mock('../../../utils/EntityLink', () => {
     __esModule: true,
     default: {
       getTableColumnName: jest.fn().mockReturnValue(null),
+      getEntityType: jest.fn().mockReturnValue('table'),
+      getEntityFqn: jest.fn().mockReturnValue('test.entity.fqn'),
     },
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 

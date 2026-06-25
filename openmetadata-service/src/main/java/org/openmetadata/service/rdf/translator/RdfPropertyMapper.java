@@ -57,6 +57,42 @@ public class RdfPropertyMapper {
   private static final Set<String> LINEAGE_PROPERTIES =
       Set.of("upstreamEdges", "downstreamEdges", "lineage");
 
+  // Direct URI-valued predicates the translator emits from an entity. These
+  // are the predicates whose VALUE can change (or shrink to empty) between
+  // writes of the same entity — e.g. tags removed, owner changed, domain
+  // unset — without any relationship-hook firing. JenaFusekiStorage.storeEntity
+  // uses this set (unioned with the predicates actually emitted in the current
+  // model) to scope its DELETE, so old values get cleaned up while
+  // hook-managed predicates (om:UPSTREAM, om:owns/contains/…, etc.) stay
+  // intact. Add to this set when a new URI-valued direct predicate is
+  // introduced in this class; the unit test
+  // RdfTranslatorManagedPredicatesTest will fail otherwise.
+  public static final Set<String> TRANSLATOR_MANAGED_DIRECT_PREDICATES =
+      Set.of(
+          // Identity / typing
+          RDF.type.getURI(),
+          // Owner / attribution
+          OM_NS + "hasOwner",
+          PROV_NS + "wasAttributedTo",
+          // Tags / glossary terms / tier (all addTagLabel paths)
+          OM_NS + "hasTag",
+          OM_NS + "hasGlossaryTerm",
+          OM_NS + "hasTier",
+          // Domain / data product
+          OM_NS + "belongsToDomain",
+          OM_NS + "hasDataProduct",
+          // Source provenance (translator only, not a hook)
+          DCT_NS + "source",
+          OM_NS + "sourceUrl",
+          // Structured sub-resources attached to the entity — the entity's
+          // direct triple pointing at the blank node must be deleted so the
+          // new model's blank node replaces it. The blank node subtree itself
+          // becomes orphaned; that's a separate (out-of-scope) GC concern.
+          OM_NS + "hasLifeCycle",
+          OM_NS + "hasCertification",
+          OM_NS + "hasExtension",
+          OM_NS + "hasCustomProperty");
+
   public RdfPropertyMapper(
       String baseUri, ObjectMapper objectMapper, Map<String, Object> contextCache) {
     this.baseUri = baseUri;
@@ -1092,7 +1128,17 @@ public class RdfPropertyMapper {
       XSDDatatype datatype = getXSDDatatype(xsdType);
 
       if (datatype != null && !value.isNull()) {
-        resource.addProperty(property, model.createTypedLiteral(value.asText(), datatype));
+        String literal = value.asText();
+        // Skip blank xsd:string triples. An empty literal carries no real
+        // information and downstream readers had to special-case it — most
+        // visibly skos:prefLabel="" winning over rdfs:label in the glossary
+        // term graph SPARQL. By not writing the triple at all, OPTIONAL
+        // patterns and COALESCE on the read side behave correctly with no
+        // extra logic.
+        if (XSDDatatype.XSDstring.equals(datatype) && literal.isBlank()) {
+          return;
+        }
+        resource.addProperty(property, model.createTypedLiteral(literal, datatype));
       }
     } else {
       addSimpleProperty(resource, propertyId, value, model);
@@ -1190,12 +1236,17 @@ public class RdfPropertyMapper {
       case "table",
           "database",
           "databaseschema",
+          "storedprocedure",
           "pipeline",
           "topic",
           "dashboard",
+          "dashboarddatamodel",
           "chart",
           "mlmodel",
           "container",
+          "searchindex",
+          "apiendpoint",
+          "apicollection",
           "report" -> "dataAsset-complete";
       case "databaseservice",
           "dashboardservice",

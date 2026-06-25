@@ -37,15 +37,17 @@ DataModelLike = Dataset | Dataflow
 class WorkspaceState:
     """State container for PowerBI workspace iteration.
 
-    Per-workspace caches released on `exit`. Cross-workspace report
-    registry persists for the whole run (tile-pinned lineage needs it).
+    Per-workspace caches released on `exit`. Cross-workspace report-id
+    registry persists for the whole run (tile-pinned lineage needs it
+    to verify that a tile's referenced report exists somewhere in the
+    tenant; only the id is required, not the report payload).
     """
 
     def __init__(self) -> None:
         self._current: Group | None = None
         self._datasets_by_id: dict[str, Dataset] = {}
         self._dataflow_exports: dict[str, DataflowExportResponse] = {}
-        self._reports_by_id: dict[str, PowerBIReport] = {}
+        self._known_report_ids: set[str] = set()
         self._filtered_dashboards: list[DashboardLike] = []
         self._filtered_datamodels: list[DataModelLike] | None = None
         self._dashboard_charts: dict[str, list[str]] = {}
@@ -67,7 +69,7 @@ class WorkspaceState:
         self._filtered_datamodels = None
         self._dashboard_charts = {}
         for report in workspace.reports or []:
-            self._reports_by_id[report.id] = report
+            self._known_report_ids.add(report.id)
 
     def exit(self) -> None:
         """Release per-workspace caches. Idempotent. Cross-workspace report registry persists."""
@@ -91,9 +93,9 @@ class WorkspaceState:
         """Look up a dataset by id in the current workspace."""
         return self._datasets_by_id.get(dataset_id)
 
-    def find_report(self, report_id: str | None) -> PowerBIReport | None:
-        """Look up a report by id across all workspaces entered so far."""
-        return self._reports_by_id.get(report_id) if report_id else None
+    def is_known_report(self, report_id: str | None) -> bool:
+        """Return True if `report_id` was seen in any workspace entered so far."""
+        return report_id is not None and report_id in self._known_report_ids
 
     def cache_dataflow_export(self, key: str, export: DataflowExportResponse) -> None:
         """Memoise a dataflow export for the current workspace's lineage stage."""

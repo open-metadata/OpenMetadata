@@ -105,7 +105,8 @@ class ReindexingOrchestratorTest {
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
     when(context.createReindexingContext()).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(5);
 
@@ -158,7 +159,8 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
     when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(jobData));
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
 
     try (MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
@@ -189,7 +191,8 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
     when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(legacyConfig));
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
 
     try (MockedStatic<ReindexingMetrics> metricsMock = mockStatic(ReindexingMetrics.class);
         MockedStatic<WebSocketManager> websocketMock = mockStatic(WebSocketManager.class);
@@ -217,7 +220,8 @@ class ReindexingOrchestratorTest {
 
     when(context.getJobName()).thenReturn(ON_DEMAND_JOB);
     when(context.getAppConfigJson()).thenReturn(JsonUtils.pojoToJson(jobData));
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     doThrow(new RuntimeException("Pipeline creation failed"))
         .when(searchRepository)
         .ensureHybridSearchPipeline();
@@ -251,7 +255,8 @@ class ReindexingOrchestratorTest {
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
     when(context.createReindexingContext()).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(3);
 
@@ -350,7 +355,8 @@ class ReindexingOrchestratorTest {
     when(context.getJobName()).thenReturn("scheduled");
     when(context.createProgressListener(jobData)).thenReturn(progressListener);
     when(context.createReindexingContext()).thenReturn(jobContext);
-    when(searchIndexFailureDAO.countByJobId(appRunRecord.getAppId().toString())).thenReturn(0);
+    when(searchIndexFailureDAO.countFailuresByJobId(appRunRecord.getAppId().toString()))
+        .thenReturn(0);
     when(entityRepository.getDao()).thenReturn(entityDao);
     when(entityDao.listCount(any())).thenReturn(2);
     when(systemRepository.getOMBaseUrlConfigInternal())
@@ -425,7 +431,7 @@ class ReindexingOrchestratorTest {
     Map<String, Object> serverStats = Map.of("server-1", Map.of("success", 2));
 
     appRunRecord.setSuccessContext(new SuccessContext().withAdditionalProperty("existing", "keep"));
-    when(searchIndexFailureDAO.countByJobId("job-123")).thenReturn(4);
+    when(searchIndexFailureDAO.countFailuresByJobId("job-123")).thenReturn(4);
     setField("jobData", jobData);
     setField(
         "resultMetadata",

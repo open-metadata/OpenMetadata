@@ -76,6 +76,10 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
       await createButton.click();
       await page.waitForURL('**/my-data', { timeout: 60_000 });
     }
+
+    await expect(page.getByTestId('dropdown-profile')).toBeVisible({
+      timeout: 60_000,
+    });
   };
 
   test.beforeAll(
@@ -163,6 +167,9 @@ test.describe('SSO Session Renewal', { tag: ['@sso', '@Platform'] }, () => {
   test('should queue concurrent 401s behind a single refresh call', async () => {
     const page = userPage!;
     await expect(page.getByTestId('dropdown-profile')).toBeVisible();
+
+    await page.getByTestId('app-bar-item-my-data').click();
+    await page.waitForURL('**/my-data');
 
     await waitForAccessTokenExpiry(SHORT_ACCESS_TTL_SECONDS);
 
