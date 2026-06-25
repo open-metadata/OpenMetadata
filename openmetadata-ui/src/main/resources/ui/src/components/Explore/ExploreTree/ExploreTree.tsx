@@ -15,6 +15,7 @@ import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined } from 'lodash';
+import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,10 +32,16 @@ import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
+  buildTreeCountQueryFilter,
+  findTreeNodeKeyByBrowsePath,
   getAggregations,
+  getDisabledExploreTreeKeys,
+  getQuickFilterMust,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  isEntityTypeBucketSelected,
+  parseBrowsePathFields,
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExplorePureUtils';
@@ -66,7 +73,10 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
           )}
         </Typography.Text>
       }>
-      <div className="d-flex justify-between">
+      <div
+        className={classNames('d-flex justify-between', {
+          'tw:opacity-50': node.disabled,
+        })}>
         <Typography.Text
           className={classNames({
             'm-l-xss': node.data?.isRoot,
@@ -84,8 +94,22 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   );
 };
 
-const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
+const ExploreTree = ({
+  onFieldValueSelect,
+  onTreeSelect,
+  selectedEntityTypes = [],
+}: ExploreTreeProps) => {
   const hasFetchedRef = useRef(false); // Use a ref to track if we've already fetched, in dev mode as it will fetch twice
+  const hadBrowsePathRef = useRef(false);
+  // Caches the unfiltered estate aggregation (category visibility) keyed by the
+  // text query, so toggling a filter costs one aggregation instead of two.
+  const presenceBucketsRef = useRef<{ key: string; buckets: Bucket[] } | null>(
+    null
+  );
+  // Monotonic id for the latest count fetch. Rapid filter toggles fire
+  // overlapping fetches; only the newest may commit so a slow earlier response
+  // can't overwrite the tree with stale counts.
+  const countFetchSeqRef = useRef(0);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
@@ -96,6 +120,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
   }, [tab]);
+
+  const [expandedKeys, setExpandedKeys] = useState<Key[]>(defaultExpandedKeys);
 
   const [parsedSearch, searchQueryParam, defaultServiceType] = useMemo(() => {
     const parsedSearch = Qs.parse(
@@ -116,7 +142,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const onLoadData: TreeProps['loadData'] = useCallback(
     async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
-        if (treeNode.children) {
+        if (treeNode.children || (treeNode as ExploreTreeNode).disabled) {
           return;
         }
 
@@ -127,10 +153,6 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           filterField = [],
           rootIndex,
         } = (treeNode as ExploreTreeNode)?.data as TreeNodeData;
-
-        const searchIndex = isRoot
-          ? treeNode.key
-          : (treeNode as ExploreTreeNode)?.data?.parentSearchIndex;
 
         const { bucket: bucketToFind, queryFilter } =
           searchQueryParam !== ''
@@ -147,26 +169,46 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 currentBucketValue
               );
 
+        // Count every matching object in each node's subtree over the dataAsset
+        // index (so a parent's count is never less than its child's) and reflect
+        // the active filters, instead of the per-entity index that counted only
+        // the immediate child entities (e.g. databases under a service).
+        const countQueryFilter = buildTreeCountQueryFilter({
+          baseQueryFilter: queryFilter,
+          isRoot,
+          childEntities:
+            (treeNode as ExploreTreeNode).data?.childEntities ?? [],
+          activeQuickFilter: parsedSearch.quickFilter,
+        });
+
         const res = await searchQuery({
           query: searchQueryParam ?? '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: queryFilter,
-          searchIndex: searchIndex as SearchIndex,
+          queryFilter: countQueryFilter,
+          searchIndex: SearchIndex.DATA_ASSET,
           includeDeleted: false,
           trackTotalHits: true,
           fetchSource: false,
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets.filter(
-          (item) =>
-            !searchClassBase
-              .notIncludeAggregationExploreTree()
-              .includes(item.key as EntityType)
-        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
+        const buckets = (aggregations[bucketToFind]?.buckets ?? []).filter(
+          (item) => {
+            const isAllowedAggregation = !searchClassBase
+              .notIncludeAggregationExploreTree()
+              .includes(item.key as EntityType);
+            // When specific asset types are picked, the entity-type leaf only
+            // lists those types — a Table-only filter must not surface Columns.
+            const matchesSelectedType =
+              !isEntityType ||
+              isEntityTypeBucketSelected(item.key, selectedEntityTypes);
+
+            return isAllowedAggregation && matchesSelectedType;
+          }
+        );
 
         const sortedBuckets = buckets.sort((a, b) =>
           a.key.localeCompare(b.key, undefined, { sensitivity: 'base' })
@@ -178,10 +220,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           let logo = undefined;
           if (isEntityType) {
             const isColumn = bucket.key === EntityType.TABLE_COLUMN;
-            logo = searchClassBase.getEntityIcon(
-              bucket.key,
-              classNames('service-icon w-4 h-4', { 'text-grey-500': isColumn })
-            ) ?? <></>;
+            const iconClass = classNames('service-icon w-4 h-4', {
+              'text-grey-500': isColumn,
+            });
+            logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
+              <></>
+            );
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
@@ -223,7 +267,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               <>{bucket.key}</>
             ),
             tooltip: formattedEntityType,
-            count: isEntityType ? bucket.doc_count : undefined,
+            count: bucket.doc_count,
             key: id,
             type,
             icon: logo,
@@ -252,7 +296,14 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         showErrorToast(error as AxiosError);
       }
     },
-    [updateTreeData, searchQueryParam, defaultServiceType, setTreeData]
+    [
+      updateTreeData,
+      searchQueryParam,
+      defaultServiceType,
+      setTreeData,
+      selectedEntityTypes,
+      parsedSearch,
+    ]
   );
 
   const switcherIcon = useCallback(({ expanded }: { expanded?: boolean }) => {
@@ -267,57 +318,132 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       const node = info.node as ExploreTreeNode;
       const filterField = node.data?.filterField;
       if (filterField) {
-        onFieldValueSelect(filterField);
+        if (node.isLeaf) {
+          // Entity-type leaves refine the Type filter; the levels above them
+          // are the browse location. Both travel together so the page can
+          // update browsePath and quickFilter in a single navigation.
+          onTreeSelect({
+            browseFields: filterField.slice(0, -1),
+            typeField: filterField[filterField.length - 1],
+          });
+        } else {
+          onTreeSelect({ browseFields: filterField });
+        }
       } else if (node.isLeaf) {
-        const filterField = [
+        onFieldValueSelect([
           getQuickFilterObject(
             EntityFields.ENTITY_TYPE,
             node.data?.entityType ?? ''
           ),
-        ];
-        onFieldValueSelect(filterField);
+        ]);
       } else if (node.data?.childEntities) {
-        onFieldValueSelect([
-          getQuickFilterObjectForEntities(
+        const categoryField = {
+          ...getQuickFilterObjectForEntities(
             EntityFields.ENTITY_TYPE,
             node.data?.childEntities as EntityType[]
           ),
-        ]);
+          // The chip for a category root reads "In <category>" — keep the
+          // human title, the key alone only says "entityType".
+          label: isString(node.title)
+            ? node.title
+            : EntityFields.ENTITY_TYPE.toString(),
+        };
+        onTreeSelect({ browseFields: [categoryField] });
       }
 
       setSelectedKeys([node.key]);
     },
-    [onFieldValueSelect]
+    [onFieldValueSelect, onTreeSelect]
   );
 
   const fetchEntityCounts = useCallback(async () => {
+    const fetchSeq = ++countFetchSeqRef.current;
+    const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     try {
       setIsLoading(true);
-      const res = await searchQuery({
+      const filterMust = getQuickFilterMust(parsedSearch.quickFilter);
+      const countRes = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
         pageSize: 0,
-        queryFilter: {},
+        queryFilter: { query: { bool: { must: filterMust } } },
         searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: false,
         trackTotalHits: true,
         fetchSource: false,
       });
+      const countBuckets = countRes.aggregations['entityType'].buckets;
 
-      const buckets = res.aggregations['entityType'].buckets;
-      setTreeData((origin) => {
-        const updatedData = updateTreeDataWithCounts(origin, buckets);
+      // Category visibility tracks the whole estate, not the filtered view: a
+      // category that simply has no matches under the active filter must stay
+      // in the tree (grayed for an incompatible asset type, or showing 0 for an
+      // unrelated Tier/Owner filter) rather than disappear — so derive it from
+      // an unfiltered aggregation while the displayed counts above honor the
+      // filter. The unfiltered estate only changes with the text query, so it is
+      // cached per query: a no-filter response is reused directly, and a filter
+      // change reuses the cache instead of paying for a second aggregation.
+      const presenceCacheKey = searchQueryParam ?? '';
+      let presenceBuckets: Bucket[];
+      if (isEmpty(filterMust)) {
+        presenceBuckets = countBuckets;
+      } else if (presenceBucketsRef.current?.key === presenceCacheKey) {
+        presenceBuckets = presenceBucketsRef.current.buckets;
+      } else {
+        presenceBuckets = (
+          await searchQuery({
+            query: searchQueryParam ?? '',
+            pageNumber: 0,
+            pageSize: 0,
+            queryFilter: {},
+            searchIndex: SearchIndex.DATA_ASSET,
+            includeDeleted: false,
+            trackTotalHits: true,
+            fetchSource: false,
+          })
+        ).aggregations['entityType'].buckets;
+      }
+      // A newer filter change superseded this fetch while it was in flight —
+      // drop its result so the tree reflects the latest filter, not this one.
+      if (!isLatestFetch()) {
+        return;
+      }
 
-        return updatedData.filter(
-          (node) => node.totalCount !== undefined && node.totalCount > 0
+      presenceBucketsRef.current = {
+        key: presenceCacheKey,
+        buckets: presenceBuckets,
+      };
+
+      // Rebuild from the static tree so any previously-loaded children are
+      // dropped and re-fetched with the current filter on the next expand —
+      // antd caches loaded children, so a filter change would otherwise leave
+      // stale (unfiltered) counts deeper in the tree.
+      setTreeData(() => {
+        const presentKeys = new Set(
+          updateTreeDataWithCounts(
+            searchClassBase.getExploreTree(),
+            presenceBuckets
+          )
+            .filter((node) => (node.totalCount ?? 0) > 0)
+            .map((node) => node.key)
         );
+
+        return updateTreeDataWithCounts(
+          searchClassBase.getExploreTree(),
+          countBuckets
+        ).filter((node) => presentKeys.has(node.key));
       });
     } catch {
-      // Do nothing
+      // Count fetch is best-effort: on failure the tree degrades to its current
+      // structure (browse still works, each node refetches on expand) and the
+      // page-level fetch surfaces the user-facing error.
     } finally {
-      setIsLoading(false);
+      // Only the latest fetch owns the loading flag; a superseded fetch
+      // resolving later must not clear the spinner for the in-flight one.
+      if (isLatestFetch()) {
+        setIsLoading(false);
+      }
     }
-  }, [searchQueryParam, setTreeData]);
+  }, [searchQueryParam, setTreeData, parsedSearch.quickFilter]);
 
   useEffect(() => {
     if (!hasFetchedRef.current) {
@@ -326,12 +452,65 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     }
   }, []);
 
+  const quickFilterSignature = useMemo(
+    () => (isString(parsedSearch.quickFilter) ? parsedSearch.quickFilter : ''),
+    [parsedSearch.quickFilter]
+  );
+  const previousQuickFilterRef = useRef(quickFilterSignature);
+
   useEffect(() => {
-    // Tree works on the quickFilter, so we need to reset the selectedKeys when the quickFilter is empty
-    if (isEmpty(parsedSearch.quickFilter)) {
+    // When the active quick filter changes, rebuild the tree so the deeper
+    // levels (cached by antd) re-fetch and their counts reflect the filter.
+    if (previousQuickFilterRef.current !== quickFilterSignature) {
+      previousQuickFilterRef.current = quickFilterSignature;
+      fetchEntityCounts();
+    }
+  }, [quickFilterSignature, fetchEntityCounts]);
+
+  useEffect(() => {
+    // Hierarchical selections live in browsePath, static leaves in quickFilter
+    // — only clear the highlight when neither is active.
+    if (isEmpty(parsedSearch.quickFilter) && isEmpty(parsedSearch.browsePath)) {
       setSelectedKeys([]);
     }
   }, [parsedSearch]);
+
+  useEffect(() => {
+    // Keep the highlight in sync with the browse-path chips: removing the
+    // Service chip moves the selection back up to the matching ancestor
+    // (e.g. the category root), and removing the last browse chip clears it.
+    const browseFields = parseBrowsePathFields(parsedSearch.browsePath);
+    if (!isEmpty(browseFields)) {
+      const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
+      setSelectedKeys(matchedKey ? [matchedKey] : []);
+      hadBrowsePathRef.current = true;
+    } else if (hadBrowsePathRef.current) {
+      hadBrowsePathRef.current = false;
+      setSelectedKeys([]);
+    }
+  }, [parsedSearch.browsePath, treeData]);
+
+  // Top-level categories that cannot hold the selected asset type are grayed
+  // out so the user can't browse into services that won't contain it.
+  const disabledRootKeys = useMemo(
+    () => getDisabledExploreTreeKeys(treeData, selectedEntityTypes),
+    [treeData, selectedEntityTypes]
+  );
+
+  const displayTreeData = useMemo(
+    () =>
+      treeData.map((node) =>
+        disabledRootKeys.has(node.key) ? { ...node, disabled: true } : node
+      ),
+    [treeData, disabledRootKeys]
+  );
+
+  // Disabled categories also collapse — an expanded Databases subtree makes
+  // no sense once the selected asset type rules the whole category out.
+  const visibleExpandedKeys = useMemo(
+    () => expandedKeys.filter((key) => !disabledRootKeys.has(String(key))),
+    [expandedKeys, disabledRootKeys]
+  );
 
   if (isLoading) {
     return <Loader />;
@@ -378,14 +557,15 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       showIcon
       className="explore-tree"
       data-testid="explore-tree"
-      defaultExpandedKeys={defaultExpandedKeys}
+      expandedKeys={visibleExpandedKeys}
       loadData={onLoadData}
       selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
       titleRender={(node) => (
         <ExploreTreeTitle node={node as ExploreTreeNode} />
       )}
-      treeData={treeData as DataNode[]}
+      treeData={displayTreeData as DataNode[]}
+      onExpand={(keys) => setExpandedKeys(keys)}
       onSelect={onNodeSelect}
     />
   );
