@@ -81,6 +81,32 @@ describe('EntitySearchUtils unit tests', () => {
       expect(result).toBe('');
     });
 
+    it('should treat regex metacharacters in searchText as literal text', () => {
+      const result = highlightSearchText('value is a(b', 'a(b');
+
+      expect(result).toBe(
+        'value is <span data-highlight="true" class="text-highlighter">a(b</span>'
+      );
+    });
+
+    it('should not throw on an unbalanced regex metacharacter in searchText', () => {
+      const result = highlightSearchText('an [open bracket', '[');
+
+      expect(result).toBe(
+        'an <span data-highlight="true" class="text-highlighter">[</span>open bracket'
+      );
+    });
+
+    it('should not be vulnerable to ReDoS for catastrophic backtracking input', () => {
+      const longText = `${'a'.repeat(10000)}!`;
+      const start = performance.now();
+      const result = highlightSearchText(longText, '(a+)+$');
+      const elapsed = performance.now() - start;
+
+      expect(result).toBe(longText);
+      expect(elapsed).toBeLessThan(1000);
+    });
+
     const falsyTestCases = [
       { text: null, searchText: 'test', expected: '' },
       { text: 'mockText', searchText: null, expected: 'mockText' },
@@ -154,6 +180,19 @@ describe('EntitySearchUtils unit tests', () => {
 
       expect(highlighted).toBeInTheDocument();
       expect(highlighted?.textContent).toBe('highlightText');
+    });
+
+    it('should treat regex metacharacters in searchText as literal text', () => {
+      const result = highlightSearchArrayElement(
+        'type is map(int)',
+        'map(int)'
+      );
+      const { container } = render(<>{result}</>);
+
+      const highlighted = container.querySelector('.text-highlighter');
+
+      expect(highlighted).toBeInTheDocument();
+      expect(highlighted?.textContent).toBe('map(int)');
     });
 
     it('should return an empty string if no text is provided', () => {

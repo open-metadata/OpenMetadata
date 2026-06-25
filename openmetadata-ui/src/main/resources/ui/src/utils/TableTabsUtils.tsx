@@ -106,7 +106,7 @@ const TableConstraints = withSuspenseFallback(
 );
 
 const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph/KnowledgeGraph'))
+  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D'))
 );
 
 export const getTableDetailPageBaseTabs = ({
