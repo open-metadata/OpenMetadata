@@ -593,7 +593,9 @@ test.describe('Context Center Permissions', () => {
         const upvoteRes = await upvoteResPromise;
 
         expect(upvoteRes.status()).toBe(200);
-        await expect(upvoteBtn.locator('svg')).toHaveClass(/fill-blue-500/);
+        await expect(upvoteBtn.locator('svg')).toHaveClass(
+          /fill-utility-blue-500/
+        );
 
         const downvoteResPromise = viewOnlyPage.waitForResponse(
           `/api/v1/contextCenter/pages/${articleEntity.responseData.id}/vote`
@@ -602,7 +604,9 @@ test.describe('Context Center Permissions', () => {
         const downvoteRes = await downvoteResPromise;
 
         expect(downvoteRes.status()).toBe(200);
-        await expect(downvoteBtn.locator('svg')).toHaveClass(/fill-blue-500/);
+        await expect(downvoteBtn.locator('svg')).toHaveClass(
+          /fill-utility-blue-500/
+        );
       });
 
       await test.step('can start a conversation on the article', async () => {
@@ -640,7 +644,7 @@ test.describe('Context Center Permissions', () => {
         const followRes = await followResPromise;
 
         expect(followRes.status()).toBe(200);
-        await expect(followBtn).toHaveClass(/text-brand-600/);
+        await expect(followBtn).toHaveClass(/text-fg-brand-primary/);
 
         const unfollowResPromise = viewOnlyPage.waitForResponse((response) =>
           response
@@ -653,7 +657,7 @@ test.describe('Context Center Permissions', () => {
         const unfollowRes = await unfollowResPromise;
 
         expect(unfollowRes.status()).toBe(200);
-        await expect(followBtn).not.toHaveClass(/text-brand-600/);
+        await expect(followBtn).not.toHaveClass(/text-fg-brand-primary/);
       });
     });
 
