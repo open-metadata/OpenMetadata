@@ -347,9 +347,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
-            <div className="h:full tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
+            <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
               <File06
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 height={40}
                 strokeWidth={1.2}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
@@ -380,7 +380,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   </Tooltip>
                   <Typography
                     className={
-                      firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
+                      firstDomain
+                        ? 'tw:text-primary'
+                        : 'tw:text-utility-gray-400'
                     }
                     data-testid="domain-link"
                     size="text-sm"
@@ -390,7 +392,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : t('label.no-entity', { entity: t('label.domain') })}
                   </Typography>
                   {extraDomains.length > 0 && (
-                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
+                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-tertiary tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
                       +{extraDomains.length}
                     </span>
                   )}
@@ -415,7 +417,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 </div>
 
                 {/* Dot separator */}
-                <Dot className="tw:text-gray-400" size="xs" />
+                <Dot className="tw:text-fg-quaternary" size="xs" />
 
                 {/* Owners */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
@@ -440,7 +442,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     </div>
                   ) : (
                     <Typography
-                      className="tw:text-gray-400"
+                      className="tw:text-utility-gray-400"
                       size="text-sm"
                       weight="regular">
                       {t('label.no-entity', { entity: t('label.owner') })}
@@ -473,7 +475,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 {/* Editors */}
                 {editors.length > 0 && (
                   <>
-                    <Dot className="tw:text-gray-400" size="xs" />
+                    <Dot className="tw:text-fg-quaternary" size="xs" />
                     <div className="tw:flex tw:items-center tw:gap-1.5">
                       <Tooltip title={t('label.editor')}>
                         <TooltipTrigger className="tw:leading-0">
@@ -530,7 +532,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className={
                     voteStatus === QueryVoteType.votedUp
-                      ? 'tw:text-brand-600'
+                      ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
                   color="secondary"
@@ -540,7 +542,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     <ThumbsUp
                       className={
                         voteStatus === QueryVoteType.votedUp
-                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
                           : 'tw:fill-none'
                       }
                       height={18}
@@ -558,7 +560,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className={
                     voteStatus === QueryVoteType.votedDown
-                      ? 'tw:text-brand-600'
+                      ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
                   color="secondary"
@@ -568,7 +570,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     <ThumbsDown
                       className={
                         voteStatus === QueryVoteType.votedDown
-                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
                           : 'tw:fill-none'
                       }
                       height={18}
@@ -595,7 +597,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               title={isFollowing ? t('label.un-follow') : t('label.follow')}>
               <TooltipTrigger>
                 <ButtonUtility
-                  className={isFollowing ? 'tw:text-brand-600' : undefined}
+                  className={
+                    isFollowing ? 'tw:text-fg-brand-primary' : undefined
+                  }
                   color="secondary"
                   data-testid="follow-btn"
                   disabled={isFollowLoading || knowledgePage?.deleted}
@@ -650,11 +654,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       <div className="tw:flex tw:items-center tw:gap-2">
                         <Trash01
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
                         />
                         <Typography
                           ellipsis
-                          className="tw:grow tw:text-error-600"
+                          className="tw:grow tw:text-error-primary"
                           size="text-sm"
                           weight="medium">
                           {t('label.delete')}

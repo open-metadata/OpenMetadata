@@ -43,6 +43,11 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   ContextMemory,
   MemoryStatus,
@@ -54,6 +59,7 @@ import {
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -75,15 +81,19 @@ const FILTER_BUTTON_BASE_CLS =
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { alert } = useAlertStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
@@ -107,6 +117,31 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
+
+  const canDeleteMemory = useMemo(() => {
+    const memory = memoryToEdit ?? memoryToView;
+
+    const isOwner =
+      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
+
+    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
+  }, [
+    hasDeletePermission,
+    memoryToEdit,
+    memoryToView,
+    currentUser?.name,
+    currentUser?.isAdmin,
+  ]);
+
   const fetchMemories = useCallback(async () => {
     setIsMemoriesLoading(true);
     try {
@@ -122,9 +157,21 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, []);
 
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.CONTEXT_MEMORY
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
   useEffect(() => {
     fetchMemories();
-  }, [fetchMemories]);
+    fetchPermission();
+  }, [fetchMemories, fetchPermission]);
 
   const assetOptions = useMemo(() => {
     const seen = new Map<
@@ -457,6 +504,7 @@ const ContextCenterMemoriesPage: FC = () => {
             label: t('label.memory-plural'),
           },
         ]}
+        hasPermission={hasCreatePermission}
         searchPlaceholder={t('label.search-memories')}
         searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
@@ -474,7 +522,7 @@ const ContextCenterMemoriesPage: FC = () => {
               className={classNames(
                 'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                 'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
-                { 'tw:bg-blue-50 tw:border-blue-200': isActive }
+                { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
               )}
               key={filterKey}
               onClick={() => handleFilterChange(filterKey)}>
@@ -542,9 +590,9 @@ const ContextCenterMemoriesPage: FC = () => {
                   classNames(
                     'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
                     {
-                      'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
+                      'tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:text-utility-brand-700':
                         isSelected,
-                      'tw:border-gray-300 tw:bg-primary tw:text-secondary':
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
                         !isSelected,
                     }
                   )
@@ -562,7 +610,9 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-secondary'
+                  selectedAsset
+                    ? 'tw:text-utility-brand-700'
+                    : 'tw:text-secondary'
                 }
                 weight="medium">
                 {assetOptions.find((o) => o.id === selectedAsset)?.label ??
@@ -594,7 +644,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <div className="tw:shrink-0">
                           {searchClassBase.getEntityIcon(
                             opt.type,
-                            'tw:w-6 tw:h-6 tw:text-gray-500'
+                            'tw:w-6 tw:h-6 tw:text-quaternary'
                           )}
                         </div>
                         <Box
@@ -604,14 +654,14 @@ const ContextCenterMemoriesPage: FC = () => {
                           <div className="tw:max-w-55">
                             <Typography
                               ellipsis
-                              className="tw:truncate tw:text-gray-800"
+                              className="tw:truncate tw:text-utility-gray-800"
                               size="text-sm"
                               weight="medium">
                               {opt.displayName}
                             </Typography>
                             <Typography
                               ellipsis
-                              className="tw:text-gray-400 tw:truncate"
+                              className="tw:text-utility-gray-400 tw:truncate"
                               size="text-xs">
                               {opt.id}
                             </Typography>
@@ -641,7 +691,9 @@ const ContextCenterMemoriesPage: FC = () => {
               }>
               <Typography
                 className={
-                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-secondary'
+                  selectedAuthor
+                    ? 'tw:text-utility-brand-700'
+                    : 'tw:text-secondary'
                 }
                 weight="medium">
                 {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
@@ -717,6 +769,8 @@ const ContextCenterMemoriesPage: FC = () => {
         style={{ overflow: 'unset' }}>
         <div>
           <MemoriesView
+            canDelete={hasDeletePermission}
+            canEdit={hasEditPermission}
             currentUserName={currentUser?.name}
             data={pagedMemories}
             isAdminUser={currentUser?.isAdmin}
@@ -736,12 +790,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
-        canDelete={
-          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
-            false) ||
-          Boolean(currentUser?.isAdmin)
-        }
+        canCreate={hasCreatePermission}
+        canDelete={canDeleteMemory}
+        canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
+        isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -754,12 +807,10 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={
-            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
-              false) ||
-            Boolean(currentUser?.isAdmin)
-          }
+          canDelete={canDeleteMemory}
+          canEdit={hasEditPermission}
           currentUserName={currentUser?.name}
+          isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
