@@ -45,7 +45,6 @@ import { NotificationBoxProp } from './NotificationBox.interface';
 import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
 import { MentionNotification } from './NotificationFeedCard.interface';
-
 type NotificationItem = MentionNotification | TaskEntity;
 
 const isTaskNotification = (

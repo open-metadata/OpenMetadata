@@ -108,10 +108,15 @@ test.describe('search dropdown quick filters - index readiness', () => {
         filter.key
       }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-      const queryRes = page.waitForResponse(querySearchURL);
-      await page.click('[data-testid="update-btn"]');
-      await queryRes;
-      await page.click('[data-testid="clear-filters"]');
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(querySearchURL);
+        await updateButton.click();
+        await queryRes;
+      } else {
+        await waitForAllLoadersToDisappear(page);
+      }
+      await page.getByTestId('clear-all-chips').click();
     }
   });
 });
@@ -233,9 +238,14 @@ test('Filter by column entity type shows only column results', async ({
   await dataAssetDropdownRequest;
 
   await columnCheckbox.check();
-  await page.getByTestId('update-btn').click();
 
-  await page.getByTestId('search-dropdown-Data Assets').click();
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    // Legacy mode: apply, then reopen the dropdown to confirm persistence.
+    await updateButton.click();
+    await page.getByTestId('search-dropdown-Data Assets').click();
+  }
+  // Immediate-apply leaves the dropdown open with the box already checked.
   await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
     '(1)'
@@ -313,11 +323,14 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
-      const queryRes = page.waitForResponse(
-        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -357,11 +370,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -391,11 +407,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -483,18 +502,18 @@ test.describe('Metric search result highlight', () => {
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      const breadcrumb = entityCard.getByTestId('breadcrumb');
+      // The result-card breadcrumb migrated to the core Breadcrumbs component:
+      // the category ("Metrics") renders as a link and the entity name is the
+      // current (last) crumb marked aria-current="page". `exact` keeps the link
+      // match off the entity-name link (which contains "metric").
+      await expect(
+        entityCard.getByRole('link', { exact: true, name: 'Metrics' })
+      ).toBeVisible();
 
-      const firstLink = breadcrumb
-        .getByTestId('breadcrumb-link')
-        .first()
-        .getByRole('link');
-      await expect(firstLink).toHaveText('Metrics');
-
-      const inactiveLink = breadcrumb.getByTestId('inactive-link');
-      await expect(inactiveLink).toHaveText(metric.entity.name);
-      await expect(inactiveLink).not.toContainText('<span');
-      await expect(inactiveLink).not.toContainText('text-highlighter');
+      const currentCrumb = entityCard.locator('[aria-current="page"]');
+      await expect(currentCrumb).toHaveText(metric.entity.name);
+      await expect(currentCrumb).not.toContainText('<span');
+      await expect(currentCrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {

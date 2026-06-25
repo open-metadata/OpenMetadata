@@ -619,7 +619,7 @@ const TableV2 = <T extends object>(
         data-testid={dataTestId}
         style={scrollStyle}>
         {isLoading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
             <Loader />
           </div>
         )}
@@ -660,6 +660,9 @@ const TableV2 = <T extends object>(
               <UntitledTable.Header className="tw:px-2">
                 {propsColumns.map((col, colIdx) => {
                   const colType = col as ColumnType<T>;
+                  const rowHeaderColumn = colType as ColumnType<T> & {
+                    isRowHeader?: boolean;
+                  };
                   const colKey = String(col.key ?? colType.dataIndex ?? colIdx);
                   const colWidth =
                     columnWidths[colKey] ??
@@ -672,6 +675,7 @@ const TableV2 = <T extends object>(
                       allowsSorting={!!colType.sorter}
                       className="tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
                       id={colKey}
+                      isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
                       style={{
                         ...(rest.size === 'small' ? { padding: '8px' } : {}),

@@ -50,6 +50,9 @@
 name: Java Integration Tests (External Cluster)
 
 on:
+  schedule:
+    # Run daily at midnight (00:00 UTC).
+    - cron: '0 0 * * *'
   workflow_dispatch:
     inputs:
       runUiIt:
@@ -66,7 +69,7 @@ on:
         description: 'Run the scale-it matrix job'
         required: false
         type: boolean
-        default: false
+        default: true
       itTest:
         description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
         required: false
@@ -392,7 +395,7 @@ jobs:
     # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
     # cluster collide and the db/es counts would mix cohorts.
     needs: [search-it-external]
-    if: ${{ always() && github.event.inputs.runScaleIt == 'true' }}
+    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     strategy:

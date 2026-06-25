@@ -36,6 +36,7 @@ import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
+import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilterChips/ExploreQueryFilterChips.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
@@ -43,14 +44,12 @@ import {
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import {
-  exportSearchResultsCsvStream,
-  searchQuery,
-} from '../../rest/searchAPI';
+import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
@@ -58,9 +57,15 @@ import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePag
 import {
   getExploreQueryFilterMust,
   getSelectedValuesFromQuickFilter,
-} from '../../utils/ExploreUtils';
+  truncateBrowsePath,
+} from '../../utils/ExplorePureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import {
+  CsvJobsTray,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -76,7 +81,6 @@ import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending
 import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
-
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -106,6 +110,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   loading,
   quickFilters,
   isElasticSearchIssue,
+  browseFields = [],
+  browseQueryFilter,
+  onTreeSelect = noop,
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
@@ -195,7 +202,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     try {
       const combinedQueryFilter = getCombinedQueryFilterObject(
         quickFilters,
-        queryFilter as QueryFilterInterface | undefined
+        queryFilter as QueryFilterInterface | undefined,
+        browseQueryFilter
       );
       const allResponse = await searchQuery({
         query: searchQueryParam || '*',
@@ -223,7 +231,14 @@ const ExploreV1: React.FC<ExploreProps> = ({
     } finally {
       setIsCountLoading(false);
     }
-  }, [searchQueryParam, showDeleted, quickFilters, queryFilter, searchIndex]);
+  }, [
+    searchQueryParam,
+    showDeleted,
+    quickFilters,
+    queryFilter,
+    browseQueryFilter,
+    searchIndex,
+  ]);
 
   const handleExportScopeConfirm = useCallback(async () => {
     if (isAllAssetsLimitExceeded) {
@@ -233,7 +248,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     const isVisibleScope = exportScope === 'visible';
     const combinedQueryFilter = getCombinedQueryFilterObject(
       quickFilters,
-      queryFilter as QueryFilterInterface | undefined
+      queryFilter as QueryFilterInterface | undefined,
+      browseQueryFilter
     );
 
     let exportSize = allAssetsCount ?? EXPORT_ALL_ASSETS_LIMIT;
@@ -256,7 +272,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       return (currentPage - 1) * pageSize;
     })();
 
-    const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
+    const params: Parameters<typeof exportSearchResultsAsync>[0] = {
       q: searchQueryParam || '*',
       index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
       sort_field: sortValue,
@@ -277,13 +293,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
     setIsExporting(true);
 
     try {
-      const blob = await exportSearchResultsCsvStream(params);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Search_Results_${new Date().toISOString()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // The export runs as a background job; the Background jobs tray surfaces
+      // progress and the Download action once it completes.
+      await exportSearchResultsAsync(params);
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      showSuccessToast(t('message.search-export-job-started'));
       setShowExportScopeModal(false);
     } catch (error) {
       const message = await parseExportErrorMessage(
@@ -308,6 +322,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     showDeleted,
     quickFilters,
     queryFilter,
+    browseQueryFilter,
     isAllAssetsLimitExceeded,
   ]);
 
@@ -385,6 +400,99 @@ const ExploreV1: React.FC<ExploreProps> = ({
     });
   };
 
+  const handleRemoveQuickFilterValue = (
+    field: ExploreQuickFilterField,
+    optionKey: string
+  ) => {
+    const updatedValue = (field.value ?? []).filter(
+      (option) => option.key !== optionKey
+    );
+    handleQuickFiltersValueSelect({ ...field, value: updatedValue });
+  };
+
+  // Tree selection: hierarchical levels update the browse location; a leaf
+  // additionally sets the Type quick filter. The type is upserted into the
+  // Data Assets slot (entityType.keyword) so existing dropdown filters
+  // survive, and both URL params change in one navigation upstream.
+  const handleExploreTreeSelect = useCallback(
+    (payload: {
+      browseFields: ExploreQuickFilterField[];
+      typeField?: ExploreQuickFilterField;
+    }) => {
+      const { browseFields: updatedBrowseFields, typeField } = payload;
+      if (isUndefined(typeField)) {
+        onTreeSelect({ browseFields: updatedBrowseFields });
+      } else {
+        // The Data Assets dropdown options come from the entityType.keyword
+        // aggregation, which returns lowercase values ("tablecolumn"); tree
+        // leaf buckets are camelCase ("tableColumn"). Store lowercase so the
+        // dropdown recognizes the selection.
+        const typeValue = (typeField.value ?? []).map((option) => ({
+          ...option,
+          key: option.key.toLowerCase(),
+        }));
+        const hasTypeSlot = selectedQuickFilters.some(
+          (field) => field.key === EntityFields.ENTITY_TYPE_KEYWORD
+        );
+        const merged = hasTypeSlot
+          ? selectedQuickFilters.map((field) =>
+              field.key === EntityFields.ENTITY_TYPE_KEYWORD
+                ? { ...field, value: typeValue }
+                : field
+            )
+          : [
+              ...selectedQuickFilters,
+              {
+                key: EntityFields.ENTITY_TYPE_KEYWORD,
+                label: 'label.data-asset-plural',
+                value: typeValue,
+              },
+            ];
+
+        setSelectedQuickFilters(merged);
+
+        const must = getExploreQueryFilterMust(merged);
+        onTreeSelect({
+          browseFields: updatedBrowseFields,
+          quickFilter: isEmpty(must)
+            ? undefined
+            : { query: { bool: { must } } },
+        });
+      }
+    },
+    [onTreeSelect, selectedQuickFilters]
+  );
+
+  const handleRemoveBrowseLevel = useCallback(
+    (levelKey: string) => {
+      onTreeSelect({
+        browseFields: truncateBrowsePath(browseFields, levelKey),
+      });
+    },
+    [onTreeSelect, browseFields]
+  );
+
+  const hasQuickFilterValues = useMemo(
+    () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
+    [selectedQuickFilters]
+  );
+
+  const selectedEntityTypes = useMemo(() => {
+    const entityTypeField = selectedQuickFilters.find(
+      (field) =>
+        field.key === EntityFields.ENTITY_TYPE_KEYWORD ||
+        field.key === EntityFields.ENTITY_TYPE
+    );
+    const browseEntityTypeField = browseFields.find(
+      (field) => field.key === EntityFields.ENTITY_TYPE
+    );
+
+    return [
+      ...(entityTypeField?.value ?? []),
+      ...(browseEntityTypeField?.value ?? []),
+    ].map((option) => option.key);
+  }, [selectedQuickFilters, browseFields]);
+
   const exploreLeftPanel = useMemo(() => {
     if (tabItems.length === 0) {
       return loading ? (
@@ -416,14 +524,22 @@ const ExploreV1: React.FC<ExploreProps> = ({
       );
     }
 
-    return <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />;
+    return (
+      <ExploreTree
+        selectedEntityTypes={selectedEntityTypes}
+        onFieldValueSelect={handleQuickFiltersChange}
+        onTreeSelect={handleExploreTreeSelect}
+      />
+    );
   }, [
     searchQueryParam,
     tabItems,
     handleQuickFiltersChange,
+    handleExploreTreeSelect,
     activeTabKey,
     loading,
     onChangeSearchIndex,
+    selectedEntityTypes,
   ]);
 
   useEffect(() => {
@@ -527,10 +643,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
         <Row className="tw:mr-2" gutter={[0, 8]}>
           <Col>
             <ExploreQuickFilters
+              immediateApply
               showSelectedCounts
               aggregations={aggregations}
+              defaultQueryFilter={
+                browseQueryFilter as unknown as Record<string, unknown>
+              }
               fields={selectedQuickFilters}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
+              helperText={t('message.pick-values-to-refine')}
               index={activeTabKey}
               showDeleted={showDeleted}
               onAdvanceSearch={() => toggleModal(true)}
@@ -567,7 +688,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Divider className="tw:my-2" orientation="vertical" />
 
-            {(quickFilters || sqlQuery) && (
+            {(hasQuickFilterValues || !isEmpty(browseFields) || sqlQuery) && (
               <Typography.Text
                 className="text-primary self-center cursor-pointer font-medium"
                 data-testid="clear-filters"
@@ -613,6 +734,24 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
+          {(hasQuickFilterValues ||
+            !isEmpty(browseFields) ||
+            !searchQueryParam) && (
+            <Col span={24}>
+              <ExploreQueryFilterChips
+                browseFields={browseFields}
+                emptyText={
+                  searchQueryParam
+                    ? undefined
+                    : t('message.browse-estate-query-placeholder')
+                }
+                fields={selectedQuickFilters}
+                onClearAll={clearFilters}
+                onRemoveBrowseLevel={handleRemoveBrowseLevel}
+                onRemoveValue={handleRemoveQuickFilterValue}
+              />
+            </Col>
+          )}
           {isElasticSearchIssue ? (
             <Col span={24}>
               <IndexNotFoundBanner />
@@ -641,7 +780,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           className: 'content-resizable-panel-container',
           flex: 0.2,
           minWidth: 280,
-          title: t('label.data-asset-plural'),
+          title: t('label.browse-estate'),
           children: <div className="p-x-sm">{exploreLeftPanel}</div>,
         }}
         secondPanel={{
@@ -653,6 +792,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 {!loading && !isElasticSearchIssue ? (
                   <SearchedData
                     isFilterSelected
+                    showResultCount
                     data={searchResults?.hits.hits ?? []}
                     filter={parsedSearch}
                     handleSummaryPanelDisplay={handleSummaryPanelDisplay}
@@ -803,6 +943,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </CoreCard>
         </Radio.Group>
       </Modal>
+      <CsvJobsTray />
     </div>
   );
 };

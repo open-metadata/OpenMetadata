@@ -213,7 +213,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
       data-testid={`knowledge-card-${displayName || name}`}>
       <Link
         className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
@@ -228,14 +228,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             <Typography
               ellipsis
               data-testid="knowledge-card-title"
-              size="text-lg"
-              weight="semibold">
+              weight="medium">
               {getKnowledgePageName(knowledgePage, t)}
             </Typography>
             {isQuickLink && !readonly && quickLinkActions}
           </Box>
           <Typography
-            className="tw:text-gray-500"
+            className="tw:text-quaternary"
             data-testid="updated-at"
             size="text-xs">
             {t('label.last-edited-time', {
@@ -247,14 +246,14 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
         {/* Row 3: plain-text description */}
         {description.trim() ? (
           <Typography
-            className="tw:text-gray-600 tw:line-clamp-2 tw:leading-[1.55]"
+            className="tw:text-tertiary tw:line-clamp-2 tw:leading-[1.55]"
             data-testid="knowledge-card-description"
             size="text-sm">
             {stripMarkdown(description)}
           </Typography>
         ) : (
           <Typography
-            className="tw:text-gray-400"
+            className="tw:text-utility-gray-400"
             data-testid="no-description"
             size="text-sm">
             {t('label.no-description')}
@@ -270,14 +269,14 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           {owners?.[0] ? (
             <UserPopOverCard
               showUserName
-              className="tw:text-xs tw:font-medium tw:text-gray-700 tw:gap-2 tw:max-w-40"
+              className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
               displayName={getEntityName(owners?.[0])}
               profileWidth={20}
               userName={getEntityName(owners?.[0])}
             />
           ) : (
             <Typography
-              className="tw:text-gray-400"
+              className="tw:text-utility-gray-400"
               data-testid="owner-name"
               size="text-xs"
               weight="medium">
@@ -285,11 +284,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             </Typography>
           )}
 
-          <Dot className="tw:text-gray-400" size="micro" />
+          <Dot className="tw:text-fg-quaternary" size="micro" />
           <div className="tw:max-w-40">
             <Typography
               ellipsis
-              className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
+              className={
+                firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
+              }
               data-testid="domain-name"
               size="text-xs">
               {firstDomain?.displayName ??
@@ -308,7 +309,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
               type="modern">
               <Typography
                 ellipsis
-                className="tw:font-mono tw:text-gray-700"
+                className="tw:font-mono tw:text-secondary"
                 size="text-xs">
                 {getEntityName(tag)}
               </Typography>
@@ -317,7 +318,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           {(knowledgePage.tags ?? []).length > 2 && (
             <Badge size="md" type="modern">
               <Typography
-                className="tw:font-mono tw:text-gray-700"
+                className="tw:font-mono tw:text-secondary"
                 size="text-xs">
                 +{(knowledgePage.tags ?? []).length - 2}
               </Typography>

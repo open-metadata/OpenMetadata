@@ -248,8 +248,8 @@ const ContextCenterArchivePage: FC = () => {
                   {...tab}
                   className={({ isSelected }) =>
                     isSelected
-                      ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
+                      ? 'tw:rounded-md tw:border tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-utility-brand-700 tw:cursor-pointer'
+                      : 'tw:rounded-md tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
                   }
                 />
               )}
@@ -258,6 +258,8 @@ const ContextCenterArchivePage: FC = () => {
         </div>
 
         <ArchiveView
+          canDelete={permissions?.Delete}
+          canRestore={permissions?.EditAll}
           data={filteredItems}
           isLoading={isLoading}
           onDelete={handleDeleteClick}

@@ -163,6 +163,55 @@ public class MigrationUtil {
     }
   }
 
+  private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
+
+  /**
+   * Backfill the per-entity {@code CreateTask}/{@code EditTask} grant onto an existing tenant's
+   * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
+   * policies are create-if-not-exists, so without this migration upgraded deployments would lose
+   * the ability for non-admin users to file or patch task threads (the new authorization wired into
+   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   */
+  public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists = false;
+      for (Rule rule : policy.getRules()) {
+        if (TASK_RULE_NAME.equals(rule.getName())) {
+          ruleExists = true;
+          break;
+        }
+      }
+      if (!ruleExists) {
+        Rule taskRule =
+            new Rule()
+                .withName(TASK_RULE_NAME)
+                .withDescription(
+                    "Allow authenticated users to file and edit tasks (data access requests,"
+                        + " suggestions, etc.) against any entity. Restrict this rule (e.g. with"
+                        + " an isOwner condition) to limit who can file or edit tasks on which"
+                        + " entities.")
+                .withResources(List.of("all"))
+                .withOperations(List.of(MetadataOperation.CREATE_TASK, MetadataOperation.EDIT_TASK))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(taskRule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping TaskRule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
+    }
+  }
+
   private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
     Policy existing = null;
     try {
@@ -744,7 +793,7 @@ public class MigrationUtil {
           ? "GlossaryApproval"
           : "RequestApproval";
       case "RequestTestCaseFailureResolution" -> "TestCaseResolution";
-      case "RecognizerFeedbackApproval" -> "DataQualityReview";
+      case "RecognizerFeedbackApproval" -> "RecognizerFeedbackApproval";
       default -> "CustomTask";
     };
   }

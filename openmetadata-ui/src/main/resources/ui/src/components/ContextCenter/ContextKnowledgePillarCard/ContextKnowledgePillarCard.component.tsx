@@ -30,19 +30,12 @@ import {
 function RecentItem({
   Icon,
   item,
-  showDivider,
 }: {
   readonly Icon: FC<{ className?: string }>;
   readonly item: PillarRecentItem;
-  readonly showDivider: boolean;
 }) {
   return (
-    <Box
-      align="center"
-      className={`tw:py-1.5 ${
-        showDivider ? 'tw:border-b tw:border-gray-blue-100' : ''
-      }`}
-      gap={2}>
+    <Box align="center" className="tw:py-1.5" gap={2}>
       <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
       <Box
         align="center"
@@ -58,7 +51,7 @@ function RecentItem({
         </Typography>
         <Typography
           as="span"
-          className="tw:text-quaternary tw:font-mono tw:shrink-0 tw:whitespace-nowrap"
+          className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
           size="text-xs">
           {item.meta}
         </Typography>
@@ -91,31 +84,23 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
         <Skeleton height={12} variant="rounded" width={80} />
       </div>
 
-      <Box
-        className="tw:border-t tw:border-secondary tw:pt-2.5"
-        direction="col">
+      <Box className="tw:pt-2.5" direction="col">
         {[0, 1, 2].map((i) => (
-          <Box
-            align="center"
-            className={`tw:py-1.5 ${
-              i < 2 ? 'tw:border-b tw:border-gray-blue-100' : ''
-            }`}
-            gap={2}
-            key={i}>
+          <Box align="center" className="tw:py-1.5" gap={2} key={i}>
             <Skeleton
               className="tw:shrink-0"
               height={12}
               variant="circular"
               width={12}
             />
-            <Skeleton className="tw:flex-1" variant="rounded" />
-            <Skeleton variant="rounded" width={48} />
+            <Skeleton className="tw:flex-1" height={12} variant="rounded" />
+            <Skeleton height={12} variant="rounded" width={48} />
           </Box>
         ))}
       </Box>
     </div>
 
-    <div className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary">
+    <div className="tw:mt-3.5 tw:pt-2.5">
       <Skeleton height={16} variant="rounded" width={80} />
     </div>
   </Card>
@@ -139,6 +124,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   const statSubLabel = statSubSecondary
     ? `${statSub} · ${statSubSecondary}`
     : statSub;
+  const hasNoData = recent.length === 0;
 
   if (isLoading) {
     return <ContextKnowledgePillarCardSkeleton dataTestId={dataTestId} />;
@@ -146,7 +132,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
       data-testid={dataTestId}
       onClick={onClick}>
       <div>
@@ -163,7 +149,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
               as="div"
               className="tw:text-primary"
               size="text-sm"
-              weight="semibold">
+              weight="medium">
               {title}
             </Typography>
             <Typography as="div" className="tw:text-quaternary" size="text-xs">
@@ -199,29 +185,23 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           </Typography>
         </Box>
 
-        <Box
-          className="tw:border-t tw:border-secondary tw:pt-2.5"
-          direction="col">
-          {recent.map((item, i) => (
-            <RecentItem
-              Icon={Icon}
-              item={item}
-              key={item.title}
-              showDivider={i < recent.length - 1}
-            />
+        <Box className="tw:pt-2.5" direction="col">
+          {recent.map((item) => (
+            <RecentItem Icon={Icon} item={item} key={item.title} />
           ))}
         </Box>
       </div>
-      <Box
-        inline
-        align="center"
-        className="tw:mt-3.5 tw:pt-2.5 tw:border-t tw:border-secondary"
-        gap={2}>
+      <Box inline align="center" className="tw:mt-3.5 tw:pt-2.5" gap={2}>
         <Button
           color="link-color"
           iconTrailing={ArrowNarrowRight}
+          isDisabled={hasNoData}
           size="xs"
-          type="button">
+          type="button"
+          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+            onClick();
+          }}>
           {cta}
         </Button>
       </Box>

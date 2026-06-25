@@ -92,8 +92,8 @@ import { getTierTags } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -227,8 +227,9 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -310,9 +311,7 @@ export const DataAssetsHeader = ({
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -853,13 +852,6 @@ export const DataAssetsHeader = ({
           </div>
         </div>
 
-        {activeAnnouncement && (
-          <AnnouncementCard
-            announcement={activeAnnouncement}
-            onClick={handleOpenAnnouncementDrawer}
-          />
-        )}
-
         <div
           className="tw:flex tw:flex-wrap tw:items-start tw:gap-[18px]"
           data-testid="data-asset-header-metadata">
@@ -1055,6 +1047,16 @@ export const DataAssetsHeader = ({
           {extraInfo}
         </div>
       </div>
+
+      {activeAnnouncements.length > 0 && (
+        <AnnouncementsWidgetV3Body
+          announcements={activeAnnouncements}
+          className="tw:mt-3"
+          testId="entity-header-announcements"
+          onItemClick={handleOpenAnnouncementDrawer}
+          onViewAll={handleOpenAnnouncementDrawer}
+        />
+      )}
 
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer

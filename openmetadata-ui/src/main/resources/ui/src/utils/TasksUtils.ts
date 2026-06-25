@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import { Change, diffLines } from 'diff';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
-import { Duration } from 'luxon';
 import React from 'react';
 import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
 import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg';
@@ -1031,7 +1030,6 @@ export const isTagsTaskType = (taskType: TaskEntityType) =>
   [TaskEntityType.TagUpdate].includes(taskType);
 
 export const isRecognizerFeedbackTask = (task: TaskEntity) => {
-  const taskType = task.type as unknown as string;
   const hasFeedbackPayload =
     Boolean(task.payload) &&
     typeof task.payload === 'object' &&
@@ -1039,8 +1037,8 @@ export const isRecognizerFeedbackTask = (task: TaskEntity) => {
 
   return (
     hasFeedbackPayload &&
-    (task.type === TaskEntityType.DataQualityReview ||
-      taskType === 'RecognizerFeedbackApproval')
+    (task.type === TaskEntityType.RecognizerFeedbackApproval ||
+      task.type === TaskEntityType.DataQualityReview)
   );
 };
 
@@ -1284,43 +1282,4 @@ export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
   }
 
   return fqn;
-};
-
-export const isDarApprovalActive = (
-  approvedAt?: number,
-  duration?: string,
-  expirationDate?: number
-): boolean => {
-  const now = Date.now();
-
-  if (expirationDate != null) {
-    return now <= expirationDate;
-  }
-
-  if (!duration || !approvedAt) {
-    return true;
-  }
-
-  const parsed = Duration.fromISO(duration);
-
-  return parsed.isValid && now <= approvedAt + parsed.toMillis();
-};
-
-export const getDarButtonTooltip = (
-  isDarDisabled: boolean,
-  isDarGranted: boolean,
-  isDarAwaitingGrant: boolean,
-  t: (key: string) => string
-): string | undefined => {
-  if (!isDarDisabled) {
-    return undefined;
-  }
-  if (isDarGranted) {
-    return t('message.data-access-request-already-granted');
-  }
-  if (isDarAwaitingGrant) {
-    return t('message.data-access-request-awaiting-grant-message');
-  }
-
-  return t('message.data-access-request-already-exists');
 };
