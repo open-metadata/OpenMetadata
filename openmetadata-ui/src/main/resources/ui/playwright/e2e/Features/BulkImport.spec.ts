@@ -596,8 +596,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database Schema', async ({ page }) => {
-    // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(240_000);
+    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(300_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
