@@ -19,10 +19,9 @@ import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { createAnnouncement } from '../../../rest/announcementsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
-import { useSnackbar } from 'notistack';
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
 import {
@@ -57,7 +56,6 @@ const AddAnnouncementModal: FC<Props> = ({
   showToastInSnackbar = false,
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { enqueueSnackbar } = useSnackbar();
   const { t } = useTranslation();
 
   const handleCreateAnnouncement = async ({
@@ -71,10 +69,7 @@ const AddAnnouncementModal: FC<Props> = ({
 
     if (startTimeMs >= endTimeMs) {
       showToastInSnackbar
-        ? showNotistackError(
-            enqueueSnackbar,
-            t('message.announcement-invalid-start-time')
-          )
+        ? showNotistackError(t('message.announcement-invalid-start-time'))
         : showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       try {
@@ -89,7 +84,6 @@ const AddAnnouncementModal: FC<Props> = ({
         if (data) {
           showToastInSnackbar
             ? showNotistackSuccess(
-                enqueueSnackbar,
                 t('message.announcement-created-successfully')
               )
             : showSuccessToast(t('message.announcement-created-successfully'));
@@ -97,7 +91,7 @@ const AddAnnouncementModal: FC<Props> = ({
         onSave();
       } catch (error) {
         showToastInSnackbar
-          ? showNotistackError(enqueueSnackbar, error as AxiosError)
+          ? showNotistackError(error as AxiosError)
           : showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);

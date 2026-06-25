@@ -163,7 +163,7 @@ const FilterToolbar: React.FC<FilterToolbarProps> = ({
         }>
         <Typography
           as="span"
-          className="tw:whitespace-nowrap tw:text-gray-600"
+          className="tw:whitespace-nowrap tw:text-tertiary"
           size="text-sm"
           weight="medium">
           {t('label.view-mode')}:

@@ -58,6 +58,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.teams.RoleService;
 import org.openmetadata.sdk.services.teams.UserService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.TestUtils;
 
 /**
@@ -184,6 +186,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
       true; // Override if include=deleted query param not supported
   protected boolean supportsImportExport =
       false; // Override in subclasses that support CSV import/export
+  protected boolean supportsCsvImportSessionConsolidationRegression = false;
   protected boolean supportsListHistoryByTimestamp =
       false; // Override in subclasses that support listing all versions by timestamp
 
@@ -4473,6 +4476,37 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+
+    // Block until the async bulk worker commits the new entity. Without this, TestNamespace
+    // cleanup races the worker: the service's recursive hardDelete may scan its children before
+    // the worker establishes the parent→child relationship, leaving an orphan whose parent
+    // service no longer exists. That orphan trips unfiltered list calls in concurrent test
+    // classes. The 202 body carries each queued entity's FQN in successRequest; await the row
+    // via getEntityByName so cascade cleanup can find it. Applies to every entity that supports
+    // bulk, independent of search-index support.
+    awaitAsyncBulkEntitiesPersisted(result);
+  }
+
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**
@@ -5009,6 +5043,49 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
         botDisplayName,
         result.getDisplayName(),
         "Bot allowed EditDisplayName (SCIM-like) must update displayName via PUT: " + fqn);
+  }
+
+  /**
+   * Test: A bot whose policy does NOT deny {@code EditOwners} (the ingestion bot - {@code
+   * IngestionBotPolicy}/{@code DefaultBotPolicy} carry only a {@code DisplayName-Deny}) CAN reassign
+   * owners through a single-entity PUT even when an owner already exists.
+   *
+   * <p>Regression guard for the over-broad guard that reverted owners on <em>any</em> bot PUT once
+   * an owner was set, which silently broke ingestion ownership re-sync. {@code
+   * EntityRepository#updateOwners} now keys on the same policy-aware {@code updatingBotDeniedOperation
+   * (EDIT_OWNERS)} check as {@code updateDisplayName}, so a policy-allowed bot updates owners while a
+   * denied bot (or {@code overrideMetadata=false} with a field-deny) still preserves them.
+   */
+  @Test
+  void test_singleEntityPut_bot_updatesOwnersWhenPolicyAllows(TestNamespace ns) {
+    if (!supportsBulkAPI || !supportsOwners) return;
+    if (!hasField("setOwners", List.class)) return;
+
+    K request = createRequest(ns.prefix("put_ownallow_"), ns);
+    T created = createEntity(request);
+    String fqn = created.getFullyQualifiedName();
+
+    SharedEntities shared = SharedEntities.get();
+    T entity = getEntityByNameWithFields(fqn, "owners");
+    entity.setOwners(List.of(shared.USER1_REF));
+    patchEntity(entity.getId().toString(), entity);
+
+    invoke(request, "setOwners", List.class, List.of(shared.USER2_REF));
+    HttpResponse<String> response = putAs(request, BulkApi.botToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "Bot single-entity PUT should be authorized via EDIT_ALL: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    T result = getEntityByNameWithFields(fqn, "owners");
+    assertNotNull(result.getOwners(), "owners present after bot update: " + fqn);
+    assertFalse(result.getOwners().isEmpty(), "owners not cleared: " + fqn);
+    assertEquals(
+        shared.USER2.getId(),
+        result.getOwners().get(0).getId(),
+        "Bot allowed EditOwners (ingestion bot, no Owner-Deny) must update owners via PUT: " + fqn);
   }
 
   /**
@@ -5947,6 +6024,42 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     return null; // Override in subclasses that support import/export
   }
 
+  protected String getCsvImportContainerName(TestNamespace ns, EntityInterface entity) {
+    return getImportExportContainerName(ns);
+  }
+
+  protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
+    return getEntityService().importCsv(containerName, csvData, dryRun);
+  }
+
+  protected EntityInterface createCsvImportRegressionEntity(TestNamespace ns) {
+    return createEntity(createRequest(ns.prefix("csvNullChangeDescription"), ns));
+  }
+
+  @SuppressWarnings("unchecked")
+  protected EntityInterface patchCsvImportRegressionEntity(EntityInterface entity) {
+    return patchEntity(entity.getId().toString(), (T) entity);
+  }
+
+  protected String getCsvImportRegressionEntityType() {
+    return getEntityType();
+  }
+
+  protected EntityInterface getCsvImportRegressionEntityByName(String fqn) {
+    return getEntityByName(fqn);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected String generateCsvImportRegressionData(TestNamespace ns, EntityInterface entity) {
+    T csvUpdate = prepareCsvImportRegressionUpdate(ns, (T) entity);
+    return generateValidCsvData(ns, List.of(csvUpdate));
+  }
+
+  protected T prepareCsvImportRegressionUpdate(TestNamespace ns, T entity) {
+    entity.setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
+  }
+
   // ===================================================================
   // ABSTRACT CSV HELPER METHODS - Override in subclasses
   // Each entity type has different CSV structure and fields
@@ -6175,6 +6288,19 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private void persistEntityWithoutChangeDescription(String entityType, EntityInterface entity) {
+    // These integration tests run in-process with the OpenMetadata server, so this can seed
+    // persisted state that is not reachable through public APIs. invalidateCacheForEntity
+    // drops the cross-thread Guava L1 entry and bumps the write epoch, which is what the
+    // CSV import request (handled on a different Jetty thread) actually reads through.
+    EntityRepository<EntityInterface> repository =
+        (EntityRepository<EntityInterface>) Entity.getEntityRepository(entityType);
+    repository.getDao().update(entity);
+    EntityRepository.invalidateCacheForEntity(
+        entityType, entity.getId(), entity.getFullyQualifiedName());
+  }
+
   /**
    * Validate CSV structure and headers.
    *
@@ -6330,6 +6456,57 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     } catch (org.openmetadata.sdk.exceptions.OpenMetadataException e) {
       fail("Import/export round-trip failed: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_importCsv_skipsSessionConsolidationWhenChangeDescriptionIsMissing(TestNamespace ns) {
+    Assumptions.assumeTrue(supportsImportExport, "Entity does not support import/export");
+    Assumptions.assumeTrue(
+        supportsCsvImportSessionConsolidationRegression,
+        "Entity CSV import does not update the same entity through session consolidation");
+    Assumptions.assumeTrue(supportsPatch, "Entity does not support patch operations");
+
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(service != null, "Entity service not provided");
+
+    EntityInterface entity = createCsvImportRegressionEntity(ns);
+    entity.setDescription("Versioned for CSV import regression");
+    EntityInterface versioned = patchCsvImportRegressionEntity(entity);
+    Double versionBeforeImport = versioned.getVersion();
+    String fqn = versioned.getFullyQualifiedName();
+    String entityType = getCsvImportRegressionEntityType();
+
+    versioned.setChangeDescription(null);
+    versioned.setIncrementalChangeDescription(null);
+    persistEntityWithoutChangeDescription(entityType, versioned);
+
+    String csvData = generateCsvImportRegressionData(ns, versioned);
+    Assumptions.assumeTrue(
+        csvData != null && !csvData.isBlank(), "Entity does not provide CSV data generation");
+
+    String containerName = getCsvImportContainerName(ns, versioned);
+    Assumptions.assumeTrue(containerName != null, "Container name not provided");
+
+    CsvImportResult importResult =
+        JsonUtils.readValue(
+            importCsvForEntity(containerName, csvData, false), CsvImportResult.class);
+
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "Import should succeed: " + importResult.getImportResultsCsv());
+    assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    EntityInterface updated = getCsvImportRegressionEntityByName(fqn);
+    assertTrue(
+        updated.getVersion() > versionBeforeImport, "CSV import should create a new version");
+    assertNotNull(updated.getChangeDescription(), "CSV import should record a changeDescription");
+    assertNotNull(
+        updated.getChangeDescription().getPreviousVersion(),
+        "CSV import should record a previousVersion");
+    assertTrue(
+        updated.getChangeDescription().getPreviousVersion() >= versionBeforeImport,
+        "CSV import should skip consolidation and avoid rolling back to an older session version");
   }
 
   // ===================================================================

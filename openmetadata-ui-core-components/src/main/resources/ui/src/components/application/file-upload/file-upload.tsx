@@ -21,7 +21,6 @@ import { ProgressBar } from '@/components/base/progress-indicators/progress-indi
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
 import { FileIcon as FileIconBase } from '@untitledui/file-icons';
-import { MdFileIcon } from './icons';
 import {
   CheckCircle,
   Trash01,
@@ -35,6 +34,7 @@ import type {
   DragEvent,
 } from 'react';
 import { useId, useRef, useState } from 'react';
+import { MdFileIcon } from './icons';
 
 type FileIconProps = ComponentProps<typeof FileIconBase>;
 
@@ -78,6 +78,7 @@ export interface FileUploadDropZoneProps {
   clickToUploadLabel?: string;
   orDragAndDropLabel?: string;
   'data-testid'?: string;
+  'input-data-testid'?: string;
   onDropFiles?: (files: FileList) => void;
   onDropUnacceptedFiles?: (files: FileList) => void;
   onSizeLimitExceed?: (files: FileList) => void;
@@ -125,6 +126,7 @@ export const FileUploadDropZone = ({
   clickToUploadLabel = 'Click to upload',
   orDragAndDropLabel = 'or drag and drop',
   'data-testid': dataTestId,
+  'input-data-testid': inputDataTestId,
   onDropFiles,
   onDropUnacceptedFiles,
   onSizeLimitExceed,
@@ -241,6 +243,7 @@ export const FileUploadDropZone = ({
           <input
             accept={accept}
             className="tw:peer tw:sr-only"
+            data-testid={inputDataTestId}
             disabled={isDisabled}
             id={id}
             multiple={allowsMultiple}

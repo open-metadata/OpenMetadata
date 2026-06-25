@@ -114,6 +114,15 @@ export interface ExploreProps {
 
   quickFilters?: QueryFilterInterface;
   isElasticSearchIssue?: boolean;
+
+  // Browse-tree location (from the `browsePath` URL param) and its ES filter.
+  // It ANDs with quickFilters; a tree click updates both in one navigation.
+  browseFields?: ExploreQuickFilterField[];
+  browseQueryFilter?: QueryFilterInterface;
+  onTreeSelect?: (payload: {
+    browseFields: ExploreQuickFilterField[];
+    quickFilter?: QueryFilterInterface;
+  }) => void;
 }
 
 export interface ExploreQuickFilterField {

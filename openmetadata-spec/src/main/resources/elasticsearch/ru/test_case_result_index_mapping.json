@@ -338,7 +338,8 @@
                     "type": "text",
                     "analyzer": "om_analyzer"
                   }
-                }
+                },
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"

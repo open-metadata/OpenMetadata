@@ -17,7 +17,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06, Home02 } from '@untitledui/icons';
+import { File06 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -45,7 +45,7 @@ import {
   restoreKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -193,19 +193,11 @@ const ContextCenterArchivePage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.archive'),
-            url: '',
+            label: t('label.archive'),
           },
         ]}
         hasPermission={permissions?.Create}
@@ -256,8 +248,8 @@ const ContextCenterArchivePage: FC = () => {
                   {...tab}
                   className={({ isSelected }) =>
                     isSelected
-                      ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
+                      ? 'tw:rounded-md tw:border tw:border-utility-brand-100 tw:bg-utility-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-utility-brand-700 tw:cursor-pointer'
+                      : 'tw:rounded-md tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
                   }
                 />
               )}
@@ -266,6 +258,8 @@ const ContextCenterArchivePage: FC = () => {
         </div>
 
         <ArchiveView
+          canDelete={permissions?.Delete}
+          canRestore={permissions?.EditAll}
           data={filteredItems}
           isLoading={isLoading}
           onDelete={handleDeleteClick}

@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -511,14 +511,6 @@
       <version>0.16.0</version>
     </dependency>
 
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-bom</artifactId>
-      <version>1.14.5</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-
     <!-- Flyway dependencies - only for SQL parsing, not migration management -->
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -533,20 +525,20 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-observation</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <!-- Micrometer Prometheus -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
 
@@ -726,10 +718,6 @@
       <groupId>com.auth0</groupId>
       <artifactId>jwks-rsa</artifactId>
       <version>${jwks-rsa.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.lmax</groupId>
-      <artifactId>disruptor</artifactId>
     </dependency>
     <dependency>
       <groupId>io.socket</groupId>
@@ -921,6 +909,12 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>junit-jupiter</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
       <version>1.21.4</version>
       <scope>test</scope>
     </dependency>

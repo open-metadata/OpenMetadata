@@ -14,11 +14,70 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import type { PreRenderedAsset } from 'rollup';
+import { defineConfig, loadEnv, type Plugin, type PluginOption } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
+
+/**
+ * Vite plugin: capture hashed asset filenames at bundle time and inject
+ * <link rel="preload"> tags into index.html so the browser discovers the
+ * Inter variable font and the landing-page hero SVG before the JS bundle
+ * executes.  `transformIndexHtml: { order: 'post' }` ensures this hook runs
+ * after the existing `html-transform` plugin (which adds `${basePath}`
+ * prefixes), so we write `${basePath}` directly into the href and let the
+ * Java backend replace it at runtime — exactly the same mechanism used for
+ * script/link/image tags elsewhere.
+ */
+const injectCriticalPreloads = (): Plugin => {
+  let fontPath = '';
+  let heroPath = '';
+
+  return {
+    name: 'inject-critical-preloads',
+    generateBundle(_opts, bundle) {
+      for (const file of Object.values(bundle)) {
+        if (file.type !== 'asset') {
+          continue;
+        }
+        if (
+          file.fileName?.includes('inter-latin-wght-normal') &&
+          file.fileName.endsWith('.woff2')
+        ) {
+          fontPath = file.fileName;
+        }
+        if (
+          file.fileName?.includes('landing-page-header-bg') &&
+          file.fileName.endsWith('.svg')
+        ) {
+          heroPath = file.fileName;
+        }
+      }
+    },
+    transformIndexHtml: {
+      order: 'post' as const,
+      handler(html: string) {
+        const tags: string[] = [];
+        if (fontPath) {
+          tags.push(
+            `<link rel="preload" as="font" type="font/woff2" crossorigin href="\${basePath}${fontPath}">`
+          );
+        }
+        if (heroPath) {
+          tags.push(
+            `<link rel="preload" as="image" fetchpriority="high" href="\${basePath}${heroPath}">`
+          );
+        }
+
+        return tags.length
+          ? html.replace('</head>', `  ${tags.join('\n    ')}\n  </head>`)
+          : html;
+      },
+    },
+  };
+};
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -93,6 +152,7 @@ export default defineConfig(async ({ mode }) => {
           Buffer: true,
         },
       }),
+      mode === 'production' && injectCriticalPreloads(),
       mode === 'production' &&
         viteCompression({
           algorithm: 'gzip',
@@ -117,7 +177,7 @@ export default defineConfig(async ({ mode }) => {
       // build — they double build time). Writes `dist/bundle-stats.html` plus a JSON
       // sidecar so CI can grep regressions against a baseline.
       visualizerPlugin,
-    ].filter(Boolean),
+    ].filter(Boolean) as PluginOption[],
 
     resolve: {
       alias: {
@@ -244,7 +304,7 @@ export default defineConfig(async ({ mode }) => {
       modulePreload: { polyfill: false },
       rollupOptions: {
         output: {
-          assetFileNames: (assetInfo) => {
+          assetFileNames: (assetInfo: PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
             const ext = fileName ? path.extname(fileName).toLowerCase() : '';
@@ -255,7 +315,7 @@ export default defineConfig(async ({ mode }) => {
 
             return `assets/[name]-[hash][extname]`;
           },
-          manualChunks: (id) => {
+          manualChunks: (id: string) => {
             if (!id.includes('node_modules')) {
               return;
             }
@@ -376,6 +436,9 @@ export default defineConfig(async ({ mode }) => {
 
     define: {
       'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.BRAND_NAME': JSON.stringify(
+        env.BRAND_NAME || 'OpenMetadata'
+      ),
       global: 'globalThis',
     },
   };

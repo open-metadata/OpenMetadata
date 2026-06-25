@@ -30,7 +30,7 @@ import {
   getEndOfDayInMillis,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,
@@ -44,7 +44,6 @@ import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import DimensionalityHeatmap from './DimensionalityHeatmap/DimensionalityHeatmap.component';
 import { DimensionResultWithTimestamp } from './DimensionalityHeatmap/DimensionalityHeatmap.interface';
-
 const DimensionalityTab = () => {
   const { t } = useTranslation();
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
@@ -261,7 +260,7 @@ const DimensionalityTab = () => {
     <div className="tw:flex tw:flex-col tw:p-5 tw:gap-6">
       <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-7.5">
         <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
-          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
+          <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.select-dimension')}:`}
           </p>
           <Select
@@ -278,7 +277,7 @@ const DimensionalityTab = () => {
           </Select>
         </div>
         <div className="tw:flex tw:items-center tw:flex-nowrap tw:gap-2.5">
-          <p className="tw:m-0 tw:text-[13px] tw:font-medium tw:whitespace-nowrap tw:text-primary">
+          <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
           </p>
           <MuiDatePickerMenu

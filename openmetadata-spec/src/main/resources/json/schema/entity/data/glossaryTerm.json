@@ -220,6 +220,10 @@
     "childrenCount": {
       "description": "Count of immediate children glossary terms.",
       "type": "integer"
+    },
+    "derivedFrom": {
+      "description": "Derived: the context memory from which the Memory Agent created this glossary term (DERIVED_FROM edge, read-only projection).",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "description", "glossary"],

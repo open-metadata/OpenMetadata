@@ -49,7 +49,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
               )}
             </div>
             {displayDescription && (
-              <Typography className="tw:text-gray-700" size="text-xs">
+              <Typography className="tw:text-secondary" size="text-xs">
                 {displayDescription}
               </Typography>
             )}
