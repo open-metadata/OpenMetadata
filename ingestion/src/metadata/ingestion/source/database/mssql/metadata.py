@@ -169,7 +169,11 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     ).all()
                 self.encrypted_procedures_cache[cache_key] = {row.procedure_name for row in results}
             except Exception as exc:
-                logger.debug(f"Could not fetch encrypted procedures for {database_name}.{schema_name}: {exc}")
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Could not detect encrypted stored procedures for {database_name}.{schema_name}; "
+                    f"any encrypted procedures may be treated as non-encrypted: {exc}"
+                )
                 self.encrypted_procedures_cache[cache_key] = set()
         return self.encrypted_procedures_cache[cache_key]
 
@@ -189,12 +193,25 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
     def get_database_names_raw(self) -> Iterable[str]:
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
-    def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
-            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
+    def _load_description_maps(self) -> None:
+        """
+        Reset the per-database encrypted-procedure cache and load the description
+        maps. Descriptions are optional metadata, so a failure here must not
+        abort the run: it is logged and ingestion continues without them.
+        """
+        self.encrypted_procedures_cache.clear()
+        try:
             self.set_schema_description_map()
             self.set_database_description_map()
             self.set_stored_procedure_description_map()
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not load MSSQL description metadata, continuing without it: {exc}")
+
+    def get_database_names(self) -> Iterable[str]:
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
+            configured_db = self.config.serviceConnection.root.config.database  # pyright: ignore[reportAttributeAccessIssue]
+            self._load_description_maps()
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -214,14 +231,19 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
                     continue
 
                 try:
-                    self.set_schema_description_map()
-                    self.set_database_description_map()
-                    self.set_stored_procedure_description_map()
+                    self._load_description_maps()
                     self.set_inspector(database_name=new_database)
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=new_database,
+                            error=f"Error trying to connect to database {new_database}: {exc}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def get_stored_procedures(self) -> Iterable[MssqlStoredProcedure]:
         """List Snowflake stored procedures"""

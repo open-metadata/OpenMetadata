@@ -491,3 +491,42 @@ class TestUpdateMssqlIschemaNames:
         result = self.mssql._get_encrypted_procedures("test_db", "dbo")
 
         assert result == set()
+
+    def test_load_description_maps_degrades_gracefully(self):
+        """A failing description query is logged, not raised, so ingestion continues"""
+        self.mssql.encrypted_procedures_cache = {("db", "dbo"): {"sp"}}
+
+        with patch.object(MssqlSource, "set_schema_description_map", side_effect=Exception("boom")):
+            # Must not raise even though a description query failed
+            self.mssql._load_description_maps()
+
+        assert self.mssql.encrypted_procedures_cache == {}
+
+    def test_load_description_maps_resets_encrypted_cache(self):
+        """The per-database encrypted-procedure cache is reset on each database"""
+        self.mssql.encrypted_procedures_cache = {("db", "dbo"): {"sp"}}
+
+        with (
+            patch.object(MssqlSource, "set_schema_description_map"),
+            patch.object(MssqlSource, "set_database_description_map"),
+            patch.object(MssqlSource, "set_stored_procedure_description_map"),
+        ):
+            self.mssql._load_description_maps()
+
+        assert self.mssql.encrypted_procedures_cache == {}
+
+    def test_failed_database_recorded_in_status(self):
+        """A database that fails to connect is recorded in status and not yielded"""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.status = MagicMock()
+
+        with (
+            patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["bad_db"])),
+            patch.object(MssqlSource, "_load_description_maps"),
+            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == []
+        self.mssql.status.failed.assert_called_once()
