@@ -86,7 +86,7 @@ test.describe(
      * 5. Verify Bulk Edit capabilities (Display Name, Tags)
      */
     test('Admin: Complete export-import-validate flow', async ({ page }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(page);
       await performE2EExportImportFlow(page, table, 'admin');
     });
@@ -152,7 +152,7 @@ test.describe(
     test('EditAll User: Complete export-import-validate flow', async ({
       testCaseEditPage,
     }) => {
-      test.slow(true);
+      test.setTimeout(300_000);
       await redirectToHomePage(testCaseEditPage);
       await performE2EExportImportFlow(testCaseEditPage, table, 'edituser');
     });
