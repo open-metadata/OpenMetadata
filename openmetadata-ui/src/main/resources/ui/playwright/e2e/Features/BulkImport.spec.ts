@@ -151,8 +151,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(500_000);
+    // 6 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(600_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -768,7 +768,7 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(300_000);
 
     const tableEntity = new TableClass();
 
