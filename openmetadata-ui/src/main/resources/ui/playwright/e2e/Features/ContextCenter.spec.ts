@@ -1154,7 +1154,10 @@ test.describe('Context Center', () => {
       await navigateToDocuments(page);
 
       await page.getByTestId('add-folder-btn').click();
-      await page.getByTestId('folder-name-input').getByRole('textbox').fill(folderName);
+      await page
+        .getByTestId('folder-name-input')
+        .getByRole('textbox')
+        .fill(folderName);
       const folderCreateResPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/contextCenter/drive/folders') &&
