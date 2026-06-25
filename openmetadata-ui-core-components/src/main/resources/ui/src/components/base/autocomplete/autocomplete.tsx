@@ -451,11 +451,14 @@ export const AutocompleteBase = ({
         if (!multiple && prev.length >= 1) {
           return [newItem];
         }
-        const exists = prev.some((item) => item.id === value);
+        const alreadySelected = prev.some((item) => item.id === value);
 
-        return exists ? prev : [...prev, newItem];
+        if (!alreadySelected) {
+          onItemInserted?.(value);
+        }
+
+        return alreadySelected ? prev : [...prev, newItem];
       });
-      onItemInserted?.(value);
       setFilterText('');
     },
     [onItemInserted, multiple]
