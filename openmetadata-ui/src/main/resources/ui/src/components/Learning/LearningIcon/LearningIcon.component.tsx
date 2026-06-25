@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Button, useTheme } from '@mui/material';
+import {
+  Box,
+  Button,
+  Popover,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@untitledui/icons';
-import { Popover } from 'antd';
-import React, { lazy, useCallback, useEffect, useState } from 'react';
+import classNames from 'classnames';
+import React, { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
@@ -36,8 +41,10 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   className = '',
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [resourceCount, setResourceCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -64,8 +71,27 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     fetchResourceCount();
   }, []);
 
+  const clearCloseTimeout = useCallback(() => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearCloseTimeout, [clearCloseTimeout]);
+
+  const openPopover = useCallback(() => {
+    clearCloseTimeout();
+    setPopoverOpen(true);
+  }, [clearCloseTimeout]);
+
+  const closePopover = useCallback(() => {
+    closeTimeoutRef.current = setTimeout(() => setPopoverOpen(false), 120);
+  }, []);
+
   const handleClick = useCallback(() => {
     setDrawerOpen(true);
+    setPopoverOpen(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -76,88 +102,46 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     return null;
   }
 
-  const popoverContent = (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: theme.spacing(1),
-      }}>
-      <Box
-        component="span"
-        sx={{
-          fontSize: theme.typography.pxToRem(13),
-          whiteSpace: 'nowrap',
-        }}>
-        {t('label.learn-how-this-feature-works')}
-      </Box>
-      <Button
-        endIcon={<ArrowRight size={14} />}
-        size="small"
-        sx={{
-          borderRadius: theme.spacing(1.25),
-          border: `0.5px solid ${theme.palette.grey[300]}`,
-          background: theme.palette.background.paper,
-          boxShadow: theme.shadows[1],
-          color: theme.palette.text.secondary,
-          fontSize: theme.typography.body2.fontSize,
-          fontWeight: theme.typography.fontWeightMedium,
-          padding: theme.spacing(0.5, 1.25),
-          minWidth: 0,
-        }}
-        variant="text"
-        onClick={handleClick}>
-        {resourceCount} {t('label.resource-plural').toLowerCase()}
-      </Button>
-    </Box>
-  );
-
   return (
     <>
+      <button
+        aria-label={t('label.learn-how-this-feature-works')}
+        className={classNames(
+          'tw:inline-flex tw:items-center tw:align-middle tw:cursor-pointer tw:text-brand-600 tw:border-0 tw:bg-transparent tw:p-0',
+          className
+        )}
+        data-testid="learning-icon"
+        ref={triggerRef}
+        type="button"
+        onClick={handleClick}
+        onMouseEnter={openPopover}
+        onMouseLeave={closePopover}>
+        <LearningIconSvg height={16} width={16} />
+      </button>
+
       <Popover
-        content={popoverContent}
-        overlayInnerStyle={{
-          borderRadius: theme.shape.borderRadius,
-          background: `linear-gradient(180deg, ${theme.palette.grey[50]} 0%, ${theme.palette.grey[100]} 100%)`,
-          boxShadow: theme.shadows[2],
-          padding: theme.spacing(0.5, 1.25),
-        }}
-        placement="bottomLeft"
-        showArrow={false}
-        trigger="hover">
+        isNonModal
+        containerClassName="tw:px-3 tw:py-2"
+        isOpen={popoverOpen}
+        placement="bottom left"
+        triggerRef={triggerRef}
+        onOpenChange={setPopoverOpen}>
         <Box
-          className={className}
-          data-testid="learning-icon"
-          sx={{
-            cursor: 'pointer',
-            display: 'inline-flex',
-            alignItems: 'center',
-            verticalAlign: 'middle',
-            position: 'relative',
-            borderRadius: theme.spacing(2),
-            backgroundColor: theme.palette.primary.light + '1A',
-            padding: theme.spacing(0.5),
-            height: 'fit-content',
-            color: theme.palette.primary.main,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: theme.palette.primary.light + '33',
-            },
-          }}
-          onClick={handleClick}>
-          <Box
-            sx={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                transform: 'scale(1.1)',
-              },
-            }}>
-            <LearningIconSvg height={16} width={16} />
-          </Box>
+          align="center"
+          gap={2}
+          onMouseEnter={openPopover}
+          onMouseLeave={closePopover}>
+          <Typography as="span" size="text-sm">
+            {t('label.learn-how-this-feature-works')}
+          </Typography>
+          <Button
+            color="tertiary"
+            data-testid="learning-resources-button"
+            iconTrailing={<ArrowRight size={14} />}
+            size="sm"
+            onPress={handleClick}>
+            {resourceCount} {t('label.resource-plural').toLowerCase()}
+          </Button>
         </Box>
       </Popover>
 
