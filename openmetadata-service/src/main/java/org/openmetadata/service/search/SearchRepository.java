@@ -79,6 +79,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -1879,8 +1880,7 @@ public class SearchRepository {
       return;
     }
 
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-    if (nullOrEmpty(childAliases)) {
+    if (nullOrEmpty(indexMapping.getChildAliases())) {
       return;
     }
 
@@ -1900,24 +1900,25 @@ public class SearchRepository {
     String parentFieldName = resolveParentFieldName(entityType, updates);
     Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
     List<String> entityChildren =
-        childAliases.stream().filter(alias -> !isTimeSeriesAlias(alias)).toList();
+        filterChildAliasesByCapability(
+            indexMapping, capability -> capability == null || !capability.isTimeSeries());
     if (nullOrEmpty(entityChildren)) {
       return;
     }
     searchClient.updateChildren(entityChildren, parentMatch, updates);
   }
 
-  private boolean isTimeSeriesAlias(String alias) {
-    String entityType = stripClusterAlias(alias);
-    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
-    return capability != null && capability.isTimeSeries();
-  }
-
-  private String stripClusterAlias(String alias) {
-    if (!nullOrEmpty(clusterAlias) && alias.startsWith(clusterAlias + INDEX_NAME_SEPARATOR)) {
-      return alias.substring((clusterAlias + INDEX_NAME_SEPARATOR).length());
+  private List<String> filterChildAliasesByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = indexMapping.getChildAliases();
+    if (nullOrEmpty(childAliases)) {
+      return List.of();
     }
-    return alias;
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
   }
 
   private String resolveParentFieldName(
@@ -2796,12 +2797,7 @@ public class SearchRepository {
     // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
-    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
-    List<String> targets =
-        indexMapping.getChildAliases().stream()
-            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
-            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
-            .toList();
+    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
     if (targets.isEmpty()) {
       return;
     }
