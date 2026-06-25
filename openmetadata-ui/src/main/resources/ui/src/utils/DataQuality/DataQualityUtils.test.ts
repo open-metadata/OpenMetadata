@@ -47,8 +47,7 @@ import {
   getTestCaseFiltersValue,
   parseColumnAggregateBuckets,
   transformToTestCaseStatusObject,
-} from './DataQualityUtils';
-
+} from './DataQualityPureUtils';
 jest.mock('../../constants/profiler.constant', () => ({
   TEST_CASE_FILTERS: {
     table: 'tableFqn',
@@ -74,18 +73,22 @@ jest.mock('../date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
-jest.mock('../TableUtils', () => ({
+jest.mock('../TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockImplementation((fqn: string) => {
     return `<#E::table::${fqn}>`;
   }),
   getTierTags: jest.fn().mockReturnValue(undefined),
 }));
 
-jest.mock('../FeedUtils', () => ({
-  getEntityFQN: jest.fn((link: string) => link),
+jest.mock('../FeedUtilsPure', () => ({
+  getEntityFQN: jest.fn((link: string) => {
+    const match = link?.match(/^<#E::table::(.+?)(?:::columns::[^>]+)?>$/);
+
+    return match ? match[1] : link;
+  }),
 }));
 
-jest.mock('../EntityUtils', () => ({
+jest.mock('../EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest.fn((link: string) => {
     const match = link?.match(/::columns::([^>]+)/);
 
@@ -864,11 +867,11 @@ describe('DataQualityUtils', () => {
 
       expect(getColumnFilterOptions(items)).toEqual([
         {
-          key: `${mockColumnCase1.entityLink ?? ''}::col1`,
+          key: 'service.db.schema.tableA::col1',
           label: 'col1',
         },
         {
-          key: `${mockColumnCase2.entityLink ?? ''}::col2`,
+          key: 'service.db.schema.tableB::col2',
           label: 'col2',
         },
       ]);
@@ -948,15 +951,16 @@ describe('DataQualityUtils', () => {
     });
 
     it('filters by table when filterTables is non-empty', () => {
-      const tableKey = mockTableCase.entityLink ?? '';
+      const tableKey = 'service.db.schema.tableA';
 
       expect(filterTestCasesByTableAndColumn(items, [tableKey], [])).toEqual([
         mockTableCase,
+        mockColumnCase1,
       ]);
     });
 
     it('filters by column when filterColumns is non-empty', () => {
-      const columnKey = `${mockColumnCase1.entityLink ?? ''}::col1`;
+      const columnKey = 'service.db.schema.tableA::col1';
 
       expect(filterTestCasesByTableAndColumn(items, [], [columnKey])).toEqual([
         mockColumnCase1,
@@ -964,7 +968,7 @@ describe('DataQualityUtils', () => {
     });
 
     it('excludes table-only test cases when filtering by column', () => {
-      const columnKey = `${mockColumnCase1.entityLink ?? ''}::col1`;
+      const columnKey = 'service.db.schema.tableA::col1';
 
       expect(
         filterTestCasesByTableAndColumn(items, [], [columnKey])
@@ -972,8 +976,8 @@ describe('DataQualityUtils', () => {
     });
 
     it('applies both table and column filters when both provided', () => {
-      const tableKey = mockColumnCase1.entityLink ?? '';
-      const columnKey = `${mockColumnCase1.entityLink ?? ''}::col1`;
+      const tableKey = 'service.db.schema.tableA';
+      const columnKey = 'service.db.schema.tableA::col1';
 
       expect(
         filterTestCasesByTableAndColumn(items, [tableKey], [columnKey])

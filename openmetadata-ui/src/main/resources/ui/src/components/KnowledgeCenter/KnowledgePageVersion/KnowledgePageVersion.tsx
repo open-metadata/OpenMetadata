@@ -33,17 +33,16 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../utils/EntityDiffPureUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { stringToHTML } from '../../../utils/StringUtils';
-
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;

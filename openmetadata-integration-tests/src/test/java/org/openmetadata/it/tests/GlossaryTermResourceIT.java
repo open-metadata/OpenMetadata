@@ -1066,10 +1066,16 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertNotNull(updated.getReviewers());
     assertEquals(1, updated.getReviewers().size());
 
-    // Add another reviewer
-    updated.setReviewers(
+    // Add another reviewer — re-fetch first so the patch diff contains only the
+    // reviewer change. Adding the first reviewer triggers the async approval
+    // workflow which flips entityStatus to IN_REVIEW; patching the stale
+    // `updated` object (still APPROVED) would otherwise produce an IN_REVIEW ->
+    // APPROVED status diff that checkUpdatedByReviewer rejects because admin is
+    // not a reviewer.
+    GlossaryTerm fresh1 = SdkClients.adminClient().glossaryTerms().get(updated.getId().toString());
+    fresh1.setReviewers(
         List.of(testUser1().getEntityReference(), testUser2().getEntityReference()));
-    GlossaryTerm updated2 = patchEntity(updated.getId().toString(), updated);
+    GlossaryTerm updated2 = patchEntity(fresh1.getId().toString(), fresh1);
     assertNotNull(updated2.getReviewers());
     assertTrue(updated2.getReviewers().size() >= 2);
 
@@ -1302,6 +1308,47 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         Integer.valueOf(0),
         afterDelete.getUsageCount(),
         "Glossary term usageCount should drop to 0 after the tagged table is hard-deleted");
+  }
+
+  @Test
+  void test_longFqnGlossaryTermAppliesAsTagWithoutOverflow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    // entityName permits up to 256 chars; combined with the glossary prefix the resulting term FQN
+    // exceeds the legacy tag_usage.tagFQN VARCHAR(256) limit (but stays within the widened 512).
+    // Before the widening this applyTag INSERT failed with
+    // "value too long for type character varying(256)".
+    String longName = ("longterm_" + "x".repeat(256)).substring(0, 256);
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(longName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Long-named term exercising the widened tag_usage.tagFQN column");
+    GlossaryTerm term = createEntity(termRequest);
+    assertTrue(
+        term.getFullyQualifiedName().length() > 256,
+        "Term FQN must exceed the legacy 256-char tag_usage limit to exercise the fix: "
+            + term.getFullyQualifiedName().length());
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("long_fqn_tag_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    tableRequest.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(term.getFullyQualifiedName(), table.getTags().get(0).getTagFQN());
   }
 
   @Test

@@ -339,8 +339,20 @@ public class DatabaseServiceResourceIT
 
   @Test
   void list_databaseServiceWithPipelinesField_populatesPipelines(TestNamespace ns) {
-    DatabaseService service =
-        createEntity(createMinimalRequest(ns).withName(ns.prefix("svc_pipe")));
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("svc_pipe_dom"))
+                    .withDescription("Isolates list query for pipelines-field test")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    CreateDatabaseService createRequest =
+        createMinimalRequest(ns)
+            .withName(ns.prefix("svc_pipe"))
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DatabaseService service = createEntity(createRequest);
 
     CreateIngestionPipeline pipelineRequest =
         new CreateIngestionPipeline()
@@ -354,8 +366,7 @@ public class DatabaseServiceResourceIT
     IngestionPipeline pipeline =
         SdkClients.adminClient().ingestionPipelines().create(pipelineRequest);
 
-    ListParams params = new ListParams();
-    params.setLimit(1000);
+    ListParams params = new ListParams().withDomain(domain.getFullyQualifiedName()).withLimit(1000);
     params.setFields("pipelines");
     ListResponse<DatabaseService> response = listEntities(params);
 
@@ -366,10 +377,10 @@ public class DatabaseServiceResourceIT
             .orElse(null);
     assertNotNull(listed, "Created service should be present in list response");
     assertNotNull(
-        listed.getPipelines(), "fields=pipelines must populate pipelines on the list endpoint");
+        listed.getPipelines(), "fields=pipelines must populate pipelines on the service endpoint");
     assertTrue(
         listed.getPipelines().stream().anyMatch(p -> p.getId().equals(pipeline.getId())),
-        "List response should include the ingestion pipeline for the service");
+        "Service should include the ingestion pipeline when fields=pipelines");
   }
 
   @Test
@@ -844,11 +855,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing

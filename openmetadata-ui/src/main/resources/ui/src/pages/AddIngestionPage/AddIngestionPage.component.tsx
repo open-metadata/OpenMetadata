@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -23,6 +24,7 @@ import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocP
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import AddIngestion from '../../components/Settings/Services/AddIngestion/AddIngestion.component';
+import { AddIngestionHandle } from '../../components/Settings/Services/AddIngestion/IngestionWorkflow.interface';
 import {
   DEPLOYED_PROGRESS_VAL,
   INGESTION_PROGRESS_END_VAL,
@@ -50,9 +52,9 @@ import {
   getBreadCrumbsArray,
   getIngestionHeadingName,
   getSettingsPathFromPipelineType,
-} from '../../utils/IngestionUtils';
+} from '../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../utils/RouterUtils';
-import { getServiceType } from '../../utils/ServiceUtils';
+import { getServiceType } from '../../utils/ServicePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -81,6 +83,7 @@ const AddIngestionPage = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
   const [activeField, setActiveField] = useState<string>('');
+  const addIngestionRef = useRef<AddIngestionHandle>(null);
 
   const isSettingsPipeline = useMemo(
     () =>
@@ -238,38 +241,78 @@ const AddIngestionPage = () => {
     setSlashedBreadcrumb(breadCrumbsArray);
   }, [serviceCategory, ingestionType, serviceData, isSettingsPipeline]);
 
+  const footerNextText =
+    activeIngestionStep === 2 ? t('label.add-deploy') : t('label.next');
+
+  const handleFooterBack = () => {
+    if (activeIngestionStep === 1) {
+      handleCancelClick();
+    } else {
+      setActiveIngestionStep(1);
+    }
+  };
+
+  const handleFooterNext = () => {
+    addIngestionRef.current?.submit();
+  };
+
   const firstPanelChildren = (
-    <div>
-      <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
-      <div className="m-t-md">
-        <AddIngestion
-          activeIngestionStep={activeIngestionStep}
-          handleCancelClick={handleCancelClick}
-          handleViewServiceClick={handleCancelClick}
-          heading={getIngestionHeadingName(
-            ingestionType,
-            INGESTION_ACTION_TYPE.ADD
-          )}
-          ingestionAction={ingestionAction}
-          ingestionProgress={ingestionProgress}
-          isIngestionCreated={isIngestionCreated}
-          isIngestionDeployed={isIngestionDeployed}
-          pipelineType={ingestionType as PipelineType}
-          serviceCategory={serviceCategory as ServiceCategory}
-          serviceData={serviceData as DataObj}
-          setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
-          showDeployButton={showIngestionButton}
-          status={FormSubmitType.ADD}
-          onAddIngestionSave={onAddIngestionSave}
-          onFocus={handleFieldFocus}
-          onIngestionDeploy={onIngestionDeploy}
-        />
+    <div className="tw:max-w-screen-lg m-x-auto tw:p-0 tw:flex tw:flex-col tw:h-full tw:overflow-y-scroll no-scrollbar">
+      <div className="tw:flex-1">
+        <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
+        <div className="tw:mt-4">
+          <AddIngestion
+            hideFooter
+            activeIngestionStep={activeIngestionStep}
+            handleCancelClick={handleCancelClick}
+            handleViewServiceClick={handleCancelClick}
+            heading={getIngestionHeadingName(
+              ingestionType,
+              INGESTION_ACTION_TYPE.ADD
+            )}
+            ingestionAction={ingestionAction}
+            ingestionProgress={ingestionProgress}
+            isIngestionCreated={isIngestionCreated}
+            isIngestionDeployed={isIngestionDeployed}
+            pipelineType={ingestionType as PipelineType}
+            ref={addIngestionRef}
+            serviceCategory={serviceCategory as ServiceCategory}
+            serviceData={serviceData as DataObj}
+            setActiveIngestionStep={(step) => setActiveIngestionStep(step)}
+            showDeployButton={showIngestionButton}
+            status={FormSubmitType.ADD}
+            onAddIngestionSave={onAddIngestionSave}
+            onFocus={handleFieldFocus}
+            onIngestionDeploy={onIngestionDeploy}
+          />
+        </div>
       </div>
+      {activeIngestionStep <= 2 && (
+        <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
+          <Button
+            color="secondary"
+            data-testid="previous-button"
+            size="sm"
+            type="button"
+            onPress={handleFooterBack}>
+            {t('label.back')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="next-button"
+            size="sm"
+            type="button"
+            onPress={handleFooterNext}>
+            {footerNextText}
+          </Button>
+        </div>
+      )}
     </div>
   );
 
   const secondPanelChildren = (
     <ServiceDocPanel
+      focusedMode
       isWorkflow
       activeField={activeField}
       serviceName={serviceData?.serviceType ?? ''}
@@ -298,14 +341,13 @@ const AddIngestionPage = () => {
 
   return (
     <ResizablePanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel tw:!bg-transparent"
       firstPanel={{
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
         className: 'content-resizable-panel-container',
-        cardClassName: 'steps-form-container',
-        allowScroll: true,
+        wrapInCard: false,
       }}
       pageTitle={t('label.add-entity', {
         entity: t('label.ingestion'),

@@ -41,20 +41,16 @@ import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDataModelColumnsByFQN } from '../../../rest/dataModelsAPI';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import {
-  getEntityName,
-  highlightSearchArrayElement,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightSearchArrayElement } from '../../../utils/EntitySearchUtils';
 import Fqn from '../../../utils/Fqn';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
-import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import AntTable from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 

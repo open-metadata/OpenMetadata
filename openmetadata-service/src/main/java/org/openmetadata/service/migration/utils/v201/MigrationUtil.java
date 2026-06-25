@@ -8,6 +8,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -23,6 +26,7 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinit
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskDetails;
@@ -40,6 +44,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
@@ -51,7 +56,17 @@ public class MigrationUtil {
   private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
   private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
       "createRecognizerFeedbackApprovalTask";
+  private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
   private static final int BATCH_SIZE = 200;
+
+  private static final String NOTIFICATION_ALERT_TYPE = "Notification";
+  private static final String MENTION_FILTER_NAME = "filterByMentionedName";
+  private static final String CONVERSATION_RESOURCE = "conversation";
+  private static final String TASK_RESOURCE = "task";
+  private static final String UPDATE_SUBSCRIPTION_MYSQL =
+      "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+  private static final String UPDATE_SUBSCRIPTION_POSTGRES =
+      "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
 
   private final Handle handle;
   private final CollectionDAO collectionDAO;
@@ -72,17 +87,29 @@ public class MigrationUtil {
     int seededDefaults = ensureDefaultTaskWorkflows();
     int redeployedWorkflows = redeployUserApprovalWorkflows();
     MigrationStats stats = migrateLegacyThreadTasks();
+    int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
     int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
 
     LOG.info(
-        "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, backfilledOpenTasks={}",
+        "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
         seededDefaults,
         redeployedWorkflows,
         stats.migrated,
         stats.alreadyMigrated,
         stats.skipped,
         stats.failed,
+        rewrittenRecognizerFeedbackTasks,
         backfilledOpenTasks);
+  }
+
+  public void runRecognizerFeedbackTaskTypeMigration() {
+    int seededDefaults = ensureDefaultTaskWorkflows();
+    int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+
+    LOG.info(
+        "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+        seededDefaults,
+        rewrittenRecognizerFeedbackTasks);
   }
 
   private int ensureDefaultTaskWorkflows() {
@@ -194,7 +221,7 @@ public class MigrationUtil {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       filter.addQueryParam("taskStatusGroup", "open");
       List<Task> openTasks =
-          taskRepository.listAll(taskRepository.getFields("about,payload"), filter);
+          listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
       for (Task task : openTasks) {
         if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
           continue;
@@ -239,6 +266,64 @@ public class MigrationUtil {
       LOG.error("Failed to backfill open tasks to workflow instances", e);
     }
     return backfilled;
+  }
+
+  private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
+    int rewritten = 0;
+    try {
+      ListFilter filter = new ListFilter(Include.NON_DELETED);
+      filter.addQueryParam("taskStatusGroup", "open");
+      filter.addQueryParam("taskType", TaskEntityType.DataQualityReview.value());
+
+      List<Task> openDataQualityReviewTasks =
+          listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+      for (Task task : openDataQualityReviewTasks) {
+        if (task == null
+            || task.getId() == null
+            || !isRecognizerFeedbackDataQualityReviewTask(task)) {
+          continue;
+        }
+
+        TaskEntityType previousType = task.getType();
+        TaskCategory previousCategory = task.getCategory();
+        try {
+          task.setType(TaskEntityType.RecognizerFeedbackApproval);
+          task.setCategory(TaskCategory.Review);
+          collectionDAO.taskDAO().updateTask(task.getId().toString(), JsonUtils.pojoToJson(task));
+          rewritten++;
+        } catch (Exception e) {
+          task.setType(previousType);
+          task.setCategory(previousCategory);
+          LOG.error("Failed to rewrite recognizer feedback task '{}'", task.getId(), e);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to list recognizer feedback review tasks for type rewrite", e);
+    }
+    return rewritten;
+  }
+
+  private boolean isRecognizerFeedbackDataQualityReviewTask(Task task) {
+    if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+      return false;
+    }
+
+    try {
+      Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
+      if (payload == null || !payload.containsKey(FEEDBACK_PAYLOAD_KEY)) {
+        return false;
+      }
+
+      RecognizerFeedback feedback =
+          JsonUtils.convertValue(payload.get(FEEDBACK_PAYLOAD_KEY), RecognizerFeedback.class);
+      return feedback != null
+          && !nullOrEmpty(feedback.getTagFQN())
+          && !nullOrEmpty(feedback.getEntityLink());
+    } catch (Exception e) {
+      LOG.debug(
+          "Unable to inspect task '{}' payload for recognizer feedback keys", task.getId(), e);
+      return false;
+    }
   }
 
   private List<String> listTaskThreadWithOffset(String tableName, int limit, int offset) {
@@ -343,7 +428,7 @@ public class MigrationUtil {
       case RequestApproval -> new TypeAndCategory(
           TaskEntityType.GlossaryApproval, TaskCategory.Approval);
       case RecognizerFeedbackApproval -> new TypeAndCategory(
-          TaskEntityType.DataQualityReview, TaskCategory.Review);
+          TaskEntityType.RecognizerFeedbackApproval, TaskCategory.Review);
       case RequestDescription, UpdateDescription -> new TypeAndCategory(
           TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
       case RequestTag, UpdateTag -> new TypeAndCategory(
@@ -560,6 +645,78 @@ public class MigrationUtil {
       return "thread_entity_archived";
     }
     return null;
+  }
+
+  /**
+   * Incidents moved from conversation threads to Task entities in the task redesign. Add the "task"
+   * resource to existing mention-based Notification alerts so they keep notifying mentioned users on
+   * incident/task activity, alongside conversations.
+   */
+  public void addTaskResourceToMentionAlerts() {
+    LOG.info("Adding '{}' resource to mention-based notification alerts", TASK_RESOURCE);
+    List<Map<String, Object>> rows =
+        handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
+    int updated = 0;
+
+    for (Map<String, Object> row : rows) {
+      String id = row.get("id").toString();
+      try {
+        ObjectNode root = (ObjectNode) JsonUtils.readTree(row.get("json").toString());
+        ArrayNode resources = mentionAlertResourcesToUpdate(root);
+        if (resources == null) {
+          continue;
+        }
+        resources.add(TASK_RESOURCE);
+        String updateSql =
+            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                ? UPDATE_SUBSCRIPTION_MYSQL
+                : UPDATE_SUBSCRIPTION_POSTGRES;
+        handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
+        updated++;
+      } catch (Exception e) {
+        LOG.warn("Failed to add task resource to event subscription {}", id, e);
+      }
+    }
+    LOG.info("Added '{}' resource to {} mention-based notification alerts", TASK_RESOURCE, updated);
+  }
+
+  private ArrayNode mentionAlertResourcesToUpdate(ObjectNode root) {
+    JsonNode alertType = root.get("alertType");
+    if (alertType == null || !NOTIFICATION_ALERT_TYPE.equals(alertType.asText())) {
+      return null;
+    }
+    JsonNode filteringRules = root.get("filteringRules");
+    if (filteringRules == null
+        || !(filteringRules.get("resources") instanceof ArrayNode resources)) {
+      return null;
+    }
+    boolean isMentionConversationAlert =
+        jsonArrayContains(resources, CONVERSATION_RESOURCE)
+            && !jsonArrayContains(resources, TASK_RESOURCE)
+            && hasMentionFilter(filteringRules.get("rules"));
+    return isMentionConversationAlert ? resources : null;
+  }
+
+  private boolean hasMentionFilter(JsonNode rules) {
+    if (!(rules instanceof ArrayNode ruleArray)) {
+      return false;
+    }
+    for (JsonNode rule : ruleArray) {
+      JsonNode name = rule.get("name");
+      if (name != null && MENTION_FILTER_NAME.equals(name.asText())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean jsonArrayContains(ArrayNode array, String value) {
+    for (JsonNode node : array) {
+      if (value.equals(node.asText())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static class TypeAndCategory {

@@ -12,7 +12,7 @@
  */
 
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, Home02 } from '@untitledui/icons';
+import { ChevronDown } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -52,7 +52,7 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterUtils';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -183,6 +183,7 @@ const ContextCenterArticlesPage = () => {
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
           onToggleRightPanel={handleToggleRightPanel}
+          onUpdate={page.handlers?.onUpdate}
           onVoteChange={page.handlers?.onVoteChange ?? (async () => undefined)}
         />
       );
@@ -222,16 +223,10 @@ const ContextCenterArticlesPage = () => {
         }
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
-          {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          { activeTitle: true, name: t('label.article-plural'), url: '' },
+          { label: t('label.article-plural') },
         ]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {

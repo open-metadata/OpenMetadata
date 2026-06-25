@@ -117,8 +117,8 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityUtils'),
+jest.mock('../../../../utils/EntityPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntityPureUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('column_x'),
 }));
 

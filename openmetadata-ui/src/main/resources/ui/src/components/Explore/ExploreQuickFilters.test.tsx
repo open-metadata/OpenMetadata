@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -115,6 +121,7 @@ jest.mock('../SearchDropdown/SearchDropdown', () => ({
 }));
 
 jest.mock('../../utils/ExploreUtils', () => ({
+  ...jest.requireActual('../../utils/ExplorePureUtils'),
   getAggregationOptions: jest.fn(),
 }));
 
@@ -644,6 +651,66 @@ describe('ExploreQuickFilters component', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Facet query filter (own field excluded)', () => {
+    const tierField: ExploreQuickFilterField = {
+      label: 'Tier',
+      key: 'tier.tagFQN',
+      value: [
+        { key: 'Tier.Tier1', label: 'Tier.Tier1' },
+        { key: 'Tier.Tier2', label: 'Tier.Tier2' },
+      ],
+    };
+    const tagField: ExploreQuickFilterField = {
+      label: 'Tag',
+      key: 'tags.tagFQN',
+      value: undefined,
+    };
+
+    it('keeps sibling-field selections when fetching options for another facet', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField, tagField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tags.tagFQN'));
+      });
+
+      const filterArg = (getAggregationOptions as jest.Mock).mock.calls.at(
+        -1
+      )[3] as string;
+
+      expect(filterArg).toContain('Tier.Tier1');
+      expect(filterArg).toContain('Tier.Tier2');
+    });
+
+    it('excludes the facet own selections so the full option list stays visible', async () => {
+      mockUseCustomLocation.mockReturnValue({ search: '' });
+      mockGetAggregationOptions.mockResolvedValue(
+        mockAdvancedFieldDefaultOptions
+      );
+
+      render(
+        <ExploreQuickFilters {...mockProps} fields={[tierField, tagField]} />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('onGetInitialOptions-tier.tagFQN'));
+      });
+
+      const filterArg = (getAggregationOptions as jest.Mock).mock.calls.at(
+        -1
+      )[3] as string;
+
+      expect(filterArg).not.toContain('Tier.Tier1');
+      expect(filterArg).not.toContain('Tier.Tier2');
     });
   });
 

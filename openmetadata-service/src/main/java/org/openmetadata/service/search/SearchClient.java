@@ -391,6 +391,21 @@ public interface SearchClient
           if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
             oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
           }
+          def old = ctx._source.upstreamLineage[i];
+          def carryCreatedAt = old.get('createdAt');
+          def carryCreatedBy = old.get('createdBy');
+          def newCreatedAt = edgeData.get('createdAt');
+          if (carryCreatedAt != null && (newCreatedAt == null || carryCreatedAt < newCreatedAt)) {
+            edgeData.put('createdAt', carryCreatedAt);
+            if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
+          }
+          def carryUpdatedAt = old.get('updatedAt');
+          def carryUpdatedBy = old.get('updatedBy');
+          def newUpdatedAt = edgeData.get('updatedAt');
+          if (carryUpdatedAt != null && (newUpdatedAt == null || carryUpdatedAt > newUpdatedAt)) {
+            edgeData.put('updatedAt', carryUpdatedAt);
+            if (carryUpdatedBy != null) edgeData.put('updatedBy', carryUpdatedBy);
+          }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
           break;
@@ -713,6 +728,22 @@ public interface SearchClient
 
   Object getLowLevelClient();
 
+  /** Status code + raw response body of a low-level request to the search engine. */
+  record RawSearchResponse(int statusCode, String body) {}
+
+  /**
+   * Executes a low-level request against the search engine and returns the raw response (the body
+   * may be JSON or, for {@code _cat/*}, plain text). Backs the typed {@code /v1/test-support/search}
+   * endpoints so integration tests can inspect index internals (counts, aliases, {@code
+   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Not part of
+   * the normal query path.
+   */
+  default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    throw new UnsupportedOperationException(
+        "rawSearchRequest is not supported by " + getClass().getSimpleName());
+  }
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
@@ -722,13 +753,27 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
-  LineagePaginationInfo getLineagePaginationInfo(
+  default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
       String entityType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException;
 
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)

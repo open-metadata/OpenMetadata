@@ -25,7 +25,7 @@ import {
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import SummaryPanelSkeleton from '../../../components/common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import i18n, { t } from '../../../utils/i18next/LocalUtil';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 

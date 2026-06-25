@@ -14,7 +14,7 @@ import validator from '@rjsf/validator-ajv8';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { LOADING_STATE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import FormBuilder, { Props } from './FormBuilder';
 
 describe('FormBuilder', () => {
@@ -95,6 +95,12 @@ describe('FormBuilder', () => {
     expect(getByTestId('loader')).toBeInTheDocument();
   });
 
+  it('disables submit when requested', () => {
+    render(<FormBuilder {...props} isSubmitDisabled />);
+
+    expect(screen.getByTestId('submit-btn')).toBeDisabled();
+  });
+
   it('should display check icon when status is success', () => {
     const { getByRole } = render(
       <FormBuilder
@@ -116,5 +122,41 @@ describe('FormBuilder', () => {
     render(<FormBuilder {...newProps} />);
 
     expect(screen.queryByText('Form Header')).toBeNull();
+  });
+
+  it('keeps typed values when an external onChange is provided', () => {
+    const onChange = jest.fn();
+
+    render(
+      <FormBuilder
+        cancelText="Cancel"
+        formData={{}}
+        okText="OK"
+        schema={{
+          type: 'object',
+          properties: {
+            username: {
+              type: 'string',
+              title: 'Username',
+            },
+          },
+        }}
+        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
+        validator={validator}
+        onChange={onChange}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    const input = screen.getByRole('textbox');
+
+    fireEvent.change(input, { target: { value: 'admin' } });
+
+    expect(input).toHaveValue('admin');
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formData: { username: 'admin' },
+      })
+    );
   });
 });

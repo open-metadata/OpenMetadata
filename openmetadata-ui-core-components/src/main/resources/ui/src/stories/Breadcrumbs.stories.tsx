@@ -77,3 +77,14 @@ export const Sizes: Story = {
     </div>
   ),
 };
+
+export const AutoCollapse: Story = {
+  args: { items: deepItems, autoCollapse: true },
+  render: (args) => (
+    <div
+      className="tw:resize-x tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:p-3"
+      style={{ width: 320 }}>
+      <Breadcrumbs {...args} />
+    </div>
+  ),
+};

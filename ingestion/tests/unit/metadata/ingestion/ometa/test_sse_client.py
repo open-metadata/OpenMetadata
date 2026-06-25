@@ -816,3 +816,37 @@ def test_parse_sse_event_with_colon_in_data(sse_client):
 
     assert parsed["event"] == "message"
     assert parsed["data"] == '{"key":"value:with:colons"}'
+
+
+def test_parse_sse_event_concatenates_multiple_data_lines(sse_client):
+    """Multiple ``data:`` lines in one SSE event must be concatenated with newlines
+    (per the SSE spec), not overwritten so only the last survives."""
+    event_buffer = [
+        "event: message",
+        "data: part-one",
+        "data: part-two",
+        "data: part-three",
+    ]
+    parsed = sse_client._parse_sse_event(event_buffer)
+
+    assert parsed["data"] == "part-one\npart-two\npart-three"
+
+
+def test_parse_sse_event_reassembles_json_split_across_data_lines(sse_client):
+    """A JSON payload chunked across multiple ``data:`` lines must be fully reassembled
+    so downstream ``json.loads`` sees complete JSON.
+
+    Regression: large/over-escaped agent payloads (e.g. the Quality agent's
+    ``createTestCase`` blob) arrive split across several ``data:`` lines. Keeping only
+    the last line truncated the JSON mid-string and surfaced downstream as
+    ``json.JSONDecodeError: Unterminated string``.
+    """
+    event_buffer = [
+        "event: message",
+        'data: {"testCases":',
+        'data: [{"name":"customer_id_not_null"}]}',
+    ]
+    parsed = sse_client._parse_sse_event(event_buffer)
+
+    data = json.loads(parsed["data"])
+    assert data["testCases"][0]["name"] == "customer_id_not_null"

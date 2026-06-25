@@ -20,7 +20,14 @@ import APIClient from '../rest/index';
 
 const BASE_URL = '/contextCenter/memories';
 
-export const getListContextMemories = async (params?: ListParams) => {
+export type ContextMemoryListParams = ListParams & {
+  sourceFileId?: string;
+  sourceEntityId?: string;
+};
+
+export const getListContextMemories = async (
+  params?: ContextMemoryListParams
+) => {
   const response = await APIClient.get<PagingResponse<ContextMemory[]>>(
     BASE_URL,
     { params }
@@ -48,4 +55,15 @@ export const updateContextMemory = async (id: string, patch: Operation[]) => {
 
 export const deleteContextMemory = async (id: string) => {
   await APIClient.delete(`${BASE_URL}/${id}`);
+};
+
+export const getContextMemoryById = async (
+  id: string,
+  fields?: string
+): Promise<ContextMemory> => {
+  const response = await APIClient.get<ContextMemory>(`${BASE_URL}/${id}`, {
+    params: fields ? { fields } : undefined,
+  });
+
+  return response.data;
 };
