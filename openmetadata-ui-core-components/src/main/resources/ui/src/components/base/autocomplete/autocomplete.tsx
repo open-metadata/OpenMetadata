@@ -144,18 +144,17 @@ const InnerAutocomplete = ({
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
 
+  const canCreateItem =
+    context.allowsCreation &&
+    (context.hideDropdown || context.visibleItemCount === 0);
+
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
 
-    if (
-      event.key === 'Enter' &&
-      context.allowsCreation &&
-      inputValue.trim() !== '' &&
-      (context.hideDropdown || context.visibleItemCount === 0)
-    ) {
+    if (event.key === 'Enter' && canCreateItem && inputValue.trim() !== '') {
       event.preventDefault();
       context.onCreateItem?.(inputValue.trim());
 
@@ -287,12 +286,7 @@ const InnerAutocomplete = ({
             const isMovingInsideWidget = context.triggerRef?.current?.contains(
               event.relatedTarget
             );
-            if (
-              !isMovingInsideWidget &&
-              context.allowsCreation &&
-              inputValue !== '' &&
-              (context.hideDropdown || context.visibleItemCount === 0)
-            ) {
+            if (!isMovingInsideWidget && canCreateItem && inputValue !== '') {
               context.onCreateItem?.(inputValue);
             }
           }}
