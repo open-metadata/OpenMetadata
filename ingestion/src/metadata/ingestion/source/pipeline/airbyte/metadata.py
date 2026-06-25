@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -156,23 +157,12 @@ class AirbyteSource(PipelineServiceSource):
         for job in self.client.list_jobs(pipeline_details.connection.connectionId):
             if not job or not job.attempts:
                 continue
+
             for attempt in job.attempts:
-                created_at = (
-                    datetime_to_timestamp(
-                        datetime.fromtimestamp(attempt.createdAt, tz=timezone.utc),
-                        milliseconds=True,
-                    )
-                    if attempt.createdAt is not None
-                    else None
-                )
-                ended_at = (
-                    datetime_to_timestamp(
-                        datetime.fromtimestamp(attempt.endedAt, tz=timezone.utc),
-                        milliseconds=True,
-                    )
-                    if attempt.endedAt is not None
-                    else None
-                )
+                # Use the new helper method here!
+                created_at = self._parse_timestamp(attempt.createdAt)
+                ended_at = self._parse_timestamp(attempt.endedAt)
+
                 task_status = [
                     TaskStatus(
                         name=str(pipeline_details.connection.connectionId),
@@ -199,6 +189,15 @@ class AirbyteSource(PipelineServiceSource):
                         pipeline_status=pipeline_status,
                     )
                 )
+
+    def _parse_timestamp(self, timestamp_val: int | None) -> int | None:
+        """Helper to parse timestamps and reduce cognitive complexity"""
+        if timestamp_val is None:
+            return None
+        return datetime_to_timestamp(
+            datetime.fromtimestamp(timestamp_val, tz=timezone.utc),
+            milliseconds=True,
+        )
 
     def _yield_pipeline_status_cloud(
         self, pipeline_details: AirbytePipelineDetails
@@ -282,6 +281,50 @@ class AirbyteSource(PipelineServiceSource):
         except FQNNotFoundException:
             return None
 
+    def _get_container_fqn(self, container_name: Optional[str]) -> Optional[str]:  # noqa: UP045
+        """
+        Get the FQN of a Container entity (e.g. an S3 bucket) using a
+        wildcard service match, mirroring `_get_table_fqn`.
+
+        :param container_name: name of the bucket/container to resolve
+        :return: container FQN if found, else None
+        """
+        if not container_name:
+            return None
+
+        try:
+            return fqn.build(
+                metadata=self.metadata,
+                entity_type=Container,
+                service_name="*",
+                container_name=container_name,
+            )
+        except FQNNotFoundException:
+            return None
+
+    def _resolve_lineage_entity(self, connector_name: Optional[str], table_details: Optional[TableDetails]):  # noqa: UP045
+        """
+        Map a source/destination connector to the corresponding OpenMetadata
+        entity class, type string, and FQN.
+
+        S3-based connectors resolve to `Container` entities. API and
+        relational connectors resolve to `Table` entities, looked up via
+        `_get_table_fqn`.
+
+        :param connector_name: the Airbyte source/destination name
+                                (e.g. "Postgres", "S3", "API Source")
+        :param table_details: parsed stream/table details for this connector
+        :return: tuple of (entity_class, entity_type_str, fqn or None)
+        """
+        if not table_details:
+            return Table, "table", None
+
+        if connector_name and "s3" in connector_name.lower():
+            return Container, "container", self._get_container_fqn(table_details.schema)
+
+        # API sources and relational sources both resolve to Table entities.
+        return Table, "table", self._get_table_fqn(table_details)
+
     # pylint: disable=too-many-locals
     def yield_pipeline_lineage_details(
         self, pipeline_details: AirbytePipelineDetails
@@ -332,43 +375,46 @@ class AirbyteSource(PipelineServiceSource):
             destination_table_details = get_destination_table_details(stream, destination_connection)
 
             if not source_table_details or not destination_table_details:
+                logger.warning(
+                    f"Could not parse source/destination table details for stream "
+                    f"[{stream.name}] in pipeline [{pipeline_name}] "
+                    f"(source: {source_name}, destination: {destination_name})"
+                )
                 continue
 
-            from_fqn = self._get_table_fqn(source_table_details)
-            to_fqn = self._get_table_fqn(destination_table_details)
+            from_entity_class, from_type_str, from_fqn = self._resolve_lineage_entity(source_name, source_table_details)
+            to_entity_class, to_type_str, to_fqn = self._resolve_lineage_entity(
+                destination_name, destination_table_details
+            )
 
             if not from_fqn:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table: [{source_table_details.database or '*'}]"
-                    f".[{source_table_details.schema}].[{source_table_details.name}]"
-                    f" (type: {source_name}) not found in openmetadata"
-                )
-                continue
-            if not to_fqn:
-                logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table: [{destination_table_details.database or '*'}]"
-                    f".[{destination_table_details.schema}].[{destination_table_details.name}]"
-                    f" (type: {destination_name}) not found in openmetadata"
+                    f"Could not build source FQN for stream [{stream.name}] in pipeline "
+                    f"[{pipeline_name}] (source connector: {source_name})"
                 )
                 continue
 
-            from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-            to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+            if not to_fqn:
+                logger.warning(
+                    f"Could not build destination FQN for stream [{stream.name}] in pipeline "
+                    f"[{pipeline_name}] (destination connector: {destination_name})"
+                )
+                continue
+
+            from_entity = self.metadata.get_by_name(entity=from_entity_class, fqn=from_fqn)
+            to_entity = self.metadata.get_by_name(entity=to_entity_class, fqn=to_fqn)
 
             if not from_entity:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" source table (fqn: [{from_fqn}], type: {source_name}) not found"
-                    " in openmetadata"
+                    f"Source entity not found in OpenMetadata for FQN [{from_fqn}] "
+                    f"(stream [{stream.name}], pipeline [{pipeline_name}])"
                 )
                 continue
+
             if not to_entity:
                 logger.warning(
-                    f"While extracting lineage: [{pipeline_name}],"
-                    f" destination table (fqn: [{to_fqn}], type: {destination_name}) not found"
-                    " in openmetadata"
+                    f"Destination entity not found in OpenMetadata for FQN [{to_fqn}] "
+                    f"(stream [{stream.name}], pipeline [{pipeline_name}])"
                 )
                 continue
 
@@ -388,8 +434,8 @@ class AirbyteSource(PipelineServiceSource):
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=from_entity.id, type="table"),
-                        toEntity=EntityReference(id=to_entity.id, type="table"),
+                        fromEntity=EntityReference(id=from_entity.id, type=from_type_str),  # pyright: ignore[reportCallIssue]
+                        toEntity=EntityReference(id=to_entity.id, type=to_type_str),  # pyright: ignore[reportCallIssue]
                         lineageDetails=lineage_details,
                     )
                 )
