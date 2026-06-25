@@ -28,6 +28,8 @@
     --lvm-border-strong: #232e3b;
     --lvm-text: #d6dee7;
     --lvm-text-muted: #5e7388;
+    --lvm-log-text: #c7d2de;
+    --lvm-line-number: #46586b;
     --lvm-chip-bg: #161e28;
     --lvm-chip-text: #a9b6c4;
     --lvm-level-info: #8aa0b8;
@@ -46,6 +48,8 @@
     --lvm-border-strong: #d6dee7;
     --lvm-text: #181d27;
     --lvm-text-muted: #6b7280;
+    --lvm-log-text: #181d27;
+    --lvm-line-number: #98a2b3;
     --lvm-chip-bg: #ffffff;
     --lvm-chip-text: #414651;
     --lvm-level-info: #5a6b85;
@@ -206,10 +210,12 @@
     height: 100% !important;
     border-radius: 0;
     background-color: var(--lvm-bg);
-    color: var(--lvm-text);
+    color: var(--lvm-log-text);
 
-    .react-lazylog-line-number {
-      color: var(--lvm-text-muted);
+    // LazyLog renders the gutter digit via `.log-number::before { content: attr(id) }`.
+    .log-number,
+    .log-number::before {
+      color: var(--lvm-line-number);
     }
   }
 
