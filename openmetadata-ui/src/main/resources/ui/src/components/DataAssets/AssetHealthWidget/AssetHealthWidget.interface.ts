@@ -68,4 +68,5 @@ export interface AssetHealthRowItemProps {
 export interface UseAssetHealthResult {
   rows: AssetHealthRow[];
   isLoading: boolean;
+  isError: boolean;
 }

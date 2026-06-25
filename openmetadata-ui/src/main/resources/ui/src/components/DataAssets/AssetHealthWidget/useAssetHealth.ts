@@ -55,8 +55,8 @@ export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
     enabled: Boolean(testSuiteId),
   });
 
-  // Shared key (not namespaced under asset-health) so this dedupes with any
-  // other consumer that fetches the same entity contract by id.
+  // Uses the same key shape a future React Query contract consumer would, so the
+  // entry is shared by entity id rather than scoped under asset-health.
   const contractQuery = useQuery({
     queryKey: ['contract', tableId, EntityType.TABLE],
     queryFn: () => getContractByEntityId(tableId ?? '', EntityType.TABLE),
@@ -100,5 +100,10 @@ export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
     contractQuery.isLoading ||
     pipelineQuery.isLoading;
 
-  return { rows, isLoading };
+  // The contract query is excluded: getContractByEntityId returns a 404 for the
+  // common "no contract" case, which is already handled as the Create CTA row.
+  const isError =
+    pipelineQuery.isError || summaryQuery.isError || incidentsQuery.isError;
+
+  return { rows, isLoading, isError };
 };

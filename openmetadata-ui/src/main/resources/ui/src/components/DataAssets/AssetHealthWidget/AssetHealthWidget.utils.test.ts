@@ -133,6 +133,12 @@ describe('AssetHealthWidget.utils', () => {
 
       expect(row.tone).toBe(AssetHealthTone.Warning);
     });
+
+    it('should be a warning tone when success is below total without a known failure bucket', () => {
+      const row = getDataQualityHealthRow(true, { total: 16, success: 14 });
+
+      expect(row.tone).toBe(AssetHealthTone.Warning);
+    });
   });
 
   describe('getDataObservabilityHealthRow', () => {
@@ -273,15 +279,17 @@ describe('AssetHealthWidget.utils', () => {
       expect(header.labelKey).toBe('label.all-clear');
     });
 
-    it('should be Attention for a single error', () => {
+    it('should be Attention with an error tone for a single error', () => {
       const header = getAssetHealthHeader([successRow, errorRow]);
 
+      expect(header.tone).toBe(AssetHealthTone.Error);
       expect(header.labelKey).toBe('label.attention');
     });
 
-    it('should be Attention for a warning with no error', () => {
+    it('should be Attention with a warning tone for a warning with no error', () => {
       const header = getAssetHealthHeader([successRow, warningRow]);
 
+      expect(header.tone).toBe(AssetHealthTone.Warning);
       expect(header.labelKey).toBe('label.attention');
     });
 

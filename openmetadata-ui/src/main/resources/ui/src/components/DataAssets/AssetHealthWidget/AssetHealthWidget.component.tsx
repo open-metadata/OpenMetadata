@@ -36,7 +36,7 @@ const AssetHealthWidget = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: table } = useGenericContext<Table>();
-  const { rows, isLoading } = useAssetHealth(table);
+  const { rows, isLoading, isError } = useAssetHealth(table);
 
   const serviceFqn = table?.service?.fullyQualifiedName;
   const tableFqn = table?.fullyQualifiedName;
@@ -73,6 +73,17 @@ const AssetHealthWidget = () => {
     [navigate, serviceFqn, tableFqn]
   );
 
+  const titleGroup = (
+    <div className="tw:flex tw:items-center tw:gap-2">
+      <div className="tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-light-50">
+        <Shield01 className="tw:size-5 tw:text-utility-blue-light-600" />
+      </div>
+      <span className="tw:text-sm tw:font-medium tw:text-primary">
+        {t('label.asset-health')}
+      </span>
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div
@@ -85,19 +96,25 @@ const AssetHealthWidget = () => {
     );
   }
 
+  if (isError) {
+    return (
+      <div
+        className="tw:flex tw:flex-col tw:gap-3 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-4"
+        data-testid="asset-health-widget-error">
+        {titleGroup}
+        <span className="tw:text-xs tw:text-secondary">
+          {t('server.entity-fetch-error', { entity: t('label.asset-health') })}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       className="tw:flex tw:flex-col tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
       data-testid="asset-health-widget">
       <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:px-4 tw:pb-3 tw:pt-4">
-        <div className="tw:flex tw:items-center tw:gap-2">
-          <div className="tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-light-50">
-            <Shield01 className="tw:size-5 tw:text-utility-blue-light-600" />
-          </div>
-          <span className="tw:text-sm tw:font-medium tw:text-primary">
-            {t('label.asset-health')}
-          </span>
-        </div>
+        {titleGroup}
         <Badge
           color={ASSET_HEALTH_TONE_COLOR[header.tone]}
           size="sm"

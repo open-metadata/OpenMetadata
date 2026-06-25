@@ -170,6 +170,8 @@ export const getDataQualityHealthRow = (
     } else if (aborted > 0) {
       tone = AssetHealthTone.Warning;
       badgeLabel = t('label.aborted');
+    } else if (success < total) {
+      tone = AssetHealthTone.Warning;
     }
 
     row = buildRow({
@@ -300,8 +302,10 @@ export const getAssetHealthHeader = (
     header = { tone: AssetHealthTone.Neutral, labelKey: 'label.not-set-up' };
   } else if (errorCount >= 2) {
     header = { tone: AssetHealthTone.Error, labelKey: 'label.critical' };
-  } else if (errorCount === 1 || hasWarning) {
+  } else if (errorCount === 1) {
     header = { tone: AssetHealthTone.Error, labelKey: 'label.attention' };
+  } else if (hasWarning) {
+    header = { tone: AssetHealthTone.Warning, labelKey: 'label.attention' };
   } else if (hasInProgress) {
     header = { tone: AssetHealthTone.Info, labelKey: 'label.running' };
   }
