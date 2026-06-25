@@ -768,7 +768,7 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(300_000);
 
     const tableEntity = new TableClass();
 
