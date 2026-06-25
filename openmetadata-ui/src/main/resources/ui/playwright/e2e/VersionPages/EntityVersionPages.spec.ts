@@ -340,7 +340,7 @@ test.describe('Entity Version pages', () => {
               .locator(
                 `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
               )
-              .first()
+              .nth(1)
           ).toContainText(col0OriginalDesc);
 
           await expect(
@@ -348,7 +348,7 @@ test.describe('Entity Version pages', () => {
               .locator(
                 `[data-row-key$="${col0Name}"] [data-testid="viewer-container"]`
               )
-              .first()
+              .nth(1)
           ).not.toContainText(col0UpdatedDesc);
 
           await freshTable.delete(apiContext);
