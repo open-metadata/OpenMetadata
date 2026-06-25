@@ -590,7 +590,7 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     ]);
 
     // Wait for UI to update and verify role is deleted
-    await expect(page.locator('[data-testid="loader"]')).not.toBeVisible();
+    await waitForAllLoadersToDisappear(page);
     await expect(roleLocator).not.toBeVisible();
 
     await role.delete(apiContext);
