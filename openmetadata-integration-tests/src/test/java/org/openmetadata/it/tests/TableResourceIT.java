@@ -2034,7 +2034,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
-  void patch_schemaDefinitionPreservedWhenColumnsChange(TestNamespace ns) {
+  void patch_schemaDefinitionPreservedWhenColumnsChange_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a view table with schemaDefinition set
@@ -2076,7 +2076,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
-  void patch_schemaDefinitionOnlyChange_persists(TestNamespace ns) {
+  void patch_schemaDefinitionOnlyChange_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a view table without schemaDefinition
