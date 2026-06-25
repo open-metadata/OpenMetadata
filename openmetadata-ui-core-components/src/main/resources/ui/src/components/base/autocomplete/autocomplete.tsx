@@ -18,6 +18,7 @@ import type {
   PointerEventHandler,
   ReactNode,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -61,6 +62,7 @@ interface AutocompleteContextValue {
   maxVisibleItems?: number;
   multiple: boolean;
   visibleItemCount: number;
+  triggerRef: RefObject<HTMLDivElement | null>;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -75,6 +77,7 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   maxVisibleItems: undefined,
   multiple: true,
   visibleItemCount: 0,
+  triggerRef: { current: null },
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -281,7 +284,11 @@ const InnerAutocomplete = ({
           placeholder={placeholder}
           onBlur={(event) => {
             const inputValue = event.target.value.trim();
+            const isMovingInsideWidget = context.triggerRef?.current?.contains(
+              event.relatedTarget
+            );
             if (
+              !isMovingInsideWidget &&
               context.allowsCreation &&
               inputValue !== '' &&
               (context.hideDropdown || context.visibleItemCount === 0)
@@ -442,26 +449,22 @@ export const AutocompleteBase = ({
   const onCreateItem = useCallback(
     (value: string) => {
       const newItem: SelectItemType = { id: value, label: value };
-      setAllItems((prev) => {
-        const exists = prev.some((item) => item.id === value);
-
-        return exists ? prev : [...prev, newItem];
-      });
-      setInternalSelected((prev) => {
-        if (!multiple && prev.length >= 1) {
-          return [newItem];
-        }
-        const alreadySelected = prev.some((item) => item.id === value);
-
+      setAllItems((prev) =>
+        prev.some((item) => item.id === value) ? prev : [...prev, newItem]
+      );
+      const alreadySelected = internalSelected.some((item) => item.id === value);
+      if (!multiple) {
+        setInternalSelected([newItem]);
         if (!alreadySelected) {
           onItemInserted?.(value);
         }
-
-        return alreadySelected ? prev : [...prev, newItem];
-      });
+      } else if (!alreadySelected) {
+        setInternalSelected((prev) => [...prev, newItem]);
+        onItemInserted?.(value);
+      }
       setFilterText('');
     },
-    [onItemInserted, multiple]
+    [onItemInserted, multiple, internalSelected]
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -496,6 +499,7 @@ export const AutocompleteBase = ({
       maxVisibleItems,
       multiple,
       visibleItemCount: visibleItems.length,
+      triggerRef,
     }),
     [
       selectedKeys,
@@ -509,6 +513,7 @@ export const AutocompleteBase = ({
       maxVisibleItems,
       multiple,
       visibleItems.length,
+      triggerRef,
     ]
   );
 
