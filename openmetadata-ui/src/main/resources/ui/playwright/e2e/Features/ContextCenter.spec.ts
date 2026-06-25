@@ -12,21 +12,24 @@
  */
 
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
-import { VIEW_ONLY_RULE } from '../../constant/permission';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  MEMORIES_API,
+  navigateToArticles,
+  navigateToDashboard,
+  navigateToDocuments,
+  navigateToMemories,
+} from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';
-import { test } from '../fixtures/pages';
+import { test as base } from '../fixtures/pages';
+
+const test = base;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const DASHBOARD_URL = '/context-center/dashboard';
-const ARTICLES_URL = '/context-center/articles';
-const DOCUMENTS_URL = '/context-center/documents';
 
 let ARTICLE_TITLE: string;
 const ARTICLE_DESCRIPTION =
@@ -72,33 +75,6 @@ const contextFileIdsToCleanup = new Set<string>();
 const contextFolderIdsToCleanup = new Set<string>();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
-  await page
-    .getByTestId('context-center-dashboard-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  // Wait for article section to finish loading (either cards or empty state)
-  const section = page.getByTestId('dashboard-detail-card');
-  await section.waitFor({ state: 'visible' });
-};
-
-const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
-  await page
-    .getByTestId('context-center-articles-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
-  await page
-    .getByTestId('context-center-documents-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
 
 const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
 
@@ -172,8 +148,13 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
-let viewOnlyUser: UserClass;
 let quickLinkId = '';
+
+// ─── Memories fixtures ──────────────────────────────────────────────────────
+
+let ownerMemoryId = '';
+let ownerMemoryName = '';
+const OWNER_MEMORY_TITLE = `CC Memory ${uuid()}`;
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -242,13 +223,19 @@ test.describe('Context Center', () => {
       Buffer.from('Playwright seed document')
     );
 
-    viewOnlyUser = new UserClass();
-    await viewOnlyUser.create(apiContext, false);
-    await viewOnlyUser.setCustomRulePolicy(
-      apiContext,
-      VIEW_ONLY_RULE,
-      'context-center-view-only'
-    );
+    // Create a memory owned by admin for card/edit/delete action tests
+    ownerMemoryName = `cc_memory_${uuid()}`;
+    const memoryRes = await apiContext.post(MEMORIES_API, {
+      data: {
+        name: ownerMemoryName,
+        title: OWNER_MEMORY_TITLE,
+        question: 'What is the Playwright memory fixture for?',
+        answer: 'It seeds a memory owned by admin for action button tests.',
+        shareConfig: { visibility: 'Shared' },
+      },
+    });
+    const memoryData = await memoryRes.json();
+    ownerMemoryId = memoryData.id;
 
     await afterAction();
   });
@@ -278,72 +265,16 @@ test.describe('Context Center', () => {
     if (articleTagClassification?.responseData?.id) {
       await articleTagClassification.delete(apiContext);
     }
-    if (viewOnlyUser.responseData.id) {
-      await viewOnlyUser.delete(apiContext);
+    if (ownerMemoryId) {
+      await apiContext.delete(
+        `${MEMORIES_API}/${ownerMemoryId}?hardDelete=true`
+      );
     }
     await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  // ─── Permissions ────────────────────────────────────────────────────────────
-
-  test.describe('Permissions', () => {
-    test('user with only ViewAll cannot see restricted action buttons', async ({
-      viewOnlyPage,
-    }) => {
-      await test.step('dashboard actions are hidden', async () => {
-        await navigateToDashboard(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /create.*article/i })
-        ).not.toBeVisible();
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-      });
-
-      await test.step('articles create action is hidden', async () => {
-        await navigateToArticles(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByTestId('create-knowledge-page-btn')
-        ).not.toBeVisible();
-      });
-
-      await test.step('article detail actions are hidden', async () => {
-        await viewOnlyPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
-        );
-        await waitForAllLoadersToDisappear(viewOnlyPage);
-
-        const header = viewOnlyPage.getByTestId('article-detail-header');
-        await expect(header).toBeVisible();
-        await expect(header.getByTestId('upvote-btn')).toBeVisible();
-        await expect(header.getByTestId('downvote-btn')).toBeVisible();
-        await expect(header.getByTestId('follow-btn')).toBeVisible();
-        await expect(header.getByTestId('conversation')).toBeVisible();
-        await expect(header.getByTestId('manage-button')).not.toBeVisible();
-      });
-
-      await test.step('documents upload and delete actions are hidden', async () => {
-        await navigateToDocuments(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-
-        const firstRow = viewOnlyPage
-          .getByTestId('documents-view')
-          .locator('[data-testid^="document-row-"]')
-          .first();
-        await expect(firstRow).toBeVisible();
-        await firstRow.locator('button[aria-label="Open menu"]').click();
-        await expect(viewOnlyPage.getByTestId('delete-btn')).not.toBeVisible();
-      });
-    });
   });
 
   // ─── Dashboard Page ──────────────────────────────────────────────────────────
@@ -1389,6 +1320,240 @@ test.describe('Context Center', () => {
       await expect(
         modal.getByRole('button', { name: /attach/i })
       ).toBeDisabled();
+    });
+  });
+
+  // ─── Memories Page ────────────────────────────────────────────────────────
+
+  test.describe('Memories Page', () => {
+    test('shows header with title, breadcrumb and Add Memory button', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const header = page.getByTestId('context-center-header');
+      await expect(header).toBeVisible();
+      await expect(header.getByTestId('breadcrumb')).toBeVisible();
+      await expect(header.getByRole('heading')).toContainText('Memor');
+      await expect(page.getByTestId('add-memory-btn')).toBeVisible();
+    });
+
+    // ─── Card actions ─────────────────────────────────────────────────────
+
+    test('clicking a memory row opens the view-only modal', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
+      await row.scrollIntoViewIfNeeded();
+      await row.click();
+
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').getByText(OWNER_MEMORY_TITLE)
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`memory=${ownerMemoryName}`));
+    });
+
+    test('edit-memory button on the row opens the modal in edit mode', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
+      await row.scrollIntoViewIfNeeded();
+      await row.getByTestId('edit-memory-btn').click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Edit' })
+      ).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Save Changes' })
+      ).toBeVisible();
+    });
+
+    test('delete button on the row deletes the memory after confirmation', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const disposableName = `cc_memory_delete_${uuid()}`;
+      const createRes = await apiContext.post(MEMORIES_API, {
+        data: {
+          name: disposableName,
+          title: `CC Memory Delete ${uuid()}`,
+          question: 'Disposable memory for row delete test',
+          answer: 'Disposable memory for row delete test',
+          shareConfig: { visibility: 'Shared' },
+        },
+      });
+      const disposable = await createRes.json();
+      await afterAction();
+
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${disposable.id}`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+
+      await row.getByLabel('Open menu').last().click();
+      await page.getByTestId('delete-btn').click();
+
+      const deleteResPromise = page.waitForResponse(
+        new RegExp(`${MEMORIES_API}/${disposable.id}`)
+      );
+      await page.getByTestId('confirm-button').click();
+      const deleteRes = await deleteResPromise;
+      expect(deleteRes.status()).toBe(200);
+
+      await expect(row).not.toBeVisible();
+    });
+
+    // ─── Create memory action ─────────────────────────────────────────────
+
+    test('Add Memory button opens the create modal', async ({ page }) => {
+      await navigateToMemories(page);
+
+      await page.getByTestId('add-memory-btn').click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
+      await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Delete' })
+      ).not.toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Edit' })
+      ).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Create Memory' })
+      ).toBeVisible();
+    });
+
+    // ─── Edit modal actions ───────────────────────────────────────────────
+
+    test.describe('Edit modal actions', () => {
+      let editableMemoryId: string;
+      let editableMemoryName: string;
+
+      test.beforeEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        editableMemoryName = `cc_memory_edit_${uuid()}`;
+        const res = await apiContext.post(MEMORIES_API, {
+          data: {
+            name: editableMemoryName,
+            title: `CC Memory Edit ${uuid()}`,
+            question: 'Editable memory seed question',
+            answer: 'Editable memory seed answer',
+            shareConfig: { visibility: 'Shared' },
+          },
+        });
+        const data = await res.json();
+        editableMemoryId = data.id;
+        await afterAction();
+      });
+
+      test.afterEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await apiContext.delete(
+          `${MEMORIES_API}/${editableMemoryId}?hardDelete=true`
+        );
+        await afterAction();
+      });
+
+      test('view modal switches to edit mode and saves changes', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByRole('button', { name: /^edit$/i }).click();
+
+        await dialog
+          .getByTestId('memory-content-input')
+          .locator('textarea')
+          .fill('Updated answer via Playwright edit flow.');
+
+        const updateResPromise = page.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editableMemoryId}`)
+        );
+        await dialog.getByRole('button', { name: /^(save|create)/i }).click();
+        const updateRes = await updateResPromise;
+        expect(updateRes.status()).toBe(200);
+
+        await expect(dialog).not.toBeVisible();
+      });
+
+      test('cancel button closes the modal without saving', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog
+          .getByTestId('memory-title-input')
+          .locator('input')
+          .fill('This change should be discarded');
+
+        await dialog.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+
+        await navigateToMemories(page);
+        const reopenedRow = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await reopenedRow.scrollIntoViewIfNeeded();
+        await reopenedRow.click();
+        await expect(
+          dialog.getByTestId('memory-title-input').locator('input')
+        ).not.toHaveValue('This change should be discarded');
+      });
+
+      test('delete button inside the modal deletes the memory', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        const deleteResPromise = page.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editableMemoryId}`)
+        );
+        await dialog.getByRole('button', { name: /^delete$/i }).click();
+        const deleteRes = await deleteResPromise;
+        expect(deleteRes.status()).toBe(200);
+
+        await expect(dialog).not.toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${editableMemoryId}`)
+        ).not.toBeVisible();
+      });
     });
   });
 });

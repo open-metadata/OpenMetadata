@@ -90,13 +90,15 @@ const ContextCenterDocumentsPage: FC = () => {
     }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
-  const { hasCreatePermission, hasDeletePermission } = useMemo(
-    () => ({
-      hasCreatePermission: permissions.Create,
-      hasDeletePermission: permissions.Delete,
-    }),
-    [permissions.Create, permissions.Delete]
-  );
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
 
   const selectedFolderFqn = useMemo(
     () =>
@@ -430,6 +432,8 @@ const ContextCenterDocumentsPage: FC = () => {
         orientation="vertical">
         <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
           <DocumentFolderView
+            canCreate={hasCreatePermission}
+            canDelete={hasDeletePermission}
             files={allDocuments}
             selectedFolderId={selectedFolderId}
             onFoldersLoaded={setFolders}
@@ -449,6 +453,7 @@ const ContextCenterDocumentsPage: FC = () => {
           <Box className="tw:h-full tw:overflow-hidden" gap={4}>
             <DocumentsView
               canDelete={hasDeletePermission}
+              canEdit={hasEditPermission}
               data={documents}
               folders={folderOptions}
               isLoading={isDocumentsLoading}
