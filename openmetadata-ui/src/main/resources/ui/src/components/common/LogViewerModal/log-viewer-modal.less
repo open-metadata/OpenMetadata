@@ -17,8 +17,9 @@
 // custom properties instead. Dark is the default per the design mock; light is
 // a lighter terminal variant.
 .log-viewer-modal {
-  font-family: 'Source Code Pro', Menlo, ui-monospace, 'SFMono-Regular',
-    monospace;
+  --lvm-font: 'Geist Mono', 'Menlo', ui-monospace, 'SFMono-Regular', monospace;
+
+  font-family: var(--lvm-font);
 
   &.theme-dark {
     --lvm-bg: #0c1118;
@@ -206,11 +207,15 @@
 
   // LazyLog measures the nearest sized container; force it to fill the body and
   // adopt the terminal palette (ANSI colors in the log text render on top).
+  // LazyLog forces `font-family: "Monaco"` and `font-size: 12px` on its own
+  // container, overriding the inherited modal font — restate them here.
   .react-lazylog {
     height: 100% !important;
     border-radius: 0;
     background-color: var(--lvm-bg);
     color: var(--lvm-log-text);
+    font-family: var(--lvm-font);
+    font-size: 12px;
 
     // LazyLog renders the gutter digit via `.log-number::before { content: attr(id) }`.
     .log-number,
