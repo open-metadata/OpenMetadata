@@ -736,18 +736,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.locator('input[type="radio"]')
+    ).not.toBeChecked();
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
