@@ -113,6 +113,11 @@ export enum SettingType {
  *
  * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
  * system prompts.
+ *
+ * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
+ * by language and entity type. The stored mapping is the effective mapping used when an
+ * index is (re)created; it already carries the field-safety guards (ignore_above,
+ * ignore_malformed, mapping limits) baked in at seed time.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -646,6 +651,11 @@ export interface PipelineServiceClientConfiguration {
     memoryAgent?:      MemoryAgent;
     memoryExtraction?: MemoryExtraction;
     prompts?:          Prompts;
+    /**
+     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
+     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
+     */
+    languages?: { [key: string]: any };
 }
 
 export interface AllowedFieldValueBoostFields {
