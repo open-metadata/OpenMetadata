@@ -452,7 +452,9 @@ export const AutocompleteBase = ({
       setAllItems((prev) =>
         prev.some((item) => item.id === value) ? prev : [...prev, newItem]
       );
-      const alreadySelected = internalSelected.some((item) => item.id === value);
+      const alreadySelected = internalSelected.some(
+        (item) => item.id === value
+      );
       if (!multiple) {
         setInternalSelected([newItem]);
         if (!alreadySelected) {
