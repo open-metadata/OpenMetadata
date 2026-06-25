@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { cloneDeep, isUndefined } from 'lodash';
+import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
+import { UpdateColumn } from '../generated/api/data/updateColumn';
 import { EntityType } from '../enums/entity.enum';
 import { APIEndpoint, Field } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -50,6 +51,36 @@ import {
 
 // Re-export for backward compatibility
 export type { ColumnFieldUpdate } from './ColumnUpdateUtils.interface';
+
+/**
+ * The column update API (PUT /v1/columns/name/{fqn}) treats a blank description/displayName as
+ * "no change" and clears a field only via the explicit removeDescription/removeDisplayName flags.
+ * The UI naturally sends an empty string when a user clears a field, so translate that intent here,
+ * in one place, instead of in every caller. A non-blank value is sent unchanged.
+ */
+export const normalizeColumnUpdatePayload = (
+  data: UpdateColumn
+): UpdateColumn => {
+  const normalized: UpdateColumn = { ...data };
+
+  if (
+    typeof normalized.description === 'string' &&
+    isEmpty(normalized.description.trim())
+  ) {
+    delete normalized.description;
+    normalized.removeDescription = true;
+  }
+
+  if (
+    typeof normalized.displayName === 'string' &&
+    isEmpty(normalized.displayName.trim())
+  ) {
+    delete normalized.displayName;
+    normalized.removeDisplayName = true;
+  }
+
+  return normalized;
+};
 
 /**
  * Result of a column update operation

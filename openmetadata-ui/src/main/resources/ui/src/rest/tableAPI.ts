@@ -17,6 +17,7 @@ import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
+import { UpdateColumn } from '../generated/api/data/updateColumn';
 import {
   Column,
   ColumnProfile,
@@ -29,6 +30,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { normalizeColumnUpdatePayload } from '../utils/ColumnUpdateUtils';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
@@ -345,14 +347,14 @@ export const searchTableColumnsByFQN = async (
   return response.data;
 };
 
-export const updateTableColumn = async (
-  fqn: string,
-  data: Partial<Table['columns'][number]>
-) => {
+export const updateTableColumn = async (fqn: string, data: UpdateColumn) => {
   const response = await APIClient.put<
-    Partial<Table['columns'][number]>,
+    UpdateColumn,
     AxiosResponse<Table['columns'][number]>
-  >(`/columns/name/${getEncodedFqn(fqn)}?entityType=table`, data);
+  >(
+    `/columns/name/${getEncodedFqn(fqn)}?entityType=table`,
+    normalizeColumnUpdatePayload(data)
+  );
 
   return response.data;
 };
