@@ -132,6 +132,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
@@ -1878,14 +1879,14 @@ public class SearchRepository {
       return;
     }
 
-    Pair<String, Map<String, Object>> updates =
-        getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
       return;
     }
 
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-    if (nullOrEmpty(childAliases)) {
+    Pair<String, Map<String, Object>> updates =
+        getInheritedFieldChanges(changeDescription, entity, entityType);
+    if (updates.getKey() == null || updates.getKey().isEmpty()) {
       return;
     }
 
@@ -1898,7 +1899,25 @@ public class SearchRepository {
     // Other entities: resolve parent field name and propagate to children
     String parentFieldName = resolveParentFieldName(entityType, updates);
     Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    searchClient.updateChildren(childAliases, parentMatch, updates);
+    List<String> entityChildren =
+        childAliases.stream().filter(alias -> !isTimeSeriesAlias(alias)).toList();
+    if (nullOrEmpty(entityChildren)) {
+      return;
+    }
+    searchClient.updateChildren(entityChildren, parentMatch, updates);
+  }
+
+  private boolean isTimeSeriesAlias(String alias) {
+    String entityType = stripClusterAlias(alias);
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability != null && capability.isTimeSeries();
+  }
+
+  private String stripClusterAlias(String alias) {
+    if (!nullOrEmpty(clusterAlias) && alias.startsWith(clusterAlias + INDEX_NAME_SEPARATOR)) {
+      return alias.substring((clusterAlias + INDEX_NAME_SEPARATOR).length());
+    }
+    return alias;
   }
 
   private String resolveParentFieldName(

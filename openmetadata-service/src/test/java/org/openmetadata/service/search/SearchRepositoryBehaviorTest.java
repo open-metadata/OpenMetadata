@@ -162,6 +162,7 @@ class SearchRepositoryBehaviorTest {
           Entity.DATABASE_SERVICE,
           Entity.DATABASE,
           Entity.TEST_SUITE,
+          Entity.TEST_CASE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
           Entity.QUERY);
@@ -710,6 +711,85 @@ class SearchRepositoryBehaviorTest {
     verify(searchClient)
         .updateChildren(
             eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+    IndexMapping timeSeriesOnlyMapping =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        timeSeriesOnlyMapping,
+        testCase);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        TEST_CASE_MAPPING,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+
+    assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
+    String entityChildScript = updatesCaptor.getValue().getLeft();
+    assertTrue(entityChildScript.contains(Entity.FIELD_OWNERS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DOMAINS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DISPLAY_NAME));
   }
 
   @Test
