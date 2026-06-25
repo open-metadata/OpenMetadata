@@ -22,11 +22,19 @@ export interface ConnectionConfigFormProps {
   data?: ServicesType;
   okText?: string;
   cancelText?: string;
+  hideFooter?: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
   onFocus: (id: string) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
+  isSubmitDisabled?: boolean;
   onCancel?: () => void;
+  onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
+}
+
+export interface ConnectionConfigFormHandle {
+  submit: () => void;
+  isSubmitDisabled: boolean;
 }

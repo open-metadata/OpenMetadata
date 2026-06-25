@@ -65,7 +65,10 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  FULLSCREEN_QUERY_PARAM_KEY,
+} from '../../constants/constants';
 import {
   ExportTypes,
   LINEAGE_EXPORT_SELECTOR,
@@ -85,9 +88,14 @@ import {
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { useMapBasedNodesEdges } from '../../hooks/useMapBasedNodesEdges';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../../pages/ExplorePage/ExplorePage.interface';
 import {
   exportLineageAsync,
   getDataQualityLineage,
@@ -95,6 +103,7 @@ import {
   getPlatformLineage,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
+import { drawEdgesForExport } from '../../utils/CanvasUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
@@ -192,6 +201,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const location = useCustomLocation();
   const { isTourOpen, isTourPage, tourMockDatasetData } = useTourProvider();
   const { appPreferences } = useApplicationStore();
+  const { activeDomain, isDomainRestricted } = useDomainStore();
   const { preferences } = useCurrentUserPreferences();
   const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
   const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
@@ -294,9 +304,43 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
+    const shouldScopeToDomain =
+      isDomainRestricted && activeDomain !== DEFAULT_DOMAIN_VALUE;
 
-    return JSON.stringify(quickFilterQuery) ?? '';
-  }, [selectedQuickFilters]);
+    if (!shouldScopeToDomain) {
+      return JSON.stringify(quickFilterQuery) ?? '';
+    }
+
+    const domainClause: QueryFieldInterface = {
+      bool: {
+        should: [
+          { term: { 'domains.fullyQualifiedName': activeDomain } },
+          {
+            prefix: { 'domains.fullyQualifiedName': `${activeDomain}.` },
+          } as QueryFieldInterface,
+        ],
+        minimum_should_match: 1,
+      },
+    };
+
+    const existingMust = quickFilterQuery?.query?.bool?.must;
+    const mustArray = Array.isArray(existingMust)
+      ? [...existingMust]
+      : existingMust
+      ? [existingMust]
+      : [];
+
+    const scopedQuery: QueryFilterInterface = {
+      query: {
+        bool: {
+          ...quickFilterQuery?.query?.bool,
+          must: [...mustArray, domainClause],
+        },
+      },
+    };
+
+    return JSON.stringify(scopedQuery);
+  }, [selectedQuickFilters, activeDomain, isDomainRestricted]);
 
   const setTimeFilter = useCallback(
     (range: LineageTimeRange) => {
@@ -750,25 +794,51 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       exportTypes: ExportTypes[] = [ExportTypes.CSV, ExportTypes.PNG],
       onExportCallback?: (_: string) => Promise<CSVExportResponse>
     ) => {
-      if (entityFqn || isPlatformLineage) {
-        showModal({
-          ...(isPlatformLineage
-            ? {
-                name: `${t('label.lineage')}_${getCurrentISODate()}`,
-                exportTypes: [ExportTypes.PNG],
-              }
-            : {
-                name: entityFqn,
-                exportTypes: exportTypes,
-              }),
-          title: t('label.lineage'),
-          documentSelector: LINEAGE_EXPORT_SELECTOR,
-          viewport: exportTypes?.includes(ExportTypes.PNG)
-            ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
-            : undefined,
-          onExport: onExportCallback ?? exportLineageData,
-        });
+      if (!entityFqn && !isPlatformLineage) {
+        return;
       }
+
+      const effectiveExportTypes = isPlatformLineage
+        ? [ExportTypes.PNG]
+        : exportTypes;
+      const includePNG = effectiveExportTypes.includes(ExportTypes.PNG);
+      const exportViewport = includePNG
+        ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
+        : undefined;
+
+      showModal({
+        ...(isPlatformLineage
+          ? {
+              name: `${t('label.lineage')}_${getCurrentISODate()}`,
+              exportTypes: [ExportTypes.PNG],
+            }
+          : {
+              name: entityFqn,
+              exportTypes,
+            }),
+        title: t('label.lineage'),
+        documentSelector: LINEAGE_EXPORT_SELECTOR,
+        viewport: exportViewport,
+        renderEdgesOverlay:
+          includePNG && exportViewport
+            ? (imageWidth, imageHeight, padding, pixelRatio) => {
+                const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+                const { columnsInCurrentPages } = useLineageStore.getState();
+
+                return drawEdgesForExport(
+                  edges,
+                  nodeMap,
+                  exportViewport,
+                  imageWidth,
+                  imageHeight,
+                  padding,
+                  pixelRatio,
+                  columnsInCurrentPages
+                );
+              }
+            : undefined,
+        onExport: onExportCallback ?? exportLineageData,
+      });
     },
     [
       entityType,
@@ -776,6 +846,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       lineageConfig,
       queryFilter,
       nodes,
+      edges,
       isPlatformLineage,
     ]
   );

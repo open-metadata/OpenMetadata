@@ -78,6 +78,7 @@ interface TreeAsyncSelectListProps
   newLook?: boolean;
   onSubmit?: () => void;
   dropdownContainerRef?: React.RefObject<HTMLDivElement>;
+  dropdownMatchSelectWidth?: boolean | number;
 }
 
 interface ExtendedTreeNode {
