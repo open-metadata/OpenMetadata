@@ -148,7 +148,7 @@ public class SystemRepository {
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
     MIGRATION("Validate that all the necessary migrations have been properly executed."),
     SEARCH_REINDEX(
-        "Validate that every deployed search index was built from the current code mapping "
+        "Validate that every deployed search index was built from the current index mapping "
             + "(i.e. no reindex is pending).");
 
     public final String key;
@@ -1161,7 +1161,7 @@ public class SystemRepository {
     if (!status.stalePending().isEmpty()) {
       message.append(
           String.format(
-              " %d index(es) built from an older code mapping: %s.",
+              " %d index(es) built from an older mapping: %s.",
               status.stalePending().size(), status.stalePending()));
     }
     if (!status.missingIndexes().isEmpty()) {
@@ -1173,7 +1173,7 @@ public class SystemRepository {
   }
 
   private static void appendUpToDate(StringBuilder message, int untrackedCount) {
-    message.append("All deployed indexes were built from the current code mappings.");
+    message.append("All deployed indexes were built from the current index mappings.");
     if (untrackedCount > 0) {
       message.append(
           String.format(
