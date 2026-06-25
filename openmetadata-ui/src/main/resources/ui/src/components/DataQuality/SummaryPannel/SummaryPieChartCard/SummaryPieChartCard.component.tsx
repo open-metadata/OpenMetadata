@@ -10,11 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
-import { GREY_200 } from '../../../../constants/Color.constants';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { SummaryDonut } from '../SummaryDonut.component';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
 
@@ -28,89 +32,65 @@ const SummaryPieChartCard = ({
   paddingAngle = 0,
   iconData,
 }: SummaryPieChartCardProps) => {
+  if (isLoading) {
+    return (
+      <Card className="pie-chart-summary-panel h-full">
+        <Skeleton height={88} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card className="pie-chart-summary-panel h-full" loading={isLoading}>
-      <div className="d-flex justify-between items-center">
-        <div>
+    <Card className="pie-chart-summary-panel h-full">
+      <Box align="center" gap={4} justify="between">
+        <Box direction="col" gap={2}>
           <div className="summary-title-row">
-            <div className={classNames('icon-container', iconData?.className)}>
-              {iconData?.icon}
-            </div>
-            <Typography.Paragraph className="summary-title">
+            {iconData && (
+              <div className={classNames('icon-container', iconData.className)}>
+                {iconData.icon}
+              </div>
+            )}
+            <Typography
+              className="tw:whitespace-nowrap"
+              size="text-md"
+              weight="semibold">
               {title}
-            </Typography.Paragraph>
+            </Typography>
           </div>
-
-          <Typography.Paragraph className="summary-value m-b-0">
+          <Typography size="display-sm" weight="semibold">
             {formatNumberWithComma(value)}
-          </Typography.Paragraph>
-        </div>
+          </Typography>
+        </Box>
 
-        <div
-          className={classNames('chart-container', {
-            'd-flex items-center': showLegends,
-          })}>
+        <Box align="center" gap={4}>
           {showLegends && (
-            <Space className="m-r-md" direction="vertical" size={4}>
+            <Box direction="col" gap={1}>
               {chartData.map((item) => (
-                <Space key={item.name} size={8}>
-                  <div
+                <Box align="center" gap={2} key={item.name}>
+                  <span
                     className="legend-dot"
                     style={{ backgroundColor: item.color }}
                   />
-                  <Typography.Paragraph className="legend-text m-b-0">
+                  <Typography
+                    className="tw:whitespace-nowrap tw:text-tertiary"
+                    size="text-sm">
                     {item.name}{' '}
-                    <Typography.Text strong className="legend-value">
+                    <span className="tw:font-semibold tw:text-primary">
                       {formatNumberWithComma(item.value)}
-                    </Typography.Text>
-                  </Typography.Paragraph>
-                </Space>
+                    </span>
+                  </Typography>
+                </Box>
               ))}
-            </Space>
+            </Box>
           )}
 
-          <PieChart height={120} width={120}>
-            <Pie
-              cx="50%"
-              cy="50%"
-              // to show the empty pie chart when there is no data
-              data={[{ value: 1 }]}
-              dataKey="value"
-              endAngle={-270}
-              innerRadius={45}
-              outerRadius={60}
-              paddingAngle={paddingAngle}
-              // to hide tooltip when there is no data
-              pointerEvents="none"
-              startAngle={90}>
-              <Cell fill={GREY_200} />
-            </Pie>
-            <Pie
-              cx="50%"
-              cy="50%"
-              data={chartData}
-              dataKey="value"
-              endAngle={-270}
-              innerRadius={45}
-              outerRadius={60}
-              paddingAngle={paddingAngle}
-              startAngle={90}>
-              {chartData.map((entry, index) => (
-                <Cell fill={entry.color} key={`cell-${index}`} />
-              ))}
-            </Pie>
-            <Tooltip />
-            <text
-              className="chart-center-text"
-              dominantBaseline="middle"
-              textAnchor="middle"
-              x="50%"
-              y="50%">
-              {percentage}
-            </text>
-          </PieChart>
-        </div>
-      </div>
+          <SummaryDonut
+            chartData={chartData}
+            paddingAngle={paddingAngle}
+            percentage={percentage}
+          />
+        </Box>
+      </Box>
     </Card>
   );
 };
