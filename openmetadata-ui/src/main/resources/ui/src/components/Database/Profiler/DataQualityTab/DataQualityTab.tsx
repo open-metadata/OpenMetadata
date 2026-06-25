@@ -790,6 +790,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                     : undefined
                 }
                 id={col.id}
+                isRowHeader={col.id === 'name'}
                 key={col.id}
                 label={col.name}
                 style={getColumnLayoutStyle(col.id, 2)}

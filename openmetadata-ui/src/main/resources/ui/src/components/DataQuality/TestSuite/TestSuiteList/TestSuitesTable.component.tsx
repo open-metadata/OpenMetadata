@@ -176,6 +176,7 @@ export const TestSuitesTable = ({
             <Table.Head
               allowsSorting={col.allowsSorting}
               id={col.id}
+              isRowHeader={col.id === 'name'}
               key={col.id}
               label={col.name}
               style={{ width: COLUMN_WIDTH[col.id] }}
