@@ -92,7 +92,6 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
@@ -852,7 +851,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTask create) {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
-    authorizeCreateTaskOnAboutEntity(securityContext, task);
     return create(uriInfo, securityContext, task);
   }
 
@@ -880,28 +878,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Valid CreateTask create) {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
-    authorizeCreateTaskOnAboutEntity(securityContext, task);
     return createOrUpdate(uriInfo, securityContext, task);
-  }
-
-  /**
-   * Enforce {@code CreateTask} on the target entity referenced by {@code task.about}, in addition
-   * to the resource-level {@code Create} check on the {@code task} resource performed by
-   * {@link org.openmetadata.service.resources.EntityResource#create}. Both must pass when an
-   * {@code about} entity is set, which lets policy authors restrict task filing per target entity
-   * (e.g. {@code isOwner()}-conditional rules on the table). Tasks without an {@code about} field
-   * (rare; admin/bot-created) bypass the per-entity check and rely on the resource-level grant.
-   */
-  private void authorizeCreateTaskOnAboutEntity(SecurityContext securityContext, Task task) {
-    EntityReference aboutRef = task.getAbout();
-    if (aboutRef == null || aboutRef.getType() == null || aboutRef.getId() == null) {
-      return;
-    }
-    ResourceContext<?> resourceContext =
-        new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
-    OperationContext operationContext =
-        new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
   }
 
   /**
