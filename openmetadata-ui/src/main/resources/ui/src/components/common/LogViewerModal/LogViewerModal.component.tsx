@@ -179,6 +179,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                   extraLines={1}
                   follow={follow}
                   formatPart={colorize ? formatLogPart : undefined}
+                  rowHeight={25}
                   text={filteredLogs}
                 />
               )}
