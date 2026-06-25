@@ -61,7 +61,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
   private static final String GLOSSARY_TERM_CSV_HEADER =
-      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n";
+      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n";
 
   {
     supportsImportExport = true;
@@ -1105,9 +1105,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    * Helper method to create CSV content for glossary terms import.
    * Returns CSV with header and 3 glossary terms with all required columns.
    *
-   * CSV Format (14 columns):
+   * CSV Format (15 columns):
    * parent,name*,displayName,description,synonyms,relatedTerms,references,tags,
-   * reviewers,owner,glossaryStatus,color,iconURL,extension
+   * reviewers,owner,glossaryStatus,color,iconURL,domains,extension
    *
    * Note: parent column is for PARENT GLOSSARY TERM, not glossary.
    * For top-level terms, leave parent EMPTY.
@@ -1118,27 +1118,176 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    */
   private String buildGlossaryTermsCsv(String glossaryFqn, TestNamespace ns) {
     StringBuilder csv = new StringBuilder();
-    // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
+    // CSV header with all 15 columns as expected by GlossaryCsv.addRecord()
     // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
     csv.append(GLOSSARY_TERM_CSV_HEADER);
 
     // Add 3 top-level glossary terms with EMPTY parent column
     // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
-    //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
+    //          tags, reviewers, owner, glossaryStatus, color, iconURL, domains, extension
     csv.append(
         String.format(
-            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm1")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm2")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm3")));
 
     return csv.toString();
+  }
+
+  /**
+   * Regression guard for the CSV bulk-edit bug that silently dropped a glossary term's domain.
+   *
+   * <p>Glossary CSV import runs through the batch path {@code
+   * EntityRepository.updateManyEntitiesForImport}, which clears every relationship and rebuilds it
+   * from the imported entity. A row that leaves the domains cell empty (or a CSV produced before the
+   * domains column existed) therefore arrived with {@code domains == null}, and the rebuild dropped
+   * the existing domain. {@code carryForwardDomainsForImport} now restores it. Removing a domain is
+   * done via PATCH, not by clearing the CSV cell.
+   *
+   * <p>The parent glossary deliberately has no domain, so the term cannot re-inherit one after the
+   * removal — any surviving domain must be the explicit one we attached.
+   */
+  @Test
+  void test_importCsv_preservesTermDomainWhenDomainsCellEmpty(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary =
+        createEntity(
+            new CreateGlossary()
+                .withName(ns.prefix("domainPreserveGlossary"))
+                .withDescription("Glossary for CSV domain-preservation test"));
+
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("domainTerm"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term with an explicitly attached domain"));
+
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(testDomain().getId())
+            .withType("domain")
+            .withName(testDomain().getName())
+            .withFullyQualifiedName(testDomain().getFullyQualifiedName());
+
+    GlossaryTerm termWithDomain = client.glossaryTerms().get(term.getId().toString(), "domains");
+    termWithDomain.setDomains(List.of(domainRef));
+    client.glossaryTerms().update(term.getId().toString(), termWithDomain);
+
+    GlossaryTerm beforeImport = client.glossaryTerms().get(term.getId().toString(), "domains");
+    assertNotNull(beforeImport.getDomains(), "Precondition: term should have a domain attached");
+    assertEquals(1, beforeImport.getDomains().size(), "Precondition: term should have one domain");
+    assertEquals(testDomain().getId(), beforeImport.getDomains().get(0).getId());
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getFullyQualifiedName());
+    // Blank the domains cell to mimic a bulk edit that didn't fill it in (or a CSV produced before
+    // the domains column existed). The previously attached domain must survive the re-import.
+    String csvWithoutDomain = exportedCsv.replace(testDomain().getFullyQualifiedName(), "");
+    assertFalse(
+        csvWithoutDomain.contains(testDomain().getFullyQualifiedName()),
+        "Precondition: the domains cell should be blank before re-import");
+    String importReport =
+        client.glossaries().importCsv(glossary.getFullyQualifiedName(), csvWithoutDomain, false);
+    CsvImportResult importResult = JsonUtils.readValue(importReport, CsvImportResult.class);
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "CSV re-import should succeed: " + importResult.getImportResultsCsv());
+
+    GlossaryTerm afterImport = client.glossaryTerms().get(term.getId().toString(), "domains");
+    assertNotNull(
+        afterImport.getDomains(),
+        "A CSV bulk edit must not drop the term's previously attached domain");
+    assertEquals(
+        1,
+        afterImport.getDomains().size(),
+        "A CSV bulk edit must not drop the term's previously attached domain");
+    assertEquals(
+        testDomain().getId(),
+        afterImport.getDomains().get(0).getId(),
+        "The preserved domain should be the one originally attached");
+  }
+
+  /**
+   * Exercises the {@code domains} CSV column end to end: an export emits the term's domain, and
+   * re-importing with a different domain in that column updates the term — proving the column is
+   * both written and read, not merely preserved by {@link
+   * #test_importCsv_preservesTermDomainWhenDomainsCellEmpty}.
+   */
+  @Test
+  void test_exportImportCsv_roundTripsTermDomainColumn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    org.openmetadata.schema.entity.domains.Domain otherDomain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("csvOtherDomain"))
+                    .withDescription("Second domain for the CSV domains-column test")
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE));
+
+    Glossary glossary =
+        createEntity(
+            new CreateGlossary()
+                .withName(ns.prefix("domainColumnGlossary"))
+                .withDescription("Glossary for the CSV domains-column test"));
+
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("domainColumnTerm"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Term whose domain is round-tripped through CSV"));
+
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(testDomain().getId())
+            .withType("domain")
+            .withName(testDomain().getName())
+            .withFullyQualifiedName(testDomain().getFullyQualifiedName());
+    GlossaryTerm termWithDomain = client.glossaryTerms().get(term.getId().toString(), "domains");
+    termWithDomain.setDomains(List.of(domainRef));
+    client.glossaryTerms().update(term.getId().toString(), termWithDomain);
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getFullyQualifiedName());
+    assertTrue(
+        exportedCsv.contains(testDomain().getFullyQualifiedName()),
+        "Exported CSV should carry the term's domain in the domains column: " + exportedCsv);
+
+    // Swap to a different domain in the CSV and import: the term must adopt the new domain, proving
+    // the import reads the domains column (a preserve-only path would keep the original domain).
+    String swappedCsv =
+        exportedCsv.replace(
+            testDomain().getFullyQualifiedName(), otherDomain.getFullyQualifiedName());
+    String importReport =
+        client.glossaries().importCsv(glossary.getFullyQualifiedName(), swappedCsv, false);
+    CsvImportResult importResult = JsonUtils.readValue(importReport, CsvImportResult.class);
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "CSV import should succeed: " + importResult.getImportResultsCsv());
+
+    GlossaryTerm afterImport = client.glossaryTerms().get(term.getId().toString(), "domains");
+    assertNotNull(afterImport.getDomains(), "Term should still have a domain after import");
+    assertEquals(1, afterImport.getDomains().size(), "Term should have exactly one domain");
+    assertEquals(
+        otherDomain.getId(),
+        afterImport.getDomains().get(0).getId(),
+        "Import should set the domain from the CSV domains column");
   }
 
   // ===================================================================
@@ -1341,7 +1490,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTerm")
             + ",New Term,Test Term,,\""
             + inReviewTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
     log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1394,7 +1543,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTermWithApproved")
             + ",New Term With Approved,Test Term,,\""
             + approvedTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
 
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1451,6 +1600,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       csv.append(escapeCSVValue("Approved")).append(","); // glossaryStatus
       csv.append(escapeCSVValue("#FF5733")).append(","); // color
       csv.append(escapeCSVValue("")).append(","); // iconURL
+      csv.append(escapeCSVValue("")).append(","); // domains
       csv.append(escapeCSVValue(formatExtensionForCsv(null))); // extension
       csv.append("\n");
     }
@@ -1462,9 +1612,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     StringBuilder csv = new StringBuilder();
     csv.append(GLOSSARY_TERM_CSV_HEADER);
     // Missing required name field
-    csv.append(",,Term,Description,,,,,,,,,\n");
+    csv.append(",,Term,Description,,,,,,,,,,\n");
     // Invalid glossary status
-    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,\n");
+    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,,\n");
     return csv.toString();
   }
 
@@ -1487,6 +1637,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "glossaryStatus",
         "color",
         "iconURL",
+        "domains",
         "extension");
   }
 
