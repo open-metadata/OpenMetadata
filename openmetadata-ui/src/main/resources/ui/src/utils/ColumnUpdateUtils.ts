@@ -13,8 +13,8 @@
 
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
-import { UpdateColumn } from '../generated/api/data/updateColumn';
 import { EntityType } from '../enums/entity.enum';
+import { UpdateColumn } from '../generated/api/data/updateColumn';
 import { APIEndpoint, Field } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import {

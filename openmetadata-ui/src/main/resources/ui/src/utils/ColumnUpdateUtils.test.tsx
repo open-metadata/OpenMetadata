@@ -26,6 +26,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../generated/type/tagLabel';
 import {
   handleColumnFieldUpdate,
+  normalizeColumnUpdatePayload,
   updateApiEndpointField,
   updateContainerColumn,
   updateDataModelColumn,
@@ -472,5 +473,56 @@ describe('ColumnUpdateUtils', () => {
       expect(result.updatedEntity).toEqual({});
       expect(result.updatedColumn).toBeUndefined();
     });
+  });
+});
+
+describe('normalizeColumnUpdatePayload', () => {
+  it('converts an empty description to removeDescription and drops description', () => {
+    expect(normalizeColumnUpdatePayload({ description: '' })).toEqual({
+      removeDescription: true,
+    });
+  });
+
+  it('converts a whitespace-only description to removeDescription', () => {
+    expect(normalizeColumnUpdatePayload({ description: '   ' })).toEqual({
+      removeDescription: true,
+    });
+  });
+
+  it('passes a non-blank description through unchanged', () => {
+    expect(normalizeColumnUpdatePayload({ description: 'Real desc' })).toEqual({
+      description: 'Real desc',
+    });
+  });
+
+  it('converts an empty displayName to removeDisplayName and drops displayName', () => {
+    expect(normalizeColumnUpdatePayload({ displayName: '' })).toEqual({
+      removeDisplayName: true,
+    });
+  });
+
+  it('converts a whitespace-only displayName to removeDisplayName', () => {
+    expect(normalizeColumnUpdatePayload({ displayName: '  ' })).toEqual({
+      removeDisplayName: true,
+    });
+  });
+
+  it('passes a non-blank displayName through unchanged', () => {
+    expect(normalizeColumnUpdatePayload({ displayName: 'Real name' })).toEqual({
+      displayName: 'Real name',
+    });
+  });
+
+  it('leaves absent fields untouched and preserves other fields', () => {
+    expect(
+      normalizeColumnUpdatePayload({ tags: [], removeConstraint: true })
+    ).toEqual({ tags: [], removeConstraint: true });
+  });
+
+  it('does not mutate the input object', () => {
+    const input = { description: '' };
+    normalizeColumnUpdatePayload(input);
+
+    expect(input).toEqual({ description: '' });
   });
 });
