@@ -93,13 +93,13 @@ class TagAndTierSourcesStepTest {
   }
 
   @Test
-  void nullTags_emitNoProjectionKeys_andDoesNotThrow() {
+  void nullTags_emitEmptyLists_andDoesNotThrow() {
     EntityInterface entity = entityWithTags(null);
 
     Map<String, Object> snapshot = run(entity);
 
-    assertFalse(snapshot.containsKey(CLASSIFICATION));
-    assertFalse(snapshot.containsKey(GLOSSARY));
+    assertEquals(List.of(), snapshot.get(CLASSIFICATION));
+    assertEquals(List.of(), snapshot.get(GLOSSARY));
   }
 
   @Test
