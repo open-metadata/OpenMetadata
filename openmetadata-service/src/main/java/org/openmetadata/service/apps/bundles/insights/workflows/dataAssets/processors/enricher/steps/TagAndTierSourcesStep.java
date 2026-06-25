@@ -10,6 +10,10 @@
  */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps;
 
+import java.util.List;
+import java.util.Objects;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.search.ParseTags;
@@ -40,8 +44,16 @@ public final class TagAndTierSourcesStep implements EnrichmentStep {
     target.entityMap().put("tagSources", sources.getTagSources());
     target.entityMap().put("tierSources", sources.getTierSources());
 
-    if (target.entity().getTags() != null) {
-      ParseTags parseTags = new ParseTags(target.entity().getTags());
+    // Get nested tags for complex entities (e.g. tables, topics, etc.)
+    List<TagLabel> allTags =
+        Entity.getEntityTags(target.entity().getEntityReference().getType(), target.entity());
+    if (allTags != null) {
+      List<TagLabel> safeTags =
+          allTags.stream()
+              .filter(Objects::nonNull)
+              .filter(t -> t.getTagFQN() != null && t.getSource() != null)
+              .toList();
+      ParseTags parseTags = new ParseTags(safeTags);
       target.entityMap().put("classificationTags", parseTags.getClassificationTags());
       target.entityMap().put("glossaryTags", parseTags.getGlossaryTags());
     }
