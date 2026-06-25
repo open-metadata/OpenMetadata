@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.mock;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -53,15 +54,17 @@ class IngestionPipelineIndexTest {
     IngestionPipeline pipeline =
         new IngestionPipeline()
             .withName("p1")
-            .withPipelineStatuses(status)
+            .withPipelineStatuses(List.of(status))
             .withSourceConfig(new SourceConfig().withConfig(Map.of()));
 
     Map<String, Object> doc =
         new IngestionPipelineIndex(pipeline).buildSearchIndexDocInternal(new HashMap<>());
 
     Object pipelineStatuses = doc.get("pipelineStatuses");
-    assertInstanceOf(Map.class, pipelineStatuses);
-    Map<?, ?> statusMap = (Map<?, ?>) pipelineStatuses;
+    assertInstanceOf(List.class, pipelineStatuses);
+    List<?> statuses = (List<?>) pipelineStatuses;
+    assertEquals(1, statuses.size());
+    Map<?, ?> statusMap = (Map<?, ?>) statuses.getFirst();
     assertFalse(statusMap.containsKey("config"), "free-form config must be stripped from the doc");
     assertEquals("run-1", statusMap.get("runId"), "searchable status fields must be preserved");
   }

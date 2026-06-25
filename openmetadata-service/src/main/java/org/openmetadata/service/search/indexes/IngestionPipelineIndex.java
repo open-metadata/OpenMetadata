@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -47,7 +49,7 @@ public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex
         ingestionPipeline.getName() != null
             ? ingestionPipeline.getName()
             : ingestionPipeline.getDisplayName());
-    doc.put("pipelineStatuses", statusWithoutConfig(ingestionPipeline.getPipelineStatuses()));
+    doc.put("pipelineStatuses", statusesWithoutConfig(ingestionPipeline.getPipelineStatuses()));
     Optional.ofNullable(ingestionPipeline.getAirflowConfig())
         .map(AirflowConfig::getScheduleInterval)
         .ifPresent(
@@ -62,6 +64,17 @@ public class IngestionPipelineIndex implements TaggableIndex, ServiceBackedIndex
         .map(appConfig -> appConfig.optString("type", null))
         .ifPresent(c -> doc.put("applicationType", c));
     return doc;
+  }
+
+  private List<Map<String, Object>> statusesWithoutConfig(List<PipelineStatus> statuses) {
+    List<Map<String, Object>> result = null;
+    if (statuses != null) {
+      result = new ArrayList<>(statuses.size());
+      for (PipelineStatus status : statuses) {
+        result.add(statusWithoutConfig(status));
+      }
+    }
+    return result;
   }
 
   /**
