@@ -138,11 +138,12 @@ class TypeRegistryTest {
   }
 
   /**
-   * A transient database failure during the self-heal reload must not pin an existing property as
-   * unknown: the field is left out of the negative cache, so a later successful reload resolves it.
+   * A transient database failure during the self-heal reload must neither pin an existing property
+   * as unknown nor occupy the coalescing window: the field is left out of the negative cache and
+   * the very next lookup retries the database immediately (no manual window clearing here).
    */
   @Test
-  void getSchema_doesNotPinPropertyWhenReloadFails() {
+  void getSchema_retriesImmediatelyAndDoesNotPinPropertyWhenReloadFails() {
     seedBasePropertyType();
     String propertyName = "relationships";
     TypeRepository repository = mock(TypeRepository.class);
@@ -156,11 +157,9 @@ class TypeRegistryTest {
         TypeRegistry.instance().getSchema(ENTITY_TYPE, propertyName),
         "Failed reload returns no schema for this attempt");
 
-    TypeRegistry.RECENTLY_REFRESHED_TYPES.invalidateAll();
-
     assertNotNull(
         TypeRegistry.instance().getSchema(ENTITY_TYPE, propertyName),
-        "Property must resolve once the database is reachable again (not pinned as unknown)");
+        "Next lookup must retry the database immediately, not wait out the coalescing window");
   }
 
   private void seedBasePropertyType() {

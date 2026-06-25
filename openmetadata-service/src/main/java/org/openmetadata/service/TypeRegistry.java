@@ -191,17 +191,24 @@ public class TypeRegistry {
    * reload across concurrent callers for the same type. Returns {@code true} only when this call
    * performed a successful reload, so the caller knows the registry was just repopulated and a
    * still-missing property is genuinely unknown (safe to negative-cache). A failed reload returns
-   * {@code false} so a property that exists but could not be read is never wrongly pinned.
+   * {@code false} so a property that exists but could not be read is never wrongly pinned, and the
+   * coalescing entry is dropped so the next miss retries the database immediately instead of waiting
+   * out the window.
    */
   private boolean reloadTypeCoalesced(String entityType) {
-    boolean[] reloaded = {false};
+    boolean[] loaderRan = {false};
+    boolean[] loadSucceeded = {false};
     RECENTLY_REFRESHED_TYPES.get(
         entityType,
         key -> {
-          reloaded[0] = refreshTypeFromDb(key);
+          loaderRan[0] = true;
+          loadSucceeded[0] = refreshTypeFromDb(key);
           return Boolean.TRUE;
         });
-    return reloaded[0];
+    if (loaderRan[0] && !loadSucceeded[0]) {
+      RECENTLY_REFRESHED_TYPES.invalidate(entityType);
+    }
+    return loadSucceeded[0];
   }
 
   private boolean refreshTypeFromDb(String entityType) {
