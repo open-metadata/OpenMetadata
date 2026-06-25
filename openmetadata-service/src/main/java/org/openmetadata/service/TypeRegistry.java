@@ -175,9 +175,10 @@ public class TypeRegistry {
    * prevents a genuinely-unknown field from re-reading the database on every request.
    */
   private void ensureCustomPropertyLoaded(String entityType, String customPropertyFQN) {
-    boolean present = CUSTOM_PROPERTIES.containsKey(customPropertyFQN);
-    boolean recentlyMissed = MISSING_CUSTOM_PROPERTIES.getIfPresent(customPropertyFQN) != null;
-    if (!present && !recentlyMissed) {
+    boolean missingLocally =
+        !CUSTOM_PROPERTIES.containsKey(customPropertyFQN)
+            && MISSING_CUSTOM_PROPERTIES.getIfPresent(customPropertyFQN) == null;
+    if (missingLocally) {
       boolean reloaded = reloadTypeCoalesced(entityType);
       if (reloaded && !CUSTOM_PROPERTIES.containsKey(customPropertyFQN)) {
         MISSING_CUSTOM_PROPERTIES.put(customPropertyFQN, Boolean.TRUE);
@@ -188,28 +189,30 @@ public class TypeRegistry {
   /**
    * Re-reads the owning type from the database at most once per coalescing window, sharing a single
    * reload across concurrent callers for the same type. Returns {@code true} only when this call
-   * performed the reload, so the caller knows the registry was just repopulated and a still-missing
-   * property is genuinely unknown (safe to negative-cache).
+   * performed a successful reload, so the caller knows the registry was just repopulated and a
+   * still-missing property is genuinely unknown (safe to negative-cache). A failed reload returns
+   * {@code false} so a property that exists but could not be read is never wrongly pinned.
    */
   private boolean reloadTypeCoalesced(String entityType) {
     boolean[] reloaded = {false};
     RECENTLY_REFRESHED_TYPES.get(
         entityType,
         key -> {
-          reloaded[0] = true;
-          refreshTypeFromDb(key);
+          reloaded[0] = refreshTypeFromDb(key);
           return Boolean.TRUE;
         });
     return reloaded[0];
   }
 
-  private void refreshTypeFromDb(String entityType) {
+  private boolean refreshTypeFromDb(String entityType) {
+    boolean refreshed = false;
     TypeRepository repository = Entity.getTypeRepository();
     if (repository != null) {
       try {
         EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
         Type type = repository.getByName(null, entityType, fields);
         addType(type);
+        refreshed = true;
         LOG.info("Refreshed type '{}' from database after custom property cache miss", entityType);
       } catch (RuntimeException e) {
         LOG.debug(
@@ -218,6 +221,7 @@ public class TypeRegistry {
             e.getMessage());
       }
     }
+    return refreshed;
   }
 
   public void validateCustomProperties(Type type) {

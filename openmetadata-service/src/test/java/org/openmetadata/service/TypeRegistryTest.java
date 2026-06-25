@@ -102,24 +102,53 @@ class TypeRegistryTest {
     verify(repository, times(1)).getByName(any(), eq(ENTITY_TYPE), any());
   }
 
+  /**
+   * A transient database failure during the self-heal reload must not pin an existing property as
+   * unknown: the field is left out of the negative cache, so a later successful reload resolves it.
+   */
+  @Test
+  void getSchema_doesNotPinPropertyWhenReloadFails() {
+    seedBasePropertyType();
+    String propertyName = "relationships";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(ENTITY_TYPE), any()))
+        .thenThrow(new RuntimeException("transient database error"))
+        .thenReturn(tableTypeWith(propertyName));
+    Entity.setTypeRepository(repository);
+
+    assertNull(
+        TypeRegistry.instance().getSchema(ENTITY_TYPE, propertyName),
+        "Failed reload returns no schema for this attempt");
+
+    TypeRegistry.RECENTLY_REFRESHED_TYPES.invalidateAll();
+
+    assertNotNull(
+        TypeRegistry.instance().getSchema(ENTITY_TYPE, propertyName),
+        "Property must resolve once the database is reachable again (not pinned as unknown)");
+  }
+
   private void seedBasePropertyType() {
     TypeRegistry.TYPES.put(
         STRING_TYPE, new Type().withName(STRING_TYPE).withSchema("{\"type\":\"string\"}"));
   }
 
+  private Type tableTypeWith(String propertyName) {
+    return new Type()
+        .withName(ENTITY_TYPE)
+        .withCategory(Category.Entity)
+        .withCustomProperties(
+            List.of(
+                new CustomProperty()
+                    .withName(propertyName)
+                    .withPropertyType(new EntityReference().withName(STRING_TYPE))));
+  }
+
   private TypeRepository repositoryReturningTableWith(String propertyName) {
-    Type tableType =
-        new Type()
-            .withName(ENTITY_TYPE)
-            .withCategory(Category.Entity)
-            .withCustomProperties(
-                List.of(
-                    new CustomProperty()
-                        .withName(propertyName)
-                        .withPropertyType(new EntityReference().withName(STRING_TYPE))));
     TypeRepository repository = mock(TypeRepository.class);
     when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
-    when(repository.getByName(any(), eq(ENTITY_TYPE), any())).thenReturn(tableType);
+    when(repository.getByName(any(), eq(ENTITY_TYPE), any()))
+        .thenReturn(tableTypeWith(propertyName));
     Entity.setTypeRepository(repository);
     return repository;
   }
