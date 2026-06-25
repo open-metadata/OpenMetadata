@@ -15,7 +15,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
-import { debounce, entries, isEmpty, isUndefined, uniq } from 'lodash';
+import { debounce, entries, isEmpty, isUndefined, uniq, values } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -466,6 +466,24 @@ export const useTestCaseListPage = () => {
     });
   }, [selectedFilter, params, isOptionsLoading, asyncOptionsByKey]);
 
+  // True when any filter (table/type/status/tags/…) currently has a value; the
+  // table-header search is intentionally excluded so it survives a clear-all.
+  const hasActiveFilters = useMemo(
+    () =>
+      values(TEST_CASE_FILTERS).some((paramKey) => !isEmpty(params[paramKey])),
+    [params]
+  );
+
+  const clearAll = useCallback(() => {
+    setSelectedFilter(DEFAULT_SELECTED_FILTERS);
+    form.resetFields();
+    navigate({
+      search: QueryString.stringify(searchValue ? { searchValue } : {}, {
+        arrayFormat: 'brackets',
+      }),
+    });
+  }, [form, navigate, searchValue]);
+
   const fetchTestCases = useCallback(
     async (
       page = INITIAL_PAGING_VALUE,
@@ -626,6 +644,8 @@ export const useTestCaseListPage = () => {
     handleFilterChange,
     filterMenu,
     filters,
+    hasActiveFilters,
+    clearAll,
     isOptionsLoading,
     tableOptions,
     tagOptions,
