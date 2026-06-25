@@ -85,6 +85,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.TableRepository.ColumnTagFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
@@ -2199,21 +2200,21 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return tableColumnList;
   }
 
-  private Set<String> parseColumnTagFilters(String tags, String glossaryTerms) {
-    Set<String> filterTagFQNs = new HashSet<>();
-    addFqnsFromCsv(filterTagFQNs, tags);
-    addFqnsFromCsv(filterTagFQNs, glossaryTerms);
-    return filterTagFQNs;
+  private ColumnTagFilter parseColumnTagFilters(String tags, String glossaryTerms) {
+    return new ColumnTagFilter(parseFqnCsv(tags), parseFqnCsv(glossaryTerms));
   }
 
-  private void addFqnsFromCsv(Set<String> target, String csv) {
-    if (csv != null && !csv.isBlank()) {
-      for (String fqn : csv.split(",")) {
-        String trimmed = fqn.trim();
-        if (!trimmed.isEmpty()) {
-          target.add(trimmed);
-        }
+  private Set<String> parseFqnCsv(String csv) {
+    if (csv == null || csv.isBlank()) {
+      return Set.of();
+    }
+    Set<String> fqns = new HashSet<>();
+    for (String fqn : csv.split(",")) {
+      String trimmed = fqn.trim();
+      if (!trimmed.isEmpty()) {
+        fqns.add(trimmed);
       }
     }
+    return fqns;
   }
 }

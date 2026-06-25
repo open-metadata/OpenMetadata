@@ -3254,7 +3254,7 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
-      Set<String> filterTagFQNs,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = get(null, id, getFields(fieldsParam), include, false);
@@ -3266,7 +3266,7 @@ public class TableRepository extends EntityRepository<Table> {
         fieldsParam,
         sortBy,
         sortOrder,
-        filterTagFQNs,
+        columnTagFilter,
         authorizer,
         securityContext);
   }
@@ -3303,7 +3303,7 @@ public class TableRepository extends EntityRepository<Table> {
       Include include,
       String sortBy,
       String sortOrder,
-      Set<String> filterTagFQNs,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
     Table table = getByName(null, fqn, getFields(fieldsParam), include, false);
@@ -3315,7 +3315,7 @@ public class TableRepository extends EntityRepository<Table> {
         fieldsParam,
         sortBy,
         sortOrder,
-        filterTagFQNs,
+        columnTagFilter,
         authorizer,
         securityContext);
   }
@@ -3328,7 +3328,7 @@ public class TableRepository extends EntityRepository<Table> {
       String fieldsParam,
       String sortBy,
       String sortOrder,
-      Set<String> filterTagFQNs,
+      ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
     List<Column> allColumns = table.getColumns();
@@ -3359,8 +3359,8 @@ public class TableRepository extends EntityRepository<Table> {
                   .toList());
     }
 
-    if (!nullOrEmpty(filterTagFQNs)) {
-      matchingColumns = filterColumnsByTags(table, matchingColumns, filterTagFQNs);
+    if (columnTagFilter != null && !columnTagFilter.isEmpty()) {
+      matchingColumns = filterColumnsByTags(table, matchingColumns, columnTagFilter);
     }
 
     // Sort matching columns based on sortBy and sortOrder parameters
@@ -3415,11 +3415,22 @@ public class TableRepository extends EntityRepository<Table> {
     return new ResultList<>(paginatedResults, before, after, total);
   }
 
+  /**
+   * Column-level tag filter. {@code tagFQNs} and {@code glossaryTermFQNs} mirror the two
+   * independent column filters in the UI. Values within each group are OR-ed; the two groups are
+   * AND-ed when both are present (matching AntD's cross-column filter semantics).
+   */
+  public record ColumnTagFilter(Set<String> tagFQNs, Set<String> glossaryTermFQNs) {
+    public boolean isEmpty() {
+      return nullOrEmpty(tagFQNs) && nullOrEmpty(glossaryTermFQNs);
+    }
+  }
+
   private List<Column> filterColumnsByTags(
-      Table table, List<Column> columns, Set<String> filterTagFQNs) {
+      Table table, List<Column> columns, ColumnTagFilter columnTagFilter) {
     Map<String, List<TagLabel>> tagsByHash = resolveColumnTagsForFilter(table);
     return columns.stream()
-        .filter(column -> columnHasAnyTag(column, filterTagFQNs, tagsByHash))
+        .filter(column -> columnMatchesTagFilter(column, columnTagFilter, tagsByHash))
         .collect(Collectors.toCollection(ArrayList::new));
   }
 
@@ -3452,12 +3463,20 @@ public class TableRepository extends EntityRepository<Table> {
     return effectiveTagsByHash;
   }
 
-  private boolean columnHasAnyTag(
-      Column column, Set<String> filterTagFQNs, Map<String, List<TagLabel>> tagsByHash) {
+  private boolean columnMatchesTagFilter(
+      Column column, ColumnTagFilter columnTagFilter, Map<String, List<TagLabel>> tagsByHash) {
     List<TagLabel> tags =
         tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
-    return !nullOrEmpty(tags)
-        && tags.stream().anyMatch(tag -> filterTagFQNs.contains(tag.getTagFQN()));
+    Set<String> columnTagFQNs =
+        nullOrEmpty(tags)
+            ? Set.of()
+            : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+    return matchesTagGroup(columnTagFQNs, columnTagFilter.tagFQNs())
+        && matchesTagGroup(columnTagFQNs, columnTagFilter.glossaryTermFQNs());
+  }
+
+  private boolean matchesTagGroup(Set<String> columnTagFQNs, Set<String> filterGroup) {
+    return nullOrEmpty(filterGroup) || filterGroup.stream().anyMatch(columnTagFQNs::contains);
   }
 
   private List<Column> flattenTableColumns(List<Column> columns) {

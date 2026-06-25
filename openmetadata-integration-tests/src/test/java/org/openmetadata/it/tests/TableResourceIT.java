@@ -905,6 +905,82 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(taggedColumnName, byDerivedTag.getData().get(0).getName());
   }
 
+  @Test
+  void searchColumns_tagsAndGlossaryTermsCombineWithAnd(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("AndFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Pii");
+    String glossaryTermFqn =
+        createGlossaryTermWithTag(client, ns.prefix("AndGlossary"), "CustomerData", null);
+
+    TagLabel classificationLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    TagLabel glossaryLabel =
+        new TagLabel()
+            .withTagFQN(glossaryTermFqn)
+            .withSource(TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Column tagOnly =
+        new Column()
+            .withName("col_tag_only")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(classificationLabel));
+    Column glossaryOnly =
+        new Column()
+            .withName("col_glossary_only")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(glossaryLabel));
+    Column both =
+        new Column()
+            .withName("col_both")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(classificationLabel, glossaryLabel));
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_and_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(List.of(tagOnly, glossaryOnly, both));
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+    String encodedTerm = URLEncoder.encode(glossaryTermFqn, StandardCharsets.UTF_8);
+
+    TableColumnList byTag =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        2, byTag.getPaging().getTotal(), "tags filter alone should match both tagged cols");
+
+    TableColumnList byTerm =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        2, byTerm.getPaging().getTotal(), "glossaryTerms filter alone should match both term cols");
+
+    TableColumnList byBoth =
+        searchColumns(
+            client,
+            encodedFqn,
+            "limit=50&offset=0&fields=tags&tags=" + encodedTag + "&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        1,
+        byBoth.getPaging().getTotal(),
+        "tags + glossaryTerms together should AND, matching only the column with both");
+    assertEquals("col_both", byBoth.getData().get(0).getName());
+  }
+
   private String createGlossaryTermWithTag(
       OpenMetadataClient client, String glossaryName, String termName, String tagFqn) {
     CreateGlossary createGlossary =
@@ -915,18 +991,20 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         .getHttpClient()
         .execute(HttpMethod.PUT, "/v1/glossaries", createGlossary, Glossary.class);
 
-    TagLabel classificationTag =
-        new TagLabel()
-            .withTagFQN(tagFqn)
-            .withSource(TagSource.CLASSIFICATION)
-            .withLabelType(TagLabel.LabelType.MANUAL)
-            .withState(TagLabel.State.CONFIRMED);
     CreateGlossaryTerm createTerm =
         new CreateGlossaryTerm()
             .withName(termName)
             .withGlossary(glossaryName)
-            .withDescription("Term for column tag filter test")
-            .withTags(List.of(classificationTag));
+            .withDescription("Term for column tag filter test");
+    if (tagFqn != null) {
+      TagLabel classificationTag =
+          new TagLabel()
+              .withTagFQN(tagFqn)
+              .withSource(TagSource.CLASSIFICATION)
+              .withLabelType(TagLabel.LabelType.MANUAL)
+              .withState(TagLabel.State.CONFIRMED);
+      createTerm.withTags(List.of(classificationTag));
+    }
     GlossaryTerm term =
         client
             .getHttpClient()
