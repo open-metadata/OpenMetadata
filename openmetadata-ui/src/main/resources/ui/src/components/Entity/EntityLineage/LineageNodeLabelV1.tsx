@@ -96,8 +96,9 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             as="span"
             className="m-b-0 d-block text-left entity-header-display-name w-54"
             data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: entityName }}
+            ellipsis
             size="text-md"
+            title={entityName}
             weight="medium">
             {entityName}
           </Typography>
