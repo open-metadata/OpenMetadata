@@ -108,17 +108,17 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await fetchTestCaseSummary(filters);
-      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        filters,
-        true
-      );
-      const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
-        filters,
-        false
-      );
-
-      const { data: entityCount } = await fetchTotalEntityCount(filters);
+      const [
+        { data },
+        { data: unhealthyData },
+        { data: totalDQCoverage },
+        { data: entityCount },
+      ] = await Promise.all([
+        fetchTestCaseSummary(filters),
+        fetchEntityCoveredWithDQ(filters, true),
+        fetchEntityCoveredWithDQ(filters, false),
+        fetchTotalEntityCount(filters),
+      ]);
 
       const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
       const total = parseInt(totalDQCoverage[0].originEntityFQN);

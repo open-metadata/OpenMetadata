@@ -882,6 +882,11 @@ public class RdfResource {
       @Parameter(description = "Comma-separated relationship types to keep in the graph")
           @QueryParam("relationshipTypes")
           String relationshipTypes) {
+    // Admin-only by design: graph node hydration (RdfRepository.getEntityGraph)
+    // resolves entity details with Include.ALL and does NOT re-apply the
+    // caller's per-entity view authorization. Relaxing this to non-admins would
+    // require RBAC-aware filtering of the returned nodes/edges first, otherwise
+    // the graph could leak entities the caller cannot otherwise see.
     authorizer.authorizeAdmin(securityContext);
     try {
       String validatedEntityType = validateEntityType(entityType);
@@ -1002,7 +1007,7 @@ public class RdfResource {
     return JsonUtils.pojoToJson(Map.of("error", message));
   }
 
-  private int clampGraphDepth(int depth) {
+  static int clampGraphDepth(int depth) {
     return Math.min(Math.max(depth, MIN_GRAPH_DEPTH), MAX_GRAPH_DEPTH);
   }
 
@@ -1296,7 +1301,10 @@ public class RdfResource {
       summary = "Get glossary term relationship graph",
       description =
           "Get all glossary terms and their relationships as a graph. "
-              + "Supports filtering by glossary and pagination for large datasets.",
+              + "Supports filtering by glossary, by a glossary term and its direct neighbors, "
+              + "or by both. When both glossaryId and glossaryTermId are provided, the selected "
+              + "term must belong to the glossary and direct cross-glossary neighbors can still "
+              + "be returned.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1306,8 +1314,14 @@ public class RdfResource {
       })
   public Response getGlossaryTermGraph(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Filter by glossary ID (UUID)") @QueryParam("glossaryId")
+      @Parameter(description = "Filter primary terms by glossary ID (UUID)")
+          @QueryParam("glossaryId")
           UUID glossaryId,
+      @Parameter(
+              description =
+                  "Filter to a glossary term ID (UUID) and its direct incoming/outgoing neighbors")
+          @QueryParam("glossaryTermId")
+          UUID glossaryTermId,
       @Parameter(description = "Filter by relation types (comma-separated)")
           @QueryParam("relationTypes")
           String relationTypes,
@@ -1335,7 +1349,8 @@ public class RdfResource {
 
       String graphData =
           getRdfRepository()
-              .getGlossaryTermGraph(glossaryId, relationTypes, limit, offset, includeIsolated);
+              .getGlossaryTermGraph(
+                  glossaryId, glossaryTermId, relationTypes, limit, offset, includeIsolated);
       return Response.ok(graphData, MediaType.APPLICATION_JSON).build();
 
     } catch (Exception e) {

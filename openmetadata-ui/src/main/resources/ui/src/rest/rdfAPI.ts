@@ -12,10 +12,6 @@
  */
 
 import {
-  EXPORT_FORMAT_TO_ACCEPT_HEADER,
-  EXPORT_FORMAT_TO_FILE_EXTENSION,
-} from '../components/KnowledgeGraph/KnowledgeGraph.constants';
-import {
   Format as SparqlResultFormat,
   Inference as SparqlInferenceLevel,
 } from '../generated/api/rdf/sparqlQuery';
@@ -101,6 +97,20 @@ export const runSparqlQuery = async (
   };
 };
 
+export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
+  jsonld: 'application/ld+json',
+  turtle: 'text/turtle',
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+};
+
+export const EXPORT_FORMAT_TO_FILE_EXTENSION: Record<string, string> = {
+  jsonld: 'jsonld',
+  turtle: 'ttl',
+  rdfxml: 'rdf',
+  ntriples: 'nt',
+};
+
 export const checkRdfEnabled = async (): Promise<boolean> => {
   try {
     const response = await APIClient.get('/rdf/status');
@@ -118,7 +128,8 @@ export const fetchRdfConfig = async (): Promise<{ enabled: boolean }> => {
 };
 
 export const getEntityGraphData = async (
-  params: EntityGraphParams
+  params: EntityGraphParams,
+  options?: { signal?: AbortSignal }
 ): Promise<GraphData> => {
   const {
     entityId,
@@ -137,6 +148,7 @@ export const getEntityGraphData = async (
         ? relationshipTypes.join(',')
         : undefined,
     },
+    signal: options?.signal,
   });
 
   return response.data;
@@ -209,6 +221,7 @@ export const getGlossaryTermGraph = async (
 ): Promise<GraphData> => {
   const {
     glossaryId,
+    glossaryTermId,
     relationTypes,
     limit = 500,
     offset = 0,
@@ -218,6 +231,7 @@ export const getGlossaryTermGraph = async (
   const response = await APIClient.get<GraphData>('/rdf/glossary/graph', {
     params: {
       glossaryId,
+      glossaryTermId,
       relationTypes,
       limit,
       offset,
