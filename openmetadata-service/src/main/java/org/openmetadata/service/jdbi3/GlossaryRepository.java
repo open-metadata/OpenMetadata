@@ -16,6 +16,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addDomains;
@@ -535,9 +536,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addField(recordList, entity.getEntityStatus().value());
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
-      addDomains(recordList, entity.getDomains());
+      addDomains(recordList, getDirectDomains(entity.getDomains()));
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
+    }
+
+    private static List<EntityReference> getDirectDomains(List<EntityReference> domains) {
+      return listOrEmpty(domains).stream()
+          .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+          .toList();
     }
 
     private String termReferencesToRecord(List<TermReference> list) {

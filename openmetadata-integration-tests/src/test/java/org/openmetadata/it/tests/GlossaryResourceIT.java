@@ -1469,6 +1469,57 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     assertEquals(domainFqn, reimported.getDomains().getFirst().getFullyQualifiedName());
   }
 
+  /**
+   * A term that only <b>inherits</b> its domain from the parent glossary must not have that domain
+   * materialized as a direct domain through a CSV export/import round-trip. Inherited domains are
+   * excluded from the exported domains column, so re-import leaves the term inheriting (not owning)
+   * the domain.
+   */
+  @Test
+  void test_importExportCsv_doesNotMaterializeInheritedDomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String domainFqn = testDomain().getFullyQualifiedName();
+    EntityReference domainRef =
+        new EntityReference()
+            .withId(testDomain().getId())
+            .withType("domain")
+            .withName(testDomain().getName())
+            .withFullyQualifiedName(domainFqn);
+    glossary.setDomains(List.of(domainRef));
+    patchEntity(glossary.getId().toString(), glossary);
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("inheritingTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that only inherits the glossary's domain");
+    GlossaryTerm term = client.glossaryTerms().create(createTerm);
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getName());
+    String termRow =
+        exportedCsv.lines().filter(line -> line.contains(term.getName())).findFirst().orElseThrow();
+    assertFalse(
+        termRow.contains(domainFqn),
+        "Inherited domain must not be written to the exported CSV. Row: " + termRow);
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
+    assertFalse(
+        resultCsv.contains("failure"),
+        "Re-importing the exported CSV should succeed. Result: " + resultCsv);
+
+    GlossaryTerm reimported =
+        client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
+    boolean hasDirectDomain =
+        reimported.getDomains() != null
+            && reimported.getDomains().stream()
+                .anyMatch(domain -> !Boolean.TRUE.equals(domain.getInherited()));
+    assertFalse(
+        hasDirectDomain,
+        "Inherited domain must not be materialized as a direct domain after CSV round-trip");
+  }
+
   // ===================================================================
   // CSV IMPORT/EXPORT SUPPORT
   // ===================================================================
