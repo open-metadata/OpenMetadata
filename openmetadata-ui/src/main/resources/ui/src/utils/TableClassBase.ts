@@ -70,7 +70,8 @@ type TableWidgetKeys =
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
   | DetailPageWidgetKeys.TABLE_CONSTRAINTS
-  | DetailPageWidgetKeys.PARTITIONED_KEYS;
+  | DetailPageWidgetKeys.PARTITIONED_KEYS
+  | DetailPageWidgetKeys.ASSET_HEALTH;
 
 class TableClassBase {
   defaultWidgetHeight: Record<TableWidgetKeys, number>;
@@ -87,6 +88,7 @@ class TableClassBase {
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
       [DetailPageWidgetKeys.TABLE_CONSTRAINTS]: 2,
       [DetailPageWidgetKeys.PARTITIONED_KEYS]: 2,
+      [DetailPageWidgetKeys.ASSET_HEALTH]: 3,
     };
   }
 
@@ -166,11 +168,19 @@ class TableClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH],
+        i: DetailPageWidgetKeys.ASSET_HEALTH,
+        w: 2,
+        x: 6,
+        y: 1,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 2,
         static: false,
       },
       {
@@ -178,7 +188,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 2,
+        y: 3,
         static: false,
       },
       {
@@ -186,7 +196,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 3,
+        y: 4,
         static: false,
       },
       {
@@ -194,7 +204,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
         w: 2,
         x: 6,
-        y: 4,
+        y: 5,
         static: false,
       },
       {
@@ -202,7 +212,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 5,
+        y: 6,
         static: false,
       },
       {
@@ -210,7 +220,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.PARTITIONED_KEYS,
         w: 2,
         x: 6,
-        y: 6,
+        y: 7,
         static: false,
       },
       {
@@ -218,7 +228,7 @@ class TableClassBase {
         i: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         w: 2,
         x: 6,
-        y: 7,
+        y: 8,
         static: false,
       },
     ];
@@ -263,6 +273,13 @@ class TableClassBase {
         name: i18n.t('label.schema'),
         data: {
           gridSizes: ['large'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.ASSET_HEALTH,
+        name: i18n.t('label.asset-health'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
         },
       },
       DATA_PRODUCTS_WIDGET,
@@ -318,6 +335,8 @@ class TableClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TABLE_CONSTRAINTS];
       case DetailPageWidgetKeys.PARTITIONED_KEYS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.PARTITIONED_KEYS];
+      case DetailPageWidgetKeys.ASSET_HEALTH:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.ASSET_HEALTH];
       default:
         return 1;
     }
