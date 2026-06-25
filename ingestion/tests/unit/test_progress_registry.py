@@ -280,3 +280,39 @@ class TestSetTotalAndRollup:
             "DatabaseSchema",
             "Table",
         ]
+
+
+class TestAssetCounterAndClose:
+    def test_advance_increments_assets_ingested(self):
+        registry = ProgressRegistry()
+        registry.advance(["db", "s"], "Table")
+        registry.advance(["db", "s"], "Table")
+        assert registry.assets_ingested() == 2
+
+    def test_assets_ingested_is_monotonic_across_close(self):
+        registry = ProgressRegistry()
+        registry.advance(["db", "s1"], "Table")
+        registry.advance(["db", "s1"], "Table")
+        registry.close(["db", "s1"])
+        assert registry.assets_ingested() == 2  # survives the prune
+        registry.advance(["db", "s2"], "Table")
+        assert registry.assets_ingested() == 3
+
+    def test_close_removes_node_from_parent(self):
+        registry = ProgressRegistry()
+        registry.open(["db", "s1"], "Table", 5)
+        registry.advance(["db", "s1"], "Table")
+        registry.open(["db", "s2"], "Table", 5)
+        registry.advance(["db", "s2"], "Table")
+        registry.close(["db", "s1"])
+        snapshot = registry.snapshot()
+        database = snapshot.children[0]
+        labels = {child.label for child in database.children}
+        assert "s1" not in labels
+        assert "s2" in labels
+
+    def test_close_absent_or_empty_path_is_noop(self):
+        registry = ProgressRegistry()
+        registry.close([])  # empty: no-op
+        registry.close(["ghost"])  # absent: no-op
+        assert registry.snapshot() is None

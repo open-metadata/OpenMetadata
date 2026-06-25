@@ -67,6 +67,7 @@ class ProgressRegistry:
 
     def __init__(self, active_leaf_cap: int = DEFAULT_ACTIVE_LEAF_CAP) -> None:
         self._lock = threading.Lock()
+        self._total_ingested = 0
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
 
@@ -92,6 +93,22 @@ class ProgressRegistry:
             node = self._navigate(path)
             key = child_type or node.child_type or ""
             node.processed_by_type[key] = node.processed_by_type.get(key, 0) + 1
+            self._total_ingested += 1
+
+    def assets_ingested(self) -> int:
+        """Monotonic run-total of leaf entities processed. Independent of the
+        tree — pruning a completed scope never decreases it."""
+        with self._lock:
+            return self._total_ingested
+
+    def close(self, path: List[str]) -> None:  # noqa: UP006
+        """Remove the node at ``path`` from its parent's children once its work
+        is complete, so the tree retains only active scopes. No-op on an empty
+        or already-absent path."""
+        with self._lock:
+            if path:
+                parent = self._navigate(path[:-1])
+                parent.children.pop(path[-1], None)
 
     def completed_at_depth(self, depth: int) -> int:
         with self._lock:
