@@ -15,6 +15,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
 )
 from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
 from metadata.workflow.progress_render import (
+    ProgressReporter,
     render_progress_tree,
     snapshot_to_progress_payload,
 )
@@ -81,3 +82,44 @@ def test_label_only_grouping_node_renders_without_count():
     assert "analytics.public" in rendered
     assert "analytics.public 0" not in rendered  # no spurious count on the label node
     assert "Table 12/47" in rendered
+
+
+def _snowflake_like_registry() -> ProgressRegistry:
+    registry = ProgressRegistry()
+    registry.set_total([], "Database", 2)
+    registry.open([], "Database", None)
+    registry.set_total(["sales"], "DatabaseSchema", 1)
+    registry.open(["sales"], "DatabaseSchema", None)
+    registry.open(["sales", "public"], "Table", 310)
+    for _ in range(45):
+        registry.advance(["sales", "public"], "Table")
+    return registry
+
+
+class TestProgressReporter:
+    def test_payload_header_is_generic_rollup(self):
+        payload = ProgressReporter(_snowflake_like_registry()).payload()
+        rollup = {r["entityType"]: (r["processed"], r["expected"]) for r in payload["rollup"]}
+        assert rollup["Database"] == (0, 2)
+        assert rollup["DatabaseSchema"] == (0, 1)
+        assert rollup["Table"] == (45, 310)
+
+    def test_cli_shows_ancestor_joined_active_scope(self):
+        text = ProgressReporter(_snowflake_like_registry()).cli()
+        assert "sales.public" in text
+        assert "45/310" in text
+
+    def test_payload_is_none_before_anything_starts(self):
+        assert ProgressReporter(ProgressRegistry()).payload() is None
+
+    def test_powerbi_like_single_tier_scope(self):
+        registry = ProgressRegistry()
+        registry.set_total([], "Workspace", 2)
+        registry.open([], "Workspace", None)
+        registry.open(["Marketing"], "Dashboard", 40)
+        for _ in range(8):
+            registry.advance(["Marketing"], "Dashboard")
+        payload = ProgressReporter(registry).payload()
+        rollup = {r["entityType"]: (r["processed"], r["expected"]) for r in payload["rollup"]}
+        assert rollup["Workspace"] == (0, 2)
+        assert rollup["Dashboard"] == (8, 40)

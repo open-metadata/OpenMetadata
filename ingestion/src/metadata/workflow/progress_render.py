@@ -18,7 +18,7 @@ status mixin can import it without a circular dependency.
 
 from typing import List, Optional  # noqa: UP035
 
-from metadata.utils.progress_registry import ProgressNodeSnapshot
+from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
 
 
 def render_progress_tree(root: Optional[ProgressNodeSnapshot]) -> str:  # noqa: UP045
@@ -48,6 +48,59 @@ def _render_node(node: ProgressNodeSnapshot, depth: int, lines: List[str]) -> No
 def snapshot_to_progress_payload(root: Optional[ProgressNodeSnapshot]) -> Optional[dict]:  # noqa: UP045
     """Map a snapshot tree to the ProgressUpdate.progress (progressNode) shape."""
     return _node_to_payload(root) if root is not None else None
+
+
+class ProgressReporter:
+    """Presentation of a registry's state. The registry stays a pure state
+    object; this reporter knows how to render it for CLI and for the SSE
+    payload. Connector-agnostic — the rollup header is generic."""
+
+    def __init__(self, registry: ProgressRegistry) -> None:
+        self._registry = registry
+
+    def cli(self) -> str:
+        snapshot = self._registry.snapshot()
+        if snapshot is None:
+            return ""
+        header = " · ".join(
+            f"{entity_type} {processed}/{expected}" if expected is not None else f"{entity_type} {processed}"
+            for entity_type, processed, expected in self._registry.rollup_by_type()
+        )
+        lines: List[str] = []  # noqa: UP006
+        _render_joined(snapshot, [], lines)
+        tree = "\n".join(lines)
+        return f"{header}\n{tree}" if tree else header
+
+    def payload(self) -> Optional[dict]:  # noqa: UP045
+        snapshot = self._registry.snapshot()
+        result = None
+        if snapshot is not None:
+            result = {
+                "rollup": [
+                    {"entityType": entity_type, "processed": processed, "expected": expected}
+                    for entity_type, processed, expected in self._registry.rollup_by_type()
+                ],
+                "tree": _node_to_payload(snapshot),
+            }
+        return result
+
+
+def _render_joined(node: ProgressNodeSnapshot, ancestors: "List[str]", lines: "List[str]") -> None:  # noqa: UP006
+    """Render active nodes with ancestor labels joined by '.' so sibling-level
+    hierarchy collapses into a single readable label, e.g. ``sales.public  Table 45/310``."""
+    path = [*ancestors, node.label] if node.label else list(ancestors)
+    if node.children:
+        for child in node.children:
+            _render_joined(child, path, lines)
+    else:
+        joined_label = ".".join(path) if path else ""
+        type_ = f"{node.child_type} " if node.child_type else ""
+        if node.child_type is None:
+            count = ""
+        else:
+            count = f"{node.processed}/{node.expected}" if node.expected is not None else str(node.processed)
+        overflow = f"  (+{node.overflow} more)" if node.overflow else ""
+        lines.append(f"{joined_label}  {type_}{count}{overflow}".strip())
 
 
 def _node_to_payload(node: ProgressNodeSnapshot) -> dict:
