@@ -69,7 +69,6 @@ class ProgressRegistry:
         self._lock = threading.Lock()
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
-        self._global_expected: Dict[str, Optional[int]] = {}  # noqa: UP006,UP045
 
     def open(self, path: List[str], child_type: str, expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
@@ -93,15 +92,6 @@ class ProgressRegistry:
             node = self._navigate(path)
             key = child_type or node.child_type or ""
             node.processed_by_type[key] = node.processed_by_type.get(key, 0) + 1
-
-    def set_global_expected(self, child_type: str, expected: Optional[int]) -> None:  # noqa: UP045
-        with self._lock:
-            self._global_expected[child_type] = expected
-
-    @property
-    def global_expected(self) -> Dict[str, Optional[int]]:  # noqa: UP006,UP045
-        with self._lock:
-            return dict(self._global_expected)
 
     def completed_at_depth(self, depth: int) -> int:
         with self._lock:

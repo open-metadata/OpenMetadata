@@ -179,13 +179,6 @@ class TestRegistryPrimitives:
         s1 = _by_label(_by_label(reg.snapshot())["db"])["s1"]
         assert s1.processed_by_type == {"Table": 1}
 
-    def test_global_expected_is_stored_and_returned_as_copy(self):
-        reg = ProgressRegistry()
-        reg.set_global_expected("DatabaseSchema", 350)
-        assert reg.global_expected == {"DatabaseSchema": 350}
-        reg.global_expected["DatabaseSchema"] = 0  # mutating the copy must not leak
-        assert reg.global_expected == {"DatabaseSchema": 350}
-
     def test_completed_at_depth_counts_complete_nodes_including_pruned(self):
         reg = ProgressRegistry()
         reg.open([], "Database", 2)

@@ -69,11 +69,6 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import test_connection_common
-from metadata.ingestion.source.database.progress_two_tier import (
-    DEFAULT_ACTIVE_SCHEMA_CAP,
-    DEFAULT_COMPLETED_SCHEMA_CAP,
-    to_two_tier,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
@@ -250,32 +245,6 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     def prepare(self):
         """By default, there is no preparation needed"""
-
-    def container_expected_count(self, entity_type_name: str) -> Optional[int]:  # noqa: UP045
-        """Schema denominator from a cheap, side-effect-free name enumeration
-        (the heavy per-schema setup stays in the lazy producer). Other levels
-        fall back to the lazy default."""
-        result = None
-        if entity_type_name == DatabaseSchema.__name__:
-            result = sum(1 for _ in self._get_filtered_schema_names(add_to_status=False))
-        return result
-
-    def progress_snapshot(self):
-        """Two-tier projection: global Databases/Schemas headers over the active
-        schemas with their per-leaf-type detail, plus a bounded tail of recently
-        finished schemas (with final counts). The generic snapshot is requested
-        uncapped so the single active-schema cap applies after flattening."""
-        generic = self.progress.snapshot(active_leaf_cap=10**9)
-        schemas_processed = self.progress.completed_at_depth(2)
-        completed = self.progress.completed_snapshots_at_depth(2, limit=DEFAULT_COMPLETED_SCHEMA_CAP)
-        return to_two_tier(
-            generic,
-            schemas_processed,
-            self.progress.global_expected,
-            completed,
-            DEFAULT_ACTIVE_SCHEMA_CAP,
-            DEFAULT_COMPLETED_SCHEMA_CAP,
-        )
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
