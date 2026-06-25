@@ -213,7 +213,7 @@ public class TypeRegistry {
         Type type = repository.getByName(null, entityType, fields);
         addType(type);
         refreshed = true;
-        LOG.info("Refreshed type '{}' from database after custom property cache miss", entityType);
+        LOG.debug("Refreshed type '{}' from database after custom property cache miss", entityType);
       } catch (RuntimeException e) {
         LOG.debug(
             "Could not refresh type '{}' from database on cache miss: {}",

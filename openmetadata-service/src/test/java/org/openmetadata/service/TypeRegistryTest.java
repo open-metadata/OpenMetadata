@@ -103,6 +103,41 @@ class TypeRegistryTest {
   }
 
   /**
+   * The negative cache must stop a genuinely-unknown field from re-reading the database on every
+   * request. The coalescing window is cleared between calls so this asserts the negative cache
+   * itself bounds the reads, not the short-lived per-type refresh window.
+   */
+  @Test
+  void getSchema_negativeCacheStopsRepeatedDbReadsForUnknownField() {
+    seedBasePropertyType();
+    TypeRepository repository = repositoryReturningTableWith("knownProp");
+
+    assertNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "ghost"));
+    TypeRegistry.RECENTLY_REFRESHED_TYPES.invalidateAll();
+    assertNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "ghost"));
+
+    verify(repository, times(1)).getByName(any(), eq(ENTITY_TYPE), any());
+  }
+
+  /**
+   * Creating a property locally must drop any prior negative-cache entry for it, so a field that
+   * was reported unknown before it existed resolves immediately on create-then-use.
+   */
+  @Test
+  void addCustomProperty_clearsNegativeCacheEntryOnCreate() {
+    seedBasePropertyType();
+    String fqn = TypeRegistry.getCustomPropertyFQN(ENTITY_TYPE, "fresh");
+    TypeRegistry.MISSING_CUSTOM_PROPERTIES.put(fqn, Boolean.TRUE);
+
+    TypeRegistry.instance().addType(tableTypeWith("fresh"));
+
+    assertNull(
+        TypeRegistry.MISSING_CUSTOM_PROPERTIES.getIfPresent(fqn),
+        "Creating the property must clear its negative-cache entry");
+    assertNotNull(TypeRegistry.instance().getSchema(ENTITY_TYPE, "fresh"));
+  }
+
+  /**
    * A transient database failure during the self-heal reload must not pin an existing property as
    * unknown: the field is left out of the negative cache, so a later successful reload resolves it.
    */
