@@ -1518,6 +1518,15 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     assertFalse(
         hasDirectDomain,
         "Inherited domain must not be materialized as a direct domain after CSV round-trip");
+
+    boolean stillInherits =
+        reimported.getDomains() != null
+            && reimported.getDomains().stream()
+                .anyMatch(
+                    domain ->
+                        domainFqn.equals(domain.getFullyQualifiedName())
+                            && Boolean.TRUE.equals(domain.getInherited()));
+    assertTrue(stillInherits, "Inherited domain must still be present after CSV round-trip");
   }
 
   // ===================================================================
