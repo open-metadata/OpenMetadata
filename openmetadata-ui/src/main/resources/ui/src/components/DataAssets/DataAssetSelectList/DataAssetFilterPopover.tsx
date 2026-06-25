@@ -10,34 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown, Database01 } from '@untitledui/icons';
-import classNames from 'classnames';
 import { FC, useCallback, useMemo, useState } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
   DataAssetFilterPopoverProps,
   DataAssetPickerOption,
-  DataAssetPickerTriggerState,
 } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
-
-const FILTER_BUTTON_BASE_CLS =
-  'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
-  ' tw:py-2 tw:text-sm tw:font-medium tw:shadow-xs tw:ring-1 tw:ring-inset' +
-  ' tw:cursor-pointer tw:transition tw:duration-100' +
-  ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
-
-const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-200`;
 
 const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
   options,
   selectedId,
   onChange,
   allowAllOption = true,
-  allOptionLabel,
   popoverClassName,
   popoverAlign = 'left',
   placeholder,
@@ -45,9 +30,6 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
 }) => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
-
-  const selectedOption = options.find((option) => option.id === selectedId);
-  const isActive = Boolean(selectedId);
 
   const filteredOptions = useMemo(() => {
     const query = searchText.trim().toLowerCase();
@@ -74,42 +56,6 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
     onChange('');
   }, [onChange]);
 
-  const defaultTrigger = useCallback(
-    ({ open }: DataAssetPickerTriggerState) => (
-      <AriaButton
-        className={classNames(
-          isActive ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-        )}
-        onPress={open}>
-        <Database01
-          className={classNames('tw:shrink-0', {
-            'tw:text-brand-secondary': isActive,
-            'tw:text-secondary': !isActive,
-          })}
-          size={14}
-        />
-        <div className="tw:max-w-50">
-          <Typography
-            ellipsis
-            className={
-              isActive ? 'tw:text-utility-brand-700' : 'tw:text-secondary'
-            }
-            weight="medium">
-            {selectedOption?.label ??
-              allOptionLabel ??
-              t('label.all-entity', { entity: t('label.asset-plural') })}
-          </Typography>
-        </div>
-        <ChevronDown
-          className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-          size={16}
-          strokeWidth={2.5}
-        />
-      </AriaButton>
-    ),
-    [isActive, selectedOption, allOptionLabel, t]
-  );
-
   return (
     <DataAssetPickerShell
       allowAllOption={allowAllOption}
@@ -117,7 +63,7 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
       placeholder={placeholder ?? t('label.search-assets-by-name-or-path')}
       popoverAlign={popoverAlign}
       popoverClassName={popoverClassName}
-      renderTrigger={renderTrigger ?? defaultTrigger}
+      renderTrigger={renderTrigger}
       searchText={searchText}
       selectedIds={selectedId ? new Set([selectedId]) : new Set()}
       selectionMode="single"

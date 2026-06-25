@@ -770,6 +770,18 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                         )}
                         <DataAssetSelectList
+                          renderTrigger={({ open }) => (
+                            <Button
+                              className="tw:px-2.5 tw:py-1.5"
+                              color="tertiary"
+                              iconLeading={Plus}
+                              size="sm"
+                              onPress={open}>
+                              {t('label.link-an-entity', {
+                                entity: t('label.asset'),
+                              })}
+                            </Button>
+                          )}
                           searchIndex={SearchIndex.DATA_ASSET}
                           value={linkedAssets}
                           onChange={handleAssetChange}

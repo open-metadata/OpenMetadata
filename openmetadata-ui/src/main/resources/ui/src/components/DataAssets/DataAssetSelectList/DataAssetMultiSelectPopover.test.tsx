@@ -77,15 +77,7 @@ describe('DataAssetMultiSelectPopover', () => {
     (searchQuery as jest.Mock).mockResolvedValue(mockSearchResponse);
   });
 
-  it('renders the default "Link an asset" trigger button', () => {
-    render(<DataAssetMultiSelectPopover onChange={jest.fn()} />);
-
-    expect(
-      screen.getByText('label.link-an-entity:label.asset')
-    ).toBeInTheDocument();
-  });
-
-  it('renders a custom trigger when renderTrigger is provided', () => {
+  it('renders the trigger provided by the caller', () => {
     render(
       <DataAssetMultiSelectPopover
         renderTrigger={({ open }) => (

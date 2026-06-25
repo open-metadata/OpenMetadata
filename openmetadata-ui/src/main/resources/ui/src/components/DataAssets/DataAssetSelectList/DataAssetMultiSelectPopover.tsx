@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
 import {
   FC,
   useCallback,
@@ -19,7 +17,6 @@ import {
   useMemo,
   useState
 } from 'react';
-import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   DataAssetOption
@@ -27,7 +24,6 @@ import {
 import {
   DataAssetMultiSelectPopoverProps,
   DataAssetPickerOption,
-  DataAssetPickerTriggerState,
 } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
 import { useAsyncDataAssetOptions } from './useAsyncDataAssetOptions';
@@ -37,7 +33,7 @@ const DataAssetMultiSelectPopover: FC<DataAssetMultiSelectPopoverProps> = ({
   onChange,
   debounceTimeout = 800,
   initialOptions,
-  searchIndex = SearchIndex.ALL,
+  searchIndex = SearchIndex.DATA_ASSET,
   value: selectedValue,
   filterFqns = [],
   queryFilter,
@@ -47,7 +43,6 @@ const DataAssetMultiSelectPopover: FC<DataAssetMultiSelectPopoverProps> = ({
   popoverAlign,
   popoverPlacement = 'top',
 }) => {
-  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [selected, setSelected] = useState<DataAssetOption[]>(
     initialOptions ?? []
@@ -126,31 +121,17 @@ const DataAssetMultiSelectPopover: FC<DataAssetMultiSelectPopoverProps> = ({
     }
   }, [isOpen, loadOptions]);
 
-  const defaultTrigger = useCallback(
-    ({ open }: DataAssetPickerTriggerState) => (
-      <Button
-        className="tw:px-2.5 tw:py-1.5"
-        color="tertiary"
-        iconLeading={Plus}
-        size="sm"
-        onPress={open}>
-        {t('label.link-an-entity', { entity: t('label.asset') })}
-      </Button>
-    ),
-    [t]
-  );
-
   return (
     <DataAssetPickerShell
       showFooterHints
       allowAllOption={false}
       isLoading={isLoading}
       options={pickerOptions}
-      placeholder={placeholder ?? t('label.search-assets-to-link')}
+      placeholder={placeholder}
       popoverAlign={popoverAlign}
       popoverClassName={popoverClassName}
       popoverPlacement={popoverPlacement}
-      renderTrigger={renderTrigger ?? defaultTrigger}
+      renderTrigger={renderTrigger}
       searchText={searchText}
       selectedIds={selectedFqns}
       selectionMode="multiple"

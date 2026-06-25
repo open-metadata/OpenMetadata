@@ -328,7 +328,7 @@ export const getEntityIconWithBg = (
   containerProps?: HTMLAttributes<HTMLSpanElement>,
   iconProps?: EntityIconProps
 ) => {
-  const style = ENTITY_ICON_MAPPER[entityType ?? ''];
+  const style = ENTITY_ICON_MAPPER[entityType ?? ''] ?? ENTITY_ICON_MAPPER['default'];
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};

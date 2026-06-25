@@ -15,6 +15,7 @@ import {
   ClipboardMinus,
   CodeCircle01,
   Codepen,
+  CodeSquare01,
   CodeSquare02,
   Columns02,
   Cube01,
@@ -29,22 +30,31 @@ import {
   Folder,
   Globe02,
   MessageSquare02,
+  SearchMd,
+  Settings02,
+  SlashCircle01,
   Table,
   Tag01,
 } from '@untitledui/icons';
 import React from 'react';
+import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as APIService } from '../assets/svg/entity/api-service.svg';
 import { ReactComponent as Chart } from '../assets/svg/entity/chart.svg';
+import { ReactComponent as ContextMemory } from '../assets/svg/entity/context-memory.svg';
 import { ReactComponent as DashboardService } from '../assets/svg/entity/dashboard-service.svg';
 import { ReactComponent as Dashboard } from '../assets/svg/entity/dashboard.svg';
 import { ReactComponent as DatabaseService } from '../assets/svg/entity/database-service.svg';
 import { ReactComponent as DriveService } from '../assets/svg/entity/drive-service.svg';
+import { ReactComponent as DynamicAgent } from '../assets/svg/entity/dynamic-agent.svg';
+import { ReactComponent as Marketplace } from '../assets/svg/entity/marketplace.svg';
 import { ReactComponent as MetadataService } from '../assets/svg/entity/metadata-service.svg';
 import { ReactComponent as MLModelService } from '../assets/svg/entity/ml-model-service.svg';
 import { ReactComponent as PipelineService } from '../assets/svg/entity/pipeline-service.svg';
 import { ReactComponent as SpreadSheet } from '../assets/svg/entity/spreadsheet.svg';
 import { ReactComponent as StorageService } from '../assets/svg/entity/storage-service.svg';
 import { ReactComponent as StoredProcedure } from '../assets/svg/entity/stored-procedure.svg';
+import { ReactComponent as TestCase } from '../assets/svg/entity/test-case.svg';
+import { ReactComponent as TestSuite } from '../assets/svg/entity/test-suite.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -441,4 +451,82 @@ export const ENTITY_ICON_MAPPER: Record<
     borderClass: 'tw:border-utility-fuchsia-200',
     icon: CodeSquare02,
   },
+  [EntityType.SERVICE]: {
+    iconClass: 'tw:text-utility-fuchsia-600',
+    bgClass: 'tw:bg-utility-fuchsia-50',
+    borderClass: 'tw:border-utility-fuchsia-200',
+    icon: Settings02,
+  },
+  [EntityType.SEARCH_SERVICE]: {
+    iconClass: 'tw:text-utility-purple-600',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: SearchMd,
+  },
+  contextFile: {
+    iconClass: 'tw:text-utility-fuchsia-600',
+    bgClass: 'tw:bg-utility-fuchsia-50',
+    borderClass: 'tw:border-utility-fuchsia-200',
+    icon: File02,
+  },
+   [EntityType.SEARCH_INDEX]: {
+    iconClass: 'tw:text-utility-warning-600',
+    bgClass: 'tw:bg-utility-warning-50',
+    borderClass: 'tw:border-utility-warning-300',
+    icon: SearchMd,
+  },
+  contextMemory: {
+    iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
+    bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
+    borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
+    icon: ContextMemory,
+  },
+  aiAutomation: {
+    iconClass: 'tw:text-moss-600 tw:dark:text-moss-400',
+    bgClass: 'tw:bg-moss-50 tw:dark:bg-moss-950',
+    borderClass: 'tw:border-moss-200 tw:dark:border-moss-800',
+    icon: AIAutomation,
+  },
+  marketplace: {
+    iconClass: 'tw:text-utility-warning-600',
+    bgClass: 'tw:bg-utility-warning-50',
+    borderClass: 'tw:border-utility-warning-300',
+    icon: Marketplace,
+  },
+  [EntityType.TEST_CASE]: {
+    iconClass: 'tw:text-utility-purple-600',
+    bgClass: 'tw:bg-utility-purple-50',
+    borderClass: 'tw:border-utility-purple-200',
+    icon: TestCase,
+  },
+  folder: {
+    iconClass: 'tw:text-utility-error-600',
+    bgClass: 'tw:bg-error-primary',
+    borderClass: 'tw:border-utility-error-200',
+    icon: Folder,
+  },
+   contextPlugin: {
+    iconClass: 'tw:text-utility-fuchsia-600',
+    bgClass: 'tw:bg-utility-fuchsia-50',
+    borderClass: 'tw:border-utility-fuchsia-200',
+    icon: CodeSquare01,
+  },
+  dynamicAgent: {
+    iconClass: 'tw:text-utility-fuchsia-600',
+    bgClass: 'tw:bg-utility-fuchsia-50',
+    borderClass: 'tw:border-utility-fuchsia-200',
+    icon: DynamicAgent,
+  },
+  [EntityType.TEST_SUITE]: {
+    iconClass: 'tw:text-utility-error-600',
+    bgClass: 'tw:bg-error-primary',
+    borderClass: 'tw:border-utility-error-200',
+    icon: TestSuite,
+  },
+  default: {
+    iconClass: 'tw:text-quanternary',
+    bgClass: 'tw:bg-tertiery',
+    borderClass: 'tw:border-utility-gray-200',
+    icon: SlashCircle01,
+  }
 };

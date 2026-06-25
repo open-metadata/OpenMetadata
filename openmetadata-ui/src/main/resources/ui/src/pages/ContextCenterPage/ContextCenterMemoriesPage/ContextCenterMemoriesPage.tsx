@@ -22,6 +22,7 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  Database01,
   FilterFunnel02,
   Pin01,
   Plus,
@@ -597,6 +598,39 @@ const ContextCenterMemoriesPage: FC = () => {
           <DataAssetFilterPopover
             allowAllOption
             options={assetOptions}
+            renderTrigger={({ open }) => (
+              <AriaButton
+                className={classNames(
+                  selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+                )}
+                onPress={open}>
+                <Database01
+                  className={classNames('tw:shrink-0', {
+                    'tw:text-brand-secondary': selectedAsset,
+                    'tw:text-secondary': !selectedAsset,
+                  })}
+                  size={14}
+                />
+                <div className="tw:max-w-50">
+                  <Typography
+                    ellipsis
+                    className={
+                      selectedAsset
+                        ? 'tw:text-utility-brand-700'
+                        : 'tw:text-secondary'
+                    }
+                    weight="medium">
+                    {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                      t('label.all-entity', { entity: t('label.asset-plural') })}
+                  </Typography>
+                </div>
+                <ChevronDown
+                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                  size={16}
+                  strokeWidth={2.5}
+                />
+              </AriaButton>
+            )}
             selectedId={selectedAsset}
             onChange={(value) => {
               setSelectedAsset(value);

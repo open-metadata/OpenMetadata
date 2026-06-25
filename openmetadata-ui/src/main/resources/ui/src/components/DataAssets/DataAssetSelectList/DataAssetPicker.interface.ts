@@ -60,12 +60,12 @@ export interface DataAssetFilterPopoverProps {
   popoverClassName?: string;
   popoverAlign?: 'left' | 'right';
   placeholder?: string;
-  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
+  renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
 }
 
 export interface DataAssetMultiSelectPopoverProps
   extends DataAssetAsyncSelectListProps {
-  renderTrigger?: (state: DataAssetPickerTriggerState) => ReactNode;
+  renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
   popoverAlign?: 'left' | 'right';
   popoverPlacement?: 'top' | 'bottom';
