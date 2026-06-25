@@ -1,9 +1,15 @@
 package org.openmetadata.service.rdf;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -25,11 +32,13 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -44,6 +53,30 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 public class RdfRepository {
 
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+
+  // Graph nodes only render label/name/FQN/description (core columns, populated
+  // regardless of the fields set) plus tags. Keep this minimal — "*" forced
+  // every relationship/derived-field branch (owners, columns, lineage, votes,
+  // ...) to load per entity, none of which the graph view reads.
+  private static final String GRAPH_NODE_FIELDS = "tags";
+
+  // Per-level row cap for the BFS traversal SPARQL. We query one row beyond it
+  // (LIMIT cap+1) so a level that hits the cap can be detected and surfaced to
+  // the client as a partial graph rather than silently dropping relationships.
+  private static final int GRAPH_QUERY_ROW_LIMIT = 5000;
+
+  // Aggregate wall-clock budget across all BFS levels. The per-query storage
+  // timeout still bounds any single level; this stops the traversal from
+  // compounding that timeout across levels (depth 5 could otherwise hold a
+  // thread for depth * per-query-timeout). Crossing it returns a partial graph.
+  private static final long MAX_GRAPH_TRAVERSAL_MS = 30_000L;
+
+  // Bounded, short-TTL cache for explore results. The endpoint is read-only and
+  // interactive; a small TTL keeps it fresh enough after edits while collapsing
+  // repeated traversals (pan/zoom, depth toggling back and forth) into one.
+  private static final int GRAPH_CACHE_MAX_SIZE = 500;
+  private static final long GRAPH_CACHE_TTL_SECONDS = 60L;
+  private static final long TRUNCATED_GRAPH_CACHE_TTL_SECONDS = 5L;
   static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
   static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
 
@@ -92,6 +125,16 @@ public class RdfRepository {
   private final RdfConfiguration config;
   private final RdfStorageInterface storageService;
   private final JsonLdTranslator translator;
+  private final Cache<String, String> entityGraphCache =
+      Caffeine.newBuilder()
+          .maximumSize(GRAPH_CACHE_MAX_SIZE)
+          .expireAfterWrite(Duration.ofSeconds(GRAPH_CACHE_TTL_SECONDS))
+          .build();
+  private final Cache<String, String> truncatedGraphCache =
+      Caffeine.newBuilder()
+          .maximumSize(GRAPH_CACHE_MAX_SIZE)
+          .expireAfterWrite(Duration.ofSeconds(TRUNCATED_GRAPH_CACHE_TTL_SECONDS))
+          .build();
   private static RdfRepository INSTANCE;
 
   /**
@@ -1214,6 +1257,53 @@ public class RdfRepository {
     String entityUri =
         config.getBaseUri().toString() + "entity/" + validatedEntityType + "/" + entityId;
 
+    String cacheKey = buildGraphCacheKey(entityUri, depth, entityTypes, relationshipTypes);
+    String cached = getCachedGraph(cacheKey);
+    String result;
+    if (cached != null) {
+      result = cached;
+    } else {
+      result = computeEntityGraph(entityUri, depth, entityTypes, relationshipTypes);
+      cacheGraphResult(cacheKey, result);
+    }
+    return result;
+  }
+
+  private String getCachedGraph(String cacheKey) {
+    String cached = entityGraphCache.getIfPresent(cacheKey);
+    if (cached == null) {
+      cached = truncatedGraphCache.getIfPresent(cacheKey);
+    }
+    return cached;
+  }
+
+  // Complete graphs get the full TTL. Partial graphs (row-cap or time-budget
+  // truncation, usually transient store pressure) go to a short-TTL cache: long
+  // enough to absorb a burst of repeat interactions (pan/zoom, depth toggling)
+  // against a stressed store, short enough to recover to a complete graph well
+  // before the full TTL.
+  private void cacheGraphResult(String cacheKey, String result) {
+    if (isTruncatedResult(result)) {
+      truncatedGraphCache.put(cacheKey, result);
+    } else {
+      entityGraphCache.put(cacheKey, result);
+    }
+  }
+
+  private boolean isTruncatedResult(String graphJson) {
+    boolean truncated = false;
+    try {
+      truncated = JsonUtils.readTree(graphJson).path("truncated").asBoolean(false);
+    } catch (JsonParsingException e) {
+      LOG.debug("Could not read truncated flag from graph result: {}", e.getMessage());
+    }
+    return truncated;
+  }
+
+  private String computeEntityGraph(
+      String entityUri, int depth, Set<String> entityTypes, Set<String> relationshipTypes)
+      throws IOException {
+    String graphData;
     try {
       EntityGraphTraversalResult traversalResult = traverseEntityGraph(entityUri, depth);
       FilteredEntityGraph filteredGraph =
@@ -1223,17 +1313,38 @@ public class RdfRepository {
               traversalResult.edges(),
               entityTypes,
               relationshipTypes);
-
-      return convertEdgesToGraphData(
-          entityUri,
-          filteredGraph.nodeUris(),
-          filteredGraph.edges(),
-          buildEntityTypeFilterOptions(traversalResult.nodeUris()),
-          buildRelationshipFilterOptions(traversalResult.edges()));
+      graphData =
+          convertEdgesToGraphData(
+              entityUri,
+              filteredGraph.nodeUris(),
+              filteredGraph.edges(),
+              buildEntityTypeFilterOptions(traversalResult.nodeUris()),
+              buildRelationshipFilterOptions(traversalResult.edges()),
+              traversalResult.truncated());
     } catch (Exception e) {
       LOG.error("Error getting entity graph for {}", entityUri, e);
       throw new IOException("Failed to get entity graph", e);
     }
+    return graphData;
+  }
+
+  private String buildGraphCacheKey(
+      String entityUri, int depth, Set<String> entityTypes, Set<String> relationshipTypes) {
+    return entityUri
+        + "|"
+        + depth
+        + "|"
+        + sortedCsv(entityTypes)
+        + "|"
+        + sortedCsv(relationshipTypes);
+  }
+
+  private String sortedCsv(Set<String> values) {
+    String result = "";
+    if (!nullOrEmpty(values)) {
+      result = values.stream().sorted().collect(java.util.stream.Collectors.joining(","));
+    }
+    return result;
   }
 
   public String exportEntityGraph(
@@ -2392,70 +2503,125 @@ public class RdfRepository {
     return entityUri.substring(entityUri.lastIndexOf('/') + 1);
   }
 
+  /**
+   * Hydrate graph node labels/names/FQNs/tags. Entities are fetched in one
+   * batch per entity type ({@link Entity#getEntities}) rather than one
+   * {@code getEntity} call per node: the former issues a single keyed lookup
+   * plus a bulk field-set per type, where the latter fanned out into a
+   * full-field relational round-trip for every node (hundreds at higher
+   * depths). Missing/orphaned ids are simply absent from the batch result and
+   * fall back to a {@code type: id} label, preserving the per-node tolerance
+   * of the old loop.
+   */
   private void enhanceNodesWithEntityDetails(
-      java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap) {
-    for (java.util.Map.Entry<String, com.fasterxml.jackson.databind.node.ObjectNode> entry :
-        nodeMap.entrySet()) {
-      com.fasterxml.jackson.databind.node.ObjectNode node = entry.getValue();
+      Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap) {
+    Map<String, EntityInterface> entitiesById = fetchEntitiesForNodes(nodeMap.values());
+    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
       String entityId = node.get("entityId").asText();
       String entityType = node.get("type").asText();
-
-      try {
-        EntityInterface entity = Entity.getEntity(entityType, UUID.fromString(entityId), "*", null);
-        node.put(
-            "label", entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName());
-        node.put("name", entity.getName());
-        node.put("fullyQualifiedName", entity.getFullyQualifiedName());
-
-        if (entity.getDescription() != null && !entity.getDescription().isEmpty()) {
-          node.put("description", entity.getDescription());
-        }
-
-        if (entity.getTags() != null && !entity.getTags().isEmpty()) {
-          com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
-              JsonUtils.getObjectMapper().createArrayNode();
-          entity
-              .getTags()
-              .forEach(
-                  tag -> {
-                    com.fasterxml.jackson.databind.node.ObjectNode tagNode =
-                        JsonUtils.getObjectMapper().createObjectNode();
-                    tagNode.put("tagFQN", tag.getTagFQN());
-                    tagNode.put("name", tag.getLabelType() + "." + tag.getTagFQN());
-                    tagsArray.add(tagNode);
-                  });
-          node.set("tags", tagsArray);
-        }
-
-        StringBuilder titleBuilder = new StringBuilder();
-        titleBuilder
-            .append("<div style='padding: 8px; min-width: 200px;'>")
-            .append("<div style='font-weight: 600; margin-bottom: 4px;'>")
-            .append(entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName())
-            .append("</div>")
-            .append("<div style='font-size: 12px; color: #8c8c8c; margin-bottom: 4px;'>")
-            .append("Type: ")
-            .append(entityType)
-            .append("</div>")
-            .append("<div style='font-size: 11px; color: #999; margin-bottom: 4px;'>")
-            .append(entity.getFullyQualifiedName())
-            .append("</div>");
-
-        if (entity.getDescription() != null && !entity.getDescription().isEmpty()) {
-          titleBuilder
-              .append("<div style='font-size: 12px; margin-top: 4px;'>")
-              .append(entity.getDescription())
-              .append("</div>");
-        }
-
-        titleBuilder.append("</div>");
-        node.put("title", titleBuilder.toString());
-
-      } catch (Exception e) {
-        LOG.warn("Failed to fetch entity details for {}: {}", entityId, e.getMessage());
+      EntityInterface entity = entitiesById.get(entityId);
+      if (entity != null) {
+        populateNodeFromEntity(node, entity);
+      } else {
         node.put("label", entityType + ": " + entityId);
       }
     }
+  }
+
+  private Map<String, EntityInterface> fetchEntitiesForNodes(
+      Collection<com.fasterxml.jackson.databind.node.ObjectNode> nodes) {
+    Map<String, List<EntityReference>> refsByType = new HashMap<>();
+    for (com.fasterxml.jackson.databind.node.ObjectNode node : nodes) {
+      String entityType = node.get("type").asText();
+      EntityReference ref = toEntityReference(entityType, node.get("entityId").asText());
+      if (ref != null) {
+        refsByType.computeIfAbsent(entityType, key -> new ArrayList<>()).add(ref);
+      }
+    }
+
+    Map<String, EntityInterface> entitiesById = new HashMap<>();
+    refsByType.forEach((entityType, refs) -> fetchEntityBatch(entityType, refs, entitiesById));
+    return entitiesById;
+  }
+
+  private EntityReference toEntityReference(String entityType, String entityId) {
+    EntityReference ref = null;
+    try {
+      ref = new EntityReference().withId(UUID.fromString(entityId)).withType(entityType);
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Skipping graph node with invalid id '{}': {}", entityId, e.getMessage());
+    }
+    return ref;
+  }
+
+  private void fetchEntityBatch(
+      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+    try {
+      List<EntityInterface> entities = Entity.getEntities(refs, GRAPH_NODE_FIELDS, Include.ALL);
+      for (EntityInterface entity : entities) {
+        target.put(entity.getId().toString(), entity);
+      }
+    } catch (RuntimeException e) {
+      // Best-effort hydration: a single corrupt/inaccessible entity can fail
+      // field-setting for the whole bulk query. Fall back to per-entity fetches
+      // so only the offending node loses its label, not every node of this type.
+      // getEntities declares no checked exceptions; everything it raises
+      // (EntityNotFoundException, JDBI/field-setting errors) is a RuntimeException.
+      LOG.warn(
+          "Batch fetch of {} '{}' graph node(s) failed ({}); retrying per entity",
+          refs.size(),
+          entityType,
+          e.getMessage());
+      fetchEntitiesIndividually(entityType, refs, target);
+    }
+  }
+
+  private void fetchEntitiesIndividually(
+      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+    for (EntityReference ref : refs) {
+      try {
+        EntityInterface entity =
+            Entity.getEntity(entityType, ref.getId(), GRAPH_NODE_FIELDS, Include.ALL);
+        target.put(entity.getId().toString(), entity);
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Failed to fetch graph node {} of type '{}': {}",
+            ref.getId(),
+            entityType,
+            e.getMessage());
+      }
+    }
+  }
+
+  private void populateNodeFromEntity(
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+    String displayLabel =
+        entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName();
+    node.put("label", displayLabel);
+    node.put("name", entity.getName());
+    node.put("fullyQualifiedName", entity.getFullyQualifiedName());
+    if (!nullOrEmpty(entity.getDescription())) {
+      node.put("description", entity.getDescription());
+    }
+    applyNodeTags(node, entity);
+  }
+
+  private void applyNodeTags(
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+    if (!nullOrEmpty(entity.getTags())) {
+      com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
+          JsonUtils.getObjectMapper().createArrayNode();
+      entity.getTags().forEach(tag -> tagsArray.add(buildTagNode(tag)));
+      node.set("tags", tagsArray);
+    }
+  }
+
+  private com.fasterxml.jackson.databind.node.ObjectNode buildTagNode(TagLabel tag) {
+    com.fasterxml.jackson.databind.node.ObjectNode tagNode =
+        JsonUtils.getObjectMapper().createObjectNode();
+    tagNode.put("tagFQN", tag.getTagFQN());
+    tagNode.put("name", tag.getLabelType() + "." + tag.getTagFQN());
+    return tagNode;
   }
 
   /**
@@ -2487,7 +2653,7 @@ public class RdfRepository {
   }
 
   private String formatRelationshipLabel(String relationship) {
-    return switch (relationship.toLowerCase()) {
+    return switch (relationship.toLowerCase(Locale.ROOT)) {
       case "contains" -> "Contains";
       case "uses" -> "Uses";
       case "relatedto" -> "Related To";
@@ -2517,11 +2683,20 @@ public class RdfRepository {
       case "hasmodel" -> "Has Model";
       case "hasstoredprocedure" -> "Has Stored Procedure";
       case "hasindex" -> "Has Index";
-      default ->
-      // Convert camelCase to Title Case
-      relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(0, 1).toUpperCase()
-          + relationship.replaceAll("([a-z])([A-Z])", "$1 $2").substring(1);
+      default -> titleCaseRelationship(relationship);
     };
+  }
+
+  // Pre-compiled so the camelCase->spaced rewrite isn't recompiled per edge.
+  private static final Pattern CAMEL_CASE_BOUNDARY = Pattern.compile("([a-z])([A-Z])");
+
+  private String titleCaseRelationship(String relationship) {
+    String spaced = CAMEL_CASE_BOUNDARY.matcher(relationship).replaceAll("$1 $2");
+    String result = spaced;
+    if (!spaced.isEmpty()) {
+      result = Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
+    }
+    return result;
   }
 
   private EntityGraphTraversalResult traverseEntityGraph(String rootUri, int depth) {
@@ -2530,22 +2705,44 @@ public class RdfRepository {
     Set<String> discoveredNodes = new HashSet<>();
     Set<String> edgeKeys = new HashSet<>();
     List<EdgeInfo> allEdges = new ArrayList<>();
+    boolean truncated = false;
 
     currentLevelNodes.add(rootUri);
     visitedNodes.add(rootUri);
     discoveredNodes.add(rootUri);
 
+    long deadlineMs = System.currentTimeMillis() + MAX_GRAPH_TRAVERSAL_MS;
     for (int currentDepth = 0;
         currentDepth < depth && !currentLevelNodes.isEmpty();
         currentDepth++) {
+      if (System.currentTimeMillis() >= deadlineMs) {
+        LOG.warn(
+            "Graph traversal for {} exceeded {}ms budget at depth {}; returning partial graph",
+            rootUri,
+            MAX_GRAPH_TRAVERSAL_MS,
+            currentDepth);
+        truncated = true;
+        break;
+      }
+
       String sparql = buildEntityGraphBatchQuery(currentLevelNodes);
       String results = storageService.executeSparqlQuery(sparql, "application/sparql-results+json");
 
       Set<String> nextLevelNodes = new HashSet<>();
       if (results != null && !results.trim().isEmpty()) {
-        allEdges.addAll(
+        EdgeBatch batch =
             parseEntityGraphEdgesFromResults(
-                results, visitedNodes, nextLevelNodes, discoveredNodes, edgeKeys));
+                results, visitedNodes, nextLevelNodes, discoveredNodes, edgeKeys);
+        allEdges.addAll(batch.edges());
+        if (batch.reachedLimit()) {
+          LOG.warn(
+              "Graph traversal for {} hit the {}-row query limit at depth {}; "
+                  + "returning a partial, deterministic subset",
+              rootUri,
+              GRAPH_QUERY_ROW_LIMIT,
+              currentDepth);
+          truncated = true;
+        }
       }
 
       nextLevelNodes.removeAll(visitedNodes);
@@ -2553,7 +2750,7 @@ public class RdfRepository {
       currentLevelNodes = nextLevelNodes;
     }
 
-    return new EntityGraphTraversalResult(discoveredNodes, allEdges);
+    return new EntityGraphTraversalResult(discoveredNodes, allEdges, truncated);
   }
 
   private String buildEntityGraphBatchQuery(Set<String> nodeUris) {
@@ -2598,7 +2795,8 @@ public class RdfRepository {
         + "    } "
         + "    BIND(?frontier AS ?object) "
         + "  } "
-        + "} LIMIT 5000";
+        + "} ORDER BY ?subject ?predicate ?object LIMIT "
+        + (GRAPH_QUERY_ROW_LIMIT + 1);
   }
 
   private String escapeSparqlUri(String uri) {
@@ -2631,18 +2829,27 @@ public class RdfRepository {
         .replace("\t", "\\t");
   }
 
-  private List<EdgeInfo> parseEntityGraphEdgesFromResults(
+  private EdgeBatch parseEntityGraphEdgesFromResults(
       String sparqlResults,
       Set<String> visitedNodes,
       Set<String> nextLevelNodes,
       Set<String> discoveredNodes,
       Set<String> edgeKeys) {
     List<EdgeInfo> edges = new ArrayList<>();
-    com.fasterxml.jackson.databind.JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
+    JsonNode resultsJson = JsonUtils.readTree(sparqlResults);
+    boolean reachedLimit = false;
 
     if (resultsJson.has("results") && resultsJson.get("results").has("bindings")) {
-      for (com.fasterxml.jackson.databind.JsonNode binding :
-          resultsJson.get("results").get("bindings")) {
+      JsonNode bindings = resultsJson.get("results").get("bindings");
+      reachedLimit = bindings.size() > GRAPH_QUERY_ROW_LIMIT;
+      int processed = 0;
+      for (JsonNode binding : bindings) {
+        // We query one row past the cap only to detect truncation; never include
+        // that sentinel row, so the returned subset stays at the documented cap.
+        if (processed >= GRAPH_QUERY_ROW_LIMIT) {
+          break;
+        }
+        processed++;
         String subjectUri =
             binding.has("subject") ? binding.get("subject").get("value").asText() : null;
         String objectUri =
@@ -2700,8 +2907,12 @@ public class RdfRepository {
       }
     }
 
-    return edges;
+    return new EdgeBatch(edges, reachedLimit);
   }
+
+  private record EdgeBatch(List<EdgeInfo> edges, boolean reachedLimit) {}
+
+  private record NodeSortKey(String uri, boolean notRoot, String type) {}
 
   private static class EdgeInfo {
     final String fromUri;
@@ -2786,6 +2997,11 @@ public class RdfRepository {
     return new FilteredEntityGraph(filteredNodes, filteredEdges);
   }
 
+  // Filter facets are intentionally counted over the FULL (pre-filter) traversal
+  // set, not the post-filter graph: they advertise every type/relationship the
+  // caller can toggle back on, so counts reflect what is available, not what is
+  // currently shown. (The 3D graph view filters client-side and does not send
+  // these server-side filters today.)
   private List<FilterOptionInfo> buildEntityTypeFilterOptions(Set<String> nodeUris) {
     Map<String, Integer> counts = new LinkedHashMap<>();
     for (String nodeUri : nodeUris) {
@@ -2949,7 +3165,8 @@ public class RdfRepository {
       Set<String> nodeUris,
       List<EdgeInfo> edges,
       List<FilterOptionInfo> entityTypeOptions,
-      List<FilterOptionInfo> relationshipTypeOptions) {
+      List<FilterOptionInfo> relationshipTypeOptions,
+      boolean truncated) {
     com.fasterxml.jackson.databind.node.ObjectNode graphData =
         JsonUtils.getObjectMapper().createObjectNode();
     com.fasterxml.jackson.databind.node.ArrayNode nodes =
@@ -2967,10 +3184,12 @@ public class RdfRepository {
 
     List<String> orderedNodeUris =
         nodeUris.stream()
+            .map(uri -> new NodeSortKey(uri, !rootUri.equals(uri), extractEntityTypeFromUri(uri)))
             .sorted(
-                Comparator.comparing((String uri) -> !rootUri.equals(uri))
-                    .thenComparing(this::extractEntityTypeFromUri)
-                    .thenComparing(uri -> uri))
+                Comparator.comparing(NodeSortKey::notRoot)
+                    .thenComparing(NodeSortKey::type)
+                    .thenComparing(NodeSortKey::uri))
+            .map(NodeSortKey::uri)
             .toList();
 
     for (String nodeUri : orderedNodeUris) {
@@ -3009,6 +3228,7 @@ public class RdfRepository {
     graphData.set("edges", graphEdges);
     graphData.put("totalNodes", nodes.size());
     graphData.put("totalEdges", graphEdges.size());
+    graphData.put("truncated", truncated);
     graphData.put("source", "rdf");
 
     filterOptions.set("entityTypes", entityTypeFilterOptions);
@@ -3145,7 +3365,8 @@ public class RdfRepository {
     return builder.toString();
   }
 
-  private record EntityGraphTraversalResult(Set<String> nodeUris, List<EdgeInfo> edges) {}
+  private record EntityGraphTraversalResult(
+      Set<String> nodeUris, List<EdgeInfo> edges, boolean truncated) {}
 
   private record FilteredEntityGraph(Set<String> nodeUris, List<EdgeInfo> edges) {}
 

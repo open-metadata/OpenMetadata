@@ -11,32 +11,25 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../styles/variables.less';
+package org.openmetadata.service.jobs;
 
-.knowledge-graph-custom-node {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 10px;
-  background-color: @background-color;
-  border: 1px solid @border-color;
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-  touch-action: none;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-  .asset-type-tag {
-    padding: 2px 4px;
-    border-radius: 4px;
-    border-width: 1px;
-    border-style: solid;
-    border-color: @border-color;
-  }
+@Getter
+@Setter
+@NoArgsConstructor
+public class BackgroundJobLog {
+  private String logId;
+  private long jobId;
+  private long createdAt;
+  private Level level;
+  private String message;
 
-  &.highlighted {
-    border-color: @primary-color;
+  public enum Level {
+    INFO,
+    WARN,
+    ERROR
   }
 }
