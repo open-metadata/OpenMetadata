@@ -316,7 +316,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
             displayName={entity.displayName}
             name={entity.name ?? ''}
             size={18}
-            sx={{ marginRight: '4px' }}
+            style={{ marginRight: '4px' }}
           />
         )}
         <span>{getEntityName(entity)}</span>
@@ -344,7 +344,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
                 displayName={entity.displayName}
                 name={entity.name ?? ''}
                 size={14}
-                sx={{ marginRight: '4px' }}
+                style={{ marginRight: '4px' }}
               />
             )
           }

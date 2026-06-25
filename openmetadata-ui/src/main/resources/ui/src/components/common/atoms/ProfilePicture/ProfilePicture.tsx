@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, SxProps, Theme } from '@mui/material';
-import { useMemo } from 'react';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { CSSProperties, useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../../generated/entity/teams/user';
@@ -27,7 +27,7 @@ interface ProfilePictureProps extends UserData {
   size?: number;
   isTeam?: boolean;
   avatarType?: 'solid' | 'outlined';
-  sx?: SxProps<Theme>;
+  style?: CSSProperties;
 }
 
 const ProfilePicture = ({
@@ -36,7 +36,7 @@ const ProfilePicture = ({
   size = 36,
   isTeam = false,
   avatarType = 'outlined',
-  sx,
+  style,
 }: ProfilePictureProps) => {
   const { permissions } = usePermissionProvider();
   const { color, character, backgroundColor } = getRandomColor(
@@ -53,42 +53,53 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const getAvatarStyles = (): SxProps<Theme> => ({
+  const isSolid = avatarType === 'solid';
+
+  const rootStyle: CSSProperties = {
     width: size,
     height: size,
-    fontSize: size * 0.55,
-    color: avatarType === 'solid' ? '#fff' : color,
-    bgcolor: avatarType === 'solid' ? color : backgroundColor,
-    fontWeight: avatarType === 'solid' ? 400 : 500,
-    border: avatarType === 'solid' ? 'none' : `0.5px solid ${color}`,
-    ...sx,
-  });
+    color: isSolid ? '#fff' : color,
+    backgroundColor: isSolid ? color : backgroundColor,
+    fontWeight: isSolid ? 400 : 500,
+    border: isSolid ? 'none' : `0.5px solid ${color}`,
+    ...style,
+  };
 
   if (profileURL) {
     return (
       <Avatar
+        contrastBorder={false}
+        size="md"
         src={profileURL}
-        sx={{
-          width: size,
-          height: size,
-          ...sx,
-        }}
+        style={{ width: size, height: size, ...style }}
       />
     );
   }
 
   if (isPicLoading) {
     return (
-      <Avatar sx={getAvatarStyles()}>
-        <Loader
-          size={size >= 24 ? 'small' : 'x-small'}
-          type={avatarType === 'solid' ? 'white' : 'default'}
-        />
-      </Avatar>
+      <Avatar
+        contrastBorder={false}
+        placeholder={
+          <Loader
+            size={size >= 24 ? 'small' : 'x-small'}
+            type={isSolid ? 'white' : 'default'}
+          />
+        }
+        size="md"
+        style={rootStyle}
+      />
     );
   }
 
-  return <Avatar sx={getAvatarStyles()}>{character}</Avatar>;
+  return (
+    <Avatar
+      contrastBorder={false}
+      placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
+      size="md"
+      style={rootStyle}
+    />
+  );
 };
 
 export default ProfilePicture;
