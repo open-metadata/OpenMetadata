@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { act } from 'react';
+import { act, Fragment } from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { ModelType } from '../../../generated/entity/data/table';
 import { useLineageStore } from '../../../hooks/useLineageStore';
@@ -154,9 +154,95 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest
     .fn()
-    .mockImplementation(({ onClick, disabled, 'data-testid': testId }) => (
-      <button data-testid={testId} disabled={disabled} onClick={onClick} />
+    .mockImplementation(
+      ({
+        onClick,
+        disabled,
+        isDisabled,
+        className,
+        tooltip,
+        'data-testid': testId,
+      }) => (
+        <button
+          aria-label={tooltip}
+          className={className}
+          data-testid={testId}
+          disabled={disabled || isDisabled}
+          title={tooltip}
+          onClick={onClick}
+        />
+      )
+    ),
+  BadgeWithIcon: jest
+    .fn()
+    .mockImplementation(({ children, iconLeading: Icon }) => (
+      <span>
+        {Icon ? <Icon /> : null}
+        {children}
+      </span>
     )),
+  Box: jest.fn().mockImplementation(({ children, className, ...props }) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  )),
+  Breadcrumbs: jest
+    .fn()
+    .mockImplementation(({ items, 'data-testid': testId }) => {
+      const list = items || [];
+
+      return (
+        <div data-testid={testId}>
+          {list.map(
+            (
+              item: { id: string | number; label: React.ReactNode },
+              index: number
+            ) => (
+              <Fragment key={item.id}>
+                {index > 0 && (
+                  <span className="lineage-breadcrumb-item-separator" />
+                )}
+                <span className="lineage-breadcrumb-item">{item.label}</span>
+              </Fragment>
+            )
+          )}
+        </div>
+      );
+    }),
+  Button: jest
+    .fn()
+    .mockImplementation(
+      ({ children, onClick, className, 'data-testid': testId }) => (
+        <button
+          className={className}
+          data-testid={testId}
+          type="button"
+          onClick={onClick}>
+          {children}
+        </button>
+      )
+    ),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({ children, className, 'data-testid': testId, as: As = 'span' }) => (
+        <As className={className} data-testid={testId}>
+          {children}
+        </As>
+      )
+    ),
+}));
+
+jest.mock('../../../utils/EntityBreadcrumbPureUtils', () => ({
+  getEntityBreadcrumbs: jest.fn((entity) => {
+    const fqn = entity?.fullyQualifiedName ?? '';
+    if (!fqn) {
+      return [];
+    }
+    const parts = fqn.split('.');
+
+    return parts.slice(0, -1).map((part: string) => ({ name: part, url: '' }));
+  }),
 }));
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
@@ -769,7 +855,7 @@ describe('CustomNodeV1', () => {
       fireEvent.click(filterButton);
     };
 
-    it('should render tooltip on hovering filter button in lineage node', async () => {
+    it('should expose the filter button tooltip as an accessible label', () => {
       (useLineageStore as unknown as jest.Mock).mockImplementation(() => ({
         isColumnLevelLineage: true,
         isDQEnabled: false,
@@ -794,12 +880,10 @@ describe('CustomNodeV1', () => {
       const filterButton = screen.getByTestId('lineage-filter-button');
 
       expect(filterButton).toBeInTheDocument();
-
-      fireEvent.mouseOver(filterButton);
-
-      expect(
-        await screen.findByText('Only show columns with Lineage')
-      ).toBeInTheDocument();
+      expect(filterButton).toHaveAttribute(
+        'aria-label',
+        'Only show columns with Lineage'
+      );
     });
 
     describe('Column Filter', () => {
