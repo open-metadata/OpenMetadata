@@ -42,7 +42,7 @@ jobs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
     steps:
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |

@@ -42,7 +42,7 @@ jobs:
     outputs:
       ui-changed: ${{ steps.filter.outputs.ui }}
     steps:
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -55,7 +55,7 @@ jobs:
   authorize:
     needs: check-changes
     if: |
-      (github.event_name == 'merge_group' || needs.check-changes.outputs.ui-changed == 'true') ||
+      github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request_target' && needs.check-changes.outputs.ui-changed == 'true' &&
       (github.event.action != 'labeled' || github.event.label.name == 'safe to test'))
     runs-on: ubuntu-latest
