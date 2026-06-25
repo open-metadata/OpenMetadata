@@ -1979,26 +1979,39 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
                 Relationship.CONTAINS.ordinal());
     assertEquals(1, rowsRemoved, "Setup: should have dropped exactly one CONTAINS row");
 
-    // Despite the missing relationship, /children of intermediate must surface the leaf
-    // because the listing is FQN-driven. This is the correctness payoff of moving off
-    // entity_relationship for hierarchy listings.
-    ContainerResultList page =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/containers/name/" + intermediate.getFullyQualifiedName() + "/children",
-                null,
-                ContainerResultList.class);
-    assertNotNull(page);
-    assertNotNull(page.getData());
+    try {
+      // Despite the missing relationship, /children of intermediate must surface the leaf
+      // because the listing is FQN-driven. This is the correctness payoff of moving off
+      // entity_relationship for hierarchy listings.
+      ContainerResultList page =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  "/v1/containers/name/" + intermediate.getFullyQualifiedName() + "/children",
+                  null,
+                  ContainerResultList.class);
+      assertNotNull(page);
+      assertNotNull(page.getData());
 
-    Set<UUID> ids =
-        page.getData().stream().map(Container::getId).collect(java.util.stream.Collectors.toSet());
-    assertTrue(
-        ids.contains(leaf.getId()),
-        "Leaf must still appear in /children of its FQN-implied parent even though the "
-            + "(parent, CONTAINS, leaf) row was lost — FQN is the source of truth.");
+      Set<UUID> ids =
+          page.getData().stream()
+              .map(Container::getId)
+              .collect(java.util.stream.Collectors.toSet());
+      assertTrue(
+          ids.contains(leaf.getId()),
+          "Leaf must still appear in /children of its FQN-implied parent even though the "
+              + "(parent, CONTAINS, leaf) row was lost — FQN is the source of truth.");
+    } finally {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              intermediate.getId(),
+              leaf.getId(),
+              "container",
+              "container",
+              Relationship.CONTAINS.ordinal());
+    }
   }
 
   /**

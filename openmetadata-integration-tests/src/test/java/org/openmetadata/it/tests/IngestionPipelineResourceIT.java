@@ -50,12 +50,14 @@ import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,6 +255,56 @@ public class IngestionPipelineResourceIT
     IngestionPipeline pipeline = createEntity(request);
     assertNotNull(pipeline);
     assertEquals(PipelineType.METADATA, pipeline.getPipelineType());
+  }
+
+  @Test
+  void test_listEntities_orphanWithMissingServiceRelationship_200(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseServiceMetadataPipeline metadataPipeline =
+        new DatabaseServiceMetadataPipeline().withMarkDeletedTables(true).withIncludeViews(true);
+
+    CreateIngestionPipeline request =
+        new CreateIngestionPipeline()
+            .withName(ns.prefix("ingestion_orphan_service"))
+            .withDescription("List should tolerate missing service relationship")
+            .withPipelineType(PipelineType.METADATA)
+            .withService(service.getEntityReference())
+            .withSourceConfig(new SourceConfig().withConfig(metadataPipeline))
+            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+
+    IngestionPipeline pipeline = createEntity(request);
+    int relation = Relationship.CONTAINS.ordinal();
+    int rowsRemoved =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .delete(
+                service.getId(),
+                Entity.DATABASE_SERVICE,
+                pipeline.getId(),
+                Entity.INGESTION_PIPELINE,
+                relation);
+    assertEquals(1, rowsRemoved, "Setup: should have dropped exactly one CONTAINS row");
+
+    try {
+      ListParams params = new ListParams();
+      params.setLimit(1000);
+
+      ListResponse<IngestionPipeline> list = listEntities(params);
+      assertNotNull(list);
+      assertNotNull(list.getData());
+      assertTrue(
+          list.getData().stream().anyMatch(item -> item.getId().equals(pipeline.getId())),
+          "Listing should still return the orphaned ingestion pipeline");
+    } finally {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              service.getId(),
+              pipeline.getId(),
+              Entity.DATABASE_SERVICE,
+              Entity.INGESTION_PIPELINE,
+              relation);
+    }
   }
 
   @Test

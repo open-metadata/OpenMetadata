@@ -123,9 +123,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   public void setFullyQualifiedName(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline.getService() == null) {
-      // Service might not be set when listing with minimal fields
-      EntityReference service = getContainer(ingestionPipeline.getId());
-      ingestionPipeline.withService(service);
+      ingestionPipeline.withService(
+          getFromEntityRef(ingestionPipeline.getId(), Relationship.CONTAINS, null, false));
+    }
+    if (ingestionPipeline.getService() == null) {
+      return;
     }
     ingestionPipeline.setFullyQualifiedName(
         FullyQualifiedName.add(
@@ -136,7 +138,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void setFields(
       IngestionPipeline ingestionPipeline, Fields fields, RelationIncludes relationIncludes) {
     if (ingestionPipeline.getService() == null) {
-      ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
+      ingestionPipeline.withService(
+          getFromEntityRef(ingestionPipeline.getId(), Relationship.CONTAINS, null, false));
     }
     ingestionPipeline.setPipelineStatuses(
         fields.contains("pipelineStatuses")
@@ -206,18 +209,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       if (serviceRef != null) {
         pipeline.withService(serviceRef);
       } else {
-        LOG.warn(
-            "Service not found in batch fetch for pipeline: {} (id: {}). Fetching individually.",
-            pipeline.getName(),
-            pipeline.getId());
-        EntityReference service = getContainer(pipeline.getId());
+        EntityReference service =
+            getFromEntityRef(pipeline.getId(), Relationship.CONTAINS, null, false);
         if (service != null) {
           pipeline.withService(service);
-        } else {
-          LOG.error(
-              "No service found for ingestion pipeline: {} (id: {})",
-              pipeline.getName(),
-              pipeline.getId());
         }
       }
     }
@@ -260,26 +255,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
-    Map<UUID, EntityReference> serviceMap = new HashMap<>();
-    if (pipelines == null || pipelines.isEmpty()) {
-      return serviceMap;
-    }
-
-    // Single batch query to get all services for all pipelines
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(entityListToStrings(pipelines), Relationship.CONTAINS.ordinal());
-
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID pipelineId = UUID.fromString(record.getToId());
-      EntityReference serviceRef =
-          Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
-      serviceMap.put(pipelineId, serviceRef);
-    }
-
-    return serviceMap;
+    return batchFetchContainers(pipelines, null, Include.NON_DELETED);
   }
 
   @Override
@@ -537,17 +513,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           "Service not set for ingestion pipeline: {} (id: {}). Loading it now.",
           entity.getName(),
           entity.getId());
-      EntityReference service = getContainer(entity.getId());
+      EntityReference service =
+          getFromEntityRef(entity.getId(), Relationship.CONTAINS, null, false);
       if (service != null) {
         entity.withService(service);
         return Entity.getEntity(service, fields, Include.ALL);
-      } else {
-        LOG.error(
-            "No service found for ingestion pipeline: {} (id: {})",
-            entity.getName(),
-            entity.getId());
-        return null;
       }
+      return null;
     }
     return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }

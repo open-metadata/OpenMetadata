@@ -15,6 +15,10 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -85,6 +89,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.Include;
@@ -115,6 +120,8 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Execution(ExecutionMode.CONCURRENT)
 public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
+  private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+  private static final String CHANGE_HEADER = "X-OpenMetadata-Change";
 
   private static String entityLink(String entityType, String entityFqn) {
     return String.format("<#E::%s::%s>", entityType, entityFqn);
@@ -3642,6 +3649,103 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
       TaskFormSchema originalSchema, String createdSchemaId) {}
 
   @Test
+  void testResolveTaskEmitsTaskResolvedChangeEventHeader(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String newDescription = "emit-change-event " + ns.shortPrefix();
+
+    org.openmetadata.schema.type.DescriptionUpdatePayload payload =
+        new org.openmetadata.schema.type.DescriptionUpdatePayload()
+            .withFieldPath("description")
+            .withCurrentDescription(table.getDescription())
+            .withNewDescription(newDescription);
+
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("resolve-emits-event"))
+                .withDescription("Resolve endpoint should emit change event")
+                .withCategory(TaskCategory.MetadataUpdate)
+                .withType(TaskEntityType.DescriptionUpdate)
+                .withAbout(entityLink("table", table.getFullyQualifiedName()))
+                .withPayload(payload));
+
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    String body =
+        JsonUtils.pojoToJson(
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Approved)
+                .withNewValue(newDescription)
+                .withComment("emit-change-event"));
+
+    HttpResponse<String> response =
+        sendDirectJson("POST", String.format("/v1/tasks/%s/resolve", task.getId()), body);
+
+    assertEquals(200, response.statusCode());
+    assertChangeHeader(response, EventType.TASK_RESOLVED.value());
+  }
+
+  @Test
+  void testCloseTaskEmitsTaskClosedChangeEventHeader(TestNamespace ns) throws Exception {
+    Task task =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("close-emits-event"))
+                .withDescription("Close endpoint should emit change event")
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval));
+
+    HttpResponse<String> response =
+        sendDirectJson(
+            "POST",
+            String.format("/v1/tasks/%s/close?comment=emit-change-event", task.getId()),
+            "");
+
+    assertEquals(200, response.statusCode());
+    assertChangeHeader(response, EventType.TASK_CLOSED.value());
+  }
+
+  @Test
+  void testApplySuggestionEmitsTaskResolvedChangeEventHeader(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+
+    Map<String, Object> rawSuggestionPayload =
+        Map.of(
+            "suggestionType", "Description",
+            "fieldPath", "description",
+            "suggestedValue", "Suggested description from header assertion",
+            "source", "Agent",
+            "confidence", 85.0);
+
+    Task task =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/tasks",
+                Map.of(
+                    "name", ns.prefix("apply-suggestion-event"),
+                    "description", "Apply suggestion endpoint should emit change event",
+                    "category", TaskCategory.MetadataUpdate.value(),
+                    "type", TaskEntityType.Suggestion.value(),
+                    "about", entityLink("table", table.getFullyQualifiedName()),
+                    "payload", rawSuggestionPayload),
+                Task.class);
+
+    awaitTaskReadyForWorkflowResolution(task.getId());
+
+    HttpResponse<String> response =
+        sendDirectJson("PUT", String.format("/v1/tasks/%s/suggestion/apply", task.getId()), "");
+
+    assertEquals(200, response.statusCode());
+    assertChangeHeader(response, EventType.TASK_RESOLVED.value());
+  }
+
+  @Test
   void testApplySuggestionEndpointUsesSuggestionSpecificSchemaResolution(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -3934,6 +4038,32 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .withBotUser(botUser.getName()));
 
     return new BotWithUser(bot, botUser);
+  }
+
+  private static HttpResponse<String> sendDirectJson(String method, String path, String body)
+      throws Exception {
+    String url = SdkClients.getServerUrl() + normalizePath(path);
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30));
+    HttpRequest.BodyPublisher publisher =
+        body == null || body.isEmpty()
+            ? HttpRequest.BodyPublishers.noBody()
+            : HttpRequest.BodyPublishers.ofString(body);
+    HttpRequest request = builder.method(method, publisher).build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private static String normalizePath(String path) {
+    return path.startsWith("/") ? path : "/" + path;
+  }
+
+  private static void assertChangeHeader(
+      HttpResponse<String> response, String expectedHeaderValue) {
+    assertEquals(expectedHeaderValue, response.headers().firstValue(CHANGE_HEADER).orElse(null));
   }
 
   private void awaitSuggestionTaskDeleted(UUID creatorId, String aboutEntity, UUID taskId) {
