@@ -1446,6 +1446,7 @@
     "memory-agent-prompt": "Memory Agent Prompt",
     "memory-extraction": "Memory Extraction",
     "memory-extraction-prompt": "Memory Extraction Prompt",
+    "memory-lowercase": "메모리",
     "memory-plural": "메모리",
     "mention-plural": "언급들",
     "mentioned-in": "언급된 위치",

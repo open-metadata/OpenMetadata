@@ -1446,6 +1446,7 @@
     "memory-agent-prompt": "Memory Agent Prompt",
     "memory-extraction": "Memory Extraction",
     "memory-extraction-prompt": "Memory Extraction Prompt",
+    "memory-lowercase": "หน่วยความจำ",
     "memory-plural": "ความทรงจำ",
     "mention-plural": "การกล่าวถึง",
     "mentioned-in": "ถูกกล่าวถึงใน",

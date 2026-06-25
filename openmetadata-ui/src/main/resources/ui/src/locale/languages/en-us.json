@@ -1446,6 +1446,7 @@
     "memory-agent-prompt": "Memory Agent Prompt",
     "memory-extraction": "Memory Extraction",
     "memory-extraction-prompt": "Memory Extraction Prompt",
+    "memory-lowercase":"memory",
     "memory-plural": "Memories",
     "mention-plural": "Mentions",
     "mentioned-in": "Mentioned in",

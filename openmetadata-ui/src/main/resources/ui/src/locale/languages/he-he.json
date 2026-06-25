@@ -1446,6 +1446,7 @@
     "memory-agent-prompt": "Memory Agent Prompt",
     "memory-extraction": "Memory Extraction",
     "memory-extraction-prompt": "Memory Extraction Prompt",
+    "memory-lowercase": "זיכרון",
     "memory-plural": "זיכרונות",
     "mention-plural": "איזכורים",
     "mentioned-in": "מוזכר ב",

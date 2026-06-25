@@ -848,7 +848,7 @@ const ContextCenterMemoriesPage: FC = () => {
           entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
           message={t('message.delete-entity-permanently', {
-            entityType: memoryToDelete.title ?? memoryToDelete.question ?? '',
+            entityType: t('label.memory-lowercase'),
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}

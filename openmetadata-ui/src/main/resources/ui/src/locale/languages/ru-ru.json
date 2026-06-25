@@ -1446,6 +1446,7 @@
     "memory-agent-prompt": "Memory Agent Prompt",
     "memory-extraction": "Memory Extraction",
     "memory-extraction-prompt": "Memory Extraction Prompt",
+    "memory-lowercase": "память",
     "memory-plural": "Воспоминания",
     "mention-plural": "Упоминания",
     "mentioned-in": "Упоминается в",
