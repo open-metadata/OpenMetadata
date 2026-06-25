@@ -234,6 +234,13 @@ describe('EntityUtilClassBase', () => {
     expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'driveServices');
   });
 
+  it('should return service details path for securityService entity type', () => {
+    const fqn = 'test.securityService';
+    entityUtil.getEntityLink(EntityType.SECURITY_SERVICE, fqn);
+
+    expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
+  });
+
   describe('getFqnParts', () => {
     it('should return undefined columnFqn if type is NOT provided', () => {
       const fqn = 'service.database.schema.table';
