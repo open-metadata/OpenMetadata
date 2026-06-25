@@ -19,6 +19,7 @@ import { redirectToHomePage } from '../../../utils/common';
 import {
   assignDomainOnlyAccess,
   safeDelete,
+  searchDomainInListing,
 } from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
@@ -142,7 +143,10 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
   }) => {
     await openDomainListing(adminPage);
 
+    await searchDomainInListing(adminPage, tenantA);
     await expect(adminPage.getByTestId(tenantA.data.name)).toBeVisible();
+
+    await searchDomainInListing(adminPage, tenantB);
     await expect(adminPage.getByTestId(tenantB.data.name)).toBeVisible();
   });
 });
