@@ -14,14 +14,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.VersionShape;
@@ -126,14 +129,11 @@ class TagAndTierSourcesStepTest {
             0L,
             new EnrichmentContext("table", List.of(), 0L, 0L),
             VersionShape.LATEST_HYDRATED);
-    try (org.mockito.MockedStatic<org.openmetadata.service.Entity> entityStatic =
-        org.mockito.Mockito.mockStatic(org.openmetadata.service.Entity.class)) {
+    List<TagLabel> entityTags = entity.getTags() == null ? List.of() : entity.getTags();
+    try (MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
       entityStatic
-          .when(
-              () ->
-                  org.openmetadata.service.Entity.getEntityTags(
-                      target.context().entityType(), entity))
-          .thenReturn(entity.getTags() == null ? List.of() : entity.getTags());
+          .when(() -> Entity.getEntityTags(target.context().entityType(), entity))
+          .thenReturn(entityTags);
       step.apply(target);
     }
     return entityMap;

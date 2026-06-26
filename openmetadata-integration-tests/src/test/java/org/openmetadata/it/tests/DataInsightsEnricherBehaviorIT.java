@@ -108,7 +108,7 @@ class DataInsightsEnricherBehaviorIT {
           "tableType",
           "columns",
           "databaseSchema",
-          "tableConstraint",
+          "tableConstraints",
           "database",
           "service",
           "serviceType");
