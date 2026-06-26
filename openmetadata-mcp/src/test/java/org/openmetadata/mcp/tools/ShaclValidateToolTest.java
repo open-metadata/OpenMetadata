@@ -45,7 +45,7 @@ class ShaclValidateToolTest {
 
       Map<String, Object> result =
           new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of("entityUri", "not-an-http-uri"));
-      assertEquals("'entityUri' must be an absolute http(s) URI", result.get("error"));
+      assertEquals("'entityUri' must be a valid absolute http(s) IRI", result.get("error"));
     }
   }
 
@@ -163,7 +163,7 @@ class ShaclValidateToolTest {
   }
 
   @Test
-  @DisplayName("No scope params → full-graph validation")
+  @DisplayName("fullGraph=true → full-graph validation")
   void fullGraphScope() throws IOException {
     try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
       RdfRepository repo = mock(RdfRepository.class);
@@ -172,7 +172,9 @@ class ShaclValidateToolTest {
       when(repo.executeSparqlQueryDirect(anyString(), anyString())).thenReturn("");
       mocked.when(RdfRepository::getInstanceOrNull).thenReturn(repo);
 
-      Map<String, Object> result = new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of());
+      // Whole-graph validation is opt-in to avoid an unbounded scan; pass fullGraph=true.
+      Map<String, Object> result =
+          new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of("fullGraph", true));
       assertEquals("full-graph", result.get("scope"));
     }
   }

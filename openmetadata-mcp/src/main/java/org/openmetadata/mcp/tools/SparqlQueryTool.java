@@ -25,7 +25,8 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
  *   <li>Federation: enforces the same allowlist as REST, so an MCP client cannot bypass it.
  *   <li>Result size: caps the response body at {@code maxBytes} (default 1 MiB) to prevent the
  *       triplestore from streaming a huge result into the agent context.
- *   <li>Format: only the four standard SPARQL result formats are accepted.
+ *   <li>Format: SELECT/ASK accept the four SPARQL result formats (json, xml, csv, tsv);
+ *       CONSTRUCT/DESCRIBE accept the RDF serializations (turtle, jsonld, ntriples, rdfxml).
  * </ul>
  */
 @Slf4j

@@ -892,7 +892,7 @@
     },
     {
       "name": "entity_neighborhood",
-      "description": "Return the n-hop neighborhood of an OpenMetadata entity in the knowledge graph as triples plus a flat edges list. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. Depth is bounded at 1-3 hops. Returns Turtle for the triples and a structured edges array (direction, predicate, neighbor URI, neighbor label).",
+      "description": "Return the n-hop neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -963,6 +963,11 @@
           "entityUri": {
             "type": "string",
             "description": "Optional alternative to entityId+entityType: full URI of the entity."
+          },
+          "fullGraph": {
+            "type": "boolean",
+            "description": "Must be set to true to validate the entire dataset when no entity scope (entityId+entityType or entityUri) is given. Whole-graph validation can be expensive, so it is opt-in.",
+            "default": false
           },
           "format": {
             "type": "string",

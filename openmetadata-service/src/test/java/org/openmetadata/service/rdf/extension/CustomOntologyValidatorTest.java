@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf.extension;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -201,6 +202,30 @@ class CustomOntologyValidatorTest {
       assertTrue(
           CustomOntologyValidator.validate(e).stream()
               .anyMatch(err -> err.contains("contains a cycle")));
+    }
+
+    @Test
+    @DisplayName(
+        "Classes pointing into a cycle are not separately flagged (onStack reset per root)")
+    void externalReferencesIntoCycleReportedOnce() {
+      // A <-> B is the only cycle; D1/D2/D3 point into it but are acyclic themselves. The shared
+      // onStack set must be reset per root so stale recursion frames don't flag D1/D2/D3 — without
+      // the reset this graph yields one error per external referrer instead of a single cycle.
+      CustomOntology e =
+          ext("cycle-with-external-refs")
+              .withClasses(
+                  List.of(
+                      cls("A", EXT_NS + "B"),
+                      cls("B", EXT_NS + "A"),
+                      cls("D1", EXT_NS + "A"),
+                      cls("D2", EXT_NS + "B"),
+                      cls("D3", EXT_NS + "A")));
+      List<String> cycleErrors =
+          CustomOntologyValidator.validate(e).stream()
+              .filter(err -> err.contains("contains a cycle"))
+              .toList();
+      assertEquals(
+          1, cycleErrors.size(), "Exactly one cycle should be reported; got: " + cycleErrors);
     }
 
     @Test

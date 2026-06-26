@@ -88,7 +88,7 @@ public class ShaclValidateTool implements McpTool {
       result.put("entityUri", entityUri);
     }
     result.put("conforms", report.conforms());
-    long violationCount = report.getEntries() == null ? 0 : report.getEntries().stream().count();
+    long violationCount = report.getEntries() == null ? 0 : report.getEntries().size();
     result.put("violationCount", violationCount);
     result.put("format", format);
     result.put("report", out.toString(StandardCharsets.UTF_8));

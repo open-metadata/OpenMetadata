@@ -251,6 +251,10 @@ public final class CustomOntologyValidator {
     Set<String> visited = new HashSet<>();
     Set<String> onStack = new HashSet<>();
     for (String node : graph.keySet()) {
+      // hasCycle returns early on a back-edge without unwinding onStack, so reset it per root.
+      // visited still prevents re-processing nodes already proven (a)cyclic, so clearing onStack
+      // only drops the stale recursion frames and avoids false positives across roots.
+      onStack.clear();
       if (hasCycle(node, graph, visited, onStack)) {
         errors.add("class hierarchy contains a cycle through " + node);
       }

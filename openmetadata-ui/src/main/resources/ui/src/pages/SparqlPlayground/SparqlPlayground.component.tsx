@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Home02 } from '@untitledui/icons';
+import { Input, Modal } from 'antd';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import 'codemirror/addon/edit/closebrackets.js';
@@ -143,6 +144,8 @@ const SparqlPlayground: React.FC = () => {
   const [savedQueries, setSavedQueries] = useState<SavedSparqlQuery[]>(() =>
     loadSavedQueries()
   );
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
 
   useEffect(() => {
     persistSavedQueries(savedQueries);
@@ -174,8 +177,13 @@ const SparqlPlayground: React.FC = () => {
   }, [query, format, inference, t]);
 
   const handleSaveCurrent = useCallback(() => {
-    const name = window.prompt(t('label.sparql-save-prompt'));
-    if (!name || !name.trim()) {
+    setSaveName('');
+    setIsSaveModalOpen(true);
+  }, []);
+
+  const handleCommitSave = useCallback(() => {
+    const name = saveName.trim();
+    if (!name) {
       return;
     }
     const id =
@@ -186,15 +194,16 @@ const SparqlPlayground: React.FC = () => {
       ...prev,
       {
         id,
-        name: name.trim(),
+        name,
         query,
         format,
         inference,
         savedAt: Date.now(),
       },
     ]);
+    setIsSaveModalOpen(false);
     showSuccessToast(t('message.sparql-query-saved'));
-  }, [query, format, inference, t]);
+  }, [saveName, query, format, inference, t]);
 
   const handleLoadSaved = useCallback((saved: SavedSparqlQuery) => {
     setQuery(saved.query);
@@ -486,6 +495,25 @@ const SparqlPlayground: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      <Modal
+        cancelText={t('label.cancel')}
+        data-testid="sparql-save-modal"
+        okButtonProps={{ disabled: !saveName.trim() }}
+        okText={t('label.save')}
+        open={isSaveModalOpen}
+        title={t('label.save-query')}
+        onCancel={() => setIsSaveModalOpen(false)}
+        onOk={handleCommitSave}>
+        <Input
+          autoFocus
+          data-testid="sparql-save-name-input"
+          placeholder={t('label.sparql-save-prompt')}
+          value={saveName}
+          onChange={(e) => setSaveName(e.target.value)}
+          onPressEnter={handleCommitSave}
+        />
+      </Modal>
     </PageLayoutV1>
   );
 };

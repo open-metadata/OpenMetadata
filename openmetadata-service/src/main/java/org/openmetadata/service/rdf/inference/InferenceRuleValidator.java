@@ -65,7 +65,7 @@ public final class InferenceRuleValidator {
     if (rule.getPriority() != null && (rule.getPriority() < 0 || rule.getPriority() > 10_000)) {
       errors.add("'priority' must be between 0 and 10000");
     }
-    if (errors.size() > 0) {
+    if (!errors.isEmpty()) {
       return errors;
     }
 

@@ -160,11 +160,12 @@ describe('SparqlPlayground', () => {
   });
 
   it('persists a saved query to localStorage and lets you reload it', async () => {
-    const promptSpy = jest
-      .spyOn(window, 'prompt')
-      .mockReturnValueOnce('My query');
     render(<SparqlPlayground />);
     fireEvent.click(screen.getByTestId('sparql-save-query'));
+
+    const input = await screen.findByTestId('sparql-save-name-input');
+    fireEvent.change(input, { target: { value: 'My query' } });
+    fireEvent.click(screen.getByText('label.save'));
 
     await waitFor(() => {
       const stored = window.localStorage.getItem(SPARQL_PLAYGROUND_STORAGE_KEY);
@@ -172,7 +173,6 @@ describe('SparqlPlayground', () => {
       expect(stored).not.toBeNull();
       expect(stored).toContain('My query');
     });
-    promptSpy.mockRestore();
   });
 
   it('loads a sample query into the editor', () => {

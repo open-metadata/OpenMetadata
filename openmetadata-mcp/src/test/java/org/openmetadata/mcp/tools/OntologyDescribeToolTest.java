@@ -44,7 +44,8 @@ class OntologyDescribeToolTest {
     Map<String, Object> result =
         new OntologyDescribeTool().execute(AUTHORIZER, SEC, Map.of("resource", "Column"));
     assertEquals(
-        "'resource' must be an absolute http(s) URI for the class or property",
+        "'resource' must be a valid absolute http(s) IRI (no whitespace, control characters,"
+            + " angle brackets, or quotes)",
         result.get("error"));
   }
 

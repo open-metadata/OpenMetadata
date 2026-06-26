@@ -102,7 +102,7 @@ public class EntityNeighborhoodTool implements McpTool {
       String triples =
           repository.executeSparqlQuery(
               buildConstructQuery(entityUri, depth, limit), "text/turtle");
-      List<Edge> edges = fetchEdges(repository, entityUri, depth, limit);
+      List<Edge> edges = fetchEdges(repository, entityUri, limit);
       result =
           JsonUtils.getMap(
               new Neighborhood(entityUri, depth, limit, triples == null ? "" : triples, edges));
@@ -113,14 +113,17 @@ public class EntityNeighborhoodTool implements McpTool {
     return result;
   }
 
-  /** SELECT failure degrades to an empty edge list rather than failing the whole call. */
-  private static List<Edge> fetchEdges(
-      RdfRepository repository, String entityUri, int depth, int limit) {
+  /**
+   * Fetches the entity's <b>direct (1-hop)</b> adjacency as a flat edge list. This is a structured
+   * summary of the immediate neighbours only — the full {@code depth}-hop subgraph lives in the
+   * CONSTRUCT {@code triples}. SELECT failure degrades to an empty list rather than failing the call.
+   */
+  private static List<Edge> fetchEdges(RdfRepository repository, String entityUri, int limit) {
     List<Edge> edges;
     try {
       String selectJson =
           repository.executeSparqlQuery(
-              buildSelectQuery(entityUri, depth, limit), "application/sparql-results+json");
+              buildSelectQuery(entityUri, limit), "application/sparql-results+json");
       edges = parseEdges(selectJson);
     } catch (Exception e) {
       LOG.error("SELECT for neighborhood failed for {}", entityUri, e);
@@ -165,7 +168,12 @@ public class EntityNeighborhoodTool implements McpTool {
     return "CONSTRUCT { ?s ?p ?o } WHERE {\n" + w + "} LIMIT " + limit;
   }
 
-  static String buildSelectQuery(String entityUri, int depth, int limit) {
+  /**
+   * Builds the 1-hop adjacency SELECT (outgoing + incoming edges of the start entity). Multi-hop
+   * traversal is intentionally not expanded here — the full n-hop graph is returned as CONSTRUCT
+   * {@code triples}; {@code edges} is a flat, direct-neighbour summary, so it takes no depth.
+   */
+  static String buildSelectQuery(String entityUri, int limit) {
     return "PREFIX om: <https://open-metadata.org/ontology/>\n"
         + "SELECT ?direction ?predicate ?neighbor ?neighborLabel WHERE {\n"
         + "  { BIND('outgoing' AS ?direction) <"
