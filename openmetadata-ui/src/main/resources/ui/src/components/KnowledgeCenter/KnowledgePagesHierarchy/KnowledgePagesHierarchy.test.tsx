@@ -239,10 +239,7 @@ describe('KnowledgePagesHierarchy', () => {
   it('should render KnowledgePagesHierarchy', async () => {
     await act(async () => {
       render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={DEFAULT_ENTITY_PERMISSION}
-        />,
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         { wrapper: MemoryRouter }
       );
     });
@@ -286,7 +283,6 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy
-          isPageHeaderAvailable
           activeKey="Article_XJIGIKX2"
           permissions={DEFAULT_ENTITY_PERMISSION}
         />,
@@ -307,10 +303,7 @@ describe('KnowledgePagesHierarchy', () => {
   it('should render the children if node is expanded', async () => {
     await act(async () => {
       render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={DEFAULT_ENTITY_PERMISSION}
-        />,
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         {
           wrapper: MemoryRouter,
         }
@@ -339,7 +332,6 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
           permissions={{ ...DEFAULT_ENTITY_PERMISSION, Delete: true }}
         />,
         {
@@ -364,17 +356,16 @@ describe('KnowledgePagesHierarchy', () => {
 
     beforeEach(() => {
       jest.clearAllMocks();
-      Object.defineProperty(window, 'innerHeight', {
-        writable: true,
-        configurable: true,
-        value: 1000,
-      });
     });
 
     const getScrollContainer = () =>
       screen.getByTestId('knowledge-pages-hierarchy-container');
 
-    const fireScrollEvent = (scrollHeight: number, scrollTop: number) => {
+    const fireScrollEvent = (
+      scrollHeight: number,
+      scrollTop: number,
+      clientHeight: number
+    ) => {
       const container = getScrollContainer();
       Object.defineProperty(container, 'scrollHeight', {
         configurable: true,
@@ -384,23 +375,26 @@ describe('KnowledgePagesHierarchy', () => {
         configurable: true,
         value: scrollTop,
       });
+      Object.defineProperty(container, 'clientHeight', {
+        configurable: true,
+        value: clientHeight,
+      });
       fireEvent.scroll(container);
     };
 
-    it('should trigger pagination when scroll reaches bottom (exact match)', async () => {
+    it('should trigger pagination when scroll reaches the bottom', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      // scrollHeight - scrollTop = 810 = windowHeight(1000) - OFFSET(190)
+      // scrollTop + clientHeight (2400 + 800) === scrollHeight (3200)
       await act(async () => {
-        fireScrollEvent(3200, 2390);
+        fireScrollEvent(3200, 2400, 800);
       });
 
       await waitFor(() => {
@@ -414,20 +408,19 @@ describe('KnowledgePagesHierarchy', () => {
       });
     });
 
-    it('should trigger pagination when scrollHeight is within range (windowHeight - 191)', async () => {
+    it('should trigger pagination when scroll is within the bottom threshold', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      // scrollHeight - scrollTop = 809 = within -1 tolerance
+      // scrollTop + clientHeight (2399 + 800 = 3199) >= scrollHeight - 1 (3199)
       await act(async () => {
-        fireScrollEvent(3200, 2391);
+        fireScrollEvent(3200, 2399, 800);
       });
 
       await waitFor(() => {
@@ -441,72 +434,19 @@ describe('KnowledgePagesHierarchy', () => {
       });
     });
 
-    it('should trigger pagination when scrollHeight is within range (windowHeight - 189)', async () => {
+    it('should NOT trigger pagination when scroll is far from the bottom', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      // scrollHeight - scrollTop = 811 = within +1 tolerance
+      // scrollTop + clientHeight (1000 + 800 = 1800) < scrollHeight - 1 (3199)
       await act(async () => {
-        fireScrollEvent(3200, 2389);
-      });
-
-      await waitFor(() => {
-        expect(mockGetPageHierarchyFromES).toHaveBeenCalledWith(
-          undefined,
-          undefined,
-          100,
-          100,
-          fqn
-        );
-      });
-    });
-
-    it('should NOT trigger pagination when scrollHeight is outside range (too high)', async () => {
-      await act(async () => {
-        render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
-        );
-      });
-
-      await act(async () => {
-        fireScrollEvent(1000, 800);
-      });
-
-      await waitFor(() => {
-        expect(mockGetPageHierarchyFromES).not.toHaveBeenCalledWith(
-          undefined,
-          undefined,
-          100,
-          100,
-          fqn
-        );
-      });
-    });
-
-    it('should NOT trigger pagination when scrollHeight is outside range (too low)', async () => {
-      await act(async () => {
-        render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
-        );
-      });
-
-      await act(async () => {
-        fireScrollEvent(1000, 820);
+        fireScrollEvent(3200, 1000, 800);
       });
 
       await waitFor(() => {

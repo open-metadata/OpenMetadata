@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Dialog,
   Modal,
   ModalOverlay,
@@ -32,10 +33,9 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useReducer,
   useRef,
-  useState,
+  useState
 } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -49,9 +49,7 @@ import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
-  KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
-  KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET,
-  KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET_CHILD_ARTICLE,
+  KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -96,30 +94,18 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
-  isPageHeaderAvailable: boolean;
   activeKey?: string;
   activePage?: KnowledgePage;
   homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
   onQuickLinkClick?: (fqn: string) => void;
 }
+const SCROLL_BOTTOM_THRESHOLD = 1;
 
 const KnowledgePagesHierarchy = forwardRef<
   KnowledgePagesHierarchyRef,
   KnowledgePagesHierarchyProps
->(
-  (
-    {
-      activeKey,
-      activePage,
-      homeRoute,
-      onPageDelete,
-      onQuickLinkClick,
-      permissions,
-      isPageHeaderAvailable,
-    },
-    ref
-  ) => {
+>(({ activeKey, activePage, homeRoute, onPageDelete, onQuickLinkClick, permissions }, ref) => {
     const { fqn } = useRequiredParams<{ fqn: string }>();
     const navigate = useNavigate();
     const { hash } = useCustomLocation();
@@ -153,14 +139,6 @@ const KnowledgePagesHierarchy = forwardRef<
       hierarchyPaginationInitialState
     );
 
-    const TREE_HEIGHT = useMemo(
-      () =>
-        window.innerHeight -
-        (isPageHeaderAvailable
-          ? KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET_CHILD_ARTICLE
-          : KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET),
-      [isPageHeaderAvailable]
-    );
 
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
@@ -551,16 +529,12 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
       (e) => {
-        const scrollHeight =
-          e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
-        const windowHeight =
-          window.innerHeight - KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET;
-        const finalScrollHeight =
-          scrollHeight + (isPageHeaderAvailable ? 70 : 0);
+        const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+        const isNearBottom =
+          scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD;
 
         if (
-          finalScrollHeight >= windowHeight - 1 &&
-          finalScrollHeight <= windowHeight + 1 &&
+          isNearBottom &&
           !paginationState.isPaginationEnd &&
           !paginationState.paginationLoading
         ) {
@@ -572,7 +546,7 @@ const KnowledgePagesHierarchy = forwardRef<
           );
         }
       },
-      [isPageHeaderAvailable, paginationState]
+      [paginationState]
     );
 
     const renderNode = useCallback(
@@ -708,6 +682,7 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     }, [activeKey, knowledgePageHierarchy]);
 
+
     useEffect(() => {
       if (activePage) {
         setKnowledgePageHierarchy((prev) =>
@@ -728,37 +703,33 @@ const KnowledgePagesHierarchy = forwardRef<
     const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
     return (
-      <section
-        aria-label={t('label.article-plural')}
-        className="tw:pt-2 tw:px-3 tw:flex tw:flex-col"
-        data-testid="knowledge-pages-hierarchy-container"
-        style={{
-          height: isHierarchyEmpty ? '100%' : TREE_HEIGHT,
-          overflow: isHierarchyEmpty ? 'hidden' : 'auto',
-        }}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => {
-          if (!permissions.EditAll) {
-            return;
-          }
-          const sourceKey = e.dataTransfer.getData('text/plain');
-          if (!sourceKey) {
-            return;
-          }
-          const { page: sourceNode, parent: sourceNodeParent } =
-            findPageAndParentInTreeData(knowledgePageHierarchy, sourceKey);
-          if (sourceNode && sourceNodeParent) {
-            setMovedPage({
-              sourceNode,
-              sourceNodeParent,
-              targetNode: undefined,
-            });
-          }
-        }}
-        onScroll={handleScroll}>
+      <Card
+      className="tw:h-full tw:flex tw:flex-col tw:p-5 tw:overflow-auto"
+      data-testid="knowledge-pages-hierarchy-container"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        if (!permissions.EditAll) {
+          return;
+        }
+        const sourceKey = e.dataTransfer.getData('text/plain');
+        if (!sourceKey) {
+          return;
+        }
+        const { page: sourceNode, parent: sourceNodeParent } =
+          findPageAndParentInTreeData(knowledgePageHierarchy, sourceKey);
+        if (sourceNode && sourceNodeParent) {
+          setMovedPage({
+            sourceNode,
+            sourceNodeParent,
+            targetNode: undefined,
+          });
+        }
+      }}
+      onScroll={handleScroll}>
+      <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
         <Box align="center" className="tw:px-1.5 tw:pb-5" justify="between">
           <Box align="center" gap={3}>
-            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+            <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
               <File06 className="tw:text-fg-tertiary" size={20} />
             </div>
             <div>
@@ -933,7 +904,8 @@ const KnowledgePagesHierarchy = forwardRef<
             </Dialog>
           </Modal>
         </ModalOverlay>
-      </section>
+      </Card.Content>
+      </Card>
     );
   }
 );

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Card } from '@openmetadata/ui-core-components';
 import { Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
@@ -189,9 +190,8 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
   );
 
   return (
-    <div
-      className="d-flex flex-column gap-6 knowledge-center-list-right-panel"
-      data-testid="knowledge-center-right-panel">
+     <Card className="tw:h-full tw:p-5 tw:overflow-auto">
+      <Card.Content  className="tw:p-0 tw:flex tw:flex-col tw:gap-6 knowledge-center-list-right-panel" data-testid="knowledge-center-right-panel">
       <BookMarkWidget
         handleRefreshBookMarkWidget={onRefreshBookMarkWidget}
         refresh={refreshBookMarkWidget}
@@ -248,7 +248,8 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
           })}
         </>
       )}
-    </div>
+    </Card.Content>
+    </Card>
   );
 };
 
