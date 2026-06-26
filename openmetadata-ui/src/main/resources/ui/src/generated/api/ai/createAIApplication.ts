@@ -219,6 +219,8 @@ export interface DimensionScores {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * User or team accountable for completing the action
+ *
  * Reference to LLMModel entity
  */
 export interface EntityReference {
@@ -331,6 +333,16 @@ export interface GovernanceMetadata {
      */
     dataClassification?: DataClassification;
     /**
+     * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+     * connector audits, etc. Populated for assets that were not registered through the intake
+     * wizard.
+     */
+    detection?: AIDetection;
+    /**
+     * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+     */
+    evidence?: AIEvidence;
+    /**
      * Governance policies applied to this application
      */
     governancePolicies?: EntityReference[];
@@ -344,6 +356,11 @@ export interface GovernanceMetadata {
      * Registration status - used to track Shadow AI
      */
     registrationStatus?: RegistrationStatus;
+    /**
+     * Structured remediation actions with assignee, due date, priority, and status. Replaces
+     * the legacy string-array remediationRequired on each AIComplianceRecord.
+     */
+    remediationActions?: RemediationAction[];
     /**
      * Risk assessment for this AI application
      */
@@ -405,7 +422,7 @@ export interface AIComplianceRecord {
     /**
      * Compliance status
      */
-    status: Status;
+    status: ComplianceRecordStatus;
     /**
      * Verification and certification status
      */
@@ -488,6 +505,8 @@ export enum EnvironmentalConsciousness {
 
 /**
  * Risk level for fairness and discrimination
+ *
+ * Triage severity assigned to this detection
  */
 export enum FairnessRisk {
     High = "High",
@@ -700,6 +719,8 @@ export interface TransparencyObligations {
 
 /**
  * Type of AI compliance framework
+ *
+ * Framework that requires this remediation
  */
 export enum ComplianceFramework {
     CanadaAIDA = "Canada_AIDA",
@@ -744,7 +765,7 @@ export enum Scope {
 /**
  * Compliance status
  */
-export enum Status {
+export enum ComplianceRecordStatus {
     Compliant = "Compliant",
     NonCompliant = "NonCompliant",
     NotApplicable = "NotApplicable",
@@ -803,6 +824,106 @@ export interface DataClassification {
 }
 
 /**
+ * Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs,
+ * connector audits, etc. Populated for assets that were not registered through the intake
+ * wizard.
+ *
+ * Origin of a Shadow AI detection. Populated when an asset was auto-discovered (outbound
+ * API traffic, SSO logs, connector audits, etc.) rather than registered through the intake
+ * wizard.
+ */
+export interface AIDetection {
+    /**
+     * When the detection was recorded
+     */
+    detectedAt?: number;
+    /**
+     * Heuristic flags associated with this detection
+     */
+    flags?: Flag[];
+    /**
+     * Triage severity assigned to this detection
+     */
+    severity?: FairnessRisk;
+    /**
+     * How this AI asset was detected
+     */
+    source?: Source;
+    /**
+     * Free-text detail about the detection (e.g. 'api.openai.com from #marketing-eng workspace')
+     */
+    sourceDetails?: string;
+    /**
+     * Likely team or workspace driving this AI usage
+     */
+    suspectedTeam?: string;
+    /**
+     * Likely user driving this AI usage, when known
+     */
+    suspectedUser?: string;
+    /**
+     * Human-readable 7-day volume estimate (e.g. '~1,820 calls / 7d')
+     */
+    volume7d?: string;
+}
+
+export enum Flag {
+    NewDeployment = "NewDeployment",
+    NoOwner = "NoOwner",
+    OrgWideEnable = "OrgWideEnable",
+    PiiWithoutDpa = "PiiWithoutDpa",
+    PrivilegedData = "PrivilegedData",
+}
+
+/**
+ * How this AI asset was detected
+ */
+export enum Source {
+    ConnectorAudit = "ConnectorAudit",
+    ManualUpload = "ManualUpload",
+    Other = "Other",
+    OutboundAPITraffic = "OutboundApiTraffic",
+    SSOLogs = "SSOLogs",
+}
+
+/**
+ * Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)
+ *
+ * Supporting documentation URLs for AI governance evidence packs (DPIA, model card,
+ * fairness analysis, etc.)
+ */
+export interface AIEvidence {
+    /**
+     * Additional evidence references
+     */
+    additional?: Additional[];
+    /**
+     * Data Protection Impact Assessment URL
+     */
+    dpiaUrl?: string;
+    /**
+     * URL to fairness / subgroup analysis evidence
+     */
+    fairnessEvidenceUrl?: string;
+    /**
+     * Model card URL
+     */
+    modelCardUrl?: string;
+    /**
+     * Technical documentation URL
+     */
+    technicalDocsUrl?: string;
+}
+
+export interface Additional {
+    addedAt?:   number;
+    addedBy?:   string;
+    framework?: ComplianceFramework;
+    label?:     string;
+    url?:       string;
+}
+
+/**
  * Registration status - used to track Shadow AI
  */
 export enum RegistrationStatus {
@@ -811,6 +932,50 @@ export enum RegistrationStatus {
     Registered = "Registered",
     Rejected = "Rejected",
     Unregistered = "Unregistered",
+}
+
+/**
+ * A structured remediation action with assignee, due date, priority, and status. Replaces
+ * the legacy string-array remediationRequired on AIComplianceRecord.
+ */
+export interface RemediationAction {
+    /**
+     * User or team accountable for completing the action
+     */
+    assignee?:    EntityReference;
+    completedAt?: number;
+    /**
+     * Control identifier within the framework (e.g. 'art-10')
+     */
+    controlCode?: string;
+    createdAt?:   number;
+    createdBy?:   string;
+    /**
+     * Target completion date
+     */
+    dueDate?: number;
+    /**
+     * Framework that requires this remediation
+     */
+    frameworkRef?: ComplianceFramework;
+    /**
+     * Stable identifier of this remediation action
+     */
+    id: string;
+    /**
+     * Short description of the remediation action
+     */
+    label:     string;
+    notes?:    string;
+    priority?: FairnessRisk;
+    status:    RemediationActionStatus;
+}
+
+export enum RemediationActionStatus {
+    Deferred = "Deferred",
+    Done = "Done",
+    InProgress = "InProgress",
+    Open = "Open",
 }
 
 /**
