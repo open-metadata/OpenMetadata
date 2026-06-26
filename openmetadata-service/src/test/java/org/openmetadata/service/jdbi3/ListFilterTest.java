@@ -125,6 +125,22 @@ class ListFilterTest {
   }
 
   @Test
+  void test_getMemorySearchVisibilityCondition() {
+    ListFilter filter = new ListFilter();
+    String condition = filter.getCondition("context_memory_entity");
+    assertFalse(condition.contains("shareConfig.visibility"));
+    assertFalse(condition.contains("shareConfig'->>'visibility"));
+
+    filter = new ListFilter();
+    filter.addQueryParam(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM, "Entity");
+    condition = filter.getCondition("context_memory_entity");
+    assertTrue(
+        condition.contains(
+                "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = :memorySearchVisibility")
+            || condition.contains("json->'shareConfig'->>'visibility' = :memorySearchVisibility"));
+  }
+
+  @Test
   void test_getAgentTypeCondition_singleAgentType() {
     ListFilter filter = new ListFilter();
 

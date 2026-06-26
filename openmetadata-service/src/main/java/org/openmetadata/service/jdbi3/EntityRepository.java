@@ -2299,6 +2299,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return dao.findEntityByNames(entityFQNs, include);
   }
 
+  /**
+   * Whether a single entity instance should be written to the search index on the live
+   * create/update path. Defaults to true; override to keep specific instances out of the index
+   * (e.g. {@link ContextMemoryRepository} excludes non-org-wide memories). The bulk reindex applies
+   * the same rule at the DB-query level via {@link #getReindexFilter()}.
+   */
+  public boolean isSearchIndexable(EntityInterface entity) {
+    return true;
+  }
+
+  /**
+   * Filter the search reindex uses to both list and count this entity's rows. Defaults to all rows;
+   * override to keep specific instances out of the search index (e.g. {@link ContextMemoryRepository}
+   * excludes non-org-wide memories). The reader and every entity-count site share this filter so the
+   * job total matches what actually gets indexed.
+   */
+  public ListFilter getReindexFilter() {
+    return new ListFilter(Include.ALL);
+  }
+
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");

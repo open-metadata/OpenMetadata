@@ -958,6 +958,15 @@ public class SearchRepository {
       return;
     }
 
+    if (!Entity.getEntityRepository(entity.getEntityReference().getType())
+        .isSearchIndexable(entity)) {
+      LOG.debug(
+          "Skipping search index create for non-indexable {} [{}]",
+          entity.getEntityReference().getType(),
+          entity.getId());
+      return;
+    }
+
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -1384,6 +1393,12 @@ public class SearchRepository {
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!Entity.getEntityRepository(entity.getEntityReference().getType())
+        .isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
       return;
     }
 
