@@ -1205,8 +1205,12 @@ public class SearchRepository {
           return;
         }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
+        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
+          if (!repository.isSearchIndexable(entity)) {
+            continue;
+          }
           try {
             SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
@@ -1671,7 +1675,20 @@ public class SearchRepository {
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> typeEntities = entry.getValue();
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      List<EntityInterface> typeEntities = new ArrayList<>();
+      for (EntityInterface entity : entry.getValue()) {
+        if (repository.isSearchIndexable(entity)) {
+          typeEntities.add(entity);
+        } else {
+          // Mirror updateEntityIndex: a now-non-indexable entity (e.g. a memory flipped to
+          // PRIVATE/SHARED) must have its stale document removed from the index.
+          deleteEntityIndex(entity);
+        }
+      }
+      if (typeEntities.isEmpty()) {
+        continue;
+      }
 
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
