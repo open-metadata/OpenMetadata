@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.formatter.util.FormatterUtil;
@@ -350,12 +352,11 @@ public class AlertsRuleEvaluator {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
-    for (String name : updatedByUserList) {
-      if (name.equals(entityUpdatedBy)) {
-        return true;
-      }
-    }
-    return false;
+    Set<String> updaterNames =
+        updatedByUserList.stream()
+            .map(EntityInterfaceUtil::unquoteName)
+            .collect(Collectors.toSet());
+    return updaterNames.contains(entityUpdatedBy);
   }
 
   @Function(
@@ -555,16 +556,18 @@ public class AlertsRuleEvaluator {
       Post latestPost = thread.getPosts().get(thread.getPostsCount() - 1);
       mentions = MessageParser.getEntityLinks(latestPost.getMessage());
     }
+    Set<String> names =
+        usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
       if (USER.equals(entityLink.getEntityType())) {
         User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(user.getName())) {
+        if (names.contains(user.getName())) {
           return true;
         }
       } else if (TEAM.equals(entityLink.getEntityType())) {
         Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(team.getName())) {
+        if (names.contains(team.getName())) {
           return true;
         }
       }
@@ -616,24 +619,27 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
+    Set<String> ownerNames =
+        ownerNameList.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (EntityReference owner : ownerReferences) {
-      if (USER.equals(owner.getType())) {
-        User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (user.getName().equals(name)) {
-            return true;
-          }
-        }
-      } else if (TEAM.equals(owner.getType())) {
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (team.getName().equals(name)) {
-            return true;
-          }
-        }
+      String ownerName = resolveOwnerName(owner);
+      if (ownerName != null && ownerNames.contains(ownerName)) {
+        return true;
       }
     }
     return false;
+  }
+
+  private String resolveOwnerName(EntityReference owner) {
+    String ownerName = null;
+    if (USER.equals(owner.getType())) {
+      User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+      ownerName = user.getName();
+    } else if (TEAM.equals(owner.getType())) {
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+      ownerName = team.getName();
+    }
+    return ownerName;
   }
 
   @Function(
