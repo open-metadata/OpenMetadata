@@ -1487,6 +1487,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "glossaryStatus",
         "color",
         "iconURL",
+        "domains",
         "extension");
   }
 
