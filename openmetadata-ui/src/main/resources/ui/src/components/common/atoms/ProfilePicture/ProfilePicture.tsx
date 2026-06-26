@@ -66,13 +66,19 @@ const ProfilePicture = ({
   };
 
   if (profileURL) {
+    const imageStyle: CSSProperties = {
+      width: size,
+      height: size,
+      ...style,
+    };
+
     return (
       <Avatar
         contrastBorder={false}
         placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
         size="md"
         src={profileURL}
-        style={rootStyle}
+        style={imageStyle}
       />
     );
   }
