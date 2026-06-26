@@ -169,6 +169,30 @@ export interface NodeConfiguration {
      * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
      */
     waitForCompletion?: boolean;
+    /**
+     * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+     * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+     * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
+     * (Read/Write/Admin) from the request payload still flows through so the connector knows
+     * which level to revoke. When unset, the agent uses the accessType from the request
+     * payload.
+     */
+    accessType?: AccessType;
+}
+
+/**
+ * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+ * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+ * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
+ * (Read/Write/Admin) from the request payload still flows through so the connector knows
+ * which level to revoke. When unset, the agent uses the accessType from the request
+ * payload.
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+    Revoke = "Revoke",
 }
 
 /**
