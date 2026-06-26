@@ -61,9 +61,3 @@ $$section
 
 Define the inputs users must provide when creating test cases from this definition. Each parameter can include a name, display name, description, data type, and whether it is required.
 $$
-
-$$section
-### Enabled $(id="enabled")
-
-Control whether the test definition is available for use. Disabled definitions remain in the library but cannot be used to create new active test cases.
-$$

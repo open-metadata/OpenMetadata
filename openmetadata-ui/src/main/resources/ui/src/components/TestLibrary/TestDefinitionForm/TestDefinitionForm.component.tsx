@@ -15,6 +15,7 @@ import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
 import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
 import type { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import {
   lazy,
@@ -219,8 +220,8 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       }
       width="80%"
       onClose={onCancel}>
-      <div className="tw:grid tw:h-full tw:grid-cols-3 tw:gap-6">
-        <div className="drawer-form-content tw:col-span-2 tw:h-full tw:overflow-y-auto tw:py-6 tw:pr-2">
+      <div className="tw:flex tw:h-full tw:gap-6">
+        <div className="drawer-form-content tw:h-full tw:min-w-0 tw:basis-[60%] tw:overflow-y-auto tw:py-6 tw:pr-2">
           {errorMessage && (
             <div className="m-b-md">
               <AlertBar
@@ -540,7 +541,13 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
             )}
           </Form>
         </div>
-        <div className="drawer-doc-panel service-doc-panel markdown-parser tw:my-6 tw:mr-6 tw:overflow-y-auto tw:rounded-xl tw:border tw:border-solid tw:border-gray-200 tw:px-5">
+        <div
+          className={classNames(
+            'drawer-doc-panel service-doc-panel markdown-parser',
+            'tw:my-6 tw:mr-6 tw:min-w-0 tw:basis-[40%]',
+            'tw:overflow-y-auto tw:rounded-xl tw:border',
+            'tw:border-solid tw:border-gray-200 tw:px-5'
+          )}>
           <ServiceDocPanel
             activeField={activeField}
             serviceName={TEST_DEFINITION_FORM}
