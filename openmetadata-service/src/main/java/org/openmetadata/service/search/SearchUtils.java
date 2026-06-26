@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,6 +73,24 @@ public final class SearchUtils {
       preference = subjectContext.user().getName();
     }
     return preference;
+  }
+
+  /**
+   * Append an OpenSearch {@code preference} routing key to a raw {@code _search} endpoint so all of
+   * a user's queries hit the same shard copy. Used by the vector/raw search paths that build the
+   * endpoint URL directly (the request-builder paths set preference on the builder instead).
+   */
+  public static String appendPreferenceParam(String endpoint, String preference) {
+    String result = endpoint;
+    if (!nullOrEmpty(preference)) {
+      String separator = endpoint.contains("?") ? "&" : "?";
+      result =
+          endpoint
+              + separator
+              + "preference="
+              + URLEncoder.encode(preference, StandardCharsets.UTF_8);
+    }
+    return result;
   }
 
   /** Aggregation name for the exact-match sub-agg (user-typed term only). */
