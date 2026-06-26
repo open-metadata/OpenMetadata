@@ -398,10 +398,19 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // No relevant changes — skip gracefully so the required check passes
             const upstreamResult = '${{ needs.playwright-ci-postgresql.result }}';
             if (upstreamResult === 'skipped') {
-              console.log('Playwright E2E tests not required for this PR (no relevant changes).');
+              // Distinguish between two skip reasons:
+              // 1. A non-"safe to test" label was added — build intentionally skipped for fork security.
+              //    E2E tests will run when the "safe to test" label is added or code is pushed.
+              // 2. No relevant paths changed — nothing to test.
+              const eventAction = '${{ github.event.action }}';
+              const labelName   = '${{ github.event.label.name }}';
+              if (eventAction === 'labeled' && labelName !== 'safe to test') {
+                console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
+              } else {
+                console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
+              }
               return;
             }
             if (upstreamResult === 'cancelled') {
