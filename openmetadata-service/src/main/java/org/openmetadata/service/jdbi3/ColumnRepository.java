@@ -388,7 +388,8 @@ public class ColumnRepository {
             });
   }
 
-  // Mirrors applyColumnUpdates' "blank = no change, removeFlag = clear" contract so the bulk preview
+  // Mirrors applyColumnUpdates' "blank = no change, removeFlag = clear" contract so the bulk
+  // preview
   // reports the same value the update would actually produce.
   private static String resolveUpdatedValue(
       String currentValue, String providedValue, Boolean removeFlag) {
