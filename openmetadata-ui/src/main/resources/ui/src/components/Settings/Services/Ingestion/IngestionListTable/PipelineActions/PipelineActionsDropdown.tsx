@@ -44,7 +44,6 @@ function PipelineActionsDropdown({
   triggerIngestion,
   deployIngestion,
   serviceName,
-  appPermissions,
   serviceCategory,
   handleEditClick,
   handleDeleteSelection,
@@ -71,15 +70,14 @@ function PipelineActionsDropdown({
     editPermission,
     deletePermission,
     triggerPermission,
-    deployPermission,
   } = useMemo(() => {
     return {
       editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
       deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-      triggerPermission: appPermissions?.[Operation.Trigger] ?? false,
-      deployPermission: appPermissions?.[Operation.Deploy] ?? false,
+      triggerPermission:
+        ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
     };
-  }, [ingestionPipelinePermissions, appPermissions]);
+  }, [ingestionPipelinePermissions]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
@@ -184,7 +182,7 @@ function PipelineActionsDropdown({
                 id,
                 <ReloadIcon height={12} width={12} />
               ),
-              hidden: !deployPermission,
+              hidden: !editPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 're-deploy-button',
@@ -199,7 +197,7 @@ function PipelineActionsDropdown({
                 id,
                 <DeployIcon height={12} width={12} />
               ),
-              hidden: !deployPermission,
+              hidden: !editPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 'deploy-button',
@@ -212,7 +210,7 @@ function PipelineActionsDropdown({
       id,
       currDeploy,
       triggerPermission,
-      deployPermission,
+      editPermission,
     ]
   );
 

@@ -180,12 +180,10 @@ test.describe(
       await pipelineTriggerUser.create(apiContext);
       await pipelineEditUser.create(apiContext);
 
-      // The Agents tab is only visible to service owners/admins, so both users
-      // are made owners for tab visibility. appPermissions (Trigger/Deploy) comes
-      // from GET /permissions which is entity-agnostic — isOwner() does not fire
-      // there — so Trigger/Deploy must be granted via an explicit allow rule on
-      // the 'app' resource. ingestionPipelinePermissions (EditAll/Delete) is
-      // entity-specific and picks up isOwner() correctly.
+      // The Agents tab is only visible to service owners/admins. Both users are
+      // made owners so the tab is visible and isOwner() grants all operations on
+      // the ingestionPipeline entity. Deny rules then strip the specific
+      // operations we want to exclude per user.
       await adminOwnedService.patch(apiContext, [
         {
           op: 'add',
@@ -202,7 +200,7 @@ test.describe(
         [
           {
             name: 'IngestionPipeline-Allow-Trigger-Rule',
-            resources: ['app'],
+            resources: ['ingestionPipeline'],
             operations: ['Trigger'],
             effect: 'allow',
           },
@@ -221,7 +219,7 @@ test.describe(
       const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
         {
           name: 'IngestionPipeline-Deny-Trigger-Deploy-Rule',
-          resources: ['app'],
+          resources: ['ingestionPipeline'],
           operations: ['Trigger', 'Deploy'],
           effect: 'deny',
         },
@@ -613,15 +611,15 @@ test.describe(
       expect(response.status()).toBe(200);
     });
 
-    test('User with EditAll but not Trigger/Deploy cannot run or deploy a pipeline', async ({
+    test('User with EditAll but not Trigger cannot run a pipeline', async ({
       pipelineEditPage: page,
     }) => {
       await openPipelineActions(page);
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
       await expect(page.getByTestId('kill-button')).toBeVisible();
+      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
       await expect(page.getByTestId('run-button')).toBeHidden();
-      await expect(page.getByTestId('re-deploy-button')).toBeHidden();
     });
   }
 );

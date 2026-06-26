@@ -94,7 +94,7 @@ function IngestionListTable({
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
-  const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
@@ -232,7 +232,6 @@ function IngestionListTable({
 
       return (
         <PipelineActions
-          appPermissions={ permissions[ResourceEntity.APPLICATION]}
           deployIngestion={deployIngestion}
           handleDeleteSelection={handleDeleteSelection}
           handleEditClick={handleEditClick}

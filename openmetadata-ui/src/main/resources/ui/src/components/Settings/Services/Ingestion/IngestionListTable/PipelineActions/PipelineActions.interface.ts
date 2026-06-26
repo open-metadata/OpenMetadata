@@ -21,7 +21,6 @@ export interface PipelineActionsProps {
   pipeline: IngestionPipeline;
   ingestionPipelinePermissions?: OperationPermission;
   serviceCategory?: ServiceCategory;
-  appPermissions?: OperationPermission;
   serviceName?: string;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   triggerIngestion?: (id: string, displayName: string) => Promise<void>;
