@@ -63,52 +63,30 @@ const ProfilePicture = ({
     backgroundColor: isSolid ? color : backgroundColor,
     fontWeight: isSolid ? 400 : 500,
     border: isSolid ? 'none' : `0.5px solid ${color}`,
-    ...(isSolid ? {} : { color }),
+    color: isSolid ? undefined : color,
     ...style,
   };
 
-  if (profileURL) {
-    const imageStyle: CSSProperties = {
-      width: size,
-      height: size,
-      ...style,
-    };
+  const imageStyle: CSSProperties = { width: size, height: size, ...style };
 
-    return (
-      <Avatar
-        contrastBorder={false}
-        placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
-        size="md"
-        src={profileURL}
-        style={imageStyle}
+  const placeholder =
+    !profileURL && isPicLoading ? (
+      <Loader
+        size={size >= 24 ? 'small' : 'x-small'}
+        type={isSolid ? 'white' : 'default'}
       />
+    ) : (
+      <span style={{ fontSize: size * 0.55 }}>{character}</span>
     );
-  }
-
-  if (isPicLoading) {
-    return (
-      <Avatar
-        className={textClassName}
-        contrastBorder={false}
-        placeholder={
-          <Loader
-            size={size >= 24 ? 'small' : 'x-small'}
-            type={isSolid ? 'white' : 'default'}
-          />
-        }
-        size="md"
-        style={rootStyle}
-      />
-    );
-  }
 
   return (
     <Avatar
-      className={textClassName}
+      className={!profileURL && !isPicLoading ? textClassName : undefined}
       contrastBorder={false}
-      placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
+      placeholder={placeholder}
       size="md"
-      style={rootStyle}
+      src={profileURL || undefined}
+      style={profileURL ? imageStyle : rootStyle}
     />
   );
 };
