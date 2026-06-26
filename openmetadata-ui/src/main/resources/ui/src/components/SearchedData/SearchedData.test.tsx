@@ -282,6 +282,6 @@ describe('Test SearchedData Component', () => {
     const countEl = getByTestId(container, 'search-results-count');
 
     expect(countEl).toBeInTheDocument();
-    expect(countEl).toHaveTextContent(`~${MAX_RESULT_HITS} results`);
+    expect(countEl).toHaveTextContent(`${MAX_RESULT_HITS} results`);
   });
 });
