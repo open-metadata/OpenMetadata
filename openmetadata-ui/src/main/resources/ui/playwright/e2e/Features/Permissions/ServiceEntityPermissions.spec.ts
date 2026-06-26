@@ -13,9 +13,9 @@
 
 import { Browser, expect, Page } from '@playwright/test';
 import { EntityClass } from '../../../support/entity/EntityClass';
-import { test as baseTest } from '../../../support/fixtures/userPages';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { test as baseTest } from '../../fixtures/pages';
 
 import { SERVICE_ENTITIES } from '../../../constant/service';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';

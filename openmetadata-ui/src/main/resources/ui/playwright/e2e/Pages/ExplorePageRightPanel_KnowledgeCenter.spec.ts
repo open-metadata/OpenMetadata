@@ -12,7 +12,6 @@
  */
 
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
-import { expect, test as baseTest } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -25,6 +24,7 @@ import {
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { performUserLogin } from '../../utils/user';
+import { expect, test as baseTest } from '../fixtures/pages';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
   RightPanelPageObject,
