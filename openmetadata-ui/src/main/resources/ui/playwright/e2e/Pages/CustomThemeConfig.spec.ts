@@ -203,12 +203,12 @@ test.describe('Custom Theme Config Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.locator('[data-testid="save-btn"]').click();
     await saveResponse;
 
-    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait to catch any additional monogram requests after save.
     // This wait IS the test's coverage window: a duplicate monogram
     // request that arrives between 500ms and 2000ms after save would not
     // be counted under a shorter wait, so the duplicate-request assertion
     // below could pass even when the regression it guards against is
     // present (false negative). Keep at 2000ms.
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- wait to catch any additional monogram requests after save
     await page.waitForTimeout(2000);
 
     // Assert monogram URL was called at most once after save
