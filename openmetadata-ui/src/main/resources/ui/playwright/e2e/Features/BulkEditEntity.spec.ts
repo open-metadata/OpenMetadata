@@ -29,6 +29,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
+import { waitForSearchIndexed } from '../../utils/polling';
 import {
   createColumnRowDetails,
   createCustomPropertiesForEntity,
@@ -670,6 +671,18 @@ test.describe('Bulk Edit Entity', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
+
+    // Wait for the glossary term to be indexed in ES before bulk-edit reads
+    // the glossary's term list. Otherwise the bulk-edit table comes back
+    // empty, the test fills row 1 with the term's name, and the system
+    // creates a new term instead of recognizing the existing one — the
+    // subsequent status assertion gets "Entity created" instead of
+    // "Entity updated".
+    await waitForSearchIndexed(
+      apiContext,
+      glossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
 
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
