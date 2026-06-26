@@ -2404,6 +2404,16 @@ public class TableRepository extends EntityRepository<Table> {
             "schemaDefinition",
             () -> {
               updateProcessedLineage(origTable, updatedTable);
+              // Record the processedLineage side-effect driven by schemaDefinition change;
+              // shouldCompare("processedLineage") is false on a schemaDefinition-only PATCH
+              // so the earlier compareAndUpdate("processedLineage", ...) never fires.
+              if (!Objects.equals(
+                  origTable.getProcessedLineage(), updatedTable.getProcessedLineage())) {
+                recordChange(
+                    "processedLineage",
+                    origTable.getProcessedLineage(),
+                    updatedTable.getProcessedLineage());
+              }
               recordChange(
                   "schemaDefinition",
                   original.getSchemaDefinition(),
