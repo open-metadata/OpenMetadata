@@ -23,7 +23,7 @@ import {
   getFrameworkByFqn,
   getFrameworkCoverage,
 } from '../../../rest/aiGovernanceFrameworkAPI';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AIGovernanceTab } from '../AIGovernancePage.interface';
 import type { ColumnsType } from '../components/AIGovUntitled.component';

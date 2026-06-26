@@ -25,7 +25,7 @@ import {
   listFrameworks,
   toggleFrameworkEnabled,
 } from '../../../../rest/aiGovernanceFrameworkAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   Button,

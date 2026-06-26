@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE = '/aiGovernance';
@@ -115,12 +115,21 @@ export interface FrameworkReadiness {
   compliant: number;
   inScope: number;
   readiness: number;
+  focus?: boolean;
+}
+
+export interface RiskMatrixTopEntity {
+  name: string;
+  displayName?: string;
+  fullyQualifiedName: string;
+  entityType: AIGovernanceEntityType;
 }
 
 export interface RiskMatrixCell {
   risk: 'Unacceptable' | 'High' | 'Limited' | 'Minimal';
   impactBucket: '<1k' | '1k–10k' | '10k–100k' | '>100k';
   count: number;
+  topEntity?: RiskMatrixTopEntity;
 }
 
 export interface DashboardAssetSummary {
@@ -133,6 +142,11 @@ export interface DashboardAssetSummary {
   euRisk?: string;
   affectedUsers?: number;
   registeredAt?: number;
+  detectedVia?: string;
+  detectedAt?: number;
+  submittedBy?: string;
+  submittedAt?: number;
+  team?: string;
 }
 
 export interface DashboardResponse {
@@ -159,6 +173,8 @@ export interface GovernanceActivityEvent {
   type: string;
   text: string;
   at: number;
+  createdAt?: number;
+  scheduledAt?: number;
   who?: string;
 }
 

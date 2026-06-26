@@ -30,7 +30,7 @@ import {
 } from '../../../../rest/aiGovernanceAPI';
 import { getLLMModels } from '../../../../rest/llmModelAPI';
 import { getMcpServers } from '../../../../rest/mcpServerAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   Button,
@@ -40,6 +40,7 @@ import {
   Typography,
 } from '../../components/AIGovUntitled.component';
 import { IcCheck, IcShield, IcX } from '../../icons/AIGovIcons';
+import { colorFor, formatRelativeTime, initialOf } from '../aiGovSection.utils';
 import './approvals-section.less';
 
 interface ApprovalRow {
@@ -61,49 +62,6 @@ const RISK_PILL: Record<string, string> = {
   High: 'ai-gov-pill--high',
   Limited: 'ai-gov-pill--limited',
   Minimal: 'ai-gov-pill--minimal',
-};
-
-const AVATAR_PALETTE = ['#1570EF', '#7A5AF8', '#079455', '#B54708', '#175CD3'];
-
-const initialOf = (text: string): string =>
-  text
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((s) => s[0])
-    .join('')
-    .toUpperCase() || '?';
-
-const colorFor = (text: string): string => {
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = (hash * 31 + text.charCodeAt(i)) | 0;
-  }
-
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
-};
-
-const formatSubmitted = (timestamp?: number, registeredBy?: string): string => {
-  const segments: string[] = [];
-  if (registeredBy) {
-    segments.push(`Submitted by ${registeredBy}`);
-  }
-  if (timestamp) {
-    const diff = Date.now() - timestamp;
-    const minutes = Math.floor(diff / (60 * 1000));
-    if (minutes < 60) {
-      segments.push(`${Math.max(1, minutes)} min ago`);
-    } else {
-      const hours = Math.floor(diff / (60 * 60 * 1000));
-      if (hours < 24) {
-        segments.push(`${hours} hr ago`);
-      } else {
-        segments.push(new Date(timestamp).toLocaleDateString());
-      }
-    }
-  }
-
-  return segments.join(' · ');
 };
 
 const LIST_FIELDS = 'owners,domain,tags,governanceMetadata,extension';
@@ -306,10 +264,7 @@ const ApprovalsSection = () => {
                       : null,
                     row.team,
                     row.registeredAt
-                      ? formatSubmitted(row.registeredAt).replace(
-                          /^Submitted by [^·]+ · /,
-                          ''
-                        )
+                      ? formatRelativeTime(row.registeredAt)
                       : null,
                   ]
                     .filter(Boolean)

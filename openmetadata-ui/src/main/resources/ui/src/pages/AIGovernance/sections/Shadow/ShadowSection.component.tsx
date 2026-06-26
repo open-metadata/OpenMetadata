@@ -27,7 +27,7 @@ import {
 } from '../../../../rest/aiGovernanceAPI';
 import { getLLMModels } from '../../../../rest/llmModelAPI';
 import { getMcpServers } from '../../../../rest/mcpServerAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   Button,
@@ -36,6 +36,7 @@ import {
   Typography,
 } from '../../components/AIGovUntitled.component';
 import { IcAlertTri, IcCheck, IcEye } from '../../icons/AIGovIcons';
+import { formatAge } from '../aiGovSection.utils';
 import './shadow-section.less';
 
 interface ShadowRow {
@@ -69,22 +70,6 @@ const SEVERITY_PILL: Record<string, string> = {
   High: 'ai-gov-pill--high',
   Medium: 'ai-gov-pill--medium',
   Low: 'ai-gov-pill--low',
-};
-
-const formatAge = (timestamp?: number): string => {
-  if (!timestamp) {
-    return '—';
-  }
-  const diffMs = Date.now() - timestamp;
-  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days <= 0) {
-    return 'today';
-  }
-  if (days === 1) {
-    return '1 day ago';
-  }
-
-  return `${days} days ago`;
 };
 
 const getDetection = (value: unknown): DetectionDetails | undefined => {

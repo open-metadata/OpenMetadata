@@ -14,6 +14,7 @@
     },
     "detection": {
       "source": "ConnectorAudit",
+      "detectedAt": 1782086400000,
       "sourceDetails": "Org-wide activation",
       "suspectedTeam": "Workspace-wide",
       "volume7d": "~430 calls / 7d",

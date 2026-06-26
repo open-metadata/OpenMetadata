@@ -103,7 +103,12 @@ const ActivityTab = ({ view }: ActivityTabProps) => {
               </Tag>{' '}
               {event.text}
               <div className="tw:text-xs tw:text-gray-500 tw:mt-1">
-                {new Date(event.at).toLocaleString()}
+                {new Date(event.createdAt ?? event.at).toLocaleString()}
+                {event.scheduledAt
+                  ? ` · ${t('label.scheduled-for', {
+                      date: new Date(event.scheduledAt).toLocaleDateString(),
+                    })}`
+                  : ''}
                 {event.who ? ` · ${event.who}` : ''}
               </div>
             </div>

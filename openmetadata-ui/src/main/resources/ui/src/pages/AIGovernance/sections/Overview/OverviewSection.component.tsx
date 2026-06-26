@@ -27,8 +27,9 @@ import {
   getAIGovernanceDashboard,
   getGovernanceActivity,
   GovernanceActivityEvent,
+  RiskMatrixCell,
 } from '../../../../rest/aiGovernanceAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AIGovernanceTab } from '../../AIGovernancePage.interface';
 import {
@@ -43,6 +44,12 @@ import {
   Tag,
   Typography,
 } from '../../components/AIGovUntitled.component';
+import {
+  colorFor,
+  formatAge,
+  formatRelativeTime,
+  initialOf,
+} from '../aiGovSection.utils';
 import './overview-section.less';
 
 const FRAMEWORK_LABELS: Record<string, string> = {
@@ -55,6 +62,14 @@ const FRAMEWORK_LABELS: Record<string, string> = {
   UK_AI_Regulation: 'UK AI',
   China_AI_Regulations: 'China AI',
   Custom: 'Custom',
+};
+
+const DETECTION_LABELS: Record<string, string> = {
+  OutboundApiTraffic: 'Outbound API traffic',
+  SSOLogs: 'SSO logs',
+  ConnectorAudit: 'Connector audit',
+  ManualUpload: 'Manual upload',
+  Other: 'Other',
 };
 
 interface RiskMeta {
@@ -249,7 +264,11 @@ const OverviewSection = () => {
                 </Typography.Text>
               )}
               {dashboard.frameworkReadiness.map((fw, idx) => (
-                <div className="ai-gov-framework-row" key={fw.framework}>
+                <div
+                  className={`ai-gov-framework-row${
+                    fw.focus ? ' ai-gov-framework-row--focus' : ''
+                  }`}
+                  key={fw.framework}>
                   <Space
                     align="center"
                     className="tw:w-full tw:justify-between">
@@ -268,7 +287,7 @@ const OverviewSection = () => {
                       <Typography.Text strong>
                         {FRAMEWORK_LABELS[fw.framework] ?? fw.framework}
                       </Typography.Text>
-                      {idx === 0 && (
+                      {fw.focus && (
                         <Tag color="blue" style={{ fontSize: 10 }}>
                           {t('label.focus')}
                         </Tag>
@@ -329,22 +348,42 @@ const OverviewSection = () => {
                   entity: t('label.shadow-ai'),
                 }),
               }}
-              renderItem={(item) => (
-                <List.Item
-                  className="ai-gov-list-item"
-                  onClick={() =>
-                    goToAsset(item.entityType, item.fullyQualifiedName)
-                  }>
-                  <Space
-                    align="center"
-                    className="tw:w-full tw:justify-between">
-                    <Typography.Text>
-                      {item.displayName ?? item.name}
-                    </Typography.Text>
-                    <RiskTag value={item.euRisk} />
-                  </Space>
-                </List.Item>
-              )}
+              renderItem={(item) => {
+                const detail = [
+                  item.detectedVia
+                    ? DETECTION_LABELS[item.detectedVia] ?? item.detectedVia
+                    : null,
+                  item.detectedAt ? formatAge(item.detectedAt) : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+
+                return (
+                  <List.Item
+                    className="ai-gov-list-item"
+                    onClick={() =>
+                      goToAsset(item.entityType, item.fullyQualifiedName)
+                    }>
+                    <Space
+                      align="center"
+                      className="tw:w-full tw:justify-between">
+                      <Space direction="vertical" size={0}>
+                        <Typography.Text>
+                          {item.displayName ?? item.name}
+                        </Typography.Text>
+                        {detail && (
+                          <Typography.Text
+                            className="ai-gov-subtitle"
+                            type="secondary">
+                            {detail}
+                          </Typography.Text>
+                        )}
+                      </Space>
+                      <RiskTag value={item.euRisk} />
+                    </Space>
+                  </List.Item>
+                );
+              }}
             />
           </Card>
         </Col>
@@ -373,22 +412,51 @@ const OverviewSection = () => {
                   entity: t('label.approval-plural'),
                 }),
               }}
-              renderItem={(item) => (
-                <List.Item
-                  className="ai-gov-list-item"
-                  onClick={() =>
-                    goToAsset(item.entityType, item.fullyQualifiedName)
-                  }>
-                  <Space
-                    align="center"
-                    className="tw:w-full tw:justify-between">
-                    <Typography.Text>
-                      {item.displayName ?? item.name}
-                    </Typography.Text>
-                    <RiskTag value={item.euRisk} />
-                  </Space>
-                </List.Item>
-              )}
+              renderItem={(item) => {
+                const submitter = item.submittedBy ?? item.name;
+                const detail = [
+                  item.submittedBy,
+                  item.team,
+                  item.submittedAt
+                    ? formatRelativeTime(item.submittedAt)
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+
+                return (
+                  <List.Item
+                    className="ai-gov-list-item"
+                    onClick={() =>
+                      goToAsset(item.entityType, item.fullyQualifiedName)
+                    }>
+                    <Space
+                      align="center"
+                      className="tw:w-full tw:justify-between">
+                      <Space align="center" size="small">
+                        <span
+                          className="ai-gov-avatar"
+                          style={{ background: colorFor(submitter) }}>
+                          {initialOf(submitter)}
+                        </span>
+                        <Space direction="vertical" size={0}>
+                          <Typography.Text>
+                            {item.displayName ?? item.name}
+                          </Typography.Text>
+                          {detail && (
+                            <Typography.Text
+                              className="ai-gov-subtitle"
+                              type="secondary">
+                              {detail}
+                            </Typography.Text>
+                          )}
+                        </Space>
+                      </Space>
+                      <RiskTag value={item.euRisk} />
+                    </Space>
+                  </List.Item>
+                );
+              }}
             />
           </Card>
         </Col>
@@ -422,7 +490,14 @@ const OverviewSection = () => {
                     <Typography.Text
                       className="ai-gov-subtitle"
                       type="secondary">
-                      {new Date(event.at).toLocaleString()}
+                      {new Date(event.createdAt ?? event.at).toLocaleString()}
+                      {event.scheduledAt
+                        ? ` · ${t('label.scheduled-for', {
+                            date: new Date(
+                              event.scheduledAt
+                            ).toLocaleDateString(),
+                          })}`
+                        : ''}
                       {event.entityDisplayName
                         ? ` · ${event.entityDisplayName}`
                         : ''}
@@ -564,8 +639,8 @@ const StatTile = ({
 
 const RiskMatrix = ({ cells }: { cells: DashboardResponse['riskMatrix'] }) => {
   const grid = useMemo(() => {
-    const m = new Map<string, number>();
-    cells.forEach((c) => m.set(`${c.risk}|${c.impactBucket}`, c.count));
+    const m = new Map<string, RiskMatrixCell>();
+    cells.forEach((c) => m.set(`${c.risk}|${c.impactBucket}`, c));
 
     return m;
   }, [cells]);
@@ -596,7 +671,9 @@ const RiskMatrix = ({ cells }: { cells: DashboardResponse['riskMatrix'] }) => {
                 </span>
               </div>
               {IMPACT_BUCKETS.map((bucket) => {
-                const count = grid.get(`${risk}|${bucket}`) ?? 0;
+                const cell = grid.get(`${risk}|${bucket}`);
+                const count = cell?.count ?? 0;
+                const topEntity = cell?.topEntity;
                 const intensity = Math.max(0.4, Math.min(1, count / 9));
                 const bg =
                   count === 0
@@ -618,7 +695,12 @@ const RiskMatrix = ({ cells }: { cells: DashboardResponse['riskMatrix'] }) => {
                       borderColor: count === 0 ? undefined : meta.bg,
                       color: count === 0 ? 'var(--gray-500, #717680)' : meta.fg,
                     }}>
-                    {count}
+                    <span className="ai-gov-matrix-cell-count">{count}</span>
+                    {topEntity && (
+                      <span className="ai-gov-matrix-cell-entity">
+                        {topEntity.displayName ?? topEntity.name}
+                      </span>
+                    )}
                     {isHot && count > 0 && (
                       <span
                         className="ai-gov-matrix-pulse"

@@ -269,12 +269,30 @@
     border-radius: 8px;
     border: 1px solid transparent;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     justify-content: center;
+    gap: 2px;
+    padding: 8px 10px;
     font-weight: 700;
     font-size: 16px;
     letter-spacing: -0.02em;
     position: relative;
+  }
+
+  .ai-gov-matrix-cell-count {
+    line-height: 1.1;
+  }
+
+  .ai-gov-matrix-cell-entity {
+    max-width: 100%;
+    overflow: hidden;
+    font-weight: 500;
+    font-size: 11px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
   }
 
   .ai-gov-matrix-cell--empty {
@@ -310,7 +328,7 @@
   border-radius: 10px;
   border: 1px solid var(--border-subtle, #eaecf5);
 
-  &:first-child {
+  &.ai-gov-framework-row--focus {
     background: linear-gradient(135deg, #eff8ff 0%, #fcfeff 80%);
     border-color: var(--blue-200, #b2ddff);
   }
@@ -335,6 +353,19 @@
   &:hover {
     background: var(--gray-25, #fafafa);
   }
+}
+
+.ai-gov-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 // ─── Risk pill ────────────────────────────────────────────────────────────
