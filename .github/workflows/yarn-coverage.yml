@@ -34,11 +34,14 @@ jobs:
         with:
           filters: |
             ui:
-              - 'openmetadata-ui/src/main/resources/ui/**'
-              - '!openmetadata-ui/src/main/resources/ui/playwright/**'
-              - '!openmetadata-ui/src/main/resources/ui/scripts/**'
-              - '!openmetadata-ui/src/main/resources/ui/public/**'
-              - '!openmetadata-ui/src/main/resources/ui/docs/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+              - 'openmetadata-ui/src/main/resources/ui/jest.config.js'
+              - 'openmetadata-ui/src/main/resources/ui/package.json'
+              - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'
+              - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
+              - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+              - 'openmetadata-ui/src/main/resources/ui/sonar-project.properties'
 
   ui-coverage-tests:
     needs: check-changes
