@@ -2832,7 +2832,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     Fields fields =
-        getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
+        getFields(
+            "owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent,domains");
     GlossaryTerm glossaryTerm = getByName(null, name, fields);
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
