@@ -162,6 +162,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
+  Edit05: () => <span data-testid="edit-05-icon" />,
   FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
   Trash01: () => <span data-testid="trash-icon" />,
   XCircle: () => <span data-testid="x-circle-icon" />,
@@ -433,6 +434,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetAllFilters: jest.fn(),
+    }));
     (searchQuery as jest.Mock).mockResolvedValue({
       hits: { total: { value: 100 }, hits: [] },
     });
@@ -475,12 +482,12 @@ describe('ExploreV1', () => {
 
   it('shows query-panel Clear for an advanced-search-only filter', () => {
     const onResetAllFilters = jest.fn();
-    (useAdvanceSearch as jest.Mock).mockReturnValueOnce({
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: 'serviceType = BigQuery',
       queryFilter: { query: { bool: { must: [] } } },
       onResetAllFilters,
-    });
+    }));
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
