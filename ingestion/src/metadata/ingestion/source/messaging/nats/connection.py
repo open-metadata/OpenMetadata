@@ -126,12 +126,12 @@ def _build_connect_opts(connection: NatsConnection, temp_cert_files: list[str]) 
 def get_connection(connection: NatsConnection) -> NatsClient:
     loop = asyncio.new_event_loop()
     temp_cert_files: list[str] = []
-    opts = _build_connect_opts(connection, temp_cert_files)
-
-    async def _connect() -> Any:
-        return await nats.connect(**opts)
-
     try:
+        opts = _build_connect_opts(connection, temp_cert_files)
+
+        async def _connect() -> Any:
+            return await nats.connect(**opts)
+
         nc = loop.run_until_complete(_connect())
     except Exception:
         _cleanup_temp_certs(temp_cert_files)

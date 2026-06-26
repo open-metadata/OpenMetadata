@@ -581,7 +581,7 @@ export enum AuthProvider {
  *
  * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
  * pattern.
-     *
+ *
  * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
