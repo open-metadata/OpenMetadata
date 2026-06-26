@@ -330,6 +330,9 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     };
 
+    const fetchKnowledgePageHierarchyRef = useRef(fetchKnowledgePageHierarchy);
+    fetchKnowledgePageHierarchyRef.current = fetchKnowledgePageHierarchy;
+
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
@@ -561,7 +564,7 @@ const KnowledgePagesHierarchy = forwardRef<
           !paginationState.isPaginationEnd &&
           !paginationState.paginationLoading
         ) {
-          fetchKnowledgePageHierarchy(
+          fetchKnowledgePageHierarchyRef.current(
             false,
             true,
             paginationState.paging.offset +
@@ -581,7 +584,7 @@ const KnowledgePagesHierarchy = forwardRef<
         const hasChildren = node.childrenCount > 0 || !isEmpty(node.children);
 
         const nodeContent = (
-          <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+          <Box align="center" className="tw:min-w-0 tw:flex-1 tw:cursor-pointer" gap={2}>
             {isQuickLink ? (
               <QuickLinkIcon
                 className="tw:shrink-0 tw:text-quaternary"
@@ -631,24 +634,17 @@ const KnowledgePagesHierarchy = forwardRef<
             <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
               {() =>
                 isQuickLink && onQuickLinkClick ? (
-                  <div
-                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer"
+                  <button
+                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
                     data-isactive={isActive}
                     data-testid={`page-node-${displayName}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onQuickLinkClick(node.fullyQualifiedName)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onQuickLinkClick(node.fullyQualifiedName);
-                      }
-                    }}>
+                    onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
                     {nodeContent}
                     {deleteButton}
-                  </div>
+                  </button>
                 ) : (
                   <Link
-                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:hover:no-underline"
+                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
                     data-isactive={isActive}
                     data-testid={`page-node-${displayName}`}
                     to={contextCenterClassBase.getArticlePath(
