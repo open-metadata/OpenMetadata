@@ -508,6 +508,35 @@ public final class SearchUtils {
     return list.subList(from, to);
   }
 
+  /**
+   * Heavy fields stripped from the default {@code /search/query} response. The explore/search UI
+   * does not need embeddings (vector search only), {@code upstreamLineage} (lineage pages only),
+   * the completion-suggest fields, {@code schemaDefinition}, {@code customMetrics}, etc.; shipping
+   * them bloats responses and drives memory/GC pressure under load. Callers that need a specific
+   * field pass {@code includeSourceFields} to opt in.
+   */
+  public static final List<String> DEFAULT_SEARCH_SOURCE_EXCLUDES =
+      buildDefaultSearchSourceExcludes();
+
+  private static List<String> buildDefaultSearchSourceExcludes() {
+    Set<String> fields = new HashSet<>(SOURCE_FIELDS_TO_EXCLUDE);
+    fields.add(UPSTREAM_LINEAGE_FIELD);
+    return List.copyOf(fields);
+  }
+
+  /**
+   * Merge the caller's explicit {@code excludeSourceFields} with {@link
+   * #DEFAULT_SEARCH_SOURCE_EXCLUDES} so a normal search drops heavy fields by default while still
+   * honouring any caller-provided excludes.
+   */
+  public static String[] withDefaultSearchSourceExcludes(String[] callerExcludes) {
+    Set<String> merged = new HashSet<>(DEFAULT_SEARCH_SOURCE_EXCLUDES);
+    if (callerExcludes != null) {
+      merged.addAll(Arrays.asList(callerExcludes));
+    }
+    return merged.toArray(String[]::new);
+  }
+
   public static Set<String> getRequiredLineageFields(String fields) {
     if ("*".equals(fields)) {
       return Collections.emptySet();
