@@ -65,7 +65,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <button data-testid={testId}>Actions</button>
       )),
     Item: jest.fn().mockImplementation(({ label }) => <div>{label}</div>),
-    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, onAction }) => (
+      <div>
+        {(Array.isArray(children) ? children : [children]).flat().map((child) =>
+          child?.props?.id ? (
+            <button
+              data-testid={`status-option-${child.props.id}`}
+              key={child.props.id}
+              type="button"
+              onClick={() => onAction?.(child.props.id)}>
+              {child.props.label}
+            </button>
+          ) : (
+            child
+          )
+        )}
+      </div>
+    )),
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
@@ -300,5 +316,52 @@ describe('MetricListPage', () => {
     });
 
     dispatchEventSpy.mockRestore();
+  });
+
+  it('filters the listing by status across every page of metrics', async () => {
+    const { getMetrics } = require('../../../rest/metricsAPI');
+    // Approved metric on page 1, Draft metric on page 2. The listing must load
+    // every page so the Status filter sees metrics beyond the first page.
+    getMetrics.mockImplementation((params: { after?: string }) =>
+      Promise.resolve(
+        params?.after
+          ? {
+              data: [
+                {
+                  id: 'd1',
+                  name: 'draft_metric_two',
+                  fullyQualifiedName: 'd2',
+                  entityStatus: 'Draft',
+                },
+              ],
+              paging: { total: 2 },
+            }
+          : {
+              data: [
+                {
+                  id: 'a1',
+                  name: 'approved_metric',
+                  fullyQualifiedName: 'a1',
+                  entityStatus: 'Approved',
+                },
+              ],
+              paging: { after: 'cursor-2', total: 2 },
+            }
+      )
+    );
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('approved_metric')).toBeInTheDocument();
+    expect(screen.getByText('draft_metric_two')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('status-option-Draft'));
+
+    expect(screen.getByText('draft_metric_two')).toBeInTheDocument();
+    expect(screen.queryByText('approved_metric')).not.toBeInTheDocument();
   });
 });

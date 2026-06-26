@@ -30,7 +30,6 @@ import {
   Edit03,
   Eye,
   EyeOff,
-  File06,
   Plus,
   SearchLg,
   Settings01,
@@ -46,6 +45,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -61,7 +61,7 @@ import Table from '../../../components/common/Table/TableV2';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { ROUTES } from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -73,7 +73,6 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
 import { Include } from '../../../generated/type/include';
-import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -148,20 +147,40 @@ const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
 const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
   typeof value === 'string' ? value : value.target.value;
 
+const METRIC_FETCH_PAGE_SIZE = 100;
+const MAX_METRIC_FETCH_PAGES = 50;
+
+// Metrics are a curated collection, so the listing loads the full set once and
+// filters/paginates client-side. This keeps the Status and search filters
+// consistent with pagination (server cursor pagination cannot filter by
+// entityStatus, which left filtered views empty while pagination showed the
+// unfiltered total).
+const getAllMetrics = async (): Promise<Metric[]> => {
+  const collectedMetrics: Metric[] = [];
+  let after: string | undefined;
+  let fetchedPages = 0;
+
+  do {
+    const response = await getMetrics({
+      fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
+      limit: METRIC_FETCH_PAGE_SIZE,
+      after,
+      include: Include.All,
+    });
+    collectedMetrics.push(...response.data);
+    after = response.paging?.after;
+    fetchedPages += 1;
+  } while (after && fetchedPages < MAX_METRIC_FETCH_PAGES);
+
+  return collectedMetrics;
+};
+
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const {
-    pageSize,
-    currentPage,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    showPagination,
-    paging,
-    pagingCursor,
-  } = usePaging();
+  const { pageSize, currentPage, handlePageChange, handlePageSizeChange } =
+    usePaging();
 
   const { getResourcePermission } = usePermissionProvider();
   const [permission, setPermission] = useState<OperationPermission>(
@@ -197,24 +216,7 @@ const MetricListPage = () => {
       const permission = await getResourcePermission(ResourceEntity.METRIC);
       setPermission(permission);
       if (permission.ViewAll || permission.ViewBasic) {
-        const { cursorType, cursorValue } = pagingCursor ?? {};
-        let metricResponse;
-        if (cursorType && cursorValue) {
-          metricResponse = await getMetrics({
-            [cursorType]: cursorValue,
-            fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
-            limit: pageSize,
-            include: Include.All,
-          });
-        } else {
-          metricResponse = await getMetrics({
-            fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
-            limit: pageSize,
-            include: Include.All,
-          });
-        }
-        setMetrics(metricResponse.data);
-        handlePagingChange(metricResponse.paging);
+        setMetrics(await getAllMetrics());
       }
     } catch (error) {
       const errorMessage = getErrorText(
@@ -230,50 +232,23 @@ const MetricListPage = () => {
     }
   };
 
-  const fetchMetrics = useCallback(
-    async (params?: Partial<Paging>) => {
-      try {
-        setLoadingMore(true);
-        const metricResponse = await getMetrics({
-          ...params,
-          fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
-          limit: pageSize,
-          include: Include.All,
-        });
-        setMetrics(metricResponse.data);
-        handlePagingChange(metricResponse.paging);
-      } catch (error) {
-        const errorMessage = getErrorText(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.metric-plural'),
-          })
-        );
-        showErrorToast(errorMessage);
-        setError(errorMessage);
-      } finally {
-        setLoadingMore(false);
-      }
-    },
-    [handlePagingChange, pageSize, t]
-  );
-
-  const onPageChange = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        fetchMetrics({ [cursorType]: paging[cursorType] });
-        handlePageChange(
-          currentPage,
-          {
-            cursorType,
-            cursorValue: paging[cursorType],
-          },
-          pageSize
-        );
-      }
-    },
-    [fetchMetrics, handlePageChange, pageSize, paging]
-  );
+  const fetchMetrics = useCallback(async () => {
+    try {
+      setLoadingMore(true);
+      setMetrics(await getAllMetrics());
+    } catch (error) {
+      const errorMessage = getErrorText(
+        error as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.metric-plural'),
+        })
+      );
+      showErrorToast(errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [t]);
 
   const glossaryTerms = useCallback(
     (tags?: TagLabel[]) =>
@@ -362,6 +337,29 @@ const MetricListPage = () => {
       }),
     [metrics, searchText, statusFilter]
   );
+
+  const paginatedMetrics = useMemo(
+    () =>
+      filteredMetrics.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+      ),
+    [filteredMetrics, currentPage, pageSize]
+  );
+
+  // Reset to the first page when the active filters change. Skip the initial
+  // mount so a deep-linked page number from the URL is preserved, and keep
+  // handlePageChange out of the deps (its identity changes with currentPage,
+  // which would otherwise reset the page on every navigation).
+  const isFilterInitialMount = useRef(true);
+  useEffect(() => {
+    if (isFilterInitialMount.current) {
+      isFilterInitialMount.current = false;
+
+      return;
+    }
+    handlePageChange(INITIAL_PAGING_VALUE);
+  }, [searchText, statusFilter]);
 
   const selectedMetrics = useMemo(
     () => metrics.filter((metric) => selectedMetricIds.includes(metric.id)),
@@ -646,7 +644,7 @@ const MetricListPage = () => {
 
   useEffect(() => {
     init();
-  }, [pageSize, pagingCursor]);
+  }, []);
 
   if (loading) {
     return <Loader />;
@@ -732,21 +730,6 @@ const MetricListPage = () => {
                         </span>
                       </button>
                       <span className="metric-actions-separator" />
-                      <button
-                        className="metric-actions-menu-item"
-                        type="button">
-                        <span className="metric-actions-icon">
-                          <File06 size={18} />
-                        </span>
-                        <span>
-                          <span className="metric-actions-title">
-                            {t('label.rename')}
-                          </span>
-                          <span className="metric-actions-description">
-                            {t('message.metrics-rename-collection-description')}
-                          </span>
-                        </span>
-                      </button>
                       <button
                         className="metric-actions-menu-item metric-actions-menu-item-danger"
                         type="button">
@@ -920,15 +903,17 @@ const MetricListPage = () => {
             <Table
               columns={columns}
               customPaginationProps={{
-                showPagination,
+                showPagination: filteredMetrics.length > pageSize,
                 currentPage,
                 isLoading: loadingMore,
+                isNumberBased: true,
                 pageSize,
-                paging,
-                pagingHandler: onPageChange,
+                paging: { total: filteredMetrics.length },
+                pagingHandler: ({ currentPage: page }: PagingHandlerParams) =>
+                  handlePageChange(page),
                 onShowSizeChange: handlePageSizeChange,
               }}
-              dataSource={filteredMetrics}
+              dataSource={paginatedMetrics}
               loading={loadingMore}
               locale={{
                 emptyText: (
