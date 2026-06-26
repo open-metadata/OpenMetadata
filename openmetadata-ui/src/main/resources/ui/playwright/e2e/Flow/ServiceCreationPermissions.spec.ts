@@ -49,9 +49,20 @@ const adminOwnedService = new DatabaseServiceClass(
   `pw-admin-service-${uuid()}`
 );
 
+const pipelineTriggerPolicy = new PolicyClass();
+const pipelineTriggerRole = new RolesClass();
+const pipelineTriggerUser = new UserClass();
+const pipelineEditPolicy = new PolicyClass();
+const pipelineEditRole = new RolesClass();
+const pipelineEditUser = new UserClass();
+
+let ingestionPipelineName = '';
+
 const test = base.extend<{
   serviceOwnerPage: Page;
   anotherUserPage: Page;
+  pipelineTriggerPage: Page;
+  pipelineEditPage: Page;
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -65,7 +76,38 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  pipelineTriggerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineTriggerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  pipelineEditPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineEditUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
+
+const openPipelineActions = async (page: Page) => {
+  await redirectToHomePage(page);
+  await adminOwnedService.visitEntityPage(page);
+
+  await page.getByTestId('agents').click();
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+
+  const actionButton = page
+    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
+    .getByTestId('more-actions');
+
+  await actionButton.waitFor();
+  await actionButton.click();
+};
 
 test.describe(
   'Service Creation with isOwner() Permissions',
@@ -131,7 +173,112 @@ test.describe(
         ],
       });
 
-      await adminOwnedService.create(apiContext);
+      const adminServiceResponse = await adminOwnedService.create(apiContext);
+
+      await pipelineTriggerUser.create(apiContext);
+      await pipelineEditUser.create(apiContext);
+
+      // The Agents tab is only visible to service owners/admins. Owners get
+      // every operation via the system OrganizationPolicy isOwner() rule, so we
+      // make both users owners for tab visibility and then DENY the operations
+      // we want to exclude. A deny overrides the owner allow, letting us isolate
+      // Trigger vs EditAll/Deploy gating on the action dropdown.
+      await adminOwnedService.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            { id: pipelineTriggerUser.responseData.id, type: 'user' },
+            { id: pipelineEditUser.responseData.id, type: 'user' },
+          ],
+        },
+      ]);
+
+      const triggerPolicyResponse = await pipelineTriggerPolicy.create(
+        apiContext,
+        [
+          {
+            name: 'IngestionPipeline-Deny-Edit-Deploy-Rule',
+            resources: ['ingestionPipeline'],
+            operations: ['EditAll', 'Deploy'],
+            effect: 'deny',
+          },
+        ]
+      );
+      const triggerRoleResponse = await pipelineTriggerRole.create(apiContext, [
+        triggerPolicyResponse.fullyQualifiedName,
+      ]);
+
+      const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
+        {
+          name: 'IngestionPipeline-Deny-Trigger-Deploy-Rule',
+          resources: ['ingestionPipeline'],
+          operations: ['Trigger', 'Deploy'],
+          effect: 'deny',
+        },
+      ]);
+      const editRoleResponse = await pipelineEditRole.create(apiContext, [
+        editPolicyResponse.fullyQualifiedName,
+      ]);
+
+      await pipelineTriggerUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: triggerRoleResponse.id,
+              type: 'role',
+              name: triggerRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      await pipelineEditUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: editRoleResponse.id,
+              type: 'role',
+              name: editRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      ingestionPipelineName = `pw-ingestion-perm-${uuid()}`;
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: ingestionPipelineName,
+            pipelineType: 'metadata',
+            service: {
+              id: adminServiceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+
+      const createdPipeline = await createPipelineResponse.json();
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
 
       await afterAction();
     });
@@ -146,6 +293,12 @@ test.describe(
       await serviceViewerPolicy.delete(apiContext);
       await serviceOwnerUser.delete(apiContext);
       await anotherUser.delete(apiContext);
+      await pipelineTriggerRole.delete(apiContext);
+      await pipelineTriggerPolicy.delete(apiContext);
+      await pipelineEditRole.delete(apiContext);
+      await pipelineEditPolicy.delete(apiContext);
+      await pipelineTriggerUser.delete(apiContext);
+      await pipelineEditUser.delete(apiContext);
 
       await afterAction();
     });
@@ -425,6 +578,41 @@ test.describe(
         await performAdminLogin(browser);
       await serviceToUpdate.delete(cleanupContext);
       await cleanupAfterAction();
+    });
+
+    test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
+      pipelineTriggerPage: page,
+    }) => {
+      await openPipelineActions(page);
+
+      await expect(page.getByTestId('run-button')).toBeVisible();
+      await expect(page.getByTestId('edit-button')).toBeHidden();
+      await expect(page.getByTestId('kill-button')).toBeHidden();
+
+      const triggerResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+          response.request().method() === 'POST'
+      );
+
+      await page.getByTestId('run-button').click();
+
+      const response = await triggerResponse;
+
+      expect(response.status()).toBe(200);
+    });
+
+    test('User with EditAll but not Trigger/Deploy cannot run or deploy a pipeline', async ({
+      pipelineEditPage: page,
+    }) => {
+      await openPipelineActions(page);
+
+      await expect(page.getByTestId('edit-button')).toBeVisible();
+      await expect(page.getByTestId('kill-button')).toBeVisible();
+      await expect(page.getByTestId('run-button')).toBeHidden();
+      await expect(page.getByTestId('re-deploy-button')).toBeHidden();
     });
   }
 );

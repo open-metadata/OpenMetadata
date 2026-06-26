@@ -28,8 +28,8 @@ dotenv.config();
  */
 const isH2Mode = process.env.PW_PROTOCOL === 'h2';
 const defaultBaseURL = isH2Mode
-  ? 'https://localhost:8585'
-  : 'http://localhost:8585';
+  ? 'https://localhost:3002'
+  : 'http://localhost:3002';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
