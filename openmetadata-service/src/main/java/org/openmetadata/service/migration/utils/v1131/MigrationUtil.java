@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.data.Worksheet;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.MlFeature;
@@ -29,8 +30,13 @@ import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -90,6 +96,53 @@ public class MigrationUtil {
           feature -> null);
 
   private MigrationUtil() {}
+
+  /**
+   * Regenerate and redeploy every governance workflow's BPMN from the current code.
+   *
+   * <p>Seeded workflow definitions are deployed to Flowable only when first created
+   * ({@code initializeEntity} is create-only), so a jar upgrade that changes the generated BPMN —
+   * e.g. adding the {@code global_relatedEntityId} CallActivity InParameter that lets approval nodes
+   * resolve the entity by its immutable id after a move/rename — never reaches already-installed
+   * environments. Their Flowable process definition stays on the old BPMN, so newly started
+   * instances never receive {@code relatedEntityId}, fall back to the now-stale FQN, and throw
+   * {@code EntityNotFoundException} on resolve. Redeploying each definition here makes the deployed
+   * BPMN track the code again. In-flight instances keep their old definition version (Flowable
+   * preserves deployments that still have running instances); only newly started instances use the
+   * regenerated definition.
+   */
+  public static void redeployGovernanceWorkflows() {
+    int redeployed = 0;
+    int total = 0;
+    try {
+      final WorkflowDefinitionRepository repository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      final List<WorkflowDefinition> workflows =
+          repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+      total = workflows.size();
+      redeployed = redeployEach(WorkflowHandler.getInstance(), workflows);
+    } catch (Exception e) {
+      LOG.warn("[1.13.1] Skipping governance workflow redeploy; continuing", e);
+    }
+    LOG.info("[1.13.1] Redeployed {} of {} governance workflow definition(s)", redeployed, total);
+  }
+
+  private static int redeployEach(
+      final WorkflowHandler workflowHandler, final List<WorkflowDefinition> workflows) {
+    int redeployed = 0;
+    for (final WorkflowDefinition workflow : workflows) {
+      try {
+        workflowHandler.deploy(new Workflow(workflow));
+        redeployed++;
+      } catch (Exception e) {
+        LOG.warn(
+            "[1.13.1] Failed to redeploy workflow definition '{}'; continuing",
+            workflow.getFullyQualifiedName(),
+            e);
+      }
+    }
+    return redeployed;
+  }
 
   public static List<RepairSummary> repairChildFqns(CollectionDAO collectionDAO) {
     List<RepairSummary> summaries = new ArrayList<>();
