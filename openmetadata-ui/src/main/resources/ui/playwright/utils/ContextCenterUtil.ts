@@ -65,7 +65,6 @@ export const navigateToArchive = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
-
 export const buildPermissionRule = (
   namePrefix: string,
   resources: string[],
@@ -123,7 +122,6 @@ export const createDisposableArchivedDocument = async (
   return { id, name };
 };
 
-
 export async function waitForDocumentInArchive(
   apiContext: APIRequestContext,
   documentId: string,
@@ -140,17 +138,17 @@ export async function waitForDocumentInArchive(
     expect(response.ok()).toBeTruthy();
 
     const files = await response.json();
-    console.log(response, files)
 
-    const found = files.data.some(
-      (file: { id: string, deleted: boolean}) => file.id === documentId && file.deleted === true
+    const found = (files?.data ?? []).some(
+      (file: { id: string; deleted: boolean }) =>
+        file.id === documentId && file.deleted === true
     );
 
     if (found) {
       return;
     }
 
-    await new Promise(resolve => setTimeout(resolve, interval));
+    await new Promise((resolve) => setTimeout(resolve, interval));
   }
 
   throw new Error(

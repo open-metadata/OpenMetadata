@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1426,9 +1426,11 @@ test.describe('Context Center Permissions', () => {
   test.describe('Archive Permissions', () => {
     test('user with view-only permission cannot see restore or delete actions on an archived document', async ({
       viewOnlyPage,
-      browser
+      browser,
     }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(viewOnlyPage);
@@ -1442,9 +1444,11 @@ test.describe('Context Center Permissions', () => {
 
     test('user with createAll permission cannot see restore or delete actions on an archived document', async ({
       createAllPage,
-      browser
+      browser,
     }) => {
-       const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(createAllPage);
@@ -1462,7 +1466,9 @@ test.describe('Context Center Permissions', () => {
       editAllPage,
       browser,
     }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(editAllPage);
@@ -1513,7 +1519,9 @@ test.describe('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(deleteAllPage);
@@ -1535,7 +1543,7 @@ test.describe('Context Center Permissions', () => {
             apiContext,
             'cc-archive-delete-doc'
           );
-          
+
         await waitForDocumentInArchive(apiContext, disposableArchivedDocId);
         await afterAction();
 
@@ -1563,9 +1571,11 @@ test.describe('Context Center Permissions', () => {
 
     test('user with all permissions can see restore and delete actions on an archived document', async ({
       allPermissionPage,
-      browser
+      browser,
     }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(allPermissionPage);
