@@ -106,6 +106,34 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     await afterAction();
   });
 
+  test('reports a validation summary and blocks import for an ontology with no terms', async ({
+    browser,
+  }) => {
+    const { page, afterAction } = await performAdminLogin(browser);
+    await glossary.visitPage(page);
+
+    await page.getByTestId('manage-button').click();
+    await page.getByText('Import Ontology').click();
+
+    await expect(page.getByTestId('upload-ontology-dragger')).toBeVisible();
+
+    // A syntactically valid ontology that declares no concepts: the dry-run
+    // validation succeeds but materializes 0 terms, so the modal shows a summary
+    // and keeps the commit action disabled.
+    await page
+      .locator('[data-testid="upload-ontology-dragger"] input[type="file"]')
+      .setInputFiles({
+        name: 'empty.ttl',
+        mimeType: 'text/turtle',
+        buffer: Buffer.from('@prefix ex: <http://example.com/ns#> .\n'),
+      });
+
+    await expect(page.getByTestId('ontology-validation-summary')).toBeVisible();
+    await expect(page.getByTestId('import-ontology-submit')).toBeDisabled();
+
+    await afterAction();
+  });
+
   test('hides Import Ontology from a user without glossary edit permission', async ({
     browser,
   }) => {

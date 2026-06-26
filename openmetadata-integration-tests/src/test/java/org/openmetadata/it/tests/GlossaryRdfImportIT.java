@@ -40,6 +40,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityStatus;
 
 /**
  * End-to-end test for the native OWL/RDF ontology import endpoint
@@ -105,6 +106,10 @@ public class GlossaryRdfImportIT {
     assertNotNull(provider.getIri(), "canonical ontology IRI is persisted");
     assertTrue(provider.getSynonyms().contains("HCP"), "altLabel -> synonym");
     assertFalse(provider.getConceptMappings().isEmpty(), "SKOS closeMatch -> conceptMapping");
+    assertEquals(
+        EntityStatus.APPROVED,
+        provider.getEntityStatus(),
+        "without reviewers, imported terms default to Approved");
 
     GlossaryTerm physician = getTerm(glossaryName + ".HealthcareProvider.Physician");
     assertNotNull(physician.getParent(), "rdfs:subClassOf -> parent");
@@ -321,6 +326,22 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void importIntoGlossaryWithReviewersCreatesDraftTerms(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    User reviewer = UserTestFactory.createUser(ns, "ontologyReviewer");
+    setGlossaryReviewer(glossary.getId().toString(), reviewer);
+
+    importRdf(glossary.getName(), false);
+
+    GlossaryTerm provider = getTerm(glossary.getName() + ".HealthcareProvider");
+    assertEquals(
+        EntityStatus.DRAFT,
+        provider.getEntityStatus(),
+        "terms imported into a glossary with reviewers must be Draft, not auto-published: "
+            + provider.getEntityStatus());
+  }
+
+  @Test
   void importsValidConceptsAndGracefullySkipsDanglingReferences(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String partialOntology =
@@ -453,6 +474,25 @@ public class GlossaryRdfImportIT {
             .build();
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     assertEquals(200, response.statusCode(), "failed to set glossary owner: " + response.body());
+  }
+
+  private void setGlossaryReviewer(String glossaryId, User reviewer) throws Exception {
+    String body =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/reviewers\",\"value\":[{\"id\":\"%s\",\"type\":\"user\"}]}]",
+            reviewer.getId());
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    String.format("%s/v1/glossaries/%s", SdkClients.getServerUrl(), glossaryId)))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .timeout(Duration.ofSeconds(30))
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(body))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), "failed to set glossary reviewer: " + response.body());
   }
 
   private GlossaryTerm getTerm(String fqn) throws Exception {
