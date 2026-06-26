@@ -682,7 +682,9 @@ const ContextCenterMemoriesPage: FC = () => {
                 onAction={(key) => {
                   const next = String(key);
                   const value =
-                    next === 'all-author' || next === selectedAuthor ? '' : next;
+                    next === 'all-author' || next === selectedAuthor
+                      ? ''
+                      : next;
                   setSelectedAuthor(value);
                   if (activeFilter === 'all') {
                     setActiveFilter('');
@@ -695,7 +697,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   textValue={t('label.all-entity', {
                     entity: t('label.author'),
                   })}>
-                    {t('label.all-entity', { entity: t('label.author') })}
+                  {t('label.all-entity', { entity: t('label.author') })}
                 </Dropdown.Item>
                 <Dropdown.Separator />
                 {authorOptions.map((opt) => (

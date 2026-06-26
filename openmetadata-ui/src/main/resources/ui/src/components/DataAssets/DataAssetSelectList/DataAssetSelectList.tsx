@@ -14,8 +14,8 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataAssetOption } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import {
-  DataAssetSelectListProps,
   DataAssetPickerOption,
+  DataAssetSelectListProps,
 } from './DataAssetPicker.interface';
 import DataAssetPickerShell from './DataAssetPickerShell';
 import { useAsyncDataAssetOptions } from './useAsyncDataAssetOptions';

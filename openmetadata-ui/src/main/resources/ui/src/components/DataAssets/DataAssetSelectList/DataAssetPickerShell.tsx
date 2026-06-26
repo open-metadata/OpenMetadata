@@ -89,9 +89,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   // flat list including the virtual "__all__" entry at index 0 when enabled
   const navigableOptions = useMemo(
     () =>
-      allowAllOption
-        ? [{ id: '__all__', label: '' }, ...options]
-        : options,
+      allowAllOption ? [{ id: '__all__', label: '' }, ...options] : options,
     [allowAllOption, options]
   );
 
