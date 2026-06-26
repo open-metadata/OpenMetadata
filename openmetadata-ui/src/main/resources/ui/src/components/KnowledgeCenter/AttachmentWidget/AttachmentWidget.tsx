@@ -22,6 +22,10 @@ import {
 import { Copy06, Download01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import {
   AttachmentItem,
@@ -45,13 +49,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
 
   const content = useMemo(() => {
     if (attachments.length === 0) {
-      return (
-        <Typography className="tw:text-center tw:text-gray-500" size="text-xs">
-          {t('message.no-entity-data-available', {
-            entity: t('label.attachment-plural'),
-          })}
-        </Typography>
-      );
+      return null;
     }
 
     return (
@@ -103,9 +101,26 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
     );
   }, [attachments, hasPermission]);
 
+  const headerExtra = hasPermission ? (
+    attachments.length === 0 ? (
+      <WidgetPlusButton
+        data-testid="add-attachment"
+        title={t('label.add-entity', { entity: t('label.attachment-plural') })}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-attachment"
+        title={t('label.edit-entity', {
+          entity: t('label.attachment-plural'),
+        })}
+      />
+    )
+  ) : null;
+
   return (
     <WidgetCard
       dataTestId="attachment-widget"
+      headerExtra={headerExtra}
       isExpandDisabled={attachments.length === 0}
       title={t('label.attachment-plural')}>
       {content}

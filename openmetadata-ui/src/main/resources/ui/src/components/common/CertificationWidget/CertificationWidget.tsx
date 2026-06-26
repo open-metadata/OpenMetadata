@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -24,7 +23,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
-import { WidgetEditButton } from '../WidgetActionButton/WidgetActionButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 
 const CertificationWidget = () => {
@@ -57,16 +59,24 @@ const CertificationWidget = () => {
   };
 
   const headerExtra = canEdit ? (
-    <WidgetEditButton
-      data-testid="edit-certification"
-      title={t('label.edit-entity', { entity: t('label.certification') })}
-      onClick={() => setIsEditing(true)}
-    />
+    entity.certification ? (
+      <WidgetEditButton
+        data-testid="edit-certification"
+        title={t('label.edit-entity', { entity: t('label.certification') })}
+        onClick={() => setIsEditing(true)}
+      />
+    ) : (
+      <WidgetPlusButton
+        data-testid="add-certification"
+        title={t('label.add-entity', { entity: t('label.certification') })}
+        onClick={() => setIsEditing(true)}
+      />
+    )
   ) : null;
 
-  const content = (
+  const content = entity.certification ? (
     <Certification
-      currentCertificate={entity.certification?.tagLabel?.tagFQN}
+      currentCertificate={entity.certification.tagLabel?.tagFQN}
       permission={canEdit}
       popoverProps={{
         open: isEditing,
@@ -79,23 +89,16 @@ const CertificationWidget = () => {
       onCertificationUpdate={handleCertificationUpdate}
       onClose={() => setIsEditing(false)}>
       <div data-testid="certification-label">
-        {entity.certification ? (
-          <CertificationTag showName certification={entity.certification} />
-        ) : (
-          <Typography className="tw:text-gray-500" size="text-xs">
-            {t('label.no-entity-assigned', {
-              entity: t('label.certification'),
-            })}
-          </Typography>
-        )}
+        <CertificationTag showName certification={entity.certification} />
       </div>
     </Certification>
-  );
+  ) : null;
 
   return (
     <WidgetCard
       dataTestId="certification"
       headerExtra={headerExtra}
+      isExpandDisabled={!entity.certification}
       title={t('label.certification')}>
       {content}
     </WidgetCard>

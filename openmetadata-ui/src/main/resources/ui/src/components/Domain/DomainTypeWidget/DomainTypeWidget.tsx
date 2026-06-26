@@ -17,7 +17,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DomainTypeSelectForm from '../DomainTypeSelectForm/DomainTypeSelectForm.component';
@@ -49,14 +52,22 @@ export const DomainTypeWidget = () => {
     setEditDomainType(false);
   };
 
+  const domainTypeActionButton = domain.domainType ? (
+    <WidgetEditButton
+      data-testid="edit-domainType-button"
+      title={t('label.edit-entity', { entity: t('label.domain-type') })}
+      onClick={() => setEditDomainType(true)}
+    />
+  ) : (
+    <WidgetPlusButton
+      data-testid="add-domainType-button"
+      title={t('label.add-entity', { entity: t('label.domain-type') })}
+      onClick={() => setEditDomainType(true)}
+    />
+  );
+
   const headerExtra =
-    !isVersionView && editAllPermission && domain.domainType ? (
-      <WidgetEditButton
-        data-testid="edit-domainType-button"
-        title={t('label.edit-entity', { entity: t('label.domain-type') })}
-        onClick={() => setEditDomainType(true)}
-      />
-    ) : null;
+    !isVersionView && editAllPermission ? domainTypeActionButton : null;
 
   const content = (
     <>
@@ -81,6 +92,7 @@ export const DomainTypeWidget = () => {
       dataTestId="domainType"
       headerExtra={headerExtra}
       helperText={domainTypeTooltipDataRender()}
+      isExpandDisabled={!domain.domainType}
       title={t('label.domain-type')}>
       {content}
     </WidgetCard>

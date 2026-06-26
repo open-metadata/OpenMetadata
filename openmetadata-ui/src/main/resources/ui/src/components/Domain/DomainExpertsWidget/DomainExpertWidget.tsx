@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import type { ComponentType } from 'react';
-import { lazy, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import type { Domain } from '../../../generated/entity/domains/domain';
@@ -20,7 +19,6 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import {
   WidgetEditButton,
@@ -28,30 +26,6 @@ import {
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-
-const EditIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.EditIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
-
-const PlusIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.PlusIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
-
-const UserSelectableList = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/UserSelectableList/UserSelectableList.component').then(
-      (module) => ({ default: module.UserSelectableList })
-    )
-  )
-) as ComponentType<UserSelectableListProps>;
 
 export const DomainExpertWidget = () => {
   const {

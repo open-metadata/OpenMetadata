@@ -22,7 +22,7 @@ import {
   WidgetEditButton,
   WidgetPlusButton,
   WidgetRequestButton,
-} from 'src/components/common/WidgetActionButton/WidgetActionButton';
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
@@ -27,7 +26,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import TierCard from '../TierCard/TierCard';
-import { WidgetEditButton } from '../WidgetActionButton/WidgetActionButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './TierWidget.less';
 const TierWidget = () => {
@@ -69,11 +71,19 @@ const TierWidget = () => {
   );
 
   const headerExtra = canEdit ? (
-    <WidgetEditButton
-      data-testid="edit-tier"
-      title={t('label.edit-entity', { entity: t('label.tier') })}
-      onClick={() => setIsEditing(true)}
-    />
+    tier ? (
+      <WidgetEditButton
+        data-testid="edit-tier"
+        title={t('label.edit-entity', { entity: t('label.tier') })}
+        onClick={() => setIsEditing(true)}
+      />
+    ) : (
+      <WidgetPlusButton
+        data-testid="add-tier"
+        title={t('label.add-entity', { entity: t('label.tier') })}
+        onClick={() => setIsEditing(true)}
+      />
+    )
   ) : null;
 
   const tierDisplay = tier ? (
@@ -83,39 +93,36 @@ const TierWidget = () => {
       tag={tier}
       tagProps={{ 'data-testid': 'Tier' }}
     />
-  ) : (
-    <Typography className="tw:text-gray-500" data-testid="Tier" size="text-xs">
-      {t('label.no-entity-assigned', {
-        entity: t('label.tier'),
-      })}
-    </Typography>
-  );
+  ) : null;
 
-  const content = isEditing ? (
-    <TierCard
-      currentTier={tier?.tagFQN}
-      footerActionButtonsClassName="p-x-md"
-      popoverProps={{
-        open: true,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
-      tierCardClassName="tier-widget-popover"
-      updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
-      <div data-testid="tier-selector-display">{tierDisplay}</div>
-    </TierCard>
-  ) : (
-    tierDisplay
-  );
+  const content = tier ? (
+    isEditing ? (
+      <TierCard
+        currentTier={tier.tagFQN}
+        footerActionButtonsClassName="p-x-md"
+        popoverProps={{
+          open: true,
+          onOpenChange: (visible: boolean) => {
+            if (!visible) {
+              setIsEditing(false);
+            }
+          },
+        }}
+        tierCardClassName="tier-widget-popover"
+        updateTier={handleTierUpdate}
+        onClose={() => setIsEditing(false)}>
+        <div data-testid="tier-selector-display">{tierDisplay}</div>
+      </TierCard>
+    ) : (
+      tierDisplay
+    )
+  ) : null;
 
   return (
     <WidgetCard
       dataTestId="tier"
       headerExtra={headerExtra}
+      isExpandDisabled={!tier}
       title={t('label.tier')}>
       {content}
     </WidgetCard>

@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Typography as AntDTypography, Card, Tooltip } from 'antd';
+import { Card, Tooltip, Typography as AntDTypography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,7 +29,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
@@ -117,11 +118,7 @@ export const DomainLabelV2 = <
   }, [domains]);
 
   const domainLink = useMemo(() => {
-    if (
-      activeDomain &&
-      Array.isArray(activeDomain) &&
-      activeDomain.length > 0
-    ) {
+    if (!isEmpty(activeDomain)) {
       return activeDomain.map((domain) => {
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
@@ -154,16 +151,9 @@ export const DomainLabelV2 = <
           </div>
         );
       });
-    } else {
-      return (
-        <Typography
-          className={classNames('tw:text-gray-500', props.textClassName)}
-          data-testid="no-domain-text"
-          size="text-xs">
-          {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography>
-      );
     }
+
+    return null;
   }, [activeDomain]);
 
   const hasPermission = useMemo(() => {
@@ -171,24 +161,38 @@ export const DomainLabelV2 = <
   }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
+    if (!hasPermission) {
+      return null;
+    }
+
+    const actionButton = isEmpty(activeDomain) ? (
+      <WidgetPlusButton
+        data-testid="add-domain"
+        title={t('label.add-entity', {
+          entity: t('label.domain-plural'),
+        })}
+        onClick={(e) => e.stopPropagation()}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-domain"
+        disabled={!hasPermission}
+        title={t('label.edit-entity', {
+          entity: t('label.domain-plural'),
+        })}
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+
     return (
-      hasPermission && (
-        <DomainSelectableList
-          hasPermission={Boolean(hasPermission)}
-          isClearable={props.isClearable}
-          multiple={props.multiple}
-          selectedDomain={activeDomain}
-          onUpdate={handleDomainSave}>
-          <WidgetEditButton
-            data-testid="add-domain"
-            disabled={!hasPermission}
-            title={t('label.edit-entity', {
-              entity: t('label.domain-plural'),
-            })}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </DomainSelectableList>
-      )
+      <DomainSelectableList
+        hasPermission={Boolean(hasPermission)}
+        isClearable={props.isClearable}
+        multiple={props.multiple}
+        selectedDomain={activeDomain}
+        onUpdate={handleDomainSave}>
+        {actionButton}
+      </DomainSelectableList>
     );
   }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
 
@@ -197,11 +201,13 @@ export const DomainLabelV2 = <
       return (
         <WidgetCard
           headerExtra={selectableList}
-          isExpandDisabled={!Array.isArray(domainLink)}
+          isExpandDisabled={isEmpty(activeDomain)}
           title={t('label.domain-plural')}>
-          <div className="d-flex items-center gap-1 flex-wrap">
-            {domainLink}
-          </div>
+          {domainLink && (
+            <div className="d-flex items-center gap-1 flex-wrap">
+              {domainLink}
+            </div>
+          )}
         </WidgetCard>
       );
     }

@@ -37,7 +37,9 @@ const WidgetCard = ({
   className,
 }: WidgetCardProps) => {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [isExpanded, setIsExpanded] = useState(
+    isExpandDisabled ? false : defaultExpanded
+  );
 
   const handleExpandClick = useCallback(() => {
     setIsExpanded((prev) => {
@@ -48,8 +50,8 @@ const WidgetCard = ({
   }, [onExpandStateChange]);
 
   useEffect(() => {
-    setIsExpanded(defaultExpanded);
-  }, [defaultExpanded]);
+    setIsExpanded(isExpandDisabled ? false : defaultExpanded);
+  }, [defaultExpanded, isExpandDisabled]);
 
   return (
     <Card
