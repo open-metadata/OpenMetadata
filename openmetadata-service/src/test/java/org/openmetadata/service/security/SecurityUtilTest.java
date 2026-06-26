@@ -442,6 +442,39 @@ class SecurityUtilTest {
   }
 
   @Test
+  void testIsOpenMetadataIssuedTokenRequiresMatchingIssuerAndKeyId() {
+    Map<String, Claim> claims = Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertTrue(
+        SecurityUtil.isOpenMetadataIssuedToken(claims, "om-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            claims, "attacker-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("evil.com")),
+            "om-key",
+            "open-metadata.org",
+            "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(Map.of(), "om-key", "open-metadata.org", "om-key"));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenFalseWhenServerHasNoSigningIdentity() {
+    Map<String, Claim> spoofed =
+        Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", null, "om-key"));
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "open-metadata.org", null));
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "", ""));
+  }
+
+  @Test
   void testWriteJsonResponseSetsBodyHeadersAndStatus() throws IOException {
     HttpServletResponse response = mock(HttpServletResponse.class);
     RecordingServletOutputStream outputStream = new RecordingServletOutputStream();
