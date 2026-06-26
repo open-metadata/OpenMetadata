@@ -480,6 +480,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  const hasActiveFilterQuery = useMemo(
+    () => hasQuickFilterValues || !isEmpty(browseFields) || Boolean(sqlQuery),
+    [hasQuickFilterValues, browseFields, sqlQuery]
+  );
 
   const selectedEntityTypes = useMemo(() => {
     const entityTypeField = selectedQuickFilters.find(
@@ -530,6 +534,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     return (
       <ExploreTree
+        additionalQueryFilter={queryFilter as QueryFilterInterface | undefined}
         selectedEntityTypes={selectedEntityTypes}
         onFieldValueSelect={handleQuickFiltersChange}
         onTreeSelect={handleExploreTreeSelect}
@@ -544,6 +549,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     loading,
     onChangeSearchIndex,
     selectedEntityTypes,
+    queryFilter,
   ]);
 
   useEffect(() => {
@@ -727,9 +733,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {(hasQuickFilterValues ||
-            !isEmpty(browseFields) ||
-            !searchQueryParam) && (
+          {(hasActiveFilterQuery || !searchQueryParam) && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
@@ -739,6 +743,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     : t('message.browse-estate-query-placeholder')
                 }
                 fields={selectedQuickFilters}
+                hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}
                 onRemoveBrowseLevel={handleRemoveBrowseLevel}
                 onRemoveValue={handleRemoveQuickFilterValue}

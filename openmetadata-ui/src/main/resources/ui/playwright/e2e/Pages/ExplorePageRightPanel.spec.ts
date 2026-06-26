@@ -45,7 +45,10 @@ import { CustomPropertiesPageObject } from '../PageObject/Explore/CustomProperti
 import { DataQualityPageObject } from '../PageObject/Explore/DataQualityPageObject';
 import { LineagePageObject } from '../PageObject/Explore/LineagePageObject';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
-import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
+import {
+  RightPanelPageObject,
+  RIGHT_PANEL_TAB,
+} from '../PageObject/Explore/RightPanelPageObject';
 import { SchemaPageObject } from '../PageObject/Explore/SchemaPageObject';
 
 const domainEntity = new Domain();
@@ -392,108 +395,110 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('Schema panel tests', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should display and verify schema fields for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            schema,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('schema'),
-              `Schema tab not available for ${entityType}`
-            );
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.SCHEMA
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should display and verify schema fields for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              schema,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
-            });
-            await rightPanel.waitForPanelVisible();
-            await schema.navigateToSchemaTab();
-            await schema.shouldBeVisible();
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelVisible();
+              await schema.navigateToSchemaTab();
+              await schema.shouldBeVisible();
 
-            // Extract fields from DOM to test search dynamically
-            const fieldCards = adminPage.locator(
-              '.schema-field-cards-container .field-card'
-            );
-            if ((await fieldCards.count()) === 0) {
-              // Wait for fields to render
-              await fieldCards
-                .first()
-                .waitFor({ state: 'visible', timeout: 5000 })
-                .catch(() => null);
-            }
-            const count = await fieldCards.count();
-
-            if (count >= 2) {
-              const firstCardId = await fieldCards
-                .nth(0)
-                .getAttribute('data-testid');
-              const secondCardId = await fieldCards
-                .nth(1)
-                .getAttribute('data-testid');
-
-              const firstField = firstCardId?.replace('field-card-', '');
-              const secondField = secondCardId?.replace('field-card-', '');
-
-              // Entities that use server-side schema search
-              const usesServerSideSearch = [
-                'table',
-                'dashboardDataModel',
-              ].includes(entityType);
-
-              if (firstField && secondField) {
-                // 1. Search for first field
-                const searchRes = usesServerSideSearch
-                  ? adminPage.waitForResponse(
-                      (res) =>
-                        res.url().includes('columns/search?offset=') &&
-                        res.url().includes('q=') &&
-                        res.status() === 200
-                    )
-                  : undefined;
-                await schema.searchFor(firstField);
-                if (searchRes) await searchRes;
-
-                await schema.shouldShowFieldByName(firstField);
-                await schema.shouldNotShowFieldByName(secondField);
-
-                // 2. Clear search
-                const clearRes = usesServerSideSearch
-                  ? adminPage.waitForResponse(
-                      (res) =>
-                        res.url().includes('/columns?offset=') &&
-                        res.status() === 200
-                    )
-                  : undefined;
-                await schema.clearSearch();
-                if (clearRes) await clearRes;
-
-                await schema.shouldShowFieldByName(firstField);
-                await schema.shouldShowFieldByName(secondField);
-
-                // 3. Search for non-existent field
-                const noMatchRes = usesServerSideSearch
-                  ? adminPage.waitForResponse(
-                      (res) =>
-                        res.url().includes('columns/search?offset=') &&
-                        res.url().includes('q=') &&
-                        res.status() === 200
-                    )
-                  : undefined;
-                await schema.searchFor('zzz_no_match_xyz');
-                if (noMatchRes) await noMatchRes;
-
-                await schema.shouldNotShowFieldByName(firstField);
-                await schema.shouldShowNoResults();
+              // Extract fields from DOM to test search dynamically
+              const fieldCards = adminPage.locator(
+                '.schema-field-cards-container .field-card'
+              );
+              if ((await fieldCards.count()) === 0) {
+                // Wait for fields to render
+                await fieldCards
+                  .first()
+                  .waitFor({ state: 'visible', timeout: 5000 })
+                  .catch(() => null);
               }
-            }
+              const count = await fieldCards.count();
+
+              if (count >= 2) {
+                const firstCardId = await fieldCards
+                  .nth(0)
+                  .getAttribute('data-testid');
+                const secondCardId = await fieldCards
+                  .nth(1)
+                  .getAttribute('data-testid');
+
+                const firstField = firstCardId?.replace('field-card-', '');
+                const secondField = secondCardId?.replace('field-card-', '');
+
+                // Entities that use server-side schema search
+                const usesServerSideSearch = [
+                  'table',
+                  'dashboardDataModel',
+                ].includes(entityType);
+
+                if (firstField && secondField) {
+                  // 1. Search for first field
+                  const searchRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('columns/search?offset=') &&
+                          res.url().includes('q=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.searchFor(firstField);
+                  if (searchRes) await searchRes;
+
+                  await schema.shouldShowFieldByName(firstField);
+                  await schema.shouldNotShowFieldByName(secondField);
+
+                  // 2. Clear search
+                  const clearRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('/columns?offset=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.clearSearch();
+                  if (clearRes) await clearRes;
+
+                  await schema.shouldShowFieldByName(firstField);
+                  await schema.shouldShowFieldByName(secondField);
+
+                  // 3. Search for non-existent field
+                  const noMatchRes = usesServerSideSearch
+                    ? adminPage.waitForResponse(
+                        (res) =>
+                          res.url().includes('columns/search?offset=') &&
+                          res.url().includes('q=') &&
+                          res.status() === 200
+                      )
+                    : undefined;
+                  await schema.searchFor('zzz_no_match_xyz');
+                  if (noMatchRes) await noMatchRes;
+
+                  await schema.shouldNotShowFieldByName(firstField);
+                  await schema.shouldShowNoResults();
+                }
+              }
+            });
           });
-        });
       });
 
       test.describe('Right panel validation by asset type', () => {
@@ -516,65 +521,62 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('Lineage - Navigation and Expansion', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to lineage and test controls for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            lineage,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('lineage'),
-              `Lineage tab not available for ${entityType}`
-            );
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.LINEAGE
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should navigate to lineage and test controls for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              lineage,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelVisible();
+              await lineage.navigateToLineageTab();
+              await lineage.shouldBeVisible();
+              await lineage.shouldShowLineageControls();
             });
-            await rightPanel.waitForPanelVisible();
-            await lineage.navigateToLineageTab();
-            await lineage.shouldBeVisible();
-            await lineage.shouldShowLineageControls();
-          });
 
-          test(`Should handle lineage expansion buttons for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            lineage,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('lineage'),
-              `Lineage tab not available for ${entityType}`
-            );
+            test(`Should handle lineage expansion buttons for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              lineage,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await lineage.navigateToLineageTab();
+              const hasUpstreamButton = await lineage.hasUpstreamButton();
+              if (hasUpstreamButton) {
+                await lineage.clickUpstreamButton();
+              }
+
+              const hasDownstreamButton = await lineage.hasDownstreamButton();
+              if (hasDownstreamButton) {
+                await lineage.clickDownstreamButton();
+              }
             });
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await lineage.navigateToLineageTab();
-            const hasUpstreamButton = await lineage.hasUpstreamButton();
-            if (hasUpstreamButton) {
-              await lineage.clickUpstreamButton();
-            }
-
-            const hasDownstreamButton = await lineage.hasDownstreamButton();
-            if (hasDownstreamButton) {
-              await lineage.clickDownstreamButton();
-            }
           });
-        });
       });
 
       test.describe('Lineage - With real upstream and downstream data', () => {
@@ -659,85 +661,77 @@ test.describe('Right Panel Test Suite', () => {
       });
 
       test.describe('DataQuality - Comprehensive UI Verification', () => {
-        Object.entries(entityMap).forEach(([entityType, entityInstance]) => {
-          test(`Should navigate to data quality and verify tab structure for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
+        Object.entries(entityMap)
+          .filter(([, e]) =>
+            RightPanelPageObject.isTabAvailableForEntity(
+              e,
+              RIGHT_PANEL_TAB.DATA_QUALITY
+            )
+          )
+          .forEach(([entityType, entityInstance]) => {
+            test(`Should navigate to data quality and verify tab structure for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
             });
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-          });
 
-          test(`Should display incidents tab for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
+            test(`Should display incidents tab for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
+              await dataQuality.navigateToIncidentsTab();
+              await dataQuality.shouldShowIncidentsTab();
             });
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-            await dataQuality.navigateToIncidentsTab();
-            await dataQuality.shouldShowIncidentsTab();
-          });
 
-          test(`Should verify empty state when no test cases for ${entityType}`, async ({
-            adminPage,
-            rightPanel,
-            dataQuality,
-          }) => {
-            rightPanel.setEntityConfig(entityInstance);
-            // eslint-disable-next-line playwright/no-skipped-test -- conditional skip based on entity type
-            test.skip(
-              !rightPanel.isTabAvailable('data quality'),
-              `Data Quality tab not available for ${entityType}`
-            );
+            test(`Should verify empty state when no test cases for ${entityType}`, async ({
+              adminPage,
+              rightPanel,
+              dataQuality,
+            }) => {
+              rightPanel.setEntityConfig(entityInstance);
 
-            const fqn = getEntityFqn(entityInstance);
-            await navigateToExploreAndSelectEntity({
-              page: adminPage,
-              entityName: getEntityDisplayName(entityInstance.entity),
-              endpoint: entityInstance.endpoint,
-              fullyQualifiedName: fqn,
+              const fqn = getEntityFqn(entityInstance);
+              await navigateToExploreAndSelectEntity({
+                page: adminPage,
+                entityName: getEntityDisplayName(entityInstance.entity),
+                endpoint: entityInstance.endpoint,
+                fullyQualifiedName: fqn,
+              });
+              await rightPanel.waitForPanelLoaded();
+              await rightPanel.waitForPanelVisible();
+              await dataQuality.navigateToDataQualityTab();
+              await dataQuality.shouldBeVisible();
+              await dataQuality.shouldShowTestCaseCardsCount(0);
             });
-            await rightPanel.waitForPanelLoaded();
-            await rightPanel.waitForPanelVisible();
-            await dataQuality.navigateToDataQualityTab();
-            await dataQuality.shouldBeVisible();
-            await dataQuality.shouldShowTestCaseCardsCount(0);
           });
-        });
       });
 
       test.describe('DataQuality - With real test data and incidents', () => {
