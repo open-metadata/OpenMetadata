@@ -416,8 +416,8 @@ jobs:
               // 1. A non-"safe to test" label was added — build skips intentionally for fork security.
               //    Tests will run once "safe to test" is applied or code is pushed.
               // 2. No relevant paths changed — nothing to test.
-              const eventAction = '${{ github.event.action }}';
-              const labelName   = '${{ github.event.label.name }}';
+              const eventAction = context.payload.action;
+              const labelName   = context.payload.label?.name ?? '';
               if (eventAction === 'labeled' && labelName !== 'safe to test') {
                 console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
               } else {
