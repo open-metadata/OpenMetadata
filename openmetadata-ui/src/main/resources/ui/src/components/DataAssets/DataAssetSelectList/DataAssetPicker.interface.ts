@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ReactNode } from 'react';
-import { SearchIndex } from 'src/enums/search.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { DataAssetAsyncSelectListProps } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 export interface DataAssetPickerOption {
@@ -63,7 +63,7 @@ export interface DataAssetFilterPopoverProps {
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
 }
 
-export interface DataAssetMultiSelectPopoverProps
+export interface DataAssetSelectListProps
   extends DataAssetAsyncSelectListProps {
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;

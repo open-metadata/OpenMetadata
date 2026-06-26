@@ -19,7 +19,7 @@ import {
 } from '@testing-library/react';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import DataAssetMultiSelectPopover from './DataAssetMultiSelectPopover';
+import DataAssetSelectList from './DataAssetSelectList';
 
 jest.mock('../../../rest/searchAPI');
 jest.mock('../../../utils/Assets/AssetsUtils', () => ({
@@ -78,7 +78,7 @@ const mockSearchResponse = {
 
 const openPopover = () => fireEvent.click(screen.getByTestId(TRIGGER_TEST_ID));
 
-describe('DataAssetMultiSelectPopover', () => {
+describe('DataAssetSelectList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (searchQuery as jest.Mock).mockResolvedValue(mockSearchResponse);
@@ -86,7 +86,7 @@ describe('DataAssetMultiSelectPopover', () => {
 
   it('renders the trigger provided by the caller', () => {
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Pick asset
@@ -101,7 +101,7 @@ describe('DataAssetMultiSelectPopover', () => {
 
   it('opens the popover and loads options on trigger click', async () => {
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open
@@ -126,7 +126,7 @@ describe('DataAssetMultiSelectPopover', () => {
   it('calls onChange with selected option when an asset is clicked', async () => {
     const onChange = jest.fn();
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open
@@ -171,7 +171,7 @@ describe('DataAssetMultiSelectPopover', () => {
     ];
 
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         initialOptions={initialOptions}
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
@@ -198,7 +198,7 @@ describe('DataAssetMultiSelectPopover', () => {
 
   it('filters out assets whose fqn is in filterFqns', async () => {
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         filterFqns={['db.schema.orders']}
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
@@ -222,7 +222,7 @@ describe('DataAssetMultiSelectPopover', () => {
 
   it('passes searchIndex to the search API', async () => {
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open
@@ -251,7 +251,7 @@ describe('DataAssetMultiSelectPopover', () => {
     );
 
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open
@@ -265,7 +265,7 @@ describe('DataAssetMultiSelectPopover', () => {
       openPopover();
     });
 
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
+    expect(screen.getByText('label.loading...')).toBeInTheDocument();
 
     await act(async () => {
       resolveSearch(mockSearchResponse);
@@ -274,7 +274,7 @@ describe('DataAssetMultiSelectPopover', () => {
 
   it('stays open in multiple selection mode after selecting an option', async () => {
     render(
-      <DataAssetMultiSelectPopover
+      <DataAssetSelectList
         renderTrigger={({ open }) => (
           <button data-testid={TRIGGER_TEST_ID} onClick={open}>
             Open

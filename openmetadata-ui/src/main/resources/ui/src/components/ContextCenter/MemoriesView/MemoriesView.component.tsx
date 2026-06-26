@@ -173,18 +173,28 @@ const MemoryRow: FC<MemoryRowProps> = ({
     [memory.name]
   );
 
-  const linkedEntities = useMemo(() => {
+  const { linkedEntities, hiddenLinkedEntitiesCount } = useMemo(() => {
     const entities = [memory.primaryEntity, ...(memory.relatedEntities ?? [])];
     const seenIds = new Set<string>();
 
-    return entities.filter((entity): entity is EntityReference => {
-      if (!entity || seenIds.has(entity.id)) {
-        return false;
-      }
-      seenIds.add(entity.id);
+    const deduplicated = entities.filter(
+      (entity): entity is EntityReference => {
+        if (!entity || seenIds.has(entity.id)) {
+          return false;
+        }
+        seenIds.add(entity.id);
 
-      return true;
-    });
+        return true;
+      }
+    );
+
+    return {
+      linkedEntities: deduplicated.slice(0, MAX_VISIBLE_LINKED_ENTITIES),
+      hiddenLinkedEntitiesCount: Math.max(
+        0,
+        deduplicated.length - MAX_VISIBLE_LINKED_ENTITIES
+      ),
+    };
   }, [memory.primaryEntity, memory.relatedEntities]);
 
   return (
@@ -266,9 +276,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
           {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {linkedEntities
-                .slice(0, MAX_VISIBLE_LINKED_ENTITIES)
-                .map((entity) => (
+              {linkedEntities.map((entity) => (
                   <Badge
                     className="tw:max-w-60 tw:min-w-0"
                     key={entity.id}
@@ -292,12 +300,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
                     </Typography>
                   </Badge>
                 ))}
-              {linkedEntities.length > MAX_VISIBLE_LINKED_ENTITIES && (
+              {hiddenLinkedEntitiesCount > 0 && (
                 <Badge size="md" type="color">
                   <Typography className="tw:text-secondary" size="text-xs">
                     {t('label.plus-count', {
-                      count:
-                        linkedEntities.length - MAX_VISIBLE_LINKED_ENTITIES,
+                      count: hiddenLinkedEntitiesCount,
                     })}
                   </Typography>
                 </Badge>
