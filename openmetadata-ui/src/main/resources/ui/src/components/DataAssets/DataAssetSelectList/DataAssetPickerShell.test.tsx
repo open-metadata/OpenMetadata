@@ -143,7 +143,7 @@ describe('DataAssetPickerShell', () => {
     render(<DataAssetPickerShell {...defaultProps} isLoading />);
     openPicker();
 
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
+    expect(screen.getByText('label.loading...')).toBeInTheDocument();
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });
 

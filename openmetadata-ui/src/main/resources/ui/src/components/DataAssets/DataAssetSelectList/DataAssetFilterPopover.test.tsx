@@ -83,12 +83,17 @@ describe('DataAssetFilterPopover', () => {
     render(
       <DataAssetFilterPopover
         options={OPTIONS}
+        renderTrigger={({ open }) => (
+          <button data-testid={TRIGGER_TEST_ID} onClick={open}>
+            Custom
+          </button>
+        )}
         selectedId="db.schema.orders"
         onChange={jest.fn()}
       />
     );
 
-    expect(screen.getByText('Orders')).toBeInTheDocument();
+    expect(screen.getByText('Custom')).toBeInTheDocument();
   });
 
   it('renders a custom trigger when renderTrigger is provided', () => {
