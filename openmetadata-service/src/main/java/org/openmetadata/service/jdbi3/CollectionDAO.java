@@ -84,6 +84,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -1820,6 +1821,7 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String relationType;
     private String json;
     private String jsonSchema;
   }
@@ -2646,6 +2648,30 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
+    // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
+    // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
+    // can
+    // carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows with
+    // relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
+    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct and O(1) per
+    // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
+    // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
+    // page with fromId='', toId='', relation=-1, relationType=''.
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+            + "WHERE fromId > :fromId "
+            + "   OR (fromId = :fromId AND toId > :toId) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
+            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsAfter(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @Bind("limit") int limit);
+
     @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
     long getTotalRelationshipCount();
 
@@ -2871,6 +2897,27 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
+            .build();
+      }
+    }
+
+    // Like RelationshipObjectMapper but also projects relationType, needed by the keyset scan so
+    // its
+    // cursor can advance over the full primary key. Kept separate because the 27 other queries
+    // using
+    // RelationshipObjectMapper do not select relationType.
+    class RelationshipWithTypeObjectMapper implements RowMapper<EntityRelationshipObject> {
+      @Override
+      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipObject.builder()
+            .fromId(rs.getString("fromId"))
+            .fromEntity(rs.getString("fromEntity"))
+            .toEntity(rs.getString("toEntity"))
+            .toId(rs.getString("toId"))
+            .relation(rs.getInt("relation"))
+            .relationType(rs.getString("relationType"))
             .json(rs.getString("json"))
             .jsonSchema(rs.getString("jsonSchema"))
             .build();
@@ -3637,7 +3684,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -3671,7 +3718,7 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM <tableName> te "
                 + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + ") AS combined WHERE combined.type is not NULL "
+                + ") AS combined WHERE combined.type is not NULL <domainCondition> "
                 + "GROUP BY combined.type, combined.taskStatus;",
         connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -3681,7 +3728,8 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
+        @Define("domainCondition") String domainCondition);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -5232,6 +5280,21 @@ public interface CollectionDAO {
                 parts = {":fqnhash", ".%"},
                 hash = true)
             String fqnhash);
+
+    @SqlQuery("SELECT fqnHash FROM domain_entity WHERE fqnHash LIKE :prefix")
+    List<String> listFqnHashesByPrefix(@Bind("prefix") String prefix);
+
+    @SqlQuery("SELECT fqnHash FROM domain_entity")
+    List<String> listAllFqnHashes();
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json ->> 'fullyQualifiedName' FROM domain_entity ORDER BY fqnHash",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM domain_entity ORDER BY fqnHash",
+        connectionType = MYSQL)
+    List<String> listAllFqns();
   }
 
   interface DataProductDAO extends EntityDAO<DataProduct> {
@@ -10691,6 +10754,7 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);
@@ -14786,13 +14850,16 @@ public interface CollectionDAO {
     int insert(@BindBean AuditLogRecord record);
 
     @SqlQuery(
-        "SELECT id, change_event_id, event_ts, event_type, user_name, "
-            + "actor_type, impersonated_by, service_name, "
-            + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, search_text, created_at "
-            + "FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+        "SELECT a.id, a.change_event_id, a.event_ts, a.event_type, a.user_name, "
+            + "a.actor_type, a.impersonated_by, a.service_name, "
+            + "a.entity_type, a.entity_id, a.entity_fqn, a.entity_fqn_hash, a.event_json, a.search_text, a.created_at "
+            + "FROM audit_log_event a "
+            + "JOIN (SELECT id FROM audit_log_event <condition> <orderClause> LIMIT :limit) k "
+            + "ON a.id = k.id <orderClauseQualified>")
     List<AuditLogRecord> list(
         @Define("condition") String condition,
         @Define("orderClause") String orderClause,
+        @Define("orderClauseQualified") String orderClauseQualified,
         @Bind("userName") String userName,
         @Bind("actorType") String actorType,
         @Bind("serviceName") String serviceName,

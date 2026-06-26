@@ -143,10 +143,7 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -405,77 +402,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  // Deferred L1 re-eviction. Backstops the nanosecond race where a loader's put lands after the
-  // writer's inline invalidate. Daemon threads.
-  private static final ScheduledExecutorService L1_REPAIR_EXECUTOR =
-      Executors.newScheduledThreadPool(
-          2,
-          r -> {
-            // FQN: org.openmetadata.schema.entity.feed.Thread shadows the simple name here.
-            java.lang.Thread t = new java.lang.Thread(r, "entity-cache-l1-repair");
-            t.setDaemon(true);
-            return t;
-          });
-
-  private static final long L1_REPAIR_DELAY_MS = 500L;
-
-  // Coalescing guard. Without this, bulk writes can enqueue thousands of pending repair tasks
-  // per key (one per write). One pending task per key is sufficient to evict any racing loader's
-  // put — repeated bumps within the delay window collapse to a single eviction.
-  private static final java.util.Set<Object> PENDING_L1_REPAIRS =
-      java.util.concurrent.ConcurrentHashMap.newKeySet();
-
-  private static void scheduleL1Repair(String entityType, UUID id, String fqn, String originalFqn) {
-    if (entityType == null || L1_REPAIR_EXECUTOR.isShutdown()) {
-      return;
-    }
-    // Include fqn so a rename within the delay window gets its own task instead of being
-    // coalesced into a prior task that only knows the old fqn.
-    Object coalesceKey =
-        List.of(entityType, id == null ? "" : id.toString(), fqn == null ? "" : fqn);
-    if (!PENDING_L1_REPAIRS.add(coalesceKey)) {
-      return;
-    }
-    try {
-      L1_REPAIR_EXECUTOR.schedule(
-          () -> {
-            // Clear at task start so a writer arriving during the invalidates re-schedules its
-            // own task and gets the full delay-window backstop.
-            PENDING_L1_REPAIRS.remove(coalesceKey);
-            try {
-              if (id != null) {
-                CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-              }
-              if (fqn != null) {
-                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-              }
-              if (originalFqn != null && !originalFqn.equals(fqn)) {
-                CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-              }
-            } catch (RuntimeException e) {
-              LOG.debug(
-                  "Deferred L1 repair failed for type={} id={} fqn={}", entityType, id, fqn, e);
-            }
-          },
-          L1_REPAIR_DELAY_MS,
-          TimeUnit.MILLISECONDS);
-    } catch (RejectedExecutionException e) {
-      PENDING_L1_REPAIRS.remove(coalesceKey);
-      LOG.debug("Failed to schedule L1 repair type={} id={}", entityType, id, e);
-    }
-  }
-
-  public static void shutdownL1RepairExecutor() {
-    L1_REPAIR_EXECUTOR.shutdown();
-    try {
-      if (!L1_REPAIR_EXECUTOR.awaitTermination(2, TimeUnit.SECONDS)) {
-        L1_REPAIR_EXECUTOR.shutdownNow();
-      }
-    } catch (InterruptedException e) {
-      java.lang.Thread.currentThread().interrupt();
-      L1_REPAIR_EXECUTOR.shutdownNow();
-    }
-  }
+  // Fields whose change rewrites a glossary term's FQN during move operations.
+  private static final Set<String> GLOSSARY_TERM_MOVE_FIELDS = Set.of("parent", "glossary");
 
   /**
    * Canonical {@link #CACHE_WITH_NAME} key. User FQNs are lowercased at the DB layer
@@ -484,7 +412,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * invalidations written against the lowercased canonical form miss the mixed-case entry,
    * serving stale data until TTL.
    */
-  private static Pair<String, String> cacheNameKey(String entityType, String fqn) {
+  static Pair<String, String> cacheNameKey(String entityType, String fqn) {
     if (fqn != null && Entity.USER.equals(entityType)) {
       return new ImmutablePair<>(entityType, fqn.toLowerCase(Locale.ROOT));
     }
@@ -663,6 +591,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String patchFields,
       String putFields,
       Set<String> changeSummaryFields) {
+    this(
+        collectionPath,
+        entityType,
+        entityClass,
+        entityDAO,
+        patchFields,
+        putFields,
+        changeSummaryFields,
+        true);
+  }
+
+  protected EntityRepository(
+      String collectionPath,
+      String entityType,
+      Class<T> entityClass,
+      EntityDAO<T> entityDAO,
+      String patchFields,
+      String putFields,
+      Set<String> changeSummaryFields,
+      boolean registerEntity) {
     this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     allowedFields = getEntityFields(entityClass);
@@ -774,7 +722,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     changeSummarizer =
         new ChangeSummarizer<>(entityClass, getEffectiveChangeSummaryFields(changeSummaryFields));
 
-    Entity.registerEntity(entityClass, entityType, this);
+    if (registerEntity) {
+      Entity.registerEntity(entityClass, entityType, this);
+    }
   }
 
   private Set<String> getEffectiveChangeSummaryFields(Set<String> configuredFields) {
@@ -1609,7 +1559,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<EntityReference> getReferences(List<UUID> id, Include include)
       throws EntityNotFoundException {
-    return find(id, include).stream().map(EntityInterface::getEntityReference).toList();
+    return dao.findReferencesByIds(id, include);
   }
 
   /**
@@ -2222,8 +2172,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final EntityReference getReferenceByName(String fqn, Include include) {
-    fqn = quoteFqn ? quoteName(fqn) : fqn;
-    return findByName(fqn, include).getEntityReference();
+    String entityFqn = quoteFqn ? quoteName(fqn) : fqn;
+    return dao.findReferencesByFqns(List.of(entityFqn), include).stream()
+        .findFirst()
+        .orElseThrow(() -> new EntityNotFoundException(entityNotFound(entityType, entityFqn)));
   }
 
   public final List<T> getByNames(
@@ -3370,7 +3322,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     bumpWriteEpoch(entityType, id, fqn);
     // Guava L1 always cleared inline — local map eviction, not a network round trip.
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-    scheduleL1Repair(entityType, id, fqn, null);
+    EntityCacheRepair.scheduleRepair(entityType, id, fqn, null);
     if (fqn != null) {
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
     }
@@ -4905,7 +4857,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
     RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
-    scheduleL1Repair(entityType, entity.getId(), entity.getFullyQualifiedName(), null);
+    EntityCacheRepair.scheduleRepair(
+        entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
   }
 
@@ -6435,7 +6388,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
-        persistBulkUpdaters(changed, ENTITY_RESTORED, updatedBy, "bulkRestore");
+        persistBulkUpdaters(changed, "bulkRestore");
         ListCountCache.invalidate(entityType);
       }
     }
@@ -6635,7 +6588,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             e -> e.setDeleted(true));
     List<EntityUpdater> changed = filterChanged(updaters);
     if (!changed.isEmpty()) {
-      persistBulkUpdaters(changed, ENTITY_SOFT_DELETED, updatedBy, "bulkSoftDelete");
+      persistBulkUpdaters(changed, "bulkSoftDelete");
       ListCountCache.invalidate(entityType);
     }
   }
@@ -6717,8 +6670,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
       // those relationship rows.
       runHardDeleteAdditionalChildren(entities, updatedBy);
-      bulkCleanupReferences(entities);
-      bulkDeleteEntityRows(entities);
+      bulkDeleteReferencesAndRows(entities);
       bulkInvalidate(entities);
       for (T entity : entities) {
         postDelete(entity, true);
@@ -6780,6 +6732,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
             ex);
       }
     }
+  }
+
+  private void bulkDeleteReferencesAndRows(List<T> entities) {
+    var jdbi = Entity.getJdbi();
+    if (jdbi == null) {
+      bulkCleanupReferences(entities);
+      bulkDeleteEntityRows(entities);
+      return;
+    }
+    jdbi.inTransaction(
+        handle -> {
+          bulkCleanupReferences(entities);
+          bulkDeleteEntityRows(entities);
+          return null;
+        });
   }
 
   private void bulkCleanupReferences(List<T> entities) {
@@ -6910,8 +6877,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
    * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
    */
-  private void persistBulkUpdaters(
-      List<EntityUpdater> changed, EventType eventType, String userName, String phasePrefix) {
+  private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
     List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
     try (var ignored = phase(phasePrefix + "UpdateMany")) {
@@ -6923,7 +6889,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
-    writeBulkChangeEvents(changed, eventType, userName, phasePrefix + "ChangeEvents");
+    // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
+    // events. A single change event is recorded for the user-targeted root entity (see the delete
+    // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
+    // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -6944,18 +6913,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .entityExtensionDAO()
             .insertMany(historyIds, historyExtensions, entityType, historyJsons);
       }
-    }
-  }
-
-  private void writeBulkChangeEvents(
-      List<EntityUpdater> changed, EventType eventType, String userName, String phaseName) {
-    try (var ignored = phase(phaseName)) {
-      List<String> changeEventJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        buildChangeEventJsonForBulkOperation(u.getUpdated(), eventType, userName)
-            .ifPresent(changeEventJsons::add);
-      }
-      insertChangeEventsBatch(changeEventJsons);
     }
   }
 
@@ -10235,7 +10192,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
 
-      scheduleL1Repair(entityType, id, fqn, originalFqn);
+      EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 
       var pubsub = CacheBundle.getCacheInvalidationPubSub();
       if (pubsub != null) {
@@ -10296,12 +10253,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return false;
       }
 
-      // Skip consolidation if a previous change in the session was a name change.
-      // The previous version would have the old name/FQN, and reverting to it
-      // would cause the same issues as above.
+      // Skip consolidation if a previous session update changed the FQN. The previous version
+      // would have the stale FQN, and reverting to it would strand already-repointed references.
       if (wasRenamedInSession(original)) {
         LOG.debug(
-            "Skipping consolidation for {} - entity was renamed in session", original.getId());
+            "Skipping consolidation for {} - entity FQN changed in session", original.getId());
+        return false;
+      }
+
+      ChangeDescription changeDescription = original.getChangeDescription();
+      if (changeDescription == null || changeDescription.getPreviousVersion() == null) {
+        LOG.debug(
+            "Skipping consolidation for {} - missing previous change version", original.getId());
         return false;
       }
 
@@ -10319,29 +10282,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // changes to children
     }
 
-    /**
-     * Check if the entity was renamed in a previous update within the consolidation window.
-     * This is detected by checking if the changeDescription contains a 'name' field update.
-     */
     private boolean wasRenamedInSession(T original) {
-      ChangeDescription changeDesc = original.getChangeDescription();
-      ChangeDescription incChangeDesc = original.getIncrementalChangeDescription();
+      return hasFqnAffectingChange(original.getChangeDescription())
+          || hasFqnAffectingChange(original.getIncrementalChangeDescription());
+    }
 
-      // Check main changeDescription first
-      if (changeDesc != null && changeDesc.getFieldsUpdated() != null) {
-        if (changeDesc.getFieldsUpdated().stream().anyMatch(fc -> "name".equals(fc.getName()))) {
-          return true;
-        }
+    private boolean hasFqnAffectingChange(ChangeDescription changeDescription) {
+      boolean affected = false;
+      if (changeDescription != null) {
+        affected =
+            Stream.of(
+                    listOrEmpty(changeDescription.getFieldsAdded()),
+                    listOrEmpty(changeDescription.getFieldsUpdated()),
+                    listOrEmpty(changeDescription.getFieldsDeleted()))
+                .flatMap(List::stream)
+                .anyMatch(
+                    fieldChange ->
+                        "name".equals(fieldChange.getName())
+                            || (Entity.GLOSSARY_TERM.equals(entityType)
+                                && GLOSSARY_TERM_MOVE_FIELDS.contains(fieldChange.getName())));
       }
-
-      // Also check incrementalChangeDescription - this captures the name change
-      // even when renameProcessed prevents it from being in the main changeDescription
-      if (incChangeDesc != null && incChangeDesc.getFieldsUpdated() != null) {
-        return incChangeDesc.getFieldsUpdated().stream()
-            .anyMatch(fc -> "name".equals(fc.getName()));
-      }
-
-      return false;
+      return affected;
     }
 
     /**
@@ -12818,21 +12779,41 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated, updatedBy, null);
   }
 
-  private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
-    Optional<String> changeEventJson =
-        buildChangeEventJsonForBulkOperation(entity, eventType, userName);
-    if (changeEventJson.isEmpty()) {
-      return;
+  /**
+   * Records the change event for an async delete/restore whose HTTP 202 response bypasses the
+   * response filter that records change events for synchronous operations. Without this, async
+   * deletes and restores are invisible to audit logs, alerts, and webhooks. Recursive deletes pass
+   * a single root event here; cascaded descendants are intentionally not recorded individually (see
+   * {@link #persistBulkUpdaters}).
+   */
+  public final void storeChangeEventForAsyncOperation(
+      T entity, EventType eventType, boolean recursive, String userName) {
+    if (entity != null && eventType != null) {
+      buildChangeEventJsonForBulkOperation(entity, eventType, userName, recursive)
+          .ifPresent(this::insertChangeEvent);
     }
+  }
+
+  private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
+    buildChangeEventJsonForBulkOperation(entity, eventType, userName)
+        .ifPresent(this::insertChangeEvent);
+  }
+
+  private void insertChangeEvent(String changeEventJson) {
     try {
-      Entity.getCollectionDAO().changeEventDAO().insert(changeEventJson.get());
+      Entity.getCollectionDAO().changeEventDAO().insert(changeEventJson);
     } catch (Exception e) {
-      LOG.error("Failed to create change event for bulk operation", e);
+      LOG.error("Failed to insert change event", e);
     }
   }
 
   private Optional<String> buildChangeEventJsonForBulkOperation(
       T entity, EventType eventType, String userName) {
+    return buildChangeEventJsonForBulkOperation(entity, eventType, userName, false);
+  }
+
+  private Optional<String> buildChangeEventJsonForBulkOperation(
+      T entity, EventType eventType, String userName, boolean recursive) {
     try {
       if (eventType.equals(ENTITY_NO_CHANGE)) {
         return Optional.empty();
@@ -12845,6 +12826,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
         Object entityObject = changeEvent.getEntity();
         changeEvent = copyChangeEvent(changeEvent);
         changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entityObject));
+      }
+
+      if (recursive) {
+        changeEvent.setRecursive(true);
       }
 
       LOG.debug(

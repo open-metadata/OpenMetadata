@@ -1031,12 +1031,22 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task createdTask = SdkClients.user1Client().tasks().create(request);
 
-    ListResponse<Task> user1CreatedTasks = SdkClients.user1Client().tasks().listCreated();
-
-    assertNotNull(user1CreatedTasks);
-    assertTrue(
-        user1CreatedTasks.getData().stream().anyMatch(t -> t.getId().equals(createdTask.getId())),
-        "User1's created tasks should include the task they created");
+    // listCreated defaults to limit=10. Under heavy concurrent load (multiple tests sharing
+    // USER1) the just-created task may not appear in the first page, so request a wider page
+    // explicitly. Awaitility rides out any write-visibility race on top.
+    Awaitility.await("User1's created tasks include the task they created")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1CreatedTasks =
+                  SdkClients.user1Client().tasks().listCreated(null, null, null, null, 1000);
+              assertNotNull(user1CreatedTasks);
+              assertTrue(
+                  user1CreatedTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(createdTask.getId())),
+                  "User1's created tasks should include the task they created");
+            });
   }
 
   @Test

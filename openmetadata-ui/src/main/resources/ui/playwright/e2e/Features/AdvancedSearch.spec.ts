@@ -540,7 +540,7 @@ test.describe(
           }
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       }
     });
 
@@ -596,7 +596,7 @@ test.describe(
 
       await test.step('Draft and In Review entities appear when searched by their name and non-Approved status', async () => {
         for (const entry of otherEntries) {
-          await page.getByTestId('clear-filters').click();
+          await page.getByTestId('advance-search-clear-btn').click();
           await showAdvancedSearchDialog(page);
 
           await fillStaticListRule(page, {
@@ -628,7 +628,7 @@ test.describe(
         }
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
   }
 );
@@ -712,7 +712,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Not Contains – table is NOT visible when filtering by a word that IS in the description', async ({
@@ -755,7 +755,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Not Contains – table IS visible (word absent from description)', async ({
@@ -798,7 +798,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Is not null – table with a description is visible', async ({
@@ -840,7 +840,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Is null – table with a description is NOT visible', async ({
@@ -882,7 +882,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test.describe('Description Status filter', () => {
@@ -926,7 +926,7 @@ test.describe(
           ).toBeVisible();
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       });
 
       test('Description Status == Incomplete – table with description is NOT visible', async ({
@@ -969,7 +969,7 @@ test.describe(
           ).not.toBeVisible();
         });
 
-        await page.getByTestId('clear-filters').click();
+        await page.getByTestId('advance-search-clear-btn').click();
       });
     });
   }
@@ -1165,7 +1165,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags == tag2 returns table2 and hides table1', async ({
@@ -1215,7 +1215,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags != tag1 excludes table1 from results', async ({
@@ -1258,7 +1258,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Contains tag1 name returns table1', async ({ page }) => {
@@ -1290,7 +1290,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Not contains tag1 name excludes table1', async ({
@@ -1333,7 +1333,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Any in [tag1, tag2] returns both tables', async ({
@@ -1367,7 +1367,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
@@ -1408,7 +1408,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Is not null returns table with a column tag', async ({
@@ -1450,7 +1450,7 @@ test.describe(
         ).toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
 
     test('Column Tags Is null excludes tables that have column tags', async ({
@@ -1492,7 +1492,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      await page.getByTestId('clear-filters').click();
+      await page.getByTestId('advance-search-clear-btn').click();
     });
   }
 );

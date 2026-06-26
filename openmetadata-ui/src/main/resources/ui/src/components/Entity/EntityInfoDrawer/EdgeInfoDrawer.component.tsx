@@ -361,7 +361,7 @@ const EdgeInfoDrawer = ({
     setIsLoading(true);
     getEdgeInfo();
     setMysqlQuery(edge.data.edge?.sqlQuery);
-  }, [edge, visible]);
+  }, [edge, visible, nodes]);
 
   return (
     <>

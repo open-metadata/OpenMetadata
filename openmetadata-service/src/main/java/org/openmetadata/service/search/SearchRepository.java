@@ -79,6 +79,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -129,14 +130,17 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -1556,6 +1560,49 @@ public class SearchRepository {
   }
 
   /**
+   * Re-read each referenced entity with the same bounded field set {@link
+   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
+   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
+   * into a single bulk request. Duplicate references are resolved only once; chunking of the
+   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
+   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   */
+  public void updateEntitiesByReference(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return;
+    }
+    Set<String> seen = new HashSet<>();
+    List<EntityInterface> entities = new ArrayList<>(references.size());
+    for (EntityReference reference : references) {
+      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
+      // re-index needlessly. Skip malformed refs too.
+      if (reference == null
+          || reference.getId() == null
+          || reference.getType() == null
+          || !seen.add(reference.getType() + ":" + reference.getId())) {
+        continue;
+      }
+      try {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+        String fields =
+            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+        EntityInterface entity =
+            entityRepository.get(
+                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entity.setChangeDescription(null);
+        entities.add(entity);
+      } catch (EntityNotFoundException e) {
+        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
+        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
+        // entity's own delete cascade removes its document.
+        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      }
+    }
+    updateEntitiesIndex(entities);
+  }
+
+  /**
    * Bulk update multiple entities in the search index. This is much more efficient than calling
    * updateEntity() for each entity individually.
    *
@@ -1873,31 +1920,37 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription == null) {
-      return;
+    if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity, entityType);
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+          propagateToDomainChildren(entityId, indexMapping, updates);
+        } else {
+          String parentFieldName = resolveParentFieldName(entityType, updates);
+          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+          List<String> entityChildren =
+              filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+          if (!nullOrEmpty(entityChildren)) {
+            searchClient.updateChildren(entityChildren, parentMatch, updates);
+          }
+        }
+      }
     }
+  }
 
-    Pair<String, Map<String, Object>> updates =
-        getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
-      return;
-    }
-
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+  private List<String> filterChildAliasesByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = indexMapping.getChildAliases();
     if (nullOrEmpty(childAliases)) {
-      return;
+      return List.of();
     }
-
-    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
-    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
-      propagateToDomainChildren(entityId, indexMapping, updates);
-      return;
-    }
-
-    // Other entities: resolve parent field name and propagate to children
-    String parentFieldName = resolveParentFieldName(entityType, updates);
-    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    searchClient.updateChildren(childAliases, parentMatch, updates);
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
   }
 
   private String resolveParentFieldName(
@@ -2776,12 +2829,7 @@ public class SearchRepository {
     // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
-    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
-    List<String> targets =
-        indexMapping.getChildAliases().stream()
-            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
-            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
-            .toList();
+    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
     if (targets.isEmpty()) {
       return;
     }
@@ -3171,17 +3219,36 @@ public class SearchRepository {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    return searchClient.searchLineage(lineageRequest);
+    return searchLineage(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public SearchLineageResult searchPlatformLineage(
       String alias, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return searchPlatformLineage(alias, queryFilter, deleted, null);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted, SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return LineageDomainFilter.prune(result, subjectContext, null);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineageWithDirection(lineageRequest);
+    return searchLineageWithDirection(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -3219,7 +3286,13 @@ public class SearchRepository {
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    return searchClient.searchLineageByEntityCount(request);
+    return searchLineageByEntityCount(request, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
   }
 
   public Response searchEntityRelationship(
@@ -3231,7 +3304,18 @@ public class SearchRepository {
 
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   public Response searchSchemaEntityRelationship(
@@ -3249,14 +3333,29 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineage(
-        new SearchLineageRequest()
-            .withFqn(fqn)
-            .withUpstreamDepth(upstreamDepth)
-            .withDownstreamDepth(downstreamDepth)
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withIsConnectedVia(isConnectedVia(entityType)));
+    return searchLineageForExport(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType)));
+    return LineageDomainFilter.prune(result, subjectContext, fqn);
   }
 
   public Response searchByField(
