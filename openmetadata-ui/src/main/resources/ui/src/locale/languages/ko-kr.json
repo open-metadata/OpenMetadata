@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "실행 이력과 테스트 스위트는 유지됩니다",
     "import-odcs-replace-preserve-id": "계약 ID, FQN 및 엔터티 참조는 유지됩니다",
     "import-odps-description": "Open Data Product Standard(ODPS) v4.1 YAML에서 데이터 제품을 가져옵니다.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "이 데이터베이스에서",
     "incident-metrics-sub-header": "운영 신뢰성을 향상시키기 위해 데이터 관련 인시던트의 볼륨, 응답성 및 해결 효율성을 추적합니다.",

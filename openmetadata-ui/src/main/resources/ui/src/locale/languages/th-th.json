@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "ประวัติการดำเนินการและชุดทดสอบจะถูกเก็บไว้",
     "import-odcs-replace-preserve-id": "ID สัญญา, FQN และการอ้างอิงเอนทิตีจะถูกเก็บไว้",
     "import-odps-description": "นำเข้าผลิตภัณฑ์ข้อมูลจาก YAML ตามมาตรฐาน Open Data Product Standard (ODPS) v4.1",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "ในฐานข้อมูลนี้",
     "incident-metrics-sub-header": "ติดตามปริมาณ การตอบสนอง และประสิทธิภาพการแก้ไขอุบัติการณ์ที่เกี่ยวข้องกับข้อมูล เพื่อปรับปรุงความน่าเชื่อถือในการดำเนินงาน",

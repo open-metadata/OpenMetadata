@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "היסטוריית ביצוע וחבילת בדיקות יישמרו",
     "import-odcs-replace-preserve-id": "מזהה החוזה, FQN והפניות לישות יישמרו",
     "import-odps-description": "ייבא מוצר נתונים מ-YAML של Open Data Product Standard ‏(ODPS) v4.1.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "במסד נתונים זה",
     "incident-metrics-sub-header": "עקב אחר ההיקף, היעילות ויעילות הפתרון של אירועים הקשורים לנתונים כדי לשפר את האמינות התפעולית.",

@@ -231,8 +231,6 @@ describe('ImportOntologyModal', () => {
       ['owl', 'turtle'],
       ['xml', 'rdfxml'],
       ['nt', 'ntriples'],
-      ['jsonld', 'jsonld'],
-      ['json', 'jsonld'],
       ['unknown', 'turtle'],
     ])(
       'should map a .%s file with Turtle content to the %s format',

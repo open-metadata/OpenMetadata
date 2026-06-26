@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "De uitvoeringsgeschiedenis en het testpakket blijven behouden",
     "import-odcs-replace-preserve-id": "Contract-ID, FQN en entiteitsverwijzing blijven behouden",
     "import-odps-description": "Importeer een dataproduct uit Open Data Product Standard (ODPS) v4.1 YAML.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "In deze database",
     "incident-metrics-sub-header": "Volg het volume, responsiviteit en resolutie-efficiëntie van data-gerelateerde incidenten om operationele betrouwbaarheid te verbeteren.",

@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "Yürütme geçmişi ve test paketi korunacak",
     "import-odcs-replace-preserve-id": "Sözleşme ID'si, FQN ve varlık referansı korunacak",
     "import-odps-description": "Open Data Product Standard (ODPS) v4.1 YAML'den bir veri ürünü içe aktarın.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "Bu Veritabanında",
     "incident-metrics-sub-header": "Operasyonel güvenilirliği artırmak için veriyle ilgili olayların hacmini, yanıt hızını ve çözüm etkinliğini takip edin.",

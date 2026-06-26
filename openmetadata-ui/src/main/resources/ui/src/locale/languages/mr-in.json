@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "अंमलबजावणी इतिहास आणि चाचणी सूट जतन केला जाईल",
     "import-odcs-replace-preserve-id": "करार ID, FQN आणि एंटिटी संदर्भ जतन केले जाईल",
     "import-odps-description": "Open Data Product Standard (ODPS) v4.1 YAML मधून डेटा उत्पादन आयात करा.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "या डेटाबेसमध्ये",
     "incident-metrics-sub-header": "ऑपरेशनल विश्वासार्हता सुधारण्यासाठी डेटा-संबंधित घटनांचे प्रमाण, प्रतिसादशीलता आणि निराकरण कार्यक्षमता ट्रॅक करा.",

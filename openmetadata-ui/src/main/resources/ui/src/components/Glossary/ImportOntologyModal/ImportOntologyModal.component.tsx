@@ -53,9 +53,6 @@ const getOntologyFormat = (fileName: string, content: string): string => {
       return looksLikeRdfXml(content) ? 'rdfxml' : 'turtle';
     case 'nt':
       return 'ntriples';
-    case 'jsonld':
-    case 'json':
-      return 'jsonld';
     default:
       return 'turtle';
   }
@@ -180,7 +177,7 @@ const ImportOntologyModal = ({
         </Typography.Text>
 
         <Upload.Dragger
-          accept=".ttl,.rdf,.owl,.nt,.jsonld,.json,.xml"
+          accept=".ttl,.rdf,.owl,.nt,.xml"
           beforeUpload={handleBeforeUpload}
           data-testid="upload-ontology-dragger"
           maxCount={1}

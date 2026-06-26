@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "将保留执行历史记录和测试套件",
     "import-odcs-replace-preserve-id": "合约 ID、FQN 和实体引用将被保留",
     "import-odps-description": "从开放数据产品标准 (ODPS) v4.1 YAML 导入数据产品。",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "在此数据库中",
     "incident-metrics-sub-header": "跟踪数据相关事件的数量、响应能力和解决效率，以提高操作可靠性。",

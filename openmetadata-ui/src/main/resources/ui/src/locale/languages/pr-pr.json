@@ -3227,7 +3227,7 @@
     "import-odcs-replace-preserve-history": "تاریخچه اجرا و مجموعه آزمایش حفظ خواهد شد",
     "import-odcs-replace-preserve-id": "شناسه قرارداد، FQN و ارجاع موجودیت حفظ خواهند شد",
     "import-odps-description": "یک محصول داده را از YAML استاندارد Open Data Product Standard (ODPS) v4.1 وارد کنید.",
-    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, JSON-LD) to create glossary terms and relations.",
+    "import-ontology-help": "Upload an OWL/RDF ontology file (Turtle, RDF/XML, N-Triples) to create glossary terms and relations.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "در این پایگاه داده",
     "incident-metrics-sub-header": "حجم، پاسخ و کارایی حل حوادث مرتبط با کیفیت داده را برای سنجش انعطاف‌پذیری داده پیگیری کنید.",
