@@ -205,7 +205,7 @@ setup('authenticate all users', async ({ browser }) => {
     await adminPage.waitForFunction(() => indexedDB.databases());
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for auth state to be persisted to indexedDB
-    await adminPage.waitForTimeout(500);
+    await adminPage.waitForTimeout(2000);
 
     // Save admin state
     await newAdminPage
