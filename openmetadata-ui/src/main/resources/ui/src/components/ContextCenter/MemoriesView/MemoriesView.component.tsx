@@ -179,10 +179,11 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
     const deduplicated = entities.filter(
       (entity): entity is EntityReference => {
-        if (!entity || seenIds.has(entity.id)) {
+        const key = entity?.id ?? entity?.fullyQualifiedName;
+        if (!entity || !key || seenIds.has(key)) {
           return false;
         }
-        seenIds.add(entity.id);
+        seenIds.add(key);
 
         return true;
       }

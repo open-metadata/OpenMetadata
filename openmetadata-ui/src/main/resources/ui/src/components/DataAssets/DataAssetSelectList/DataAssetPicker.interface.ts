@@ -44,6 +44,7 @@ export interface DataAssetPickerShellProps {
   onScroll?: (e: React.UIEvent<HTMLElement>) => void;
   showFooterHints?: boolean;
   allowAllOption?: boolean;
+  allOptionLabel?: string;
   onSelectAll?: () => void;
   popoverClassName?: string;
   popoverAlign?: 'left' | 'right';

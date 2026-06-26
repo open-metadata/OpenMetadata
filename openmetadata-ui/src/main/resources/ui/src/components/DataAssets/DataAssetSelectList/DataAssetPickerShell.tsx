@@ -48,6 +48,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   onScroll,
   showFooterHints = true,
   allowAllOption = false,
+  allOptionLabel,
   onSelectAll,
   popoverClassName,
   popoverAlign = 'left',
@@ -89,7 +90,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   const navigableOptions = useMemo(
     () =>
       allowAllOption
-        ? [{ id: '__all__', label: '' } as DataAssetPickerOption, ...options]
+        ? [{ id: '__all__', label: '' }, ...options]
         : options,
     [allowAllOption, options]
   );
@@ -131,6 +132,10 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     handleRowSelect,
     handleSelectAll,
   ]);
+
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [navigableOptions]);
 
   useEffect(() => {
     onOpenChange?.(isOpen);
@@ -244,9 +249,10 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                         className="tw:truncate tw:leading-tight"
                         size="text-xs"
                         weight="medium">
-                        {t('label.all-entity', {
-                          entity: t('label.asset-plural'),
-                        })}
+                        {allOptionLabel ??
+                          t('label.all-entity', {
+                            entity: t('label.asset-plural'),
+                          })}
                       </Typography>
 
                       <Typography

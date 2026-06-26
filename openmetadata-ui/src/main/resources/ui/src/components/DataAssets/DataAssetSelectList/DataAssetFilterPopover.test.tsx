@@ -64,6 +64,11 @@ describe('DataAssetFilterPopover', () => {
     render(
       <DataAssetFilterPopover
         options={OPTIONS}
+        renderTrigger={({ open }) => (
+          <button data-testid={TRIGGER_TEST_ID} onClick={open}>
+            label.all-entity:label.asset-plural
+          </button>
+        )}
         selectedId=""
         onChange={jest.fn()}
       />
@@ -236,12 +241,19 @@ describe('DataAssetFilterPopover', () => {
   it('uses allOptionLabel when provided', () => {
     render(
       <DataAssetFilterPopover
+        allowAllOption
         allOptionLabel="All Tables"
         options={OPTIONS}
+        renderTrigger={({ open }) => (
+          <button data-testid={TRIGGER_TEST_ID} onClick={open}>
+            Open
+          </button>
+        )}
         selectedId=""
         onChange={jest.fn()}
       />
     );
+    openPopover();
 
     expect(screen.getByText('All Tables')).toBeInTheDocument();
   });

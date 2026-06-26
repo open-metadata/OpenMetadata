@@ -23,6 +23,7 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
   selectedId,
   onChange,
   allowAllOption = true,
+  allOptionLabel,
   popoverClassName,
   popoverAlign = 'left',
   placeholder,
@@ -58,6 +59,7 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
 
   return (
     <DataAssetPickerShell
+      allOptionLabel={allOptionLabel}
       allowAllOption={allowAllOption}
       options={filteredOptions}
       placeholder={placeholder ?? t('label.search-assets-by-name-or-path')}

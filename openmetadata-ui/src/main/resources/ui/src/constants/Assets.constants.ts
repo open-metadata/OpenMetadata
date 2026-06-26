@@ -524,8 +524,8 @@ export const ENTITY_ICON_MAPPER: Record<
     icon: TestSuite,
   },
   default: {
-    iconClass: 'tw:text-quanternary',
-    bgClass: 'tw:bg-tertiery',
+    iconClass: 'tw:text-quaternary',
+    bgClass: 'tw:bg-tertiary',
     borderClass: 'tw:border-utility-gray-200',
     icon: SlashCircle01,
   },
