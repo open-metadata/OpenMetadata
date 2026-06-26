@@ -79,7 +79,7 @@ function PipelineActionsDropdown({
       triggerPermission: appPermissions?.[Operation.Trigger] ?? false,
       deployPermission: appPermissions?.[Operation.Deploy] ?? false,
     };
-  }, [ingestionPipelinePermissions]);
+  }, [ingestionPipelinePermissions, appPermissions]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
