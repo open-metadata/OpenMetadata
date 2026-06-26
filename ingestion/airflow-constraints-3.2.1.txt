@@ -704,7 +704,7 @@ yandexcloud==0.386.0
 yarl==1.23.0
 ydb-dbapi==0.1.20
 ydb==3.28.0
-zeep==4.3.2
+zeep==4.3.3
 zenpy==2.0.57
 zipp==3.23.1
 zope.event==6.1
