@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Popover,
+  PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@untitledui/icons';
@@ -41,7 +42,6 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
   className = '',
 }) => {
   const { t } = useTranslation();
-  const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -89,10 +89,21 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
     closeTimeoutRef.current = setTimeout(() => setPopoverOpen(false), 120);
   }, []);
 
+  const handlePopoverOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        clearCloseTimeout();
+        setPopoverOpen(false);
+      }
+    },
+    [clearCloseTimeout]
+  );
+
   const handleClick = useCallback(() => {
-    setDrawerOpen(true);
+    clearCloseTimeout();
     setPopoverOpen(false);
-  }, []);
+    setDrawerOpen(true);
+  }, [clearCloseTimeout]);
 
   const handleClose = useCallback(() => {
     setDrawerOpen(false);
@@ -104,46 +115,46 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
 
   return (
     <>
-      <button
-        aria-label={t('label.learn-how-this-feature-works')}
-        className={classNames(
-          'tw:inline-flex tw:items-center tw:align-middle tw:cursor-pointer tw:text-brand-600 tw:border-0 tw:bg-transparent tw:p-0',
-          className
-        )}
-        data-testid="learning-icon"
-        ref={triggerRef}
-        type="button"
-        onClick={handleClick}
-        onMouseEnter={openPopover}
-        onMouseLeave={closePopover}>
-        <LearningIconSvg height={16} width={16} />
-      </button>
-
-      <Popover
-        isNonModal
-        containerClassName="tw:px-3 tw:py-2"
+      <PopoverTrigger
         isOpen={popoverOpen}
-        placement="bottom left"
-        triggerRef={triggerRef}
-        onOpenChange={setPopoverOpen}>
-        <Box
-          align="center"
-          gap={2}
+        onOpenChange={handlePopoverOpenChange}>
+        <Button
+          aria-label={t('label.learn-how-this-feature-works')}
+          className={classNames(
+            'tw:align-middle tw:*:data-icon:text-brand-600',
+            className
+          )}
+          color="tertiary"
+          data-testid="learning-icon"
+          iconLeading={LearningIconSvg}
+          size="xs"
           onMouseEnter={openPopover}
-          onMouseLeave={closePopover}>
-          <Typography as="span" size="text-sm">
-            {t('label.learn-how-this-feature-works')}
-          </Typography>
-          <Button
-            color="tertiary"
-            data-testid="learning-resources-button"
-            iconTrailing={<ArrowRight size={14} />}
-            size="sm"
-            onPress={handleClick}>
-            {resourceCount} {t('label.resource-plural').toLowerCase()}
-          </Button>
-        </Box>
-      </Popover>
+          onMouseLeave={closePopover}
+          onPress={handleClick}
+        />
+        <Popover
+          isNonModal
+          containerClassName="tw:px-3 tw:py-2"
+          placement="bottom left">
+          <Box
+            align="center"
+            gap={2}
+            onMouseEnter={openPopover}
+            onMouseLeave={closePopover}>
+            <Typography as="span" size="text-sm">
+              {t('label.learn-how-this-feature-works')}
+            </Typography>
+            <Button
+              color="tertiary"
+              data-testid="learning-resources-button"
+              iconTrailing={<ArrowRight size={14} />}
+              size="sm"
+              onPress={handleClick}>
+              {resourceCount} {t('label.resource-plural').toLowerCase()}
+            </Button>
+          </Box>
+        </Popover>
+      </PopoverTrigger>
 
       <LearningDrawer
         open={drawerOpen}
