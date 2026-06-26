@@ -9,15 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# Triggered on OpenMetadata PRs that touch the Task / Feed / Governance Workflow
-# backend. Those areas back the Collate "Governance Workflow" and "Data Access
-# Request" features, so this dispatches the Collate-side Playwright suite for
-# them and waits for the result, surfacing it as a check on the OpenMetadata PR.
-#
-# The workflow always triggers (no `paths:` filter) so the `data-access-request-e2e`
-# status check always reports and can be made a required check. Path filtering is
-# done inside via dorny/paths-filter: when none of the relevant backend files
-# changed, the job is skipped (which branch protection treats as a pass).
 name: Workflows and Data Access Request E2E tests
 
 on:
