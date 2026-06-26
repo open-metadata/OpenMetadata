@@ -89,7 +89,7 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="1.12.11.1"
+ARG RI_VERSION="1.12.11.2"
 # Pin setuptools<81 as pkg_resources was removed in setuptools 81.0.0+
 # cx-Oracle's setup.py still uses pkg_resources
 RUN pip install --upgrade pip "setuptools<81"
