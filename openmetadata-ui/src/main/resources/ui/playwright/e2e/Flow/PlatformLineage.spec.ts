@@ -20,19 +20,28 @@ test('Verify Platform Lineage View', async ({ page }) => {
   // Need to add more time for AUT and not for PR checks
   test.slow(process.env.PLAYWRIGHT_IS_OSS !== undefined);
 
+  // Limit MAX_NODES to get PNG export in time
+  const MAX_NODES = 200;
+
   await page.route('**/api/v1/lineage/getPlatformLineage**', async (route) => {
     const response = await route.fetch();
     const data = await response.json();
     const filteredData = {
       ...data,
       nodes: data.nodes
-        ? Object.fromEntries(Object.entries(data.nodes).slice(0, 500))
+        ? Object.fromEntries(Object.entries(data.nodes).slice(0, MAX_NODES))
         : data.nodes,
     };
+
+    // Use Playwright's { response, json } shortcut so headers stay valid
+    // after the body change. The shortcut auto-strips Content-Encoding
+    // (no longer gzip after our modification) and re-computes Content-
+    // Length. Passing headers: response.headers() verbatim — which the
+    // previous version did — keeps a stale Content-Encoding: gzip and
+    // wrong Content-Length, both of which silently break body parsing.
     await route.fulfill({
-      status: response.status(),
-      headers: response.headers(),
-      body: JSON.stringify(filteredData),
+      response,
+      json: filteredData,
     });
   });
 
