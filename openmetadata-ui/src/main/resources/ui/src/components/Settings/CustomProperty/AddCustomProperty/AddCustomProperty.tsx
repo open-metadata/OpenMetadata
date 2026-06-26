@@ -352,6 +352,8 @@ const AddCustomProperty = ({
         placeholder: t('label.enum-value-plural'),
         open: false,
         className: 'trim-select',
+        getPopupContainer: (triggerNode: HTMLElement) =>
+          triggerNode.parentElement ?? document.body,
       },
       rules: [
         {
@@ -428,6 +430,8 @@ const AddCustomProperty = ({
         placeholder: `${t('label.select-field', {
           field: t('label.type'),
         })}`,
+        getPopupContainer: (triggerNode: HTMLElement) =>
+          triggerNode.parentElement ?? document.body,
       },
     }),
     [t]
@@ -445,6 +449,8 @@ const AddCustomProperty = ({
           'data-testid': 'columns',
           mode: 'tags',
           placeholder: t('label.column-plural'),
+          getPopupContainer: (triggerNode: HTMLElement) =>
+            triggerNode.parentElement ?? document.body,
         },
         rules: [
           {
