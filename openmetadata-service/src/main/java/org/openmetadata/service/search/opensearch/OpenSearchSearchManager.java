@@ -1035,7 +1035,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1072,7 +1072,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1116,15 +1116,16 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     if (!sortField.equalsIgnoreCase(SORT_FIELD_NAME_KEYWORD)) {
       requestBuilder.sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
     }
-    requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_ID_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
   }
 
   private OpenSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");

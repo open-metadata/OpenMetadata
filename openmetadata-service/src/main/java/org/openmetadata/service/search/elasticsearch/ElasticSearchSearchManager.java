@@ -989,7 +989,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1031,7 +1031,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1075,15 +1075,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (!sortField.equalsIgnoreCase(SORT_FIELD_NAME_KEYWORD)) {
       requestBuilder.sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
     }
-    requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_ID_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
   }
 
   private ElasticSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -1209,7 +1210,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     // Handle sorting — always append a deterministic tiebreaker so equal-ranked docs order
     // identically across shards/replicas; without it the same query bounces between copies.
-    if (!request.getIsHierarchy()) {
+    if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
       if (!nullOrEmpty(request.getSortFieldParam())) {
         String sortField =
             SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(
