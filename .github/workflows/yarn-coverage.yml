@@ -5,13 +5,13 @@ on:
   workflow_dispatch:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
+  # Note: paths filter removed — the workflow always triggers so that the
+  # required status check (coverage-result) always completes. Path filtering
+  # is handled inside the workflow via dorny/paths-filter, which lets PRs
+  # without UI changes skip the expensive jobs while still reporting a
+  # passing status.
   pull_request_target:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
-    paths:
-      - openmetadata-ui/src/main/resources/ui/**
-      - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "!openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "!openmetadata-ui/src/main/resources/ui/scripts/**"
 
 permissions:
   contents: read
@@ -24,9 +24,29 @@ concurrency:
   group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 jobs:
-  ui-coverage-tests:
+  check-changes:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      ui-changed: ${{ steps.filter.outputs.ui }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - '!openmetadata-ui/src/main/resources/ui/playwright/**'
+              - '!openmetadata-ui/src/main/resources/ui/scripts/**'
+              - '!openmetadata-ui/src/main/resources/ui/public/**'
+              - '!openmetadata-ui/src/main/resources/ui/docs/**'
+
+  ui-coverage-tests:
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: |
+      !github.event.pull_request.draft &&
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
+      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -58,7 +78,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
@@ -136,3 +156,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
           SONARCLOUD_URL: https://sonarcloud.io
+
+  # This job is the one to set as the required status check in branch protection.
+  # It always runs and passes when ui-coverage-tests succeeded OR was skipped
+  # (i.e. no relevant UI paths changed), so PRs without UI changes are never blocked.
+  ui-coverage:
+    if: always()
+    needs: [ui-coverage-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check coverage result
+        run: |
+          result="${{ needs.ui-coverage-tests.result }}"
+          if [[ "$result" == "success" || "$result" == "skipped" ]]; then
+            echo "Coverage check passed or was not required for this PR"
+          else
+            echo "Coverage check failed with status: $result"
+            exit 1
+          fi

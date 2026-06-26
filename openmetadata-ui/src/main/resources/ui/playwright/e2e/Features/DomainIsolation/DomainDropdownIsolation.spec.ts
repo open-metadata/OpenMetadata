@@ -16,6 +16,7 @@ import { Domain } from '../../../support/domain/Domain';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
+import { searchDomainInDropdownTree } from '../../../utils/domainIsolationUtils';
 
 // Issue #24180 — a user holding the seeded DomainOnlyAccessRole must only see their own
 // domains in the navbar domain dropdown; admins see every domain plus the "All Domains" option.
@@ -151,9 +152,13 @@ test('Admin sees every domain and the All Domains option', async ({
   await openDomainDropdown(adminPage);
 
   await expect(adminPage.getByTestId('all-domains-selector')).toBeVisible();
+
+  await searchDomainInDropdownTree(adminPage, ownedDomainA);
   await expect(
     adminPage.getByTestId(`tag-${ownedDomainA.responseData.fullyQualifiedName}`)
   ).toBeVisible();
+
+  await searchDomainInDropdownTree(adminPage, foreignDomain);
   await expect(
     adminPage.getByTestId(
       `tag-${foreignDomain.responseData.fullyQualifiedName}`
