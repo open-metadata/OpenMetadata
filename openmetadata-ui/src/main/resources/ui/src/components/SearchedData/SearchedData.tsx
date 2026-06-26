@@ -143,7 +143,6 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       ? Number(size)
                       : globalPageSize
                   }
-                  // showTotal={ResultCount}
                   total={totalValue}
                   onChange={onPaginationChange}
                 />
