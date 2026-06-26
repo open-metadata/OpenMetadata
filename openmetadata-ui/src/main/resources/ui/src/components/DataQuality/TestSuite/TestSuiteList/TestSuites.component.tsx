@@ -10,22 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-} from '@openmetadata/ui-core-components';
 import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getPopupContainer } from '../../../../utils/formPureUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import PieChartSummaryPanel from '../../SummaryPannel/PieChartSummaryPanel.component';
-import './test-suites.style.less';
-import { TestSuitesTable } from './TestSuitesTable.component';
+import { TestSuiteListPanel } from './TestSuiteListPanel.component';
 import { useTestSuitesListPage } from './useTestSuitesListPage';
 
 export const TestSuites = () => {
@@ -100,60 +93,24 @@ export const TestSuites = () => {
       </Col>
 
       <Col span={24}>
-        <div className="test-suite-list-container">
-          <div className="test-suite-list-header">
-            <Row gutter={[16, 16]}>
-              <Col data-testid="test-suite-sub-tab-container" span={16}>
-                <ButtonGroup
-                  disallowEmptySelection
-                  selectedKeys={[subTab]}
-                  onSelectionChange={handleSubTabChange}>
-                  <ButtonGroupItem
-                    className="tw:font-normal tw:selected:bg-[var(--ant-primary-1)] tw:selected:text-[var(--ant-primary-7)] tw:selected:ring-[var(--ant-primary-7)]"
-                    data-testid="table-suite-radio-btn"
-                    id={DataQualitySubTabs.TABLE_SUITES}>
-                    {t('label.table-suite-plural')}
-                  </ButtonGroupItem>
-                  <ButtonGroupItem
-                    className="tw:font-normal tw:selected:bg-[var(--ant-primary-1)] tw:selected:text-[var(--ant-primary-7)] tw:selected:ring-[var(--ant-primary-7)]"
-                    data-testid="bundle-suite-radio-btn"
-                    id={DataQualitySubTabs.BUNDLE_SUITES}>
-                    {t('label.bundle-suite-plural')}
-                  </ButtonGroupItem>
-                </ButtonGroup>
-              </Col>
-              <Col span={8}>
-                <Searchbar
-                  removeMargin
-                  placeholder={t('label.search-entity', {
-                    entity:
-                      subTab === DataQualitySubTabs.TABLE_SUITES
-                        ? t('label.table-suite-plural')
-                        : t('label.bundle-suite-plural'),
-                  })}
-                  searchValue={searchValue}
-                  onSearch={(value) => handleSearchParam(value, 'searchValue')}
-                />
-              </Col>
-            </Row>
-          </div>
-
-          <TestSuitesTable
-            columnList={columnList}
-            currentPage={currentPage}
-            data={sortedData}
-            hasActiveFilters={!isEmpty(params)}
-            isLoading={isLoading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handleTestSuitesPageChange}
-            showPagination={showPagination}
-            sortDescriptor={sortDescriptor}
-            subTab={subTab}
-            onShowSizeChange={handlePageSizeChange}
-            onSortChange={setSortDescriptor}
-          />
-        </div>
+        <TestSuiteListPanel
+          columnList={columnList}
+          currentPage={currentPage}
+          data={sortedData}
+          hasActiveFilters={!isEmpty(params)}
+          isLoading={isLoading}
+          pageSize={pageSize}
+          paging={paging}
+          pagingHandler={handleTestSuitesPageChange}
+          searchValue={searchValue}
+          showPagination={showPagination}
+          sortDescriptor={sortDescriptor}
+          subTab={subTab}
+          onSearch={(value) => handleSearchParam(value, 'searchValue')}
+          onShowSizeChange={handlePageSizeChange}
+          onSortChange={setSortDescriptor}
+          onSubTabChange={handleSubTabChange}
+        />
       </Col>
     </Row>
   );
