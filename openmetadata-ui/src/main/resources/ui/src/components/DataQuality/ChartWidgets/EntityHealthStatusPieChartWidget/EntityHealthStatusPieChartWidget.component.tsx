@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -101,19 +101,24 @@ const EntityHealthStatusPieChartWidget = ({
     fetchEntityHealthSummary();
   }, [chartFilter]);
 
+  if (isLoading) {
+    return (
+      <Card className={className}>
+        <Skeleton height={200} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card
-      className={className}
-      data-testid="entity-health-pie-chart-widget"
-      loading={isLoading}>
+    <Card className={className} data-testid="entity-health-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background health-check-icon icon-container">
             <HealthCheckIcon />
           </div>
-          <Typography.Text className="font-medium text-md">
+          <Typography as="span" className="font-semibold text-sm">
             {t('label.healthy-data-asset-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <CustomPieChart
           showLegends

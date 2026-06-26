@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined, last } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -37,14 +37,17 @@ const IncidentTypeAreaChartWidget = ({
 
     return (
       <>
-        <Typography.Paragraph className="text-md font-semibold">
-          {title}
-        </Typography.Paragraph>
-        <Typography.Paragraph
-          className="font-semibold display-xs chart-widget-link-underline m-b-0"
+        <div className="tw:mb-4">
+          <Typography as="p" className="text-sm font-semibold">
+            {title}
+          </Typography>
+        </div>
+        <Typography
+          as="p"
+          className="font-semibold display-xs chart-widget-link-underline"
           data-testid="total-value">
           {latestValue}
-        </Typography.Paragraph>
+        </Typography>
         <CustomAreaChart data={chartData} height={height} name={name} />
       </>
     );
@@ -73,13 +76,16 @@ const IncidentTypeAreaChartWidget = ({
     getCountOfIncidentStatus();
   }, [chartFilter, incidentStatusType]);
 
+  if (isChartLoading) {
+    return <Skeleton height={120} width="100%" />;
+  }
+
   return (
     <Card
       className={classNames('custom-chart-background', {
         'chart-widget-link-no-underline': !isUndefined(redirectPath),
       })}
-      data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}
-      loading={isChartLoading}>
+      data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
       {redirectPath ? (
         <Link to={redirectPath}>{bodyElement}</Link>
       ) : (
