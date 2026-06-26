@@ -182,6 +182,11 @@ public class TableRepository extends EntityRepository<Table> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // A recursive hard-delete of an ancestor (database service / database / schema) removes table
+    // docs from search (deleteOrUpdateChildren by service.id / database.id / databaseSchema.id) and
+    // field_relationship / tag_usage via the root cleanup() FQN prefix, so the bulk path skips the
+    // per-table search dispatch and FQN-satellite deletes.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummaries);

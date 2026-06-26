@@ -67,6 +67,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     fieldFetchers.put("charts", this::fetchAndSetCharts);
     fieldFetchers.put("dataModels", this::fetchAndSetDataModels);

@@ -147,6 +147,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -306,6 +307,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final String BULK_IMPORT = "bulkImport";
   private static final int RELATION_DELETE_BATCH_SIZE = 500;
+
+  /**
+   * Max entities per transaction in the wrapped bulk-create path. One transaction holds InnoDB row
+   * locks for every entity + relationship + tag row it writes; chunking bounds the lock-hold and
+   * deadlock window so a large ingestion batch can't pin one connection for thousands of rows.
+   * Atomicity is per-chunk, which is far better than today's per-DAO-call autocommit.
+   */
+  private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
+
+  /**
+   * Max entities hydrated + purged per chunk in {@link #bulkHardDeleteSubtree(List, String)}. The
+   * pre-chunking path loaded an ENTIRE tree level ({@code loadForBulk(ids, ALL)}) into the heap
+   * before deleting — a service with hundreds of thousands of tables would OOM on that single load.
+   * Chunking bounds peak heap to ~{@code CHUNK_SIZE * tree-depth} hydrated entities: each chunk
+   * loads, recurses into its children, then purges its own rows. Larger than the create chunk
+   * because each delete chunk also issues one child-discovery query, so an over-small value
+   * multiplies round-trips on wide levels. (Per-chunk transactional atomicity via
+   * {@code flushInOneTransaction} is a tracked follow-up; the purge stays per-DAO-call autocommit
+   * for now, matching the prior behavior.)
+   */
+  private static final int BULK_HARD_DELETE_TXN_CHUNK_SIZE = 500;
 
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
@@ -471,6 +493,34 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+
+  /**
+   * Whether entities of this type, when hard-deleted as part of a recursive subtree delete, have
+   * both their search documents and their FQN-keyed satellite rows (field_relationship, tag_usage)
+   * removed by an ANCESTOR's delete cascade rather than needing per-entity cleanup:
+   *
+   * <ul>
+   *   <li>search: the root's {@code deleteFromSearch} fires
+   *       {@link SearchRepository#deleteOrUpdateChildren} which deletes every child-index doc by
+   *       {@code service.id} / parent-id in a single delete-by-query;
+   *   <li>satellites: the root's {@code cleanup()} deletes field_relationship / tag_usage for the
+   *       whole subtree by FQN prefix in a single statement (only valid when descendant FQNs are
+   *       nested under the root FQN).
+   * </ul>
+   *
+   * <p>When {@code true}, {@link #bulkHardDeleteSubtree(List, String)} skips the per-entity search
+   * dispatch and the per-entity field_relationship / tag_usage deletes for this type — turning ~N
+   * search dispatches + ~3N satellite round-trips for an N-entity subtree into a single ancestor
+   * cascade. Set in the constructor (like {@link #supportsSearch}) for FQN-nested,
+   * service/container-rooted hierarchies (Database/Schema/Table/StoredProcedure, and analogous
+   * dashboard/pipeline/topic/mlmodel/storage/search/api/drive asset trees). Defaults to {@code
+   * false} so flat-FQN or non-cascade-covered types (Team, User, Role, Policy, …) keep the safe
+   * per-entity path until verified. Note: id-keyed satellites (entity_relationship, entity_extension,
+   * entity_usage, feed) are still batched per chunk by id-set regardless of this flag, since the
+   * root cleanup only covers the root's own id, not descendants'.
+   */
+  protected boolean descendantsCoveredByAncestorCascade = false;
+
   protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
   private final ReadPlanner readPlanner = new ReadPlanner();
 
@@ -5678,12 +5728,636 @@ public abstract class EntityRepository<T extends EntityInterface> {
   protected void restoreChildren(UUID id, String updatedBy) {
     // Restore deleted children entities
     List<CollectionDAO.EntityRelationshipRecord> records =
-        daoCollection.relationshipDAO().findTo(id, entityType, Relationship.CONTAINS.ordinal());
-    if (!records.isEmpty()) {
-      // Recursively restore all contained entities
-      for (CollectionDAO.EntityRelationshipRecord record : records) {
-        LOG.info("Recursively restoring {} {}", record.getType(), record.getId());
-        Entity.restoreEntity(updatedBy, record.getType(), record.getId());
+        daoCollection
+            .relationshipDAO()
+            .findTo(
+                id,
+                entityType,
+                List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal()));
+    if (records.isEmpty()) {
+      return;
+    }
+    Map<String, List<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipRecord record : records) {
+      idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
+    }
+    for (var entry : idsByType.entrySet()) {
+      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
+      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+    }
+  }
+
+  /**
+   * Bulk-restore a set of soft-deleted entities of this repository's type along with their entire
+   * subtree of CONTAINS-related descendants. Replaces the per-entity recursive path that was
+   * O(descendants) HTTP-request-bound work with a per-level batched walk that uses the existing
+   * deferred-store bulk update infrastructure.
+   *
+   * <p>For a database with N descendants, the previous implementation issued ~N find calls,
+   * ~N updates and ~N search index writes, all serialized inside one HTTP request. This path
+   * does one batched DB load, one batched DB write and one batched change-event insert per
+   * level, and relies on {@link #restoreFromSearch(EntityInterface)} at the top-level to
+   * cascade the deleted flag flip across child indexes in a single ES update_by_query.
+   *
+   * <p>Subclasses that link non-CONTAINS related entities (e.g., charts attached to dashboards
+   * via HAS) should implement the {@link #restoreAdditionalChildren(UUID, String)} hook —
+   * the CONTAINS subtree is restored by the bulk path itself, so per-entity overrides of
+   * {@code restoreChildren} are no longer invoked from inside the bulk walk.
+   *
+   * <p><b>Operational ceiling:</b> the entire walk runs inside a single JDBI
+   * {@code @Transaction}, which holds one connection from the pool for the duration. The
+   * async restore endpoint ({@code ?async=true}) moves the work onto a virtual thread but
+   * keeps the same single-transaction shape — it just lets the client get a 202 back.
+   * Back-pressure under load comes from the JDBI connection pool itself: virtual threads
+   * are cheap, so under saturation tasks queue on connection acquisition (with the pool's
+   * own timeout) rather than at the executor. Chunked-transaction support is tracked as a
+   * follow-up if this becomes a real bottleneck.
+   */
+  @Transaction
+  public final void bulkRestoreSubtree(List<UUID> ids, String updatedBy) {
+    if (ids == null || ids.isEmpty()) {
+      return;
+    }
+    // Load with ALL — we still need to walk children when the parents at this level are
+    // already restored (or never deleted), in case deeper descendants are deleted and
+    // must be flipped. Matches the previous recursive path that always called
+    // restoreChildren before checking the parent's deleted state.
+    List<T> entities = loadForBulk(ids, ALL, "bulkRestoreLoad");
+    if (entities.isEmpty()) {
+      return;
+    }
+    dispatchToContainedChildren(
+        entities,
+        "bulkRestoreFindChildren",
+        (childRepo, childIds) -> childRepo.bulkRestoreSubtree(childIds, updatedBy));
+
+    List<T> deletedEntities =
+        entities.stream().filter(e -> Boolean.TRUE.equals(e.getDeleted())).toList();
+    if (!deletedEntities.isEmpty()) {
+      // Hydrate relationship fields with Include.ALL before the PUT updater diff runs.
+      // loadForBulk returned only the storage JSON, so HAS-style children
+      // (e.g., dashboard.charts, dashboard.dataModels) are null on the parsed entity.
+      // The PUT updater's compareAndUpdate("charts", ...) fires unconditionally and the
+      // update(...) lambda does deleteFrom(... HAS ...) followed by re-adding from
+      // updated.getCharts() — if updated.getCharts() is null/empty, every HAS row is
+      // wiped before the restoreAdditionalChildren hook ever runs to restore them.
+      // Using Include.ALL ensures the cascade-deleted charts/dataModels are visible to
+      // both sides of the diff so the relationships round-trip cleanly. Matches the
+      // single-entity restoreEntity contract (see the comment at the find/setFields call
+      // earlier in this file).
+      hydrateRelationsForBulkUpdater(deletedEntities);
+      List<EntityUpdater> updaters =
+          buildBulkUpdaters(deletedEntities, updatedBy, Operation.PUT, "bulkRestoreUpdaters", null);
+      List<EntityUpdater> changed = filterChanged(updaters);
+      if (!changed.isEmpty()) {
+        persistBulkUpdaters(changed, "bulkRestore");
+        ListCountCache.invalidate(entityType);
+      }
+    }
+    // Always run per-entity hooks even when nothing at THIS level needed flipping —
+    // a re-entered cascade may still have HAS-related children attached to nested
+    // descendants that require reconciliation.
+    runRestoreAdditionalChildren(entities, updatedBy);
+  }
+
+  private void runRestoreAdditionalChildren(List<T> entities, String updatedBy) {
+    for (T entity : entities) {
+      restoreAdditionalChildren(entity.getId(), updatedBy);
+    }
+  }
+
+  /**
+   * Default relation set walked when descending into a parent's subtree. CONTAINS covers the
+   * service → DB → schema → table chain and most other parent → child hierarchies; PARENT_OF
+   * covers recursive shapes like Glossary → GlossaryTerm, Team → Team, Classification → Tag,
+   * Domain → DataProduct. Walking both keeps every entity type's hierarchy in scope without
+   * subclass-specific overrides.
+   */
+  private static final List<Integer> SUBTREE_RELATIONS =
+      List.of(Relationship.CONTAINS.ordinal(), Relationship.PARENT_OF.ordinal());
+
+  /**
+   * Find all subtree children (CONTAINS + PARENT_OF) for every entity in {@code parents} with one
+   * batched query, then apply {@code dispatcher} to each (childRepo, childIds) group. Replaces the
+   * per-parent {@code findTo} round-trip that used to fire once per descendant — for a 12k-table
+   * database that's 12k DB hits collapsed into one per tree level. Shared between bulk restore,
+   * bulk soft-delete and bulk hard-delete; the only thing that varies is the terminal call on the
+   * child repo.
+   *
+   * <p>Time-series children (e.g., {@code TestCase --PARENT_OF--> testCaseResolutionStatus},
+   * {@code AIApplication --CONTAINS--> agentExecution}, {@code McpServer --CONTAINS-->
+   * mcpExecution}) are intentionally not walked here. Restore and soft-delete have nothing to
+   * do — time-series rows are immutable and carry no {@code deleted} state. Hard-delete also
+   * skips: the tables can hold millions of rows per parent under active ingestion (agent /
+   * MCP executions, profile + queryCost time-series), and a synchronous bulk DELETE would
+   * lock those tables for the duration of the parent cascade and stall the delete request.
+   * Orphan rows whose parent ref no longer resolves degrade safely via
+   * {@code getFromEntityRef} returning {@code null} + the per-repo
+   * {@code shouldSkipSearchResultOnInheritedFieldError} guard. The {@code DataRetention} app
+   * is responsible for sweeping these orphans on its regular cadence (see TODO #28367 for
+   * the orphan time-series cleanup follow-up).
+   */
+  private void dispatchToContainedChildren(
+      List<T> parents, String phaseName, BiConsumer<EntityRepository<?>, List<UUID>> dispatcher) {
+    dispatchToContainedChildren(parents, phaseName, dispatcher, false, null);
+  }
+
+  private void dispatchToContainedChildren(
+      List<T> parents,
+      String phaseName,
+      BiConsumer<EntityRepository<?>, List<UUID>> dispatcher,
+      boolean hardDelete,
+      String updatedBy) {
+    List<String> parentIds = new ArrayList<>(parents.size());
+    for (T parent : parents) {
+      parentIds.add(parent.getId().toString());
+    }
+    List<CollectionDAO.EntityRelationshipObject> relationships;
+    try (var ignored = phase(phaseName)) {
+      relationships =
+          daoCollection.relationshipDAO().findToBatchAllTypes(parentIds, SUBTREE_RELATIONS, ALL);
+    }
+    if (hardDelete) {
+      relationships = prepareChildrenForHardDeleteCascade(parents, relationships, updatedBy);
+    }
+    if (relationships.isEmpty()) {
+      return;
+    }
+    Map<String, List<UUID>> idsByChildType = new HashMap<>();
+    for (var rel : relationships) {
+      if (!entityType.equals(rel.getFromEntity())) {
+        continue;
+      }
+      idsByChildType
+          .computeIfAbsent(rel.getToEntity(), k -> new ArrayList<>())
+          .add(UUID.fromString(rel.getToId()));
+    }
+    for (var entry : idsByChildType.entrySet()) {
+      String childType = entry.getKey();
+      List<UUID> childIds = entry.getValue();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        dispatcher.accept(repo, childIds);
+      }
+    }
+  }
+
+  protected List<EntityRelationshipRecord> prepareChildrenForHardDeleteCascade(
+      UUID parentId, List<EntityRelationshipRecord> children, String updatedBy) {
+    return children;
+  }
+
+  protected List<CollectionDAO.EntityRelationshipObject> prepareChildrenForHardDeleteCascade(
+      List<T> parents, List<CollectionDAO.EntityRelationshipObject> children, String updatedBy) {
+    return children;
+  }
+
+  protected Runnable enterBulkHardDeleteCascade(List<T> entities) {
+    return () -> {};
+  }
+
+  /**
+   * Hook called once per restored entity for repositories that have non-CONTAINS related
+   * entities that need to be restored alongside the parent. Default: no-op.
+   */
+  protected void restoreAdditionalChildren(UUID id, String updatedBy) {
+    // No-op. Override in subclasses for HAS-style related-entity restore.
+  }
+
+  /**
+   * Bulk soft-delete the given entities of this repository's type along with their CONTAINS
+   * subtree. Symmetric to {@link #bulkRestoreSubtree(List, String)}: replaces the per-entity
+   * recursive {@code Entity.deleteEntity} loop in
+   * {@link #deleteChildren(List, boolean, String)} with a per-level batched walk that uses
+   * the deferred-store bulk update infrastructure.
+   *
+   * <p>Per-level shape: one batched {@code findToBatchAllTypes}, one batched DB load (NON
+   * deleted only — already-deleted entities are skipped, mirroring the per-entity guard),
+   * one batched {@code updateMany} that flips {@code deleted = true}, one batched version
+   * history insert, one batched change-event insert, one batched cache invalidation.
+   * Per-descendant ES writes are skipped — the top-level
+   * {@link #deleteFromSearch(EntityInterface, boolean)} cascade flips the deleted flag on
+   * descendant ES indexes in a single update_by_query.
+   *
+   * <p>Entity types where {@code supportsSoftDelete} is false fall back to the per-entity
+   * hard-delete path (matches the existing per-entity {@code delete()} fallback). Subclasses
+   * with non-CONTAINS linked entities should override
+   * {@link #softDeleteAdditionalChildren(UUID, String)}.
+   *
+   * <p><b>Operational ceiling:</b> see {@link #bulkRestoreSubtree(List, String)} — the same
+   * single-{@code @Transaction} shape applies on the delete side. Chunked-transaction
+   * support is tracked as a follow-up.
+   */
+  @Transaction
+  public final void bulkSoftDeleteSubtree(List<UUID> ids, String updatedBy) {
+    if (ids == null || ids.isEmpty()) {
+      return;
+    }
+    if (!supportsSoftDelete) {
+      hardDeleteAtLevelOnly(ids, updatedBy);
+      return;
+    }
+    List<T> allEntities = loadForBulk(ids, ALL, "bulkSoftDeleteLoad");
+    if (allEntities.isEmpty()) {
+      return;
+    }
+    List<T> entities =
+        allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
+    for (T entity : entities) {
+      checkSystemEntityDeletion(entity);
+      preDelete(entity, updatedBy);
+    }
+    dispatchToContainedChildren(
+        allEntities,
+        "bulkSoftDeleteFindChildren",
+        (childRepo, childIds) -> childRepo.bulkSoftDeleteSubtree(childIds, updatedBy));
+    applyBulkSoftDelete(entities, updatedBy);
+    // Always run per-entity hooks even when nothing at THIS level needed flipping —
+    // descendants restored independently before the cascade still need to be re-deleted
+    // by the per-entity hook.
+    runSoftDeleteAdditionalChildren(allEntities, updatedBy);
+  }
+
+  // This type can't be soft-deleted, so each entity at this level must be hard
+  // deleted instead. Pass hardDelete=false through to the per-entity delete so
+  // descendant levels that *do* support soft delete remain soft-deleted — the
+  // per-entity flow handles the asymmetry by inspecting each level's own
+  // supportsSoftDelete flag.
+  private void hardDeleteAtLevelOnly(List<UUID> ids, String updatedBy) {
+    for (UUID id : ids) {
+      Entity.deleteEntity(updatedBy, entityType, id, true, false);
+    }
+  }
+
+  private void applyBulkSoftDelete(List<T> entities, String updatedBy) {
+    if (entities.isEmpty()) {
+      return;
+    }
+    // Same reason as hydrateRelationsForBulkUpdater — buildBulkUpdaters uses bare JSON, and a
+    // PUT-style updater (e.g. DashboardUpdater.entitySpecificUpdate) calls
+    // deleteFrom(... HAS ...) then re-adds from updated.getCharts(). Without hydration
+    // both lists are empty and the soft-delete wipes the HAS rows that softDeleteAdditional-
+    // Children later needs to walk. Include.ALL handles both shapes: charts that are still
+    // live (parent soft-deleted in isolation) and charts already cascade-soft-deleted
+    // (parent soft-deleted as part of a wider sweep).
+    hydrateRelationsForBulkUpdater(entities);
+    List<EntityUpdater> updaters =
+        buildBulkUpdaters(
+            entities,
+            updatedBy,
+            Operation.SOFT_DELETE,
+            "bulkSoftDeleteUpdaters",
+            e -> e.setDeleted(true));
+    List<EntityUpdater> changed = filterChanged(updaters);
+    if (!changed.isEmpty()) {
+      persistBulkUpdaters(changed, "bulkSoftDelete");
+      ListCountCache.invalidate(entityType);
+    }
+  }
+
+  private void runSoftDeleteAdditionalChildren(List<T> entities, String updatedBy) {
+    for (T entity : entities) {
+      softDeleteAdditionalChildren(entity.getId(), updatedBy);
+    }
+  }
+
+  /**
+   * Hook called once per soft-deleted entity for repositories that have non-CONTAINS related
+   * entities that need to be soft-deleted alongside the parent (e.g., charts attached to
+   * dashboards via HAS). Default: no-op.
+   */
+  protected void softDeleteAdditionalChildren(UUID id, String updatedBy) {
+    // No-op. Override in subclasses for HAS-style related-entity soft delete.
+  }
+
+  /**
+   * Bulk hard-delete the given entities of this repository's type along with their entire
+   * CONTAINS + PARENT_OF subtree. Replaces the legacy per-entity {@link #cleanup} loop driven by
+   * {@code processDeletionBatch} / {@code batchDeleteChildren} — that path opened an independent
+   * JDBI transaction per descendant and fired ~10 SQL statements per entity, so a 12k-table
+   * database needed ~120,000 round-trips and produced the hours-long deletes reported by users.
+   *
+   * <p>Per-level shape: one batched {@code findToBatchAllTypes} that walks both CONTAINS
+   * (service → DB → schema → table) and PARENT_OF (Glossary → GlossaryTerm, Team → Team, recursive
+   * Container) so every entity hierarchy is in scope without per-subclass overrides; one batched
+   * DB load; recursive descent into each child type; one
+   * {@link CollectionDAO.EntityRelationshipDAO#batchDeleteRelationships} per type to wipe both
+   * {@code (id, *)} and {@code (*, id)} entity_relationship rows in a single statement; one
+   * batched extension delete; one batched entity row delete; per-entity loops for tag_usage /
+   * usage / field_relationship / feed threads (those tables key on FQN strings rather than ids
+   * so they can't share a single IN-list query, but they run as a tight per-entity loop rather than
+   * the independent JDBI transaction per descendant that dominated the old path).
+   *
+   * <p>Subclasses with non-CONTAINS related entities (e.g., dashboard charts attached via HAS)
+   * should override {@link #hardDeleteAdditionalChildren(UUID, String)}. Subclasses that need true
+   * batched external cleanup (Airflow DAGs, S3, secrets stores) can override
+   * {@link #bulkEntitySpecificCleanup(List)}; the default loops the per-entity hook.
+   *
+   * <p><b>Concurrency:</b> relationship rows and entity rows are deleted as separate auto-committed
+   * statements (these are plain {@code EntityRepository} calls, not JDBI SqlObject proxies, so a
+   * {@code @Transaction} annotation would be inert). A concurrent reader resolving a required parent
+   * via {@link #getContainer(UUID)} therefore tolerates the relationship row being already gone — it
+   * returns {@code null} rather than throwing a 500, mirroring the parent-entity-gone handling in
+   * {@link #getFromEntityRef}. See also {@link #bulkRestoreSubtree(List, String)} for the operational
+   * ceiling note around single-connection holding for the duration of the walk.
+   */
+  public final void bulkHardDeleteSubtree(List<UUID> ids, String updatedBy) {
+    if (ids == null || ids.isEmpty()) {
+      return;
+    }
+    // Process the level in bounded chunks rather than hydrating it whole. Each chunk discovers
+    // and recursively deletes its own children (depth-first) before purging its own rows, so peak
+    // heap stays at ~BULK_HARD_DELETE_TXN_CHUNK_SIZE hydrated entities per tree level and no single
+    // transaction scales with subtree size. See BULK_HARD_DELETE_TXN_CHUNK_SIZE.
+    for (int start = 0; start < ids.size(); start += BULK_HARD_DELETE_TXN_CHUNK_SIZE) {
+      int end = Math.min(start + BULK_HARD_DELETE_TXN_CHUNK_SIZE, ids.size());
+      bulkHardDeleteSubtreeChunk(ids.subList(start, end), updatedBy);
+    }
+  }
+
+  private void bulkHardDeleteSubtreeChunk(List<UUID> ids, String updatedBy) {
+    List<T> entities = loadForBulk(ids, ALL, "bulkHardDeleteLoad");
+    if (entities.isEmpty()) {
+      return;
+    }
+    Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
+    try {
+      // Populate relation fields up front so the same subclass hooks the legacy
+      // Entity.deleteEntity path called against a fully-loaded entity (e.g.,
+      // TestCaseRepository.updateTestSuite reading testCase.getTestSuite()) see the
+      // expected shape. bulkCleanupReferences wipes these relationship rows later, so
+      // hooks running after that point must remain null-safe.
+      populateRelationFields(entities);
+      for (T entity : entities) {
+        checkSystemEntityDeletion(entity);
+        preDelete(entity, updatedBy);
+      }
+      dispatchToContainedChildren(
+          entities,
+          "bulkHardDeleteFindChildren",
+          (childRepo, childIds) -> childRepo.bulkHardDeleteSubtree(childIds, updatedBy),
+          true,
+          updatedBy);
+      bulkEntitySpecificCleanup(entities);
+      // Run BEFORE bulkCleanupReferences: hooks like DashboardRepository.cascadeChartCleanup
+      // walk HAS relationships to discover linked entities, and bulkCleanupReferences wipes
+      // those relationship rows.
+      runHardDeleteAdditionalChildren(entities, updatedBy);
+      // This chunk's reference wipes (entity_relationship, extensions, tag_usage, usage,
+      // field_relationship, feed) and its entity-row delete commit together in one transaction.
+      // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
+      // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
+      // already deleted by the recursion above, so this transaction is bounded to this chunk.
+      bulkDeleteReferencesAndRows(entities);
+      bulkInvalidate(entities);
+      // When an ancestor's deleteFromSearch cascade already removes these docs in a single
+      // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
+      // service.id / parent.id — see the DATABASE_SERVICE / default cases), firing one
+      // onEntityDeleted per descendant is pure overhead: it serializes a snapshot of every
+      // entity and submits a lane task each, which dominated the wall-clock of large recursive
+      // hard deletes (≈ N search dispatches for an N-entity subtree). Repos whose descendants are
+      // covered by that ancestor cascade override descendantsCoveredByAncestorCascade() to
+      // skip the per-entity dispatch; the root entity's own deleteFromSearch (fired by the
+      // top-level delete()) still runs and triggers the covering cascade.
+      boolean skipPerEntitySearch = descendantsCoveredByAncestorCascade;
+      for (T entity : entities) {
+        postDelete(entity, true);
+        if (!skipPerEntitySearch) {
+          deleteFromSearch(entity, true);
+        }
+      }
+    } finally {
+      exitHardDeleteCascade.run();
+    }
+  }
+
+  private void populateRelationFields(List<T> entities) {
+    try {
+      setFieldsInBulk(putFields, entities);
+    } catch (Exception e) {
+      LOG.debug(
+          "Bulk field population failed during bulk hard delete for {}, falling back per-entity: {}",
+          entityType,
+          e.getMessage());
+      for (T entity : entities) {
+        try {
+          setFieldsInternal(entity, putFields);
+        } catch (Exception ignored) {
+          // postDelete subclass overrides must remain null-safe for cascade-deleted parents.
+        }
+      }
+    }
+  }
+
+  /**
+   * Per-entity hydration with {@link Include#ALL} for the bulk restore path. The bulk
+   * {@link #setFieldsInBulk} variant hard-codes {@code NON_DELETED} when batch-fetching
+   * relationship references (see {@code DashboardRepository.batchFetchCharts}), so a
+   * cascade-deleted chart wouldn't show up in {@code dashboard.charts} — exactly the
+   * scenario where we need it to. Falling back to per-entity {@link #setFieldsInternal}
+   * routes through the subclass's {@code setFields(entity, fields, relationIncludes)} which
+   * honours the include passed in. Restore batches are typically small (single subtree
+   * level), so the extra DB round-trips are acceptable for the correctness this buys.
+   */
+  private void hydrateRelationsForBulkUpdater(List<T> entities) {
+    for (T entity : entities) {
+      try {
+        setFieldsInternal(entity, putFields, ALL);
+      } catch (Exception ex) {
+        // Best-effort: if hydration fails on a single entity the PUT updater may wipe its
+        // HAS rows. restoreAdditionalChildren will still attempt to put them back, but log
+        // so operators can correlate any missing-relationship reports with hydration noise
+        // rather than digging through change-event history.
+        LOG.warn(
+            "Hydration failed for {} {}; HAS rows may be wiped before restore hook runs",
+            entityType,
+            entity.getId(),
+            ex);
+      }
+    }
+  }
+
+  private void bulkDeleteReferencesAndRows(List<T> entities) {
+    var jdbi = Entity.getJdbi();
+    if (jdbi == null) {
+      bulkCleanupReferences(entities);
+      bulkDeleteEntityRows(entities);
+      return;
+    }
+    jdbi.inTransaction(
+        handle -> {
+          bulkCleanupReferences(entities);
+          bulkDeleteEntityRows(entities);
+          return null;
+        });
+  }
+
+  private void bulkCleanupReferences(List<T> entities) {
+    List<UUID> entityIds = new ArrayList<>(entities.size());
+    List<String> entityIdStrings = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      entityIds.add(entity.getId());
+      entityIdStrings.add(entity.getId().toString());
+    }
+    try (var ignored = phase("bulkHardDeleteRelationships")) {
+      daoCollection.relationshipDAO().batchDeleteRelationships(entityIds, entityType);
+    }
+    try (var ignored = phase("bulkHardDeleteExtensions")) {
+      daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
+    }
+    // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
+    // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's
+    // cleanup() already issues that prefix delete (deleteAllByPrefix /
+    // deleteTagLabelsByTargetPrefix
+    // on the root FQN covers every descendant), making these per-entity calls redundant — N no-op
+    // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
+    // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
+    // keep the per-entity path.
+    if (!descendantsCoveredByAncestorCascade) {
+      try (var ignored = phase("bulkHardDeleteFqnDependents")) {
+        for (T entity : entities) {
+          String fqn = entity.getFullyQualifiedName();
+          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
+          daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
+        }
+      }
+    }
+    try (var ignored = phase("bulkHardDeleteUsage")) {
+      // entity_usage is keyed by id (not covered by the root's FQN-prefix cleanup), so descendants
+      // must be cleared here — but in one IN-list delete per chunk instead of one per entity.
+      daoCollection.usageDAO().deleteByIds(entityIds);
+    }
+    try (var ignored = phase("bulkHardDeleteFeedThreads")) {
+      Entity.getFeedRepository().deleteByAbout(entityIds);
+    }
+  }
+
+  private void bulkDeleteEntityRows(List<T> entities) {
+    try (var ignored = phase("bulkHardDeleteRows")) {
+      List<UUID> entityIds = new ArrayList<>(entities.size());
+      for (T entity : entities) {
+        entityIds.add(entity.getId());
+      }
+      dao.deleteByIds(entityIds);
+    }
+  }
+
+  private void bulkInvalidate(List<T> entities) {
+    for (T entity : entities) {
+      invalidate(entity);
+    }
+  }
+
+  private void runHardDeleteAdditionalChildren(List<T> entities, String updatedBy) {
+    for (T entity : entities) {
+      hardDeleteAdditionalChildren(entity.getId(), updatedBy);
+    }
+  }
+
+  /**
+   * Hook called once per hard-deleted entity for repositories that have non-CONTAINS related
+   * entities that need to be hard-deleted alongside the parent (e.g., charts attached to
+   * dashboards via HAS). Default: no-op.
+   */
+  protected void hardDeleteAdditionalChildren(UUID id, String updatedBy) {
+    // No-op. Override in subclasses for HAS-style related-entity hard delete.
+  }
+
+  /**
+   * Hook for entity-type-specific cleanup invoked once per bulk-hard-delete batch. Default
+   * implementation loops {@link #entitySpecificCleanup(EntityInterface)} so subclasses keep
+   * current behavior. Override for true batching where external resources warrant it (e.g.,
+   * Airflow DAG deregistration, S3 object cleanup, secrets-store purges).
+   */
+  protected void bulkEntitySpecificCleanup(List<T> entities) {
+    for (T entity : entities) {
+      entitySpecificCleanup(entity);
+    }
+  }
+
+  // ---- Shared phase helpers used by bulkRestoreSubtree / bulkSoftDeleteSubtree ----
+
+  private List<T> loadForBulk(List<UUID> ids, Include include, String phaseName) {
+    try (var ignored = phase(phaseName)) {
+      return find(ids, include);
+    }
+  }
+
+  private List<EntityUpdater> buildBulkUpdaters(
+      List<T> originals, String updatedBy, Operation op, String phaseName, Consumer<T> mutator) {
+    long now = System.currentTimeMillis();
+    List<EntityUpdater> updaters = new ArrayList<>(originals.size());
+    try (var ignored = phase(phaseName)) {
+      for (T original : originals) {
+        T updated = JsonUtils.readValue(JsonUtils.pojoToJson(original), entityClass);
+        updated.setUpdatedBy(updatedBy);
+        updated.setUpdatedAt(now);
+        if (mutator != null) {
+          mutator.accept(updated);
+        }
+        EntityUpdater updater = getUpdater(original, updated, op, null);
+        updater.updateWithDeferredStore();
+        updaters.add(updater);
+      }
+    }
+    return updaters;
+  }
+
+  private List<EntityUpdater> filterChanged(List<EntityUpdater> updaters) {
+    return updaters.stream().filter(u -> u.isVersionChanged() || u.isEntityChanged()).toList();
+  }
+
+  /**
+   * Apply a batch of {@link EntityUpdater}s already in deferred-store state: write version
+   * history, persist entity rows, invalidate caches, dispatch the bulk lifecycle event so
+   * the search index handler updates ES, then emit change events. {@code phasePrefix} is
+   * used to tag latency phases (e.g. {@code "bulkRestore"} →
+   * {@code "bulkRestoreVersionHistory"}).
+   *
+   * <p>The lifecycle dispatch is required because the top-level
+   * {@code restoreFromSearch}/{@code deleteFromSearch} cascade only flips the deleted flag on
+   * child indexes whose docs join on the parent's id field. HAS-style descendants (e.g.,
+   * charts attached to dashboards) and entity types without a {@code parent.id} field in
+   * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
+   * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   */
+  private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
+    writeBulkVersionHistory(changed, phasePrefix);
+    List<T> changedEntities = changed.stream().map(EntityUpdater::getUpdated).toList();
+    try (var ignored = phase(phasePrefix + "UpdateMany")) {
+      updateMany(changedEntities);
+    }
+    try (var ignored = phase(phasePrefix + "Invalidate")) {
+      invalidateMany(changedEntities);
+    }
+    try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
+    }
+    // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
+    // events. A single change event is recorded for the user-targeted root entity (see the delete
+    // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
+    // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+  }
+
+  private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
+    try (var ignored = phase(phasePrefix + "VersionHistory")) {
+      List<UUID> historyIds = new ArrayList<>();
+      List<String> historyExtensions = new ArrayList<>();
+      List<String> historyJsons = new ArrayList<>();
+      for (EntityUpdater u : changed) {
+        if (u.isVersionChanged()) {
+          historyIds.add(u.getOriginal().getId());
+          historyExtensions.add(
+              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
+          historyJsons.add(JsonUtils.pojoToJson(u.getOriginal()));
+        }
+      }
+      if (!historyIds.isEmpty()) {
+        daoCollection
+            .entityExtensionDAO()
+            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
       }
     }
   }

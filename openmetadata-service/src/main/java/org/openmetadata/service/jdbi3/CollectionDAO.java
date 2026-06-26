@@ -2072,6 +2072,25 @@ public interface CollectionDAO {
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
+            + "AND relation IN (<relations>) "
+            + "<cond>")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatchAllTypesWithRelationsCondition(
+        @BindList("fromIds") List<String> fromIds,
+        @BindList("relations") List<Integer> relations,
+        @Define("cond") String condition);
+
+    default List<EntityRelationshipObject> findToBatchAllTypes(
+        List<String> fromIds, List<Integer> relations, Include include) {
+      String condition = deletedCondition(include);
+      return EntityDAO.queryInChunks(
+          fromIds, chunk -> findToBatchAllTypesWithRelationsCondition(chunk, relations, condition));
+    }
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
             + "AND fromEntity = :fromEntity "
             + "AND relation IN (<relations>) "
             + "<cond>")
@@ -2980,6 +2999,15 @@ public interface CollectionDAO {
                 + " WHERE testCaseResolutionStatusId = :testCaseResolutionStatusId")
     String fetchThreadByTestCaseResolutionStatusId(
         @BindUUID("testCaseResolutionStatusId") UUID testCaseResolutionStatusId);
+
+    // DISTINCT is defence-in-depth: thread_entity.id is a primary key, and entityId is a
+    // single-valued column per row, so a single matching scan can't physically return the
+    // same id twice. The DISTINCT survives a future schema where a thread row picks up
+    // multiple entity references (or a join is added) — keeping the consumer code in
+    // deleteByAbout from re-issuing redundant relationship / extension / feed deletes for
+    // the same id under chunking.
+    @SqlQuery("select DISTINCT id from thread_entity where entityId IN (<entityIds>)")
+    List<String> findByEntityIds(@BindList("entityIds") List<String> entityIds);
 
     default List<String> listThreadsByEntityLink(
         FeedFilter filter,
@@ -6565,6 +6593,25 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_usage WHERE id IN (<ids>)")
+    void deleteByIdsInternal(@BindList("ids") List<String> ids);
+
+    /**
+     * Bulk-delete usage rows for many entities in one statement per chunk instead of one statement
+     * per entity. Used by the bulk hard-delete path so a service teardown does not fire one
+     * {@code DELETE FROM entity_usage} round-trip per descendant table.
+     */
+    default void deleteByIds(List<UUID> ids) {
+      if (ids == null || ids.isEmpty()) {
+        return;
+      }
+      List<String> stringIds = ids.stream().map(UUID::toString).toList();
+      int chunkSize = EntityDAO.MAX_IN_LIST_CHUNK_SIZE;
+      for (int i = 0; i < stringIds.size(); i += chunkSize) {
+        deleteByIdsInternal(stringIds.subList(i, Math.min(i + chunkSize, stringIds.size())));
+      }
+    }
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here

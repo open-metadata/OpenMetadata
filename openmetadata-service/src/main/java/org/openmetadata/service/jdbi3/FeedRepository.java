@@ -51,10 +51,12 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -126,6 +128,14 @@ public class FeedRepository {
   public static final String DELETED_TEAM_NAME = "DeletedTeam";
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
+
+  // Keep IN-list expansions well under MySQL's max_allowed_packet budget and within
+  // PostgreSQL's bind-parameter ceiling. 500 also matches the existing
+  // EntityRepository.RELATION_DELETE_BATCH_SIZE used for the same reason on the
+  // relationship side. Smaller than EntityDAO.MAX_IN_LIST_CHUNK_SIZE because the
+  // feed cleanup path issues three IN-list statements per chunk (relationships,
+  // field_relationship, thread_entity) and each has its own packet/parameter budget.
+  private static final int FEED_IN_BATCH_SIZE = 500;
 
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =
@@ -762,13 +772,58 @@ public class FeedRepository {
   }
 
   public void deleteByAbout(UUID entityId) {
-    List<String> threadIds = listOrEmpty(dao.feedDAO().findByEntityId(entityId.toString()));
+    deleteByAbout(List.of(entityId));
+  }
+
+  public void deleteByAbout(List<UUID> entityIds) {
+    if (entityIds == null || entityIds.isEmpty()) {
+      return;
+    }
+
+    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
+    // LinkedHashSet: per-chunk findByEntityIds is already DISTINCT, but accumulating across
+    // chunks could still see the same id twice if a future caller passes an entityIds list
+    // with duplicates. Dedup once here so deleteThreadsInBatch's downstream chunking (3
+    // IN-list DELETEs per 500-id chunk) doesn't waste budget on redundant rows. Linked
+    // ordering for deterministic logs / replay.
+    Set<String> threadIds = new LinkedHashSet<>();
+    for (int i = 0; i < entityIdStrings.size(); i += FEED_IN_BATCH_SIZE) {
+      List<String> chunk =
+          entityIdStrings.subList(i, Math.min(i + FEED_IN_BATCH_SIZE, entityIdStrings.size()));
+      try {
+        threadIds.addAll(listOrEmpty(dao.feedDAO().findByEntityIds(chunk)));
+      } catch (Exception ex) {
+        LOG.debug(
+            "Skipping legacy feed cleanup for chunk of {} entities (offset {}) because thread storage is unavailable",
+            chunk.size(),
+            i,
+            ex);
+      }
+    }
+    if (threadIds.isEmpty()) {
+      return;
+    }
+    // Keep legacy feed cleanup best-effort: a malformed thread id or a DAO failure
+    // here must not blow up the caller's hard-delete @Transaction. Parse defensively
+    // (skip + log malformed ids) and swallow batch-delete failures.
+    List<UUID> threadUuids = new ArrayList<>(threadIds.size());
     for (String threadId : threadIds) {
       try {
-        deleteThreadInternal(UUID.fromString(threadId));
-      } catch (Exception ex) {
-        // Continue deletion
+        threadUuids.add(UUID.fromString(threadId));
+      } catch (IllegalArgumentException ex) {
+        LOG.warn("Skipping malformed legacy thread id {} during feed cleanup", threadId);
       }
+    }
+    if (threadUuids.isEmpty()) {
+      return;
+    }
+    try {
+      deleteThreadsInBatch(threadUuids);
+    } catch (Exception ex) {
+      LOG.warn(
+          "Legacy feed cleanup failed for {} threads; continuing entity delete",
+          threadUuids.size(),
+          ex);
     }
   }
 
