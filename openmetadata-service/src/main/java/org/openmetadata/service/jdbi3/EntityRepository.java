@@ -3377,14 +3377,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     removeExtensions(originals);
     storeExtensions(updatedEntities);
 
-    // A CSV import builds each entity from its row alone, so a missing (or empty) domains value —
-    // including the historical glossary CSV that has no domains column at all — arrives as null.
-    // The relationship rebuild below clears every domain and re-stores only what the imported
-    // entity carries, so carry the existing domain forward first; otherwise an unrelated bulk edit
-    // silently drops it. Removing a domain is still done through PATCH. Mirrors the non-import PUT
-    // path in EntityUpdater.updateDomains.
-    carryForwardDomainsForImport(updatedEntities);
-
     // Update relationships - batch clear existing and store new
     clearRelationshipsForUpdateMany(updatedEntities);
     storeRelationshipsInternal(updatedEntities);
@@ -3400,27 +3392,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     writeThroughCacheMany(updatedEntities, true);
 
     return updatedEntities;
-  }
-
-  /**
-   * Restores domains the import did not specify so the batch relationship rebuild in {@link
-   * #updateManyEntitiesForImport} does not drop them. Entities whose imported row carried no domains
-   * have their current domains re-read in a single batch query and set back on the entity, which the
-   * subsequent storeRelationships call then persists. Domains can still be removed through PATCH.
-   */
-  private void carryForwardDomainsForImport(List<T> updates) {
-    if (!supportsDomains) {
-      return;
-    }
-    List<T> missingDomains =
-        updates.stream().filter(entity -> nullOrEmpty(entity.getDomains())).toList();
-    if (missingDomains.isEmpty()) {
-      return;
-    }
-    Map<UUID, List<EntityReference>> existingDomains = batchFetchDomains(missingDomains);
-    for (T entity : missingDomains) {
-      entity.setDomains(existingDomains.get(entity.getId()));
-    }
   }
 
   @SuppressWarnings("unused")

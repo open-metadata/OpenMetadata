@@ -296,10 +296,10 @@ test.describe('Glossary Bulk Import Export', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
 
-        const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
-,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,,
-,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,,
-${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,,`;
+        const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
 
         const initialCsvBlob = new Blob([initialCsvContent], {
           type: 'text/csv',
@@ -353,10 +353,10 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
 
-        const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
-${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,,
-,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,,
-${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,,`;
+        const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
 
         const circularCsvBlob = new Blob([circularCsvContent], {
           type: 'text/csv',
@@ -429,8 +429,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with missing name (required field)
-        const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
-,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,,`;
+        const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,`;
 
         const csvBlob = new Blob([missingNameCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'missing-name.csv', {
@@ -488,8 +488,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with reference to non-existent parent
-        const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
-${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child with invalid parent</p>,,,,,,user:admin,Approved,,,,`;
+        const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child with invalid parent</p>,,,,,,user:admin,Approved,,,`;
 
         const csvBlob = new Blob([invalidParentCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'invalid-parent.csv', {
@@ -551,9 +551,9 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with one valid term and one with circular reference
-        const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
-,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,,
-${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,,`;
+        const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
+,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,
+${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,`;
 
         const csvBlob = new Blob([mixedCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'mixed-terms.csv', {

@@ -18,7 +18,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
-import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -242,8 +241,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
     List<GlossaryTerm> terms =
         repository.listAllForCSV(
-            repository.getFields(
-                "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
+            repository.getFields("owners,reviewers,tags,relatedTerms,synonyms,extension,parent"),
             glossary.getFullyQualifiedName());
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
@@ -318,8 +316,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withOwners(getOwners(printer, csvRecord, 9))
           .withEntityStatus(getTermStatus(printer, csvRecord))
           .withStyle(getStyle(csvRecord))
-          .withDomains(getDomains(printer, csvRecord, 13))
-          .withExtension(getExtension(printer, csvRecord, 14));
+          .withExtension(getExtension(printer, csvRecord, 13));
 
       // Validate to catch logical errors for both dry run and actual import
       if (processRecord) {
@@ -534,7 +531,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addField(recordList, entity.getEntityStatus().value());
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
       addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
-      addDomains(recordList, entity.getDomains());
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
