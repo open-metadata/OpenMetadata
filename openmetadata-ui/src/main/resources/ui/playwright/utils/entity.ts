@@ -2345,7 +2345,7 @@ export const checkExploreSearchFilter = async (
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
 
   await entity?.visitEntityPage(page);
 };
