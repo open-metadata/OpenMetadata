@@ -2855,14 +2855,8 @@ public class SearchRepository {
     scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getNewValue();
-        List<String> newFollowers = new ArrayList<>();
-        for (EntityReference follower : entityReferences) {
-          newFollowers.add(follower.getId().toString());
-        }
-        fieldAddParams.put(fieldChange.getName(), newFollowers);
-        scriptTxt.append("ctx._source.followers.addAll(params.followers);");
+        fieldAddParams.put(FIELD_FOLLOWERS, SearchIndexUtils.parseFollowers(entity.getFollowers()));
+        scriptTxt.append("ctx._source.followers = params.followers;");
       }
       if (fieldChange.getName().equalsIgnoreCase("extension")) {
         String entityType = entity.getEntityReference().getType();
@@ -2881,13 +2875,8 @@ public class SearchRepository {
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
-        @SuppressWarnings("unchecked")
-        List<EntityReference> entityReferences = (List<EntityReference>) fieldChange.getOldValue();
-        for (EntityReference follower : entityReferences) {
-          fieldAddParams.put(fieldChange.getName(), follower.getId().toString());
-        }
-        scriptTxt.append(
-            "ctx._source.followers.removeAll(Collections.singleton(params.followers));");
+        fieldAddParams.put(FIELD_FOLLOWERS, SearchIndexUtils.parseFollowers(entity.getFollowers()));
+        scriptTxt.append("ctx._source.followers = params.followers;");
       }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
         scriptTxt.append("ctx._source.description = null;");
