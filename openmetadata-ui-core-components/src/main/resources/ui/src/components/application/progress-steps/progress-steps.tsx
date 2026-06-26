@@ -83,7 +83,9 @@ export interface ProgressStepsProps
    * Where the step label sits relative to the indicator on horizontal
    * layouts. Defaults to `'bottom'`. Use `'attach'` to render the indicator
    * and label side-by-side with a disabled treatment for incomplete steps.
-   * Ignored when `orientation` is `'vertical'` or when `type` is `'line'`.
+   * Only applies when `orientation === 'horizontal'` and `type` is `'number'`
+   * or `'icon'`; other combinations fall back to the standard horizontal
+   * layout to keep the indicator and label palettes consistent.
    */
   labelPlacement?: ProgressStepsLabelPlacement;
   className?: string;
@@ -409,7 +411,10 @@ const AttachedHorizontalSteps = ({
         {showConnector && !isLast && (
           <span
             aria-hidden="true"
-            className="tw:mx-3 tw:h-px tw:w-8 tw:shrink-0 tw:bg-quaternary"
+            className={cx(
+              'tw:mx-3 tw:h-px tw:w-8 tw:shrink-0',
+              status === 'complete' ? 'tw:bg-success-solid' : 'tw:bg-quaternary'
+            )}
           />
         )}
       </li>
@@ -565,7 +570,7 @@ export const ProgressSteps = ({
   const isAttached =
     labelPlacement === 'attach' &&
     orientation === 'horizontal' &&
-    type !== 'line';
+    (type === 'number' || type === 'icon');
 
   let content: ReactNode;
   let listClassName: string;
