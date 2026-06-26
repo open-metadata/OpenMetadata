@@ -113,8 +113,29 @@ class ContextMemorySearchVisibilityTest {
         "owners see their own (including Private) memories");
     assertFieldExists(
         json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "Shared memories are matched via sharedWithIds (gated by visibility=Shared)");
+  }
+
+  @Test
+  void sharedWithIdsBranchIsGatedByVisibilityShared() {
+    // ContextMemoryVisibility.isInSharedWithList is consulted ONLY when visibility==Shared, so the
+    // sharedWithIds match must be ANDed with visibility=Shared. A bare sharedWithIds clause would
+    // leak a memory later flipped to Private but still carrying a stale sharedWithIds list.
+    DocumentContext json = JsonPath.parse(buildElasticJson(nonAdminSubject()));
+
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.term['visibility'].value=='Shared')])]",
+        "the sharedWithIds match sits in a bool.must alongside visibility=Shared");
+    assertFieldExists(
+        json,
+        "$.bool.should[1].bool.must[1].bool.should[?(@.bool.must[?(@.terms['sharedWithIds'])])]",
+        "that same gated branch carries the sharedWithIds terms");
+    assertFieldDoesNotExist(
+        json,
         "$.bool.should[1].bool.must[1].bool.should[?(@.terms['sharedWithIds'])]",
-        "Shared memories are matched via sharedWithIds");
+        "sharedWithIds must never appear as an ungated (bare) should clause");
   }
 
   @Test

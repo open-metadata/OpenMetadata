@@ -98,8 +98,24 @@ public class ContextMemorySearchVisibility {
     clauses.add(
         queryBuilderFactory.nestedQuery(
             FIELD_OWNERS, queryBuilderFactory.termQuery(FIELD_OWNERS_ID, user.getId().toString())));
-    clauses.add(queryBuilderFactory.termsQuery(FIELD_SHARED_WITH_IDS, sharedPrincipalIds(user)));
+    clauses.add(sharedWithSubjectClause(user));
     return queryBuilderFactory.boolQuery().should(clauses);
+  }
+
+  /**
+   * Matches a memory shared with the subject (directly or via a team/domain) — but only when its
+   * visibility is actually {@code Shared}. Gating on visibility mirrors {@link
+   * org.openmetadata.service.resources.context.ContextMemoryVisibility#isInSharedWithList}, which is
+   * consulted only for {@code SHARED}, so a stale {@code sharedWithIds} left on a memory later flipped
+   * to {@code Private} cannot leak it to those principals through search.
+   */
+  private OMQueryBuilder sharedWithSubjectClause(User user) {
+    return queryBuilderFactory
+        .boolQuery()
+        .must(
+            List.of(
+                queryBuilderFactory.termQuery(FIELD_VISIBILITY, MemoryVisibility.SHARED.value()),
+                queryBuilderFactory.termsQuery(FIELD_SHARED_WITH_IDS, sharedPrincipalIds(user))));
   }
 
   private List<String> sharedPrincipalIds(User user) {
