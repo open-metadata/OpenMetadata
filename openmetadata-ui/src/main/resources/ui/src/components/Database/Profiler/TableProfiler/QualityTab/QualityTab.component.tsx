@@ -84,6 +84,7 @@ export const QualityTab = () => {
     paging,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = testCasePaging;
 
   const { editTest } = useMemo(() => {
@@ -489,6 +490,7 @@ export const QualityTab = () => {
             isEditAllowed={editTest}
             isLoading={isTestsLoading}
             pagingData={pagingData}
+            showPagination={showPagination}
             showTableColumn={false}
             testCases={allTestCases}
             onTestCaseResultUpdate={onTestCaseUpdate}
