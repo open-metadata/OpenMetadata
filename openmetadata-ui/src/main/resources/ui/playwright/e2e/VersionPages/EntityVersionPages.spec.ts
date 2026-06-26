@@ -289,66 +289,6 @@ test.describe('Entity Version pages', () => {
             )
           ).toBeVisible();
         });
-
-        await test.step('should show historical column descriptions in version view (fix #28690)', async () => {
-          // Use a dedicated fresh table so the first patch (v0.1 → v0.2) is
-          // guaranteed to create a new version — consolidation cannot apply
-          // when original.version == 0.1 (condition requires > 0.1).
-          const freshTable = new TableClass();
-          await freshTable.create(apiContext);
-
-          const col0Name = freshTable.entity.columns[0].name;
-          const col0OriginalDesc = freshTable.children[0].description ?? '';
-          const col0UpdatedDesc =
-            'Updated description to verify historical version view';
-
-          await freshTable.patch({
-            apiContext,
-            patchData: [
-              {
-                op: 'replace',
-                path: '/columns/0/description',
-                value: col0UpdatedDesc,
-              },
-            ],
-          });
-
-          await freshTable.visitEntityPage(page);
-
-          const versionListResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/versions') && response.status() === 200
-          );
-          await page.locator('[data-testid="version-button"]').click();
-          await versionListResponse;
-
-          await page
-            .locator('[data-testid="version-selector-v0.1"]')
-            .waitFor({ state: 'visible' });
-
-          const versionDetailResponse = page.waitForResponse(
-            (response) =>
-              response.url().includes('/versions/0.1') &&
-              response.status() === 200
-          );
-          await page.locator('[data-testid="version-selector-v0.1"]').click();
-          await versionDetailResponse;
-
-          // v0.1 view must show the original description, not the live value
-          await expect(
-            page.locator(
-              `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
-            )
-          ).toContainText(col0OriginalDesc);
-
-          await expect(
-            page.locator(
-              `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
-            )
-          ).not.toContainText(col0UpdatedDesc);
-
-          await freshTable.delete(apiContext);
-        });
       }
 
       await test.step('should show tier changes', async () => {
@@ -458,5 +398,66 @@ test.describe('Entity Version pages', () => {
         ).toBeVisible();
       });
     });
+  });
+
+  test('Table - should show historical column descriptions in version view', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const { apiContext } = await getApiContext(page);
+
+    const freshTable = new TableClass();
+    await freshTable.create(apiContext);
+
+    const col0Name = freshTable.entity.columns[0].name;
+    const col0OriginalDesc = freshTable.children[0].description ?? '';
+    const col0UpdatedDesc =
+      'Updated description to verify historical version view';
+
+    await freshTable.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/columns/0/description',
+          value: col0UpdatedDesc,
+        },
+      ],
+    });
+
+    await freshTable.visitEntityPage(page);
+
+    const versionListResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/versions') && response.status() === 200
+    );
+    await page.locator('[data-testid="version-button"]').click();
+    await versionListResponse;
+
+    await page
+      .locator('[data-testid="version-selector-v0.1"]')
+      .waitFor({ state: 'visible' });
+
+    const versionDetailResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/versions/0.1') && response.status() === 200
+    );
+    await page.locator('[data-testid="version-selector-v0.1"]').click();
+    await versionDetailResponse;
+
+    await expect(
+      page.locator(
+        `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+      )
+    ).toContainText(col0OriginalDesc);
+
+    await expect(
+      page.locator(
+        `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+      )
+    ).not.toContainText(col0UpdatedDesc);
+
+    await freshTable.delete(apiContext);
   });
 });
