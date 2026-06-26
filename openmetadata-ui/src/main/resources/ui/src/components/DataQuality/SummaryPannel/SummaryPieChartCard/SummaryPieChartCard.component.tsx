@@ -73,7 +73,8 @@ const SummaryPieChartCard = ({
                   />
                   <Typography
                     className="tw:whitespace-nowrap tw:text-tertiary"
-                    size="text-sm">
+                    size="text-sm"
+                    weight="medium">
                     {item.name}{' '}
                     <span className="tw:font-semibold tw:text-primary">
                       {formatNumberWithComma(item.value)}
