@@ -490,6 +490,38 @@ describe('BulkEditEntity', () => {
       expect(mockTriggerExportForBulkEdit).not.toHaveBeenCalled();
     });
 
+    it('should not re-trigger export when the provider callback identity changes for the same entity', () => {
+      const firstTrigger = jest.fn();
+      const secondTrigger = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: firstTrigger,
+        csvExportData: 'col1,col2\nval1,val2',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      const { rerender } = render(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(firstTrigger).toHaveBeenCalledTimes(1);
+
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: secondTrigger,
+        csvExportData: 'col1,col2\nval1,val2\nval3,val4',
+        clearCSVExportData: mockClearCSVExportData,
+      });
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(secondTrigger).not.toHaveBeenCalled();
+    });
+
     it('should call clearCSVExportData on unmount', () => {
       const { unmount } = renderComponent();
 

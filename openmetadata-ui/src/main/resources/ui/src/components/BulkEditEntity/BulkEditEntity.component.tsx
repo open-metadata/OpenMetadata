@@ -229,10 +229,21 @@ const BulkEditEntity = ({
     [dataSource, handleOnRowsChange]
   );
 
+  // Hydrate the grid from a single export per entity. The ref guard keeps this
+  // idempotent so a re-run of the effect (React StrictMode in dev, or a
+  // provider value identity change) cannot spawn duplicate export jobs.
+  const triggeredExportKeyRef = useRef<string>();
+
   useEffect(() => {
     if (!isExportHydrationRequired) {
       return;
     }
+
+    const exportKey = `${entityType}:${fqn}`;
+    if (triggeredExportKeyRef.current === exportKey) {
+      return;
+    }
+    triggeredExportKeyRef.current = exportKey;
 
     triggerExportForBulkEdit({
       name: fqn,

@@ -77,6 +77,42 @@ const WebsocketConsumerComponent = () => {
   );
 };
 
+const triggerIdentityLog: unknown[] = [];
+const showModalIdentityLog: unknown[] = [];
+
+const IdentityConsumerComponent = ({ onExport }: { onExport: jest.Mock }) => {
+  const { triggerExportForBulkEdit, showModal, onUpdateCSVExportJob } =
+    useEntityExportModalProvider();
+
+  triggerIdentityLog.push(triggerExportForBulkEdit);
+  showModalIdentityLog.push(showModal);
+
+  return (
+    <>
+      <button
+        onClick={() =>
+          triggerExportForBulkEdit({
+            name: 'g1',
+            onExport,
+            exportTypes: [ExportTypes.CSV],
+          })
+        }>
+        Trigger
+      </button>
+      <button
+        onClick={() =>
+          onUpdateCSVExportJob({
+            jobId: mockExportJob.jobId,
+            status: 'COMPLETED',
+            data: 'name\nterm_one',
+          })
+        }>
+        Complete
+      </button>
+    </>
+  );
+};
+
 describe('EntityExportModalProvider component', () => {
   it('Component should render', async () => {
     render(
@@ -234,5 +270,33 @@ describe('EntityExportModalProvider component', () => {
     fireEvent.click(manageBtn);
 
     expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+  });
+
+  it('should keep bulk-edit export callbacks stable across csvExportData updates', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/bulk/edit',
+    });
+    triggerIdentityLog.length = 0;
+    showModalIdentityLog.length = 0;
+    const onExport = jest
+      .fn()
+      .mockImplementation(() => Promise.resolve(mockExportJob));
+
+    render(
+      <EntityExportModalProvider>
+        <IdentityConsumerComponent onExport={onExport} />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Trigger'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Complete'));
+    });
+
+    expect(new Set(triggerIdentityLog).size).toBe(1);
+    expect(new Set(showModalIdentityLog).size).toBe(1);
   });
 });

@@ -41,7 +41,20 @@ jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
 jest.mock(
   '../../../../common/EntityPageInfos/ManageButton/ManageButton',
   () => {
-    return jest.fn().mockImplementation(() => <div>ManageButton</div>);
+    return jest
+      .fn()
+      .mockImplementation(
+        ({ extraDropdownContent }: { extraDropdownContent?: unknown[] }) => (
+          <div>
+            ManageButton
+            {(extraDropdownContent as { key: string }[] | undefined)?.map(
+              (item) => (
+                <div data-testid={item.key} key={item.key} />
+              )
+            )}
+          </div>
+        )
+      );
   }
 );
 jest.mock(
@@ -136,5 +149,35 @@ describe('UserTab', () => {
     );
 
     expect(await screen.findByText('NextPrevious')).toBeInTheDocument();
+  });
+
+  describe('Import/Export permission gating', () => {
+    it('should show both export and import options when user has EditAll permission', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('export-button')).toBeInTheDocument();
+      expect(screen.getByTestId('import-button')).toBeInTheDocument();
+    });
+
+    it('should hide the import option for a non-admin user without EditAll permission', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={{ EditAll: false } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('export-button')).toBeInTheDocument();
+      expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+    });
   });
 });

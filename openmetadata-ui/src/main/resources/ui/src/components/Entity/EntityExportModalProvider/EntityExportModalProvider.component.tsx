@@ -89,9 +89,13 @@ export const EntityExportModalProvider = ({
     setExportData(null);
   };
 
-  const showModal = (data: ExportData) => {
+  const showModal = useCallback((data: ExportData) => {
     setExportData(data);
-  };
+  }, []);
+
+  const triggerExportForBulkEdit = useCallback((data: ExportData) => {
+    setExportData(data);
+  }, []);
 
   const handleExport = async ({
     fileName,
@@ -256,12 +260,16 @@ export const EntityExportModalProvider = ({
       csvExportData,
       clearCSVExportData: handleClearCSVExportData,
       showModal,
-      triggerExportForBulkEdit: (exportData: ExportData) => {
-        setExportData(exportData);
-      },
+      triggerExportForBulkEdit,
       onUpdateCSVExportJob: handleCSVExportJobUpdate,
     }),
-    [isBulkEdit, csvExportData, handleCSVExportJobUpdate]
+    [
+      csvExportData,
+      handleClearCSVExportData,
+      showModal,
+      triggerExportForBulkEdit,
+      handleCSVExportJobUpdate,
+    ]
   );
 
   return (
