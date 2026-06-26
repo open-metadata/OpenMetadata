@@ -634,14 +634,16 @@ const KnowledgePagesHierarchy = forwardRef<
             <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
               {() =>
                 isQuickLink && onQuickLinkClick ? (
-                  <button
-                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left"
-                    data-isactive={isActive}
-                    data-testid={`page-node-${displayName}`}
-                    onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
-                    {nodeContent}
+                  <div className='custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0'>
+                    <button
+                      className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+                      data-isactive={isActive}
+                      data-testid={`page-node-${displayName}`}
+                      onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
+                      {nodeContent}
+                    </button>
                     {deleteButton}
-                  </button>
+                  </div>
                 ) : (
                   <Link
                     className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
