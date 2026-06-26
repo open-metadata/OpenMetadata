@@ -130,8 +130,8 @@ class SSEClient:
                     response.encoding = "utf-8"
 
                     event_buffer = []
-                    for line in response.iter_lines(decode_unicode=True, delimiter="\n"):
-                        line = line.rstrip("\r")
+                    for raw_line in response.iter_lines(decode_unicode=True, delimiter="\n"):
+                        line = raw_line.rstrip("\r")
                         if not line:
                             if event_buffer:
                                 parsed_event = self._parse_sse_event(event_buffer)

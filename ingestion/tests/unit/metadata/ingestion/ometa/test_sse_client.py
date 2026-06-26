@@ -916,9 +916,7 @@ def test_stream_preserves_utf8_emoji_in_single_data_line(sse_client):
         },
         ensure_ascii=False,  # server emits raw UTF-8 (e2 9c 85), not \uXXXX escapes
     )
-    raw = (f"event: message\ndata: {payload}\n\n" 'event: stream-completed\ndata: {"type":"completed"}\n\n').encode(
-        "utf-8"
-    )
+    raw = (f'event: message\ndata: {payload}\n\nevent: stream-completed\ndata: {{"type":"completed"}}\n\n').encode()
 
     mock_response = MockByteStreamSSEResponse(raw, declared_encoding="ISO-8859-1")
     mock_session = MockRequestsSession(mock_response)
