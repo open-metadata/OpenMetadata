@@ -79,6 +79,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -132,6 +133,7 @@ import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
@@ -1874,31 +1876,37 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription == null) {
-      return;
+    if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity, entityType);
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+          propagateToDomainChildren(entityId, indexMapping, updates);
+        } else {
+          String parentFieldName = resolveParentFieldName(entityType, updates);
+          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+          List<String> entityChildren =
+              filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+          if (!nullOrEmpty(entityChildren)) {
+            searchClient.updateChildren(entityChildren, parentMatch, updates);
+          }
+        }
+      }
     }
+  }
 
-    Pair<String, Map<String, Object>> updates =
-        getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
-      return;
-    }
-
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+  private List<String> filterChildAliasesByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = indexMapping.getChildAliases();
     if (nullOrEmpty(childAliases)) {
-      return;
+      return List.of();
     }
-
-    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
-    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
-      propagateToDomainChildren(entityId, indexMapping, updates);
-      return;
-    }
-
-    // Other entities: resolve parent field name and propagate to children
-    String parentFieldName = resolveParentFieldName(entityType, updates);
-    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    searchClient.updateChildren(childAliases, parentMatch, updates);
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
   }
 
   private String resolveParentFieldName(
@@ -2777,12 +2785,7 @@ public class SearchRepository {
     // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
-    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
-    List<String> targets =
-        indexMapping.getChildAliases().stream()
-            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
-            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
-            .toList();
+    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
     if (targets.isEmpty()) {
       return;
     }
