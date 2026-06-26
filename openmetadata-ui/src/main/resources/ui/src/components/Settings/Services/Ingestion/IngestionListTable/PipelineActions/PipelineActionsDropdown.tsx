@@ -66,18 +66,15 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const {
-    editPermission,
-    deletePermission,
-    triggerPermission,
-  } = useMemo(() => {
-    return {
-      editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
-      deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-      triggerPermission:
-        ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
-    };
-  }, [ingestionPipelinePermissions]);
+  const { editPermission, deletePermission, triggerPermission } =
+    useMemo(() => {
+      return {
+        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
+        triggerPermission:
+          ingestionPipelinePermissions?.[Operation.Trigger] ?? false,
+      };
+    }, [ingestionPipelinePermissions]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
@@ -204,14 +201,7 @@ function PipelineActionsDropdown({
               'data-testid': 'deploy-button',
             },
           ],
-    [
-      ingestion,
-      currTrigger,
-      id,
-      currDeploy,
-      triggerPermission,
-      editPermission,
-    ]
+    [ingestion, currTrigger, id, currDeploy, triggerPermission, editPermission]
   );
 
   const menuItems = useMemo(() => {
