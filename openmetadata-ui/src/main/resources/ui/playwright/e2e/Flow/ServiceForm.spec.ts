@@ -503,5 +503,60 @@ test.describe(
         ).toHaveValue('');
       });
     });
+
+    test.describe('Test Connection service name validation', () => {
+      test('should show service name error and not open modal when test connection clicked without service name', async ({
+        page,
+      }) => {
+        await page.goto('/databaseServices/add-service');
+        await waitForAllLoadersToDisappear(page);
+
+        await selectServiceConnector(page, 'Mysql');
+        await waitForServiceConnectionForm(page);
+
+        // Click test connection without filling service name
+        await page.getByTestId('test-connection-btn').click();
+
+        // Service name error should appear on the name card
+        await expect(
+          page.getByTestId('service-name-card').locator('[slot="errorMessage"]')
+        ).toContainText('Service Name is required.');
+
+        // Test connection modal must NOT have opened
+        await expect(
+          page.locator('.test-connection-status-modal')
+        ).not.toBeVisible();
+      });
+
+      test('should include service name in missing required field count shown on test connection card', async ({
+        page,
+      }) => {
+        await page.goto('/databaseServices/add-service');
+        await waitForAllLoadersToDisappear(page);
+
+        await selectServiceConnector(page, 'Mysql');
+        await waitForServiceConnectionForm(page);
+
+        // The test connection description should warn about filling required fields
+        // (service name counts as one of those required fields)
+        await expect(page.getByTestId('message-container')).toContainText(
+          'more required field'
+        );
+      });
+
+      test('should focus the service name input when test connection is clicked without a name', async ({
+        page,
+      }) => {
+        await page.goto('/databaseServices/add-service');
+        await waitForAllLoadersToDisappear(page);
+
+        await selectServiceConnector(page, 'Mysql');
+        await waitForServiceConnectionForm(page);
+
+        await page.getByTestId('test-connection-btn').click();
+
+        await expect(page.getByTestId('service-name')).toBeFocused();
+      });
+    });
   }
 );
