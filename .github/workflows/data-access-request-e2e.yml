@@ -10,33 +10,53 @@
 #  limitations under the License.
 
 # Triggered on OpenMetadata PRs that touch the Task / Feed / Governance Workflow
-# backend. Those areas back the Collate "Workflow" and "Data Access Request"
-# features, so this dispatches the Collate-side Playwright suite for them and
-# waits for the result, surfacing it as a check on the OpenMetadata PR.
-name: Collate Workflow & Data Access Request Playwright
+# backend. Those areas back the Collate "Governance Workflow" and "Data Access
+# Request" features, so this dispatches the Collate-side Playwright suite for
+# them and waits for the result, surfacing it as a check on the OpenMetadata PR.
+#
+# The workflow always triggers (no `paths:` filter) so the `data-access-request-e2e`
+# status check always reports and can be made a required check. Path filtering is
+# done inside via dorny/paths-filter: when none of the relevant backend files
+# changed, the job is skipped (which branch protection treats as a pass).
+name: Workflows and Data Access Request E2E tests
 
 on:
   workflow_dispatch:
   pull_request_target:
-    types: [opened, synchronize, labeled, ready_for_review]
-    paths:
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java"
-      - "openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**"
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
 
 permissions:
   contents: read
+  pull-requests: read
   checks: write
 
 concurrency:
-  group: collate-workflow-dar-playwright-${{ github.event.pull_request.number || github.run_id }}
+  group: data-access-request-e2e-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
-  collate-workflow-dar-ci:
+  check-changes:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      dar: ${{ steps.filter.outputs.dar }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            dar:
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**'
+
+  data-access-request-e2e:
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: |
+      !github.event.pull_request.draft &&
+      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.dar == 'true') &&
+      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -67,7 +87,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         with:
-          workflow: Collate Workflow & DAR Playwright (from OM)
+          workflow: Workflows and Data Access Request E2E tests (from OpenMetadata PR)
           ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
