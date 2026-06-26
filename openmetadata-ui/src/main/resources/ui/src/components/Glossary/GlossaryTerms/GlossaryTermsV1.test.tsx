@@ -20,7 +20,7 @@ import {
   MOCK_ASSETS_DATA,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import * as CommonUtils from '../../../utils/CommonUtils';
+import * as FeedUtils from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import GlossaryTerms from './GlossaryTermsV1.component';
@@ -136,7 +136,7 @@ jest.mock('../../../hooks/useCustomPages', () => ({
     .mockReturnValue({ customizedPage: null, isLoading: false }),
 }));
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageEntityTabUtils', () => ({
   checkIfExpandViewSupported: jest.fn().mockReturnValue(false),
   getDetailsTabWithNewLabel: jest.fn().mockImplementation((items) => items),
   getTabLabelMapFromTabs: jest.fn().mockReturnValue({}),
@@ -146,15 +146,16 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockReturnValue({ onAddGlossaryTerm: jest.fn() }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
-  return {
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      permissions: MOCK_PERMISSIONS,
-    })),
-    GenericProvider: jest.fn().mockImplementation(({ children }) => children),
-    _esModule: true,
-  };
-});
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
+  ...jest.requireActual('../../Customization/GenericProvider/GenericContext'),
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    permissions: MOCK_PERMISSIONS,
+  })),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: jest.fn().mockImplementation(({ children }) => children),
+}));
 
 describe('Test Glossary-term component', () => {
   it('Should render overview tab when activeTab is undefined', async () => {
@@ -224,10 +225,10 @@ describe('Test Glossary-term component', () => {
 
   it('should fetch feed counts on mount when not in version view', async () => {
     const fetchTaskCountsSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
       .mockImplementation(jest.fn());
     const fetchActivityCountSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
+      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({
@@ -248,10 +249,10 @@ describe('Test Glossary-term component', () => {
 
   it('should not fetch feed counts when in version view', async () => {
     const fetchTaskCountsSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityTaskCountsInto')
+      .spyOn(FeedUtils, 'fetchEntityTaskCountsInto')
       .mockImplementation(jest.fn());
     const fetchActivityCountSpy = jest
-      .spyOn(CommonUtils, 'fetchEntityActivityCountInto')
+      .spyOn(FeedUtils, 'fetchEntityActivityCountInto')
       .mockImplementation(jest.fn());
     const useRequiredParamsMock = useRequiredParams as jest.Mock;
     useRequiredParamsMock.mockReturnValue({

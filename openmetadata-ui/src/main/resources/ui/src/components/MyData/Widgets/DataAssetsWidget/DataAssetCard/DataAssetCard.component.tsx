@@ -15,11 +15,9 @@ import { capitalize, toString } from 'lodash';
 import { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  getServiceLogo,
-  getServiceTypeExploreQueryFilter,
-} from '../../../../../utils/CommonUtils';
+import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
+import { getServiceTypeExploreQueryFilter } from '../../../../../utils/FilterQueryUtils';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import AppBadge from '../../../../common/Badge/Badge.component';

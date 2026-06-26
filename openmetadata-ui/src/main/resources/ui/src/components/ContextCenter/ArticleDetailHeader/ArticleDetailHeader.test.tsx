@@ -45,23 +45,31 @@ jest.mock('../../../hooks/useClipBoard', () => ({
 }));
 
 jest.mock('../../../utils/KnowledgePageUtils', () => ({
+  getKnowledgePageName: jest.fn(
+    (entity?: { displayName?: string; name?: string }) =>
+      entity?.displayName || entity?.name || 'label.untitled'
+  ),
   updateKnowledgeCenterRecentViewed: jest.fn(),
 }));
 
-jest.mock('../../../utils/DeleteWidget/DeleteWidgetClassBase', () => ({
+jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
-  default: { getDeleteMessage: jest.fn(() => 'Delete this article?') },
+  default: {
+    isBreadcrumbInsideCard: jest.fn(() => false),
+    getCardStyle: jest.fn(() => ({})),
+    getBreadcrumbClassName: jest.fn(() => ''),
+    getContextCenterPath: jest.fn(() => '/context-center'),
+    getArticlesListPath: jest.fn(() => '/context-center/articles'),
+    getArticleVersionPath: jest.fn(
+      (fqn: string, version: string) =>
+        `/context-center/articles/${fqn}/versions/${version}`
+    ),
+    getArticlesListPathForDelete: jest.fn(() => '/context-center/articles'),
+  },
 }));
 
-jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
-  jest.fn(() => <div data-testid="delete-modal" />)
-);
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(
-    (entity?: { displayName?: string; name?: string }) =>
-      entity?.displayName || entity?.name || ''
-  ),
+jest.mock('../../../rest/knowledgeCenterAPI', () => ({
+  deleteKnowledgePage: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../../utils/EntityLink', () => ({
@@ -69,24 +77,44 @@ jest.mock('../../../utils/EntityLink', () => ({
   default: { getEntityLink: jest.fn(() => 'entity-link') },
 }));
 
-jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
-  jest.fn(() => <nav data-testid="title-breadcrumb" />)
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(() => ({
+    entityRules: {
+      canAddMultipleDomains: true,
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
+}));
+
+jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>
+  jest.fn(() => <nav data-testid="breadcrumb" />)
 );
 
 jest.mock('../../common/TabsLabel/TabsLabel.component', () =>
   jest.fn(({ name }: { name: string }) => <span>{name}</span>)
 );
 
-jest.mock('../../common/PopOverCard/UserPopOverCard', () =>
-  jest.fn(({ userName }: { userName: string }) => <span>{userName}</span>)
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn(({ owners }: { owners: Array<{ name?: string }> }) => (
+    <span>{owners.map((o) => o.name).join(', ')}</span>
+  )),
+}));
+
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
+  jest.fn(() => <div data-testid="delete-modal" />)
 );
 
-jest.mock('../../common/EntityPageInfos/ManageButton/ManageButton', () =>
-  jest.fn(() => <button data-testid="manage-button">Manage</button>)
+jest.mock('../../../components/common/Loader/Loader', () =>
+  jest.fn(() => <div data-testid="loader" />)
 );
 
 jest.mock(
-  'components/Entity/EntityStatusBadge/EntityStatusBadge.component',
+  '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component',
   () => ({
     EntityStatusBadge: jest.fn(() => (
       <span data-testid="entity-status-badge" />
@@ -94,14 +122,40 @@ jest.mock(
   })
 );
 
-jest.mock('components/common/Loader/Loader', () =>
-  jest.fn(() => <div data-testid="loader" />)
-);
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Button: jest.fn(
+    ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+    }) => <button onClick={onClick}>{children}</button>
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      disabled,
+      icon,
+      'data-testid': testId = 'button-utility',
+    }: {
+      onClick?: () => void;
+      disabled?: boolean;
+      icon?: React.ReactNode;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} disabled={disabled} onClick={onClick}>
+        {typeof icon === 'function' ? null : icon}
+      </button>
+    )
+  ),
+  Card: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  Dot: jest.fn(() => <span>·</span>),
   Dropdown: Object.assign(
     jest.fn(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
@@ -139,36 +193,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       ),
     }
   ),
-  Button: jest.fn(
-    ({
-      children,
-      onClick,
-    }: {
-      children: React.ReactNode;
-      onClick?: () => void;
-    }) => <button onClick={onClick}>{children}</button>
-  ),
-  ButtonUtility: jest.fn(
-    ({
-      onClick,
-      disabled,
-      icon,
-      'data-testid': testId = 'button-utility',
-    }: {
-      onClick?: () => void;
-      disabled?: boolean;
-      icon?: React.ReactNode;
-      'data-testid'?: string;
-    }) => (
-      <button data-testid={testId} disabled={disabled} onClick={onClick}>
-        {typeof icon === 'function' ? null : icon}
-      </button>
-    )
-  ),
-  Card: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
-  Dot: jest.fn(() => <span>·</span>),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tabs: Object.assign(
     jest.fn(
@@ -202,31 +226,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
 }));
 
-const mockPermissions: OperationPermission = {
+const mockPermissions = {
   All: true,
-  Create: true,
   Delete: true,
   EditAll: true,
-  EditCustomFields: true,
-  EditDataProfile: true,
   EditDescription: true,
   EditDisplayName: true,
-  EditLineage: true,
-  EditOwners: true,
-  EditQueries: true,
-  EditSampleData: true,
-  EditStatus: true,
-  EditTags: true,
-  EditTests: true,
-  EditTier: true,
-  ViewAll: true,
-  ViewBasic: true,
-  ViewDataProfile: true,
-  ViewQueries: true,
-  ViewSampleData: true,
-  ViewTests: true,
-  ViewUsage: true,
-};
+} as OperationPermission;
 
 const mockKnowledgePage = {
   id: 'page-1',
@@ -266,7 +272,6 @@ const defaultProps = {
   onToggleRightPanel: jest.fn(),
   onVoteChange: jest.fn().mockResolvedValue(undefined),
   onFollowChange: jest.fn().mockResolvedValue(undefined),
-  onToggleDelete: jest.fn(),
   onSetThreadLink: jest.fn(),
 };
 
@@ -284,7 +289,7 @@ describe('ArticleDetailHeader', () => {
   it('renders the breadcrumb', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
   });
 
   it('renders the article display name', () => {
@@ -294,15 +299,14 @@ describe('ArticleDetailHeader', () => {
   });
 
   it('renders "untitled" when displayName is missing', () => {
-    const props = {
-      ...defaultProps,
-      knowledgePage: {
-        ...mockKnowledgePage,
-        displayName: '',
-        name: '',
-      } as never,
-    };
-    render(<ArticleDetailHeader {...props} />);
+    render(
+      <ArticleDetailHeader
+        {...defaultProps}
+        knowledgePage={
+          { ...mockKnowledgePage, displayName: '', name: '' } as never
+        }
+      />
+    );
 
     expect(screen.getAllByText(/untitled/i).length).toBeGreaterThan(0);
   });
@@ -326,7 +330,7 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getByText('Engineering')).toBeInTheDocument();
   });
 
-  it('renders the manage button', () => {
+  it('renders the manage button when Delete permission is set', () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
     expect(screen.getByTestId('manage-button')).toBeInTheDocument();
@@ -347,7 +351,7 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
-  it('shows the "saved" icon when contentChangeState is SAVED', () => {
+  it('shows the "saved" badge when contentChangeState is SAVED', () => {
     render(
       <ArticleDetailHeader
         {...defaultProps}
@@ -369,7 +373,7 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  it('shows the "unsaved" icon when contentChangeState is UN_SAVED', () => {
+  it('shows the "unsaved" badge when contentChangeState is UN_SAVED', () => {
     render(
       <ArticleDetailHeader
         {...defaultProps}
@@ -380,7 +384,7 @@ describe('ArticleDetailHeader', () => {
     expect(screen.getByText(/unsaved/i)).toBeInTheDocument();
   });
 
-  it('shows the save button when contentChangeState is UN_SAVED and edit permissions exist', () => {
+  it('shows the save button when contentChangeState is UN_SAVED and onSave is provided', () => {
     render(
       <ArticleDetailHeader
         {...defaultProps}
@@ -464,8 +468,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-    fireEvent.click(utilityButtons[0]);
+    fireEvent.click(screen.getByTestId('share-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });
@@ -473,8 +476,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onToggleRightPanel when the sidebar toggle is clicked on non-feed tabs', () => {
     render(<ArticleDetailHeader {...defaultProps} activeTab="documentation" />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-    fireEvent.click(utilityButtons[utilityButtons.length - 1]);
+    fireEvent.click(screen.getByTestId('right-panel-toggle-btn'));
 
     expect(defaultProps.onToggleRightPanel).toHaveBeenCalled();
   });
@@ -482,8 +484,8 @@ describe('ArticleDetailHeader', () => {
   it('does not render the right panel toggle on the activity_feed tab', () => {
     render(<ArticleDetailHeader {...defaultProps} activeTab="activity_feed" />);
 
-    const utilityButtons = screen.getAllByTestId('button-utility');
-
-    expect(utilityButtons).toHaveLength(1);
+    expect(
+      screen.queryByTestId('right-panel-toggle-btn')
+    ).not.toBeInTheDocument();
   });
 });

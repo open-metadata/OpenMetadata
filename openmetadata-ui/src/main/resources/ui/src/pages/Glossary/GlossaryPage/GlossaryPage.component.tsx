@@ -63,8 +63,8 @@ import {
   glossaryTermQueryKey,
   GLOSSARY_TERM_DEFAULT_FIELDS,
 } from '../../../rest/queries/glossaryTermQuery';
-import { getEntityMissingError } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';

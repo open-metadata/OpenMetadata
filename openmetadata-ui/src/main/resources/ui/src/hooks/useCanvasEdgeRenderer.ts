@@ -29,8 +29,8 @@ import {
   setupCanvas,
 } from '../utils/CanvasUtils';
 import { computeEdgeStyle } from '../utils/EdgeStyleUtils';
-import { getEdgePathData } from '../utils/EntityLineageUtils';
-import { getEntityName } from '../utils/EntityUtils';
+import { getEdgePathData } from '../utils/EntityLineageEdgeUtils';
+import { getEntityName } from '../utils/EntityNameUtils';
 import { useLineageStore } from './useLineageStore';
 
 interface UseCanvasEdgeRendererProps {

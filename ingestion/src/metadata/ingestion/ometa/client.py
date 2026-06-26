@@ -23,12 +23,11 @@ from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion import diagnostics
-from metadata.ingestion.diagnostics.http_introspect import get_global_tracker
+from metadata.ingestion.diagnostics.collectors.http import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.ingestion.ometa.utils import sanitize_user_agent
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -341,7 +340,6 @@ class REST:
 
         return None
 
-    @calculate_execution_time(context="GET")
     def get(self, path, data=None, headers=None):
         """
         GET method
@@ -356,7 +354,6 @@ class REST:
         """
         return self._request("GET", path, data, headers=headers)
 
-    @calculate_execution_time(context="POST")
     def post(
         self,
         path: str,
@@ -439,7 +436,6 @@ class REST:
             headers = {**headers, **extra_headers}
         return headers
 
-    @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
         """
         PUT method
@@ -455,26 +451,30 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    @calculate_execution_time(context="PATCH")
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
 
-    @calculate_execution_time(context="DELETE")
     def delete(self, path, data=None, headers=None):
         """
         DELETE method

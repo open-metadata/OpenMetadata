@@ -25,7 +25,7 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import { getAIApplicationByFqn } from '../../../rest/aiApplicationAPI';
 import { getLLMModelByFqn } from '../../../rest/llmModelAPI';
 import { getMcpServerByFqn } from '../../../rest/mcpServerAPI';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AIGovernanceTab } from '../AIGovernancePage.interface';
 import {

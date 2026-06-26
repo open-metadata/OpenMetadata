@@ -31,7 +31,7 @@ import {
   getTagsWithoutCertification,
   getTagsWithoutTier,
   getTierTags,
-} from './TableUtils';
+} from './TablePureUtils';
 
 export const columnFilterIcon = (filtered: boolean) => (
   <Icon

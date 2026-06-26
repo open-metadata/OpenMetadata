@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
-import { ExtraInfo } from 'Models';
+import type { ExtraInfo } from 'Models';
 import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -29,25 +29,21 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
-import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
-import {
-  getEntityName,
-  highlightEntityNameAndDescription,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { stringToHTML } from '../../../utils/StringsUtils';
-import { getUsagePercentile } from '../../../utils/TableUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
+import { getUsagePercentile } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -173,7 +169,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              owners={(columnSource?.owners as EntityReference[]) ?? []}
+              owners={columnSource?.owners ?? []}
               showLabel={false}
             />
           ),
@@ -185,10 +181,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       const tierValue = isString(source.tier)
         ? source.tier
         : source.tier && (
-            <TagsV1
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={source.tier as TagLabel}
-            />
+            <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
           );
 
       const shouldShowDomainField = !searchClassBase
@@ -260,7 +253,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          true
+          false
         ),
       [source]
     );
@@ -328,19 +321,30 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div className="d-flex gap-2 items-center">
+              <div
+                className={classNames(
+                  'd-flex gap-2 items-center tw:min-w-0',
+                  classNameForBreadcrumb
+                )}>
                 {breadcrumbs.length > 0 && serviceIcon}
-                <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb
-                    className={classNameForBreadcrumb}
-                    titleLinks={breadcrumbs}
-                    widthDeductions={780}
-                  />
-                </div>
+                {/* Always collapse the middle crumbs into a clickable "…" menu
+                    (first / … / last) so a deep path stays compact and the
+                    summary side-panel keeps its room; the hidden crumbs expand
+                    on click. autoCollapse only collapses on overflow, so a wide
+                    card would otherwise show the whole trail. */}
+                <Breadcrumbs
+                  items={breadcrumbs.map((b) => ({
+                    id: b.name,
+                    label: getEntityName(b),
+                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
+                  }))}
+                  maxItems={2}
+                />
               </div>
               {score && (
                 <div className="flex items-center gap-1 score-container">
-                  <Icon className="text-xs" component={ScoreIcon} />
+                  <ScoreIcon />
+
                   <Typography.Text className="text-xs score">
                     <span className="font-normal">
                       {t('label.score-label').toUpperCase()}
@@ -424,7 +428,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ]);
 
     return (
-      <div
+      <Card
         className={classNames('explore-search-card', className)}
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
@@ -457,7 +461,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {actionPopoverContent && (
           <Space className="explore-card-actions">{actionPopoverContent}</Space>
         )}
-      </div>
+      </Card>
     );
   }
 );

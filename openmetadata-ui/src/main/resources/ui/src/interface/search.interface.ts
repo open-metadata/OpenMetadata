@@ -24,6 +24,7 @@ import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
+import { ContextFile } from '../generated/entity/data/contextFile';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import {
@@ -65,6 +66,7 @@ import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { AggregatedCostAnalysisReportDataSearchSource } from './data-insight.interface';
 import { KnowledgePage } from './knowledge-center.interface';
 
@@ -301,6 +303,8 @@ export interface KnowledgePageSearchSource
   extends SearchSourceBase,
     KnowledgePage {}
 
+export interface DriveFileSearchSource extends SearchSourceBase, ContextFile {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -388,6 +392,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.WORKSHEET]: WorksheetSearchSource;
   [SearchIndex.COLUMN]: TableColumnSearchSource;
   [SearchIndex.KNOWLEDGE_PAGE_INDEX]: KnowledgePageSearchSource;
+  [SearchIndex.DRIVE_FILE]: DriveFileSearchSource;
   [SearchIndex.MARKETPLACE]: DataProductSearchSource | DomainSearchSource;
 };
 
@@ -476,6 +481,7 @@ export interface SearchResponse<
     hits: SearchIndexSearchHitBodyMapping<TIncludeFields>[SI][];
   };
   aggregations: Aggregations;
+  applied_quick_filters?: QueryFilterInterface;
 }
 
 export type Aggregations = Record<string, { buckets: Bucket[] }>;

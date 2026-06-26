@@ -30,7 +30,7 @@ import {
 } from '../../../../rest/aiGovernanceAPI';
 import { getLLMModels } from '../../../../rest/llmModelAPI';
 import { getMcpServers } from '../../../../rest/mcpServerAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   Button,

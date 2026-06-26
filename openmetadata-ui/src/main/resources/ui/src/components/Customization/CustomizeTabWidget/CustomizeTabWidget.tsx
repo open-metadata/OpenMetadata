@@ -35,21 +35,20 @@ import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStor
 import {
   getLayoutWithEmptyWidgetPlaceholder,
   getUniqueFilteredLayout,
-} from '../../../utils/CustomizableLandingPageUtils';
+} from '../../../utils/CustomizableLandingPagePureUtils';
 import {
-  getAddWidgetHandler,
   getCustomizableWidgetByPage,
   getDefaultTabs,
   getDefaultWidgetForTab,
-  getTabDisplayName,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { getTabDisplayName } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getAddWidgetHandler } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { TabItem } from '../../common/DraggableTabs/DraggableTabs';
 import AddDetailsPageWidgetModal from '../../MyData/CustomizableComponents/AddDetailsPageWidgetModal/AddDetailsPageWidgetModal';
 import EmptyWidgetPlaceholder from '../../MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { LeftPanelContainer } from '../GenericTab/LeftPanelContainer';
 import { GenericWidget } from '../GenericWidget/GenericWidget';
-
 // Create a properly typed ReactGridLayout component
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayout.ReactGridLayoutProps & { children?: React.ReactNode }

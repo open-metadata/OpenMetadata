@@ -1,3 +1,5 @@
+import { cx, sortCx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -5,14 +7,12 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import React, { isValidElement } from 'react';
+import { isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
-import { cx, sortCx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 
 export const styles = sortCx({
   common: {
@@ -32,7 +32,7 @@ export const styles = sortCx({
   sizes: {
     xs: {
       root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-semibold tw:before:rounded-[5px] tw:data-icon-only:p-1',
+        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
         'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
         'tw:*:data-icon:size-4',
       ].join(' '),
@@ -40,24 +40,24 @@ export const styles = sortCx({
     },
     sm: {
       root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-2',
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
         'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
       ].join(' '),
       linkRoot: 'tw:gap-1',
     },
     md: {
       root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
+        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
         'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
       ].join(' '),
       linkRoot: 'tw:gap-1',
     },
     lg: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-3',
+      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
       linkRoot: 'tw:gap-1.5',
     },
     xl: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-semibold tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
+      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
       linkRoot: 'tw:gap-1.5',
     },
   },
@@ -65,7 +65,7 @@ export const styles = sortCx({
   colors: {
     primary: {
       root: [
-        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
+        'tw:bg-brand-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:ring-inset tw:hover:bg-brand-solid_hover tw:data-loading:bg-brand-solid_hover',
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
@@ -76,7 +76,7 @@ export const styles = sortCx({
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-primary tw:ring-inset tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
         // Disabled styles
         'tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
         // Icon styles
@@ -110,7 +110,7 @@ export const styles = sortCx({
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-transparent tw:outline-error tw:ring-inset tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
@@ -121,7 +121,7 @@ export const styles = sortCx({
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-error_subtle tw:outline-error tw:ring-inset tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         // Disabled styles
         'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
         // Icon styles
@@ -142,6 +142,30 @@ export const styles = sortCx({
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
+      ].join(' '),
+    },
+    'secondary-success': {
+      root: [
+        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-success-300 tw:ring-inset',
+        'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-success-primary',
+      ].join(' '),
+    },
+    'secondary-warning': {
+      root: [
+        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-warning-300 tw:ring-inset',
+        'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-warning-primary',
+      ].join(' '),
+    },
+    'secondary-brand': {
+      root: [
+        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-brand tw:ring-inset',
+        'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },
   },
@@ -190,6 +214,8 @@ export interface ButtonProps
   onPressChange?: AriaButtonProps['onPressChange'];
   /** Handler called when a press is released over the target */
   onPressUp?: AriaButtonProps['onPressUp'];
+  /** Whether to exclude the button from the sequential tab order */
+  excludeFromTabOrder?: AriaButtonProps['excludeFromTabOrder'];
 }
 
 /**

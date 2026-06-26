@@ -13,8 +13,8 @@
 import type { Edge, Node } from 'reactflow';
 import { Position } from 'reactflow';
 import { getEdgeCoordinates } from './CanvasUtils';
-import { getEdgePathData } from './EntityLineageUtils';
-import { getEntityName } from './EntityUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityName } from './EntityNameUtils';
 
 export interface EdgeMidpoint {
   id: string;

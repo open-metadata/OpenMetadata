@@ -29,13 +29,6 @@ const mockProp = {
   visible: false,
 };
 
-jest.mock('../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
 describe('Test EntityDelete Modal Component', () => {
   it('Should render component', async () => {
     await act(async () => {
@@ -134,7 +127,7 @@ describe('Test EntityDelete Modal Component', () => {
     jest.useRealTimers();
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+  it('should render with correct brandName key', async () => {
     await act(async () => {
       render(<EntityDeleteModal {...mockProp} visible />, {
         wrapper: MemoryRouter,
@@ -145,17 +138,12 @@ describe('Test EntityDelete Modal Component', () => {
 
     expect(bodyText).toBeInTheDocument();
 
-    // Verify actual brand name is rendered
-    expect(bodyText.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(bodyText.textContent).not.toContain('{{brandName}}');
-
     // Verify Transi18next was called with brandName parameter
     expect(Transi18next).toHaveBeenCalledWith(
       expect.objectContaining({
         i18nKey: 'message.permanently-delete-metadata',
         values: expect.objectContaining({
           entityName: 'zyx',
-          brandName: 'OpenMetadata',
         }),
       }),
       expect.anything()

@@ -81,9 +81,12 @@ public final class DbCountQuerier {
           "No collection path mapped for entity type: " + entityType);
     }
     final String url = path + "?limit=0" + (includeDeleted ? "&include=all" : "");
-    final String body =
-        server.sdk().getHttpClient().execute(HttpMethod.GET, url, null, String.class);
-    return parsePagingTotal(body);
+    // The list endpoints return a JSON object ({paging, data}); the SDK deserializes the response
+    // into the requested type, so request a Map (String.class makes Jackson fail with
+    // "Cannot deserialize String from Object").
+    final Map<?, ?> response =
+        server.sdk().getHttpClient().execute(HttpMethod.GET, url, null, Map.class);
+    return parsePagingTotal(response);
   }
 
   /** Convenience: count of non-deleted entities. */
@@ -91,9 +94,9 @@ public final class DbCountQuerier {
     return count(entityType, false);
   }
 
-  private long parsePagingTotal(final String body) {
+  private long parsePagingTotal(final Map<?, ?> response) {
     try {
-      final JsonNode node = MAPPER.readTree(body);
+      final JsonNode node = MAPPER.valueToTree(response);
       return node.path("paging").path("total").asLong();
     } catch (final Exception e) {
       throw new IllegalStateException("Failed to parse paging.total from list response", e);

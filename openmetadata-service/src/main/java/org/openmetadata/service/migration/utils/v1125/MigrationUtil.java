@@ -251,11 +251,12 @@ public class MigrationUtil {
       return 0;
     }
 
+    // PG won't auto-cast varchar -> json on the metadata column; MySQL JSON accepts a string.
     String insertSql =
         isPostgres
             ? "INSERT INTO tag_usage "
                 + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "
-                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata) "
+                + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, 'admin', :appliedAt, :metadata::json) "
                 + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING"
             : "INSERT IGNORE INTO tag_usage "
                 + "(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, appliedBy, appliedAt, metadata) "

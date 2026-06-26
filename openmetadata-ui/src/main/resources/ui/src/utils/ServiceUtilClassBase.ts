@@ -12,8 +12,10 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
+import React from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
 import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
@@ -40,6 +42,7 @@ import {
   PipelineServiceTypeSmallCaseType,
   SearchServiceTypeSmallCaseType,
   SecurityServiceTypeSmallCaseType,
+  ServiceCategory,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
 import { DriveServiceType } from '../generated/api/services/createDriveService';
@@ -67,7 +70,7 @@ import {
 } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
-import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDatabaseConfig } from './DatabaseServicePureUtils';
 import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
@@ -79,9 +82,9 @@ import { getServiceIcon } from './ServiceIconUtils';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
-} from './ServiceUtils';
+} from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
-import { customServiceComparator } from './StringsUtils';
+import { customServiceComparator } from './StringUtils';
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -109,9 +112,13 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,
     PipelineServiceType.Mulesoft,
+    DatabaseServiceType.MicrosoftFabric,
+    PipelineServiceType.MicrosoftFabricPipeline,
     DatabaseServiceType.MicrosoftAccess,
     DashboardServiceType.SapS4Hana,
     DatabaseServiceType.SapSuccessFactors,
+    DatabaseServiceType.SapBw4Hana,
+    PipelineServiceType.SapBw4HanaPipeline,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -556,6 +563,15 @@ class ServiceUtilClassBase {
     };
 
     return widgets;
+  }
+
+  public getExtraIngestionMenuItems(
+    _serviceCategory: ServiceCategory,
+    _serviceName?: string,
+    _navigate?: (path: string) => void,
+    _serviceDetails?: ServicesType
+  ): MenuProps['items'] {
+    return [];
   }
 
   public getSearchIndexFromEntityType(entityType: EntityType | string) {

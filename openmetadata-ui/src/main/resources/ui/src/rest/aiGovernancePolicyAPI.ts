@@ -15,7 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { AIGovernancePolicy } from '../generated/entity/ai/aiGovernancePolicy';
 import { Paging } from '../generated/type/paging';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const POLICY_BASE = '/aiGovernancePolicies';

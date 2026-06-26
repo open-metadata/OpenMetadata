@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Home02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -62,19 +61,11 @@ const ContextCenterIntegrationsPage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: '/',
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.integration-plural'),
-            url: '',
+            label: t('label.integration-plural'),
           },
         ]}
         hasPermission={hasCreatePermission}

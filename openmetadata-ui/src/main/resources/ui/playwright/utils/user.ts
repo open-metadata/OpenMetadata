@@ -36,12 +36,30 @@ import {
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { clickUpdateButtonIfVisible } from './explore';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
   await settingClick(page, GlobalSettingOptions.USERS);
   await fetchUsers;
+};
+
+export const searchUserByEmail = async (
+  page: Page,
+  email: string,
+  userName: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+  );
+  await page.getByTestId('searchbar').fill(email);
+  await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId(userName)).toBeVisible();
 };
 
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
@@ -644,14 +662,21 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await dataAssetDropdownRequest;
 
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
-  await page.click('[data-testid="table-checkbox"]');
 
+  // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="table-checkbox"]');
+  await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  // Close the dropdown by toggling its trigger — pressing Escape would also
+  // close the auto-opened summary panel (ExploreV1 has a document-level
+  // Escape handler), removing the entity-link this step needs to click.
+  await page.click('[data-testid="search-dropdown-Data Assets"]');
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');

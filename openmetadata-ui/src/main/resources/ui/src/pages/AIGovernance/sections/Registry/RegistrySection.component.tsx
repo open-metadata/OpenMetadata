@@ -31,7 +31,7 @@ import { searchQuery } from '../../../../rest/searchAPI';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../../utils/StringsUtils';
+} from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   Button,

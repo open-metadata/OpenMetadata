@@ -20,6 +20,13 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityTabs } from '../enums/entity.enum';
+import { ContextMemory } from '../generated/entity/context/contextMemory';
+
+export interface MemoryMetadataItem {
+  key: string;
+  label: string;
+  value: React.ReactNode;
+}
 
 class ContextCenterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -44,6 +51,10 @@ class ContextCenterClassBase {
 
   public getContainerClassName(): string {
     return '';
+  }
+
+  public getHomePath(): string {
+    return ROUTES.HOME;
   }
 
   public getContextCenterPath(): string {
@@ -88,6 +99,10 @@ class ContextCenterClassBase {
       PLACEHOLDER_ROUTE_FQN,
       pageName
     ).replace(PLACEHOLDER_ROUTE_VERSION, version);
+  }
+
+  public getMemoryMetadataList(_memory: ContextMemory): MemoryMetadataItem[] {
+    return [];
   }
 }
 

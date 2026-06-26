@@ -46,15 +46,12 @@ import {
   dashboardDataModelQueryFn,
   dashboardDataModelQueryKey,
 } from '../../rest/queries/dashboardDataModelQuery';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-
 const DATA_MODEL_FIELDS = [
   TabSpecificField.OWNERS,
   TabSpecificField.TAGS,

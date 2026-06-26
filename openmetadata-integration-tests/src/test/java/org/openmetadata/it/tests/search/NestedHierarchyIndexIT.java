@@ -11,6 +11,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchClusterResetExtension;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 
 /**
  * Builds a 10-level deep parent→child chain of glossary terms and asserts that:
@@ -42,17 +44,18 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class NestedHierarchyIndexIT {
 
-  private static final String GLOSSARY_TERM_ALIAS = "glossary_term_search_index";
   private static final int DEPTH = 10;
 
   private static ServerHandle server;
   private static SearchAssertions search;
+  private static String glossaryTermAlias;
 
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    glossaryTermAlias = new IndexAliasInspector(server).indexNameFor(Entity.GLOSSARY_TERM);
   }
 
   @Test
@@ -71,6 +74,7 @@ class NestedHierarchyIndexIT {
         .as("deep glossary chain must not produce failed records")
         .isZero();
 
-    search.assertEntityIndexed(GLOSSARY_TERM_ALIAS, "glossaryTerm", leaf.getFullyQualifiedName());
+    search.assertEntityIndexed(
+        glossaryTermAlias, Entity.GLOSSARY_TERM, leaf.getFullyQualifiedName());
   }
 }

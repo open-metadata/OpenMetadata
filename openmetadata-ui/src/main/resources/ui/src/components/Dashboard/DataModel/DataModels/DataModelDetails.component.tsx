@@ -28,23 +28,23 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
 import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../../utils/CommonUtils';
-import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../../utils/FeedUtilsPure';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { updateCertificationTag } from '../../../../utils/TagsUtils';
+import { updateCertificationTag } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
@@ -55,7 +55,6 @@ import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAsset
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
-
 const DataModelDetails = ({
   updateDataModelDetailsState,
   dataModelData,

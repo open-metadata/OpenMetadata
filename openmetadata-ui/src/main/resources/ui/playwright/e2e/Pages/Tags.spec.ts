@@ -365,9 +365,10 @@ test('Classification Page', async ({ page }) => {
     const permissions = page.waitForResponse(
       'api/v1/permissions/databaseSchema/name/*'
     );
-    await page.click(
-      `[data-testid="breadcrumb-link"]:has-text("${entity.name}")`
-    );
+    await page
+      .getByTestId('breadcrumb')
+      .getByRole('link', { name: entity.name })
+      .click();
 
     await databaseSchemaPage;
     await permissions;

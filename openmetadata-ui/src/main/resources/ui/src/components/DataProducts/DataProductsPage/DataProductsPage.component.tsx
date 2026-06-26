@@ -42,9 +42,9 @@ import {
   dataProductQueryKey,
   DATA_PRODUCT_DEFAULT_FIELDS,
 } from '../../../rest/queries/dataProductQuery';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

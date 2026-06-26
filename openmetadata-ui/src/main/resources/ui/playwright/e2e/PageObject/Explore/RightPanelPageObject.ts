@@ -948,7 +948,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    await this.pageLoader.waitFor({ state: 'detached' });
+    await expect(this.pageLoader).toHaveCount(0, { timeout: 10000 });
   }
 
   /**

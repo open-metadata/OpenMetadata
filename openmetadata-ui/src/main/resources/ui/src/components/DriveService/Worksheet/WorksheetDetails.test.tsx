@@ -37,14 +37,15 @@ const mockGetFeedCounts = jest.fn();
 const mockFetchEntityTaskCountsInto = jest.fn();
 const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
-  fetchEntityActivityCountInto: (...args: any[]) =>
-    mockFetchEntityActivityCountInto(...args),
-  fetchEntityTaskCountsInto: (...args: any[]) =>
-    mockFetchEntityTaskCountsInto(...args),
+jest.mock('../../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn(),
-  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: (...args: unknown[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: unknown[]) =>
+    mockFetchEntityTaskCountsInto(...args),
+  getFeedCounts: (...args: unknown[]) => mockGetFeedCounts(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');

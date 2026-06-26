@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01, File06, Lightbulb03 } from '@untitledui/icons';
+import { Archive, Cube01, File06, Lightbulb03 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
@@ -256,21 +256,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: createIconWithStroke(Lightbulb03 as UntitledIconType, 1.2),
         dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
       },
-      // TODO: In progress
-      // {
-      //   key: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
-      //   title: 'label.integration-plural',
-      //   redirect_url: ROUTES.CONTEXT_CENTER_INTEGRATIONS,
-      //   icon: IntegrationIcon,
-      //   dataTestId: `app-bar-item-context-center-integrations`,
-      // },
-      // {
-      //   key: ROUTES.CONTEXT_CENTER_ARCHIVE,
-      //   title: 'label.archive',
-      //   redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
-      //   icon: ContextCenterArchiveIcon,
-      //   dataTestId: `app-bar-item-context-center-archive`,
-      // },
+      {
+        key: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        title: 'label.archive',
+        redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
+        icon: createIconWithStroke(Archive as UntitledIconType, 1.2),
+        dataTestId: `app-bar-item-context-center-archive`,
+      },
     ],
   },
 ];

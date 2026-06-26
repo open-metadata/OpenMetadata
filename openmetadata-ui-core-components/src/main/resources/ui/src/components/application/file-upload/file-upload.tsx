@@ -20,14 +20,41 @@ import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { ProgressBar } from '@/components/base/progress-indicators/progress-indicators';
 import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
 import { cx } from '@/utils/cx';
+import { FileIcon as FileIconBase } from '@untitledui/file-icons';
 import {
   CheckCircle,
   Trash01,
   UploadCloud02,
   XCircle,
 } from '@untitledui/icons';
-import type { ChangeEvent, ComponentPropsWithRef, DragEvent } from 'react';
+import type {
+  ChangeEvent,
+  ComponentProps,
+  ComponentPropsWithRef,
+  DragEvent,
+} from 'react';
 import { useId, useRef, useState } from 'react';
+import { MdFileIcon } from './icons';
+
+type FileIconProps = ComponentProps<typeof FileIconBase>;
+
+const FileIcon = ({
+  type,
+  variant: _variant,
+  theme: _theme,
+  ...svgProps
+}: FileIconProps) => {
+  if (type === 'md' || type === 'markdown') {
+    return <MdFileIcon {...svgProps} />;
+  }
+
+  return (
+    <FileIconBase theme={_theme} type={type} variant={_variant} {...svgProps} />
+  );
+};
+
+export { FileIcon };
+export type { FileIconProps };
 
 export const getReadableFileSize = (bytes: number): string => {
   if (bytes === 0) {
@@ -51,6 +78,7 @@ export interface FileUploadDropZoneProps {
   clickToUploadLabel?: string;
   orDragAndDropLabel?: string;
   'data-testid'?: string;
+  'input-data-testid'?: string;
   onDropFiles?: (files: FileList) => void;
   onDropUnacceptedFiles?: (files: FileList) => void;
   onSizeLimitExceed?: (files: FileList) => void;
@@ -98,6 +126,7 @@ export const FileUploadDropZone = ({
   clickToUploadLabel = 'Click to upload',
   orDragAndDropLabel = 'or drag and drop',
   'data-testid': dataTestId,
+  'input-data-testid': inputDataTestId,
   onDropFiles,
   onDropUnacceptedFiles,
   onSizeLimitExceed,
@@ -214,6 +243,7 @@ export const FileUploadDropZone = ({
           <input
             accept={accept}
             className="tw:peer tw:sr-only"
+            data-testid={inputDataTestId}
             disabled={isDisabled}
             id={id}
             multiple={allowsMultiple}
@@ -259,6 +289,8 @@ export interface FileListItemProps {
   failedLabel?: string;
   tryAgainLabel?: string;
   deleteLabel?: string;
+  type?: FileIconProps['type'];
+  fileIconVariant?: FileIconProps['variant'];
   onDelete?: () => void;
   onRetry?: () => void;
 }
@@ -269,12 +301,14 @@ export const FileListItemProgressBar = ({
   deleteLabel = 'Delete',
   failed,
   failedLabel = 'Failed',
+  fileIconVariant,
   name,
   onDelete,
   onRetry,
   progress,
   size,
   tryAgainLabel = 'Try again',
+  type,
   uploadingLabel = 'Uploading...',
 }: FileListItemProps) => {
   const isComplete = progress === 100;
@@ -286,12 +320,18 @@ export const FileListItemProgressBar = ({
         failed && 'tw:ring-2 tw:ring-error',
         className
       )}>
-      <div className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary">
-        <UploadCloud02
-          className="tw:size-5 tw:text-tertiary"
-          strokeWidth={1.5}
-        />
-      </div>
+      <FileIcon
+        className="tw:size-10 tw:shrink-0 dark:tw:hidden"
+        theme="light"
+        type={type ?? 'empty'}
+        variant={fileIconVariant ?? 'default'}
+      />
+      <FileIcon
+        className="tw:size-10 tw:shrink-0 tw:not-dark:hidden"
+        theme="dark"
+        type={type ?? 'empty'}
+        variant={fileIconVariant ?? 'default'}
+      />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:items-start">
         <div className="tw:flex tw:w-full tw:min-w-0 tw:max-w-full tw:flex-1">
@@ -372,12 +412,14 @@ export const FileListItemProgressFill = ({
   deleteLabel = 'Delete',
   failed,
   failedLabel = 'Upload failed, please try again',
+  fileIconVariant,
   name,
   onDelete,
   onRetry,
   progress,
   size,
   tryAgainLabel = 'Try again',
+  type,
 }: FileListItemProps) => {
   const isComplete = progress === 100;
 
@@ -404,12 +446,18 @@ export const FileListItemProgressFill = ({
           failed && 'tw:ring-2 tw:ring-error'
         )}
       />
-      <div className="tw:relative tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary">
-        <UploadCloud02
-          className="tw:size-5 tw:text-tertiary"
-          strokeWidth={1.5}
-        />
-      </div>
+      <FileIcon
+        className="tw:relative tw:size-10 tw:shrink-0 dark:tw:hidden"
+        theme="light"
+        type={type ?? 'empty'}
+        variant={fileIconVariant ?? 'solid'}
+      />
+      <FileIcon
+        className="tw:relative tw:size-10 tw:shrink-0 tw:not-dark:hidden"
+        theme="dark"
+        type={type ?? 'empty'}
+        variant={fileIconVariant ?? 'solid'}
+      />
 
       <div className="tw:relative tw:flex tw:min-w-0 tw:flex-1">
         <div className="tw:relative tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:items-start">

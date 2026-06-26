@@ -27,26 +27,19 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ENTITY_PATH,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
 import { Type } from '../../../generated/entity/type';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import {
-  getTableColumnsByFQN,
-  updateTableColumn,
-} from '../../../rest/tableAPI';
+import { getColumnByFQN, updateTableColumn } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
-import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityUtils';
+import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQualityPureUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { toEntityData } from '../../../utils/EntitySummaryPanelPureUtils';
+import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,
@@ -55,7 +48,7 @@ import {
   getDataTypeDisplay,
   mergeTagsWithGlossary,
   normalizeTags,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
 import DataQualitySection from '../../common/DataQualitySection/DataQualitySection';
@@ -65,7 +58,7 @@ import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTerm
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityRightPanelVerticalNav from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { EntityRightPanelTab } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav.interface';
 import CustomPropertiesSection from '../../Explore/EntitySummaryPanel/CustomPropertiesSection/CustomPropertiesSection';
@@ -83,7 +76,6 @@ import {
 import './ColumnDetailPanel.less';
 import { KeyProfileMetrics } from './KeyProfileMetrics';
 import { NestedColumnsSection } from './NestedColumnsSection';
-
 const isColumn = (item: ColumnOrTask | null): item is Column => {
   return item !== null && 'dataType' in item;
 };
@@ -99,7 +91,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   onNavigate,
   tableConstraints = [],
   entityType,
-  onColumnsUpdate,
 }: ColumnDetailPanelProps<T>) => {
   const { t } = useTranslation();
   const { permissions, changeSummary } = useGenericContext();
@@ -268,44 +259,27 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     ) {
       try {
         setIsColumnDataLoading(true);
-        const response = await getTableColumnsByFQN(tableFqn, {
+        const latestColumn = await getColumnByFQN(targetFqn, {
+          entityType,
           fields: 'tags,customMetrics,extension,profile',
-          limit: PAGE_SIZE_LARGE,
         });
 
-        const latestColumn = response.data.find(
-          (c) => c.fullyQualifiedName === targetFqn
-        );
+        setActiveColumn((prev) => {
+          if (prev?.fullyQualifiedName !== targetFqn) {
+            return prev;
+          }
 
-        if (latestColumn) {
-          setActiveColumn((prev) => {
-            // Discard stale response if column changed during fetch
-            if (prev?.fullyQualifiedName !== targetFqn) {
-              return prev;
-            }
-
-            return { ...prev, ...latestColumn } as Column;
-          });
-        }
+          return { ...prev, ...latestColumn } as Column;
+        });
 
         fetchedColumnFqnRef.current = targetFqn;
-
-        if (onColumnsUpdate) {
-          onColumnsUpdate(response.data);
-        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsColumnDataLoading(false);
       }
     }
-  }, [
-    column?.fullyQualifiedName,
-    isOpen,
-    entityType,
-    tableFqn,
-    onColumnsUpdate,
-  ]);
+  }, [column?.fullyQualifiedName, isOpen, entityType, tableFqn]);
 
   const handleNestedColumnClick = useCallback(
     (nestedColumn: Column) => {
@@ -815,7 +789,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 <div className="tw:inline-flex tw:items-center tw:gap-0.5 tw:min-w-0">
                   <Typography.Text
                     className={classNames('tw:text-xs tw:truncate', {
-                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-gray-700':
+                      'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                         isLastItem,
                       'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
                         !isLastItem,
@@ -846,9 +820,9 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             className="tw:flex tw:items-center tw:min-w-0 tw:overflow-hidden tw:pr-4"
             style={{ flex: 1 }}>
             <div className="tw:mr-2 tw:flex tw:shrink-0 tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded tw:shadow-sm">
-              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-gray-700" />
+              <ColumnIcon className="tw:h-5 tw:w-5 tw:text-secondary" />
             </div>
-            <div className="tw:flex tw:flex-col tw:min-w-0 tw:flex-1 tw:overflow-hidden">
+            <div className="tw:flex tw:flex-col tw:min-w-0 tw:overflow-hidden">
               <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0 tw:overflow-hidden">
                 <Tooltip
                   mouseEnterDelay={0.5}

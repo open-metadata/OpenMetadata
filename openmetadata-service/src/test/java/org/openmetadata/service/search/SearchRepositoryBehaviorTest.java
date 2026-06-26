@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,6 +49,9 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -157,6 +162,7 @@ class SearchRepositoryBehaviorTest {
           Entity.DATABASE_SERVICE,
           Entity.DATABASE,
           Entity.TEST_SUITE,
+          Entity.TEST_CASE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
           Entity.QUERY);
@@ -705,6 +711,120 @@ class SearchRepositoryBehaviorTest {
     verify(searchClient)
         .updateChildren(
             eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+    IndexMapping timeSeriesOnlyMapping =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        timeSeriesOnlyMapping,
+        testCase);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        TEST_CASE_MAPPING,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+
+    assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
+    String entityChildScript = updatesCaptor.getValue().getLeft();
+    assertTrue(entityChildScript.contains(Entity.FIELD_OWNERS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DOMAINS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenIncludesUnregisteredChildAliases() throws IOException {
+    IndexMapping mappingWithUnregisteredChild =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of("unregisteredChild", Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        mappingWithUnregisteredChild,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+
+    assertEquals(
+        List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
   }
 
   @Test
@@ -2116,13 +2236,13 @@ class SearchRepositoryBehaviorTest {
     when(context.getEntities())
         .thenReturn(new LinkedHashSet<>(List.of(Entity.TABLE, Entity.DOMAIN)));
     when(context.getOriginalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("original_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("original_" + invocation.getArgument(0)));
     when(context.getCanonicalIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("canonical_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("canonical_" + invocation.getArgument(0)));
     when(context.getStagedIndex(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("staged_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("staged_" + invocation.getArgument(0)));
     when(context.getCanonicalAlias(any()))
-        .thenAnswer(invocation -> java.util.Optional.of("alias_" + invocation.getArgument(0)));
+        .thenAnswer(invocation -> Optional.of("alias_" + invocation.getArgument(0)));
     when(context.getExistingAliases(any()))
         .thenAnswer(invocation -> Set.of("existing_" + invocation.getArgument(0)));
     when(context.getParentAliases(any()))
@@ -2502,22 +2622,25 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEmbeddingClientRejectsUnsupportedOrIncompleteConfigurations() {
-    ElasticSearchConfiguration config = new ElasticSearchConfiguration();
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("bedrock"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.BEDROCK)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.OPENAI)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("djl"));
-    assertThrows(IllegalStateException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.GOOGLE)));
 
-    config.setNaturalLanguageSearch(
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("unknown"));
-    assertThrows(IllegalArgumentException.class, () -> repository.createEmbeddingClient(config));
+    assertThrows(
+        IllegalStateException.class,
+        () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+  }
+
+  private LLMConfiguration embeddingConfigWithProvider(Provider provider) {
+    return new LLMConfiguration().withEmbeddings(new LLMEmbeddingsConfig().withProvider(provider));
   }
 
   @Test
@@ -2535,8 +2658,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void initializeVectorSearchServiceInitializesOpenSearchVectorSupport() throws Exception {
-    NaturalLanguageSearchConfiguration nlConfig =
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+    NaturalLanguageSearchConfiguration nlConfig = new NaturalLanguageSearchConfiguration();
     SearchRepository openSearchRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),
@@ -2555,7 +2677,7 @@ class SearchRepositoryBehaviorTest {
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
         .when(spyRepository)
-        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
     setPrivateField(spyRepository, "searchClient", openSearchClient);
 
     try (var settingsCacheMock = mockStatic(SettingsCache.class);
@@ -2683,12 +2805,13 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineage(lineageRequest)).thenReturn(lineageResult);
     when(searchClient.searchPlatformLineage("alias", "{}", false)).thenReturn(lineageResult);
     when(searchClient.searchLineageWithDirection(lineageRequest)).thenReturn(lineageResult);
-    when(searchClient.getLineagePaginationInfo("svc.db.orders", 1, 2, "{}", false, Entity.TABLE))
+    when(searchClient.getLineagePaginationInfo(
+            "svc.db.orders", 1, 2, "{}", false, Entity.TABLE, null, null))
         .thenReturn(paginationInfo);
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);
-    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false))
+    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false, null))
         .thenReturn(response);
     when(searchClient.searchSchemaEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);

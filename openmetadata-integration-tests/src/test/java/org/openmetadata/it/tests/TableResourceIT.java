@@ -122,6 +122,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;
+    supportsCsvImportSessionConsolidationRegression = true;
     supportsBatchImport = true;
     supportsRecursiveImport = false; // Tables don't support recursive import
     supportsLifeCycle = true;
@@ -289,6 +290,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
       lastCreatedTable = createEntity(tableRequest);
     }
     return lastCreatedTable.getFullyQualifiedName();
+  }
+
+  @Override
+  protected String getCsvImportContainerName(
+      TestNamespace ns, org.openmetadata.schema.EntityInterface entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
+  protected Table prepareCsvImportRegressionUpdate(TestNamespace ns, Table entity) {
+    entity
+        .getColumns()
+        .get(0)
+        .setDescription("Updated by CSV import regression - " + ns.shortPrefix());
+    return entity;
   }
 
   // ===================================================================
@@ -1765,6 +1781,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertFalse(
         result.getTags().stream().anyMatch(t -> t.getTagFQN().equals("Tier.Tier2")),
         "Table should not have Tier2 after dbt update");
+  }
+
+  @Test
+  void create_tableWithMultipleTags_persistsAllTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    List<TagLabel> expectedTags = List.of(personalDataTagLabel(), piiSensitiveTagLabel(), tier2Tag);
+
+    CreateTable createRequest =
+        createRequest(ns.prefix("multi_tag_create_table"), ns).withTags(expectedTags);
+    Table created = createEntity(createRequest);
+
+    Table fetched = client.tables().get(created.getId().toString(), "tags");
+    Set<String> persistedTagFQNs =
+        fetched.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+
+    for (TagLabel expected : expectedTags) {
+      assertTrue(
+          persistedTagFQNs.contains(expected.getTagFQN()),
+          "Multi-tag create should persist tag " + expected.getTagFQN());
+    }
   }
 
   @Test
@@ -3895,7 +3934,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Try to disable multi-domain rule for this test
     boolean rulesAvailable = false;
+    boolean originalRuleState = false;
     try {
+      originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(client);
       EntityRulesUtil.toggleMultiDomainRule(client, false);
       rulesAvailable = true;
     } catch (Exception e) {
@@ -4009,13 +4050,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                 return searchResponse.contains("\"id\":\"" + tableId + "\"");
               });
     } finally {
-      // Re-enable multi-domain rule after test (only if we successfully disabled it)
+      // Restore multi-domain rule after test (only if we successfully disabled it)
       if (rulesAvailable) {
         try {
-          EntityRulesUtil.toggleMultiDomainRule(client, true);
+          EntityRulesUtil.toggleMultiDomainRule(client, originalRuleState);
         } catch (Exception e) {
           // Ignore - test is finishing anyway
-          System.out.println("Could not re-enable multi-domain rule: " + e.getMessage());
+          System.out.println("Could not restore multi-domain rule: " + e.getMessage());
         }
       }
     }

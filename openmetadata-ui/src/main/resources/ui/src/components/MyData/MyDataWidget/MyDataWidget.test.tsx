@@ -68,7 +68,7 @@ jest.mock('../../../rest/searchAPI', () => ({
   ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
@@ -123,7 +123,7 @@ describe('MyDataWidget component', () => {
       },
       sortField: 'updatedAt',
       sortOrder: 'desc',
-      searchIndex: SearchIndex.ALL,
+      searchIndex: SearchIndex.DATA_ASSET,
     });
   });
 

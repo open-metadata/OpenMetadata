@@ -13,7 +13,6 @@
 
 import { Box, Card } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +34,6 @@ import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableColumns';
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
-import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -45,6 +43,7 @@ import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveS
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -63,7 +62,6 @@ const DomainListPage = () => {
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -97,8 +95,6 @@ const DomainListPage = () => {
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
@@ -106,7 +102,7 @@ const DomainListPage = () => {
       }
     },
 
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const { refetch: refetchDomainListing } = domainListing;
@@ -149,20 +145,6 @@ const DomainListPage = () => {
         ),
       loading: isLoading,
     });
-
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
-      ...(isMarketplace
-        ? [
-            {
-              name: t('label.data-marketplace'),
-              url: ROUTES.DATA_MARKETPLACE,
-            },
-          ]
-        : []),
-      { name: t('label.domain-plural'), url: domainBasePath },
-    ],
-  });
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
@@ -328,7 +310,19 @@ const DomainListPage = () => {
     <Box
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      {breadcrumbs}
+      <HeaderBreadcrumb
+        items={[
+          ...(isMarketplace
+            ? [
+                {
+                  label: t('label.data-marketplace'),
+                  href: ROUTES.DATA_MARKETPLACE,
+                },
+              ]
+            : []),
+          { label: t('label.domain-plural'), href: domainBasePath },
+        ]}
+      />
       {pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">

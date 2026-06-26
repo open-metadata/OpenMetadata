@@ -29,7 +29,7 @@ import {
   GovernanceActivityEvent,
   RiskMatrixCell,
 } from '../../../../rest/aiGovernanceAPI';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AIGovernanceTab } from '../../AIGovernancePage.interface';
 import {

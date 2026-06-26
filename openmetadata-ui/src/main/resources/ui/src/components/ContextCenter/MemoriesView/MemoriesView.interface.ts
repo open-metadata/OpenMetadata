@@ -10,29 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  MemoryStatus,
-  MemoryType,
-  TagLabel,
-} from '../../../generated/entity/context/contextMemory';
-import { EntityReference } from '../../../generated/type/entityReference';
-
-export interface MemoryItem {
-  id: string;
-  name: string;
-  title?: string;
-  summary?: string;
-  question: string;
-  answer: string;
-  memoryType?: MemoryType;
-  status?: MemoryStatus;
-  updatedBy?: string;
-  updatedAt?: number;
-  tags?: TagLabel[];
-  usageCount?: number;
-  lastUsedAt?: number;
-  relatedEntities?: EntityReference[];
-}
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 
 export type MemoryFilterTab =
   | ''
@@ -44,21 +22,18 @@ export type MemoryFilterTab =
 export type MemorySortBy = 'updated' | 'created' | 'usage' | 'author';
 
 export interface MemoriesViewProps {
-  data: MemoryItem[];
+  data: ContextMemory[];
   isLoading: boolean;
+  currentUserName?: string;
+  isAdminUser?: boolean;
+  canEdit?: boolean;
   canDelete?: boolean;
-  onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
-  onViewMemory?: (memory: MemoryItem) => void;
+  onDeleteMemory?: (memory: ContextMemory) => void;
+  onEditMemory?: (memory: ContextMemory) => void;
+  onViewMemory?: (memory: ContextMemory) => void;
 }
 
 export interface MemoryActionsProps {
-  canDelete?: boolean;
-  memory: MemoryItem;
-  onDeleteMemory?: (memory: MemoryItem) => void;
-  onEditMemory?: (memory: MemoryItem) => void;
-}
-
-export interface MemoryActionsWithOpenProps extends MemoryActionsProps {
-  onOpenChange: (isOpen: boolean) => void;
+  memory: ContextMemory;
+  onDeleteMemory?: (memory: ContextMemory) => void;
 }

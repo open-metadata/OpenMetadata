@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE = '/aiGovernance';

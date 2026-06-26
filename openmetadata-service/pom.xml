@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -13,7 +13,6 @@
 
   <properties>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
-    <awssdk.version>2.30.19</awssdk.version>
     <azure-identity.version>1.15.2</azure-identity.version>
     <azure-kv.version>4.10.7</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
@@ -202,6 +201,18 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
+    </dependency>
+    <!--
+      dropwizard-http2 registers `type: h2` (TLS) and `type: h2c` (cleartext) connector
+      factories via META-INF/services. Adding the dep is what makes those connector types
+      available in conf/openmetadata.yaml — without it, "type: h2c" fails at startup with
+      "unknown connector type". Both factories are backward-compatible with HTTP/1.1 clients
+      on the same port (cleartext via Upgrade, TLS via ALPN), so adopting them does not
+      break existing clients.
+    -->
+    <dependency>
+      <groupId>io.dropwizard</groupId>
+      <artifactId>dropwizard-http2</artifactId>
     </dependency>
     <dependency>
       <groupId>org.jdbi</groupId>
@@ -500,14 +511,6 @@
       <version>0.16.0</version>
     </dependency>
 
-    <dependency>
-      <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-bom</artifactId>
-      <version>1.14.5</version>
-      <type>pom</type>
-      <scope>import</scope>
-    </dependency>
-
     <!-- Flyway dependencies - only for SQL parsing, not migration management -->
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -522,20 +525,20 @@
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-observation</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <!-- Micrometer Prometheus -->
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-core</artifactId>
-      <version>1.14.5</version>
+      <version>${micrometer.version}</version>
     </dependency>
 
 
@@ -717,10 +720,6 @@
       <version>${jwks-rsa.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.lmax</groupId>
-      <artifactId>disruptor</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
       <version>4.0.1</version>
@@ -895,6 +894,29 @@
       <groupId>io.github.resilience4j</groupId>
       <artifactId>resilience4j-retry</artifactId>
       <version>${resilience4j-ratelimiter.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-commons</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>localstack</artifactId>
+      <version>1.21.4</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>info.picocli</groupId>

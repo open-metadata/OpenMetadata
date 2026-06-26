@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -64,11 +65,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          findTo(
+                  file.getId(),
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -124,6 +137,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           CONTEXT_FILE_ENTITY,
           Relationship.CONTAINS);
     }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. The pills track the file's lifecycle: soft-deleted with it,
+  // hard-deleted with it, restored with it. Mirrors KnowledgePageRepository.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY, true);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID fileId, String updatedBy) {
+    contextMemoryRepository().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   @Override
@@ -197,6 +237,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       updateFolder();

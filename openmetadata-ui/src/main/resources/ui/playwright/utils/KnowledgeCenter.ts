@@ -17,11 +17,7 @@ import {
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
-import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  redirectToHomePage,
-} from './common';
+import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
@@ -41,7 +37,7 @@ export const deletePage = async (
   await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -223,28 +219,27 @@ export const createQuickLink = async (
     modal.getByRole('heading', { name: 'Add Quick Link' })
   ).toBeVisible();
 
-  await modal.locator('[data-testid="displayName"]').fill(data.displayName);
-  await modal.locator('[data-testid="url"]').fill(data.url);
-  await modal.locator(descriptionBox).fill(data.description);
+  await modal
+    .locator('[data-testid="displayName"] input')
+    .fill(data.displayName);
+  await modal.locator('[data-testid="url"] input').fill(data.url);
+  await modal
+    .locator('[data-testid="description"] textarea')
+    .fill(data.description);
 
-  await modal
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .click();
-  await modal
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .fill(dataAsset.entity.name);
+  const assetInput = modal.locator(
+    '[data-testid="related-entities-container"] input[role="combobox"]'
+  );
+
+  await assetInput.click();
+  await assetInput.fill(dataAsset.entity.name);
 
   await expect(
-    page.locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
+    page.getByRole('option', { name: dataAsset.entity.name })
   ).toBeVisible();
 
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
+  await page.getByRole('option', { name: dataAsset.entity.name }).click();
+  await page.keyboard.press('Escape');
 
   await modal.getByRole('button', { name: 'Save' }).click();
 };
@@ -258,22 +253,22 @@ export const readQuickLink = async (
   }
 ) => {
   await page
-    .locator(`[data-testid="${quickLink.displayName}"]`)
+    .locator(`[data-testid="knowledge-card-${quickLink.displayName}"]`)
     .scrollIntoViewIfNeeded();
 
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] ${descriptionBoxReadOnly} > p`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-card-description"]`
     )
   ).toHaveText(quickLink.description);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('href', quickLink.url);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('target', '_blank');
 };
@@ -291,7 +286,7 @@ export const updateQuickLink = async (
 ) => {
   await page
     .locator(
-      `[data-testid="${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
+      `[data-testid="knowledge-card-${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
     )
     .click();
 
@@ -304,22 +299,33 @@ export const updateQuickLink = async (
   ).toBeVisible();
 
   await modal
-    .locator('[data-testid="displayName"]')
+    .locator('[data-testid="displayName"] input')
     .fill(knowledgePageQuickLink.updatedDisplayName);
   await modal
-    .locator('[data-testid="url"]')
+    .locator('[data-testid="url"] input')
     .fill(knowledgePageQuickLink.updatedUrl);
-  await modal.locator(descriptionBox).fill('');
-  await modal
-    .locator(descriptionBox)
-    .fill(knowledgePageQuickLink.updatedDescription);
 
-  await modal.locator('[data-testid="tag-selector"] input').first().click();
-  await modal
-    .locator('[data-testid="tag-selector"] input')
-    .first()
-    .fill(knowledgePageQuickLink.tag);
-  await page.getByTestId(`tag-${knowledgePageQuickLink.tagFqn}`).click();
+  const descriptionTextarea = modal.locator(
+    '[data-testid="description"] textarea'
+  );
+
+  await descriptionTextarea.click();
+  await descriptionTextarea.press('ControlOrMeta+a');
+  await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
+
+  const tagInput = modal.locator(
+    '[data-testid="tags-container"] input[role="combobox"]'
+  );
+
+  await tagInput.click();
+  await tagInput.fill(knowledgePageQuickLink.tag);
+
+  await expect(
+    page.getByRole('option', { name: knowledgePageQuickLink.tag })
+  ).toBeVisible();
+
+  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
+  await page.keyboard.press('Escape');
 
   await modal.getByRole('button', { name: 'Save' }).click();
 
@@ -457,7 +463,7 @@ export const getKnowledgePageCardByIndex = async (
   index: number
 ) => {
   const listing = page.getByTestId('knowledge-page-listing');
-  const cards = listing.locator('.knowledge-card');
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
   await expect(cards.nth(index)).toBeAttached();
   const card = cards.nth(index);
   await card.scrollIntoViewIfNeeded();
@@ -479,7 +485,7 @@ export const getKnowledgePageCardEntityIdentifier = async (
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
   const fqn = href.split('/knowledge-center/').pop() ?? '';
   const displayText = (
-    await card.getByTestId('entity-header-display-name').textContent()
+    await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();
   return displayText && displayText !== 'Untitled' ? displayText : fqn;
 };

@@ -14,7 +14,8 @@
       "fullyQualifiedName",
       "domains",
       "dataProducts",
-      "certification"
+      "certification",
+      "entityStatus"
     ],
     "table": [
       "tableType",
@@ -108,7 +109,6 @@
       "relatedTerms",
       "references",
       "reviewers",
-      "entityStatus",
       "usageCount",
       "childrenCount"
     ],
