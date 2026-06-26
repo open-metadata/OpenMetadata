@@ -29,7 +29,6 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
-import { waitForSearchIndexed } from '../../utils/polling';
 import {
   createColumnRowDetails,
   createCustomPropertiesForEntity,
@@ -45,6 +44,7 @@ import {
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 interface GlossaryDetails {
