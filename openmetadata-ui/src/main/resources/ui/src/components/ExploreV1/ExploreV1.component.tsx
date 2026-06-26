@@ -27,7 +27,7 @@ import {
   FilterFunnel01,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
@@ -49,10 +49,7 @@ import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-import {
-  exportSearchResultsCsvStream,
-  searchQuery,
-} from '../../rest/searchAPI';
+import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { parseExportErrorMessage } from '../../utils/APIUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntitySearchUtils';
@@ -63,7 +60,12 @@ import {
   truncateBrowsePath,
 } from '../../utils/ExplorePureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import {
+  CsvJobsTray,
+  CSV_JOBS_REFRESH_EVENT,
+} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -270,7 +272,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
       return (currentPage - 1) * pageSize;
     })();
 
-    const params: Parameters<typeof exportSearchResultsCsvStream>[0] = {
+    const params: Parameters<typeof exportSearchResultsAsync>[0] = {
       q: searchQueryParam || '*',
       index: isVisibleScope ? searchIndex : SearchIndex.DATA_ASSET,
       sort_field: sortValue,
@@ -291,13 +293,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
     setIsExporting(true);
 
     try {
-      const blob = await exportSearchResultsCsvStream(params);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Search_Results_${new Date().toISOString()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // The export runs as a background job; the Background jobs tray surfaces
+      // progress and the Download action once it completes.
+      await exportSearchResultsAsync(params);
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      showSuccessToast(t('message.search-export-job-started'));
       setShowExportScopeModal(false);
     } catch (error) {
       const message = await parseExportErrorMessage(
@@ -476,6 +476,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => selectedQuickFilters.some((field) => !isEmpty(field.value)),
     [selectedQuickFilters]
   );
+  const hasActiveFilterQuery = useMemo(
+    () => hasQuickFilterValues || !isEmpty(browseFields) || Boolean(sqlQuery),
+    [hasQuickFilterValues, browseFields, sqlQuery]
+  );
 
   const selectedEntityTypes = useMemo(() => {
     const entityTypeField = selectedQuickFilters.find(
@@ -526,6 +530,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
     return (
       <ExploreTree
+        additionalQueryFilter={queryFilter as QueryFilterInterface | undefined}
         selectedEntityTypes={selectedEntityTypes}
         onFieldValueSelect={handleQuickFiltersChange}
         onTreeSelect={handleExploreTreeSelect}
@@ -540,6 +545,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     loading,
     onChangeSearchIndex,
     selectedEntityTypes,
+    queryFilter,
   ]);
 
   useEffect(() => {
@@ -688,17 +694,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
             <Divider className="tw:my-2" orientation="vertical" />
 
-            {(hasQuickFilterValues || !isEmpty(browseFields) || sqlQuery) && (
-              <Typography.Text
-                className="text-primary self-center cursor-pointer font-medium"
-                data-testid="clear-filters"
-                onClick={() => clearFilters()}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Typography.Text>
-            )}
-
             <Dropdown.Root>
               <Button
                 className="tw:p-0"
@@ -734,9 +729,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {(hasQuickFilterValues ||
-            !isEmpty(browseFields) ||
-            !searchQueryParam) && (
+          {(hasActiveFilterQuery || !searchQueryParam) && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
@@ -746,6 +739,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     : t('message.browse-estate-query-placeholder')
                 }
                 fields={selectedQuickFilters}
+                hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}
                 onRemoveBrowseLevel={handleRemoveBrowseLevel}
                 onRemoveValue={handleRemoveQuickFilterValue}
@@ -943,6 +937,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </CoreCard>
         </Radio.Group>
       </Modal>
+      <CsvJobsTray />
     </div>
   );
 };
