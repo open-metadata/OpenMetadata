@@ -97,9 +97,6 @@ class DatabricksClient:
         """
         Method to get auth header
         """
-        if isinstance(self.config, DatabricksPipelineConnection):
-            return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
-
         from metadata.ingestion.source.database.databricks import auth  # noqa: PLC0415
 
         auth_method = {

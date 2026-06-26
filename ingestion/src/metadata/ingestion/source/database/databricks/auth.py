@@ -32,20 +32,23 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+    DatabricksPipelineConnection,
+)
+
+DatabricksAuthConnection = Union[  # noqa: UP007
+    DatabricksConnection, DatabricksPipelineConnection, UnityCatalogConnection
+]
 
 
-def get_personal_access_token_auth(
-    connection: Union[DatabricksConnection, UnityCatalogConnection],  # noqa: UP007
-) -> dict:
+def get_personal_access_token_auth(connection: DatabricksAuthConnection) -> dict:
     """
     Configure Personal Access Token authentication
     """
     return {"access_token": connection.authType.token.get_secret_value()}
 
 
-def get_databricks_oauth_auth(
-    connection: Union[DatabricksConnection, UnityCatalogConnection],  # noqa: UP007
-):
+def get_databricks_oauth_auth(connection: DatabricksAuthConnection):
     """
     Create Databricks OAuth2 M2M credentials provider for Service Principal authentication
     """
@@ -62,7 +65,7 @@ def get_databricks_oauth_auth(
     return {"credentials_provider": credential_provider}
 
 
-def get_azure_ad_auth(connection: Union[DatabricksConnection, UnityCatalogConnection]):  # noqa: UP007
+def get_azure_ad_auth(connection: DatabricksAuthConnection):
     """
     Create Azure AD credentials provider for Azure Service Principal authentication
     """
@@ -80,9 +83,7 @@ def get_azure_ad_auth(connection: Union[DatabricksConnection, UnityCatalogConnec
     return {"credentials_provider": credential_provider}
 
 
-def get_auth_config(
-    connection: Union[DatabricksConnection, UnityCatalogConnection],  # noqa: UP007
-) -> dict:
+def get_auth_config(connection: DatabricksAuthConnection) -> dict:
     """
     Get authentication configuration for Databricks connection
     """
