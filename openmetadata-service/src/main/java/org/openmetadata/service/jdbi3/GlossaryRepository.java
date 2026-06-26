@@ -27,7 +27,8 @@ import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTermRelations;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
-import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
 import java.io.IOException;
@@ -35,7 +36,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -567,46 +567,38 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   private void updateAssetIndexes(Glossary original, Glossary updated) {
-    // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
-    // its latest value.
-    GlossaryTermRepository repository =
-        (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
-    Set<String> targetFQNHashesFromDb =
-        new HashSet<>(
-            daoCollection
-                .tagUsageDAO()
-                .getTargetFQNHashForTagPrefix(updated.getFullyQualifiedName()));
-    List<GlossaryTerm> childTerms = getAllTerms(updated);
+    String oldFqn = original.getFullyQualifiedName();
+    String newFqn = updated.getFullyQualifiedName();
 
-    for (GlossaryTerm child : childTerms) {
-      targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
-          daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
-    }
+    // Re-index the glossary and all nested child terms from the renamed DB rows so each doc's own
+    // FQN and the glossary/parent denorm reflect the new name. Drained on the request thread
+    // post-commit = read-your-write, unlike the previous fire-and-forget reindexAcrossIndices that
+    // raced the commit and left child terms stale. Rebuilding from the authoritative rows is
+    // boundary-safe — getAllTerms matches on fixed-width fqnHash segments, where an ES
+    // prefix-rewrite over the raw FQN would also hit sibling glossaries sharing a name prefix
+    // (e.g. "Finance" vs "FinanceReports") and can't refresh glossary.name/fullyQualifiedName at
+    // all. The child terms go out as one bulk request, not N individual ES round-trips.
+    searchRepository.updateEntity(updated.getEntityReference());
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository.updateEntitiesByReference(
+                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
+        "updateEntitiesByReference",
+        updated.getId().toString(),
+        newFqn,
+        GLOSSARY_TERM);
 
-    // List of entity references tagged with the glossary term
-    Map<String, EntityReference> targetFQNFromES =
-        repository.getGlossaryUsageFromES(
-            original.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false);
-    List<EntityReference> childrenTerms =
-        searchRepository.getEntitiesContainingFQNFromES(
-            original.getFullyQualifiedName(),
-            getTermCount(updated),
-            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
-    for (EntityReference child : childrenTerms) {
-      targetFQNFromES.putAll( // List of entity references tagged with the children term
-          repository.getGlossaryUsageFromES(
-              child.getFullyQualifiedName(), targetFQNHashesFromDb.size(), false));
-      searchRepository.updateEntity(child); // update es index of child term
-      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
-    }
-
-    searchRepository.updateEntityIndex(original); // update es index of child term
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
-    searchRepository
-        .getSearchClient()
-        .reindexAcrossIndices("glossary.name", original.getEntityReference());
+    // Rewrite tags.tagFQN on every asset tagged with this glossary's terms in one synchronous
+    // prefix update-by-query (refresh=true) — the same in-line mechanism GlossaryTerm rename uses.
+    searchRepository.deferIfFlushScopeActive(
+        () ->
+            searchRepository
+                .getSearchClient()
+                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+        "updateGlossaryTermByFqnPrefix",
+        null,
+        newFqn,
+        GLOSSARY);
   }
 
   private void updateEntityLinksOnGlossaryRename(String oldFqn, String newFqn, Glossary updated) {

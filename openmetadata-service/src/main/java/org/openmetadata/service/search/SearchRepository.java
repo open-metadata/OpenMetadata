@@ -130,6 +130,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -1556,6 +1557,49 @@ public class SearchRepository {
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
+  }
+
+  /**
+   * Re-read each referenced entity with the same bounded field set {@link
+   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
+   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
+   * into a single bulk request. Duplicate references are resolved only once; chunking of the
+   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
+   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   */
+  public void updateEntitiesByReference(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return;
+    }
+    Set<String> seen = new HashSet<>();
+    List<EntityInterface> entities = new ArrayList<>(references.size());
+    for (EntityReference reference : references) {
+      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
+      // re-index needlessly. Skip malformed refs too.
+      if (reference == null
+          || reference.getId() == null
+          || reference.getType() == null
+          || !seen.add(reference.getType() + ":" + reference.getId())) {
+        continue;
+      }
+      try {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+        String fields =
+            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+        EntityInterface entity =
+            entityRepository.get(
+                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entity.setChangeDescription(null);
+        entities.add(entity);
+      } catch (EntityNotFoundException e) {
+        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
+        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
+        // entity's own delete cascade removes its document.
+        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      }
+    }
+    updateEntitiesIndex(entities);
   }
 
   /**
