@@ -108,10 +108,14 @@ const AddServicePage = () => {
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeField, setActiveField] = useState<string>('');
+  const [activeFieldMeta, setActiveFieldMeta] = useState<
+    { title?: string; description?: string } | undefined
+  >();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
+  const blurTimerRef = useRef<number>();
   const {
     isServiceNameChecking,
     nameError,
@@ -297,17 +301,32 @@ const AddServicePage = () => {
     }
   };
 
-  const handleFieldFocus = (fieldName: string) => {
+  const handleFieldBlur = useCallback(() => {
+    blurTimerRef.current = Number(
+      setTimeout(() => {
+        setActiveField('');
+        setActiveFieldMeta(undefined);
+      }, 100)
+    );
+  }, []);
+
+  const handleFieldFocus = (
+    fieldName: string,
+    schemaMeta?: { title?: string; description?: string }
+  ) => {
     if (isEmpty(fieldName)) {
       return;
     }
+    clearTimeout(blurTimerRef.current);
     setTimeout(() => {
       setActiveField(fieldName);
+      setActiveFieldMeta(schemaMeta);
     }, 50);
   };
 
   useEffect(() => {
-    setActiveField('');
+    setActiveField(activeServiceStep === 2 ? 'serviceName' : '');
+    setActiveFieldMeta(undefined);
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(
@@ -434,6 +453,7 @@ const AddServicePage = () => {
                       name={serviceConfig.name}
                       nameError={nameError}
                       serviceType={serviceConfig.serviceType}
+                      onBlur={handleFieldBlur}
                       onDescriptionChange={(description) =>
                         setServiceConfig((prev) => ({ ...prev, description }))
                       }
@@ -458,6 +478,7 @@ const AddServicePage = () => {
                       serviceCategory={serviceCategory}
                       serviceType={serviceConfig.serviceType}
                       status={saveServiceState}
+                      onBlur={handleFieldBlur}
                       onFocus={handleFieldFocus}
                       onSave={async (e) => {
                         e.formData && (await handleConfigUpdate(e.formData));
@@ -565,6 +586,7 @@ const AddServicePage = () => {
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceConfig.serviceType}
                   serviceType={getServiceType(serviceCategory)}
                 />

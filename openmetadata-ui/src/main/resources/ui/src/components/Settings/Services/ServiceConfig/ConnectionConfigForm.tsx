@@ -48,6 +48,7 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getFieldSchemaForId,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -83,6 +84,7 @@ const ConnectionConfigForm = forwardRef<
       serviceType,
       serviceCategory,
       status,
+      onBlur,
       onCancel,
       onSave,
       onFocus,
@@ -391,9 +393,16 @@ const ConnectionConfigForm = forwardRef<
             ObjectFieldTemplate: ConnectionObjectFieldTemplate,
           }}
           uiSchema={uiSchema}
+          onBlur={() => onBlur?.()}
           onCancel={onCancel}
           onChange={handleFormChange}
-          onFocus={onFocus}
+          onFocus={(id: string) => {
+            const schemaMeta = getFieldSchemaForId(
+              schemaWithoutDefaultFilterPatternFields,
+              id
+            );
+            onFocus(id, schemaMeta);
+          }}
           onSubmit={handleSave}>
           {formChildren}
         </FormBuilderV1>

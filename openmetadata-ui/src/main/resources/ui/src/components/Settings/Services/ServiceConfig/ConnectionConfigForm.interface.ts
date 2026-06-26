@@ -26,7 +26,11 @@ export interface ConnectionConfigFormProps {
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onFocus: (id: string) => void;
+  onBlur?: () => void;
+  onFocus: (
+    id: string,
+    schemaMeta?: { title?: string; description?: string }
+  ) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
   isSubmitDisabled?: boolean;

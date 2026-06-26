@@ -50,6 +50,7 @@ interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
+  activeFieldMeta?: { title?: string; description?: string };
   focusedMode?: boolean;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
@@ -210,19 +211,21 @@ const getFocusedFieldNames = (fieldName?: string): string[] => {
     return [];
   }
 
-  return AUTH_FIELD_NAMES.has(fieldName)
-    ? [
-        'password',
-        'privateKey',
-        'snowflakePrivatekeyPassphrase',
-        'token',
-        'apiKey',
-        'secretKey',
-        'clientSecret',
-        'consumerSecret',
-        'securityToken',
-      ]
-    : [fieldName];
+  if (fieldName === 'authType') {
+    return [
+      'password',
+      'privateKey',
+      'snowflakePrivatekeyPassphrase',
+      'token',
+      'apiKey',
+      'secretKey',
+      'clientSecret',
+      'consumerSecret',
+      'securityToken',
+    ];
+  }
+
+  return [fieldName];
 };
 
 const getFieldMarkdown = (
@@ -338,6 +341,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   serviceType,
   serviceName,
   activeField,
+  activeFieldMeta,
   focusedMode = false,
   isWorkflow,
   workflowType,
@@ -528,27 +532,40 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     }
 
     if (activeFieldName && AUTH_FIELD_NAMES.has(activeFieldName)) {
+      if (activeFieldName === 'authType') {
+        return {
+          eyebrow: t('label.authentication'),
+          title: t('message.authentication-doc-title'),
+          description: t('message.authentication-doc-description'),
+          markdown: fieldBody,
+          beforeRequirements: (
+            <AuthGuidance
+              keyPairDescription={t('message.key-pair-auth-doc-description')}
+              keyPairLabel={t('label.key-pair')}
+              passwordDescription={t('message.password-auth-doc-description')}
+              passwordLabel={t('label.password')}
+            />
+          ),
+        };
+      }
+
       return {
         eyebrow: t('label.authentication'),
-        title: t('message.authentication-doc-title'),
-        description: t('message.authentication-doc-description'),
+        title: fieldTitle ?? startCase(activeFieldName),
+        description: fieldBody
+          ? t('message.focused-docs-fallback-description')
+          : t('message.authentication-doc-description'),
         markdown: fieldBody,
-        beforeRequirements: (
-          <AuthGuidance
-            keyPairDescription={t('message.key-pair-auth-doc-description')}
-            keyPairLabel={t('label.key-pair')}
-            passwordDescription={t('message.password-auth-doc-description')}
-            passwordLabel={t('label.password')}
-          />
-        ),
       };
     }
 
     if (activeFieldName && !activeFieldMarkdown) {
       return {
         eyebrow: t('label.connection'),
-        title: t('label.setup-guide'),
-        description: t('message.openmetadata-docs-description'),
+        title: activeFieldMeta?.title ?? startCase(activeFieldName),
+        description:
+          activeFieldMeta?.description ??
+          t('message.openmetadata-docs-description'),
         markdown: '',
       };
     }
@@ -568,12 +585,16 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           : t('message.openmetadata-docs-description'),
       markdown: fieldBody,
     };
-  }, [activeFieldMarkdown, activeFieldName, isWorkflow, serviceName, t]);
+  }, [
+    activeFieldMarkdown,
+    activeFieldMeta,
+    activeFieldName,
+    isWorkflow,
+    serviceName,
+    t,
+  ]);
 
-  const showFocusedRequirements =
-    !activeFieldName ||
-    activeFieldName === 'serviceName' ||
-    !activeFieldMarkdown;
+  const showFocusedRequirements = !activeFieldName;
 
   const focusedRequirementsMarkdown = useMemo(
     () =>

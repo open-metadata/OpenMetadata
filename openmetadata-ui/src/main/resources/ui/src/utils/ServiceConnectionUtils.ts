@@ -636,6 +636,30 @@ export const wrapFlatCredentialsIntoAuthType = (
 };
 
 /** Flattens a synthesized `authType` object back to top-level flat secrets. */
+export const getFieldSchemaForId = (
+  schema: Record<string, unknown>,
+  fieldId: string
+): { title?: string; description?: string } | undefined => {
+  const cleanId = fieldId.replace(/__(oneof|anyof|allof)_select$/, '');
+  const parts = cleanId.split('/').filter((p) => p && p !== 'root');
+  let current: Record<string, unknown> = schema;
+  for (const part of parts) {
+    const props = current.properties as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    if (props?.[part]) {
+      current = props[part];
+    } else {
+      return undefined;
+    }
+  }
+
+  return {
+    title: current.title as string | undefined,
+    description: current.description as string | undefined,
+  };
+};
+
 export const flattenAuthTypeIntoConfig = (
   config?: ConfigData,
   schema?: Record<string, unknown>
