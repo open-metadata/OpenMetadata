@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.time.Instant;
 import java.util.Date;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -359,19 +361,27 @@ public class IngestionPipelineOwnerInheritanceIT {
 
               String killPath = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
 
-              // A view-only user can read the pipeline but must NOT be able to kill it: kill now
-              // requires EditAll, not the ViewAll the underlying read path enforces.
+              // A view-only user can read the pipeline but must be forbidden from killing it: kill
+              // now requires EditAll, not the ViewAll the underlying read path enforces.
               viewerClient.ingestionPipelines().get(pipeline.getId().toString());
               assertThrows(
-                  Exception.class,
+                  ForbiddenException.class,
                   () ->
                       viewerClient
                           .getHttpClient()
                           .execute(HttpMethod.POST, killPath, null, Void.class),
-                  "View-only user must not be able to kill an ingestion pipeline");
+                  "View-only user must be forbidden from killing an ingestion pipeline");
 
-              // A user with EditAll (plus ViewAll for the read path) can kill.
-              editorClient.getHttpClient().execute(HttpMethod.POST, killPath, null, Void.class);
+              // A user with EditAll (plus ViewAll for the read path) must pass authorization. The
+              // kill may still fail downstream when the pipeline service client cannot reach the
+              // orchestrator in this environment; only a 403 means the authz gate rejected it.
+              try {
+                editorClient.getHttpClient().execute(HttpMethod.POST, killPath, null, Void.class);
+              } catch (ForbiddenException e) {
+                fail("User with EditAll must be authorized to kill an ingestion pipeline");
+              } catch (Exception ignored) {
+                // Non-authorization failures (e.g. orchestrator unavailable) are irrelevant here.
+              }
             } finally {
               adminClient.ingestionPipelines().delete(pipeline.getId().toString());
             }
