@@ -3211,6 +3211,7 @@
     "import-csv-reading-file": "Reading file...",
     "import-csv-validating-catalog": "Validating against catalog...",
     "import-data-in-progress": "가져오기가 진행 중입니다.",
+    "import-entity-csv-tip": "기존 {{entity}} 이름을 사용하면 업데이트되고, 새 이름을 사용하면 새 {{entity}}이(가) 생성됩니다.",
     "import-entity-help": "CSV 파일을 업로드하여 한 번에 여러 {{entity}}을(를) 추가하여 시간과 노력을 절약하세요.",
     "import-entity-workflow-help": "Upload a CSV, preview the rows, and apply them to the catalog.",
     "import-metrics-csv-tip": "Use the same name as an existing metric to update it. New names create new metrics.",

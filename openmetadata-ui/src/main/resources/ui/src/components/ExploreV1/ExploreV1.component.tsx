@@ -62,10 +62,7 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
-import {
-  CsvJobsTray,
-  CSV_JOBS_REFRESH_EVENT,
-} from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
@@ -937,7 +934,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </CoreCard>
         </Radio.Group>
       </Modal>
-      <CsvJobsTray />
     </div>
   );
 };

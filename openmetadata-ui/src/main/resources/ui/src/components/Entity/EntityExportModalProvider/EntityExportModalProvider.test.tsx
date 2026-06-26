@@ -33,9 +33,11 @@ const mockExportJob = {
   message: 'Export initiated successfyully',
 };
 
+// Multi-type export keeps the modal (the type picker is needed for image/PDF);
+// a CSV-only export now skips the modal and runs into the tray instead.
 const mockShowModal: ExportData = {
   name: 'test',
-  exportTypes: [ExportTypes.CSV],
+  exportTypes: [ExportTypes.CSV, ExportTypes.PNG],
   onExport: jest.fn().mockImplementation(() => Promise.resolve(mockExportJob)),
 };
 
@@ -336,5 +338,51 @@ describe('EntityExportModalProvider component', () => {
     );
 
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+  });
+
+  it('should run a CSV-only export into the tray without opening the modal', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/mock-path',
+    });
+    const onExport = jest.fn().mockResolvedValue(mockExportJob);
+    const dispatchSpy = jest.spyOn(window, 'dispatchEvent');
+
+    const CsvOnlyConsumer = () => {
+      const { showModal } = useEntityExportModalProvider();
+
+      return (
+        <button
+          onClick={() =>
+            showModal({
+              name: 'g1',
+              onExport,
+              exportTypes: [ExportTypes.CSV],
+            })
+          }>
+          Export
+        </button>
+      );
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <CsvOnlyConsumer />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Export'));
+    });
+
+    expect(onExport).toHaveBeenCalledWith('g1', { recursive: true });
+    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'csv-jobs-refresh' })
+      )
+    );
+
+    dispatchSpy.mockRestore();
   });
 });

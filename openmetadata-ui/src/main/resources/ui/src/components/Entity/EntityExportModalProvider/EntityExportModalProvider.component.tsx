@@ -38,6 +38,7 @@ import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
+import { CSV_JOBS_REFRESH_EVENT } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -73,6 +74,16 @@ export const EntityExportModalProvider = ({
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname) || exportData?.hideExportModal,
     [location, exportData?.hideExportModal]
+  );
+
+  // A plain CSV export (no image/PDF type choice) skips the modal and runs
+  // straight into the global CsvJobsTray, matching the metrics export UX.
+  const isCsvOnly = useMemo(
+    () =>
+      !isBulkEdit &&
+      exportData?.exportTypes?.length === 1 &&
+      exportData.exportTypes[0] === ExportTypes.CSV,
+    [exportData, isBulkEdit]
   );
 
   const exportTypesOptions = useMemo(
@@ -240,6 +251,24 @@ export const EntityExportModalProvider = ({
     [isBulkEdit, handleCSVExportSuccess]
   );
 
+  const runTrayExport = useCallback(async (data: ExportData) => {
+    // CSV-only exports skip the modal and surface in the global CsvJobsTray
+    // (the metrics export UX). Fire the async export, then nudge the tray to
+    // pick up the new job.
+    setExportData(null);
+    try {
+      const result = await data.onExport(data.name, { recursive: true });
+      if (isString(result)) {
+        downloadFile(result, `${data.name}_${getCurrentISODate()}.csv`);
+      } else {
+        window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      data.onError?.();
+    }
+  }, []);
+
   useEffect(() => {
     if (exportData) {
       if (isBulkEdit) {
@@ -247,6 +276,8 @@ export const EntityExportModalProvider = ({
           fileName: 'bulk-edit',
           exportType: ExportTypes.CSV,
         });
+      } else if (isCsvOnly) {
+        runTrayExport(exportData);
       } else {
         form.setFieldsValue({
           fileName: `${exportData.name}_${getCurrentISODate()}`,
@@ -254,7 +285,7 @@ export const EntityExportModalProvider = ({
         });
       }
     }
-  }, [isBulkEdit, exportData]);
+  }, [isBulkEdit, isCsvOnly, exportData, runTrayExport]);
 
   const providerValue = useMemo(
     () => ({
@@ -277,7 +308,7 @@ export const EntityExportModalProvider = ({
     <EntityExportModalContext.Provider value={providerValue}>
       <>
         {children}
-        {exportData && !isBulkEdit && (
+        {exportData && !isBulkEdit && !isCsvOnly && (
           <Modal
             centered
             open

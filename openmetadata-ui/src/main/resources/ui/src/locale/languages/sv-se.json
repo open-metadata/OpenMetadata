@@ -3211,6 +3211,7 @@
     "import-csv-reading-file": "Reading file...",
     "import-csv-validating-catalog": "Validating against catalog...",
     "import-data-in-progress": "Import pågår.",
+    "import-entity-csv-tip": "Återanvänd namnet på en befintlig {{entity}} för att uppdatera den; ett nytt namn skapar en ny {{entity}}.",
     "import-entity-help": "Spara tid och arbete genom att ladda upp en CSV-fil med flera {{entity}} på en gång.",
     "import-entity-workflow-help": "Upload a CSV, preview the rows, and apply them to the catalog.",
     "import-metrics-csv-tip": "Use the same name as an existing metric to update it. New names create new metrics.",

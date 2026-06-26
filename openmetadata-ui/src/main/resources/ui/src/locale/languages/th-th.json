@@ -3211,6 +3211,7 @@
     "import-csv-reading-file": "Reading file...",
     "import-csv-validating-catalog": "Validating against catalog...",
     "import-data-in-progress": "กำลังนำเข้าข้อมูล",
+    "import-entity-csv-tip": "ใช้ชื่อเดียวกับ {{entity}} ที่มีอยู่เพื่ออัปเดต ส่วนชื่อใหม่จะสร้าง {{entity}} ใหม่",
     "import-entity-help": "ประหยัดเวลาและความพยายามโดยการอัปโหลดไฟล์ CSV ที่มีหลาย {{entity}} ในครั้งเดียว",
     "import-entity-workflow-help": "Upload a CSV, preview the rows, and apply them to the catalog.",
     "import-metrics-csv-tip": "Use the same name as an existing metric to update it. New names create new metrics.",
