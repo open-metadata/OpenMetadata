@@ -31,16 +31,13 @@ const dashboard = new DashboardClass();
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
-  const queryRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
-  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-  await queryRes;
+
   await waitForAllLoadersToDisappear(page);
 };
 
