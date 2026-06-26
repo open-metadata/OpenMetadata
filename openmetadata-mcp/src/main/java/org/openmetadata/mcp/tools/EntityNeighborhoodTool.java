@@ -1,9 +1,9 @@
 package org.openmetadata.mcp.tools;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +26,18 @@ public class EntityNeighborhoodTool implements McpTool {
   private static final int MIN_DEPTH = 1;
   private static final int MAX_DEPTH = 3;
   private static final int DEFAULT_DEPTH = 2;
+  private static final int MIN_LIMIT = 1;
+  private static final int MAX_LIMIT = 2000;
+  private static final int DEFAULT_LIMIT = 200;
+  private static final String ENTITY_TYPE_PATTERN = "[A-Za-z][A-Za-z0-9]*";
+
+  /** A single directed edge to a neighbor; {@code neighborLabel} is omitted when absent. */
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record Edge(String direction, String predicate, String neighbor, String neighborLabel) {}
+
+  /** Typed neighborhood payload that is serialized back to the MCP client. */
+  public record Neighborhood(
+      String entityUri, int depth, int limit, String triples, List<Edge> edges) {}
 
   @Override
   public Map<String, Object> execute(
@@ -33,55 +45,16 @@ public class EntityNeighborhoodTool implements McpTool {
       throws IOException {
     String entityId = string(params, "entityId");
     String entityType = string(params, "entityType");
-    if (entityId == null || entityId.isBlank()) {
-      return error("'entityId' parameter is required");
-    }
-    if (entityType == null || entityType.isBlank()) {
-      return error("'entityType' parameter is required");
-    }
-    try {
-      UUID.fromString(entityId);
-    } catch (IllegalArgumentException e) {
-      return error("'entityId' must be a UUID");
-    }
-    if (!entityType.matches("[A-Za-z][A-Za-z0-9]*")) {
-      return error("'entityType' must be alphanumeric");
-    }
-
     int depth = clampDepth(intParam(params, "depth", DEFAULT_DEPTH));
-    int limit = Math.min(Math.max(intParam(params, "limit", 200), 1), 2000);
+    int limit = clampLimit(intParam(params, "limit", DEFAULT_LIMIT));
 
-    RdfRepository repository = RdfRepository.getInstanceOrNull();
-    if (repository == null || !repository.isEnabled()) {
-      return error("RDF repository is not enabled on this OpenMetadata server");
+    Map<String, Object> result;
+    String validationError = validateInputs(entityId, entityType);
+    if (validationError != null) {
+      result = error(validationError);
+    } else {
+      result = runNeighborhood(entityType, entityId, depth, limit);
     }
-
-    String entityUri = repository.getBaseUri() + "entity/" + entityType + "/" + entityId;
-
-    String constructQuery = buildConstructQuery(entityUri, depth, limit);
-    String triples;
-    try {
-      triples = repository.executeSparqlQuery(constructQuery, "text/turtle");
-    } catch (Exception e) {
-      LOG.error("CONSTRUCT for neighborhood failed for {}", entityUri, e);
-      return error("Neighborhood query failed: " + e.getMessage());
-    }
-
-    String selectQuery = buildSelectQuery(entityUri, depth, limit);
-    String selectJson;
-    try {
-      selectJson = repository.executeSparqlQuery(selectQuery, "application/sparql-results+json");
-    } catch (Exception e) {
-      LOG.error("SELECT for neighborhood failed for {}", entityUri, e);
-      selectJson = null;
-    }
-
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("entityUri", entityUri);
-    result.put("depth", depth);
-    result.put("limit", limit);
-    result.put("triples", triples == null ? "" : triples);
-    result.put("edges", parseEdges(selectJson));
     return result;
   }
 
@@ -93,6 +66,67 @@ public class EntityNeighborhoodTool implements McpTool {
       Map<String, Object> params) {
     throw new UnsupportedOperationException(
         "EntityNeighborhoodTool does not enforce write limits.");
+  }
+
+  private static String validateInputs(String entityId, String entityType) {
+    String error = null;
+    if (entityId == null || entityId.isBlank()) {
+      error = "'entityId' parameter is required";
+    } else if (entityType == null || entityType.isBlank()) {
+      error = "'entityType' parameter is required";
+    } else if (!isUuid(entityId)) {
+      error = "'entityId' must be a UUID";
+    } else if (!entityType.matches(ENTITY_TYPE_PATTERN)) {
+      error = "'entityType' must be alphanumeric";
+    }
+    return error;
+  }
+
+  private static Map<String, Object> runNeighborhood(
+      String entityType, String entityId, int depth, int limit) {
+    RdfRepository repository = RdfRepository.getInstanceOrNull();
+    Map<String, Object> result;
+    if (repository == null || !repository.isEnabled()) {
+      result = error("RDF repository is not enabled on this OpenMetadata server");
+    } else {
+      result = queryNeighborhood(repository, entityType, entityId, depth, limit);
+    }
+    return result;
+  }
+
+  private static Map<String, Object> queryNeighborhood(
+      RdfRepository repository, String entityType, String entityId, int depth, int limit) {
+    String entityUri = repository.getBaseUri() + "entity/" + entityType + "/" + entityId;
+    Map<String, Object> result;
+    try {
+      String triples =
+          repository.executeSparqlQuery(
+              buildConstructQuery(entityUri, depth, limit), "text/turtle");
+      List<Edge> edges = fetchEdges(repository, entityUri, depth, limit);
+      result =
+          JsonUtils.getMap(
+              new Neighborhood(entityUri, depth, limit, triples == null ? "" : triples, edges));
+    } catch (Exception e) {
+      LOG.error("CONSTRUCT for neighborhood failed for {}", entityUri, e);
+      result = error("Neighborhood query failed: " + e.getMessage());
+    }
+    return result;
+  }
+
+  /** SELECT failure degrades to an empty edge list rather than failing the whole call. */
+  private static List<Edge> fetchEdges(
+      RdfRepository repository, String entityUri, int depth, int limit) {
+    List<Edge> edges;
+    try {
+      String selectJson =
+          repository.executeSparqlQuery(
+              buildSelectQuery(entityUri, depth, limit), "application/sparql-results+json");
+      edges = parseEdges(selectJson);
+    } catch (Exception e) {
+      LOG.error("SELECT for neighborhood failed for {}", entityUri, e);
+      edges = List.of();
+    }
+    return edges;
   }
 
   /**
@@ -145,57 +179,70 @@ public class EntityNeighborhoodTool implements McpTool {
         + limit;
   }
 
-  private static List<Map<String, Object>> parseEdges(String selectJson) {
-    if (selectJson == null || selectJson.isBlank()) {
-      return List.of();
-    }
-    try {
-      Map<String, Object> sparql = JsonUtils.readValue(selectJson, Map.class);
-      Object results = sparql.get("results");
-      if (!(results instanceof Map<?, ?> resultsMap)) return List.of();
-      Object bindings = resultsMap.get("bindings");
-      if (!(bindings instanceof List<?> rows)) return List.of();
-      List<Map<String, Object>> edges = new ArrayList<>(rows.size());
-      for (Object row : rows) {
-        if (!(row instanceof Map<?, ?> r)) continue;
-        Map<String, Object> edge = new LinkedHashMap<>();
-        edge.put("direction", bindingValue(r, "direction"));
-        edge.put("predicate", bindingValue(r, "predicate"));
-        edge.put("neighbor", bindingValue(r, "neighbor"));
-        Object label = bindingValue(r, "neighborLabel");
-        if (label != null) {
-          edge.put("neighborLabel", label);
+  private static List<Edge> parseEdges(String selectJson) {
+    List<Edge> edges = new ArrayList<>();
+    if (selectJson != null && !selectJson.isBlank()) {
+      try {
+        Map<String, Object> sparql = JsonUtils.readValue(selectJson, Map.class);
+        if (sparql.get("results") instanceof Map<?, ?> resultsMap
+            && resultsMap.get("bindings") instanceof List<?> rows) {
+          for (Object row : rows) {
+            if (row instanceof Map<?, ?> r) {
+              edges.add(
+                  new Edge(
+                      bindingValue(r, "direction"),
+                      bindingValue(r, "predicate"),
+                      bindingValue(r, "neighbor"),
+                      bindingValue(r, "neighborLabel")));
+            }
+          }
         }
-        edges.add(edge);
+      } catch (Exception e) {
+        LOG.warn("Failed to parse neighborhood SELECT results: {}", e.getMessage());
       }
-      return edges;
-    } catch (Exception e) {
-      LOG.warn("Failed to parse neighborhood SELECT results: {}", e.getMessage());
-      return List.of();
     }
+    return edges;
   }
 
-  private static Object bindingValue(Map<?, ?> row, String name) {
-    Object node = row.get(name);
-    if (!(node instanceof Map<?, ?> nodeMap)) return null;
-    return nodeMap.get("value");
+  private static String bindingValue(Map<?, ?> row, String name) {
+    String value = null;
+    if (row.get(name) instanceof Map<?, ?> nodeMap && nodeMap.get("value") instanceof String s) {
+      value = s;
+    }
+    return value;
+  }
+
+  private static boolean isUuid(String value) {
+    boolean valid = true;
+    try {
+      UUID.fromString(value);
+    } catch (IllegalArgumentException e) {
+      valid = false;
+    }
+    return valid;
   }
 
   private static int clampDepth(int depth) {
     return Math.min(Math.max(depth, MIN_DEPTH), MAX_DEPTH);
   }
 
+  private static int clampLimit(int limit) {
+    return Math.min(Math.max(limit, MIN_LIMIT), MAX_LIMIT);
+  }
+
   private static int intParam(Map<String, Object> params, String key, int defaultValue) {
     Object v = params.get(key);
-    if (v instanceof Number n) return n.intValue();
-    if (v instanceof String s) {
+    int result = defaultValue;
+    if (v instanceof Number n) {
+      result = n.intValue();
+    } else if (v instanceof String s) {
       try {
-        return Integer.parseInt(s);
+        result = Integer.parseInt(s);
       } catch (NumberFormatException e) {
-        return defaultValue;
+        result = defaultValue;
       }
     }
-    return defaultValue;
+    return result;
   }
 
   private static String string(Map<String, Object> params, String key) {
