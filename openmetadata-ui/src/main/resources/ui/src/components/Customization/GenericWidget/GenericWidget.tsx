@@ -13,12 +13,13 @@
 import { HolderOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import { Button, Card, Space } from 'antd';
 import { noop, startCase } from 'lodash';
-import { useEffect, useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 import { GlossaryTermDetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import type { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getGlossaryChildTermsForCustomization } from '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermPureUtils';
 import { getDummyDataByPage } from '../../../utils/CustomizePage/CustomizePageDispatchUtils';
 import { WIDGET_COMPONENTS } from '../../../utils/GenericWidget/GenericWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -38,29 +39,13 @@ export const GenericWidget = (props: WidgetCommonProps) => {
   const { setGlossaryChildTerms } = useGlossaryStore();
   const data = getDummyDataByPage(currentPageType as PageType);
 
-  useEffect(() => {
-    let isMounted = true;
-
+  useLayoutEffect(() => {
     if (
       props.isEditView &&
       props.widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)
     ) {
-      import(
-        '../../../utils/CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass'
-      )
-        .then(({ default: customizeGlossaryTermPageClassBase }) => {
-          if (isMounted) {
-            setGlossaryChildTerms(
-              customizeGlossaryTermPageClassBase.getGlossaryChildTerms()
-            );
-          }
-        })
-        .catch(noop);
+      setGlossaryChildTerms(getGlossaryChildTermsForCustomization());
     }
-
-    return () => {
-      isMounted = false;
-    };
   }, [props.widgetKey, props.isEditView, setGlossaryChildTerms]);
 
   const widgetName = startCase(

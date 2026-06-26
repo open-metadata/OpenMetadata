@@ -170,7 +170,7 @@ export const addOwner = async ({
           const searchRetry = page.waitForResponse(
             (response) =>
               response.url().includes('/api/v1/search/query') &&
-              response.url().includes('user_search_index')
+              response.url().includes(encodeURIComponent(owner))
           );
           await ownerSearchInput.fill('');
           await ownerSearchInput.fill(owner);
@@ -498,7 +498,7 @@ export const addMultiOwner = async (data: {
 
   for (const name of owners) {
     await expect(
-      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name)
+      page.locator(`[data-testid="${resultTestId}"]`).getByTestId(name).first()
     ).toBeVisible();
   }
 };
@@ -1441,28 +1441,23 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
+  const followingWidget = await loadFollowingWidget(page);
+
   if (!entity) {
-    return loadFollowingWidget(page);
+    return followingWidget;
   }
 
-  let followingWidget: Locator | undefined;
+  if (isFollowing) {
+    await followingWidget.isVisible();
+    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+  } else {
+    await followingWidget.isVisible();
+    await expect(
+      followingWidget.getByTestId(`following-${entity}`)
+    ).not.toBeVisible();
+  }
 
-  await expect
-    .poll(
-      async () => {
-        followingWidget = await loadFollowingWidget(page);
-        const entityCard = followingWidget.getByTestId(`Following-${entity}`);
-
-        return entityCard.isVisible();
-      },
-      {
-        timeout: 120_000,
-        intervals: [1_000, 2_000, 5_000],
-      }
-    )
-    .toBe(isFollowing);
-
-  return followingWidget ?? loadFollowingWidget(page);
+  return followingWidget;
 };
 
 const announcementForm = async (
@@ -1489,7 +1484,9 @@ const announcementForm = async (
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
-    '/api/v1/feed?entityLink=*type=Announcement*'
+    (response) =>
+      response.url().includes('/api/v1/announcements') &&
+      response.request().method() === 'POST'
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
@@ -1502,7 +1499,8 @@ const announcementForm = async (
 export const createAnnouncement = async (
   page: Page,
   data: { title: string; description: string },
-  hideAlert?: boolean
+  hideAlert?: boolean,
+  announcementContainerTestId = 'entity-header-announcements'
 ) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
@@ -1526,16 +1524,22 @@ export const createAnnouncement = async (
   await page.reload();
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('announcement-card')).toBeVisible();
-  await expect(page.getByTestId('announcement-title')).toHaveText(data.title);
+  await expect(page.getByTestId(announcementContainerTestId)).toBeVisible();
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
+    data.title
+  );
 
-  await expect(page.getByTestId('announcement-card')).toContainText(
+  await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
+  await page
+    .locator('[data-testid="entity-header-announcements"]')
+    .locator('[data-testid^="announcement-item-"]')
+    .first()
+    .click();
 
   await page.hover(
     '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
@@ -1583,28 +1587,26 @@ export const deleteAnnouncement = async (page: Page) => {
   await page.getByTestId('manage-button').click();
   await page.getByTestId('announcement-button').click();
 
-  await page
-    .locator(
-      '[data-testid="announcement-thread-body"] [data-testid="announcement-card"]'
-    )
-    .isVisible();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
+  const drawerAnnouncementCard = page.locator(
+    '[data-testid="announcement-drawer"] [data-testid="announcement-card"]'
   );
 
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="delete-message"]');
+  await expect(drawerAnnouncementCard).toBeVisible();
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-delete-action').click();
   const modalText = await page.textContent('.ant-modal-body');
 
   expect(modalText).toContain(
     'Are you sure you want to permanently delete this message?'
   );
 
-  const getFeed = page.waitForResponse('/api/v1/feed/*');
+  const deleteAnnouncementResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'DELETE'
+  );
   await page.click('[data-testid="save-button"]');
-  await getFeed;
+  await deleteAnnouncementResponse;
 
   await page.reload();
   await page.getByTestId('manage-button').click();
@@ -1633,14 +1635,9 @@ export const editAnnouncement = async (
 
   await expect(drawerAnnouncementCard).toBeVisible();
 
-  // Hover over the announcement card inside the drawer to show the edit options popover
-  await drawerAnnouncementCard.hover();
-
-  // Wait for the popover to become visible
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  // Click the edit message button in the popover
-  await page.click('[data-testid="edit-message"]');
+  // Open the announcement actions menu and choose edit
+  await drawerAnnouncementCard.getByTestId('announcement-actions').click();
+  await page.getByTestId('announcement-edit-action').click();
 
   // Wait for the edit announcement modal to open
   await expect(page.locator('.ant-modal-header')).toContainText(
@@ -1662,7 +1659,11 @@ export const editAnnouncement = async (
     .fill(data.description);
 
   // Save the changes and wait for the API response
-  const updateResponse = page.waitForResponse('/api/v1/feed/*');
+  const updateResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/announcements/') &&
+      response.request().method() === 'PATCH'
+  );
   await page
     .locator(
       '[data-testid="edit-announcement"] .ant-modal-footer .ant-btn-primary'
@@ -2143,7 +2144,7 @@ export const softDeleteEntity = async (
   await clickOutside(page);
 
   if (endPoint === EntityTypeEndpoint.Table) {
-    await page.click('[data-testid="breadcrumb-link"]:last-child');
+    await page.getByTestId('breadcrumb').getByRole('link').last().click();
     const deletedTableResponse = page.waitForResponse(
       '/api/v1/tables?*databaseSchema=*'
     );
@@ -2332,19 +2333,13 @@ export const checkExploreSearchFilter = async (
     await page.fill('[data-testid="search-input"]', entityTypeId);
     await page.getByTestId(entityTypeId).click();
     await entitySearchResponse;
-    await page.getByTestId('update-btn').click();
+    // Immediate-apply commits on selection; legacy mode needs the Update click
+    const typeUpdateButton = page.getByTestId('update-btn');
+    if (await typeUpdateButton.isVisible().catch(() => false)) {
+      await typeUpdateButton.click();
+    }
+    await page.keyboard.press('Escape');
   }
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
-  await searchAndClickOnOption(
-    page,
-    {
-      label: filterLabel,
-      key: filterKey,
-      value: filterValue,
-    },
-    true
-  );
-
   const rawFilterValue = (filterValue ?? '').replaceAll(' ', '+').toLowerCase();
   const escapedValue = JSON.stringify(rawFilterValue).slice(1, -1);
   const filterValueForSearchURL = /["%]/.test(filterValue ?? '')
@@ -2390,7 +2385,23 @@ export const checkExploreSearchFilter = async (
     { timeout: 30_000 }
   );
 
-  await page.click('[data-testid="update-btn"]');
+  // Arm the wait before selecting: immediate-apply fires the query on the
+  // option click; legacy mode fires it on the Update click below.
+  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  await searchAndClickOnOption(
+    page,
+    {
+      label: filterLabel,
+      key: filterKey,
+      value: filterValue,
+    },
+    true
+  );
+
+  const filterUpdateButton = page.getByTestId('update-btn');
+  if (await filterUpdateButton.isVisible().catch(() => false)) {
+    await filterUpdateButton.click();
+  }
   await queryRes;
   await waitForAllLoadersToDisappear(page);
 
@@ -2402,7 +2413,7 @@ export const checkExploreSearchFilter = async (
     )
   ).toBeVisible();
 
-  await page.click('[data-testid="clear-filters"]');
+  await page.click('[data-testid="clear-all-chips"]');
 
   await entity?.visitEntityPage(page);
 };
