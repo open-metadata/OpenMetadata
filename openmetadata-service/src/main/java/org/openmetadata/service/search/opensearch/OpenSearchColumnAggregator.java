@@ -272,7 +272,15 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     List<String> resolvedIndexes = resolveIndexNames();
 
     SearchRequest searchRequest =
-        SearchRequest.of(s -> s.index(resolvedIndexes).query(query).size(10000));
+        SearchRequest.of(
+            s ->
+                s.index(resolvedIndexes)
+                    .query(query)
+                    .size(10000)
+                    .source(
+                        src ->
+                            src.filter(
+                                f -> f.includes(ColumnAggregator.TAG_SOURCE_FETCH_INCLUDES))));
 
     SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
     long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;

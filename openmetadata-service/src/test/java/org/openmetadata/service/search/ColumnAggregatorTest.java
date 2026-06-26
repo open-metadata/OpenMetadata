@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
@@ -108,5 +109,36 @@ class ColumnAggregatorTest {
     assertTrue(pattern.matcher("prefix_a+b*c?_suffix").matches());
     // Plus and star should be literal, not regex quantifiers
     assertFalse(pattern.matcher("abbbbc").matches());
+  }
+
+  @Test
+  void tagSourceFetchIncludes_coverFieldsTheExtractorReads() {
+    // The tag/glossary column search reads _source in Java to locate tagged columns. The fix
+    // restricts _source to TAG_SOURCE_FETCH_INCLUDES to avoid fetching multi-MB documents (full
+    // _source caused G1 humongous allocations and Full-GC churn under concurrent load). This list
+    // must cover every field the extractor and parseColumn read, or filtering would silently drop
+    // data the feature needs.
+    List<String> includes = ColumnAggregator.TAG_SOURCE_FETCH_INCLUDES;
+    assertTrue(
+        includes.containsAll(
+            List.of(
+                "fullyQualifiedName",
+                "entityType",
+                "displayName",
+                "service.name",
+                "database.name",
+                "databaseSchema.name",
+                "columns.name",
+                "columns.displayName",
+                "columns.description",
+                "columns.dataType",
+                "columns.fullyQualifiedName",
+                "columns.tags",
+                "columns.children")),
+        "source-fetch includes must cover every field the tag extractor reads");
+    // Guard against re-broadening back to full _source.
+    assertFalse(includes.contains("*"), "must not fetch the full _source");
+    assertFalse(includes.contains("description"), "entity-level description must stay excluded");
+    assertFalse(includes.contains("sampleData"), "sampleData must stay excluded");
   }
 }
