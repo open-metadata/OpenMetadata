@@ -4,13 +4,19 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
@@ -23,9 +29,13 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureSource;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -36,6 +46,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -424,4 +435,232 @@ public class MigrationUtil {
       int repairedEntities,
       int repairedChildren,
       int failedEntities) {}
+
+  private record ServiceEdge(UUID fromId, String fromType, UUID toId, String toType) {}
+
+  private static final Set<String> SERVICE_ENTITY_TYPES =
+      Set.of(
+          Entity.DATABASE_SERVICE,
+          Entity.MESSAGING_SERVICE,
+          Entity.PIPELINE_SERVICE,
+          Entity.DASHBOARD_SERVICE,
+          Entity.MLMODEL_SERVICE,
+          Entity.METADATA_SERVICE,
+          Entity.STORAGE_SERVICE,
+          Entity.SEARCH_SERVICE,
+          Entity.API_SERVICE,
+          Entity.DRIVE_SERVICE);
+
+  private static final int PIPELINE_EDGE_BATCH_SIZE = 500;
+
+  private static final String EXISTS_PIPELINE_LINEAGE_MYSQL =
+      "SELECT 1 FROM entity_relationship WHERE relation = :relation "
+          + "AND JSON_CONTAINS_PATH(json, 'one', '$.pipeline') = 1 LIMIT 1";
+  private static final String EXISTS_PIPELINE_LINEAGE_POSTGRES =
+      "SELECT 1 FROM entity_relationship WHERE relation = :relation "
+          + "AND json::jsonb ?? 'pipeline' LIMIT 1";
+
+  private static final String SCAN_PIPELINE_LINEAGE_MYSQL =
+      "SELECT fromId, fromEntity, toId, toEntity, json FROM entity_relationship "
+          + "WHERE relation = :relation "
+          + "AND JSON_CONTAINS_PATH(json, 'one', '$.pipeline') = 1 "
+          + "AND fromEntity NOT IN (<serviceTypes>) "
+          + "ORDER BY fromId, toId, relationType LIMIT :limit OFFSET :offset";
+  private static final String SCAN_PIPELINE_LINEAGE_POSTGRES =
+      "SELECT fromId, fromEntity, toId, toEntity, json FROM entity_relationship "
+          + "WHERE relation = :relation "
+          + "AND json::jsonb ?? 'pipeline' "
+          + "AND fromEntity NOT IN (<serviceTypes>) "
+          + "ORDER BY fromId, toId, relationType LIMIT :limit OFFSET :offset";
+
+  /**
+   * Re-runs the v1126 pipeline-service-edge backfill safely from v1131. The original v1126 call
+   * fails per-row on upgrades from < 1.12.6 because the {@code relationType} column referenced by
+   * the INSERT statement is only added in 1.13.0 {@code schemaChanges.sql}. By the time v1131 data
+   * migration runs, the column exists. The pre-flight existence check exits in a single query when
+   * no pipeline lineage rows exist (fresh installs and tenants without pipeline lineage); the
+   * narrowed scan pushes the service-type exclusion and pipeline-existence filter into SQL so the
+   * batch loop only pulls real candidates into the JVM.
+   */
+  public static void migratePipelineServiceEdges(CollectionDAO collectionDAO, Handle handle) {
+    LOG.info("Starting migration: creating pipeline service edges for existing lineage data");
+
+    boolean hasCandidates = pipelineLineageExists(handle);
+    if (!hasCandidates) {
+      LOG.info("No pipeline lineage rows found; skipping pipeline service edge backfill");
+      return;
+    }
+
+    Map<ServiceEdge, LineageDetails> edgesToCreate = new LinkedHashMap<>();
+    long offset = 0;
+    List<CollectionDAO.EntityRelationshipObject> batch;
+
+    do {
+      batch = fetchPipelineLineageCandidates(handle, offset, PIPELINE_EDGE_BATCH_SIZE);
+      for (CollectionDAO.EntityRelationshipObject record : batch) {
+        collectPipelineServiceEdges(record, edgesToCreate);
+      }
+      offset += PIPELINE_EDGE_BATCH_SIZE;
+    } while (batch.size() == PIPELINE_EDGE_BATCH_SIZE);
+
+    int created = 0;
+    for (Map.Entry<ServiceEdge, LineageDetails> entry : edgesToCreate.entrySet()) {
+      try {
+        if (insertEdgeIfMissing(collectionDAO, entry.getKey(), entry.getValue())) {
+          created++;
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to insert pipeline service edge {} -> {}: {}",
+            entry.getKey().fromId(),
+            entry.getKey().toId(),
+            e.getMessage());
+      }
+    }
+
+    LOG.info("Pipeline service edges migration complete: {} edges created", created);
+  }
+
+  private static boolean pipelineLineageExists(Handle handle) {
+    String sql =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? EXISTS_PIPELINE_LINEAGE_MYSQL
+            : EXISTS_PIPELINE_LINEAGE_POSTGRES;
+    Optional<Integer> hit =
+        handle
+            .createQuery(sql)
+            .bind("relation", Relationship.UPSTREAM.ordinal())
+            .mapTo(Integer.class)
+            .findFirst();
+    return hit.isPresent();
+  }
+
+  private static List<CollectionDAO.EntityRelationshipObject> fetchPipelineLineageCandidates(
+      Handle handle, long offset, int limit) {
+    String sql =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? SCAN_PIPELINE_LINEAGE_MYSQL
+            : SCAN_PIPELINE_LINEAGE_POSTGRES;
+    return handle
+        .createQuery(sql)
+        .bind("relation", Relationship.UPSTREAM.ordinal())
+        .bindList("serviceTypes", List.copyOf(SERVICE_ENTITY_TYPES))
+        .bind("offset", offset)
+        .bind("limit", limit)
+        .map(
+            (rs, ctx) ->
+                CollectionDAO.EntityRelationshipObject.builder()
+                    .fromId(rs.getString("fromId"))
+                    .fromEntity(rs.getString("fromEntity"))
+                    .toId(rs.getString("toId"))
+                    .toEntity(rs.getString("toEntity"))
+                    .relation(Relationship.UPSTREAM.ordinal())
+                    .json(rs.getString("json"))
+                    .build())
+        .list();
+  }
+
+  private static void collectPipelineServiceEdges(
+      CollectionDAO.EntityRelationshipObject record,
+      Map<ServiceEdge, LineageDetails> edgesToCreate) {
+    try {
+      LineageDetails details = JsonUtils.readValue(record.getJson(), LineageDetails.class);
+      EntityReference pipelineRef = details.getPipeline();
+      if (pipelineRef == null || pipelineRef.getId() == null) {
+        return;
+      }
+
+      EntityInterface fromEntity =
+          Entity.getEntity(
+              record.getFromEntity(),
+              UUID.fromString(record.getFromId()),
+              Entity.FIELD_SERVICE,
+              Include.ALL);
+      EntityInterface toEntity =
+          Entity.getEntity(
+              record.getToEntity(),
+              UUID.fromString(record.getToId()),
+              Entity.FIELD_SERVICE,
+              Include.ALL);
+      EntityInterface pipelineEntity =
+          Entity.getEntity(
+              pipelineRef.getType(), pipelineRef.getId(), Entity.FIELD_SERVICE, Include.ALL);
+
+      EntityReference fromService = fromEntity.getService();
+      EntityReference toService = toEntity.getService();
+      EntityReference pipelineService = pipelineEntity.getService();
+
+      if (fromService == null || toService == null || pipelineService == null) {
+        return;
+      }
+
+      putEdgeIfDistinct(
+          edgesToCreate,
+          fromService.getId(),
+          fromService.getType(),
+          pipelineService.getId(),
+          pipelineService.getType(),
+          details);
+      putEdgeIfDistinct(
+          edgesToCreate,
+          pipelineService.getId(),
+          pipelineService.getType(),
+          toService.getId(),
+          toService.getType(),
+          details);
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Skipping lineage edge {} -> {}: {}",
+          record.getFromId(),
+          record.getToId(),
+          e.getMessage());
+    }
+  }
+
+  private static void putEdgeIfDistinct(
+      Map<ServiceEdge, LineageDetails> edgesToCreate,
+      UUID fromId,
+      String fromType,
+      UUID toId,
+      String toType,
+      LineageDetails sourceDetails) {
+    if (fromId.equals(toId)) {
+      return;
+    }
+    ServiceEdge key = new ServiceEdge(fromId, fromType, toId, toType);
+    edgesToCreate.putIfAbsent(key, buildServiceLineageDetails(sourceDetails));
+  }
+
+  private static LineageDetails buildServiceLineageDetails(LineageDetails source) {
+    return new LineageDetails()
+        .withCreatedAt(source.getCreatedAt())
+        .withCreatedBy(source.getCreatedBy())
+        .withUpdatedAt(source.getUpdatedAt())
+        .withUpdatedBy(source.getUpdatedBy())
+        .withSource(LineageDetails.Source.CHILD_ASSETS)
+        .withPipeline(null)
+        .withAssetEdges(1);
+  }
+
+  private static boolean insertEdgeIfMissing(
+      CollectionDAO collectionDAO, ServiceEdge edge, LineageDetails details) {
+    CollectionDAO.EntityRelationshipObject existing =
+        collectionDAO
+            .relationshipDAO()
+            .getRecord(edge.fromId(), edge.toId(), Relationship.UPSTREAM.ordinal());
+    if (existing != null) {
+      return false;
+    }
+    collectionDAO
+        .relationshipDAO()
+        .insert(
+            edge.fromId(),
+            edge.toId(),
+            edge.fromType(),
+            edge.toType(),
+            Relationship.UPSTREAM.ordinal(),
+            JsonUtils.pojoToJson(details));
+    return true;
+  }
 }
