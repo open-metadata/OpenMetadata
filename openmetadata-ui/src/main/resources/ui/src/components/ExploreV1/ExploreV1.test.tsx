@@ -449,13 +449,7 @@ describe('ExploreV1', () => {
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
-  it('does not render the toolbar Clear All when no filters are active', () => {
-    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
-
-    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
-  });
-
-  it('renders the toolbar Clear All (clear-filters) when a browse filter is active', () => {
+  it('does not render the toolbar Clear All', () => {
     render(
       <ExploreV1
         {...props}
@@ -470,7 +464,7 @@ describe('ExploreV1', () => {
       { wrapper: Wrapper }
     );
 
-    expect(screen.getByTestId('clear-filters')).toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {

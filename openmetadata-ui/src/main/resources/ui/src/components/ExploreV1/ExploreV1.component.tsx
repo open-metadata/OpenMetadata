@@ -27,7 +27,7 @@ import {
   FilterFunnel01,
   Trash01,
 } from '@untitledui/icons';
-import { Card, Col, Menu, Modal, Radio, Row, Skeleton, Typography } from 'antd';
+import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, noop, omit } from 'lodash';
@@ -691,17 +691,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
             />
 
             <Divider className="tw:my-2" orientation="vertical" />
-
-            {(hasQuickFilterValues || !isEmpty(browseFields) || sqlQuery) && (
-              <Typography.Text
-                className="text-primary self-center cursor-pointer font-medium"
-                data-testid="clear-filters"
-                onClick={() => clearFilters()}>
-                {t('label.clear-entity', {
-                  entity: t('label.all'),
-                })}
-              </Typography.Text>
-            )}
 
             <Dropdown.Root>
               <Button

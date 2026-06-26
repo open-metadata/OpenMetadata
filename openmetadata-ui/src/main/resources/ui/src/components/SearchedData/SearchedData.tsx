@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isNumber } from 'lodash';
 import Qs from 'qs';
@@ -91,13 +92,17 @@ const SearchedData: React.FC<SearchedDataProps> = ({
       if (isFilterSelected || filter?.quickFilter) {
         if (MAX_RESULT_HITS === total) {
           return (
-            <div data-testid="search-results-count">{`~${total} results`}</div>
+            <Badge color="blue" type="color">
+              <span data-testid="search-results-count">{`${total} results`}</span>
+            </Badge>
           );
         } else {
           return (
-            <div data-testid="search-results-count">
-              {pluralize(total, 'result')}
-            </div>
+            <Badge color="blue" type="color">
+              <span data-testid="search-results-count">
+                {pluralize(total, 'result')}
+              </span>
+            </Badge>
           );
         }
       } else {
@@ -126,6 +131,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           {totalValue > 0 ? (
             <>
               {children}
+              <div className="tw:mb-4">{ResultCount(totalValue)}</div>
               <div data-testid="search-results">
                 {searchResultCards}
                 <PaginationComponent
@@ -137,7 +143,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
                       ? Number(size)
                       : globalPageSize
                   }
-                  showTotal={ResultCount}
+                  // showTotal={ResultCount}
                   total={totalValue}
                   onChange={onPaginationChange}
                 />

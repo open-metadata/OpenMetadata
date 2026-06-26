@@ -16,7 +16,7 @@ import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
 export const authenticateAdminPage = async (page: Page) => {
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto('/');
   await page.waitForURL((url) => {
     return (
       url.pathname.includes('/my-data') || url.pathname.includes('/signin')

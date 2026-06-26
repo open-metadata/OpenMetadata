@@ -249,6 +249,7 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
+          trackTotalHits: true,
           excludeSourceFields: [
             'columns',
             'queries',
@@ -317,6 +318,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
+        trackTotalHits: true,
         excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 
