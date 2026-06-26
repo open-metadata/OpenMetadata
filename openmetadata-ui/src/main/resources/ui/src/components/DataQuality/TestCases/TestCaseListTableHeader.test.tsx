@@ -48,15 +48,14 @@ jest.mock('@untitledui/icons', () => ({
   SearchLg: () => <span data-testid="search-icon" />,
 }));
 
-jest.mock(
-  '../../common/EntityPageInfos/ManageButton/ManageButton',
-  () => (props: { extraDropdownContent?: unknown[] }) =>
-    (
-      <div data-testid="manage-button">
-        manage-button-{(props.extraDropdownContent || []).length}
-      </div>
-    )
-);
+jest.mock('../../common/ManageMenuButton/ManageMenuButton.component', () => ({
+  __esModule: true,
+  default: (props: { items?: unknown[] }) => (
+    <div data-testid="manage-button">
+      manage-button-{(props.items || []).length}
+    </div>
+  ),
+}));
 
 const mockOnSearch = jest.fn();
 
@@ -127,11 +126,17 @@ describe('TestCaseListTableHeader component', () => {
     expect(mockOnSearch).toHaveBeenCalledWith('foo');
   });
 
-  it('should pass extraDropdownContent through to ManageButton', () => {
+  it('should pass extraDropdownContent through to the manage menu', () => {
+    const item = (key: string) => ({
+      key,
+      icon: () => null,
+      title: key,
+      onClick: jest.fn(),
+    });
     render(
       <TestCaseListTableHeader
         {...defaultProps}
-        extraDropdownContent={[{ key: 'a' }, { key: 'b' }]}
+        extraDropdownContent={[item('a'), item('b')]}
       />
     );
 

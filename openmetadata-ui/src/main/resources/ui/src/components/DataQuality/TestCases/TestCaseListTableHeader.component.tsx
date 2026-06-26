@@ -12,18 +12,17 @@
  */
 import { Box, Input, Typography } from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import { EntityType } from '../../../enums/entity.enum';
-import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
+import ManageMenuButton, {
+  ManageMenuItem,
+} from '../../common/ManageMenuButton/ManageMenuButton.component';
 
 export interface TestCaseListTableHeaderProps {
   searchValue: string;
   onSearch: (value: string) => void;
-  extraDropdownContent: ItemType[];
+  extraDropdownContent: ManageMenuItem[];
 }
 
 /**
@@ -83,13 +82,11 @@ export const TestCaseListTableHeader = ({
             onChange={handleSearchChange}
           />
         </div>
-        <ManageButton
-          entityFQN={WILD_CARD_CHAR}
-          entityId=""
-          entityName={WILD_CARD_CHAR}
-          entityType={EntityType.TEST_CASE}
-          extraDropdownContent={extraDropdownContent}
-          isRecursiveDelete={false}
+        <ManageMenuButton
+          ariaLabel={t('label.manage-entity', {
+            entity: t('label.test-case'),
+          })}
+          items={extraDropdownContent}
         />
       </Box>
     </Box>

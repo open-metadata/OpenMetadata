@@ -60,7 +60,7 @@ import {
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { ExtraTestCaseDropdownOptions } from '../../../utils/TestCaseUtils';
+import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -568,7 +568,7 @@ export const useTestCaseListPage = () => {
 
   const extraDropdownContent = useMemo(
     () =>
-      ExtraTestCaseDropdownOptions(
+      getTestCaseManageMenuItems(
         WILD_CARD_CHAR,
         {
           ViewAll:
