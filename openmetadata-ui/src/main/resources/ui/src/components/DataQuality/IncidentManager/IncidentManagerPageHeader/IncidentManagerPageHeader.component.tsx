@@ -47,7 +47,7 @@ import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTaskDisplayId } from '../../../../utils/TasksUtils';
+import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
 import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
