@@ -131,7 +131,12 @@ def get_connection(connection: NatsConnection) -> NatsClient:
     async def _connect() -> Any:
         return await nats.connect(**opts)
 
-    nc = loop.run_until_complete(_connect())
+    try:
+        nc = loop.run_until_complete(_connect())
+    except Exception:
+        _cleanup_temp_certs(temp_cert_files)
+        loop.close()
+        raise
     return NatsClient(
         nc=nc,
         is_jetstream_enabled=bool(connection.jetStreamEnabled),
