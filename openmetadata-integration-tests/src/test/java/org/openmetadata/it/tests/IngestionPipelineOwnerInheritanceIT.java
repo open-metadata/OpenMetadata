@@ -361,8 +361,7 @@ public class IngestionPipelineOwnerInheritanceIT {
 
               String killPath = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
 
-              // A view-only user can read the pipeline but must be forbidden from killing it: kill
-              // now requires EditAll, not the ViewAll the underlying read path enforces.
+              // Kill now requires EditAll: a view-only user can read but must be forbidden.
               viewerClient.ingestionPipelines().get(pipeline.getId().toString());
               assertThrows(
                   ForbiddenException.class,
@@ -372,15 +371,13 @@ public class IngestionPipelineOwnerInheritanceIT {
                           .execute(HttpMethod.POST, killPath, null, Void.class),
                   "View-only user must be forbidden from killing an ingestion pipeline");
 
-              // A user with EditAll (plus ViewAll for the read path) must pass authorization. The
-              // kill may still fail downstream when the pipeline service client cannot reach the
-              // orchestrator in this environment; only a 403 means the authz gate rejected it.
+              // EditAll user must pass authz; only a 403 fails the test.
               try {
                 editorClient.getHttpClient().execute(HttpMethod.POST, killPath, null, Void.class);
               } catch (ForbiddenException e) {
                 fail("User with EditAll must be authorized to kill an ingestion pipeline");
               } catch (Exception ignored) {
-                // Non-authorization failures (e.g. orchestrator unavailable) are irrelevant here.
+                // Downstream orchestrator failure, not an authz rejection.
               }
             } finally {
               adminClient.ingestionPipelines().delete(pipeline.getId().toString());
