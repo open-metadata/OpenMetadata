@@ -26,11 +26,13 @@ import {
   createDisposableArchivedDocument,
   loginAsUser,
   MEMORIES_API,
+  navigateToArchive,
   navigateToArticles,
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
   uploadDisposableDocument,
+  waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
@@ -593,7 +595,9 @@ test.describe('Context Center Permissions', () => {
         const upvoteRes = await upvoteResPromise;
 
         expect(upvoteRes.status()).toBe(200);
-        await expect(upvoteBtn.locator('svg')).toHaveClass(/fill-blue-500/);
+        await expect(upvoteBtn.locator('svg')).toHaveClass(
+          /fill-utility-blue-500/
+        );
 
         const downvoteResPromise = viewOnlyPage.waitForResponse(
           `/api/v1/contextCenter/pages/${articleEntity.responseData.id}/vote`
@@ -602,7 +606,9 @@ test.describe('Context Center Permissions', () => {
         const downvoteRes = await downvoteResPromise;
 
         expect(downvoteRes.status()).toBe(200);
-        await expect(downvoteBtn.locator('svg')).toHaveClass(/fill-blue-500/);
+        await expect(downvoteBtn.locator('svg')).toHaveClass(
+          /fill-utility-blue-500/
+        );
       });
 
       await test.step('can start a conversation on the article', async () => {
@@ -640,7 +646,7 @@ test.describe('Context Center Permissions', () => {
         const followRes = await followResPromise;
 
         expect(followRes.status()).toBe(200);
-        await expect(followBtn).toHaveClass(/text-brand-600/);
+        await expect(followBtn).toHaveClass(/text-fg-brand-primary/);
 
         const unfollowResPromise = viewOnlyPage.waitForResponse((response) =>
           response
@@ -653,7 +659,7 @@ test.describe('Context Center Permissions', () => {
         const unfollowRes = await unfollowResPromise;
 
         expect(unfollowRes.status()).toBe(200);
-        await expect(followBtn).not.toHaveClass(/text-brand-600/);
+        await expect(followBtn).not.toHaveClass(/text-fg-brand-primary/);
       });
     });
 
@@ -1418,18 +1424,16 @@ test.describe('Context Center Permissions', () => {
   // ─── Archive Permissions (documents only — article archive is being removed) ──
 
   test.describe('Archive Permissions', () => {
-    const goToArchive = async (page: Page) => {
-      await page.goto('/context-center/archive');
-      await page
-        .getByTestId('context-center-archive-page')
-        .waitFor({ state: 'visible' });
-      await waitForAllLoadersToDisappear(page);
-    };
-
     test('user with view-only permission cannot see restore or delete actions on an archived document', async ({
       viewOnlyPage,
+      browser,
     }) => {
-      await goToArchive(viewOnlyPage);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentInArchive(apiContext, archivedDocumentId);
+      await afterAction();
+      await navigateToArchive(viewOnlyPage);
 
       const row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
       await row.scrollIntoViewIfNeeded();
@@ -1440,8 +1444,14 @@ test.describe('Context Center Permissions', () => {
 
     test('user with createAll permission cannot see restore or delete actions on an archived document', async ({
       createAllPage,
+      browser,
     }) => {
-      await goToArchive(createAllPage);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentInArchive(apiContext, archivedDocumentId);
+      await afterAction();
+      await navigateToArchive(createAllPage);
 
       const row = createAllPage.getByTestId(
         `archive-row-${archivedDocumentId}`
@@ -1456,7 +1466,12 @@ test.describe('Context Center Permissions', () => {
       editAllPage,
       browser,
     }) => {
-      await goToArchive(editAllPage);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentInArchive(apiContext, archivedDocumentId);
+      await afterAction();
+      await navigateToArchive(editAllPage);
 
       const row = editAllPage.getByTestId(`archive-row-${archivedDocumentId}`);
       await row.scrollIntoViewIfNeeded();
@@ -1470,9 +1485,10 @@ test.describe('Context Center Permissions', () => {
         );
         const { id: disposableArchivedDocId } =
           await createDisposableArchivedDocument(apiContext, 'cc-restore-doc');
+        await waitForDocumentInArchive(apiContext, disposableArchivedDocId);
         await afterAction();
 
-        await goToArchive(editAllPage);
+        await navigateToArchive(editAllPage);
         const disposableRow = editAllPage.getByTestId(
           `archive-row-${disposableArchivedDocId}`
         );
@@ -1503,7 +1519,12 @@ test.describe('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
-      await goToArchive(deleteAllPage);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentInArchive(apiContext, archivedDocumentId);
+      await afterAction();
+      await navigateToArchive(deleteAllPage);
 
       const row = deleteAllPage.getByTestId(
         `archive-row-${archivedDocumentId}`
@@ -1522,9 +1543,11 @@ test.describe('Context Center Permissions', () => {
             apiContext,
             'cc-archive-delete-doc'
           );
+
+        await waitForDocumentInArchive(apiContext, disposableArchivedDocId);
         await afterAction();
 
-        await goToArchive(deleteAllPage);
+        await navigateToArchive(deleteAllPage);
         const disposableRow = deleteAllPage.getByTestId(
           `archive-row-${disposableArchivedDocId}`
         );
@@ -1548,8 +1571,14 @@ test.describe('Context Center Permissions', () => {
 
     test('user with all permissions can see restore and delete actions on an archived document', async ({
       allPermissionPage,
+      browser,
     }) => {
-      await goToArchive(allPermissionPage);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
+      await waitForDocumentInArchive(apiContext, archivedDocumentId);
+      await afterAction();
+      await navigateToArchive(allPermissionPage);
 
       const row = allPermissionPage.getByTestId(
         `archive-row-${archivedDocumentId}`
