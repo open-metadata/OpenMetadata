@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { Status } from '../../../../generated/entity/automations/workflow';
 import TestConnectionModal from './TestConnectionModal';
 
 jest.mock('../../InlineAlert/InlineAlert', () => {
@@ -96,6 +97,26 @@ describe('TestConnectionModal', () => {
     expect(screen.getAllByText('label.queued')).toHaveLength(1);
   });
 
+  it('should render the running icon and label for a step with status Running', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[
+          {
+            name: 'Step 2',
+            passed: false,
+            mandatory: true,
+            status: Status.Running,
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('running-badge')).toBeInTheDocument();
+    expect(screen.getByText('label.running-ellipsis')).toBeInTheDocument();
+  });
+
   it('Should call onCancel when the cancel button is clicked', () => {
     render(<TestConnectionModal {...commonProps} isTestingConnection />);
     const cancelButton = screen.getByText('label.cancel');
@@ -131,7 +152,9 @@ describe('TestConnectionModal', () => {
   });
 
   it('Should render the progress bar with proper value', () => {
-    render(<TestConnectionModal {...commonProps} progress={90} />);
+    render(
+      <TestConnectionModal {...commonProps} isTestingConnection progress={90} />
+    );
     const progressBarValue = screen.getByTestId('progress-bar-value');
 
     expect(progressBarValue).toBeInTheDocument();
@@ -277,18 +300,207 @@ describe('TestConnectionModal', () => {
     expect(screen.getByText('label.open-session')).toBeInTheDocument();
   });
 
+  it('should auto-expand gate banner when testing starts', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[]}
+      />
+    );
+
+    expect(screen.getAllByTestId('gate-step-pill')).toHaveLength(4);
+  });
+
+  it('should show all gate step pills as running when testing and no result', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[]}
+      />
+    );
+
+    const pills = screen.getAllByTestId('gate-step-pill');
+
+    expect(pills).toHaveLength(4);
+
+    pills.forEach((pill) => {
+      expect(
+        pill.className.includes('border-utility-brand-200') ||
+          pill.classList.toString().includes('brand')
+      ).toBeTruthy();
+    });
+  });
+
+  it('should show all gate step pills as passed when gate step passes', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          { name: 'GetSchemas', passed: true, mandatory: true },
+        ]}
+      />
+    );
+
+    fireEvent.click(
+      screen
+        .getByTestId('connection-gate-phase')
+        .querySelector('button') as HTMLButtonElement
+    );
+
+    const pills = screen.getAllByTestId('gate-step-pill');
+
+    expect(pills).toHaveLength(4);
+
+    pills.forEach((pill) => {
+      expect(pill.className).toContain('success');
+    });
+  });
+
+  it('should hide the gate card when gate step fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: false, mandatory: true },
+        ]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-gate-phase')
+    ).not.toBeInTheDocument();
+  });
+
   it('should show and hide raw connection logs', () => {
     render(<TestConnectionModal {...commonProps} />);
 
     fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
 
-    expect(screen.getByTestId('raw-connection-log')).toHaveTextContent(
-      'Error message'
-    );
+    const rawLog = screen.getByTestId('raw-connection-log');
+
+    expect(rawLog).toHaveTextContent('Error message');
+
+    expect(rawLog).not.toHaveTextContent('> Step 2');
 
     fireEvent.click(screen.getByText('message.hide-raw-connection-log-lines'));
 
     expect(screen.queryByTestId('raw-connection-log')).not.toBeInTheDocument();
+  });
+
+  it('should show executedCommand with > prefix in raw log', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStepResult={[
+          {
+            name: 'Step 1',
+            passed: true,
+            mandatory: true,
+            executedCommand: 'SELECT 1',
+            message: 'Connected (12 ms)',
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const rawLog = screen.getByTestId('raw-connection-log');
+
+    expect(rawLog).toHaveTextContent('> SELECT 1');
+    expect(rawLog).toHaveTextContent('Connected (12 ms)');
+    expect(rawLog).not.toHaveTextContent('> Step 1');
+  });
+
+  it('should render all lines of a SQLAlchemy multi-line errorLog in error color', () => {
+    // Real SQLAlchemy format: truly empty line between SQL comment and SELECT
+    const multiLineError = [
+      '(pymysql.err.OperationalError) (1142, "SELECT command denied")',
+      '[SQL: /* {"app": "OpenMetadata"} */',
+      '',
+      'SELECT `argument` from mysql.general_log limit 1;',
+      ']',
+      '(Background on this error at: https://sqlalche.me/e/20/e3q8)',
+    ].join('\n');
+
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStepResult={[
+          {
+            name: 'Step 1',
+            passed: false,
+            mandatory: true,
+            errorLog: multiLineError,
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const rawLog = screen.getByTestId('raw-connection-log');
+    const errorSpans = rawLog.querySelectorAll('.tw\\:text-error-300');
+
+    expect(errorSpans.length).toBe(6);
+    expect(errorSpans[0]).toHaveTextContent('OperationalError');
+    expect(errorSpans[1]).toHaveTextContent('[SQL:');
+    expect(errorSpans[3]).toHaveTextContent('SELECT');
+    expect(errorSpans[4]).toHaveTextContent(']');
+    expect(errorSpans[5]).toHaveTextContent('sqlalche.me');
+  });
+
+  it('should render step 2 success message in success color even after step 1 error', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStepResult={[
+          {
+            name: 'Step 1',
+            passed: false,
+            mandatory: true,
+            errorLog: 'ConnectionError: refused',
+          },
+          {
+            name: 'Step 2',
+            passed: true,
+            mandatory: true,
+            message: 'Connection successful',
+          },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
+
+    const rawLog = screen.getByTestId('raw-connection-log');
+
+    const successSpan = Array.from(
+      rawLog.querySelectorAll('.tw\\:text-success-300')
+    ).find((el) => el.textContent?.includes('Connection successful'));
+
+    expect(successSpan).toBeInTheDocument();
+
+    const errorSpans = Array.from(
+      rawLog.querySelectorAll('.tw\\:text-error-300')
+    );
+
+    expect(
+      errorSpans.find((el) => el.textContent?.includes('Connection successful'))
+    ).toBeUndefined();
   });
 
   it('should show optional failures as warnings when required steps pass', () => {
@@ -311,6 +523,185 @@ describe('TestConnectionModal', () => {
 
     expect(
       screen.getByText('message.connection-test-warning')
+    ).toBeInTheDocument();
+  });
+
+  it('should hide gate card when API errors before workflow runs (no step results)', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-gate-phase')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show Edit Connection and Retry Test buttons when test fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: false, mandatory: true },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('edit-connection-button')).toBeInTheDocument();
+    expect(screen.getByTestId('retry-test-button')).toBeInTheDocument();
+  });
+
+  it('should call onConfirm when Edit Connection is clicked', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: false, mandatory: true },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('edit-connection-button'));
+
+    expect(onConfirmMock).toHaveBeenCalled();
+  });
+
+  it('should call onTestConnection when Retry Test is clicked', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: false, mandatory: true },
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('retry-test-button'));
+
+    expect(mockOnTestConnection).toHaveBeenCalled();
+  });
+
+  it('should render the remediation card when the gate step fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          {
+            name: 'CheckAccess',
+            passed: false,
+            errorLog: 'Connection refused',
+            mandatory: true,
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByTestId('connection-remediation-card')
+    ).toBeInTheDocument();
+  });
+
+  it('should render the remediation card when a required capability step fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: false,
+            errorLog: 'Schema access denied',
+            mandatory: true,
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByTestId('connection-remediation-card')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render the remediation card when test succeeds', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          { name: 'GetSchemas', passed: true, mandatory: true },
+        ]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-remediation-card')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should hide gate card and show remediation card when required capability step fails', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: false,
+            errorLog: 'Schema access denied',
+            mandatory: true,
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('connection-gate-phase')
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByTestId('connection-remediation-card')
     ).toBeInTheDocument();
   });
 });

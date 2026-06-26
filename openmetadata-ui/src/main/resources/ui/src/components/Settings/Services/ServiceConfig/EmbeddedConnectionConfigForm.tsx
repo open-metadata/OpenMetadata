@@ -322,7 +322,6 @@ const EmbeddedConnectionConfigForm = forwardRef<
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
-          noValidate={!isEmpty(connSch.schema)}
           okText={okText ?? ''}
           ref={formRef}
           schema={schemaWithoutDefaultFilterPatternFields}

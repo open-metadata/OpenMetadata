@@ -210,6 +210,7 @@ const AddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
+      document.getElementById('service-name')?.focus();
 
       return;
     }
@@ -444,6 +445,13 @@ const AddServicePage = () => {
                     />
                     <ConnectionConfigForm
                       hideFooter
+                      additionalMissingFieldsCount={
+                        !serviceConfig.name.trim() ||
+                        Boolean(nameError) ||
+                        isServiceNameChecking
+                          ? 1
+                          : 0
+                      }
                       data={serviceConfig as ServicesType}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
@@ -455,6 +463,26 @@ const AddServicePage = () => {
                         e.formData && (await handleConfigUpdate(e.formData));
                       }}
                       onTestConnectionStatusChange={setIsConnectionVerified}
+                      onValidateAdditionalRequiredFields={() => {
+                        if (!serviceConfig.name.trim()) {
+                          setNameError(
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.service-name'),
+                            })
+                          );
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        if (nameError || isServiceNameChecking) {
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        return true;
+                      }}
                     />
                   </div>
                 )}

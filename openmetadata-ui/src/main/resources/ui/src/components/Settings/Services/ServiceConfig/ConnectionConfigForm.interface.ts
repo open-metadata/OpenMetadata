@@ -30,8 +30,10 @@ export interface ConnectionConfigFormProps {
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
   isSubmitDisabled?: boolean;
+  additionalMissingFieldsCount?: number;
   onCancel?: () => void;
   onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
+  onValidateAdditionalRequiredFields?: () => boolean;
 }
 
 export interface ConnectionConfigFormHandle {
