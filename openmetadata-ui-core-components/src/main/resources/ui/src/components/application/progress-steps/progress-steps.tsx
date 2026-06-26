@@ -137,13 +137,13 @@ const titleStatusStyles = sortCx({
 });
 
 const attachCircleStatusStyles = sortCx({
-  complete: 'tw:bg-brand-solid tw:text-fg-white',
+  complete: 'tw:bg-success-solid tw:text-fg-white',
   current: 'tw:bg-brand-solid tw:text-fg-white',
   incomplete: 'tw:bg-disabled tw:text-disabled',
 });
 
 const attachTitleStatusStyles = sortCx({
-  complete: 'tw:text-primary',
+  complete: 'tw:text-fg-success-primary',
   current: 'tw:text-primary',
   incomplete: 'tw:text-disabled',
 });
