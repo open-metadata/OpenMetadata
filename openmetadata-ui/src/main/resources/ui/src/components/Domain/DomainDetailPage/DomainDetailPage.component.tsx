@@ -36,7 +36,7 @@ import {
   domainQueryKey,
   DOMAIN_DEFAULT_FIELDS,
 } from '../../../rest/queries/domainQuery';
-import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';

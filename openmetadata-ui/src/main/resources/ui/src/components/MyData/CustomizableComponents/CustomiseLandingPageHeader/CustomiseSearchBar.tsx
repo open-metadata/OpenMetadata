@@ -15,7 +15,15 @@ import { Button, Input, Popover, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconSuggestionsActive } from '../../../../assets/svg/ic-suggestions-active.svg';
@@ -25,19 +33,19 @@ import { CurrentTourPageType } from '../../../../enums/tour.enum';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../../../hooks/useSearchStore';
+import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import {
   getExplorePath,
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../../../utils/RouterUtils';
-import searchClassBase from '../../../../utils/SearchClassBase';
-import SearchOptions from '../../../AppBar/SearchOptions';
-import Suggestions from '../../../AppBar/Suggestions';
 import './customise-search-bar.less';
 
+const SearchOptions = lazy(() => import('../../../AppBar/SearchOptions'));
+const Suggestions = lazy(() => import('../../../AppBar/Suggestions'));
+
 export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
-  const tabsInfo = searchClassBase.getTabsInfo();
   const { currentUser, searchCriteria } = useApplicationStore();
   const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -87,8 +95,10 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
       setIsSearchBoxOpen(false);
       addToRecentSearched(value);
 
-      const defaultTab: string =
-        searchCriteria !== '' ? tabsInfo[searchCriteria].path : '';
+      const defaultTab =
+        searchCriteria !== ''
+          ? customizeMyDataPageClassBase.getSearchIndexPath(searchCriteria)
+          : '';
 
       navigate(
         getExplorePath({
@@ -125,25 +135,36 @@ export const CustomiseSearchBar = ({ disabled }: { disabled?: boolean }) => {
   };
 
   const popoverContent = useMemo(() => {
-    return !isTourOpen &&
+    if (!isSearchBoxOpen) {
+      return null;
+    }
+
+    const shouldShowInPageOptions =
+      !isTourOpen &&
       (searchValue || isNLPActive) &&
-      isInPageSearchAllowed(pathname) ? (
-      <SearchOptions
-        isOpen={isSearchBoxOpen}
-        options={inPageSearchOptions(pathname)}
-        searchText={searchValue}
-        selectOption={handleSelectOption}
-        setIsOpen={setIsSearchBoxOpen}
-      />
-    ) : (
-      <Suggestions
-        isNLPActive={isNLPActive}
-        isOpen={isSearchBoxOpen}
-        searchCriteria={searchCriteria === '' ? undefined : searchCriteria}
-        searchText={suggestionSearch}
-        setIsOpen={setIsSearchBoxOpen}
-        onSearchTextUpdate={handleSearchChange}
-      />
+      isInPageSearchAllowed(pathname);
+
+    return (
+      <Suspense fallback={null}>
+        {shouldShowInPageOptions ? (
+          <SearchOptions
+            isOpen={isSearchBoxOpen}
+            options={inPageSearchOptions(pathname)}
+            searchText={searchValue}
+            selectOption={handleSelectOption}
+            setIsOpen={setIsSearchBoxOpen}
+          />
+        ) : (
+          <Suggestions
+            isNLPActive={isNLPActive}
+            isOpen={isSearchBoxOpen}
+            searchCriteria={searchCriteria === '' ? undefined : searchCriteria}
+            searchText={suggestionSearch}
+            setIsOpen={setIsSearchBoxOpen}
+            onSearchTextUpdate={handleSearchChange}
+          />
+        )}
+      </Suspense>
     );
   }, [
     isTourOpen,
