@@ -265,9 +265,7 @@ class NatsSource(MessagingServiceSource):
             if params["topic_config"]:
                 topic.topicConfig = params["topic_config"]  # pyright: ignore[reportAttributeAccessIssue]
 
-            topic.messageSchema = self._build_message_schema(
-                kv_schema, topic_details.topic_name, schema_type_map
-            )
+            topic.messageSchema = self._build_message_schema(kv_schema, topic_details.topic_name, schema_type_map)
 
             yield Either(right=topic)  # pyright: ignore[reportCallIssue]
             self.register_record(topic_request=topic)

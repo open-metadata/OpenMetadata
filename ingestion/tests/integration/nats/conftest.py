@@ -61,7 +61,7 @@ def nats_streams(nats_container):
         await js.add_stream(
             name="crawler-jobs",
             subjects=["crawler.>"],
-            max_age=24 * 3600 * 1_000_000_000,  # 24h in nanoseconds
+            max_age=86400,  # 24h in seconds; nats-py converts to ns internally
         )
         await js.add_stream(name="events", subjects=["events.>"])
         await nc.drain()
