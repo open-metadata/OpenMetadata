@@ -15,7 +15,6 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 export const ENTITY_PERMISSIONS = {
   Create: true,
   Delete: true,
-  Deploy: true,
   EditAll: true,
   EditCustomFields: true,
   EditDataProfile: true,
