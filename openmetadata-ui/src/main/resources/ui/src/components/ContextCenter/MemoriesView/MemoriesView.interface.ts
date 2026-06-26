@@ -26,6 +26,8 @@ export interface MemoriesViewProps {
   isLoading: boolean;
   currentUserName?: string;
   isAdminUser?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;

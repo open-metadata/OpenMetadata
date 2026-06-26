@@ -12,6 +12,7 @@
  */
 
 @import '../../../styles/components/om-rdg.less';
+@import '../../../styles/variables.less';
 
 .reserve-right-sidebar {
   .import-footer {
@@ -23,4 +24,1877 @@
 .react-grid-select-dropdown {
   width: 100%;
   min-width: 12rem;
+}
+
+.bulk-edit-enum-select-dropdown.ant-select-dropdown,
+.bulk-edit-custom-property-select-dropdown.ant-select-dropdown {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14);
+  isolation: isolate;
+  opacity: 1 !important;
+  overflow: hidden;
+  padding: 6px;
+  transform: none !important;
+  z-index: 1500;
+
+  &::before {
+    background: @white;
+    border-radius: inherit;
+    content: '';
+    inset: 0;
+    position: absolute;
+    z-index: 0;
+  }
+
+  .rc-virtual-list {
+    background: @white;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ant-select-item {
+    align-items: center;
+    background: @white;
+    border-radius: 6px;
+    color: @grey-900;
+    display: flex;
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 13px;
+    min-height: 38px;
+    padding: 8px 10px;
+  }
+
+  .ant-select-item-option-content {
+    line-height: 20px;
+  }
+
+  .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: @primary-50;
+    color: @grey-900;
+    font-weight: @font-medium;
+  }
+
+  .ant-select-item-option-state {
+    color: @primary-6;
+  }
+}
+
+.csv-import-page-stack {
+  display: flex;
+  flex-direction: column;
+  font-family: @font-family;
+  gap: 20px;
+  min-height: calc(100vh - @om-navbar-height);
+}
+
+.csv-workflow-header {
+  align-items: center;
+  background: @white;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin: 0 -24px;
+  padding: 12px 32px;
+}
+
+.csv-workflow-title-block {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.csv-workflow-breadcrumb {
+  align-items: center;
+  color: @grey-600;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 12px;
+  gap: 6px;
+  line-height: 18px;
+  margin-bottom: 2px;
+
+  a,
+  span {
+    color: inherit;
+  }
+
+  .active {
+    color: @grey-900;
+    font-weight: @font-semibold;
+  }
+}
+
+.csv-workflow-breadcrumb-item {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.csv-workflow-breadcrumb-separator {
+  color: @grey-400;
+}
+
+.csv-workflow-title-row {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.csv-workflow-title {
+  color: @grey-900;
+  font-size: 16px;
+  font-weight: @font-semibold;
+  letter-spacing: -0.005em;
+  line-height: 22px;
+  margin: 0;
+}
+
+.csv-workflow-description {
+  color: @grey-600;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.csv-workflow-inline-stepper {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  justify-content: flex-end;
+  min-width: 340px;
+}
+
+.csv-workflow-step {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: @grey-600;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: @font-medium;
+  gap: 6px;
+  line-height: 18px;
+  padding: 5px 10px 5px 6px;
+  white-space: nowrap;
+
+  &.active {
+    background: @primary-50;
+    border-color: @primary-1;
+    color: @primary-6;
+  }
+
+  &.done {
+    color: @grey-700;
+  }
+}
+
+.csv-workflow-step-circle {
+  align-items: center;
+  background: @grey-100;
+  border-radius: 50%;
+  color: @grey-600;
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: @font-semibold;
+  height: 16px;
+  justify-content: center;
+  line-height: 1;
+  width: 16px;
+
+  .csv-workflow-step.active &,
+  .csv-workflow-step.done & {
+    background: @primary-6;
+    color: @white;
+  }
+}
+
+.csv-workflow-step-connector {
+  background: @primary-1;
+  display: inline-flex;
+  height: 1.5px;
+  min-width: 24px;
+  width: 6vw;
+
+  &.done {
+    background: @primary-6;
+  }
+}
+
+.csv-import-card {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  box-shadow: @box-shadow-card-subtle;
+  padding: 24px;
+}
+
+.bulk-edit-card {
+  padding: 0;
+}
+
+.csv-import-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.bulk-edit-stack {
+  gap: 0;
+}
+
+.csv-import-upload-card {
+  margin: 0 auto;
+  max-width: 720px;
+}
+
+.csv-selected-file-card {
+  align-items: center;
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 12px;
+  box-shadow: @box-shadow-card-subtle;
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  width: 100%;
+}
+
+.csv-selected-file-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 10px;
+  color: @primary-6;
+  display: flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.csv-selected-file-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.csv-selected-file-name {
+  color: @grey-900;
+  font-size: 15px;
+  font-weight: @font-semibold;
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-selected-file-meta {
+  color: @grey-600;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.csv-selected-file-remove {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: @grey-500;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 32px;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+
+  &:hover {
+    background: @grey-26;
+    color: @grey-700;
+  }
+}
+
+.csv-import-processing-wrap {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: calc(100vh - 360px);
+  padding: 48px 0;
+}
+
+.csv-import-processing-card {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 14px;
+  box-shadow: @box-shadow-card-subtle;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 520px;
+  padding: 44px 48px;
+  width: 100%;
+}
+
+.csv-import-processing-card .csv-import-copy p {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.csv-import-processing-file-name {
+  color: @grey-700;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+.csv-processing-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.csv-processing-stage {
+  align-items: center;
+  color: @grey-600;
+  display: flex;
+  font-size: 14px;
+  font-weight: @font-medium;
+  gap: 12px;
+  line-height: 20px;
+}
+
+.csv-processing-stage-done,
+.csv-processing-stage-active {
+  color: @grey-800;
+}
+
+.csv-processing-stage-icon {
+  align-items: center;
+  background: @grey-26;
+  border-radius: 50%;
+  color: @grey-500;
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.csv-processing-stage-done .csv-processing-stage-icon {
+  background: @green-9;
+  color: @green-10;
+}
+
+.csv-processing-stage-active .csv-processing-stage-icon {
+  background: @primary-50;
+  color: @primary-6;
+}
+
+.csv-processing-stage-dot {
+  background: @grey-400;
+  border-radius: 50%;
+  display: block;
+  height: 6px;
+  width: 6px;
+}
+
+.csv-import-wizard-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  bottom: 0;
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin: auto -24px 0;
+  padding: 16px 24px;
+  position: sticky;
+  z-index: 5;
+
+  button {
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    font-weight: @font-semibold !important;
+    min-height: 40px !important;
+    padding: 9px 16px !important;
+  }
+}
+
+.csv-import-copy h2 {
+  color: @grey-900;
+  font-size: 18px;
+  font-weight: @font-semibold;
+  line-height: 24px;
+  margin: 0 0 4px;
+}
+
+.csv-import-copy p {
+  color: @grey-600;
+  font-size: @font-size-base;
+  line-height: 20px;
+  margin: 0;
+}
+
+.csv-import-required,
+.csv-import-action-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.csv-import-action-row.justify-center {
+  justify-content: center;
+}
+
+.csv-import-action-row button {
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: @font-medium !important;
+  min-height: 34px !important;
+  padding: 7px 12px !important;
+
+  [data-icon] {
+    height: 16px !important;
+    width: 16px !important;
+  }
+}
+
+.csv-import-required {
+  color: @grey-600;
+}
+
+.csv-import-required code,
+.csv-column-name code {
+  background: @grey-36;
+  border-radius: 6px;
+  color: @grey-800;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 2px 7px;
+}
+
+.csv-import-upload-card {
+  .ant-upload.ant-upload-drag {
+    background: @grey-26;
+    border: 1.5px dashed @grey-40;
+    border-radius: 12px;
+    padding: 40px 24px;
+    transition: background 160ms ease, border-color 160ms ease;
+
+    &:hover {
+      background: @primary-50;
+      border-color: @primary-6;
+    }
+
+    .ant-upload {
+      padding: 0;
+    }
+
+    .ant-space {
+      gap: 16px !important;
+    }
+
+    svg {
+      height: 48px;
+      width: 48px;
+    }
+
+    .ant-typography {
+      color: @grey-900;
+      font-size: 16px;
+      font-weight: @font-semibold;
+      line-height: 22px;
+    }
+
+    .browse-text {
+      color: @primary-6;
+      font-weight: @font-semibold;
+    }
+  }
+
+  .ant-alert {
+    background: @primary-50;
+    border: 1px solid @primary-2;
+    border-radius: 10px;
+    color: @primary-8;
+    font-size: 13px;
+    margin-top: 18px;
+    padding: 12px 14px;
+  }
+}
+
+.csv-import-banner-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.csv-import-abort-state {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  justify-content: center;
+  min-height: 220px;
+  padding: 24px;
+  text-align: center;
+
+  p {
+    max-width: 960px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}
+
+.csv-import-grid-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.csv-import-card .om-rdg:not(.bulk-edit-rdg) {
+  border-color: @grey-15;
+  border-radius: 10px;
+  overflow: hidden;
+
+  .rdg {
+    background: @white;
+    font-family: @font-family;
+    font-size: 12.5px;
+  }
+
+  .rdg-header-row {
+    background: @grey-26;
+    color: @grey-800;
+    font-size: 13px;
+    font-weight: @font-semibold;
+  }
+
+  .rdg-cell {
+    border-color: @grey-15;
+    color: @grey-900;
+    line-height: 18px;
+    padding: 0 12px;
+  }
+
+  .rdg-row .rdg-cell[aria-colindex='1'],
+  .rdg-row .rdg-cell[aria-colindex='4'],
+  .rdg-row .rdg-cell[aria-colindex='5'],
+  .rdg-row .rdg-cell[aria-colindex='6'] {
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  }
+}
+
+.bulk-edit-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 20px;
+
+  button {
+    font-size: 13px !important;
+    height: 34px;
+    min-height: 34px;
+    padding: 7px 12px !important;
+
+    [data-icon] {
+      height: 16px !important;
+      width: 16px !important;
+    }
+
+    [data-text] {
+      font-weight: @font-medium !important;
+    }
+  }
+}
+
+.bulk-edit-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.bulk-edit-search {
+  flex: 0 0 260px !important;
+  max-width: 260px !important;
+  width: 260px !important;
+}
+
+.bulk-edit-search-wrapper {
+  height: 34px;
+  min-height: 34px;
+
+  input {
+    font-size: 13px !important;
+    height: 34px !important;
+    line-height: 18px !important;
+  }
+
+  svg {
+    height: 14px !important;
+    width: 14px !important;
+  }
+}
+
+.bulk-edit-edited-pill {
+  flex-shrink: 0;
+  font-size: 12px !important;
+  font-weight: @font-medium !important;
+  line-height: 14px !important;
+  padding: 2px 8px !important;
+}
+
+.bulk-edit-grid-shell {
+  padding: 0 20px;
+}
+
+.bulk-edit-add-row-bar {
+  align-items: center;
+  background: @grey-26;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 14px 20px 0;
+  padding: 12px 14px;
+
+  .bulk-edit-add-row-btn {
+    font-size: 13px !important;
+    min-height: 34px !important;
+    padding: 7px 12px !important;
+
+    [data-icon] {
+      height: 16px !important;
+      width: 16px !important;
+    }
+  }
+}
+
+.bulk-edit-add-row-content {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bulk-edit-add-row-hint {
+  color: @grey-600;
+  font-size: 12px;
+  line-height: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-add-row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.bulk-edit-rdg {
+  border-color: @grey-15;
+  border-radius: 10px;
+  overflow: hidden;
+
+  .rdg {
+    --rdg-row-hover-background-color: @white;
+    --rdg-row-selected-background-color: @white;
+    --rdg-row-selected-hover-background-color: @white;
+
+    background: @white;
+    font-family: @font-family;
+    font-size: 14px;
+    font-weight: @font-regular;
+    height: min(60vh, calc(100vh - 400px));
+    min-height: 280px;
+  }
+
+  .rdg-header-row {
+    background: @grey-26;
+    color: @grey-800;
+    font-size: 13px;
+    font-weight: @font-semibold;
+  }
+
+  .rdg-cell {
+    align-items: center;
+    border-color: @grey-15;
+    color: @grey-900;
+    display: flex;
+    font-family: @font-family;
+    font-size: 13px;
+    font-weight: @font-regular;
+    line-height: 20px;
+    min-width: 0;
+    padding: 0 12px;
+  }
+
+  .rdg-cell-select {
+    cursor: pointer;
+  }
+
+  .bulk-edit-select-cell {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bulk-edit-select-cell-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bulk-edit-select-cell-icon {
+    color: @grey-400;
+    flex-shrink: 0;
+  }
+
+  .bulk-edit-enum-select {
+    min-width: 0;
+    width: 100%;
+
+    &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
+        .ant-select-customize-input
+      )
+      .ant-select-selector {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .ant-select-selector {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      height: 24px;
+      padding: 0;
+    }
+
+    .ant-select-selection-item {
+      color: @grey-900;
+      font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 24px;
+      padding-right: 20px;
+    }
+
+    .ant-select-arrow {
+      color: @grey-400;
+      margin-top: -7px;
+      right: 0;
+    }
+  }
+
+  .bulk-edit-text-cell-editor {
+    background: transparent;
+    border: none;
+    box-sizing: border-box;
+    color: @grey-900;
+    font: inherit;
+    height: 100%;
+    line-height: 20px;
+    min-width: 0;
+    outline: none;
+    overflow: hidden;
+    padding: 0;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .bulk-edit-custom-property-cell-trigger {
+    align-items: center;
+    display: flex;
+    height: 100%;
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .bulk-edit-custom-property-placeholder {
+    color: @grey-500;
+    font-size: 13px;
+    line-height: 20px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // Identifier + enum cells read as code (monospace); everything else is sans.
+  .rdg-cell-name,
+  .rdg-cell-metricType,
+  .rdg-cell-unitOfMeasurement,
+  .rdg-cell-granularity,
+  .rdg-cell-expressionLanguage,
+  .rdg-cell-entityStatus {
+    font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+    font-size: 12.5px;
+  }
+
+  .rdg-row {
+    background: @white;
+  }
+
+  .rdg-cell-edited {
+    background: @white;
+    box-shadow: inset 0 0 0 2px @primary-4;
+  }
+
+  .rdg-cell[aria-selected='true'],
+  .rdg-cell.rdg-cell-selected {
+    background: @white;
+    box-shadow: inset 0 0 0 2px @primary-4;
+  }
+
+  .rdg-cell-select[aria-selected='true'],
+  .rdg-cell-select.rdg-cell-selected {
+    box-shadow: none !important;
+    outline: none;
+  }
+
+  .rdg-cell-select:focus,
+  .rdg-cell-select:focus-within {
+    box-shadow: none !important;
+    outline: none;
+  }
+
+  // Cells clip their content by default so long text (e.g. Description) never
+  // overlaps the neighbouring column. Only the actively-edited cell is allowed
+  // to overflow so its inline editor / dropdown can escape.
+  .rdg-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rdg-cell-description {
+    align-items: flex-start;
+    overflow-wrap: anywhere;
+    padding-top: 8px;
+    white-space: normal;
+    word-break: break-word;
+
+    &:has(.bulk-edit-description-editor) {
+      box-shadow: none;
+      overflow: visible;
+      z-index: 6;
+    }
+  }
+
+  .rdg-cell-locked {
+    background: @grey-26;
+    color: @grey-600;
+    cursor: not-allowed;
+
+    &[aria-selected='true'],
+    &.rdg-cell-selected {
+      box-shadow: none;
+    }
+  }
+
+  // Locked Name cell: value on the left, a lock affordance on the right.
+  .bulk-edit-name-cell {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .bulk-edit-name-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bulk-edit-name-lock {
+    color: @grey-500;
+    flex-shrink: 0;
+  }
+
+  .rdg-cell-operation {
+    align-items: flex-start;
+    box-shadow: none;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  // Row tint reflects the per-row operation (green = update, blue = create,
+  // red = skip). Driven by the grid's rowClass.
+  .rdg-row.bulk-edit-op-row-update .rdg-cell {
+    background: #f6fef9;
+  }
+
+  .rdg-row.bulk-edit-op-row-create .rdg-cell {
+    background: #f6fbff;
+  }
+
+  .rdg-row.bulk-edit-op-row-skip .rdg-cell {
+    background: #fffbfa;
+  }
+
+  // Keep the edit highlight and locked styling visible on tinted rows.
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-edited {
+    box-shadow: inset 0 0 0 2px @primary-4;
+  }
+
+  .rdg-cell-required-error,
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-required-error {
+    box-shadow: inset 0 0 0 2px @red-14 !important;
+    position: relative;
+
+    &::after {
+      align-items: center;
+      background: @red-14;
+      border-radius: 50%;
+      color: @white;
+      content: '!';
+      display: flex;
+      font-size: 12px;
+      font-weight: @font-bold;
+      height: 28px;
+      justify-content: center;
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+    }
+  }
+
+  .rdg-row[class*='bulk-edit-op-row-'] .rdg-cell-locked {
+    background: @grey-26;
+  }
+
+  // Flash a freshly added "Add metric" row blue for ~2s, then fade back.
+  .rdg-row.bulk-edit-row-highlight .rdg-cell {
+    background: @primary-50;
+    transition: background 0.5s ease;
+  }
+}
+
+.bulk-edit-picker-editor,
+.bulk-edit-custom-property-editor {
+  background: @white;
+  background-clip: padding-box;
+  border: 1px solid @grey-15;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16);
+  color: @grey-900;
+  display: flex;
+  flex-direction: column;
+  font-family: @font-family;
+  isolation: isolate;
+  max-height: 340px;
+  min-width: min(340px, calc(100vw - 16px));
+  overflow: hidden;
+  position: fixed;
+  width: min(340px, calc(100vw - 16px));
+  z-index: 1050;
+
+  &::before {
+    background: @white;
+    content: '';
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+  }
+
+  > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.bulk-edit-picker-label {
+  background: @white;
+  color: @grey-700;
+  font-size: 11px;
+  font-weight: @font-semibold;
+  letter-spacing: 0.08em;
+  line-height: 16px;
+  padding: 6px 2px 4px;
+  text-transform: uppercase;
+}
+
+.bulk-edit-picker-trigger-value {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-body-card {
+  background: @white;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 220px;
+  overflow: hidden;
+}
+
+.bulk-edit-picker-search {
+  align-items: center;
+  border-bottom: 1px solid @grey-15;
+  color: @grey-500;
+  display: flex;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 12px;
+
+  input {
+    background: transparent;
+    border: none;
+    color: @grey-900;
+    flex: 1;
+    font-size: 13px;
+    line-height: 20px;
+    outline: none;
+
+    &::placeholder {
+      color: @grey-500;
+    }
+  }
+}
+
+.bulk-edit-picker-content {
+  display: flex;
+  flex: 1;
+  min-height: 150px;
+}
+
+.bulk-edit-picker-loading {
+  align-self: center;
+  color: @grey-500;
+  font-size: 13px;
+  line-height: 20px;
+  margin: 0 auto;
+}
+
+.bulk-edit-picker-option-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-height: 224px;
+  overflow: auto;
+  padding: 4px;
+}
+
+.bulk-edit-picker-option {
+  align-items: center;
+  background: @white;
+  border: none;
+  border-radius: 8px;
+  color: @grey-900;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+
+  &.selected,
+  &:hover {
+    background: @primary-50;
+  }
+
+  > svg {
+    color: @primary-6;
+    flex-shrink: 0;
+  }
+}
+
+.bulk-edit-picker-option-meta {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.bulk-edit-picker-option-swatch {
+  background: @grey-400;
+  border-radius: 50%;
+  flex-shrink: 0;
+  height: 8px;
+  width: 8px;
+
+  &.tag {
+    background: #5925dc;
+  }
+
+  &.glossary {
+    background: @primary-6;
+  }
+
+  &.domain,
+  &.dataProduct,
+  &.metric {
+    background: @primary-6;
+  }
+}
+
+.bulk-edit-picker-option-avatar {
+  align-items: center;
+  border-radius: 50%;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: @font-semibold;
+  height: 32px;
+  justify-content: center;
+  letter-spacing: -0.01em;
+  width: 32px;
+
+  &.team {
+    border-radius: 8px;
+  }
+}
+
+.bulk-edit-picker-option-label {
+  display: block;
+  font-size: 14px;
+  font-weight: @font-semibold;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-option-value {
+  color: @grey-600;
+  display: block;
+  font-size: 13px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bulk-edit-picker-empty-state {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 16px 20px;
+  text-align: center;
+}
+
+.bulk-edit-picker-empty-icon,
+.bulk-edit-custom-property-empty-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 50%;
+  display: flex;
+  height: 36px;
+  justify-content: center;
+  margin-bottom: 10px;
+  width: 36px;
+}
+
+.bulk-edit-picker-empty-icon.secondary,
+.bulk-edit-custom-property-empty-icon {
+  color: @grey-600;
+}
+
+.bulk-edit-picker-empty-icon.primary {
+  color: @primary-6;
+}
+
+.bulk-edit-picker-empty-title,
+.bulk-edit-custom-property-empty-title {
+  color: @grey-900;
+  font-size: 15px;
+  font-weight: @font-semibold;
+  line-height: 22px;
+  margin-bottom: 6px;
+}
+
+.bulk-edit-picker-empty-description,
+.bulk-edit-custom-property-empty-description {
+  color: @grey-700;
+  font-size: 13px;
+  line-height: 18px;
+  margin-bottom: 14px;
+  max-width: 260px;
+}
+
+.bulk-edit-picker-empty-action,
+.bulk-edit-custom-property-empty-action {
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  justify-content: center;
+  line-height: 18px;
+  min-height: 34px;
+  padding: 7px 12px;
+  width: 100%;
+}
+
+.bulk-edit-picker-empty-action.secondary,
+.bulk-edit-custom-property-empty-action {
+  background: @white;
+  border: 1px solid @grey-15;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.08);
+  color: @grey-800;
+}
+
+.bulk-edit-picker-empty-action.primary {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.12);
+  color: @white;
+}
+
+.bulk-edit-picker-empty-secondary-action {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: @primary-6;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  line-height: 18px;
+  margin-top: 10px;
+}
+
+.bulk-edit-picker-empty-hint,
+.bulk-edit-custom-property-empty-hint {
+  color: @grey-500;
+  font-size: 12px;
+  line-height: 18px;
+  margin-top: 10px;
+}
+
+.bulk-edit-picker-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.bulk-edit-picker-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bulk-edit-picker-clear,
+.bulk-edit-picker-cancel,
+.bulk-edit-picker-update {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  min-height: 34px;
+  padding: 7px 12px;
+}
+
+.bulk-edit-picker-clear {
+  background: transparent;
+  border: none;
+  color: @grey-700;
+  padding-left: 0;
+
+  &:disabled {
+    color: @grey-400;
+    cursor: default;
+  }
+}
+
+.bulk-edit-picker-cancel {
+  background: @white;
+  border: 1px solid @grey-15;
+  color: @grey-900;
+}
+
+.bulk-edit-picker-update {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  color: @white;
+}
+
+.bulk-edit-custom-property-editor-empty {
+  border-radius: 10px;
+  min-height: 280px;
+  padding: 0;
+}
+
+.bulk-edit-custom-property-editor {
+  overflow: hidden;
+}
+
+.bulk-edit-custom-property-empty-card {
+  align-items: center;
+  background: @white;
+  border-radius: inherit;
+  display: flex;
+  flex-direction: column;
+  min-height: inherit;
+  padding: 32px 18px 24px;
+  text-align: center;
+}
+
+.bulk-edit-custom-property-editor-header {
+  align-items: center;
+  background: @white;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  font-size: 14px;
+  font-weight: @font-semibold;
+  justify-content: space-between;
+  line-height: 20px;
+  padding: 12px 14px;
+}
+
+.bulk-edit-custom-property-count {
+  color: @grey-600;
+  font-size: 12px;
+  font-weight: @font-medium;
+  line-height: 18px;
+}
+
+.bulk-edit-custom-property-editor-body {
+  background: @white;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 200px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+}
+
+.bulk-edit-custom-property-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bulk-edit-custom-property-empty {
+  color: @grey-600;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.bulk-edit-custom-property-label {
+  align-items: center;
+  color: @grey-700;
+  display: flex;
+  font-size: 12px;
+  font-weight: @font-semibold;
+  gap: 8px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.bulk-edit-custom-property-type {
+  background: @grey-36;
+  border-radius: 6px;
+  color: @grey-600;
+  font-size: 11px;
+  font-weight: @font-medium;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  padding: 2px 8px;
+}
+
+.bulk-edit-custom-property-input {
+  background: @white;
+  border: 1px solid @grey-15;
+  border-radius: 6px;
+  color: @grey-900;
+  font-size: 13px;
+  line-height: 18px;
+  outline: none;
+  padding: 8px 10px;
+  resize: vertical;
+  width: 100%;
+
+  &:focus {
+    border-color: @primary-6;
+    box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.14);
+  }
+}
+
+.bulk-edit-custom-property-reference-select.ant-select,
+.bulk-edit-custom-property-enum-select.ant-select {
+  width: 100%;
+
+  .ant-select-selector {
+    border-color: @grey-15;
+    border-radius: 6px;
+    min-height: 36px;
+  }
+
+  &.ant-select-focused:not(.ant-select-disabled).ant-select:not(
+      .ant-select-customize-input
+    )
+    .ant-select-selector {
+    border-color: @primary-6;
+    box-shadow: 0 0 0 3px rgba(21, 112, 239, 0.14);
+  }
+}
+
+.bulk-edit-custom-property-time-interval {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bulk-edit-custom-property-time-interval {
+  flex-wrap: nowrap;
+}
+
+.bulk-edit-custom-property-editor-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  border-radius: 0 0 10px 10px;
+  display: flex;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 10px 14px;
+}
+
+.bulk-edit-custom-property-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.bulk-edit-custom-property-clear,
+.bulk-edit-custom-property-cancel,
+.bulk-edit-custom-property-update {
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: @font-semibold;
+  line-height: 18px;
+  padding: 7px 12px;
+}
+
+.bulk-edit-custom-property-clear {
+  background: transparent;
+  border: none;
+  color: @grey-700;
+  padding-left: 0;
+
+  &:disabled {
+    color: @grey-400;
+    cursor: not-allowed;
+  }
+}
+
+.bulk-edit-custom-property-cancel {
+  background: @white;
+  border: 1px solid @grey-15;
+  color: @grey-900;
+}
+
+.bulk-edit-custom-property-update {
+  background: @primary-6;
+  border: 1px solid @primary-6;
+  color: @white;
+}
+
+// "Remove" affordance shown in the Operation cell of an added (new) row.
+.bulk-edit-remove-row {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: @red-10;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: @font-medium;
+  gap: 4px;
+  padding: 2px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.bulk-edit-error-pill {
+  background: @red-9 !important;
+  border-color: @red-19 !important;
+  color: @red-10 !important;
+}
+
+.csv-import-results-header {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+// Import dry-run results grid — reuse the operation cell + row tints from the
+// shared OperationCell so the Import preview reads identically to Bulk Edit.
+.csv-import-results-rdg {
+  .rdg-cell-operation {
+    align-items: center;
+    box-shadow: none;
+  }
+
+  .rdg-row.bulk-edit-op-row-update .rdg-cell {
+    background: #f6fef9;
+  }
+
+  .rdg-row.bulk-edit-op-row-create .rdg-cell {
+    background: #f6fbff;
+  }
+
+  .rdg-row.bulk-edit-op-row-skip .rdg-cell {
+    background: #fffbfa;
+  }
+}
+
+.bulk-edit-description-editor {
+  background: @white;
+  border: 2px solid @primary-6;
+  box-sizing: border-box;
+  box-shadow: @box-shadow-card-subtle;
+  color: @grey-900;
+  display: flex;
+  flex-direction: column;
+  font-family: @font-family;
+  gap: 10px;
+  left: 0;
+  max-width: 100%;
+  min-height: 132px;
+  min-width: 0;
+  padding: 10px 14px 12px;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  z-index: 10;
+}
+
+.bulk-edit-description-editor-toolbar {
+  align-items: center;
+  border-bottom: 1px solid @grey-15;
+  display: flex;
+  gap: 4px;
+  padding-bottom: 8px;
+}
+
+.bulk-edit-description-editor-button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: @grey-700;
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  transition: background 120ms ease, color 120ms ease;
+  width: 30px;
+
+  &:hover,
+  &:focus-visible {
+    background: @grey-36;
+    color: @grey-900;
+    outline: none;
+  }
+
+  &:active {
+    background: @primary-50;
+    color: @primary-6;
+  }
+}
+
+.bulk-edit-description-editor-numbered-icon {
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 12px;
+  font-weight: @font-semibold;
+  line-height: 1;
+}
+
+.bulk-edit-description-editor-separator {
+  background: @grey-15;
+  display: inline-flex;
+  height: 22px;
+  margin: 0 8px;
+  width: 1px;
+}
+
+.bulk-edit-description-editor-textarea {
+  border: 0;
+  box-sizing: border-box;
+  color: @grey-900;
+  font-family: @font-family;
+  font-size: 14px;
+  font-weight: @font-regular;
+  line-height: 20px;
+  min-height: 54px;
+  outline: 0;
+  overflow-wrap: anywhere;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0;
+  resize: none;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: break-word;
+}
+
+.csv-import-muted-text {
+  color: @grey-600;
+  font-size: @font-size-base;
+  line-height: 20px;
+}
+
+.csv-import-status {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.csv-import-status-label {
+  color: @grey-600;
+}
+
+.csv-import-status-chip {
+  border-radius: 999px;
+  gap: 4px;
+  font-weight: @font-medium !important;
+  padding: 2px 10px;
+}
+
+.csv-import-status-icon {
+  height: 14px;
+  width: 14px;
+}
+
+.csv-import-status-chip-success {
+  background: @green-9;
+  border-color: @green-16;
+  color: @green-17;
+}
+
+.csv-import-status-chip-error {
+  background: @red-9;
+  border-color: @red-19;
+  color: @red-14;
+}
+
+.csv-import-progress-card {
+  border: none;
+  box-shadow: none;
+  margin: 64px auto 24px;
+  max-width: 720px;
+  padding: 24px 0 8px;
+}
+
+.csv-import-progress-content {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.csv-import-progress-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 64px;
+}
+
+.csv-import-progress-icon {
+  align-items: center;
+  background: @primary-50;
+  border-radius: 50%;
+  color: @primary-6;
+  display: flex;
+  font-size: 20px;
+  height: 64px;
+  justify-content: center;
+  width: 64px;
+}
+
+.csv-import-spin {
+  animation: csv-import-spin 1.4s linear infinite;
+  height: 28px;
+  width: 28px;
+}
+
+.csv-import-progress-bar {
+  max-width: 520px;
+  width: 100%;
+}
+
+.csv-import-progress-labels {
+  color: @grey-600;
+  display: flex;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.csv-import-log {
+  background: @grey-26;
+  border: 1px solid @grey-15;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  max-width: 520px;
+  overflow: auto;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.csv-import-log-line {
+  color: @grey-700;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 11.5px;
+}
+
+.csv-import-log-line-error {
+  color: @red-14;
+}
+
+.csv-import-log-line-warn {
+  color: @yellow-11;
+}
+
+.csv-column-reference-modal {
+  padding-bottom: 24px;
+}
+
+.csv-column-reference-table {
+  overflow: auto;
+  width: 100%;
+}
+
+.csv-column-reference-empty {
+  color: @grey-600;
+  margin: 0;
+  padding: 16px 0;
+}
+
+.csv-column-reference-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.csv-column-reference-table th,
+.csv-column-reference-table td {
+  border-bottom: 1px solid @grey-15;
+  color: @grey-700;
+  padding: 12px 16px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.csv-column-reference-table th {
+  background: @grey-36;
+  color: @grey-900;
+  font-weight: 600;
+}
+
+.csv-column-name {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.csv-import-page-stack .import-footer {
+  align-items: center;
+  background: @white;
+  border-top: 1px solid @grey-15;
+  bottom: 0;
+  display: flex;
+  float: none !important;
+  flex-shrink: 0;
+  gap: 10px;
+  justify-content: space-between;
+  margin: auto -24px 0;
+  padding: 12px 32px;
+  position: sticky;
+  z-index: 5;
+
+  button {
+    border-radius: 8px !important;
+    font-size: @font-size-base !important;
+    font-weight: @font-semibold !important;
+    min-height: 38px !important;
+    padding: 8px 14px !important;
+  }
+}
+
+.csv-import-page-stack .csv-import-wizard-footer-end {
+  justify-content: flex-end;
+}
+
+.csv-import-page-stack + .csv-jobs-tray {
+  .csv-jobs-tray-launcher-wrap,
+  .csv-jobs-tray-popover {
+    bottom: 84px;
+  }
+}
+
+.csv-import-wizard-footer-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+@keyframes csv-import-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.async-tree-select-list-dropdown {
+  min-width: 400px !important;
+  width: auto !important;
 }
