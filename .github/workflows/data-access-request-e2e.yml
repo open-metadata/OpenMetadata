@@ -67,11 +67,6 @@ jobs:
           pull-request-number: "${{ github.event.pull_request.number }}"
           disable-reviews: true # To not auto approve changes
 
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-
       - name: Trigger Collate Playwright run & wait
         uses: the-actions-org/workflow-dispatch@v4
         env:
