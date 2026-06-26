@@ -477,7 +477,11 @@ const VerticalSteps = ({
         aria-current={status === 'current' ? 'step' : undefined}
         className="tw:flex tw:gap-3"
         key={getStepKey(step, index)}>
-        <div className="tw:flex tw:flex-col tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:flex-col tw:items-center tw:gap-2',
+            !isLast && 'tw:pb-2'
+          )}>
           <StepIndicator
             icon={step.icon}
             index={index}
