@@ -358,4 +358,32 @@ describe('TestSuitesTable component', () => {
     expect(link).toBeInTheDocument();
     expect(link.textContent).toBe('svc.db.schema.table');
   });
+
+  it('should fall back to name/zero when fqn, id and summary are missing', () => {
+    const edgeData = [
+      {
+        name: 'basic-no-fqn',
+        basic: true,
+        basicEntityReference: { name: 'entity-name' },
+      } as TestSuite,
+      {
+        id: 'logical-no-fqn-id',
+        name: 'logical-no-fqn',
+        basic: false,
+        summary: { total: 5 },
+      } as TestSuite,
+    ];
+
+    renderTable({ data: edgeData });
+
+    // basic suite without fqn falls back to the entity reference name
+    expect(screen.getByTestId('basic-no-fqn').textContent).toBe('entity-name');
+    // logical suite without fqn falls back to its name in the route
+    expect(screen.getByTestId('logical-no-fqn')).toHaveAttribute(
+      'to',
+      '/test-suites/logical-no-fqn'
+    );
+    // summary without success still renders the progress widget (0%)
+    expect(screen.getAllByTestId('profiler-progress-widget')).toHaveLength(2);
+  });
 });
