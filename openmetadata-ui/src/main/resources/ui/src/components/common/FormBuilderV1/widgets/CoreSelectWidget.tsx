@@ -17,6 +17,7 @@ import { Key, useMemo } from 'react';
 import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
 
 const CoreSelectWidget = ({
+  id,
   value,
   disabled,
   readonly,
@@ -51,6 +52,9 @@ const CoreSelectWidget = ({
 
   return (
     <Select
+      className="core-select-widget"
+      data-testid={id ? `select-widget-${id}` : undefined}
+      fontSize="sm"
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
       isInvalid={!!rawErrors?.length}
@@ -58,7 +62,9 @@ const CoreSelectWidget = ({
       items={items}
       label={getWidgetLabel({ hideLabel, label })}
       placeholder={placeholder}
+      popoverClassName="core-select-widget-popover"
       selectedKey={value === undefined || value === null ? null : String(value)}
+      size="sm"
       onSelectionChange={(key: Key | null) => {
         if (key === null) {
           onChange(options.emptyValue ?? undefined);

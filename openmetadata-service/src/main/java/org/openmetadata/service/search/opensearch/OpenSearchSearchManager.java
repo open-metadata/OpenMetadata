@@ -64,7 +64,9 @@ import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -95,6 +97,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final boolean isClientAvailable;
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final ContextMemorySearchVisibility contextMemoryVisibility =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
@@ -404,6 +408,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
+
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
 
@@ -630,6 +636,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       // Apply RBAC constraints with caching
       applyRbacQueryWithCaching(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations if needed
       OpenSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -861,6 +868,36 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     } finally {
       if (searchTimerSample != null) {
         RequestLatencyContext.endSearchOperation(searchTimerSample);
+      }
+    }
+  }
+
+  /**
+   * Enforces ContextMemory shareConfig visibility on search results for non-admin subjects. Applied
+   * independently of {@code shouldApplyRbacConditions} because memory visibility is a per-memory
+   * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
+   * memories. Non-memory documents are left untouched.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder =
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query visibilityQuery = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      Query existingQuery = requestBuilder.query();
+      if (existingQuery != null) {
+        Query combinedQuery =
+            Query.of(
+                qb ->
+                    qb.bool(
+                        b -> {
+                          b.must(existingQuery);
+                          b.filter(visibilityQuery);
+                          return b;
+                        }));
+        requestBuilder.query(combinedQuery);
+      } else {
+        requestBuilder.query(visibilityQuery);
       }
     }
   }
@@ -1141,6 +1178,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     // Apply RBAC query with caching
     applyRbacQueryWithCaching(subjectContext, requestBuilder);
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
 
     // Apply query filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
@@ -1585,6 +1623,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
       // Apply RBAC constraints using applyRbacQueryWithCaching
       applyRbacQueryWithCaching(subjectContext, requestBuilder);
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());

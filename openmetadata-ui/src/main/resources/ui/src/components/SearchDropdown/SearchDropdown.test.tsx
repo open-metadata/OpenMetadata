@@ -41,8 +41,11 @@ const mockProps: SearchDropdownProps = {
 
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
-  // Assign the import a new implementation, in this case it's execute the function given to you
-  debounce: jest.fn().mockImplementation((fn) => fn),
+  // Run the debounced fn synchronously, but still expose a no-op cancel() so
+  // the unmount cleanup (debouncedOnSearch.cancel()) works under the mock.
+  debounce: jest
+    .fn()
+    .mockImplementation((fn) => Object.assign(fn, { cancel: jest.fn() })),
 }));
 
 describe('Search DropDown Component', () => {
@@ -403,6 +406,115 @@ describe('Search DropDown Component', () => {
       ],
       'owner.displayName'
     );
+  });
+
+  describe('Immediate apply mode', () => {
+    it('does not render the Update/Close footer when immediateApply is set', async () => {
+      render(<SearchDropdown {...mockProps} immediateApply />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+      expect(screen.queryByTestId('update-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('close-btn')).not.toBeInTheDocument();
+    });
+
+    it('applies each selection immediately without clicking Update', async () => {
+      mockOnChange.mockClear();
+
+      render(<SearchDropdown {...mockProps} immediateApply />);
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      const option2 = await screen.findByTestId('User 2');
+
+      await act(async () => {
+        fireEvent.click(option2);
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith(
+        [
+          { key: 'User 1', label: 'User 1' },
+          { key: 'User 2', label: 'User 2' },
+        ],
+        'owner.displayName'
+      );
+    });
+
+    it('keeps a selected option visible even when missing from fetched options', async () => {
+      // Immediate-apply facets exclude their own field from the aggregation,
+      // so a selected value may fall outside the fetched top-N options.
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          selectedKeys={[{ key: 'glossaryterm', label: 'glossaryterm' }]}
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('glossaryterm')).toBeInTheDocument();
+      expect(await screen.findByTestId('glossaryterm-checkbox')).toBeChecked();
+    });
+
+    it('renders the selected option with its fetched count and label, not the raw selected value', async () => {
+      // Regression: selecting a value must keep the aggregation count + human
+      // label (Table / 307), not fall back to the raw chip value (table / 0).
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          hideCounts={false}
+          options={[
+            { key: 'table', label: 'Table', count: 307 },
+            { key: 'column', label: 'Column', count: 52535 },
+          ]}
+          selectedKeys={[{ key: 'table', label: 'table' }]}
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(await screen.findByTestId('table-checkbox')).toBeChecked();
+      expect(await screen.findByText('307')).toBeInTheDocument();
+    });
+
+    it('renders the helper text in immediateApply mode', async () => {
+      render(
+        <SearchDropdown
+          {...mockProps}
+          immediateApply
+          helperText="Pick values to refine."
+        />
+      );
+
+      const container = await screen.findByTestId('search-dropdown-Owner');
+
+      await act(async () => {
+        fireEvent.click(container);
+      });
+
+      expect(
+        await screen.findByTestId('search-dropdown-helper-text')
+      ).toHaveTextContent('Pick values to refine.');
+    });
   });
 
   describe('Single Select Mode', () => {

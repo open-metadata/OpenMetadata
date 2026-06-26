@@ -45,6 +45,7 @@ import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class OpenSearchBulkSinkBehaviorTest {
 
@@ -611,6 +612,62 @@ class OpenSearchBulkSinkBehaviorTest {
       verify(vectorService).generateEmbeddingFields(entity);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingRecomputesWhenCachedDimensionMismatchesClient() throws Exception {
+    // Reuse is keyed only on entity content (fingerprint / updatedAt), which does NOT change when
+    // the embedding model/dimension changes. A cached vector whose length no longer matches the
+    // active client's dimension must be regenerated — otherwise an old-dimension vector would be
+    // spliced into a staged index built for the new dimension and silently rejected by the knn
+    // field. This is the recreate-after-model-change dimension mismatch.
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.getDimension()).thenReturn(4);
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(vectorService.generateEmbeddingFields(entity))
+        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.1, 0.2, 0.3, 0.4)));
+
+    ObjectMapper mapper = new ObjectMapper();
+    // Cached embedding has 3 dims; the active client now reports 4 -> must NOT be reused.
+    JsonNode staleDimensionCached =
+        mapper.readTree(
+            "{\"fingerprint\":\"fp-unchanged\",\"embedding\":[0.1,0.2,0.3],\"parentId\":\""
+                + entityId
+                + "\"}");
+    Map<String, JsonNode> existingEmbeddingsById =
+        Map.of(entityId.toString(), staleDimensionCached);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class)) {
+      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method enrich =
+          OpenSearchBulkSink.class.getDeclaredMethod(
+              "enrichWithEmbedding",
+              EntityInterface.class,
+              String.class,
+              Map.class,
+              StageStatsTracker.class);
+      enrich.setAccessible(true);
+
+      String result =
+          (String) enrich.invoke(sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker);
+
+      verify(vectorService).generateEmbeddingFields(entity);
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      JsonNode resultNode = mapper.readTree(result);
+      assertEquals("fp-new", resultNode.get("fingerprint").asText());
+      assertEquals(4, resultNode.get("embedding").size());
     }
   }
 
