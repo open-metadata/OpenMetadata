@@ -392,7 +392,7 @@ objectStorage:
   enabled: ${ASSET_UPLOADER_ENABLE:-true}
   # options: "s3", "azure", or "inmemory" (local testing, non-persistent).
   # For MinIO use provider "s3" and point s3.endpoint at the MinIO server.
-  provider: ${ASSET_UPLOADER_PROVIDER:-s3}
+  provider: ${ASSET_UPLOADER_PROVIDER:-inmemory}
   maxFileSize: ${ASSET_UPLOADER_MAX_FILE_SIZE:-5242880}
   s3:
     endpoint: ${ASSET_UPLOADER_S3_ENDPOINT:-""}
