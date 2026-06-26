@@ -18,8 +18,12 @@ import RolesListPage from './RolesListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Popover: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  PopoverTrigger: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  PopoverTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick }) => (

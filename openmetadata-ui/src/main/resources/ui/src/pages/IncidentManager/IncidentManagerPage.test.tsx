@@ -15,9 +15,7 @@ import incidentManagerClassBase from './IncidentManagerClassBase';
 import IncidentManagerPage from './IncidentManagerPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
