@@ -81,7 +81,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   }, [genericPermissions?.EditAll, data?.deleted]);
 
   return (
-    <Card className="tw:h-full tw:p-5 tw:overflow-auto">
+    <Card  className="tw:h-full tw:p-5 tw:overflow-auto" data-testid="knowledge-page-right-panel">
       <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:gap-6">
         <div data-testid="KnowledgePanel.DataProducts">
           <DataProductsContainer
