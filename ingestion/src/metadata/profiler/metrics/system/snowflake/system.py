@@ -43,7 +43,7 @@ RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*|COPY\s*INTO\s*))([\w._\"\'()]+)(?=\s|;|$)"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=\s|;|$)"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
@@ -69,9 +69,13 @@ def _normalize_dml_sql(query: str) -> str:
     This prevents comment bodies (e.g. commented-out SQL snippets) from being
     mistaken for actual DML operations.
 
-    Note that this code does not handle comments inside of strings, and will remove
-    them if found. This function should not be used if their preservation is a
-    requirement.
+    Note: the comment-stripping regexes operate on the raw text and will
+    corrupt string literals that happen to contain \"--\" or \"/*\" sequences
+    (e.g. ``INSERT INTO t SELECT 'a--b'``). This is acceptable for DML-target
+    extraction because the corruption would only affect parts of the query
+    after the table identifier, which the caller does not use.  Do not reuse
+    this function for any purpose that requires preserving string literal
+    contents.
     """
     query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
     query = re.sub(r"--[^\n]*", "", query)

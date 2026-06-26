@@ -581,22 +581,18 @@ def isolated_parse_query_cache():
             "/* this was the old approach:\n   INSERT INTO legacy_table SELECT * FROM raw\n*/\nINSERT INTO current_table SELECT * FROM raw",
             "current_table",
         ),
-        # --- COPY INTO ---
+        # --- Terminator cases: semicolon and end-of-string ---
         (
-            "COPY INTO my_schema.my_table FROM @my_stage",
-            "my_schema.my_table",
-        ),
-        (
-            "COPY INTO my_db.my_schema.my_table FROM @my_stage FILE_FORMAT = (TYPE = CSV)",
-            "my_db.my_schema.my_table",
-        ),
-        (
-            "  COPY INTO my_table FROM @stage",
+            "DELETE FROM my_table",
             "my_table",
         ),
         (
-            "-- load batch\nCOPY INTO my_schema.my_table FROM @stage",
+            "INSERT INTO my_schema.my_table;",
             "my_schema.my_table",
+        ),
+        (
+            "DELETE FROM my_table; SELECT * FROM rest",
+            "my_table",
         ),
         # --- None / empty input ---
         (None, None),
