@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
@@ -107,6 +107,8 @@ const openPipelineActions = async (page: Page) => {
 
   await actionButton.waitFor();
   await actionButton.click();
+
+  await page.getByTestId('actions-dropdown').waitFor();
 };
 
 test.describe(
@@ -178,11 +180,12 @@ test.describe(
       await pipelineTriggerUser.create(apiContext);
       await pipelineEditUser.create(apiContext);
 
-      // The Agents tab is only visible to service owners/admins. Owners get
-      // every operation via the system OrganizationPolicy isOwner() rule, so we
-      // make both users owners for tab visibility and then DENY the operations
-      // we want to exclude. A deny overrides the owner allow, letting us isolate
-      // Trigger vs EditAll/Deploy gating on the action dropdown.
+      // The Agents tab is only visible to service owners/admins, so both users
+      // are made owners for tab visibility. appPermissions (Trigger/Deploy) comes
+      // from GET /permissions which is entity-agnostic — isOwner() does not fire
+      // there — so Trigger/Deploy must be granted via an explicit allow rule on
+      // the 'app' resource. ingestionPipelinePermissions (EditAll/Delete) is
+      // entity-specific and picks up isOwner() correctly.
       await adminOwnedService.patch(apiContext, [
         {
           op: 'add',
@@ -198,7 +201,13 @@ test.describe(
         apiContext,
         [
           {
-            name: 'IngestionPipeline-Deny-Edit-Deploy-Rule',
+            name: 'IngestionPipeline-Allow-Trigger-Rule',
+            resources: ['app'],
+            operations: ['Trigger'],
+            effect: 'allow',
+          },
+          {
+            name: 'IngestionPipeline-Deny-EditAll-Deploy-Rule',
             resources: ['ingestionPipeline'],
             operations: ['EditAll', 'Deploy'],
             effect: 'deny',
@@ -212,7 +221,7 @@ test.describe(
       const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
         {
           name: 'IngestionPipeline-Deny-Trigger-Deploy-Rule',
-          resources: ['ingestionPipeline'],
+          resources: ['app'],
           operations: ['Trigger', 'Deploy'],
           effect: 'deny',
         },

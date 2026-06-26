@@ -29,6 +29,7 @@ import PipelineActionsDropdown from './PipelineActionsDropdown';
 function PipelineActions({
   pipeline,
   ingestionPipelinePermissions,
+  appPermissions,
   triggerIngestion,
   deployIngestion,
   handleEnableDisableIngestion,
@@ -161,6 +162,7 @@ function PipelineActions({
           {(editPermission || deletePermission) && (
             <Col>
               <PipelineActionsDropdown
+                appPermissions={appPermissions}
                 deployIngestion={deployIngestion}
                 handleDeleteSelection={handleDeleteSelection}
                 handleEditClick={handleEditClick}

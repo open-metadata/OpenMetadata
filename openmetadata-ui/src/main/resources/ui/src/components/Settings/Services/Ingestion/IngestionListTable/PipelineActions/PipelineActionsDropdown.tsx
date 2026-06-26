@@ -44,6 +44,7 @@ function PipelineActionsDropdown({
   triggerIngestion,
   deployIngestion,
   serviceName,
+  appPermissions,
   serviceCategory,
   handleEditClick,
   handleDeleteSelection,
@@ -75,8 +76,8 @@ function PipelineActionsDropdown({
     return {
       editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
       deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
-      triggerPermission: ingestionPipelinePermissions?.[Operation.Trigger],
-      deployPermission: ingestionPipelinePermissions?.[Operation.Deploy],
+      triggerPermission: appPermissions?.[Operation.Trigger] ?? false,
+      deployPermission: appPermissions?.[Operation.Deploy] ?? false,
     };
   }, [ingestionPipelinePermissions]);
 
