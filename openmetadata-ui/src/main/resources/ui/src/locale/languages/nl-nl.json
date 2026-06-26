@@ -3344,7 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} is succesvol geüpload en geparseerd",
     "metric-configuration-description": "Pas velden aan om het metriekgedrag te controleren. Je kunt velden toevoegen, verwijderen, verbergen of uitschakelen zoals nodig.",
     "metric-description": "Definieer en catalogiseer gestandaardiseerde metrieken binnen uw organisatie.",
-    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
+    "metric-list-truncated": "De eerste {{count}} statistieken worden weergegeven. Verfijn je zoekopdracht om de rest te zien.",
     "metric-relations-require-glossary-term": "Selecteer een glossariumterm om relaties toe te voegen.",
     "metric-tags-info": "Metrieken worden via tags aan glossariumtermen gekoppeld.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

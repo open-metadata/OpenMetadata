@@ -3344,7 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} wurde erfolgreich hochgeladen und geparst",
     "metric-configuration-description": "Passen Sie Felder an, um das Metrikverhalten zu steuern. Sie können Felder nach Bedarf hinzufügen, entfernen, ausblenden oder deaktivieren.",
     "metric-description": "Definieren und katalogisieren Sie standardisierte Metriken in Ihrer Organisation.",
-    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
+    "metric-list-truncated": "Die ersten {{count}} Metriken werden angezeigt. Verfeinern Sie Ihre Suche, um die übrigen anzuzeigen.",
     "metric-relations-require-glossary-term": "Wählen Sie einen Glossarbegriff aus, um Beziehungen hinzuzufügen.",
     "metric-tags-info": "Metriken werden über Tags mit Glossarbegriffen verknüpft.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

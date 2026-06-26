@@ -3344,7 +3344,7 @@
     "metadata-xml-file-parsed-success": "تم رفع {{fileName}} وتحليله بنجاح",
     "metric-configuration-description": "قم بتخصيص الحقول للتحكم في سلوك المقياس. يمكنك إضافة أو إزالة أو إخفاء أو تعطيل الحقول حسب الحاجة.",
     "metric-description": "تتبع صحة أصول البيانات الخاصة بك بالمقاييس.",
-    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
+    "metric-list-truncated": "يتم عرض أول {{count}} مقياس. حسّن بحثك لعرض الباقي.",
     "metric-relations-require-glossary-term": "حدد مصطلح مسرد لإضافة العلاقات.",
     "metric-tags-info": "ترتبط المقاييس بمصطلحات المسرد من خلال الوسوم.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

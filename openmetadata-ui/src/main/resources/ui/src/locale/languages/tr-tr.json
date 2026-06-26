@@ -3344,7 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} başarıyla yüklendi ve ayrıştırıldı",
     "metric-configuration-description": "Metrik davranışını kontrol etmek için alanları özelleştirin. Gerektiğinde alanları ekleyebilir, kaldırabilir, gizleyebilir veya devre dışı bırakabilirsiniz.",
     "metric-description": "Kuruluşunuz genelinde standartlaştırılmış metrikleri tanımlayın ve kataloglayın.",
-    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
+    "metric-list-truncated": "İlk {{count}} metrik gösteriliyor. Geri kalanını görmek için aramanızı daraltın.",
     "metric-relations-require-glossary-term": "İlişki eklemek için bir sözlük terimi seçin.",
     "metric-tags-info": "Metrikler, etiketler aracılığıyla sözlük terimlerine bağlanır.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

@@ -163,6 +163,7 @@ test.describe('Bulk Edit / Import - Non-admin permissions', () => {
     test.setTimeout(120_000);
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await table.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
     await glossary.delete(apiContext);
     await editorUser.delete(apiContext);
     await editorRole.delete(apiContext);

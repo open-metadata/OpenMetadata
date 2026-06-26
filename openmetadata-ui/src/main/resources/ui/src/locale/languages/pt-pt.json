@@ -3344,7 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} foi carregado e analisado com sucesso",
     "metric-configuration-description": "Personalize campos para controlar o comportamento das métricas. Pode adicionar, remover, ocultar ou desabilitar campos conforme necessário.",
     "metric-description": "Defina e catalogue métricas padronizadas em toda a sua organização.",
-    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
+    "metric-list-truncated": "A mostrar as primeiras {{count}} métricas. Refine a sua pesquisa para ver as restantes.",
     "metric-relations-require-glossary-term": "Selecione um termo do glossário para adicionar relações.",
     "metric-tags-info": "As métricas ligam-se aos termos do glossário através de etiquetas.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
