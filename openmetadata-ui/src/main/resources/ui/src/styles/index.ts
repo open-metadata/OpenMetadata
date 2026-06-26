@@ -26,6 +26,8 @@ import '@react-awesome-query-builder/antd/css/styles.css';
 // 11 util/hook files were converted to `import type` (see PR-1 of bundle-size
 // follow-up). Side-effect CSS imports count as runtime dependencies for
 // Rollup's chunk-graph analysis.
+import 'reactflow/dist/base.css';
+import 'reactflow/dist/style.css';
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';
