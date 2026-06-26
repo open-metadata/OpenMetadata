@@ -388,6 +388,19 @@ public class ColumnRepository {
             });
   }
 
+  // Mirrors applyColumnUpdates' "blank = no change, removeFlag = clear" contract so the bulk preview
+  // reports the same value the update would actually produce.
+  private static String resolveUpdatedValue(
+      String currentValue, String providedValue, Boolean removeFlag) {
+    String result = currentValue;
+    if (Boolean.TRUE.equals(removeFlag)) {
+      result = null;
+    } else if (providedValue != null && !providedValue.trim().isEmpty()) {
+      result = providedValue;
+    }
+    return result;
+  }
+
   private void authorizeAndPatch(
       SecurityContext securityContext,
       String entityType,
@@ -672,32 +685,30 @@ public class ColumnRepository {
           currentValues.setTags(currentColumn.getTags());
           previewItem.setCurrentValues(currentValues);
 
-          // Set new values
+          String resolvedDisplayName =
+              resolveUpdatedValue(
+                  currentColumn.getDisplayName(),
+                  columnUpdate.getDisplayName(),
+                  columnUpdate.getRemoveDisplayName());
+          String resolvedDescription =
+              resolveUpdatedValue(
+                  currentColumn.getDescription(),
+                  columnUpdate.getDescription(),
+                  columnUpdate.getRemoveDescription());
+          List<TagLabel> resolvedTags =
+              columnUpdate.getTags() != null ? columnUpdate.getTags() : currentColumn.getTags();
+
           ColumnMetadata newValues = new ColumnMetadata();
-          newValues.setDisplayName(
-              columnUpdate.getDisplayName() != null
-                  ? columnUpdate.getDisplayName()
-                  : currentColumn.getDisplayName());
-          newValues.setDescription(
-              columnUpdate.getDescription() != null
-                  ? columnUpdate.getDescription()
-                  : currentColumn.getDescription());
-          newValues.setTags(
-              columnUpdate.getTags() != null ? columnUpdate.getTags() : currentColumn.getTags());
+          newValues.setDisplayName(resolvedDisplayName);
+          newValues.setDescription(resolvedDescription);
+          newValues.setTags(resolvedTags);
           previewItem.setNewValues(newValues);
 
-          // Determine if there are actual changes
           boolean hasChanges =
-              columnUpdate.getDisplayName() != null
-                  && !columnUpdate.getDisplayName().equals(currentColumn.getDisplayName());
-          if (columnUpdate.getDescription() != null
-              && !columnUpdate.getDescription().equals(currentColumn.getDescription())) {
-            hasChanges = true;
-          }
-          if (columnUpdate.getTags() != null
-              && !tagsEqual(columnUpdate.getTags(), currentColumn.getTags())) {
-            hasChanges = true;
-          }
+              !Objects.equals(resolvedDisplayName, currentColumn.getDisplayName())
+                  || !Objects.equals(resolvedDescription, currentColumn.getDescription())
+                  || (columnUpdate.getTags() != null
+                      && !tagsEqual(columnUpdate.getTags(), currentColumn.getTags()));
           previewItem.setHasChanges(hasChanges);
 
           columnPreviews.add(previewItem);
@@ -849,7 +860,9 @@ public class ColumnRepository {
       try {
         UpdateColumn updateColumn = new UpdateColumn();
         updateColumn.setDisplayName(columnUpdate.getDisplayName());
+        updateColumn.setRemoveDisplayName(columnUpdate.getRemoveDisplayName());
         updateColumn.setDescription(columnUpdate.getDescription());
+        updateColumn.setRemoveDescription(columnUpdate.getRemoveDescription());
         updateColumn.setTags(columnUpdate.getTags());
 
         Column updatedColumn =

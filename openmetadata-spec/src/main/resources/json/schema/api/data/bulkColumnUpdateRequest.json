@@ -77,12 +77,22 @@
           "type": "string"
         },
         "displayName": {
-          "description": "Display Name that identifies this column name.",
+          "description": "Display Name that identifies this column name. A blank value is treated as 'no change'; use 'removeDisplayName' to clear an existing display name.",
           "type": "string"
         },
+        "removeDisplayName": {
+          "description": "Set to true to remove the existing column display name. If both 'displayName' and 'removeDisplayName' are provided, 'removeDisplayName' takes precedence.",
+          "type": "boolean",
+          "default": false
+        },
         "description": {
-          "description": "Description of the column.",
+          "description": "Description of the column. A blank value is treated as 'no change'; use 'removeDescription' to clear an existing description.",
           "$ref": "../../type/basic.json#/definitions/markdown"
+        },
+        "removeDescription": {
+          "description": "Set to true to remove the existing column description. If both 'description' and 'removeDescription' are provided, 'removeDescription' takes precedence.",
+          "type": "boolean",
+          "default": false
         },
         "tags": {
           "description": "Tags and glossary terms associated with the column. Provide an empty array to remove all tags.",

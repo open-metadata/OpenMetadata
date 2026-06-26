@@ -1062,7 +1062,7 @@ public class ColumnBulkUpdateIT {
                 {
                   "columnFQN": "%s",
                   "entityType": "table",
-                  "description": ""
+                  "removeDescription": true
                 }
               ]
             }

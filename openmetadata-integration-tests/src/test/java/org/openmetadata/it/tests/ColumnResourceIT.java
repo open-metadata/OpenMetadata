@@ -1243,7 +1243,7 @@ public class ColumnResourceIT {
   // ========================================================================
 
   @Test
-  void test_updateColumn_emptyStringValuesDeleteFields(TestNamespace ns) throws Exception {
+  void test_updateColumn_blankValuesPreserveFields(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Tag testTag = createClassificationAndTag(ns, "EmptyTestCol", "TestTagCol");
 
@@ -1260,11 +1260,40 @@ public class ColumnResourceIT {
     initialUpdate.setTags(List.of(tagLabel));
     updateColumn(client, columnFQN, TABLE, initialUpdate);
 
-    UpdateColumn emptyUpdate = new UpdateColumn();
-    emptyUpdate.setDisplayName("");
-    emptyUpdate.setDescription("   ");
+    UpdateColumn blankUpdate = new UpdateColumn();
+    blankUpdate.setDisplayName("");
+    blankUpdate.setDescription("   ");
 
-    Column updatedColumn = updateColumn(client, columnFQN, TABLE, emptyUpdate);
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, blankUpdate);
+
+    assertEquals("Initial Display Name", updatedColumn.getDisplayName());
+    assertEquals("Initial description", updatedColumn.getDescription());
+    assertEquals(1, updatedColumn.getTags().size());
+  }
+
+  @Test
+  void test_updateColumn_removeFlagsDeleteFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag testTag = createClassificationAndTag(ns, "RemoveFlagsCol", "RemoveFlagsTagCol");
+
+    Table table = createTestTableForUpdate(ns);
+    String columnFQN = table.getFullyQualifiedName() + ".name";
+
+    UpdateColumn initialUpdate = new UpdateColumn();
+    initialUpdate.setDisplayName("Initial Display Name");
+    initialUpdate.setDescription("Initial description");
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(testTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    initialUpdate.setTags(List.of(tagLabel));
+    updateColumn(client, columnFQN, TABLE, initialUpdate);
+
+    UpdateColumn removeUpdate = new UpdateColumn();
+    removeUpdate.setRemoveDisplayName(true);
+    removeUpdate.setRemoveDescription(true);
+
+    Column updatedColumn = updateColumn(client, columnFQN, TABLE, removeUpdate);
 
     assertNull(updatedColumn.getDisplayName());
     assertNull(updatedColumn.getDescription());
@@ -1342,7 +1371,7 @@ public class ColumnResourceIT {
     updateColumn(client, columnFQN, TABLE, updateColumn);
 
     UpdateColumn deleteDisplayName = new UpdateColumn();
-    deleteDisplayName.setDisplayName("");
+    deleteDisplayName.setRemoveDisplayName(true);
     Column updatedColumn = updateColumn(client, columnFQN, TABLE, deleteDisplayName);
 
     assertNull(updatedColumn.getDisplayName());
@@ -1360,7 +1389,7 @@ public class ColumnResourceIT {
     updateColumn(client, columnFQN, TABLE, updateColumn);
 
     UpdateColumn deleteDescription = new UpdateColumn();
-    deleteDescription.setDescription("");
+    deleteDescription.setRemoveDescription(true);
     Column updatedColumn = updateColumn(client, columnFQN, TABLE, deleteDescription);
 
     assertNull(updatedColumn.getDescription());
@@ -1396,7 +1425,7 @@ public class ColumnResourceIT {
     updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, updateColumn);
 
     UpdateColumn deleteDisplayName = new UpdateColumn();
-    deleteDisplayName.setDisplayName("");
+    deleteDisplayName.setRemoveDisplayName(true);
     Column updatedColumn = updateColumn(client, columnFQN, DASHBOARD_DATA_MODEL, deleteDisplayName);
 
     assertNull(updatedColumn.getDisplayName());
