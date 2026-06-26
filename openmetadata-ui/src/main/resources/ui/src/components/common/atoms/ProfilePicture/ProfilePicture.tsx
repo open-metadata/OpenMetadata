@@ -55,13 +55,15 @@ const ProfilePicture = ({
 
   const isSolid = avatarType === 'solid';
 
+  const textClassName = isSolid ? 'tw:text-fg-white' : undefined;
+
   const rootStyle: CSSProperties = {
     width: size,
     height: size,
-    color: isSolid ? '#fff' : color,
     backgroundColor: isSolid ? color : backgroundColor,
     fontWeight: isSolid ? 400 : 500,
     border: isSolid ? 'none' : `0.5px solid ${color}`,
+    ...(isSolid ? {} : { color }),
     ...style,
   };
 
@@ -86,6 +88,7 @@ const ProfilePicture = ({
   if (isPicLoading) {
     return (
       <Avatar
+        className={textClassName}
         contrastBorder={false}
         placeholder={
           <Loader
@@ -101,6 +104,7 @@ const ProfilePicture = ({
 
   return (
     <Avatar
+      className={textClassName}
       contrastBorder={false}
       placeholder={<span style={{ fontSize: size * 0.55 }}>{character}</span>}
       size="md"
