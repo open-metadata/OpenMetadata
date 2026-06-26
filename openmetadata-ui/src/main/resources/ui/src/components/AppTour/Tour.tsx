@@ -76,12 +76,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             }
             maskColor="#302E36"
             playTour={isTourOpen}
-            // react-tour runs a single `querySelector` for the next step's
-            // target after this timer and self-closes (onRequestClose) if it is
-            // missing. The Explore step waits for a freshly mounted
-            // ExplorePageV1 to paint the mock dim_address card; on slower
-            // environments that mount exceeds 900ms, so the timer must cover it.
-            stepWaitTimer={2000}
+            stepWaitTimer={900}
             steps={steps}
             onRequestClose={handleRequestClose}
             onRequestSkip={handleModalSubmit}
