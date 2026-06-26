@@ -662,6 +662,10 @@ public final class Entity {
         || ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
   }
 
+  public static boolean hasEntityTimeSeriesRepository(@NonNull String entityType) {
+    return ENTITY_TS_REPOSITORY_MAP.containsKey(entityType);
+  }
+
   public static EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>
       getEntityTimeSeriesRepository(@NonNull String entityType) {
     EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface> entityTimeSeriesRepository =
