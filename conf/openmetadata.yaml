@@ -389,7 +389,7 @@ database:
     mysqlSocketTimeout: ${DB_MYSQL_SOCKET_TIMEOUT:-30000000}  # Socket timeout in milliseconds (0 = infinite)
 
 objectStorage:
-  enabled: ${ASSET_UPLOADER_ENABLE:-false}
+  enabled: ${ASSET_UPLOADER_ENABLE:-true}
   # options: "s3", "azure", or "inmemory" (local testing, non-persistent).
   # For MinIO use provider "s3" and point s3.endpoint at the MinIO server.
   provider: ${ASSET_UPLOADER_PROVIDER:-s3}
