@@ -192,6 +192,56 @@ class NatsSource(MessagingServiceSource):
             logger.warning(f"Could not fetch schema from KV bucket '{bucket}' for stream '{stream_name}': {exc}")
         return None
 
+    def _build_topic_config_params(self, config: Optional[NatsStreamConfig]) -> dict:  # noqa: UP045
+        if not config:
+            return {
+                "replication_factor": None,
+                "max_message_size": None,
+                "retention_size": None,
+                "cleanup_policies": None,
+                "topic_config": {},
+            }
+        topic_config = {}
+        if config.subjects:
+            topic_config["subjects"] = config.subjects
+        if config.storage:
+            topic_config["storage"] = config.storage
+        if config.retention:
+            topic_config["retention"] = config.retention
+        return {
+            "replication_factor": config.num_replicas,
+            "max_message_size": config.max_msg_size,
+            "retention_size": config.max_bytes,
+            "cleanup_policies": _NATS_RETENTION_TO_CLEANUP.get(config.retention, ["delete"])
+            if config.retention
+            else None,
+            "topic_config": topic_config,
+        }
+
+    def _build_message_schema(
+        self,
+        kv_schema: Optional[tuple],  # noqa: UP045
+        topic_name: str,
+        schema_type_map: dict,
+    ) -> TopicSchema:
+        if kv_schema is None:
+            return TopicSchema(schemaText="", schemaType=SchemaType.Other, schemaFields=[])
+        schema_text, schema_type = kv_schema
+        load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
+        if not load_parser_fn:
+            return TopicSchema(schemaText=schema_text, schemaType=SchemaType.Other, schemaFields=[])
+        text_for_parsing = (
+            merge_and_clean_protobuf_schema(schema_text)
+            if schema_type == SchemaType.Protobuf.value.lower()
+            else schema_text
+        )
+        schema_fields = load_parser_fn(topic_name, text_for_parsing)
+        return TopicSchema(
+            schemaText=schema_text,
+            schemaType=schema_type_map.get(schema_type, SchemaType.Other.value),  # pyright: ignore[reportArgumentType]
+            schemaFields=schema_fields if schema_fields is not None else [],
+        )
+
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
             logger.info(f"Fetching topic details for NATS stream {topic_details.topic_name}")
@@ -199,65 +249,25 @@ class NatsSource(MessagingServiceSource):
             schema_type_map = {k.lower(): v.value for k, v in SchemaType.__members__.items()}
             kv_schema = self._fetch_schema_from_kv(topic_details.topic_name)
 
-            retention_ms = 0.0
-            if metadata.config and metadata.config.max_age:
-                retention_ms = metadata.config.max_age / _NS_TO_MS
-
-            partitions = 1
-
-            replication_factor = None
-            max_message_size = None
-            retention_size = None
-            cleanup_policies = None
-            topic_config = {}
-
-            if metadata.config:
-                replication_factor = metadata.config.num_replicas
-                max_message_size = metadata.config.max_msg_size
-                retention_size = metadata.config.max_bytes
-                if metadata.config.retention:
-                    cleanup_policies = _NATS_RETENTION_TO_CLEANUP.get(metadata.config.retention, ["delete"])
-                if metadata.config.subjects:
-                    topic_config["subjects"] = metadata.config.subjects
-                if metadata.config.storage:
-                    topic_config["storage"] = metadata.config.storage
-                if metadata.config.retention:
-                    topic_config["retention"] = metadata.config.retention
+            retention_ms = metadata.config.max_age / _NS_TO_MS if metadata.config and metadata.config.max_age else 0.0
+            params = self._build_topic_config_params(metadata.config)
 
             topic = CreateTopicRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),  # pyright: ignore[reportAttributeAccessIssue]
-                partitions=partitions,
+                partitions=1,
                 retentionTime=retention_ms,
-                retentionSize=retention_size,
-                replicationFactor=replication_factor,
-                maximumMessageSize=max_message_size,
-                cleanupPolicies=cleanup_policies,
+                retentionSize=params["retention_size"],
+                replicationFactor=params["replication_factor"],
+                maximumMessageSize=params["max_message_size"],
+                cleanupPolicies=params["cleanup_policies"],
             )
-            if topic_config:
-                topic.topicConfig = topic_config  # pyright: ignore[reportAttributeAccessIssue]
+            if params["topic_config"]:
+                topic.topicConfig = params["topic_config"]  # pyright: ignore[reportAttributeAccessIssue]
 
-            if kv_schema is not None:
-                schema_text, schema_type = kv_schema
-                load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
-                if load_parser_fn:
-                    text_for_parsing = (
-                        merge_and_clean_protobuf_schema(schema_text)
-                        if schema_type == SchemaType.Protobuf.value.lower()
-                        else schema_text
-                    )
-                    schema_fields = load_parser_fn(topic_details.topic_name, text_for_parsing)
-                    topic.messageSchema = TopicSchema(
-                        schemaText=schema_text,
-                        schemaType=schema_type_map.get(schema_type, SchemaType.Other.value),  # pyright: ignore[reportArgumentType]
-                        schemaFields=schema_fields if schema_fields is not None else [],
-                    )
-                else:
-                    topic.messageSchema = TopicSchema(
-                        schemaText=schema_text, schemaType=SchemaType.Other, schemaFields=[]
-                    )
-            else:
-                topic.messageSchema = TopicSchema(schemaText="", schemaType=SchemaType.Other, schemaFields=[])
+            topic.messageSchema = self._build_message_schema(
+                kv_schema, topic_details.topic_name, schema_type_map
+            )
 
             yield Either(right=topic)  # pyright: ignore[reportCallIssue]
             self.register_record(topic_request=topic)
