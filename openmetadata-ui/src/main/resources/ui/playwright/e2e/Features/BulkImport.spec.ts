@@ -106,6 +106,15 @@ const expectImportRowStatusesToContain = async (
   page: Page,
   rowStatus: string[]
 ) => {
+  // The result grid populates cells asynchronously after Next-click. Without
+  // first waiting for the row count to match, the toContainText assertion
+  // can run mid-render against 0 or partial cells, fail under retry too,
+  // and never recover. Wait for the expected number of detail cells before
+  // checking text.
+  await expect(page.locator('.rdg-cell-details')).toHaveCount(
+    rowStatus.length,
+    { timeout: 60_000 }
+  );
   await expect(page.locator('.rdg-cell-details')).toContainText(rowStatus);
 };
 
