@@ -199,15 +199,9 @@ test.describe(
         apiContext,
         [
           {
-            name: 'IngestionPipeline-Allow-Trigger-Rule',
+            name: 'IngestionPipeline-Deny-EditAll-Rule',
             resources: ['ingestionPipeline'],
-            operations: ['Trigger'],
-            effect: 'allow',
-          },
-          {
-            name: 'IngestionPipeline-Deny-EditAll-Deploy-Rule',
-            resources: ['ingestionPipeline'],
-            operations: ['EditAll', 'Deploy'],
+            operations: ['EditAll'],
             effect: 'deny',
           },
         ]
@@ -218,9 +212,9 @@ test.describe(
 
       const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
         {
-          name: 'IngestionPipeline-Deny-Trigger-Deploy-Rule',
+          name: 'IngestionPipeline-Deny-Trigger-Rule',
           resources: ['ingestionPipeline'],
-          operations: ['Trigger', 'Deploy'],
+          operations: ['Trigger'],
           effect: 'deny',
         },
       ]);
