@@ -56,8 +56,8 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
 
   useEffect(() => {
     if (Array.isArray(selectedValue)) {
-      setSelected(selectedValue as DataAssetOption[]);
-    } else if (selectedValue && typeof selectedValue === 'object') {
+      setSelected(selectedValue);
+    } else if (selectedValue) {
       setSelected([selectedValue]);
     }
   }, [selectedValue]);

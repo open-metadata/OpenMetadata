@@ -12,7 +12,10 @@
  */
 import { ReactNode } from 'react';
 import { SearchIndex } from '../../../enums/search.enum';
-import { DataAssetAsyncSelectListProps } from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import {
+  DataAssetAsyncSelectListProps,
+  DataAssetOption,
+} from '../DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 export interface DataAssetPickerOption {
   id: string;
@@ -65,7 +68,8 @@ export interface DataAssetFilterPopoverProps {
 }
 
 export interface DataAssetSelectListProps
-  extends DataAssetAsyncSelectListProps {
+  extends Omit<DataAssetAsyncSelectListProps, 'value'> {
+  value?: DataAssetOption | DataAssetOption[];
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
   popoverAlign?: 'left' | 'right';
