@@ -1023,7 +1023,7 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription == null) {
+    if (changeDescription == null || nullOrEmpty(indexMapping.getChildAliases())) {
       return;
     }
 
@@ -1032,21 +1032,29 @@ public class SearchRepository {
       return;
     }
 
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
-    if (nullOrEmpty(childAliases)) {
-      return;
-    }
-
-    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
     if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
       propagateToDomainChildren(entityId, indexMapping, updates);
       return;
     }
 
-    // Other entities: resolve parent field name and propagate to children
     String parentFieldName = resolveParentFieldName(entityType, updates);
     Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    searchClient.updateChildren(childAliases, parentMatch, updates);
+    List<String> entityChildren = getNonTimeSeriesChildAliases(indexMapping);
+    if (!nullOrEmpty(entityChildren)) {
+      searchClient.updateChildren(entityChildren, parentMatch, updates);
+    }
+  }
+
+  private List<String> getNonTimeSeriesChildAliases(IndexMapping indexMapping) {
+    List<String> childAliases = indexMapping.getChildAliases();
+    if (nullOrEmpty(childAliases)) {
+      return List.of();
+    }
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> !Entity.hasEntityTimeSeriesRepository(alias))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
   }
 
   private String resolveParentFieldName(
