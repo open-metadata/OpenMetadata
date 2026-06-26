@@ -75,11 +75,10 @@ jobs:
         with:
           context: .
           file: docker/storybook/Dockerfile
+          platforms: linux/amd64,linux/arm64
           # On scheduled runs always push; on workflow_dispatch respect the input.
           push: ${{ github.event_name == 'schedule' || inputs.push_image }}
           tags: ${{ steps.prepare.outputs.tags }}
-          cache-from: type=gha,scope=storybook
-          cache-to: type=gha,mode=max,scope=storybook
 
       - name: Print image reference
         run: |

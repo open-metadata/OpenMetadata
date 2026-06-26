@@ -1,8 +1,20 @@
-# Scoped ignore file for docker/storybook/Dockerfile (BuildKit reads
-# <dockerfile>.dockerignore relative to the build context root).
-# Keeps host build artifacts from polluting the image and shrinks the context.
+# Allowlist-style ignore for docker/storybook/Dockerfile.
+# Excludes the entire monorepo by default, then re-includes only the files the
+# Dockerfile actually COPYs, keeping the build context to a few MB instead of
+# hundreds of MB.
 
-**/node_modules
-**/storybook-static
-**/dist
-**/.git
+# Exclude everything.
+**
+
+# Re-include the component library source (each parent dir must be listed explicitly).
+!openmetadata-ui-core-components/
+!openmetadata-ui-core-components/src/
+!openmetadata-ui-core-components/src/main/
+!openmetadata-ui-core-components/src/main/resources/
+!openmetadata-ui-core-components/src/main/resources/ui/
+!openmetadata-ui-core-components/src/main/resources/ui/**
+
+# Re-exclude build artifacts that should never enter the image.
+openmetadata-ui-core-components/src/main/resources/ui/node_modules
+openmetadata-ui-core-components/src/main/resources/ui/storybook-static
+openmetadata-ui-core-components/src/main/resources/ui/dist
