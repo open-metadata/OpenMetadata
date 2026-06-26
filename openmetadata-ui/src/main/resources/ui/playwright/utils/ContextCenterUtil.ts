@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Browser, Page } from '@playwright/test';
+import { APIRequestContext, Browser, expect, Page } from '@playwright/test';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
@@ -56,6 +56,15 @@ export const navigateToMemories = async (page: Page) => {
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
+
+export const navigateToArchive = async (page: Page) => {
+  await page.goto('/context-center/archive');
+  await page
+    .getByTestId('context-center-archive-page')
+    .waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+};
+
 
 export const buildPermissionRule = (
   namePrefix: string,
@@ -113,3 +122,38 @@ export const createDisposableArchivedDocument = async (
 
   return { id, name };
 };
+
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+    );
+
+    expect(response.ok()).toBeTruthy();
+
+    const files = await response.json();
+    console.log(response, files)
+
+    const found = files.data.some(
+      (file: { id: string, deleted: boolean}) => file.id === documentId && file.deleted === true
+    );
+
+    if (found) {
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in archive API within ${timeout}ms`
+  );
+}
