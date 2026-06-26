@@ -103,10 +103,12 @@ class DataInsightsEnricherBehaviorIT {
           "domains",
           "dataProducts",
           "certification",
+          "classificationTags",
+          "glossaryTags",
           "tableType",
           "columns",
           "databaseSchema",
-          "tableConstraint",
+          "tableConstraints",
           "database",
           "service",
           "serviceType");
@@ -204,6 +206,82 @@ class DataInsightsEnricherBehaviorIT {
     assertTrue(((Collection<?>) snapshot.get("tags")).size() >= 2, "tags array preserved");
     assertNotNull(snapshot.get("columns"));
     assertEquals(3, ((Collection<?>) snapshot.get("columns")).size());
+  }
+
+  // ──────────── Test 1b: source-split tag projection (issue #29355) ────────────
+
+  /**
+   * Reproduction of issue #29355: a DI chart filtering on {@code classificationTags} or {@code
+   * glossaryTags} returned 0 because those derived fields were never projected onto the snapshot.
+   * Tag a table with one classification tag and one glossary term, enrich, and assert the snapshot
+   * carries each FQN in its source-matched bucket — and that neither leaks into the other (matching
+   * the live index's {@code ParseTags} source split).
+   */
+  @Test
+  void tableEntity_classificationAndGlossaryTags_projectedToSourceSplitFields(TestNamespace ns) {
+    DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
+    Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
+
+    Table table =
+        Tables.create()
+            .name(ns.shortPrefix("tbl_tagsplit"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withDescription("source-split tag projection")
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .withTags(List.of(shared().PERSONAL_DATA_TAG_LABEL, shared().GLOSSARY1_TERM1_LABEL))
+            .execute();
+
+    Map<String, Object> snapshot = enrichOneDay(table);
+
+    String classificationFqn = shared().PERSONAL_DATA_TAG_LABEL.getTagFQN();
+    String glossaryFqn = shared().GLOSSARY1_TERM1_LABEL.getTagFQN();
+
+    assertInstanceOf(Collection.class, snapshot.get("classificationTags"));
+    assertInstanceOf(Collection.class, snapshot.get("glossaryTags"));
+    Collection<?> classificationTags = (Collection<?>) snapshot.get("classificationTags");
+    Collection<?> glossaryTags = (Collection<?>) snapshot.get("glossaryTags");
+
+    assertTrue(
+        classificationTags.contains(classificationFqn),
+        "classification tag FQN projected into classificationTags");
+    assertFalse(
+        classificationTags.contains(glossaryFqn),
+        "glossary term must not leak into classificationTags");
+    assertTrue(glossaryTags.contains(glossaryFqn), "glossary term FQN projected into glossaryTags");
+    assertFalse(
+        glossaryTags.contains(classificationFqn),
+        "classification tag must not leak into glossaryTags");
+  }
+
+  /**
+   * A table with no tags must not spuriously populate the source-split fields. The snapshot may
+   * either omit the keys or carry empty collections, but it must contain no FQNs.
+   */
+  @Test
+  void tableEntity_noTags_sourceSplitFieldsEmptyOrAbsent(TestNamespace ns) {
+    DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
+    Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
+
+    Table table =
+        Tables.create()
+            .name(ns.shortPrefix("tbl_notags"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withDescription("no tags")
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .execute();
+
+    Map<String, Object> snapshot = enrichOneDay(table);
+
+    Object classificationTags = snapshot.get("classificationTags");
+    Object glossaryTags = snapshot.get("glossaryTags");
+    assertTrue(
+        classificationTags == null || ((Collection<?>) classificationTags).isEmpty(),
+        "no tags → no classification FQNs");
+    assertTrue(
+        glossaryTags == null || ((Collection<?>) glossaryTags).isEmpty(),
+        "no tags → no glossary FQNs");
   }
 
   // ────────────────────────────── Test 2: missing owner ──────────────────────────────
