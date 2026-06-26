@@ -176,22 +176,27 @@ const ImportOntologyModal = ({
           {t('message.import-ontology-help')}
         </Typography.Text>
 
-        <Upload.Dragger
-          accept=".ttl,.rdf,.owl,.nt,.xml"
-          beforeUpload={handleBeforeUpload}
-          data-testid="upload-ontology-dragger"
-          maxCount={1}
-          showUploadList={false}>
-          <p className="ant-upload-drag-icon">
-            <InboxOutlined />
-          </p>
-          <p className="ant-upload-text">{t('message.upload-ontology-file')}</p>
-          {fileName && (
-            <Typography.Text strong data-testid="ontology-file-name">
-              {fileName}
-            </Typography.Text>
-          )}
-        </Upload.Dragger>
+        {/* Wrap the Dragger so the test id lands on a visible element: antd forwards
+            data-testid to the hidden <input type="file">, which is never visible. */}
+        <div data-testid="upload-ontology-dragger">
+          <Upload.Dragger
+            accept=".ttl,.rdf,.owl,.nt,.xml"
+            beforeUpload={handleBeforeUpload}
+            maxCount={1}
+            showUploadList={false}>
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">
+              {t('message.upload-ontology-file')}
+            </p>
+            {fileName && (
+              <Typography.Text strong data-testid="ontology-file-name">
+                {fileName}
+              </Typography.Text>
+            )}
+          </Upload.Dragger>
+        </div>
 
         {isValidating && (
           <Typography.Text data-testid="ontology-validating">
