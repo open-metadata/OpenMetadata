@@ -24,6 +24,7 @@ export interface ExploreQueryFilterChipsProps {
   onRemoveBrowseLevel?: (levelKey: string) => void;
   // Clear every active filter at once.
   onClearAll?: () => void;
+  hasAdditionalQuery?: boolean;
   // Shown when nothing is active — keeps the QUERY bar persistent.
   emptyText?: string;
 }
