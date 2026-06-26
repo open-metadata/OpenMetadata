@@ -593,6 +593,57 @@ class ContextFileIT {
         assertThrows(HttpResponseException.class, () -> getFile(rest, second.getId(), ""));
     assertEquals(404, firstEx.getStatusCode());
     assertEquals(404, secondEx.getStatusCode());
+
+    rest.delete(FOLDER_PATH, target.getId());
+
+    HttpResponseException folderEx =
+        assertThrows(
+            HttpResponseException.class,
+            () -> rest.getById(FOLDER_PATH, target.getId(), "", Folder.class));
+    assertEquals(404, folderEx.getStatusCode());
+  }
+
+  @Test
+  void testDeleteFolderCascadesMovedFiles(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder target =
+        createFolder(rest, new CreateFolder().withName(ns.prefix("delete-cascade-target")));
+    ContextFile first =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("cascade-first"))
+                .withDisplayName("Cascade First")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextFile second =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("cascade-second"))
+                .withDisplayName("Cascade Second")
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    List<String> ids = List.of(first.getId().toString(), second.getId().toString());
+
+    try (Response response =
+        rest.rawPut(
+            FILE_PATH + "/bulk/move", Map.of("ids", ids, "folder", target.getEntityReference()))) {
+      String body = response.readEntity(String.class);
+      assertEquals(200, response.getStatus(), body);
+    }
+
+    rest.delete(FOLDER_PATH, target.getId());
+
+    HttpResponseException folderEx =
+        assertThrows(
+            HttpResponseException.class,
+            () -> rest.getById(FOLDER_PATH, target.getId(), "", Folder.class));
+    HttpResponseException firstEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, first.getId(), ""));
+    HttpResponseException secondEx =
+        assertThrows(HttpResponseException.class, () -> getFile(rest, second.getId(), ""));
+    assertEquals(404, folderEx.getStatusCode());
+    assertEquals(404, firstEx.getStatusCode());
+    assertEquals(404, secondEx.getStatusCode());
   }
 
   @Test
