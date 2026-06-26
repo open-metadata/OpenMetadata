@@ -117,6 +117,11 @@ public class FolderRepository extends EntityRepository<Folder> {
     return new FolderUpdater(original, updated, operation);
   }
 
+  @Override
+  protected void deleteChildren(UUID id, boolean recursive, boolean hardDelete, String updatedBy) {
+    super.deleteChildren(id, true, hardDelete, updatedBy);
+  }
+
   private EntityReference getParentFolder(Folder folder) {
     return getFromEntityRef(folder.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }

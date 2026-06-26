@@ -206,14 +206,15 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete) {
+    boolean cascade = true;
     if (hardDelete) {
       Folder folder = getInternal(uriInfo, securityContext, id, "", Include.ALL);
       if (!Boolean.TRUE.equals(folder.getDeleted())) {
-        super.delete(uriInfo, securityContext, id, recursive, false);
+        super.delete(uriInfo, securityContext, id, cascade, false);
       }
-      return deleteByIdAsync(uriInfo, securityContext, id, recursive, true);
+      return deleteByIdAsync(uriInfo, securityContext, id, cascade, true);
     }
-    return super.delete(uriInfo, securityContext, id, recursive, false);
+    return super.delete(uriInfo, securityContext, id, cascade, false);
   }
 
   @PUT
