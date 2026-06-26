@@ -60,6 +60,19 @@ public final class SearchUtils {
 
   private SearchUtils() {}
 
+  /**
+   * Stable search routing key so all of a user's queries hit the same shard copy. Without it,
+   * paginated and repeated searches bounce across replicas/shards on a multi-node cluster,
+   * returning reordered or different results for the same query.
+   */
+  public static String searchPreferenceFor(SubjectContext subjectContext) {
+    String preference = null;
+    if (subjectContext != null && subjectContext.user() != null) {
+      preference = subjectContext.user().getName();
+    }
+    return preference;
+  }
+
   /** Aggregation name for the exact-match sub-agg (user-typed term only). */
   public static String exactAggKey(String fieldName) {
     return fieldName + EXACT_AGG_SUFFIX;
