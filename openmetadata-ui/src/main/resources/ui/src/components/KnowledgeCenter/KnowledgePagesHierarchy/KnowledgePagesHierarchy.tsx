@@ -727,7 +727,7 @@ const KnowledgePagesHierarchy = forwardRef<
       }}
       onScroll={handleScroll}>
       <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
-        <Box align="center" className="tw:px-1.5 tw:pb-5" justify="between">
+        <Box align="center" className="tw:pb-5" justify="between">
           <Box align="center" gap={3}>
             <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
               <File06 className="tw:text-fg-tertiary" size={20} />
