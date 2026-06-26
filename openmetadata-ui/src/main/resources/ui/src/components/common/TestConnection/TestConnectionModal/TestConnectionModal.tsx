@@ -15,6 +15,7 @@ import {
   Dialog,
   Modal,
   ModalOverlay,
+  ProgressBarBase,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@untitledui/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -60,7 +61,6 @@ const TestConnectionModal = ({
 
   const [showRawLog, setShowRawLog] = useState(false);
   const [expandedStepName, setExpandedStepName] = useState<string>();
-  const [hasUserCollapsedSteps, setHasUserCollapsedSteps] = useState(false);
   const [isGateExpanded, setIsGateExpanded] = useState(false);
 
   const resultByName = useMemo(
@@ -181,7 +181,6 @@ const TestConnectionModal = ({
   useEffect(() => {
     if (isTestingConnection) {
       setIsGateExpanded(true);
-      setHasUserCollapsedSteps(false);
 
       return;
     }
@@ -189,26 +188,7 @@ const TestConnectionModal = ({
     if (gateResult?.passed) {
       setIsGateExpanded(false);
     }
-
-    if (expandedStepName || hasUserCollapsedSteps) {
-      return;
-    }
-
-    const firstStepWithResult = capabilitySteps.find((step) =>
-      getConnectionStepResult(step)
-    );
-
-    if (firstStepWithResult) {
-      setExpandedStepName(firstStepWithResult.name);
-    }
-  }, [
-    capabilitySteps,
-    expandedStepName,
-    gateResult?.passed,
-    getConnectionStepResult,
-    hasUserCollapsedSteps,
-    isTestingConnection,
-  ]);
+  }, [gateResult?.passed, isTestingConnection]);
 
   return (
     <ModalOverlay
@@ -285,6 +265,10 @@ const TestConnectionModal = ({
                   totalCount={totalCount}
                 />
 
+                {isTestingConnection && (
+                  <ProgressBarBase value={progressPercent} />
+                )}
+
                 {gateStep && !isFailed && (
                   <ConnectionGateCard
                     gateDescription={gateDescription}
@@ -318,7 +302,6 @@ const TestConnectionModal = ({
                   getConnectionStepResult={getConnectionStepResult}
                   isTestingConnection={isTestingConnection}
                   setExpandedStepName={setExpandedStepName}
-                  setHasUserCollapsedSteps={setHasUserCollapsedSteps}
                   t={t}
                 />
 

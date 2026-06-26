@@ -13,8 +13,10 @@
 import {
   Accordion,
   AccordionItem,
+  Badge,
+  Box,
   Button,
-  ProgressBarBase,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
@@ -24,7 +26,7 @@ import {
   RefreshCcw01,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { startCase } from 'lodash';
+import { isEmpty, startCase } from 'lodash';
 import { type Dispatch, type SetStateAction } from 'react';
 import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
 import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
@@ -113,7 +115,7 @@ export function getConnectionStatusIcon(
   if (isSuccessful) {
     icon = (
       <IcCheckCircle
-        className="tw:shrink-0 tw:text-utility-success-500"
+        className="tw:shrink-0 tw:text-fg-success-secondary"
         height={18}
         width={18}
       />
@@ -121,7 +123,7 @@ export function getConnectionStatusIcon(
   } else if (isFailed) {
     icon = (
       <IcTcFail
-        className="tw:shrink-0 tw:text-utility-error-600"
+        className="tw:shrink-0 tw:text-fg-error-primary"
         height={18}
         width={18}
       />
@@ -245,7 +247,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
     return (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
         <IcCheckCircle
-          className="tw:text-utility-success-500"
+          className="tw:text-fg-success-secondary"
           height={16}
           width={16}
         />
@@ -256,11 +258,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   if (state === 'failed') {
     return (
       <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail
-          className="tw:text-utility-error-600"
-          height={16}
-          width={16}
-        />
+        <IcTcFail className="tw:text-fg-error-primary" height={16} width={16} />
       </span>
     );
   }
@@ -269,7 +267,7 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
     return (
       <span className="tw:flex tw:items-center" data-testid="warning-badge">
         <IcTcWarn
-          className="tw:text-utility-warning-500"
+          className="tw:text-fg-warning-secondary"
           height={16}
           width={16}
         />
@@ -278,15 +276,19 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   }
 
   if (state === 'skipped') {
-    return <IcTcSkip className="tw:text-gray-300" height={16} width={16} />;
+    return (
+      <IcTcSkip className="tw:text-utility-gray-300" height={16} width={16} />
+    );
   }
 
-  return <IcTcQueued className="tw:text-gray-300" height={16} width={16} />;
+  return (
+    <IcTcQueued className="tw:text-utility-gray-300" height={16} width={16} />
+  );
 }
 
 function renderColoredLines(text: string, colorClass: string): JSX.Element[] {
-  return text.split('\n').map((line, i) => (
-    <span className={`tw:block ${colorClass}`} key={i}>
+  return text.split('\n').map((line) => (
+    <span className={`tw:block ${colorClass}`} key={line}>
       {line || ' '}
     </span>
   ));
@@ -328,15 +330,30 @@ export function ConnectionStatusBanner(
     t,
   });
 
-  if (isSuccessful || isWarning) {
+  if (isSuccessful) {
     return (
       <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
         <IcCheckCircle
-          className="tw:shrink-0 tw:text-utility-success-500"
+          className="tw:shrink-0 tw:text-fg-success-secondary"
           height={18}
           width={18}
         />
         <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-utility-success-700">
+          {statusText}
+        </span>
+      </div>
+    );
+  }
+
+  if (isWarning) {
+    return (
+      <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-4 tw:py-3.5">
+        <IcTcWarn
+          className="tw:shrink-0 tw:text-fg-warning-secondary"
+          height={18}
+          width={18}
+        />
+        <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
           {statusText}
         </span>
       </div>
@@ -348,7 +365,7 @@ export function ConnectionStatusBanner(
     : 'tw:text-utility-error-700';
 
   const bannerClass = classNames(
-    'tw:flex tw:flex-col tw:gap-2 tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
+    'tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
     {
       'tw:border-utility-brand-200 tw:bg-utility-brand-50': isTestingConnection,
       'tw:border-utility-error-200 tw:bg-utility-error-50':
@@ -358,7 +375,7 @@ export function ConnectionStatusBanner(
 
   return (
     <div className={bannerClass}>
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-2.5">
+      <div className="tw:flex tw:items-center tw:justify-between tw:flex-1">
         <div className="tw:flex tw:items-center tw:gap-2.5">
           {isTestingConnection ? (
             <Loader size="small" />
@@ -378,7 +395,6 @@ export function ConnectionStatusBanner(
           </span>
         )}
       </div>
-      {isTestingConnection && <ProgressBarBase value={progressPercent} />}
     </div>
   );
 }
@@ -442,39 +458,43 @@ export function ConnectionGateCard(
     }
   );
 
-  const gateIcon =
-    !gateResult && !isFailed ? (
-      <Loader size="small" />
-    ) : gateResult?.passed ? (
+  let gateIcon: JSX.Element | undefined;
+
+  if (!gateResult && !isFailed) {
+    gateIcon = <Loader size="small" />;
+  } else if (gateResult?.passed) {
+    gateIcon = (
       <span className="tw:flex tw:items-center" data-testid="success-badge">
         <IcCheckCircle
-          className="tw:text-utility-success-500"
-          height={18}
-          width={18}
-        />
-      </span>
-    ) : (
-      <span className="tw:flex tw:items-center" data-testid="fail-badge">
-        <IcTcFail
-          className="tw:text-utility-error-600"
+          className="tw:text-fg-success-secondary"
           height={18}
           width={18}
         />
       </span>
     );
+  } else if (gateFailed) {
+    gateIcon = (
+      <span className="tw:flex tw:items-center" data-testid="fail-badge">
+        <IcTcFail className="tw:text-fg-error-primary" height={18} width={18} />
+      </span>
+    );
+  }
 
   const descriptionClass = classNames('tw:mt-0.5 tw:text-secondary', {
     'tw:text-utility-error-700': gateFailed,
   });
 
-  const pillState: GatePillState =
-    !gateResult && isTestingConnection
-      ? 'running'
-      : gateResult?.passed
-      ? 'pass'
-      : gateFailed
-      ? 'fail'
-      : 'queued';
+  let pillState: GatePillState | undefined;
+
+  if (!gateResult && isTestingConnection) {
+    pillState = 'running';
+  } else if (gateResult?.passed) {
+    pillState = 'pass';
+  } else if (gateFailed) {
+    pillState = 'fail';
+  } else {
+    pillState = 'queued';
+  }
 
   const pillClass = classNames(
     'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
@@ -489,22 +509,29 @@ export function ConnectionGateCard(
     }
   );
 
-  const pillIcon =
-    pillState === 'pass' ? (
+  let pillIcon: JSX.Element | null;
+
+  if (pillState === 'pass') {
+    pillIcon = (
       <IcCheckCircle
-        className="tw:shrink-0 tw:text-utility-success-500"
+        className="tw:shrink-0 tw:text-fg-success-secondary"
         height={12}
         width={12}
       />
-    ) : pillState === 'fail' ? (
+    );
+  } else if (pillState === 'fail') {
+    pillIcon = (
       <IcTcFail
-        className="tw:shrink-0 tw:text-utility-error-600"
+        className="tw:shrink-0 tw:text-fg-error-primary"
         height={12}
         width={12}
       />
-    ) : pillState === 'running' ? (
-      <Loader size="x-small" />
-    ) : null;
+    );
+  } else if (pillState === 'running') {
+    pillIcon = <Loader size="x-small" />;
+  } else {
+    pillIcon = null;
+  }
 
   return (
     <div className={gateCardClass} data-testid="connection-gate-phase">
@@ -532,9 +559,17 @@ export function ConnectionGateCard(
       </button>
       {isGateExpanded && (
         <div className="tw:flex tw:flex-wrap tw:gap-2 tw:px-4 tw:pb-3.5">
-          {GATE_STEPS.map((key) => (
+          {GATE_STEPS.map((key, i) => (
             <span className={pillClass} data-testid="gate-step-pill" key={key}>
-              {pillIcon}
+              {i === 0 && !gateResult && isTestingConnection ? (
+                pillIcon
+              ) : (
+                <IcTcQueued
+                  className="tw:shrink-0 tw:text-utility-gray-300"
+                  height={12}
+                  width={12}
+                />
+              )}
               {t(key)}
             </span>
           ))}
@@ -556,7 +591,6 @@ export function ConnectionCapabilitySection(
     ) => TestConnectionStepResult | undefined;
     isTestingConnection: boolean;
     setExpandedStepName: Dispatch<SetStateAction<string | undefined>>;
-    setHasUserCollapsedSteps: Dispatch<SetStateAction<boolean>>;
     t: TranslateFn;
   }>
 ) {
@@ -569,7 +603,6 @@ export function ConnectionCapabilitySection(
     getConnectionStepResult,
     isTestingConnection,
     setExpandedStepName,
-    setHasUserCollapsedSteps,
     t,
   } = props;
 
@@ -583,17 +616,25 @@ export function ConnectionCapabilitySection(
     <div
       className="tw:flex tw:flex-col tw:gap-2"
       data-testid="capability-checks-phase">
-      <div className="tw:flex tw:items-center tw:justify-between tw:text-xs tw:font-bold tw:uppercase tw:leading-4 tw:tracking-[0.04em] tw:text-quaternary">
-        <span>{t('label.capability-check-plural')}</span>
+      <Box align="center" justify="between">
+        <Typography
+          className="tw:tracking-[0.04em] tw:text-quaternary tw:uppercase"
+          size="text-xs"
+          weight="semibold">
+          {t('label.capability-check-plural')}
+        </Typography>
         {showFraction ? (
-          <span>
+          <Typography
+            className="tw:text-tertiary"
+            size="text-xs"
+            weight="medium">
             {t('message.test-connection-checks-fraction', {
               passed: capabilitySteps.filter(
                 (step) => getConnectionStepResult(step)?.passed
               ).length,
               total: capabilitySteps.length,
             })}
-          </span>
+          </Typography>
         ) : (
           connectionFailed && (
             <span className="tw:normal-case tw:font-normal tw:tracking-normal">
@@ -601,7 +642,7 @@ export function ConnectionCapabilitySection(
             </span>
           )
         )}
-      </div>
+      </Box>
       <Accordion>
         {capabilitySteps.map((step) => {
           const result = getConnectionStepResult(step);
@@ -620,10 +661,7 @@ export function ConnectionCapabilitySection(
           const requiredLabel = t('label.required');
 
           const toggle = () => {
-            const willCollapse = isExpanded;
-
-            setHasUserCollapsedSteps(willCollapse);
-            setExpandedStepName(willCollapse ? undefined : step.name);
+            setExpandedStepName(isExpanded ? undefined : step.name);
           };
 
           const resultTextClass = classNames(
@@ -635,6 +673,14 @@ export function ConnectionCapabilitySection(
               'tw:min-w-[210px] tw:text-quaternary': state === 'skipped',
             }
           );
+
+          const containsLogs =
+            !isEmpty(result?.executedCommand) ||
+            !isEmpty(result?.resultSummary) ||
+            !isEmpty(result?.message) ||
+            !isEmpty(result?.errorLog);
+
+          const showContent = canExpand && isExpanded && result && containsLogs;
 
           return (
             <AccordionItem
@@ -667,18 +713,20 @@ export function ConnectionCapabilitySection(
                       <span className="tw:overflow-hidden tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary tw:text-ellipsis tw:whitespace-nowrap">
                         {label}
                       </span>
-                      <span className="tw:inline-flex tw:h-6 tw:shrink-0 tw:items-center tw:rounded tw:bg-gray-50 tw:px-2 tw:text-xs tw:font-medium tw:leading-4 tw:text-quaternary">
+                      <Badge
+                        bordered={false}
+                        className="tw:font-medium tw:text-tertiary tw:border-0"
+                        size="sm"
+                        type="color">
                         {step.name}
-                      </span>
+                      </Badge>
                       {step.mandatory && (
-                        <span
-                          className={classNames(
-                            'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border',
-                            'tw:border-utility-brand-200 tw:bg-utility-brand-50 tw:px-2',
-                            'tw:text-xs tw:font-medium tw:uppercase tw:leading-4 tw:text-utility-brand-700'
-                          )}>
+                        <Badge
+                          className="tw:uppercase tw:font-semibold"
+                          color="brand"
+                          size="xs">
                           {requiredLabel}
-                        </span>
+                        </Badge>
                       )}
                     </div>
                   </div>
@@ -687,7 +735,7 @@ export function ConnectionCapabilitySection(
                     {canExpand && (
                       <ChevronRight
                         className={classNames(
-                          'tw:text-gray-400 tw:transition-transform tw:duration-200',
+                          'tw:text-utility-gray-400 tw:transition-transform tw:duration-200',
                           { 'tw:rotate-90': isExpanded }
                         )}
                         size={18}
@@ -696,9 +744,9 @@ export function ConnectionCapabilitySection(
                   </div>
                 </button>
               </h3>
-              {canExpand && isExpanded && result && (
+              {showContent && (
                 <div className="tw:border-t tw:border-border-secondary">
-                  <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[46px] tw:mt-3">
+                  <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[46px] tw:mt-3">
                     {result.executedCommand &&
                       renderColoredLines(
                         `> ${result.executedCommand}`,
@@ -709,10 +757,13 @@ export function ConnectionCapabilitySection(
                         `  ${result.resultSummary || result.message}${
                           result.durationMs ? ` (${result.durationMs} ms)` : ''
                         }`,
-                        'tw:text-success-300'
+                        'tw:text-utility-success-300'
                       )}
                     {result.errorLog &&
-                      renderColoredLines(result.errorLog, 'tw:text-error-300')}
+                      renderColoredLines(
+                        result.errorLog,
+                        'tw:text-utility-error-300'
+                      )}
                   </pre>
                 </div>
               )}
@@ -770,7 +821,7 @@ export function ConnectionRawLogSection(
       </button>
       {showRawLog && (
         <pre
-          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
+          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
           data-testid="raw-connection-log">
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;
@@ -784,29 +835,23 @@ export function ConnectionRawLogSection(
                 ...renderColoredLines(
                   `> ${result.executedCommand}`,
                   'tw:text-brand-300'
-                ).map(
-                  (el, i) =>
-                    ({ ...el, key: `${stepIdx}-cmd-${i}` } as JSX.Element)
-                )
+                ).map((el, i) => ({ ...el, key: `${stepIdx}-cmd-${i}` }))
               );
             }
             if (summary) {
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-success-300'
-                ).map(
-                  (el, i) =>
-                    ({ ...el, key: `${stepIdx}-sum-${i}` } as JSX.Element)
-                )
+                  'tw:text-utility-success-300'
+                ).map((el, i) => ({ ...el, key: `${stepIdx}-sum-${i}` }))
               );
             }
             if (result.errorLog) {
               parts.push(
-                ...renderColoredLines(result.errorLog, 'tw:text-error-300').map(
-                  (el, i) =>
-                    ({ ...el, key: `${stepIdx}-err-${i}` } as JSX.Element)
-                )
+                ...renderColoredLines(
+                  result.errorLog,
+                  'tw:text-utility-error-300'
+                ).map((el, i) => ({ ...el, key: `${stepIdx}-err-${i}` }))
               );
             }
 
@@ -956,7 +1001,7 @@ export function ConnectionRemediationCard(
         </span>
       </div>
       <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap">
-        {renderColoredLines(errorContent, 'tw:text-error-300')}
+        {renderColoredLines(errorContent, 'tw:text-utility-error-300')}
       </pre>
     </div>
   );

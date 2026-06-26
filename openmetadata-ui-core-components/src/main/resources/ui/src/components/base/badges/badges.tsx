@@ -106,17 +106,17 @@ const addonOnlyColors = Object.fromEntries(
 const withPillTypes = {
   [badgeTypes.pillColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full',
     styles: filledColors,
   },
   [badgeTypes.badgeColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md',
     styles: filledColors,
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:shadow-xs',
     styles: {
       gray: {
         root: 'tw:bg-primary tw:text-secondary tw:ring-primary',
@@ -131,17 +131,17 @@ const withPillTypes = {
 const withBadgeTypes = {
   [badgeTypes.pillColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-full',
     styles: filledColors,
   },
   [badgeTypes.badgeColor]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md',
     styles: filledColors,
   },
   [badgeTypes.badgeModern]: {
     common:
-      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:ring-1 tw:ring-inset tw:bg-primary tw:text-secondary tw:ring-primary tw:shadow-xs',
+      'tw:size-max tw:flex tw:items-center tw:whitespace-nowrap tw:rounded-md tw:bg-primary tw:text-secondary tw:ring-primary tw:shadow-xs',
     styles: addonOnlyColors,
   },
 };
@@ -156,6 +156,7 @@ interface BadgeProps<T extends BadgeTypes> {
   color?: BadgeColor<T>;
   children: ReactNode;
   className?: string;
+  bordered?: boolean;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
@@ -187,6 +188,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
+        props.bordered && 'tw:ring-1 tw:ring-inset',
         props.className
       )}>
       {children}
@@ -198,6 +200,7 @@ interface BadgeWithDotProps<T extends BadgeTypes> {
   type?: T;
   size?: Sizes;
   color?: BadgeTypeToColorMap<typeof withBadgeTypes>[T];
+  bordered?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -209,6 +212,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     className,
     children,
   } = props;
@@ -241,6 +245,7 @@ export const BadgeWithDot = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset',
         className
       )}>
       <Dot className={colors.styles[color].addon} size="sm" />
@@ -256,6 +261,7 @@ interface BadgeWithIconProps<T extends BadgeTypes> {
   iconLeading?: IconComponentType;
   iconTrailing?: IconComponentType;
   children: ReactNode;
+  bordered?: boolean;
   className?: string;
 }
 
@@ -266,6 +272,7 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     iconLeading: IconLeading,
     iconTrailing: IconTrailing,
     children,
@@ -337,6 +344,7 @@ export const BadgeWithIcon = <T extends BadgeTypes>(
         colors.common,
         sizes[type][size][icon],
         colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset',
         className
       )}>
       {IconLeading && (
@@ -359,6 +367,7 @@ interface BadgeWithFlagProps<T extends BadgeTypes> {
   size?: Sizes;
   flag?: FlagTypes;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
 }
 
@@ -370,6 +379,7 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
     color = 'gray',
     flag = 'AU',
     type = 'pill-color',
+    bordered = true,
     children,
   } = props;
 
@@ -399,7 +409,8 @@ export const BadgeWithFlag = <T extends BadgeTypes>(
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset'
       )}>
       <img
         alt={`${flag} flag`}
@@ -416,6 +427,7 @@ interface BadgeWithImageProps<T extends BadgeTypes> {
   size?: Sizes;
   imgSrc: string;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
 }
 
@@ -426,6 +438,7 @@ export const BadgeWithImage = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     imgSrc,
     children,
   } = props;
@@ -456,10 +469,11 @@ export const BadgeWithImage = <T extends BadgeTypes>(
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset'
       )}>
       <img
-        alt="Badge image"
+        alt="Badge"
         className="tw:size-4 tw:max-w-none tw:rounded-full"
         src={imgSrc}
       />
@@ -473,6 +487,7 @@ interface BadgeWithButtonProps<T extends BadgeTypes> {
   size?: Sizes;
   icon?: IconComponentType;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children: ReactNode;
   /**
    * The label for the button.
@@ -499,6 +514,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     icon: Icon = CloseX,
     buttonLabel,
     children,
@@ -532,7 +548,8 @@ export const BadgeWithButton = <T extends BadgeTypes>(
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset'
       )}>
       {children}
       <button
@@ -560,6 +577,7 @@ interface BadgeIconProps<T extends BadgeTypes> {
   size?: Sizes;
   icon: IconComponentType;
   color?: BadgeTypeToColorMap<typeof withPillTypes>[T];
+  bordered?: boolean;
   children?: ReactNode;
 }
 
@@ -568,6 +586,7 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
     size = 'md',
     color = 'gray',
     type = 'pill-color',
+    bordered = true,
     icon: Icon,
   } = props;
 
@@ -598,7 +617,8 @@ export const BadgeIcon = <T extends BadgeTypes>(props: BadgeIconProps<T>) => {
       className={cx(
         colors.common,
         sizes[type][size],
-        colors.styles[color].root
+        colors.styles[color].root,
+        bordered && 'tw:ring-1 tw:ring-inset'
       )}>
       <Icon
         className={cx('tw:size-3 tw:stroke-[3px]', colors.styles[color].addon)}
