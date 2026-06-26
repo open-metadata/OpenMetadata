@@ -14,6 +14,7 @@
     },
     "detection": {
       "source": "SSOLogs",
+      "detectedAt": 1782259200000,
       "sourceDetails": "Detected from SSO logs",
       "suspectedTeam": "Legal",
       "volume7d": "~120 sessions / 7d",

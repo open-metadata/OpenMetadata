@@ -14,6 +14,7 @@
     },
     "detection": {
       "source": "ConnectorAudit",
+      "detectedAt": 1781740800000,
       "sourceDetails": "New deploy · marketing org",
       "suspectedUser": "admin@",
       "suspectedTeam": "Salesforce admins",

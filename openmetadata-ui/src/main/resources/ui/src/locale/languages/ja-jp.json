@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "毎回実行するようにスケジュール設定",
     "schedule-type": "スケジュールタイプ",
     "scheduled": "スケジュール済み",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "スキーマ",
     "schema-definition": "スキーマ定義",
     "schema-field": "スキーマフィールド",

@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "排程每",
     "schedule-type": "排程類型",
     "scheduled": "已排程",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "結構",
     "schema-definition": "結構定義",
     "schema-field": "結構欄位",

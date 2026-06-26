@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "运行时间被设置为每",
     "schedule-type": "时间表类型",
     "scheduled": "已计划",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "数据模式",
     "schema-definition": "数据模式定义",
     "schema-field": "数据模式字段",

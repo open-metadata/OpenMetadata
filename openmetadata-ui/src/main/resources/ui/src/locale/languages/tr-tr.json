@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "Her defasında çalışacak şekilde zamanlandı",
     "schedule-type": "Zamanlama Türü",
     "scheduled": "Zamanlanmış",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Şema",
     "schema-definition": "Şema Tanımı",
     "schema-field": "Şema Alanı",

@@ -128,6 +128,7 @@ public class LLMModelRepository extends EntityRepository<LLMModel> {
     if (llmModel.getService() != null) {
       populateService(llmModel);
     }
+    AIAssetStatusSync.sync(llmModel);
   }
 
   @Override

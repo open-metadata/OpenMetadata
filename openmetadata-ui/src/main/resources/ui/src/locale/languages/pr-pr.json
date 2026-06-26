@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "برنامه‌ریزی برای اجرا در هر",
     "schedule-type": "نوع برنامه‌ریزی",
     "scheduled": "زمان‌بندی‌شده",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "اسکیما",
     "schema-definition": "تعریف اسکیما",
     "schema-field": "فیلد اسکیما",

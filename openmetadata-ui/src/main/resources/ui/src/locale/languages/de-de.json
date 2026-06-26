@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "Zeitplan für die Ausführung alle",
     "schedule-type": "Zeitplan Typ",
     "scheduled": "Geplant",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Schema",
     "schema-definition": "Schemadefinition",
     "schema-field": "Schemafeld",

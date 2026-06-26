@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "กำหนดให้รันทุก",
     "schedule-type": "ประเภทกำหนดการ",
     "scheduled": "ตามกำหนดเวลา",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "สคีมา",
     "schema-definition": "คำจำกัดความของสคีมา",
     "schema-field": "ฟิลด์สคีมา",

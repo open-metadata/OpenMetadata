@@ -15,6 +15,7 @@
     },
     "detection": {
       "source": "OutboundApiTraffic",
+      "detectedAt": 1781136000000,
       "sourceDetails": "api.openai.com from #marketing-eng workspace",
       "suspectedUser": "mark.jensen@",
       "suspectedTeam": "Marketing Eng",

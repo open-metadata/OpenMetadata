@@ -178,12 +178,14 @@ final class GovernanceActivity {
           Long nextReview = numberToLong(record.get("nextReviewDate"));
           if (nextReview != null) {
             String framework = String.valueOf(record.get("framework"));
+            long loggedAt = assessedAt != null ? assessedAt : reviewFallback(governance, entity);
             events.add(
-                event(
+                scheduledEvent(
                     entity,
                     entityType,
                     "NextReviewScheduled",
                     String.format("%s next review scheduled", framework),
+                    loggedAt,
                     nextReview,
                     null));
           }
@@ -204,10 +206,42 @@ final class GovernanceActivity {
     event.put("type", type);
     event.put("text", text);
     event.put("at", at);
+    event.put("createdAt", at);
     if (who != null) {
       event.put("who", who);
     }
     return event;
+  }
+
+  /**
+   * A future-dated event (e.g. a scheduled reassessment). {@code at}/{@code createdAt}
+   * is when the event was logged so the feed sorts chronologically, while
+   * {@code scheduledAt} carries the future date the event refers to.
+   */
+  private static Map<String, Object> scheduledEvent(
+      EntityInterface entity,
+      String entityType,
+      String type,
+      String text,
+      long at,
+      long scheduledAt,
+      Object who) {
+    Map<String, Object> event = event(entity, entityType, type, text, at, who);
+    event.put("scheduledAt", scheduledAt);
+    return event;
+  }
+
+  private static long reviewFallback(Map<String, Object> governance, EntityInterface entity) {
+    Long registeredAt = governance == null ? null : numberToLong(governance.get("registeredAt"));
+    long result;
+    if (registeredAt != null) {
+      result = registeredAt;
+    } else if (entity.getUpdatedAt() != null) {
+      result = entity.getUpdatedAt();
+    } else {
+      result = System.currentTimeMillis();
+    }
+    return result;
   }
 
   private static Map<String, Object> governance(String entityType, Map<String, Object> entityJson) {

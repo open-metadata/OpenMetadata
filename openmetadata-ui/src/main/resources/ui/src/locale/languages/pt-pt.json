@@ -1884,6 +1884,7 @@
     "schedule-to-run-every": "Agendado para executar a cada",
     "schedule-type": "Tipo de Agendamento",
     "scheduled": "Agendado",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Esquema",
     "schema-definition": "Definição do Esquema",
     "schema-field": "Campo do Esquema",

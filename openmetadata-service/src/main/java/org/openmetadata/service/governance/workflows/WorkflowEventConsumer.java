@@ -100,7 +100,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.METRIC,
           Entity.DATA_INSIGHT_CHART,
           Entity.DATA_CONTRACT,
-          Entity.PAGE);
+          Entity.PAGE,
+          Entity.AI_APPLICATION,
+          Entity.LLM_MODEL,
+          Entity.MCP_SERVER);
 
   private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
       new Registry<>(WorkflowEventConsumer::defaultHandler);

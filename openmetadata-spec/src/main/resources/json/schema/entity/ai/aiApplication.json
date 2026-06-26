@@ -556,6 +556,14 @@
       "description": "Votes on the entity",
       "$ref": "../../type/votes.json"
     },
+    "reviewers": {
+      "description": "Risk Council reviewers responsible for approving this AI Application.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Governance approval status of the AI Application.",
+      "$ref": "../../type/status.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"

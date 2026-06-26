@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -389,6 +390,7 @@ public class AIGovernanceResource {
   @SuppressWarnings("unchecked")
   private void applyStatusTransition(
       EntityInterface entity, String newStatus, String user, String comment) {
+    entity.setEntityStatus(mapToEntityStatus(newStatus));
     if (entity instanceof org.openmetadata.schema.entity.ai.LLMModel llm) {
       llm.setGovernanceStatus(mapToGovernanceStatus(newStatus));
       return;
@@ -411,6 +413,24 @@ public class AIGovernanceResource {
       governance.put("approvalComments", comment);
     }
     writeGovernance(entity, governance);
+  }
+
+  private static EntityStatus mapToEntityStatus(String newStatus) {
+    EntityStatus result;
+    switch (newStatus) {
+      case "Approved":
+        result = EntityStatus.APPROVED;
+        break;
+      case "PendingApproval":
+        result = EntityStatus.IN_REVIEW;
+        break;
+      case "Rejected":
+        result = EntityStatus.REJECTED;
+        break;
+      default:
+        result = EntityStatus.DRAFT;
+    }
+    return result;
   }
 
   private static org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus mapToGovernanceStatus(

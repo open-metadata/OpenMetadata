@@ -461,6 +461,14 @@
       "description": "Votes on the entity",
       "$ref": "../../type/votes.json"
     },
+    "reviewers": {
+      "description": "Risk Council reviewers responsible for approving this LLM Model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Governance approval status of the LLM Model.",
+      "$ref": "../../type/status.json"
+    },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
