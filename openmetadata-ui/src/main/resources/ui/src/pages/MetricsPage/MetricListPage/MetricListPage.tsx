@@ -90,7 +90,11 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import {
+  showErrorToast,
+  showSuccessToast,
+  showWarningToast,
+} from '../../../utils/ToastUtils';
 import {
   MetricBulkEditListFilters,
   MetricBulkEditScope,
@@ -155,7 +159,10 @@ const MAX_METRIC_FETCH_PAGES = 50;
 // consistent with pagination (server cursor pagination cannot filter by
 // entityStatus, which left filtered views empty while pagination showed the
 // unfiltered total).
-const getAllMetrics = async (): Promise<Metric[]> => {
+const getAllMetrics = async (): Promise<{
+  metrics: Metric[];
+  isTruncated: boolean;
+}> => {
   const collectedMetrics: Metric[] = [];
   let after: string | undefined;
   let fetchedPages = 0;
@@ -172,7 +179,7 @@ const getAllMetrics = async (): Promise<Metric[]> => {
     fetchedPages += 1;
   } while (after && fetchedPages < MAX_METRIC_FETCH_PAGES);
 
-  return collectedMetrics;
+  return { metrics: collectedMetrics, isTruncated: Boolean(after) };
 };
 
 const MetricListPage = () => {
@@ -210,13 +217,27 @@ const MetricListPage = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
 
+  const applyFetchedMetrics = useCallback(
+    (result: { metrics: Metric[]; isTruncated: boolean }) => {
+      setMetrics(result.metrics);
+      if (result.isTruncated) {
+        showWarningToast(
+          t('message.metric-list-truncated', {
+            count: result.metrics.length,
+          })
+        );
+      }
+    },
+    [t]
+  );
+
   const init = async () => {
     try {
       setLoading(true);
       const permission = await getResourcePermission(ResourceEntity.METRIC);
       setPermission(permission);
       if (permission.ViewAll || permission.ViewBasic) {
-        setMetrics(await getAllMetrics());
+        applyFetchedMetrics(await getAllMetrics());
       }
     } catch (error) {
       const errorMessage = getErrorText(
@@ -235,7 +256,7 @@ const MetricListPage = () => {
   const fetchMetrics = useCallback(async () => {
     try {
       setLoadingMore(true);
-      setMetrics(await getAllMetrics());
+      applyFetchedMetrics(await getAllMetrics());
     } catch (error) {
       const errorMessage = getErrorText(
         error as AxiosError,
@@ -248,7 +269,7 @@ const MetricListPage = () => {
     } finally {
       setLoadingMore(false);
     }
-  }, [t]);
+  }, [applyFetchedMetrics, t]);
 
   const glossaryTerms = useCallback(
     (tags?: TagLabel[]) =>
@@ -442,13 +463,16 @@ const MetricListPage = () => {
       setSelectedMetricIds([]);
       setDeleteConfirmation('');
       setIsDeleteDialogOpen(false);
+      // Deletion can shrink the result set below the current page; return to the
+      // first page so the user never lands on an empty page.
+      handlePageChange(INITIAL_PAGING_VALUE);
       fetchMetrics();
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [fetchMetrics, selectedMetrics, t]);
+  }, [fetchMetrics, handlePageChange, selectedMetrics, t]);
 
   const columns = useMemo(() => {
     const emptyDash = (

@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
 import { getCsvAsyncJobResult } from '../../../rest/csvAPI';
@@ -50,6 +51,10 @@ jest.mock('../../../rest/csvAPI', () => ({
 
 jest.mock('../../../utils/Export/ExportUtils', () => ({
   downloadFile: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 const ConsumerComponent = () => {
@@ -298,5 +303,38 @@ describe('EntityExportModalProvider component', () => {
 
     expect(new Set(triggerIdentityLog).size).toBe(1);
     expect(new Set(showModalIdentityLog).size).toBe(1);
+  });
+
+  it('should call onError when a bulk-edit export fails', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/bulk/edit',
+    });
+    const onError = jest.fn();
+    const onExport = jest
+      .fn()
+      .mockImplementation(() => Promise.reject(new Error('export failed')));
+
+    const FailingConsumer = () => {
+      const { triggerExportForBulkEdit } = useEntityExportModalProvider();
+
+      useEffect(() => {
+        triggerExportForBulkEdit({
+          name: 'g1',
+          onExport,
+          exportTypes: [ExportTypes.CSV],
+          onError,
+        });
+      }, [triggerExportForBulkEdit]);
+
+      return null;
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <FailingConsumer />
+      </EntityExportModalProvider>
+    );
+
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 });

@@ -70,6 +70,7 @@ export type ExportData = {
       recursive?: boolean;
     }
   ) => Promise<CSVExportResponse | string>;
+  onError?: () => void;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;

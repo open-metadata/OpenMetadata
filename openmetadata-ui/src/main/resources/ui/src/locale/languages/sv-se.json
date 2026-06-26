@@ -3344,6 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} har laddats upp och tolkats",
     "metric-configuration-description": "Anpassa fält för att styra mätvärdesbeteende. Du kan lägga till, ta bort, dölja eller inaktivera fält efter behov.",
     "metric-description": "Definiera och katalogisera standardiserade mätvärden i hela din organisation.",
+    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
     "metric-relations-require-glossary-term": "Välj en ordlisteterm för att lägga till relationer.",
     "metric-tags-info": "Mätvärden länkar till ordlisetermer via taggar.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

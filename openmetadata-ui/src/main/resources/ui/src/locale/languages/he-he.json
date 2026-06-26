@@ -3344,6 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} הועלה ונותח בהצלחה",
     "metric-configuration-description": "התאם שדות לשליטה בהתנהגות המדדים. ניתן להוסיף, להסיר, להסתיר או להשבית שדות לפי הצורך.",
     "metric-description": "הגדר וקטלג מדדים תקניים בכל רחבי הארגון שלך.",
+    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
     "metric-relations-require-glossary-term": "בחר מונח מילון להוספת קשרים.",
     "metric-tags-info": "מדדים מקושרים למונחי מילון באמצעות תגיות.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

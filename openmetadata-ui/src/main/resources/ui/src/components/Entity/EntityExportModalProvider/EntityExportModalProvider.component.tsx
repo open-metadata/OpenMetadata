@@ -166,6 +166,7 @@ export const EntityExportModalProvider = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
       setDownloading(false);
+      exportData.onError?.();
     }
   };
 

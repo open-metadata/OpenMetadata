@@ -3344,6 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} has been uploaded and parsed successfully",
     "metric-configuration-description": "Customize fields to control metric behavior. You can add, remove, hide, or disable fields as needed.",
     "metric-description": "Define and catalog standardized metrics across your organization.",
+    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
     "metric-relations-require-glossary-term": "Select a glossary term to add relationships.",
     "metric-tags-info": "Metrics link to glossary terms through tags.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

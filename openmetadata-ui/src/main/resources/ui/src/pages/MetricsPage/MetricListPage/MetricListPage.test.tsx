@@ -126,6 +126,12 @@ jest.mock('../../../rest/metricsAPI', () => ({
   deleteMetricAsync: jest.fn().mockResolvedValue({}),
 }));
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+  showWarningToast: jest.fn(),
+}));
+
 // Mock the empty state placeholder to render a docs link
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -363,5 +369,35 @@ describe('MetricListPage', () => {
 
     expect(screen.getByText('draft_metric_two')).toBeInTheDocument();
     expect(screen.queryByText('approved_metric')).not.toBeInTheDocument();
+  });
+
+  it('warns when the metric list exceeds the fetch cap', async () => {
+    const { getMetrics } = require('../../../rest/metricsAPI');
+    const { showWarningToast } = require('../../../utils/ToastUtils');
+    let page = 0;
+    // Always return another page so the fetch loop hits its page cap.
+    getMetrics.mockImplementation(() => {
+      page += 1;
+
+      return Promise.resolve({
+        data: [
+          {
+            id: `m-${page}`,
+            name: `metric-${page}`,
+            fullyQualifiedName: `m-${page}`,
+            entityStatus: 'Draft',
+          },
+        ],
+        paging: { after: `cursor-${page}` },
+      });
+    });
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(showWarningToast).toHaveBeenCalled());
   });
 });

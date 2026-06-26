@@ -3344,6 +3344,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} успешно загружен и разобран",
     "metric-configuration-description": "Настройте поля для управления поведением метрик. Вы можете добавлять, удалять, скрывать или отключать поля по мере необходимости.",
     "metric-description": "Определите и каталогизируйте стандартизированные метрики в вашей организации.",
+    "metric-list-truncated": "Showing the first {{count}} metrics. Refine your search to see the rest.",
     "metric-relations-require-glossary-term": "Выберите термин глоссария для добавления связей.",
     "metric-tags-info": "Метрики связываются с терминами глоссария через теги.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

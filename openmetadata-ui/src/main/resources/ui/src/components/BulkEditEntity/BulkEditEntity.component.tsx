@@ -249,6 +249,10 @@ const BulkEditEntity = ({
       name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
       exportTypes: [ExportTypes.CSV],
+      onError: () => {
+        // Clear the guard so a failed hydration export can be retried.
+        triggeredExportKeyRef.current = undefined;
+      },
     });
   }, [entityType, fqn, isExportHydrationRequired, triggerExportForBulkEdit]);
 
