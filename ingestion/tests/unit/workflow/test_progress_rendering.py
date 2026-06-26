@@ -109,6 +109,15 @@ class TestProgressReporter:
     def test_payload_root_carries_asset_total(self):
         registry = _snowflake_like_registry()
         payload = ProgressReporter(registry).payload()
+        assert set(payload) == {
+            "label",
+            "entityType",
+            "processed",
+            "expected",
+            "active",
+            "overflow",
+            "children",
+        }
         assert payload["processed"] == registry.assets_ingested()
         assert payload["expected"] is None
 
