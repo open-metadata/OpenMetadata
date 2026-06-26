@@ -498,6 +498,7 @@ export const fillGlossaryRowDetails = async (
   await fillTextInputDetails(page, base64Src);
 
   await moveToNextColumnWithVerification(page);
+  await moveToNextColumnWithVerification(page);
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   if (propertyListName) {
