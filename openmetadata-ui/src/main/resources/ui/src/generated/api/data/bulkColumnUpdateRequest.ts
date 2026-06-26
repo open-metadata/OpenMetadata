@@ -77,17 +77,29 @@ export interface ColumnUpdate {
      */
     columnFQN: string;
     /**
-     * Description of the column.
+     * Description of the column. A blank value is treated as 'no change'; use
+     * 'removeDescription' to clear an existing description.
      */
     description?: string;
     /**
-     * Display Name that identifies this column name.
+     * Display Name that identifies this column name. A blank value is treated as 'no change';
+     * use 'removeDisplayName' to clear an existing display name.
      */
     displayName?: string;
     /**
      * Type of entity containing the column (table or dashboardDataModel).
      */
     entityType: string;
+    /**
+     * Set to true to remove the existing column description. If both 'description' and
+     * 'removeDescription' are provided, 'removeDescription' takes precedence.
+     */
+    removeDescription?: boolean;
+    /**
+     * Set to true to remove the existing column display name. If both 'displayName' and
+     * 'removeDisplayName' are provided, 'removeDisplayName' takes precedence.
+     */
+    removeDisplayName?: boolean;
     /**
      * Tags and glossary terms associated with the column. Provide an empty array to remove all
      * tags.
