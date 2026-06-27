@@ -523,7 +523,7 @@ describe('LineageTable', () => {
 
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const upstreamButton = screen.getByRole('button', {
+    const upstreamButton = screen.getByRole('radio', {
       name: /label.upstream/,
     });
     fireEvent.click(upstreamButton);

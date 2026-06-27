@@ -129,14 +129,12 @@ const LineageControlButtons: FC<{
       size="sm"
       onSelectionChange={() => void 0}>
       <Dropdown.Root>
-        <Tooltip placement="top" title={t('label.lineage-view-option-plural')}>
-          <ButtonGroupItem
-            aria-label={t('label.lineage-view-option-plural')}
-            data-testid="fit-screen"
-            iconLeading={FitViewOptionsIcon as FC<{ className?: string }>}
-            id="fit-view"
-          />
-        </Tooltip>
+        <ButtonGroupItem
+          aria-label={t('label.lineage-view-option-plural')}
+          data-testid="fit-screen"
+          iconLeading={FitViewOptionsIcon as FC<{ className?: string }>}
+          id="fit-view"
+        />
         <Dropdown.Popover>
           <Dropdown.Menu
             aria-label={t('label.lineage-view-option-plural')}
