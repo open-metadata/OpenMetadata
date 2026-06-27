@@ -30,7 +30,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
-import './knowledge-page.less';
+
 interface KnowledgePageDetailRightPanelProps {
   permissions: OperationPermission;
   tags: Array<EntityTags>;

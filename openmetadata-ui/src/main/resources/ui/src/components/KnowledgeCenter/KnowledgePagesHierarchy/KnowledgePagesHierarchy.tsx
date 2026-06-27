@@ -713,8 +713,10 @@ const KnowledgePagesHierarchy = forwardRef<
 
     return (
       <Card
+        aria-label={t('label.article-plural')}
         className="tw:h-full tw:flex tw:flex-col tw:p-5 tw:overflow-auto"
         data-testid="knowledge-pages-hierarchy-container"
+        role="region"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           if (!permissions.EditAll) {
