@@ -126,7 +126,7 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
 }));
 

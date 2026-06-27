@@ -88,19 +88,31 @@ test.describe(
         // Navigate to Test Library
         await page.goto('/test-library');
 
+        const testDefinitionFormDoc = page.waitForResponse(
+          '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
+        );
+
         // Click add button
         await page.getByTestId('add-test-definition-button').click();
 
         // Wait for drawer to open
         await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+        await testDefinitionFormDoc;
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
           'Add Test Definition'
         );
 
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toBeVisible();
+
         // Fill in form fields
         await page.locator('#name').fill(TEST_DEFINITION_NAME);
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toContainText('Name');
         await page.locator('#displayName').fill(TEST_DEFINITION_DISPLAY_NAME);
         await page.locator('#description').fill(TEST_DEFINITION_DESCRIPTION);
 

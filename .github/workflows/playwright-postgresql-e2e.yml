@@ -47,13 +47,25 @@ jobs:
         with:
           filters: |
             e2e:
-              - '**'
-              - '!.github/**'
-              - '!openmetadata-dist/**'
-              - '!docker/**'
-              - '!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**'
-              - '!openmetadata-ui/src/main/resources/ui/playwright/docs/**'
-              - '!openmetadata-ui/src/main/resources/ui/scripts/**'
+              - 'openmetadata-service/**'
+              - 'openmetadata-ui/**'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-integration-tests/**'
+              - 'ingestion/**'
+              - 'bootstrap/**'
+              - 'conf/**'
+              - 'docker/development/**'
+              - 'openmetadata-clients/**'
+              - 'openmetadata-airflow-apis/**'
+              - 'openmetadata-mcp/**'
+              - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-ui-core-components/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'common/**'
+              - 'openspec/**'
+              - 'pom.xml'
+              - 'Makefile'
             docker-compose:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
@@ -398,10 +410,19 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // No relevant changes — skip gracefully so the required check passes
             const upstreamResult = '${{ needs.playwright-ci-postgresql.result }}';
             if (upstreamResult === 'skipped') {
-              console.log('Playwright E2E tests not required for this PR (no relevant changes).');
+              // Distinguish the two reasons build/playwright can be skipped:
+              // 1. A non-"safe to test" label was added — build skips intentionally for fork security.
+              //    Tests will run once "safe to test" is applied or code is pushed.
+              // 2. No relevant paths changed — nothing to test.
+              const eventAction = context.payload.action;
+              const labelName   = context.payload.label?.name ?? '';
+              if (eventAction === 'labeled' && labelName !== 'safe to test') {
+                console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
+              } else {
+                console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
+              }
               return;
             }
             if (upstreamResult === 'cancelled') {

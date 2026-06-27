@@ -507,7 +507,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   getManageExtraOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Entity not found'),
 }));
 

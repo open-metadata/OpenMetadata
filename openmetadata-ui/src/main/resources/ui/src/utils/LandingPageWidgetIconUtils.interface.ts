@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-export {
-  CONTEXT_CENTER_DOCUMENTS_ENTITY_LINK,
-  CONTEXT_CENTER_DOCUMENTS_FQN,
-  createArticleKnowledgePage,
-  fetchContextCenterDocuments,
-  formatBytes,
-  handleAssetDownload,
-  knowledgePageToArticleItem,
-} from './ContextCenterPureUtils';
+export interface LandingPageWidgetIconSource {
+  name?: string;
+  entityType?: string;
+  type?: string;
+  serviceType?: string;
+}
