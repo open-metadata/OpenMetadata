@@ -1071,8 +1071,7 @@ public class SearchRepository {
    * {@code service.id} / {@code database.id} / {@code databaseSchema.id}, so delete by whichever
    * ancestor the deleted entity is.
    */
-  private void deleteDescendantColumns(EntityInterface entity, String entityType)
-      throws IOException {
+  private void deleteDescendantColumns(EntityInterface entity, String entityType) {
     String columnParentField =
         switch (entityType) {
           case Entity.DATABASE_SERVICE -> SERVICE_ID;
@@ -1083,9 +1082,21 @@ public class SearchRepository {
     if (columnParentField != null) {
       IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
       if (columnIndexMapping != null) {
-        searchClient.deleteEntityByFields(
-            List.of(getWriteIndexName(columnIndexMapping)),
-            List.of(new ImmutablePair<>(columnParentField, entity.getId().toString())));
+        try {
+          searchClient.deleteEntityByFields(
+              List.of(getWriteIndexName(columnIndexMapping)),
+              List.of(new ImmutablePair<>(columnParentField, entity.getId().toString())));
+        } catch (Exception e) {
+          LOG.error(
+              "Issue deleting descendant columns for {} [{}]: {}",
+              entityType,
+              entity.getFullyQualifiedName(),
+              e.getMessage());
+          if (e instanceof RuntimeException re) {
+            throw re;
+          }
+          throw new RuntimeException(e);
+        }
       }
     }
   }
