@@ -14,12 +14,12 @@ import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isUndefined } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
-import CustomizeGlossaryTermDetailPage from '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage';
 import CustomizeMyData from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData';
 import {
   GlobalSettingOptions,
@@ -53,6 +53,15 @@ import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomain
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
+
+const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage'
+      )
+  )
+);
 
 export const CustomizablePage = () => {
   const { pageFqn } = useRequiredParams<{ pageFqn: string }>();

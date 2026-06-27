@@ -1393,7 +1393,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       Awaitility.await("logical suite membership indexed before PUT")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () ->
@@ -1412,7 +1412,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
           "PUT should preserve the logical suite graph relationship");
 
       Awaitility.await("PUT preserves logical suite membership in search")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {

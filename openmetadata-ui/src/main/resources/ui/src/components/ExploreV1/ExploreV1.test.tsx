@@ -19,10 +19,8 @@ import {
   within,
 } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  exportSearchResultsCsvStream,
-  searchQuery,
-} from '../../rest/searchAPI';
+import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
+import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
@@ -164,6 +162,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
+  Edit05: () => <span data-testid="edit-05-icon" />,
   FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
   Trash01: () => <span data-testid="trash-icon" />,
   XCircle: () => <span data-testid="x-circle-icon" />,
@@ -171,9 +170,9 @@ jest.mock('@untitledui/icons', () => ({
 }));
 
 jest.mock('../../rest/searchAPI', () => ({
-  exportSearchResultsCsvStream: jest
+  exportSearchResultsAsync: jest
     .fn()
-    .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+    .mockResolvedValue({ jobId: '1', message: 'Export initiated' }),
   searchQuery: jest.fn().mockResolvedValue({
     hits: { total: { value: 100 }, hits: [] },
   }),
@@ -435,12 +434,19 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetAllFilters: jest.fn(),
+    }));
     (searchQuery as jest.Mock).mockResolvedValue({
       hits: { total: { value: 100 }, hits: [] },
     });
-    (exportSearchResultsCsvStream as jest.Mock).mockResolvedValue(
-      new Blob([''], { type: 'text/csv' })
-    );
+    (exportSearchResultsAsync as jest.Mock).mockResolvedValue({
+      jobId: '1',
+      message: 'Export initiated',
+    });
   });
 
   it('renders component without errors', async () => {
@@ -455,7 +461,7 @@ describe('ExploreV1', () => {
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
   });
 
-  it('renders the toolbar Clear All (clear-filters) when a browse filter is active', () => {
+  it('uses the query-panel Clear action when a browse filter is active', () => {
     render(
       <ExploreV1
         {...props}
@@ -470,7 +476,25 @@ describe('ExploreV1', () => {
       { wrapper: Wrapper }
     );
 
-    expect(screen.getByTestId('clear-filters')).toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
+  });
+
+  it('shows query-panel Clear for an advanced-search-only filter', () => {
+    const onResetAllFilters = jest.fn();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: 'serviceType = BigQuery',
+      queryFilter: { query: { bool: { must: [] } } },
+      onResetAllFilters,
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByTestId('clear-all-chips'));
+
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(onResetAllFilters).toHaveBeenCalledTimes(1);
   });
 
   it('changes sort order when sort button is clicked', () => {
@@ -491,7 +515,7 @@ describe('ExploreV1', () => {
 
   it('shows inline export error in modal and keeps modal open on export failure', async () => {
     const errorMessage = 'Export failed due to a server error.';
-    (exportSearchResultsCsvStream as jest.Mock).mockRejectedValueOnce({
+    (exportSearchResultsAsync as jest.Mock).mockRejectedValueOnce({
       response: {
         data: errorMessage,
       },
