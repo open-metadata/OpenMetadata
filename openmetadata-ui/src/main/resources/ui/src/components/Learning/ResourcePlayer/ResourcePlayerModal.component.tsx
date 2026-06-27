@@ -42,8 +42,8 @@ const FULLSCREEN_CONTAINER_ID = 'resource-player-fullscreen';
 
 const FULLSCREEN_PLAYER_CLASS = [
   'tw:flex-1 tw:min-h-0',
-  'tw:[&>*]:size-full tw:[&>*]:p-4',
-  'tw:[&>*>*]:size-full tw:[&>*>*]:max-h-none tw:[&>*>*]:max-w-none',
+  'tw:[&>*]:size-full! tw:[&>*]:p-4!',
+  'tw:[&>*>*]:size-full! tw:[&>*>*]:max-h-none! tw:[&>*>*]:max-w-none! tw:[&>*>*]:aspect-auto!',
 ].join(' ');
 
 export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
