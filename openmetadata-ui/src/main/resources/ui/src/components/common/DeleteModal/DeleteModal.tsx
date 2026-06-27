@@ -52,7 +52,7 @@ export const DeleteModal = ({
             <div
               className="tw:flex tw:flex-col tw:gap-0.5 tw:mt-4"
               data-testid="modal-header">
-              <Typography size="text-md" weight="semibold">
+              <Typography ellipsis size="text-md" weight="semibold">
                 {t('label.delete')} {entityTitle}
               </Typography>
               <Typography as="p" className="tw:text-tertiary">
