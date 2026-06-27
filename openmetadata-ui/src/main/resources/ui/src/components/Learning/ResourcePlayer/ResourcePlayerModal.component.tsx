@@ -12,25 +12,39 @@
  */
 
 import {
+  Badge,
   Box,
+  ButtonUtility,
   Dialog,
-  IconButton,
-  Tooltip,
+  Modal,
+  ModalOverlay,
   Typography,
-  useTheme,
-} from '@mui/material';
+} from '@openmetadata/ui-core-components';
 import { Maximize01, Minimize01, XClose } from '@untitledui/icons';
+import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
-import { LEARNING_CATEGORIES } from '../Learning.interface';
+import {
+  CATEGORY_BADGE_COLORS,
+  LEARNING_CATEGORIES,
+  ResourceCategory,
+} from '../Learning.interface';
 import { ArticleViewer } from './ArticleViewer.component';
 import { ResourcePlayerModalProps } from './ResourcePlayerModal.interface';
 import { StorylaneTour } from './StorylaneTour.component';
 import { VideoPlayer } from './VideoPlayer.component';
+
+const FULLSCREEN_CONTAINER_ID = 'resource-player-fullscreen';
+
+const FULLSCREEN_PLAYER_CLASS = [
+  'tw:flex-1 tw:min-h-0',
+  'tw:[&>*]:size-full tw:[&>*]:p-4',
+  'tw:[&>*>*]:size-full tw:[&>*>*]:max-h-none tw:[&>*>*]:max-w-none',
+].join(' ');
 
 export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
@@ -38,8 +52,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const fullscreenRef = useRef<HTMLDivElement>(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fetchedResource, setFetchedResource] =
     useState<LearningResource | null>(null);
@@ -68,32 +80,21 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
     ? DateTime.fromMillis(displayResource.updatedAt).toFormat('LLL d, yyyy')
     : null;
 
-  const categoryTags =
-    !displayResource.categories || displayResource.categories.length === 0
-      ? []
-      : displayResource.categories;
-
-  const contextItems =
-    !displayResource.contexts || displayResource.contexts.length === 0
-      ? []
-      : displayResource.contexts;
+  const categoryTags = displayResource.categories ?? [];
+  const contextItems = displayResource.contexts ?? [];
 
   const getContextLabel = (pageId: string) =>
     PAGE_IDS.find((c) => c.value === pageId)?.label ?? pageId;
 
-  const getCategoryColors = (category: string) => {
-    const info =
-      LEARNING_CATEGORIES[category as keyof typeof LEARNING_CATEGORIES];
+  const getCategoryLabel = (category: string) =>
+    LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
 
-    return {
-      bgColor: info?.bgColor ?? '#f8f9fc',
-      borderColor: info?.borderColor ?? '#d5d9eb',
-      color: info?.color ?? '#363f72',
-    };
-  };
+  const getCategoryColor = (category: string) =>
+    CATEGORY_BADGE_COLORS[category as ResourceCategory] ?? 'gray';
 
   const handleFullScreenToggle = async () => {
-    if (!fullscreenRef.current) {
+    const element = document.getElementById(FULLSCREEN_CONTAINER_ID);
+    if (!element) {
       return;
     }
     try {
@@ -101,7 +102,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         await document.exitFullscreen();
         setIsFullScreen(false);
       } else {
-        await fullscreenRef.current.requestFullscreen();
+        await element.requestFullscreen();
         setIsFullScreen(true);
       }
     } catch {
@@ -134,294 +135,164 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
       default:
-        return <div>{t('message.unsupported-resource-type')}</div>;
+        return (
+          <Typography as="span" className="tw:p-4" size="text-sm">
+            {t('message.unsupported-resource-type')}
+          </Typography>
+        );
     }
   };
 
   return (
-    <Dialog
-      PaperProps={{
-        sx: {
-          borderRadius: 1.5,
-          maxWidth: 1143,
-          overflow: 'hidden',
-          padding: 0,
-        },
-      }}
-      maxWidth={false}
-      open={open}
-      slotProps={{
-        backdrop: { sx: { backgroundColor: 'rgba(0,0,0,0.5)' } },
-      }}
-      onClose={onClose}>
-      <Box
-        ref={fullscreenRef}
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-          maxHeight: isFullScreen ? undefined : '90vh',
-          overflow: isFullScreen ? 'hidden' : 'auto',
-          '&:fullscreen': {
-            backgroundColor: theme.palette.allShades?.gray?.[100],
-            borderRadius: 0,
-            height: '100vh',
-            width: '100vw',
-            maxHeight: 'none',
-            overflow: 'hidden',
-          },
-        }}>
-        <Box
-          sx={{
-            borderBottom: '1px solid',
-            borderColor: theme.palette.allShades?.gray?.[200],
-            display: 'flex',
-            flexDirection: 'column',
-            padding: theme.spacing(3, 6),
-            ...(isFullScreen && { flexShrink: 0 }),
-          }}>
+    <ModalOverlay
+      isDismissable
+      isOpen={open}
+      onOpenChange={(isOpenState) => {
+        if (!isOpenState) {
+          onClose();
+        }
+      }}>
+      <Modal>
+        <Dialog width={1143}>
           <Box
-            sx={{
-              alignItems: 'flex-start',
-              display: 'flex',
-              gap: 2,
-              justifyContent: 'space-between',
-            }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                component="div"
-                fontWeight={600}
-                sx={{
-                  color: theme.palette.allShades?.gray?.[900],
-                  display: 'block',
-                  fontSize: theme.typography.body1.fontSize,
-                  lineHeight: theme.typography.body1.lineHeight,
-                  marginBottom: theme.spacing(0.5),
-                  overflowWrap: 'break-word',
-                  wordBreak: 'break-word',
-                }}>
-                {displayResource.displayName || displayResource.name}
-              </Typography>
-
-              {displayResource.description && (
-                <Typography
-                  aria-label={displayResource.description}
-                  component="div"
-                  sx={{
-                    color: theme.palette.allShades?.gray?.[600],
-                    fontSize: theme.typography.pxToRem(13),
-                    lineHeight: theme.typography.body2.lineHeight,
-                    paddingTop: theme.spacing(3),
-                  }}>
-                  {displayResource.description}
-                </Typography>
+            className={classNames(
+              'tw:flex tw:flex-col tw:min-h-0',
+              isFullScreen
+                ? 'tw:h-screen tw:w-screen tw:overflow-hidden tw:bg-tertiary'
+                : 'tw:max-h-[90vh] tw:overflow-auto'
+            )}
+            direction="col"
+            id={FULLSCREEN_CONTAINER_ID}>
+            <Box
+              className={classNames(
+                'tw:border-b tw:border-secondary tw:px-6 tw:py-3',
+                isFullScreen && 'tw:shrink-0'
               )}
+              direction="col">
+              <Box align="start" className="tw:justify-between" gap={2}>
+                <Box className="tw:flex-1 tw:min-w-0" direction="col">
+                  <Typography
+                    className="tw:text-primary tw:break-words"
+                    size="text-md"
+                    weight="semibold">
+                    {displayResource.displayName || displayResource.name}
+                  </Typography>
+
+                  {displayResource.description && (
+                    <Typography
+                      aria-label={displayResource.description}
+                      className="tw:pt-6 tw:text-[13px] tw:text-tertiary"
+                      size="text-sm">
+                      {displayResource.description}
+                    </Typography>
+                  )}
+
+                  {categoryTags.length > 0 && (
+                    <Box className="tw:flex-wrap tw:gap-1.5 tw:pt-3">
+                      {categoryTags.map((category) => (
+                        <Badge
+                          color={getCategoryColor(category)}
+                          key={category}
+                          size="sm"
+                          type="color">
+                          {getCategoryLabel(category)}
+                        </Badge>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+
+                <Box align="center" className="tw:shrink-0" gap={1}>
+                  <ButtonUtility
+                    aria-label={
+                      isFullScreen
+                        ? t('label.exit-full-screen')
+                        : t('label.fullscreen')
+                    }
+                    color="tertiary"
+                    data-testid={
+                      isFullScreen ? 'minimize-button' : 'maximize-button'
+                    }
+                    icon={isFullScreen ? Minimize01 : Maximize01}
+                    size="xs"
+                    tooltip={
+                      isFullScreen
+                        ? t('label.exit-full-screen')
+                        : t('label.fullscreen')
+                    }
+                    onClick={handleFullScreenToggle}
+                  />
+                  <ButtonUtility
+                    aria-label={t('label.close')}
+                    color="tertiary"
+                    data-testid="close-resource-player"
+                    icon={XClose}
+                    size="xs"
+                    onClick={onClose}
+                  />
+                </Box>
+              </Box>
 
               <Box
-                sx={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: theme.spacing(1.5),
-                  paddingTop: theme.spacing(3),
-                }}>
-                {categoryTags.map((category) => {
-                  const colors = getCategoryColors(category);
-
-                  return (
-                    <Box
-                      component="span"
-                      key={category}
-                      sx={{
-                        margin: 0,
-                        fontSize: theme.typography.caption.fontSize,
-                        lineHeight: 1.5,
-                        padding: theme.spacing(0.25, 0.75),
-                        borderRadius: theme.spacing(0.75),
-                        fontWeight: theme.typography.fontWeightMedium,
-                        borderWidth: 1,
-                        borderStyle: 'solid',
-                        backgroundColor: colors.bgColor,
-                        borderColor: colors.borderColor,
-                        color: colors.color,
-                        flexShrink: 1,
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                      {LEARNING_CATEGORIES[
-                        category as keyof typeof LEARNING_CATEGORIES
-                      ]?.label ?? category}
+                align="center"
+                className="tw:flex-wrap tw:justify-between tw:gap-1.5 tw:pt-3">
+                <Box className="tw:flex-1 tw:min-w-0">
+                  {contextItems.length > 0 && (
+                    <Box className="tw:flex-wrap tw:gap-2">
+                      {contextItems.map((ctx, idx) => (
+                        <Badge
+                          color="gray"
+                          key={`${ctx.pageId}-${idx}`}
+                          size="sm"
+                          type="color">
+                          {getContextLabel(ctx.pageId)}
+                        </Badge>
+                      ))}
                     </Box>
-                  );
-                })}
+                  )}
+                </Box>
+                {(formattedDate || formattedDuration) && (
+                  <Box align="center" className="tw:shrink-0 tw:gap-1">
+                    {formattedDate && (
+                      <Typography
+                        as="span"
+                        className="tw:text-tertiary"
+                        size="text-xs">
+                        {formattedDate}
+                      </Typography>
+                    )}
+                    {formattedDate && formattedDuration && (
+                      <Typography
+                        as="span"
+                        className="tw:text-quaternary"
+                        size="text-xs">
+                        |
+                      </Typography>
+                    )}
+                    {formattedDuration && (
+                      <Typography
+                        as="span"
+                        className="tw:text-quaternary"
+                        size="text-xs">
+                        {formattedDuration}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </Box>
             </Box>
 
             <Box
-              sx={{
-                alignItems: 'center',
-                display: 'flex',
-                flexShrink: 0,
-                gap: 1,
-              }}>
-              <Tooltip
-                title={
-                  isFullScreen
-                    ? t('label.exit-full-screen')
-                    : t('label.fullscreen')
-                }>
-                <IconButton
-                  color="inherit"
-                  data-testid={
-                    isFullScreen ? 'minimize-button' : 'maximize-button'
-                  }
-                  sx={{
-                    color: theme.palette.allShades?.gray?.[600],
-                    '&:hover': {
-                      color: theme.palette.allShades?.gray?.[700],
-                    },
-                    '& svg': {
-                      height: 16,
-                      width: 16,
-                    },
-                  }}
-                  onClick={handleFullScreenToggle}>
-                  {isFullScreen ? <Minimize01 /> : <Maximize01 />}
-                </IconButton>
-              </Tooltip>
-              <IconButton
-                aria-label={t('label.close')}
-                color="inherit"
-                data-testid="close-resource-player"
-                sx={{
-                  color: theme.palette.allShades?.gray?.[600],
-                  '&:hover': {
-                    color: theme.palette.allShades?.gray?.[700],
-                  },
-                  '& svg': {
-                    height: 16,
-                    width: 16,
-                  },
-                }}
-                onClick={onClose}>
-                <XClose />
-              </IconButton>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              alignItems: 'center',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: theme.spacing(1.5),
-              justifyContent: 'space-between',
-              paddingTop: theme.spacing(3),
-            }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {contextItems.length > 0 && (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: theme.spacing(1),
-                  }}>
-                  {contextItems.map((ctx, idx) => (
-                    <Box
-                      component="span"
-                      key={`${ctx.pageId}-${idx}`}
-                      sx={{
-                        backgroundColor: theme.palette.grey[50],
-                        border: `1px solid ${theme.palette.grey[200]}`,
-                        borderRadius: theme.spacing(0.75),
-                        color: theme.palette.grey[700],
-                        fontSize: theme.typography.caption.fontSize,
-                        fontWeight: theme.typography.fontWeightMedium,
-                        padding: theme.spacing(0.25, 0.75),
-                        flexShrink: 1,
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}>
-                      {getContextLabel(ctx.pageId)}
-                    </Box>
-                  ))}
-                </Box>
+              className={classNames(
+                'tw:w-full tw:bg-tertiary',
+                isFullScreen && FULLSCREEN_PLAYER_CLASS
               )}
+              direction="col">
+              {renderPlayer()}
             </Box>
-            {(formattedDate || formattedDuration) && (
-              <Box
-                sx={{
-                  alignItems: 'center',
-                  display: 'flex',
-                  flexShrink: 0,
-                  gap: 0.5,
-                }}>
-                {formattedDate && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[600],
-                      fontSize: theme.typography.caption.fontSize,
-                    }}>
-                    {formattedDate}
-                  </Typography>
-                )}
-                {formattedDate && formattedDuration && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[400],
-                      fontSize: theme.typography.caption.fontSize,
-                      px: theme.spacing(0.875),
-                    }}>
-                    |
-                  </Typography>
-                )}
-                {formattedDuration && (
-                  <Typography
-                    component="span"
-                    sx={{
-                      color: theme.palette.allShades?.gray?.[500],
-                      fontSize: theme.typography.caption.fontSize,
-                    }}>
-                    {formattedDuration}
-                  </Typography>
-                )}
-              </Box>
-            )}
           </Box>
-        </Box>
-
-        <Box
-          sx={{
-            backgroundColor: theme.palette.allShades?.gray?.[100],
-            width: '100%',
-            flex: isFullScreen ? 1 : undefined,
-            minHeight: isFullScreen ? 0 : undefined,
-            '& .video-player-wrapper, & .storylane-tour-wrapper, & .article-viewer-wrapper':
-              isFullScreen ? { height: '100%', padding: 2, width: '100%' } : {},
-            '& .video-player-container, & .storylane-tour-container':
-              isFullScreen
-                ? {
-                    aspectRatio: 'unset',
-                    maxHeight: 'none',
-                    maxWidth: 'none',
-                    height: '100%',
-                    width: '100%',
-                  }
-                : {},
-            '& .article-viewer-container': isFullScreen
-              ? { maxHeight: 'none', maxWidth: 'none', height: '100%' }
-              : {},
-          }}>
-          {renderPlayer()}
-        </Box>
-      </Box>
-    </Dialog>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
