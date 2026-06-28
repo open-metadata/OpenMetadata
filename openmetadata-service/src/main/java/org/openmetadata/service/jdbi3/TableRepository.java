@@ -1157,6 +1157,16 @@ public class TableRepository extends EntityRepository<Table> {
     daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
   }
 
+  @Override
+  protected void entitySpecificCleanup(Table table) {
+    String fqn = table.getFullyQualifiedName();
+    daoCollection.profilerDataTimeSeriesDao().delete(fqn, TABLE_PROFILE_EXTENSION);
+    daoCollection.profilerDataTimeSeriesDao().delete(fqn, SYSTEM_PROFILE_EXTENSION);
+    daoCollection
+        .profilerDataTimeSeriesDao()
+        .deleteByFQNPrefix(fqn, TABLE_COLUMN_PROFILE_EXTENSION);
+  }
+
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
     List<EntityProfile> entityProfiles;
     List<TableProfile> tableProfiles;

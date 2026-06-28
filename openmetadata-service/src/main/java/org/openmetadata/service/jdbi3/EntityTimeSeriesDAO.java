@@ -24,6 +24,7 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
@@ -566,6 +567,18 @@ public interface EntityTimeSeriesDAO {
 
   default void delete(String entityFQNHash, String extension) {
     delete(getTimeSeriesTableName(), entityFQNHash, extension);
+  }
+
+  @SqlUpdate(
+      "DELETE FROM <table> WHERE entityFQNHash LIKE :fqnHashPrefix AND extension = :extension")
+  void deleteByFQNPrefix(
+      @Define("table") String table,
+      @Bind("fqnHashPrefix") String fqnHashPrefix,
+      @Bind("extension") String extension);
+
+  default void deleteByFQNPrefix(String entityFQN, String extension) {
+    String hashPrefix = FullyQualifiedName.buildHash(entityFQN) + ".%";
+    deleteByFQNPrefix(getTimeSeriesTableName(), hashPrefix, extension);
   }
 
   @SqlUpdate(
