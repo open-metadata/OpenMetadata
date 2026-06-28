@@ -1367,6 +1367,41 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(2, response.getData().size());
   }
 
+  @Test
+  void test_getTableWithoutColumnsInFields_returnsNoColumns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable createRequest = createRequest(ns.prefix("table_fields_columns"), ns);
+    createRequest.setColumns(
+        List.of(
+            ColumnBuilder.of("col1", "VARCHAR").build(),
+            ColumnBuilder.of("col2", "INT").build()));
+    Table table = createEntity(createRequest);
+    assertNotNull(table.getColumns());
+    assertEquals(2, table.getColumns().size());
+
+    Table byIdWithoutColumns =
+        client.tables().get(table.getId().toString(), "owners,tags");
+    assertNull(
+        byIdWithoutColumns.getColumns(),
+        "GET table by id without 'columns' in fields must not return columns");
+
+    Table byNameWithoutColumns =
+        client.tables().getByName(table.getFullyQualifiedName(), "owners,tags");
+    assertNull(
+        byNameWithoutColumns.getColumns(),
+        "GET table by name without 'columns' in fields must not return columns");
+
+    Table byIdWithColumns = client.tables().get(table.getId().toString(), "columns");
+    assertNotNull(byIdWithColumns.getColumns());
+    assertEquals(2, byIdWithColumns.getColumns().size());
+
+    Table byNameWithColumns =
+        client.tables().getByName(table.getFullyQualifiedName(), "columns");
+    assertNotNull(byNameWithColumns.getColumns());
+    assertEquals(2, byNameWithColumns.getColumns().size());
+  }
+
   // ===================================================================
   // SAMPLE DATA OPERATIONS TESTS
   // ===================================================================
