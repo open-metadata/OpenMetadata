@@ -298,7 +298,8 @@ class PowerbiSource(DashboardServiceSource):
             yield workspace
 
     def _progress_group_name(self) -> str:
-        return str(self.context.get().workspace.name)  # pyright: ignore[reportOptionalMemberAccess]
+        workspace = self.context.get().workspace
+        return str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
 
     def _workspace_total_for_progress(self) -> Optional[int]:  # noqa: UP045
         """Best-effort workspace count for the progress denominator, from the

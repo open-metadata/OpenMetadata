@@ -2465,6 +2465,29 @@ class PowerBIUnitTest(TestCase):
         assert self.powerbi.progress.group_progress() == ("Workspaces", 2, 2)
         assert self.powerbi.progress.snapshot() is None
 
+    @pytest.mark.order(57)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_unnamed_workspace_keys_progress_on_id(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        self.powerbi.state.add_filtered_dashboard(PowerBIDashboard(id="dash-1", displayName="One", tiles=[]))
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-x", name=None)
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        assert self.powerbi._progress_group_name() == "ws-x"
+
+        self.powerbi._open_group_progress("ws-x", {"Dashboard": None})
+        list(self.powerbi.yield_dashboard(Group(id="ws-x", name=None)))
+
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "ws-x.Dashboard" in out
+        assert "None.Dashboard" not in out
+
     @pytest.mark.order(54)
     def test_yield_datamodel_for_datamart(self):
         """`yield_datamodel` should emit a CreateDashboardDataModelRequest with
