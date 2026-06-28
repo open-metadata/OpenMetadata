@@ -1,7 +1,9 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -15,12 +17,13 @@ import static org.openmetadata.schema.type.MetadataOperation.EDIT_TAGS;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 import static org.openmetadata.service.security.policyevaluator.SubjectContext.TEAM_FIELDS;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -58,7 +61,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
-@Slf4j
 class RuleEvaluatorTest {
   private static final String DATA_CONSUMER_ROLE_NAME = "DataConsumer";
   private static final Table table =
@@ -133,6 +135,7 @@ class RuleEvaluatorTest {
         .thenAnswer((Answer<List<TagLabel>>) invocationOnMock -> table.getTags());
     Mockito.when(tableRepository.getEntityType()).thenReturn(Entity.TABLE);
     Mockito.when(tableRepository.isSupportsOwners()).thenReturn(Boolean.TRUE);
+    Mockito.when(tableRepository.isSupportsExtension()).thenReturn(Boolean.TRUE);
 
     DatabaseRepository databaseRepository = mock(DatabaseRepository.class);
     Mockito.when(databaseRepository.getEntityType()).thenReturn(Entity.DATABASE);
@@ -451,6 +454,68 @@ class RuleEvaluatorTest {
     // Tag `tag4` is not present
     assertFalse(evaluateExpression("matchAnyTag('tag4')"));
     assertTrue(evaluateExpression("!matchAnyTag('tag4')"));
+  }
+
+  @Test
+  void test_getCustomProperties_noExtension() {
+    // entity with no custom properties
+    table.setExtension(null);
+    @SuppressWarnings("unchecked")
+    Map<String, Object> props =
+        parseExpression("getCustomProperties()").getValue(evaluationContext, Map.class);
+    assertNotNull(props);
+    assertTrue(props.isEmpty());
+  }
+
+  @Test
+  void test_getCustomProperties_withExtension() {
+    ObjectNode node = JsonUtils.getObjectMapper().createObjectNode();
+    node.put("dataSensitivity", "PII");
+    table.setExtension(node);
+
+    @SuppressWarnings("unchecked")
+    Map<String, Object> props =
+        parseExpression("getCustomProperties()").getValue(evaluationContext, Map.class);
+    assertNotNull(props);
+    assertEquals("PII", props.get("dataSensitivity"));
+  }
+
+  @Test
+  void test_matchCustomProperty_matches() {
+    // Set dataSensitivity = PII on entity extension
+    ObjectNode node = JsonUtils.getObjectMapper().createObjectNode();
+    node.put("dataSensitivity", "PII");
+    table.setExtension(node);
+
+    assertTrue(evaluateExpression("matchCustomProperty('dataSensitivity', 'PII')"));
+    assertFalse(evaluateExpression("!matchCustomProperty('dataSensitivity', 'PII')"));
+  }
+
+  @Test
+  void test_matchCustomProperty_noMatch() {
+    // Set dataSensitivity = PII but check for CONFIDENTIAL
+    ObjectNode node = JsonUtils.getObjectMapper().createObjectNode();
+    node.put("dataSensitivity", "PII");
+    table.setExtension(node);
+
+    assertFalse(evaluateExpression("matchCustomProperty('dataSensitivity', 'CONFIDENTIAL')"));
+    assertTrue(evaluateExpression("!matchCustomProperty('dataSensitivity', 'CONFIDENTIAL')"));
+  }
+
+  @Test
+  void test_matchCustomProperty_missingProperty() {
+    // Set extension with dataSensitivity but check nonExistentProp
+    ObjectNode node = JsonUtils.getObjectMapper().createObjectNode();
+    node.put("dataSensitivity", "PII");
+    table.setExtension(node);
+
+    assertFalse(evaluateExpression("matchCustomProperty('nonExistentProp', 'anyValue')"));
+  }
+
+  @Test
+  void test_matchCustomProperty_noExtension() {
+    table.setExtension(null);
+    assertFalse(evaluateExpression("matchCustomProperty('dataSensitivity', 'PII')"));
   }
 
   @Test
@@ -1220,9 +1285,10 @@ class RuleEvaluatorTest {
 
   @AfterEach
   void resetContext() {
+    table.setExtension(null);
+    resourceContext = new ResourceContext<>(Entity.TABLE, table, tableRepository);
     subjectContext = new SubjectContext(user, null);
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, resourceContext);
     evaluationContext = new StandardEvaluationContext(ruleEvaluator);
-    LOG.info("Context reset to default state after test completion.");
   }
 }

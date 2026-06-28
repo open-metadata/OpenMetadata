@@ -4,7 +4,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -502,5 +504,62 @@ public class RuleEvaluator {
           entityType,
           name);
     }
+  }
+
+  @Function(
+      name = "getCustomProperties",
+      input = "None",
+      description = "Returns a map of custom properties for the resource being evaluated.",
+      examples = {"getCustomProperties()"})
+  @SuppressWarnings("unused")
+  public Map<String, Object> getCustomProperties() {
+    if (resourceContext == null) {
+      return Collections.emptyMap();
+    }
+    return resourceContext.getCustomProperties();
+  }
+
+  /**
+   * SpEL helper: returns true if the resource has a custom property with the given name whose value
+   * equals the given expected value.
+   *
+   * <p>Usage in policy rule condition:
+   *
+   * <p>matchCustomProperty('dataSensitivity', 'PII') matchCustomProperty('department', 'Finance')
+   *
+   * <p>Returns false (not an error) when:
+   *
+   * <p>- the entity has no custom properties - the property does not exist on this entity - the
+   * property value is null
+   */
+  @Function(
+      name = "matchCustomProperty",
+      input = "propertyName (String), expectedValue (String)",
+      description =
+          "Returns true if the resource has a custom property with the given name and its value matches the expected value.",
+      examples = {"matchCustomProperty('propertyName', 'expectedValue')"})
+  @SuppressWarnings("unused")
+  public boolean matchCustomProperty(String propertyName, String expectedValue) {
+    if (expressionValidation) {
+      // During validation mode — just confirm syntax is valid, return false
+      return false;
+    }
+    if (resourceContext == null || propertyName == null || expectedValue == null) {
+      return false;
+    }
+    Map<String, Object> props = resourceContext.getCustomProperties();
+    if (props == null || props.isEmpty()) {
+      return false;
+    }
+    Object actual = props.get(propertyName);
+    if (actual == null) {
+      return false;
+    }
+
+    if (actual instanceof List<?> list) {
+      return list.stream().anyMatch(item -> item != null && expectedValue.equals(item.toString()));
+    }
+
+    return expectedValue.equals(actual.toString());
   }
 }
