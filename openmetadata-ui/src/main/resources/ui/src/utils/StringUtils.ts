@@ -399,8 +399,19 @@ export const jsonToCSV = <T extends JSONRecord>(
  * @param htmlString - HTML content as a string
  * @returns A cleaned HTML string with invalid file-attachment divs removed
  */
+/**
+ * Decode HTML entities (e.g. "&amp;", "&#98;") into their literal characters.
+ * Uses DOMParser in text mode so embedded markup is never executed, only
+ * read back as plain text.
+ */
+export function decodeHtmlEntities(text: string): string {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+
+  return doc.documentElement.textContent ?? text;
+}
+
 export function stripMarkdown(text: string): string {
-  return removeMarkdown(text).trim();
+  return decodeHtmlEntities(removeMarkdown(text)).trim();
 }
 
 export function removeAttachmentsWithoutUrl(htmlString: string): string {
