@@ -73,10 +73,10 @@ check_command_existence() {
     which "$1" >/dev/null 2>&1
     res=$?
     if [[ $res -ne 0 ]]; then
-      print_error "$command is not installed."
+      print_error "$1 is not installed."
       code=2
     fi
-    echo $res
+    return $res
 }
 
 check_version() {
@@ -101,7 +101,7 @@ check_version() {
 declare -n dependency
 for dependency in python docker java maven jq node yarn antlr; do
     command=$(echo "${dependency["version_command"]}" | awk '{print $1}')
-    if [[ $(check_command_existence "$command") -ne 0 ]]; then
+    if ! check_command_existence "$command"; then
         continue
     fi
     tool_name=${dependency["name"]}
