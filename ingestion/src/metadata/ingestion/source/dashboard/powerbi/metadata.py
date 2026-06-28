@@ -297,11 +297,32 @@ class PowerbiSource(DashboardServiceSource):
                 continue
             yield workspace
 
+    def _progress_group_name(self) -> str:
+        return str(self.context.get().workspace.name)  # pyright: ignore[reportOptionalMemberAccess]
+
+    def _workspace_total_for_progress(self) -> Optional[int]:  # noqa: UP045
+        """Best-effort workspace count for the progress denominator, from the
+        lightweight listing (no per-workspace content fetch). On admin APIs this
+        counts candidate workspaces (pre active-filter), so the bar may finish
+        below total; returns None if the listing fails (header drops the
+        denominator)."""
+        total = 0
+        try:
+            for filter_pattern in self._paginate_project_filter_pattern(self.source_config.projectFilterPattern):
+                workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+                total += len(workspaces or [])
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug("Could not pre-count PowerBI workspaces for progress: %s", exc)
+            total = None
+        return total
+
     def get_dashboard(self) -> Any:
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
+        self._declare_progress_groups("Workspaces", self._workspace_total_for_progress())
         for workspace in self._prepare_workspace_data():
+            workspace_name = str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
             try:
                 self.state.enter(workspace)
                 self.context.get().workspace = workspace  # pyright: ignore[reportAttributeAccessIssue]
@@ -324,6 +345,14 @@ class PowerbiSource(DashboardServiceSource):
                         )
                         continue
                     self.state.add_filtered_dashboard(dashboard_details)
+                self._open_group_progress(
+                    workspace_name,
+                    {
+                        "Dashboard": len(self.state.filtered_dashboards),
+                        "Chart": None,
+                        "DashboardDataModel": None,
+                    },
+                )
                 yield workspace
             except Exception as exc:  # pylint: disable=broad-except
                 ws_name = getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>")
@@ -336,6 +365,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
             finally:
+                self._close_group_progress(workspace_name)
                 self.state.exit()
 
     def get_dashboards_list(
@@ -486,6 +516,7 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 yield Either(right=dashboard_request)
                 self.register_record(dashboard_request=dashboard_request)
+                self._advance_group_progress(self._progress_group_name(), "Dashboard")
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -529,6 +560,7 @@ class PowerbiSource(DashboardServiceSource):
                         yield Either(right=chart_request)
                         self.state.add_dashboard_chart(dashboard_details.id, chart.id)
                         self.register_record_chart(chart_request=chart_request)
+                        self._advance_group_progress(self._progress_group_name(), "Chart")
                     except Exception as exc:
                         yield Either(
                             left=StackTraceError(
@@ -775,6 +807,7 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 yield Either(right=data_model_request)  # pyright: ignore[reportCallIssue]
                 self.register_record_datamodel(datamodel_request=data_model_request)
+                self._advance_group_progress(self._progress_group_name(), "DashboardDataModel")
             except Exception as exc:
                 dataset_name = dataset.name or dataset.id or ""
                 yield Either(  # pyright: ignore[reportCallIssue]

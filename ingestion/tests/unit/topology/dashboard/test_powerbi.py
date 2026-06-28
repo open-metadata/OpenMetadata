@@ -2417,6 +2417,54 @@ class PowerBIUnitTest(TestCase):
         successful = [r for r in lineage_requests if r.right is not None]
         assert len(successful) == 1
 
+    @pytest.mark.order(55)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_yield_dashboard_advances_workspace_progress(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        for dash in (
+            PowerBIDashboard(id="dash-1", displayName="One", tiles=[]),
+            PowerBIDashboard(id="dash-2", displayName="Two", tiles=[]),
+        ):
+            self.powerbi.state.add_filtered_dashboard(dash)
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Sales")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        self.powerbi._open_group_progress(
+            "Sales",
+            {"Dashboard": None, "Chart": None, "DashboardDataModel": None},
+        )
+        list(self.powerbi.yield_dashboard(Group(id="ws-1", name="Sales")))
+
+        assert self.powerbi.progress.assets_ingested() == 2
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "Sales.Dashboard" in out
+        assert "Dashboard 2" in out
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_tracks_workspace_group(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_a = Group(id="wa", name="Alpha")
+        ws_b = Group(id="wb", name="Beta")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_a, ws_b]))
+        self.powerbi._workspace_total_for_progress = MagicMock(return_value=2)
+        self.powerbi.get_dashboards_list = MagicMock(return_value=[])
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["wa", "wb"]
+        assert self.powerbi.progress.group_progress() == ("Workspaces", 2, 2)
+        assert self.powerbi.progress.snapshot() is None
+
     @pytest.mark.order(54)
     def test_yield_datamodel_for_datamart(self):
         """`yield_datamodel` should emit a CreateDashboardDataModelRequest with
