@@ -232,13 +232,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postDelete(DataContract dataContract, boolean hardDelete) {
     super.postDelete(dataContract, hardDelete);
-    if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      deleteTestSuite(dataContract);
+    if (hardDelete) {
+      if (!nullOrEmpty(dataContract.getQualityExpectations())) {
+        deleteTestSuite(dataContract);
+      }
+      // Clean status
+      daoCollection
+          .entityExtensionTimeSeriesDao()
+          .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
     }
-    // Clean status
-    daoCollection
-        .entityExtensionTimeSeriesDao()
-        .delete(dataContract.getFullyQualifiedName(), RESULT_EXTENSION);
   }
 
   private void postCreateOrUpdate(DataContract dataContract) {
