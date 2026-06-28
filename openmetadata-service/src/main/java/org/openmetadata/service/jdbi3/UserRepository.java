@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -668,6 +669,10 @@ public class UserRepository extends EntityRepository<User> {
     if (userDefaultPersona != null) {
       return userDefaultPersona;
     }
+    List<EntityReference> inheritedPersonas = getInheritedPersonas(user);
+    if (!inheritedPersonas.isEmpty()) {
+      return inheritedPersonas.get(0);
+    }
     PersonaRepository personaRepository =
         (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
     Persona systemDefault = personaRepository.getSystemDefaultPersona();
@@ -701,6 +706,7 @@ public class UserRepository extends EntityRepository<User> {
         }
       }
     }
+    inherited.sort(Comparator.comparing(EntityReference::getName));
     return inherited;
   }
 
