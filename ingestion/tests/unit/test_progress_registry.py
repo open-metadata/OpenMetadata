@@ -276,3 +276,48 @@ class TestAssetCounterAndClose:
         registry.close([])  # empty: no-op
         registry.close(["ghost"])  # absent: no-op
         assert registry.snapshot() is None
+
+
+class TestGroupCounter:
+    def test_group_progress_none_by_default(self):
+        reg = ProgressRegistry()
+        assert reg.group_progress() is None
+
+    def test_set_group_then_complete_group(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 10)
+        assert reg.group_progress() == ("Workspaces", 0, 10)
+        reg.complete_group()
+        reg.complete_group()
+        assert reg.group_progress() == ("Workspaces", 2, 10)
+
+    def test_set_group_with_unknown_total(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", None)
+        reg.complete_group()
+        assert reg.group_progress() == ("Workspaces", 1, None)
+
+    def test_complete_group_does_not_touch_asset_counter(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 3)
+        reg.advance(["ws", "Dashboard"], "Dashboard")
+        reg.complete_group()
+        assert reg.assets_ingested() == 1
+        assert reg.group_progress() == ("Workspaces", 1, 3)
+
+    def test_group_counter_survives_close_of_subtree(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 2)
+        reg.open(["ws", "Dashboard"], "Dashboard", None)
+        reg.advance(["ws", "Dashboard"], "Dashboard")
+        reg.complete_group()
+        reg.close(["ws"])
+        assert reg.group_progress() == ("Workspaces", 1, 2)
+        assert reg.assets_ingested() == 1
+
+    def test_set_group_resets_done_counter(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 5)
+        reg.complete_group()
+        reg.set_group("Tables", 10)
+        assert reg.group_progress() == ("Tables", 0, 10)

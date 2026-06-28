@@ -68,6 +68,9 @@ class ProgressRegistry:
     def __init__(self, active_leaf_cap: int = DEFAULT_ACTIVE_LEAF_CAP) -> None:
         self._lock = threading.Lock()
         self._total_ingested = 0
+        self._group_label: Optional[str] = None  # noqa: UP045
+        self._group_total: Optional[int] = None  # noqa: UP045
+        self._group_done: int = 0
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
 
@@ -91,6 +94,28 @@ class ProgressRegistry:
         tree — pruning a completed scope never decreases it."""
         with self._lock:
             return self._total_ingested
+
+    def set_group(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare a named grouping axis (e.g. "Workspaces") and its total.
+        ``total`` is None when the count is not known upfront. Header-level and
+        independent of the tree — like ``assets_ingested``, it survives pruning."""
+        with self._lock:
+            self._group_label = label
+            self._group_total = total
+            self._group_done = 0
+
+    def complete_group(self) -> None:
+        """Mark one group fully processed. Deliberately does NOT increment the
+        asset counter — a workspace is not an ingested asset."""
+        with self._lock:
+            self._group_done += 1
+
+    def group_progress(self) -> Optional[tuple[str, int, Optional[int]]]:  # noqa: UP045
+        """(label, done, total) when a grouping axis is active, else None."""
+        with self._lock:
+            if self._group_label is None:
+                return None
+            return self._group_label, self._group_done, self._group_total
 
     def close(self, path: List[str]) -> None:  # noqa: UP006
         """Remove the node at ``path`` from its parent's children once its work
