@@ -153,7 +153,7 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
         }
       }}>
       <Modal>
-        <Dialog width={1143}>
+        <Dialog data-testid="resource-player-dialog" width={1143}>
           <Box
             className={classNames(
               'tw:flex tw:flex-col tw:min-h-0',
