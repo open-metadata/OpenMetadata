@@ -66,7 +66,7 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     if (entityType == null || !isSupportedEntityType(entityType)) {
       return;
     }
-    if (!Entity.getEntityRepository(entityType).isSearchIndexable(entity)) {
+    if (!Entity.isSearchIndexable(entity)) {
       return;
     }
     try {

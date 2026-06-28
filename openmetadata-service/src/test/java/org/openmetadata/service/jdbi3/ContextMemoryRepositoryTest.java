@@ -22,9 +22,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
 /**
@@ -83,6 +85,24 @@ class ContextMemoryRepositoryTest {
             .getReindexFilter()
             .getQueryParams()
             .get(ListFilter.MEMORY_SEARCH_VISIBILITY_PARAM));
+  }
+
+  @Test
+  void entityFacade_isSearchIndexable_dispatchesToRepository() {
+    assertTrue(Entity.isSearchIndexable(memory(MemoryVisibility.ENTITY)));
+    assertFalse(Entity.isSearchIndexable(memory(MemoryVisibility.PRIVATE)));
+  }
+
+  @Test
+  void entityFacade_isSearchIndexable_defaultsTrueForTypeWithoutRepository() {
+    // A type with no registered repository (index-only / time-series sub-entities such as
+    // pipelineStatus) must default to indexable instead of throwing EntityNotFoundException, so the
+    // live index paths keep working for it.
+    EntityInterface repoLess = mock(EntityInterface.class);
+    when(repoLess.getEntityReference())
+        .thenReturn(new EntityReference().withType("typeWithoutRepository"));
+
+    assertTrue(Entity.isSearchIndexable(repoLess));
   }
 
   private ContextMemory memory(MemoryVisibility visibility) {

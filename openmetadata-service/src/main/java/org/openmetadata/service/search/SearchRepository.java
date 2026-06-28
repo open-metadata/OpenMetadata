@@ -958,8 +958,7 @@ public class SearchRepository {
       return;
     }
 
-    if (!Entity.getEntityRepository(entity.getEntityReference().getType())
-        .isSearchIndexable(entity)) {
+    if (!Entity.isSearchIndexable(entity)) {
       LOG.debug(
           "Skipping search index create for non-indexable {} [{}]",
           entity.getEntityReference().getType(),
@@ -1205,10 +1204,9 @@ public class SearchRepository {
           return;
         }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
-          if (!repository.isSearchIndexable(entity)) {
+          if (!Entity.isSearchIndexable(entity)) {
             continue;
           }
           try {
@@ -1400,8 +1398,7 @@ public class SearchRepository {
       return;
     }
 
-    if (!Entity.getEntityRepository(entity.getEntityReference().getType())
-        .isSearchIndexable(entity)) {
+    if (!Entity.isSearchIndexable(entity)) {
       deleteEntityIndex(entity);
       return;
     }
@@ -1675,10 +1672,9 @@ public class SearchRepository {
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
       List<EntityInterface> typeEntities = new ArrayList<>();
       for (EntityInterface entity : entry.getValue()) {
-        if (repository.isSearchIndexable(entity)) {
+        if (Entity.isSearchIndexable(entity)) {
           typeEntities.add(entity);
         } else {
           // Mirror updateEntityIndex: a now-non-indexable entity (e.g. a memory flipped to
