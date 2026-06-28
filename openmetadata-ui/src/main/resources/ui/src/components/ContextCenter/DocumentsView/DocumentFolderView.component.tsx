@@ -12,6 +12,7 @@
  */
 
 import {
+  Button,
   ButtonUtility,
   Card,
   FileIcon,
@@ -28,6 +29,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
@@ -175,26 +177,18 @@ const DocumentFolderView = ({
                     textValue={folder.displayName ?? folder.name}>
                     <Tree.ItemContent>
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
-                        <button
-                          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
-                          onClick={(e) => {
+                        <Button
+                          ellipsis
+                          className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
+                          color="tertiary"
+                          iconLeading={FolderIcon}
+                          size="sm"
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             handleFolderItemSelect(folder.id);
                           }}>
-                          <FolderIcon
-                            className="tw:shrink-0 tw:text-quaternary"
-                            height={16}
-                            width={16}
-                          />
-                          <div className="tw:w-full">
-                            <Typography
-                              as="p"
-                              className="tw:truncate tw:flex-1"
-                              weight="medium">
-                              {folder.displayName ?? folder.name}
-                            </Typography>
-                          </div>
-                        </button>
+                          {getEntityName(folder)}
+                        </Button>
 
                         {canDelete && (
                           <ButtonUtility

@@ -191,6 +191,12 @@ jest.mock('rest/knowledgeCenterAPI', () => ({
       paging: { limit: 100, offset: 0, total: PageHierarchy.length },
     })
   ),
+  getListKnowledgePages: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { limit: 0, offset: 0, total: 42 },
+    })
+  ),
   postKnowledgePage: jest.fn().mockImplementation(() =>
     Promise.resolve({
       id: 'new-page-id',
@@ -254,6 +260,26 @@ describe('KnowledgePagesHierarchy', () => {
 
     // should render the page icon for each top-level node
     expect(screen.getAllByTestId('page-icon')).toHaveLength(3);
+  });
+
+  it('should render the total count from getListKnowledgePages, not the hierarchy paging', async () => {
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy
+          isPageHeaderAvailable={false}
+          permissions={DEFAULT_ENTITY_PERMISSION}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName.toLowerCase() === 'span' &&
+          element?.textContent === '42 label.article-plural'
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the active node', async () => {
