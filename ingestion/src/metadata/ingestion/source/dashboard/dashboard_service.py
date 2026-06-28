@@ -14,7 +14,7 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -214,6 +214,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()  # noqa: RUF012, UP006
     datamodel_source_state: Set = set()  # noqa: RUF012, UP006
     chart_source_state: Set = set()  # noqa: RUF012, UP006
+
+    def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare the grouping axis (e.g. workspaces) and its total count."""
+        self.progress.set_group(label, total)
+
+    def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
+        """Open one child node per asset type under ``group`` so each type renders
+        as its own line; ``expected`` may be None for lazy (running) counts."""
+        for asset_type, expected in expected_by_type.items():
+            self.progress.open([group, asset_type], asset_type, expected)
+
+    def _advance_group_progress(self, group: str, asset_type: str) -> None:
+        """Record one processed asset of ``asset_type`` under ``group``."""
+        self.progress.advance([group, asset_type], asset_type)
+
+    def _close_group_progress(self, group: str) -> None:
+        """Complete the group and prune its subtree from the active tree."""
+        self.progress.complete_group()
+        self.progress.close([group])
 
     @retry_with_docker_host()
     def __init__(
