@@ -5,5 +5,5 @@
   "description": "System default template for logical test case addition notifications",
   "provider": "system",
   "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
-  "templateBody": "<strong>{{event.userName}}</strong> added <strong>logical test case(s)</strong> to <strong>Test Suite</strong>: <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
+  "templateBody": "<strong>{{event.userName}}</strong> added <strong>logical test case(s)</strong>{{#if entity.tests}}: {{#each entity.tests}}{{#unless @first}}, {{/unless}}{{#if displayName}}{{displayName}}{{else}}{{name}}{{/if}}{{/each}}{{/if}} to <strong>Test Suite</strong>: <a href=\"{{buildEntityUrl event.entityType entity}}\">{{entity.fullyQualifiedName}}</a>"
 }
