@@ -32,7 +32,7 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCountBadge } from '../../../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../../../utils/EntityDisplayPureUtils';
 import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
