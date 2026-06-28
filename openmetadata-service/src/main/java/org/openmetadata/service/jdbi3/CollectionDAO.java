@@ -8224,7 +8224,7 @@ public interface CollectionDAO {
         return EntityDAO.super.listCount(filter);
       }
       return listCount(
-          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal());
+          getTableName(), mySqlCondition, postgresCondition, team, Relationship.HAS.ordinal(), filter.getQueryParams());
     }
 
     @Override
@@ -8306,7 +8306,8 @@ public interface CollectionDAO {
           limit,
           beforeName,
           beforeId,
-          Relationship.HAS.ordinal());
+          Relationship.HAS.ordinal(),
+          filter.getQueryParams());
     }
 
     @Override
@@ -8387,7 +8388,8 @@ public interface CollectionDAO {
           limit,
           afterName,
           afterId,
-          Relationship.HAS.ordinal());
+          Relationship.HAS.ordinal(),
+          filter.getQueryParams());
     }
 
     @ConnectionAwareSqlQuery(
@@ -8417,7 +8419,8 @@ public interface CollectionDAO {
         @Define("mysqlCond") String mysqlCond,
         @Define("postgresCond") String postgresCond,
         @BindFQN("team") String team,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @BindMap java.util.Map<String, String> params);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -8457,7 +8460,8 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("beforeName") String beforeName,
         @Bind("beforeId") String beforeId,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @BindMap java.util.Map<String, String> params);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -8493,7 +8497,8 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,
         @Bind("afterId") String afterId,
-        @Bind("relation") int relation);
+        @Bind("relation") int relation,
+        @BindMap java.util.Map<String, String> params);
 
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
