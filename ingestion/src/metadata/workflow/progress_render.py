@@ -60,13 +60,22 @@ class ProgressReporter:
 
     def cli(self) -> str:
         snapshot = self._registry.snapshot()
+        header = self._header()
         if snapshot is None:
-            return ""
-        header = f"Ingested: {self._registry.assets_ingested():,} assets"
+            return header if self._registry.group_progress() is not None else ""
         lines: List[str] = []  # noqa: UP006
         _render_joined(snapshot, [], lines)
         tree = "\n".join(lines)
         return f"{header}\n{tree}" if tree else header
+
+    def _header(self) -> str:
+        assets = self._registry.assets_ingested()
+        group = self._registry.group_progress()
+        if group is None:
+            return f"Ingested: {assets:,} assets"
+        label, done, total = group
+        counts = f"{done}/{total}" if total is not None else str(done)
+        return f"{label} {counts} · {assets:,} assets"
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
         """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,

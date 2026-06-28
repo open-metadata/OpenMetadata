@@ -133,3 +133,40 @@ class TestProgressReporter:
 
     def test_payload_is_none_before_anything_starts(self):
         assert ProgressReporter(ProgressRegistry()).payload() is None
+
+
+class TestGroupHeader:
+    def test_header_shows_group_and_assets(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 10)
+        reg.complete_group()
+        reg.complete_group()
+        reg.complete_group()
+        reg.open(["Sales", "Dashboard"], "Dashboard", 5)
+        reg.advance(["Sales", "Dashboard"], "Dashboard")
+        out = ProgressReporter(reg).cli()
+        assert out.splitlines()[0] == "Workspaces 3/10 · 1 assets"
+
+    def test_header_with_unknown_total_on_empty_tree(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", None)
+        reg.complete_group()
+        assert ProgressReporter(reg).cli() == "Workspaces 1 · 0 assets"
+
+    def test_header_renders_with_empty_tree_when_group_active(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 4)
+        for _ in range(4):
+            reg.complete_group()
+        assert ProgressReporter(reg).cli() == "Workspaces 4/4 · 0 assets"
+
+    def test_no_group_keeps_legacy_header(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.open(["x"], "Table", 2)
+        reg.advance(["x"], "Table")
+        assert ProgressReporter(reg).cli().splitlines()[0] == "Ingested: 1 assets"
+
+    def test_no_group_empty_tree_is_empty_string(self):
+        reg = ProgressRegistry()
+        assert ProgressReporter(reg).cli() == ""
