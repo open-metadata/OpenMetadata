@@ -333,6 +333,23 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    // Short-circuit when the incoming bot user has no real change vs. what's already in the
+    // database. Without this guard every OM boot calls into addOrUpdateUser ->
+    // userRepository.createOrUpdate, and UserUpdater.entitySpecificUpdate then runs
+    // updateTeams/updateRoles/etc. with the incoming `user.getTeams() == null`, which strips
+    // the bot's stored team relationships, bumps the version, and triggers an Elasticsearch
+    // reindex of the bot user (and any team membership change ripples into the team_search
+    // index too). With many bots this is a reindex storm on every restart.
+    if (originalUser != null
+        && originalUser.getAuthenticationMechanism() != null
+        && Objects.equals(roleIdSet(originalUser.getRoles()), roleIdSet(user.getRoles()))
+        && Objects.equals(originalUser.getDescription(), user.getDescription())
+        && Objects.equals(originalUser.getDisplayName(), user.getDisplayName())
+        // Include email so an admin changing the principal domain between restarts isn't
+        // silently skipped — UserUtil.user(...) derives the email from the configured domain.
+        && Objects.equals(originalUser.getEmail(), user.getEmail())) {
+      return originalUser;
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -359,12 +376,25 @@ public final class UserUtil {
     return new AuthenticationMechanism().withAuthType(authType).withConfig(config);
   }
 
+  /**
+   * Compare role lists by id-set so the short-circuit isn't fooled by ordering. The underlying
+   * relationshipDAO().findTo(...) read has no ORDER BY clause, so two equivalent role sets can
+   * come back in different orders across restarts.
+   */
+  private static Set<UUID> roleIdSet(List<EntityReference> roles) {
+    return listOrEmpty(roles).stream().map(EntityReference::getId).collect(Collectors.toSet());
+  }
+
   private static User retrieveWithAuthMechanism(User user) {
     EntityRepository<User> userRepository =
         (UserRepository) Entity.getEntityRepository(Entity.USER);
     try {
+      // Include "roles" so the no-op short-circuit in addOrUpdateBotUser can compare it
+      // against the incoming user. description and displayName are scalar fields stored in
+      // the entity JSON column, so they're already populated by the base read without an
+      // extra field fetch.
       return userRepository.getByName(
-          null, user.getName(), new Fields(Set.of("authenticationMechanism")));
+          null, user.getName(), new Fields(Set.of("authenticationMechanism", "roles")));
     } catch (EntityNotFoundException e) {
       LOG.debug("Bot entity: {} does not exists.", user);
       return null;
