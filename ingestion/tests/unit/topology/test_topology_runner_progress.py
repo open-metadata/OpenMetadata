@@ -175,3 +175,47 @@ def test_completed_container_is_closed_through_runner():
     # producer yields "a","b"; each database entity is closed at its own path
     assert ["a"] in closed
     assert ["b"] in closed
+
+
+class _StatefulLeafRunner(TopologyRunnerMixin):
+    """Producer sets per-yield state in a try/finally; the stage records whether
+    that state is still live when it runs. Lazy iteration keeps it live; eager
+    list()-drain tears it down before any stage runs."""
+
+    topology = DatabaseServiceTopology()
+
+    def __init__(self, enabled):
+        self.progress_tracking_enabled = enabled
+        self.context = TopologyContextManager(self.topology)
+        self.__dict__["_root_node_ids"] = set()
+        self.status = MagicMock()
+        self.state_live_at_stage = []
+        self._active = None
+
+    def _run_node_producer(self, node):
+        for item in ["a", "b"]:
+            self._active = item
+            try:
+                yield item
+            finally:
+                self._active = None
+
+    def _process_stage(self, stage, node_entity):
+        # Only record state for the primary (non-side-output) stage so the
+        # assertion is independent of side-output stage count.
+        if stage.type_ is not None and stage.type_.__name__ not in self._SIDE_OUTPUT_STAGE_TYPES:
+            self.state_live_at_stage.append(self._active)
+        return iter(())
+
+
+def test_leaf_is_lazy_when_progress_off_preserving_per_yield_state():
+    runner = _StatefulLeafRunner(enabled=False)
+    list(runner._process_node(get_topology_node("table", runner.topology)))
+    assert runner.state_live_at_stage == ["a", "b"]
+
+
+def test_leaf_is_eager_when_progress_on_recording_count():
+    runner = _StatefulLeafRunner(enabled=True)
+    list(runner._process_node(get_topology_node("table", runner.topology)))
+    assert runner.state_live_at_stage == [None, None]
+    assert runner.progress.snapshot().processed == 2

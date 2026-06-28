@@ -280,9 +280,12 @@ class TopologyRunnerMixin(Generic[C]):
 
         Container producers (database, schema) are iterated lazily so connectors
         can set up per-yield inspector/session state before each child is
-        processed. Leaf producers (table, stored procedure) have no child nodes
-        depending on that state, so they are materialized up front to record an
-        exact child count for the parent's progress line.
+        processed. Leaf producers (table, stored procedure) are materialized
+        eagerly ONLY when progress tracking is enabled — to record an exact child
+        count via ``progress.open``; otherwise they are iterated lazily so
+        connectors whose stages depend on per-yield producer state (e.g. PowerBI's
+        per-workspace ``state.enter`` / ``finally: state.exit``) are not torn down
+        before their stages run.
         """
         child_nodes = self._get_child_nodes(node)
         entity_type_name = self._get_entity_type_for_node(node)
@@ -290,10 +293,9 @@ class TopologyRunnerMixin(Generic[C]):
         track_progress = self._should_track_progress(node, entity_type_name)
         parent_path = self.current_progress_path(entity_type_name) if track_progress else []
 
-        if is_leaf:
+        if is_leaf and track_progress:
             node_entities = list(self._run_node_producer(node) or [])
-            if track_progress:
-                self.progress.open(parent_path, entity_type_name, len(node_entities))
+            self.progress.open(parent_path, entity_type_name, len(node_entities))
         else:
             node_entities = self._run_node_producer(node) or []
             if track_progress:
