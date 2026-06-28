@@ -24,6 +24,14 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
+
+  /**
+   * Restricts a ContextMemory listing to a single {@code shareConfig.visibility} value. Set ONLY by
+   * {@link org.openmetadata.service.jdbi3.ContextMemoryRepository#getReindexFilter()} so the search
+   * reindex indexes org-wide ({@code Entity}) memories only. Do NOT set this on the REST {@code
+   * /contextCenter/memories} listing — owners and shared principals must still read their own
+   * PRIVATE/SHARED memories there.
+   */
   public static final String MEMORY_SEARCH_VISIBILITY_PARAM = "memorySearchVisibility";
 
   public ListFilter() {
