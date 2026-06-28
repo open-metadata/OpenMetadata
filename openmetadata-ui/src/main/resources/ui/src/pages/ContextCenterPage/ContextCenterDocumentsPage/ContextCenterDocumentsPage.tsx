@@ -43,7 +43,10 @@ import {
 } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { handleAssetDownload } from '../../../utils/ContextCenterPureUtils';
+import {
+  downloadBlob,
+  handleAssetDownload,
+} from '../../../utils/ContextCenterPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -319,27 +322,12 @@ const ContextCenterDocumentsPage: FC = () => {
   }, [selectedIds, t]);
 
   const handleBulkDownload = useCallback(async () => {
-    let url: string | undefined;
-    let element: HTMLAnchorElement | undefined;
-
     try {
       const blob = await downloadDriveFiles(Array.from(selectedIds));
-      url = URL.createObjectURL(blob);
-      element = document.createElement('a');
-      element.href = url;
-      element.download = 'context-center-documents.zip';
-      document.body.appendChild(element);
-      element.click();
+      downloadBlob(blob, 'context-center-documents.zip');
       setSelectedIds(new Set());
     } catch (err) {
       showErrorToast(err as AxiosError);
-    } finally {
-      element?.remove();
-
-      if (url) {
-        const objectUrl = url;
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
-      }
     }
   }, [selectedIds]);
 

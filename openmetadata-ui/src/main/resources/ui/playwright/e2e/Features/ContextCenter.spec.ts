@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -60,6 +66,16 @@ interface BulkOperationResult {
 
 interface BulkIdsRequest {
   ids?: string[];
+}
+
+interface CapturedDownload {
+  download: string;
+  href: string;
+}
+
+interface DownloadCaptureWindow extends Window {
+  __contextCenterCapturedDownloads?: CapturedDownload[];
+  __contextCenterOriginalAnchorClick?: HTMLAnchorElement['click'];
 }
 
 interface UploadMultipart {
@@ -135,6 +151,57 @@ const expectBulkIdsRequest = (
   const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
 
   expect(new Set(request.ids)).toEqual(new Set(expectedIds));
+};
+
+const responseMatchesRequestPath = (
+  response: Response,
+  expectedPath: string
+) => {
+  let request = response.request();
+
+  while (request) {
+    if (request.url().includes(expectedPath)) {
+      return true;
+    }
+
+    request = request.redirectedFrom();
+  }
+
+  return false;
+};
+
+const installDownloadCapture = async (page: Page) => {
+  await page.evaluate(() => {
+    const captureWindow = window as DownloadCaptureWindow;
+    captureWindow.__contextCenterCapturedDownloads = [];
+
+    if (captureWindow.__contextCenterOriginalAnchorClick) {
+      return;
+    }
+
+    captureWindow.__contextCenterOriginalAnchorClick =
+      HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      captureWindow.__contextCenterCapturedDownloads?.push({
+        download: this.download,
+        href: this.href,
+      });
+      captureWindow.__contextCenterOriginalAnchorClick?.call(this);
+    };
+  });
+};
+
+const expectCapturedDownload = async (page: Page, fileName: string) => {
+  const capturedDownload = await page.waitForFunction((expectedFileName) => {
+    const captureWindow = window as DownloadCaptureWindow;
+
+    return captureWindow.__contextCenterCapturedDownloads?.find(
+      (download) => download.download === expectedFileName
+    );
+  }, fileName);
+  const download = (await capturedDownload.jsonValue()) as CapturedDownload;
+
+  expect(download.href.startsWith('blob:')).toBe(true);
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -1007,27 +1074,20 @@ test.describe('Context Center', () => {
 
       const targetRow = getDocumentRowByName(page, fileName);
       await expect(targetRow).toBeVisible();
+      await installDownloadCapture(page);
 
       const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
-      const downloadResPromise = page.waitForResponse((response) => {
-        const redirectedFrom = response.request().redirectedFrom();
-        const requestUrl = response.request().url();
-        const redirectedFromUrl = redirectedFrom?.url() ?? '';
-
-        return (
-          (requestUrl.includes(downloadPath) ||
-            redirectedFromUrl.includes(downloadPath)) &&
-          [200, 302, 303].includes(response.status())
-        );
-      });
-      const downloadPromise = page.waitForEvent('download');
+      const downloadResPromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          responseMatchesRequestPath(response, downloadPath)
+      );
 
       await targetRow.getByTestId('download-btn').click();
       const downloadRes = await downloadResPromise;
-      const download = await downloadPromise;
 
       expect([200, 302, 303]).toContain(downloadRes.status());
-      expect(download.suggestedFilename()).toBe(fileName);
+      await expectCapturedDownload(page, fileName);
     });
 
     test('delete document removes it from the list', async ({
@@ -1227,22 +1287,25 @@ test.describe('Context Center', () => {
       await selectDocumentByName(page, firstFileName);
       await selectDocumentByName(page, secondFileName);
       await expectSelectedCount(page, 2);
+      await installDownloadCapture(page);
 
       const bulkDownloadResPromise = page.waitForResponse(
-        '/api/v1/contextCenter/drive/files/bulk/download'
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/contextCenter/drive/files/bulk/download') &&
+          response.request().method() === 'POST'
       );
-      const downloadPromise = page.waitForEvent('download');
 
       await page.getByTestId('bulk-download-btn').click();
       const bulkDownloadRes = await bulkDownloadResPromise;
-      const download = await downloadPromise;
 
       expect(bulkDownloadRes.status()).toBe(200);
       expectBulkIdsRequest(bulkDownloadRes.request().postData(), [
         firstDocument.id,
         secondDocument.id,
       ]);
-      expect(download.suggestedFilename()).toBe('context-center-documents.zip');
+      await expectCapturedDownload(page, 'context-center-documents.zip');
       await expect(
         page.getByText('2 selected', { exact: true })
       ).not.toBeVisible();
