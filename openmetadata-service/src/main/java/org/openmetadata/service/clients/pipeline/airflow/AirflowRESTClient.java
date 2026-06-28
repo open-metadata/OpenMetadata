@@ -491,34 +491,56 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 200) {
         JSONObject responseJSON = new JSONObject(response.body());
         String ingestionVersion = responseJSON.getString("version");
-        return validServerClientVersions(ingestionVersion, SERVER_VERSION)
-            ? buildHealthyStatus(ingestionVersion)
-            : buildUnhealthyStatus(
-                buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION));
+        if (validServerClientVersions(ingestionVersion, SERVER_VERSION)) {
+          return buildHealthyStatus(ingestionVersion);
+        }
+        // Version mismatch is a config error, not transient — use 422 to skip retries
+        return new PipelineServiceClientResponse()
+            .withCode(422)
+            .withReason(buildVersionMismatchErrorMessage(ingestionVersion, SERVER_VERSION))
+            .withPlatform(this.getPlatform());
       }
 
-      // Auth error when accessing the APIs
+      // Auth error when accessing the APIs — not retryable (use 401/403 code)
       if (response.statusCode() == 401 || response.statusCode() == 403) {
-        return buildUnhealthyStatus(
-            String.format(
-                "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
-                this.username, serviceURL.toString()));
+        return new PipelineServiceClientResponse()
+            .withCode(response.statusCode())
+            .withReason(
+                String.format(
+                    "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
+                    this.username, serviceURL.toString()))
+            .withPlatform(this.getPlatform());
       }
 
-      // APIs URL not found
+      // APIs URL not found — not retryable (use 404 code)
       if (response.statusCode() == 404) {
-        return buildUnhealthyStatus(
-            String.format(
-                "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
-                serviceURL.toString(), DOCS_LINK));
+        return new PipelineServiceClientResponse()
+            .withCode(response.statusCode())
+            .withReason(
+                String.format(
+                    "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+                    serviceURL.toString(), DOCS_LINK))
+            .withPlatform(this.getPlatform());
       }
 
-      return buildUnhealthyStatus(
-          String.format(
-              "Unexpected status response at [%s]: code [%s] - [%s]",
-              serviceURL.toString(), response.statusCode(), response.body()));
+      return new PipelineServiceClientResponse()
+          .withCode(response.statusCode())
+          .withReason(
+              String.format(
+                  "Unexpected status response at [%s]: code [%s] - [%s]",
+                  serviceURL.toString(), response.statusCode(), response.body()))
+          .withPlatform(this.getPlatform());
 
-    } catch (IOException | URISyntaxException e) {
+    } catch (URISyntaxException e) {
+      // Malformed URL is a config error, not transient — use 422 to skip retries
+      return new PipelineServiceClientResponse()
+          .withCode(422)
+          .withReason(
+              String.format(
+                  "Invalid Airflow URL [%s]: %s %s",
+                  serviceURL.toString(), e.getMessage(), DOCS_LINK))
+          .withPlatform(this.getPlatform());
+    } catch (IOException e) {
       String exceptionMsg;
       if (e.getMessage() != null) {
         exceptionMsg =
