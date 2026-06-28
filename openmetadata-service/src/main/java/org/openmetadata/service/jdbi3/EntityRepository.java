@@ -194,6 +194,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
@@ -10479,11 +10480,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Added columns are skipped by the existing-column loop below.
       storeColumnExtensions(entityId, addedColumns);
 
+      // Build a lookup map from origColumns to avoid O(n²) stream search per updated column
+      Map<ColumnKey, Column> origColumnByKey = new HashMap<>();
+      for (Column col : origColumns) {
+        origColumnByKey.put(columnLookupKey(col), col);
+      }
+
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
-        // Find stored column matching name, data type and ordinal position
-        Column stored =
-            origColumns.stream().filter(c -> columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumnByKey.get(columnLookupKey(updated));
         if (stored == null) { // New column added
           continue;
         }
@@ -10524,6 +10529,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     protected void handleColumnLineageUpdates(
         List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       // NO-OP – to be overridden by entity-specific updaters when needed.
+    }
+
+    private record ColumnKey(String name, ColumnDataType dataType, ColumnDataType arrayDataType) {}
+
+    private static ColumnKey columnLookupKey(Column col) {
+      return new ColumnKey(
+          col.getName() == null ? null : col.getName().toLowerCase(Locale.ROOT),
+          col.getDataType(),
+          col.getArrayDataType());
     }
 
     private void updateColumnDescription(

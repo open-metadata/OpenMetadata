@@ -816,7 +816,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.source(ss -> ss.scriptString(UPDATE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
                                   .params(params))
-                      .refresh(true));
+                      // refresh=false: rely on the index's default refresh interval (default 1s
+                      // unless configured otherwise)
+                      // instead
+                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
+                      // cleanup does not require immediate read-after-write consistency.
+                      .refresh(false));
 
       LOG.info(
           "Successfully updated columns in upstream lineage for index: {}, updated: {}",
@@ -866,7 +871,12 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                               s.source(ss -> ss.scriptString(DELETE_COLUMN_LINEAGE_SCRIPT))
                                   .lang(ScriptLanguage.Painless)
                                   .params(params))
-                      .refresh(true));
+                      // refresh=false: rely on the index's default refresh interval (default 1s
+                      // unless configured otherwise)
+                      // instead
+                      // of forcing a blocking shard refresh after each updateByQuery. Lineage
+                      // cleanup does not require immediate read-after-write consistency.
+                      .refresh(false));
 
       LOG.info(
           "Successfully deleted columns from upstream lineage for index: {}, updated: {}",

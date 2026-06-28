@@ -2968,6 +2968,103 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertTrue(lineageJson.contains("columnsLineage"));
   }
 
+  // Covers fix for #26674: deleted column FQNs must be flushed exactly once to the search index
+  @Test
+  void test_deletedColumnLineagePropagatesInSearch(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable sourceReq = new CreateTable();
+    sourceReq.setName(ns.prefix("lineage_src"));
+    sourceReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    sourceReq.setColumns(
+        List.of(
+            ColumnBuilder.of("col_to_delete", "BIGINT").build(),
+            ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+    Table sourceTable = client.tables().create(sourceReq);
+    // Bump version past 0.1 so consolidateChanges() is eligible on the next PATCH.
+    // consolidateChanges requires original.getVersion() > 0.1, which means the entity
+    // must have been updated at least once before the column-removal PATCH we're testing.
+    sourceTable.setDescription("lineage test source");
+    sourceTable = client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+    CreateTable targetReq = new CreateTable();
+    targetReq.setName(ns.prefix("lineage_tgt"));
+    targetReq.setDatabaseSchema(schema.getFullyQualifiedName());
+    targetReq.setColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build()));
+    Table targetTable = client.tables().create(targetReq);
+
+    String sourceColFqn = sourceTable.getFullyQualifiedName() + ".col_to_delete";
+    String targetColFqn = targetTable.getFullyQualifiedName() + ".tgt_col";
+
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(
+                            new EntityReference()
+                                .withId(sourceTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(sourceTable.getFullyQualifiedName()))
+                        .withToEntity(
+                            new EntityReference()
+                                .withId(targetTable.getId())
+                                .withType("table")
+                                .withFullyQualifiedName(targetTable.getFullyQualifiedName()))
+                        .withLineageDetails(
+                            new LineageDetails()
+                                .withColumnsLineage(
+                                    List.of(
+                                        new ColumnLineage()
+                                            .withFromColumns(List.of(sourceColFqn))
+                                            .withToColumn(targetColFqn))))));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("Wait for column lineage to be indexed in search")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+
+      // PATCH source table without col_to_delete — triggers column lineage delete.
+      // Uses update() which sends HTTP PATCH under the hood, and now that version > 0.1
+      // consolidateChanges() is eligible, exercising the deferred-flush deduplication fix.
+      sourceTable.setColumns(
+          List.of(ColumnBuilder.of("col_to_keep", "VARCHAR").dataLength(255).build()));
+      client.tables().update(sourceTable.getId().toString(), sourceTable);
+
+      // Wait for the deletion to propagate to the search index via the deferred flush
+      Awaitility.await("Wait for deleted column lineage to be removed from search")
+          .atMost(Duration.ofSeconds(15))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  !getUpstreamLineageFromIndex(searchClient, targetTable.getId().toString())
+                      .contains(sourceColFqn));
+    }
+  }
+
+  private String getUpstreamLineageFromIndex(Rest5Client searchClient, String tableId)
+      throws Exception {
+    String query =
+        String.format(
+            "{\"size\":1,\"_source\":[\"upstreamLineage\"],\"query\":{\"term\":{\"_id\":\"%s\"}}}",
+            tableId);
+    Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    return new String(
+        response.getEntity().getContent().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+  }
+
   // ===================================================================
   // SAMPLE DATA TESTS
   // ===================================================================
