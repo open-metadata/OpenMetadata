@@ -162,7 +162,8 @@ public class RuleEvaluator {
       return false;
     }
 
-    if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
+    if ((resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null)
+        && nullOrEmpty(resourceContext.getDomains())) {
       LOG.info(
           "hasDomain() - List operation detected (no specific resource), returning true for post-filtering");
       return true;
