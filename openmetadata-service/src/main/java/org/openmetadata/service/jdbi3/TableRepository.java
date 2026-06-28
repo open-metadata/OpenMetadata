@@ -1390,6 +1390,31 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  /**
+   * Removes stale dbt-applied AUTOMATED tags that are no longer present in the
+   * incoming data model. Only runs for DBT model type to avoid affecting other
+   * ingestion sources (e.g. DDL). Only removes tags where labelType is AUTOMATED
+   * and appliedBy is "ingestion-bot".
+   *
+   * @param existingTags tags currently on the entity
+   * @param incomingTags tags from the incoming dbt data model (may be null or empty)
+   * @return filtered list with stale dbt AUTOMATED tags removed
+   */
+  List<TagLabel> removeStaleDbtAutomatedTags(
+      List<TagLabel> existingTags, List<TagLabel> incomingTags) {
+    Set<String> incomingFQNs =
+        listOrEmpty(incomingTags).stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toCollection(HashSet::new));
+    return listOrEmpty(existingTags).stream()
+        .filter(
+            tag ->
+                !(TagLabel.LabelType.AUTOMATED.equals(tag.getLabelType())
+                    && Entity.INGESTION_BOT_NAME.equals(tag.getAppliedBy())
+                    && !incomingFQNs.contains(tag.getTagFQN())))
+        .collect(Collectors.toList());
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
@@ -1424,6 +1449,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     List<TagLabel> mergedTableTags =
         mergeTagsWithIncomingPrecedence(table.getTags(), dataModel.getTags());
+    if (DataModel.ModelType.DBT.equals(dataModel.getModelType())) {
+      mergedTableTags = removeStaleDbtAutomatedTags(mergedTableTags, dataModel.getTags());
+    }
     daoCollection.tagUsageDAO().deleteTagsByTarget(table.getFullyQualifiedName());
     table.setTags(mergedTableTags);
     applyTags(table);
@@ -1441,6 +1469,9 @@ public class TableRepository extends EntityRepository<Table> {
       }
       List<TagLabel> mergedColumnTags =
           mergeTagsWithIncomingPrecedence(stored.getTags(), modelColumn.getTags());
+      if (DataModel.ModelType.DBT.equals(dataModel.getModelType())) {
+        mergedColumnTags = removeStaleDbtAutomatedTags(mergedColumnTags, modelColumn.getTags());
+      }
       if (stored.getFullyQualifiedName() != null) {
         stored.setTags(mergedColumnTags);
         updatedColumnFqns.add(stored.getFullyQualifiedName());
