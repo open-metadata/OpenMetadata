@@ -90,7 +90,8 @@ export const createFolder = async (
 
 export const listFolders = async (): Promise<Folder[]> => {
   const response = await APIClient.get<{ data: Folder[] }>(
-    '/contextCenter/drive/folders'
+    '/contextCenter/drive/folders',
+    { params: { fields: 'childrenCount' } }
   );
 
   return response.data.data ?? [];
