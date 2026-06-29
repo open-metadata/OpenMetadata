@@ -422,6 +422,39 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs;
   }
 
+  /**
+   * An empty domain column means "leave domains unchanged", not "clear domains". Returning the
+   * entity's existing domains (which the importer already loaded, including inherited ones) keeps
+   * platform rules such as "Data Product Domain Validation" from seeing an empty domain and
+   * treating it as a mismatch, without an extra inheritance lookup. Inherited references are
+   * dropped after rule evaluation (see {@link #dropInheritedDomains}), so they are never persisted
+   * as a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, List<EntityReference> current) {
+    List<EntityReference> parsed = getDomains(printer, csvRecord, fieldNumber);
+    return parsed != null ? parsed : current;
+  }
+
+  /**
+   * Inherited domains are supplied to an updated entity only so platform rules evaluate against its
+   * effective domain. The import persistence path stores whatever domains the entity carries as
+   * direct relationships, so the inherited ones must be removed once the rules have run; the entity
+   * keeps re-inheriting from its parent on read.
+   */
+  private void dropInheritedDomains(EntityInterface entity) {
+    List<EntityReference> domains = entity.getDomains();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> directDomains = new ArrayList<>();
+      for (EntityReference domain : domains) {
+        if (!Boolean.TRUE.equals(domain.getInherited())) {
+          directDomains.add(domain);
+        }
+      }
+      entity.setDomains(directDomains.isEmpty() ? null : directDomains);
+    }
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
     if (!processRecord) {
@@ -1079,6 +1112,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
@@ -1172,6 +1206,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
@@ -1677,7 +1712,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         table =
             Entity.getEntityByNameWithExcludedFields(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE, tableFqn, "owners,tags,extension", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Simulate a table for validation without persisting it
         table =
@@ -1731,7 +1766,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
