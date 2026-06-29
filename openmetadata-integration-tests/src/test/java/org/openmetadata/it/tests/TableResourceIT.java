@@ -981,6 +981,84 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals("col_both", byBoth.getData().get(0).getName());
   }
 
+  @Test
+  void searchColumns_nestedTagMatchKeepsAncestorAndCountsRoots(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("NestedTagFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Sensitive");
+    TagLabel sensitiveLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Column matchedChildOne =
+        new Column()
+            .withName("child_match_1")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(sensitiveLabel));
+    Column matchedChildTwo =
+        new Column()
+            .withName("child_match_2")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(sensitiveLabel));
+    Column unmatchedChild =
+        new Column()
+            .withName("child_plain")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100);
+    Column structParent =
+        new Column()
+            .withName("struct_parent")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(matchedChildOne, unmatchedChild, matchedChildTwo));
+    Column siblingFlat =
+        new Column()
+            .withName("flat_plain")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100);
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_nested_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(List.of(structParent, siblingFlat));
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+
+    TableColumnList filtered =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+
+    assertEquals(
+        1,
+        filtered.getPaging().getTotal(),
+        "Total should count top-level columns containing a match, not flattened matches");
+    assertEquals(1, filtered.getData().size());
+
+    Column returnedParent = filtered.getData().get(0);
+    assertEquals("struct_parent", returnedParent.getName());
+    assertNotNull(returnedParent.getChildren());
+    assertEquals(
+        2,
+        returnedParent.getChildren().size(),
+        "Matched children stay nested under their ancestor; the unmatched child is pruned");
+    List<String> childNames =
+        returnedParent.getChildren().stream().map(Column::getName).collect(Collectors.toList());
+    assertTrue(childNames.contains("child_match_1"));
+    assertTrue(childNames.contains("child_match_2"));
+    assertFalse(childNames.contains("child_plain"));
+    assertFalse(
+        filtered.getData().stream().anyMatch(c -> "flat_plain".equals(c.getName())),
+        "Non-matching top-level column should not appear");
+  }
+
   private String createGlossaryTermWithTag(
       OpenMetadataClient client, String glossaryName, String termName, String tagFqn) {
     CreateGlossary createGlossary =

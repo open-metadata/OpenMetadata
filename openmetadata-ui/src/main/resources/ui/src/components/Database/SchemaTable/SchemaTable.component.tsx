@@ -631,7 +631,10 @@ const SchemaTable = () => {
   };
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags((table?.columns as Column[]) ?? tableColumns);
+    const tags = getAllTags([
+      ...((table?.columns as Column[]) ?? []),
+      ...tableColumns,
+    ]);
 
     return groupBy(tags, (tag) => tag.source) as Record<
       TagSource,
@@ -941,11 +944,12 @@ const SchemaTable = () => {
 
   useEffect(() => {
     setExpandedRowKeys((prev) => {
-      const autoKeys = getExpandAllKeysToDepth(tableColumns ?? [], 1);
+      const depth = searchText || hasTagFilter ? Number.MAX_SAFE_INTEGER : 1;
+      const autoKeys = getExpandAllKeysToDepth(tableColumns ?? [], depth);
 
       return [...new Set([...autoKeys, ...prev])];
     });
-  }, [tableColumns]);
+  }, [tableColumns, searchText, hasTagFilter]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {

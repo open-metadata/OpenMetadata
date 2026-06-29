@@ -3331,88 +3331,120 @@ public class TableRepository extends EntityRepository<Table> {
       ColumnTagFilter columnTagFilter,
       Authorizer authorizer,
       SecurityContext securityContext) {
-    List<Column> allColumns = table.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
+    if (nullOrEmpty(table.getColumns())) {
       return new ResultList<>(List.of(), null, null, 0);
     }
+    // Copy so pruning and field population never mutate the loaded entity's column tree.
+    List<Column> allColumns = JsonUtils.deepCopyList(table.getColumns(), Column.class);
 
-    // Flatten nested columns for search
-    List<Column> flattenedColumns = flattenTableColumns(allColumns);
+    String searchTerm = nullOrEmpty(query) ? null : query.toLowerCase().trim();
+    boolean hasTagFilter = columnTagFilter != null && !columnTagFilter.isEmpty();
+    Map<String, List<TagLabel>> tagsByHash =
+        hasTagFilter ? resolveColumnTagsForFilter(table) : Map.of();
 
-    List<Column> matchingColumns;
-    if (query == null || query.trim().isEmpty()) {
-      matchingColumns = new ArrayList<>(flattenedColumns);
-    } else {
-      String searchTerm = query.toLowerCase().trim();
-      matchingColumns =
-          new ArrayList<>(
-              flattenedColumns.stream()
-                  .filter(
-                      column -> {
-                        if (column.getName() != null
-                            && column.getName().toLowerCase().contains(searchTerm)) {
-                          return true;
-                        }
-                        return column.getDisplayName() != null
-                            && column.getDisplayName().toLowerCase().contains(searchTerm);
-                      })
-                  .toList());
+    List<Column> matchingTree =
+        pruneColumnsToMatches(allColumns, searchTerm, columnTagFilter, tagsByHash);
+    matchingTree.sort(columnComparator(sortBy, sortOrder));
+
+    int total = matchingTree.size();
+    int startIndex = Math.min(offset, total);
+    int endIndex = Math.min(offset + limit, total);
+    List<Column> paginatedRoots =
+        startIndex < total
+            ? new ArrayList<>(matchingTree.subList(startIndex, endIndex))
+            : List.of();
+
+    List<Column> paginatedColumns = flattenTableColumns(paginatedRoots);
+    Fields fields = getFields(fieldsParam);
+    if (fields.contains("customMetrics") || fields.contains("*")) {
+      Map<String, List<CustomMetric>> metricsByColumn =
+          batchFetchCustomMetricsByColumn(table.getId());
+      for (Column column : paginatedColumns) {
+        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
+      }
     }
 
-    if (columnTagFilter != null && !columnTagFilter.isEmpty()) {
-      matchingColumns = filterColumnsByTags(table, matchingColumns, columnTagFilter);
+    if (fields.contains("tags") || fields.contains("*")) {
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
     }
 
-    // Sort matching columns based on sortBy and sortOrder parameters
+    if (fieldsParam != null && fieldsParam.contains("profile")) {
+      setColumnProfile(paginatedColumns);
+      populateEntityFieldTags(entityType, paginatedColumns, table.getFullyQualifiedName(), true);
+      PIIMasker.getTableProfile(
+          table.getFullyQualifiedName(), paginatedColumns, authorizer, securityContext);
+    }
+
+    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    String after = endIndex < total ? String.valueOf(endIndex) : null;
+    return new ResultList<>(paginatedRoots, before, after, total);
+  }
+
+  /**
+   * Prune the column tree to nodes that match the search term and tag filter, keeping every matched
+   * node at its real depth together with its ancestor path. Mirrors the UI's getFilteredTagsData so
+   * the server-side filter renders the same nested view, paginated across the whole table instead of
+   * the loaded page. A node is kept when it matches itself or has a kept descendant; a kept node's
+   * children are pruned to the matched paths only.
+   */
+  private List<Column> pruneColumnsToMatches(
+      List<Column> columns,
+      String searchTerm,
+      ColumnTagFilter columnTagFilter,
+      Map<String, List<TagLabel>> tagsByHash) {
+    List<Column> pruned = new ArrayList<>();
+    for (Column column : columns) {
+      List<Column> prunedChildren =
+          nullOrEmpty(column.getChildren())
+              ? new ArrayList<>()
+              : pruneColumnsToMatches(
+                  column.getChildren(), searchTerm, columnTagFilter, tagsByHash);
+      boolean matches = columnMatchesSearch(column, searchTerm, columnTagFilter, tagsByHash);
+      if (matches || !prunedChildren.isEmpty()) {
+        column.setChildren(prunedChildren);
+        pruned.add(column);
+      }
+    }
+    return pruned;
+  }
+
+  private boolean columnMatchesSearch(
+      Column column,
+      String searchTerm,
+      ColumnTagFilter columnTagFilter,
+      Map<String, List<TagLabel>> tagsByHash) {
+    boolean matchesQuery = searchTerm == null || columnNameMatches(column, searchTerm);
+    boolean matchesTags =
+        columnTagFilter == null
+            || columnTagFilter.isEmpty()
+            || columnMatchesTagFilter(column, columnTagFilter, tagsByHash);
+    return matchesQuery && matchesTags;
+  }
+
+  private boolean columnNameMatches(Column column, String searchTerm) {
+    boolean nameMatches =
+        column.getName() != null && column.getName().toLowerCase().contains(searchTerm);
+    boolean displayNameMatches =
+        column.getDisplayName() != null
+            && column.getDisplayName().toLowerCase().contains(searchTerm);
+    return nameMatches || displayNameMatches;
+  }
+
+  private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
     Comparator<Column> comparator;
     if ("ordinalPosition".equals(sortBy)) {
       comparator =
           Comparator.comparing(
               Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
     } else {
-      // Default: sort by name
       comparator =
           Comparator.comparing(
               Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
     }
-
-    // Apply sort order (desc reverses the comparator)
     if ("desc".equalsIgnoreCase(sortOrder)) {
       comparator = comparator.reversed();
     }
-    matchingColumns.sort(comparator);
-
-    int total = matchingColumns.size();
-    int startIndex = Math.min(offset, total);
-    int endIndex = Math.min(offset + limit, total);
-
-    List<Column> paginatedResults =
-        startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
-
-    Fields fields = getFields(fieldsParam);
-    if (fields.contains("customMetrics") || fields.contains("*")) {
-      Map<String, List<CustomMetric>> metricsByColumn =
-          batchFetchCustomMetricsByColumn(table.getId());
-      for (Column column : paginatedResults) {
-        column.setCustomMetrics(metricsByColumn.getOrDefault(column.getName(), List.of()));
-      }
-    }
-
-    if (fields.contains("tags") || fields.contains("*")) {
-      populateEntityFieldTags(entityType, paginatedResults, table.getFullyQualifiedName(), true);
-    }
-
-    if (fieldsParam != null && fieldsParam.contains("profile")) {
-      setColumnProfile(matchingColumns);
-      populateEntityFieldTags(entityType, matchingColumns, table.getFullyQualifiedName(), true);
-      matchingColumns =
-          PIIMasker.getTableProfile(
-              table.getFullyQualifiedName(), matchingColumns, authorizer, securityContext);
-    }
-
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = endIndex < total ? String.valueOf(endIndex) : null;
-    return new ResultList<>(paginatedResults, before, after, total);
+    return comparator;
   }
 
   /**
@@ -3424,14 +3456,6 @@ public class TableRepository extends EntityRepository<Table> {
     public boolean isEmpty() {
       return nullOrEmpty(tagFQNs) && nullOrEmpty(glossaryTermFQNs);
     }
-  }
-
-  private List<Column> filterColumnsByTags(
-      Table table, List<Column> columns, ColumnTagFilter columnTagFilter) {
-    Map<String, List<TagLabel>> tagsByHash = resolveColumnTagsForFilter(table);
-    return columns.stream()
-        .filter(column -> columnMatchesTagFilter(column, columnTagFilter, tagsByHash))
-        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   /**
