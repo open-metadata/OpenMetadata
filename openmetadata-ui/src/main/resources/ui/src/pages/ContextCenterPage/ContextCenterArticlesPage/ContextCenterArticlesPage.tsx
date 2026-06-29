@@ -414,7 +414,9 @@ const ContextCenterArticlesPage = () => {
                 </Card.Content>
               </Card>
             ) : (
-              <Box className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5" direction='col'>
+              <Box
+                className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
+                direction="col">
                 {centerContent}
               </Box>
             )}

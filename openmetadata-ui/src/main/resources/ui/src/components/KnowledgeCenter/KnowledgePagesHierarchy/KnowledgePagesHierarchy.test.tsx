@@ -262,9 +262,7 @@ describe('KnowledgePagesHierarchy', () => {
   it('should render the total count from getListKnowledgePages, not the hierarchy paging', async () => {
     await act(async () => {
       render(
-        <KnowledgePagesHierarchy
-          permissions={DEFAULT_ENTITY_PERMISSION}
-        />,
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         { wrapper: MemoryRouter }
       );
     });

@@ -124,9 +124,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div data-testid="card">{children}</div>
   )),
-  Dot: jest.fn(() => (
-    <div data-testid="dot">dot</div>
-  )),
+  Dot: jest.fn(() => <div data-testid="dot">dot</div>),
   FileIcon: jest.fn(({ type }: { type: string }) => (
     <span data-testid={`file-icon-${type}`} />
   )),
