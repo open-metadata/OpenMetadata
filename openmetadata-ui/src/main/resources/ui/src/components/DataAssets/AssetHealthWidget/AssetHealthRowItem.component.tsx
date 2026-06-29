@@ -28,7 +28,7 @@ const AssetHealthRowItem = ({ row, onCtaClick }: AssetHealthRowItemProps) => {
 
   return (
     <div
-      className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
+      className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3"
       data-testid={`asset-health-row-${row.category}`}>
       <FeaturedIcon
         color={ASSET_HEALTH_TONE_COLOR[row.tone]}
@@ -38,19 +38,19 @@ const AssetHealthRowItem = ({ row, onCtaClick }: AssetHealthRowItemProps) => {
         size="sm"
         theme="light"
       />
-      <div className="tw:flex tw:min-w-0 tw:flex-col">
+      <div className="tw:flex tw:min-w-0 tw:flex-col tw:max-w-[220px]">
         <span className="tw:truncate tw:text-xs tw:font-medium tw:text-primary">
           {row.title}
         </span>
         {row.subtitle && (
-          <span className="tw:text-[10px] tw:text-secondary tw:break-words">
+          <span className="tw:text-xs tw:text-secondary tw:break-words">
             {row.subtitle}
           </span>
         )}
       </div>
       {cta ? (
         <button
-          className="tw:ml-auto tw:cursor-pointer"
+          className="tw:ml-auto tw:shrink-0 tw:cursor-pointer"
           data-testid={`asset-health-cta-${row.category}`}
           type="button"
           onClick={() => onCtaClick(cta.type)}>
@@ -64,7 +64,7 @@ const AssetHealthRowItem = ({ row, onCtaClick }: AssetHealthRowItemProps) => {
         </button>
       ) : (
         <Badge
-          className="tw:ml-auto"
+          className="tw:ml-auto tw:shrink-0"
           color={ASSET_HEALTH_TONE_COLOR[row.tone]}
           size="sm"
           type="color">
