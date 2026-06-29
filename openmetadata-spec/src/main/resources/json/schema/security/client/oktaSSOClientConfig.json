@@ -17,7 +17,8 @@
     "privateKey": {
       "description": "Okta Private Key.",
       "type": "string",
-      "format": "password"
+      "format": "password",
+      "uiFieldType": "fileOrInput"
     },
     "email": {
       "description": "Okta Service account Email.",

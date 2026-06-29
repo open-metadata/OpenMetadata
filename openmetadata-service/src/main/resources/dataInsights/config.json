@@ -14,7 +14,10 @@
       "fullyQualifiedName",
       "domains",
       "dataProducts",
-      "certification"
+      "certification",
+      "classificationTags",
+      "glossaryTags",
+      "entityStatus"
     ],
     "table": [
       "tableType",
@@ -108,7 +111,6 @@
       "relatedTerms",
       "references",
       "reviewers",
-      "entityStatus",
       "usageCount",
       "childrenCount"
     ],

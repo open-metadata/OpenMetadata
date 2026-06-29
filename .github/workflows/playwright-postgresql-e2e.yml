@@ -16,6 +16,10 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
+  # Note: paths-ignore removed — the workflow always triggers so that the
+  # required status check (playwright-summary) always completes. Path filtering
+  # is handled inside the workflow via dorny/paths-filter so PRs without
+  # relevant changes skip the expensive jobs while still reporting a passing status.
   pull_request_target:
     types:
       - labeled
@@ -23,28 +27,57 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-    paths-ignore:
-      - ".github/**"
-      - "openmetadata-dist/**"
-      - "docker/**"
-      - "!docker/development/docker-compose.yml"
-      - "!docker/development/docker-compose-postgres.yml"
-      - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
-      - "openmetadata-ui/src/main/resources/ui/playwright/docs/**"
-      - "openmetadata-ui/src/main/resources/ui/scripts/**"
 
 permissions:
   contents: read
-  pull-requests: write
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
-  build:
+  check-changes:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+      docker-compose: ${{ steps.filter.outputs.docker-compose }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            e2e:
+              - 'openmetadata-service/**'
+              - 'openmetadata-ui/**'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-integration-tests/**'
+              - 'ingestion/**'
+              - 'bootstrap/**'
+              - 'conf/**'
+              - 'docker/development/**'
+              - 'openmetadata-clients/**'
+              - 'openmetadata-airflow-apis/**'
+              - 'openmetadata-mcp/**'
+              - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-ui-core-components/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'common/**'
+              - 'openspec/**'
+              - 'pom.xml'
+              - 'Makefile'
+            docker-compose:
+              - 'docker/development/docker-compose.yml'
+              - 'docker/development/docker-compose-postgres.yml'
+
+  build:
+    needs: check-changes
+    runs-on: ubuntu-latest
+    if: |
+      !github.event.pull_request.draft &&
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+       needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
+      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.7.0
@@ -96,11 +129,76 @@ jobs:
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           retention-days: 1
 
-  playwright-ci-postgresql:
-    needs: [build]
+  detect-changes:
+    needs: check-changes
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    if: |
+      !github.event.pull_request.draft &&
+      (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
+       needs.check-changes.outputs.e2e == 'true' || needs.check-changes.outputs.docker-compose == 'true') &&
+      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    outputs:
+      spec_only_mode: ${{ steps.compute.outputs.spec_only_mode }}
+      changed_specs: ${{ steps.compute.outputs.changed_specs }}
+      matrix: ${{ steps.compute.outputs.matrix }}
+    steps:
+      - name: Checkout
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          filter: blob:none
+
+      - name: Get all changed files
+        id: all-changes
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+
+      - name: Get changed runnable spec files
+        id: changed-specs
+        if: ${{ github.event_name == 'pull_request_target' }}
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          path: openmetadata-ui/src/main/resources/ui
+          files: |
+            playwright/e2e/**/*.spec.ts
+          files_ignore: |
+            playwright/e2e/**/SystemCertificationTags.spec.ts
+            playwright/e2e/**/IntakeForm.spec.ts
+
+      - name: Compute spec-only mode and matrix
+        id: compute
+        env:
+          ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          SPEC_FILES: ${{ steps.changed-specs.outputs.all_changed_files }}
+        run: |
+          FULL_MATRIX='{"shardIndex":[1,2,3,4,5,6],"shardTotal":[6]}'
+          SPEC_MATRIX='{"shardIndex":[1],"shardTotal":[1]}'
+
+          ALL_COUNT=$(echo "$ALL_FILES" | wc -w)
+          SPEC_COUNT=$(echo "$SPEC_FILES" | wc -w)
+
+          if [ "$SPEC_COUNT" -gt 0 ] && [ "$ALL_COUNT" -eq "$SPEC_COUNT" ]; then
+            echo "spec_only_mode=true" >> "$GITHUB_OUTPUT"
+            echo "changed_specs=$SPEC_FILES" >> "$GITHUB_OUTPUT"
+            echo "matrix=$SPEC_MATRIX" >> "$GITHUB_OUTPUT"
+            echo "Spec-only mode: ${SPEC_COUNT} spec(s) changed"
+          else
+            echo "spec_only_mode=false" >> "$GITHUB_OUTPUT"
+            echo "changed_specs=" >> "$GITHUB_OUTPUT"
+            echo "matrix=$FULL_MATRIX" >> "$GITHUB_OUTPUT"
+            echo "Full suite mode (total=${ALL_COUNT}, runnable-specs=${SPEC_COUNT})"
+          fi
+
+  playwright-ci-postgresql:
+    needs: [build, detect-changes]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' }}
     environment: test
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
       # workers, retries). The production default of 5 active sessions per user would evict the
@@ -109,9 +207,7 @@ jobs:
       AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
-      matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -156,7 +252,39 @@ jobs:
         id: run-tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
+          if [ "$SPEC_ONLY" = "true" ]; then
+            echo "🔹 Spec-only mode: running changed specs → ${CHANGED_SPECS}"
+
+            PROJECT_ARGS=""
+
+            # DataAssetRulesEnabled runs standalone; its deps (setup) are resolved automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesEnabled\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesEnabled"
+            fi
+            # DataAssetRulesDisabled depends on DataAssetRulesEnabled — Playwright resolves this automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DataAssetRulesDisabled\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DataAssetRulesDisabled"
+            fi
+            # SearchRBAC depends on the full DataAssetRules chain — Playwright resolves this automatically
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "SearchRBAC\.spec\.ts"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=SearchRBAC"
+            fi
+            # DomainIsolation uses serial workers and its own testMatch
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -q "DomainIsolation/"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=DomainIsolation"
+            fi
+            # Regular chromium specs: anything not in a special-project category.
+            # Also add Basic because chromium has grepInvert:[@basic], so @basic-tagged tests
+            # in the changed files would be silently skipped without it.
+            if echo "$CHANGED_SPECS" | tr ' ' '\n' | grep -qvE "(DataAssetRulesEnabled\.spec\.ts|DataAssetRulesDisabled\.spec\.ts|SearchRBAC\.spec\.ts|DomainIsolation/)"; then
+              PROJECT_ARGS="$PROJECT_ARGS --project=chromium --project=Basic"
+            fi
+
+            [ -z "$PROJECT_ARGS" ] && PROJECT_ARGS="--project=chromium --project=Basic"
+
+            npx playwright test $PROJECT_ARGS $CHANGED_SPECS
+
+          elif [ "${{ matrix.shardIndex }}" -eq "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
             # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
@@ -166,6 +294,7 @@ jobs:
               --project=DataAssetRulesDisabled \
               --project=Basic \
               --project=SearchRBAC \
+              --project=DomainIsolation \
 
           else
             # Shards 2-6 run common chromium tests equally distributed (5-way sharding)
@@ -178,6 +307,8 @@ jobs:
           fi
 
         env:
+          SPEC_ONLY: ${{ needs.detect-changes.outputs.spec_only_mode }}
+          CHANGED_SPECS: ${{ needs.detect-changes.outputs.changed_specs }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -260,28 +391,51 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: always()
     needs: playwright-ci-postgresql
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # Posts the consolidated PR comment
     steps:
       - name: Download all results JSON
+        if: needs.playwright-ci-postgresql.result != 'skipped'
         uses: actions/download-artifact@v4
         with:
           pattern: playwright-results-json-*
           path: results
 
-      - name: Post consolidated PR comment
+      - name: Post consolidated PR comment and gate on results
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const upstreamResult = '${{ needs.playwright-ci-postgresql.result }}';
+            if (upstreamResult === 'skipped') {
+              // Distinguish the two reasons build/playwright can be skipped:
+              // 1. A non-"safe to test" label was added — build skips intentionally for fork security.
+              //    Tests will run once "safe to test" is applied or code is pushed.
+              // 2. No relevant paths changed — nothing to test.
+              const eventAction = context.payload.action;
+              const labelName   = context.payload.label?.name ?? '';
+              if (eventAction === 'labeled' && labelName !== 'safe to test') {
+                console.log(`Playwright E2E tests pending — label "${labelName}" added but only "safe to test" triggers E2E. Tests will run when "safe to test" is applied or code is pushed.`);
+              } else {
+                console.log('Playwright E2E tests not required for this PR (no relevant paths changed).');
+              }
+              return;
+            }
+            if (upstreamResult === 'cancelled') {
+              core.setFailed('Playwright E2E tests were cancelled.');
+              return;
+            }
+
             const fs = require('fs');
             const path = require('path');
 
             const runId = '${{ github.run_id }}';
             const repo = context.repo;
             const prNumber = context.payload.pull_request?.number;
-            if (!prNumber) return;
 
             const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
             const commentMarker = '<!-- playwright-summary -->';
@@ -333,7 +487,7 @@ jobs:
             }
 
             if (shardResults.length === 0) {
-              console.log('No shard results found');
+              core.setFailed('No Playwright results found — shards may have been cancelled or failed to upload artifacts.');
               return;
             }
 
@@ -415,31 +569,40 @@ jobs:
 
             const body = lines.join('\n');
 
-            // Find existing consolidated comment
-            let existingComment = null;
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              const found = response.data.find(c =>
-                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-              );
-              if (found) { existingComment = found; break; }
-            }
+            // Post PR comment only for pull_request_target events
+            if (prNumber) {
+              let existingComment = null;
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                const found = response.data.find(c =>
+                  c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
+                );
+                if (found) { existingComment = found; break; }
+              }
 
-            // Also clean up any old per-shard comments from previous runs
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              for (const c of response.data) {
-                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                  console.log(`Deleted old per-shard comment ${c.id}`);
+              // Also clean up any old per-shard comments from previous runs
+              for await (const response of github.paginate.iterator(
+                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
+              )) {
+                for (const c of response.data) {
+                  if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
+                    await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
+                    console.log(`Deleted old per-shard comment ${c.id}`);
+                  }
                 }
+              }
+
+              if (existingComment) {
+                await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
+              } else {
+                await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
               }
             }
 
-            if (existingComment) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-            } else {
-              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
+            // Gate: fail the step (and therefore the job) when genuine test failures exist.
+            // This is the single source of truth — the same parsed results that drive the
+            // PR comment also determine whether playwright-summary passes or fails.
+            if (totalFailed > 0) {
+              core.setFailed(`${totalFailed} Playwright test(s) failed.`);
             }

@@ -27,6 +27,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
   private static final String FIELD_TEST_PLATFORMS = "testPlatforms";
@@ -217,6 +218,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
     String dataQualityDimension = getQueryParam("dataQualityDimension");
+    String dataProductFqn = getQueryParam("dataProductFqn");
     String followedBy = getQueryParam("followedBy");
     String columnName = getQueryParam("columnName");
 
@@ -276,6 +278,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     if (dataQualityDimension != null)
       conditions.add(
           getDataQualityDimensionCondition(dataQualityDimension, "dataQualityDimension"));
+
+    if (dataProductFqn != null) {
+      conditions.add(
+          String.format(
+              "{\"term\": {\"%s\": \"%s\"}}",
+              FIELD_DATA_PRODUCTS_FQN, escapeDoubleQuotes(dataProductFqn)));
+    }
 
     if (followedBy != null) {
       conditions.add(

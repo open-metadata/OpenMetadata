@@ -102,6 +102,78 @@ logger = ingestion_logger()
 # grow without bound or exhaust memory.
 RESOLUTION_CACHE_MAXSIZE = 1000
 
+# Kinesis Producer Library (KPL) aggregated-record framing.
+# When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
+# multiple user records into one Kinesis record framed as:
+#   <4-byte magic> + <protobuf AggregatedRecord> + <16-byte md5 checksum>
+# Such records are not JSON and must be de-aggregated before parsing (issue #28814).
+KPL_AGGREGATED_MAGIC = b"\xf3\x89\x9a\xc2"
+KPL_MD5_DIGEST_SIZE = 16
+PROTOBUF_RECORDS_FIELD = 3  # AggregatedRecord.records
+PROTOBUF_RECORD_DATA_FIELD = 3  # Record.data
+
+
+def _read_varint(buffer: bytes, position: int) -> tuple[int, int]:
+    result = 0
+    shift = 0
+    while True:
+        byte = buffer[position]
+        position += 1
+        result |= (byte & 0x7F) << shift
+        if not byte & 0x80:
+            break
+        shift += 7
+    return result, position
+
+
+def _iter_protobuf_fields(buffer: bytes) -> Iterable[tuple[int, bytes | None]]:
+    """Yield (field_number, payload) for each field; payload is set only for length-delimited fields."""
+    position = 0
+    length = len(buffer)
+    while position < length:
+        tag, position = _read_varint(buffer, position)
+        field_number = tag >> 3
+        wire_type = tag & 0x7
+        payload = None
+        if wire_type == 0:  # varint
+            _, position = _read_varint(buffer, position)
+        elif wire_type == 2:  # length-delimited
+            size, position = _read_varint(buffer, position)
+            payload = buffer[position : position + size]
+            position += size
+        elif wire_type == 1:  # 64-bit
+            position += 8
+        elif wire_type == 5:  # 32-bit
+            position += 4
+        else:
+            raise ValueError(f"Unsupported protobuf wire type {wire_type}")
+        yield field_number, payload
+
+
+def _extract_record_data(record: bytes) -> bytes | None:
+    """Return the `data` field of a single KPL AggregatedRecord.Record."""
+    data = None
+    for field_number, payload in _iter_protobuf_fields(record):
+        if field_number == PROTOBUF_RECORD_DATA_FIELD and payload is not None:
+            data = payload
+    return data
+
+
+def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
+    """Return the user payload(s) of a Kinesis record, de-aggregating KPL records when present."""
+    if not data.startswith(KPL_AGGREGATED_MAGIC):
+        return [data]
+    if len(data) < len(KPL_AGGREGATED_MAGIC) + KPL_MD5_DIGEST_SIZE:
+        raise ValueError("Truncated KPL-aggregated Kinesis record: missing protobuf body or checksum")
+    protobuf = data[len(KPL_AGGREGATED_MAGIC) : -KPL_MD5_DIGEST_SIZE]
+    payloads = []
+    for field_number, record in _iter_protobuf_fields(protobuf):
+        if field_number == PROTOBUF_RECORDS_FIELD and record is not None:
+            record_data = _extract_record_data(record)
+            if record_data is not None:
+                payloads.append(record_data)
+    return payloads
+
 
 class OpenlineageSource(PipelineServiceSource):
     """
@@ -661,7 +733,11 @@ class OpenlineageSource(PipelineServiceSource):
         return f"{namespace}-{name}"
 
     @classmethod
-    def _filter_event_by_types(cls, event: OpenLineageEvent, event_types: List[EventType]) -> Optional[Dict]:  # noqa: UP006, UP045
+    def _filter_event_by_types(
+        cls,
+        event: OpenLineageEvent,
+        event_types: List[EventType],  # noqa: UP006
+    ) -> Optional[OpenLineageEvent]:  # noqa: UP045
         """
         returns event if it's of one of the particular event_types.
         for example - for lineage events we will be only looking for EventType.COMPLETE event type.
@@ -670,7 +746,7 @@ class OpenlineageSource(PipelineServiceSource):
         :param event_types: list of event types we are looking for.
         :return: Open Lineage event if matches one of the event_types, otherwise None
         """
-        return event if event.event_type in event_types else {}
+        return event if event.event_type in event_types else None
 
     @classmethod
     def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
@@ -1143,7 +1219,6 @@ class OpenlineageSource(PipelineServiceSource):
             iterator_type = broker.consumerOffsets.value
             pool_timeout = broker.poolTimeout
             session_timeout = broker.sessionTimeout
-            empty_response_time = 0.0
 
             for shard in shards:
                 shard_id = shard["ShardId"]
@@ -1153,6 +1228,9 @@ class OpenlineageSource(PipelineServiceSource):
                     ShardIteratorType=iterator_type,
                 )
                 shard_iterator = iterator_resp["ShardIterator"]
+                # Reset the inactivity timer for each shard; otherwise the timeout
+                # accrued draining the first shard leaves every later shard skipped.
+                empty_response_time = 0.0
 
                 while shard_iterator and empty_response_time <= session_timeout:
                     response = kinesis_client.get_records(
@@ -1170,21 +1248,28 @@ class OpenlineageSource(PipelineServiceSource):
                     empty_response_time = 0.0
                     for record in records:
                         try:
-                            data = json.loads(record["Data"])
-                            _result = message_to_open_lineage_event(data)
-                            result = self._filter_event_by_types(
-                                _result,
-                                [
-                                    EventType.COMPLETE,
-                                    EventType.RUNNING,
-                                    EventType.START,
-                                ],
-                            )
-                            if result:
-                                yield result
+                            payloads = deaggregate_kinesis_record(record["Data"])
                         except Exception as e:
-                            logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
+                            logger.warning(f"Failed to de-aggregate Kinesis record: {e}")
                             logger.debug(traceback.format_exc())
+                            continue
+                        for payload in payloads:
+                            try:
+                                data = json.loads(payload)
+                                _result = message_to_open_lineage_event(data)
+                                result = self._filter_event_by_types(
+                                    _result,
+                                    [
+                                        EventType.COMPLETE,
+                                        EventType.RUNNING,
+                                        EventType.START,
+                                    ],
+                                )
+                                if result:
+                                    yield result
+                            except Exception as e:
+                                logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
+                                logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)
 

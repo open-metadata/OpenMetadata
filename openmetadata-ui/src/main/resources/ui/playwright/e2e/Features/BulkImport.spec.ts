@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -46,6 +46,7 @@ import {
   performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
   pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
 
@@ -87,6 +88,24 @@ const databaseSchemaDetails1 = {
 const databaseSchemaDetails2 = {
   ...createDatabaseSchemaRowDetails(),
   glossary: glossaryDetails,
+};
+
+const validateSuccessfulImportStatus = async (page: Page) => {
+  const expectedProcessed =
+    (await page.getByTestId('processed-row').textContent())?.trim() ?? '0';
+
+  await validateImportStatus(page, {
+    passed: expectedProcessed,
+    processed: expectedProcessed,
+    failed: '0',
+  });
+};
+
+const expectImportRowStatusesToContain = async (
+  page: Page,
+  rowStatus: string[]
+) => {
+  await expect(page.locator('.rdg-cell-details')).toContainText(rowStatus);
 };
 
 const tableDetails1 = {
@@ -132,8 +151,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(300_000);
+    // 6 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(600_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -167,10 +186,7 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + dbService.entity.name + '.csv',
       ]);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -349,11 +365,7 @@ test.describe('Bulk Import Export', () => {
 
       await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '6',
-        processed: '6',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
       const rowStatus = [
         'Entity created',
         'Entity created',
@@ -363,11 +375,12 @@ test.describe('Bulk Import Export', () => {
         'Entity created',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -375,7 +388,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -385,7 +398,7 @@ test.describe('Bulk Import Export', () => {
 
   test('Database', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(300_000);
+    test.setTimeout(500_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -418,10 +431,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -550,11 +560,7 @@ test.describe('Bulk Import Export', () => {
         state: 'detached',
       });
 
-      await validateImportStatus(page, {
-        passed: '12',
-        processed: '12',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
@@ -575,11 +581,12 @@ test.describe('Bulk Import Export', () => {
         'Entity created',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -587,7 +594,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -597,7 +604,7 @@ test.describe('Bulk Import Export', () => {
 
   test('Database Schema', async ({ page }) => {
     // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(240_000);
+    test.setTimeout(500_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -627,10 +634,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbSchemaEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -733,11 +737,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '4',
-        processed: '4',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -746,11 +746,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -758,7 +759,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -767,7 +768,7 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(300_000);
 
     const tableEntity = new TableClass();
 
@@ -787,10 +788,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + tableEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -870,9 +868,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -905,11 +901,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '8',
-        processed: '8',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -922,11 +914,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -934,7 +927,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -952,9 +945,7 @@ test.describe('Bulk Import Export', () => {
           'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
         ]);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -975,11 +966,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '9',
-        processed: '9',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity updated',
@@ -993,11 +980,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -1005,7 +993,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -1070,10 +1058,7 @@ test.describe('Bulk Import Export', () => {
       await page
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();

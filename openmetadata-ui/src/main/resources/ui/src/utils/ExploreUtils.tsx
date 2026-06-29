@@ -32,7 +32,7 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayUtils';
+import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
@@ -40,6 +40,30 @@ import {
 } from './ExplorePureUtils';
 import { escapeESReservedCharacters } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
+
+export {
+  extractTermKeys,
+  findActiveSearchIndex,
+  findTreeNodeKeyByBrowsePath,
+  getAggregations,
+  getBrowsePathQueryFilter,
+  getCanonicalEntityType,
+  getDisabledExploreTreeKeys,
+  getExploreQueryFilterMust,
+  getParseValueFromLocation,
+  getQuickFilterObject,
+  getQuickFilterObjectForEntities,
+  getQuickFilterQuery,
+  getSelectedValuesFromQuickFilter,
+  getSubLevelHierarchyKey,
+  isElasticsearchError,
+  parseBrowsePathFields,
+  parseSearchParams,
+  truncateBrowsePath,
+  updateCountsInTreeData,
+  updateTreeData,
+  updateTreeDataWithCounts,
+} from './ExplorePureUtils';
 
 export const getAggregationOptions = async (
   index: SearchIndex | SearchIndex[],
@@ -187,12 +211,17 @@ export const fetchEntityData = async ({
         filters: '',
       };
 
-      // First make countAPICall
-      try {
-        const res = await searchRequest(countPayload);
+      const handleSearchError = (error: unknown) => {
+        if (isElasticsearchError(error)) {
+          setShowIndexNotFoundAlert(true);
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+      };
+
+      const applyHitCounts = (res: SearchResponse<ExploreSearchIndex>) => {
         const buckets = res.aggregations['entityType'].buckets;
         const counts: Record<string, number> = {};
-
         buckets.forEach((item) => {
           const searchIndexKey =
             item && EntityTypeSearchIndexMapping[item.key as EntityType];
@@ -201,25 +230,14 @@ export const fetchEntityData = async ({
             counts[searchIndexKey ?? ''] = item.doc_count;
           }
         });
-
-        // Update searchHitCounts
         setSearchHitCounts(counts as SearchHitCounts);
 
-        // Determine which searchIndex to use
-        let effectiveSearchIndex = searchIndex;
+        return counts as SearchHitCounts;
+      };
 
-        // If tab is not specified, determine it from searchHitCounts
-        if (!tab || tab.trim() === '') {
-          const determinedSearchIndex = findActiveSearchIndex(
-            counts as SearchHitCounts,
-            tabsInfo
-          );
-          if (determinedSearchIndex) {
-            effectiveSearchIndex = determinedSearchIndex;
-          }
-        }
-
-        // Now make searchAPICall with the effective searchIndex
+      const runResultsSearch = async (
+        effectiveSearchIndex: ExploreSearchIndex
+      ) => {
         const updatedSearchPayload = {
           query: !isEmpty(searchQueryParam)
             ? escapeESReservedCharacters(searchQueryParam)
@@ -231,7 +249,12 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
-          excludeSourceFields: ['columns', 'queries', 'columnNames'],
+          excludeSourceFields: [
+            'columns',
+            'queries',
+            'columnNames',
+            'dataModel',
+          ],
         };
 
         try {
@@ -248,17 +271,39 @@ export const fetchEntityData = async ({
             );
           }
         } catch (error) {
-          if (isElasticsearchError(error)) {
-            setShowIndexNotFoundAlert(true);
-          } else {
-            showErrorToast(error as AxiosError);
-          }
+          handleSearchError(error);
         }
-      } catch (error) {
-        if (isElasticsearchError(error)) {
-          setShowIndexNotFoundAlert(true);
-        } else {
-          showErrorToast(error as AxiosError);
+      };
+
+      const hasExplicitTab = Boolean(tab && tab.trim() !== '');
+
+      if (hasExplicitTab) {
+        // The active tab fixes the results index, so it does not depend on the
+        // count response — run both concurrently to avoid serializing two
+        // round-trips. Each leg handles its own error (a failed count still
+        // lets results render, and vice-versa).
+        await Promise.all([
+          searchRequest(countPayload)
+            .then((res) =>
+              applyHitCounts(res as SearchResponse<ExploreSearchIndex>)
+            )
+            .catch(handleSearchError),
+          runResultsSearch(searchIndex),
+        ]);
+      } else {
+        // No tab: the count decides which index actually has results, so the
+        // count must complete before the results query can be issued.
+        try {
+          const counts = applyHitCounts(
+            (await searchRequest(
+              countPayload
+            )) as SearchResponse<ExploreSearchIndex>
+          );
+          const effectiveSearchIndex =
+            findActiveSearchIndex(counts, tabsInfo) || searchIndex;
+          await runResultsSearch(effectiveSearchIndex);
+        } catch (error) {
+          handleSearchError(error);
         }
       }
     } else {
@@ -272,7 +317,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
-        excludeSourceFields: ['columns', 'queries', 'columnNames'],
+        excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 
       try {

@@ -73,7 +73,7 @@
     <mockito.version>5.14.2</mockito.version>
     <!-- Upgrading slf4j causes dropwizard issues -->
     <slf4j.version>2.0.4</slf4j.version>
-    <jackson.version>2.18.7</jackson.version>
+    <jackson.version>2.18.8</jackson.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.41.30</awssdk.version>
@@ -627,11 +627,6 @@
         <groupId>com.fasterxml.jackson.datatype</groupId>
         <artifactId>jackson-datatype-jsr353</artifactId>
         <version>${jackson.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.lmax</groupId>
-        <artifactId>disruptor</artifactId>
-        <version>3.4.4</version>
       </dependency>
       <dependency>
         <groupId>io.github.resilience4j</groupId>
