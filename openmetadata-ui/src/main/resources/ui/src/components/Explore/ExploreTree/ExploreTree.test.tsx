@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { TourContext } from '../../../context/TourProvider/TourProvider';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree from './ExploreTree';
 
@@ -58,6 +59,24 @@ describe('ExploreTree', () => {
     expect(getByText('label.search-index-plural')).toBeInTheDocument();
     expect(getByText('label.ml-model-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
+  });
+
+  it('does not fetch entity counts while the product tour is open', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const { queryByTestId } = render(
+      <TourContext.Provider value={{ isTourOpen: true } as never}>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
   });
 
   it('grays out categories that cannot contain the selected asset type', async () => {

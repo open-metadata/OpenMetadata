@@ -70,16 +70,18 @@ const validateTourSteps = async (page: Page) => {
 
   await page.getByTestId('searchBox').fill('dim_a');
 
-  const [searchResponse] = await Promise.all([
-    page.waitForResponse((res) => res.url().includes('/search/query')),
-    page.getByTestId('searchBox').press('Enter'),
-  ]);
-
-  expect(searchResponse.status()).toBe(200);
+  // The tour search is fully mock-driven and fires no API call; pressing Enter
+  // advances the tour to the Explore step, which must render the mocked result
+  // card without hitting the backend.
+  await page.getByTestId('searchBox').press('Enter');
 
   await waitForAllLoadersToDisappear(page);
 
   await expectTourBadge(page, '4');
+
+  await expect(
+    page.locator('#search-card-9d664bbd-8c9e-4068-9112-9ab0457d4c52')
+  ).toBeVisible();
 
   // step 3
   await page.locator('[data-tour-elem="right-arrow"]').click();
