@@ -108,7 +108,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -2293,10 +2293,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // The pass below runs after updateFqn but inside this transaction — see
       // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-      invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
@@ -2338,7 +2338,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updateAssetIndexes(oldFqn, newFqn);
       }
 
-      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     /**
@@ -2369,10 +2369,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // The pass below runs after updateFqn but inside this transaction — see
       // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
       List<EntityDAO.EntityIdFqnPair> renamedTerms =
-          invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
+          EntityRepository.invalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, oldFqn);
       // Drop cached entity JSON / bundle for every entity tagged with this term (or any
       // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-      invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
+      EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.GLOSSARY_TERM, oldFqn);
       daoCollection.glossaryTermDAO().updateFqn(oldFqn, newFqn);
       daoCollection.tagUsageDAO().rename(TagSource.GLOSSARY.ordinal(), oldFqn, newFqn);
 
@@ -2404,7 +2404,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
       updateAssetIndexes(oldFqn, newFqn);
 
-      finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
     }
 
     private void validateParent() {
@@ -2484,7 +2484,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       visited.add(termId);
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTerm(tagRecord.getId(), visited);
       }

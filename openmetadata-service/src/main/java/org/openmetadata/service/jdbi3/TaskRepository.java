@@ -61,6 +61,7 @@ import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandle
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.AuthRequest;
@@ -682,21 +683,30 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     List<EntityLink> mentions = MessageParser.getEntityLinks(message);
-    mentions.stream()
-        .distinct()
-        .forEach(
-            mention ->
-                daoCollection
-                    .fieldRelationshipDAO()
-                    .insert(
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldValue(),
-                        task.getId().toString(),
-                        mention.getFullyQualifiedFieldType(),
-                        Entity.TASK,
-                        Relationship.MENTIONED_IN.ordinal(),
-                        null));
+    String taskId = task.getId().toString();
+    String taskIdHash = FullyQualifiedName.buildHash(taskId);
+
+    List<FieldRelationship> relationships =
+        mentions.stream()
+            .distinct()
+            .map(
+                mention -> {
+                  FieldRelationship relationship = new FieldRelationship();
+                  relationship.setFromFQNHash(
+                      FullyQualifiedName.buildHash(mention.getFullyQualifiedFieldValue()));
+                  relationship.setToFQNHash(taskIdHash);
+                  relationship.setFromFQN(mention.getFullyQualifiedFieldValue());
+                  relationship.setToFQN(taskId);
+                  relationship.setFromType(mention.getFullyQualifiedFieldType());
+                  relationship.setToType(Entity.TASK);
+                  relationship.setRelation(Relationship.MENTIONED_IN.ordinal());
+                  return relationship;
+                })
+            .toList();
+
+    if (!relationships.isEmpty()) {
+      daoCollection.fieldRelationshipDAO().insertMany(relationships);
+    }
   }
 
   /**

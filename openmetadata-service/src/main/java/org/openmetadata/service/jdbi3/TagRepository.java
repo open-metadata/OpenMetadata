@@ -72,7 +72,7 @@ import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -998,12 +998,13 @@ public class TagRepository extends EntityRepository<Tag> {
         // Capture the descendants so the post-write pass can re-evict any entry a racing reader
         // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
         // The pass below runs after updateFqn but inside this transaction — see
-        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit window.
+        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit
+        // window.
         List<EntityDAO.EntityIdFqnPair> renamedTags =
-            invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+            EntityRepository.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
         // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-        invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
+        EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
         daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
         daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
@@ -1018,7 +1019,7 @@ public class TagRepository extends EntityRepository<Tag> {
                 PolicyConditionUpdater.renamePrefixInCondition(
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
-        finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+        EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
       }
 
       if (classificationChanged) {
@@ -1088,7 +1089,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }

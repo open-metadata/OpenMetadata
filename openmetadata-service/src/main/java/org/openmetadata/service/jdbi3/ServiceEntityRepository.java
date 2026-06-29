@@ -187,7 +187,8 @@ public abstract class ServiceEntityRepository<
     dao.update(serviceId, service.getFullyQualifiedName(), JsonUtils.pojoToJson(service));
     // Direct dao.update skips invalidateCachesAfterStore, so the next read would serve the
     // pre-test-connection JSON from cache. Drop every cached variant for this service.
-    invalidateCacheForEntity(entityType, serviceId, service.getFullyQualifiedName());
+    EntityRepository.invalidateCacheForEntity(
+        entityType, serviceId, service.getFullyQualifiedName());
     return service;
   }
 
