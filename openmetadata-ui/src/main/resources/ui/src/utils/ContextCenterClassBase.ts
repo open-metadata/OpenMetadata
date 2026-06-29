@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { TFunction } from 'i18next';
 import type React from 'react';
 import {
   PLACEHOLDER_ROUTE_FQN,
@@ -28,6 +29,13 @@ export interface MemoryMetadataItem {
   value: React.ReactNode;
 }
 
+export interface ContextCenterBreadcrumbItem {
+  label: React.ReactNode;
+  href?: string;
+  icon?: React.FC<{ className?: string }>;
+  ariaLabel?: string;
+}
+
 class ContextCenterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
     // no-op in base; overridden in Collate
@@ -43,10 +51,6 @@ class ContextCenterClassBase {
 
   public isBreadcrumbInsideCard(): boolean {
     return false;
-  }
-
-  public getBreadcrumbClassName(): string {
-    return '';
   }
 
   public getContainerClassName(): string {
@@ -103,6 +107,15 @@ class ContextCenterClassBase {
 
   public getMemoryMetadataList(_memory: ContextMemory): MemoryMetadataItem[] {
     return [];
+  }
+
+  public getContextCenterRootBreadcrumb(
+    t: TFunction
+  ): ContextCenterBreadcrumbItem {
+    return {
+      label: t('label.context-center'),
+      href: this.getContextCenterPath(),
+    };
   }
 }
 
