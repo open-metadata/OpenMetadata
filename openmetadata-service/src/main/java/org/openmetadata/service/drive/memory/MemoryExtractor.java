@@ -27,7 +27,7 @@ import org.openmetadata.service.util.AISettingsUtil;
  * an empty response.
  */
 @Slf4j
-public class MemoryExtractor {
+public class MemoryExtractor implements MemoryDeriver {
   static final String FALLBACK_PROMPT =
       "You are a memory agent. Decide whether the memory maps to a Glossary Term and/or Metric "
           + "(REUSE existing / CREATE new / SKIP). Return ONLY a JSON array with one object "
@@ -39,6 +39,7 @@ public class MemoryExtractor {
     this.llmClient = llmClient;
   }
 
+  @Override
   public MemoryDerivation derive(ContextMemory memory, MemoryContext context) {
     final String prompt = AISettingsUtil.memoryAgentPrompt(AISettingsUtil.get(), FALLBACK_PROMPT);
     final String userPrompt = MemoryPromptBuilder.build(memory, context);

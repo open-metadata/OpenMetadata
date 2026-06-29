@@ -3,7 +3,6 @@ package org.openmetadata.service.drive;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
 
 /**
  * Process-wide holder of the single {@link PageContextProcessingEngine}. The engine owns an
@@ -30,7 +29,7 @@ public final class PageContextProcessingEngineHolder {
           (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
       KnowledgePageRepository pageRepository =
           (KnowledgePageRepository) Entity.getEntityRepository(Entity.PAGE);
-      ContextMemoryExtractor extractor = new ContextMemoryExtractor(LLMClientHolder.get());
+      DocumentMemoryExtractor extractor = AiProviderHolder.get().documentExtractor();
       ContextMemoryReconciler reconciler = new ContextMemoryReconciler(memoryRepository);
       long quietPeriodMillis =
           Long.getLong(

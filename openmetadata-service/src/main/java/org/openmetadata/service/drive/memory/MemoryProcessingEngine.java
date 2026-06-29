@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.context.MemoryProcessingStatus;
 import org.openmetadata.schema.entity.context.MemoryStats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.AiProviderHolder;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -68,7 +69,7 @@ public class MemoryProcessingEngine {
 
   private final ContextMemoryRepository memoryRepo;
   private final MemoryGrounding grounding;
-  private final MemoryExtractor extractor;
+  private final MemoryDeriver extractor;
   private final MemoryReconciler reconciler;
   private final long quietPeriodMillis;
   private final int maxPendingMemories;
@@ -82,7 +83,7 @@ public class MemoryProcessingEngine {
   private MemoryProcessingEngine(
       final ContextMemoryRepository memoryRepo,
       final MemoryGrounding grounding,
-      final MemoryExtractor extractor,
+      final MemoryDeriver extractor,
       final MemoryReconciler reconciler,
       final long quietPeriodMillis,
       final int maxPendingMemories,
@@ -118,7 +119,7 @@ public class MemoryProcessingEngine {
   static MemoryProcessingEngine forTest(
       final ContextMemoryRepository memoryRepo,
       final MemoryGrounding grounding,
-      final MemoryExtractor extractor,
+      final MemoryDeriver extractor,
       final MemoryReconciler reconciler) {
     return new MemoryProcessingEngine(
         memoryRepo,
@@ -145,7 +146,7 @@ public class MemoryProcessingEngine {
     return new MemoryProcessingEngine(
         memoryRepo,
         new MemoryGrounding(),
-        new MemoryExtractor(LLMClientHolder.get()),
+        AiProviderHolder.get().memoryDeriver(),
         new MemoryReconciler(termRepo, metricRepo, glossaryRepo),
         quietMillis,
         maxPending,

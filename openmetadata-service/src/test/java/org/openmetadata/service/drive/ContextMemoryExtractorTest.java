@@ -76,7 +76,7 @@ class ContextMemoryExtractorTest {
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    ContextMemoryExtractor.DeriveResult result =
+    DocumentMemoryExtractor.DeriveResult result =
         extractor().derive("text", source, ContextMemorySourceType.FILE_EXTRACTION);
 
     assertEquals(1, result.memories().size());
@@ -124,7 +124,7 @@ class ContextMemoryExtractorTest {
         .thenThrow(new LLMCompletionException("provider exploded"))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    ContextMemoryExtractor.DeriveResult result =
+    DocumentMemoryExtractor.DeriveResult result =
         extractor().derive(text, source, ContextMemorySourceType.FILE_EXTRACTION);
 
     assertEquals(1, result.memories().size(), "pills from surviving chunks must be kept");
