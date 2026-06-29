@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,6 +25,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
@@ -268,6 +271,58 @@ class IngestionPipelineRepositoryTest {
     assertEquals("OpenMetadata", decrypted.getService().getName());
   }
 
+  @Test
+  void validateSourceConfigHasTypeRejectsEmptyConfig() {
+    IngestionPipeline pipeline = pipelineWithConfig(Map.of());
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class,
+            () -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+
+    assertTrue(
+        ex.getMessage().contains("sourceConfig.config.type"),
+        "diagnostic should name sourceConfig.config.type, got: " + ex.getMessage());
+  }
+
+  @Test
+  void validateSourceConfigHasTypeRejectsMissingConfig() {
+    IngestionPipeline pipeline = new IngestionPipeline().withSourceConfig(new SourceConfig());
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class,
+            () -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+
+    assertTrue(ex.getMessage().contains("sourceConfig.config.type"));
+  }
+
+  @Test
+  void validateSourceConfigHasTypeRejectsNonObjectConfig() {
+    IngestionPipeline pipeline = pipelineWithConfig("DatabaseMetadata");
+
+    BadRequestException ex =
+        assertThrows(
+            BadRequestException.class,
+            () -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+
+    assertTrue(ex.getMessage().contains("sourceConfig.config"));
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsRawConfigWithType() {
+    IngestionPipeline pipeline = pipelineWithConfig(Map.of("type", "DatabaseMetadata"));
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
+  @Test
+  void validateSourceConfigHasTypeAcceptsTypedConfigWithDefaultType() {
+    IngestionPipeline pipeline = pipelineWithConfig(new DatabaseServiceMetadataPipeline());
+
+    assertDoesNotThrow(() -> IngestionPipelineRepository.validateSourceConfigHasType(pipeline));
+  }
+
   private static IngestionPipeline createPipelineWithSchedule(String schedule) {
     IngestionPipeline pipeline = createBasicPipeline();
     AirflowConfig airflowConfig = new AirflowConfig();
@@ -311,5 +366,9 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
+  }
+
+  private static IngestionPipeline pipelineWithConfig(Object config) {
+    return new IngestionPipeline().withSourceConfig(new SourceConfig().withConfig(config));
   }
 }
