@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import jakarta.ws.rs.ForbiddenException;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
@@ -38,7 +39,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
