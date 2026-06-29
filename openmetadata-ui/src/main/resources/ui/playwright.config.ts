@@ -48,11 +48,13 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only. One retry is enough to absorb true flakes; chronic
-   * flakes get caught and fixed faster, and a failing test with the default
-   * 60s timeout can otherwise burn 3 min before reporting (worse for files
-   * using test.setTimeout). */
-  retries: process.env.CI ? 1 : 0,
+  /* Retry on CI only. Kept at 2 — dropping to 1 surfaced a long tail of
+   * backend-propagation flakes (task feed not refreshing after API task
+   * create, RBAC index lag, search dropdown not rendering on the first
+   * query response, etc.) that are not deterministically reproducible
+   * and each take their own round-trip to investigate. maxFailures:50
+   * still bails fundamentally broken PRs in minutes. */
+  retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 3 : undefined,
   /* Bail early when a PR is fundamentally broken — full-suite has ~4,400
