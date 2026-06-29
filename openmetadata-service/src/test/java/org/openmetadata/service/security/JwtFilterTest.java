@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.jwt.JWTTokenGenerator.TOKEN_TYPE;
 
 import com.auth0.jwk.Jwk;
 import com.auth0.jwk.JwkProvider;
@@ -45,6 +46,9 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 class JwtFilterTest {
 
@@ -52,7 +56,11 @@ class JwtFilterTest {
   private static JwkProvider jwkProvider;
 
   private static Algorithm algorithm;
+  private static RSAPublicKey publicKey;
   private static UriInfo mockRequestURIInfo;
+
+  private static final String OM_ISSUER = "open-metadata.org";
+  private static final String OM_KEY_ID = "om-signing-key";
 
   @BeforeAll
   static void before() throws Exception {
@@ -60,8 +68,8 @@ class JwtFilterTest {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(512);
     KeyPair keyPair = keyPairGenerator.generateKeyPair();
-    algorithm =
-        Algorithm.RSA256((RSAPublicKey) keyPair.getPublic(), (RSAPrivateKey) keyPair.getPrivate());
+    publicKey = (RSAPublicKey) keyPair.getPublic();
+    algorithm = Algorithm.RSA256(publicKey, (RSAPrivateKey) keyPair.getPrivate());
 
     // Mock a JwkProvider that has a single JWK containing the public key from the algorithm above
     // This is used to verify the JWT
@@ -233,6 +241,101 @@ class JwtFilterTest {
         assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
     assertTrue(
         exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
+  }
+
+  @Test
+  void openMetadataIssuedTokenBypassesDomainEnforcement() throws Exception {
+    JwtFilter enforcingFilter = newEnforcingFilterForKeyId(OM_KEY_ID);
+    String jwt =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "asmith")
+            .withClaim("email", "asmith@intermedia.com")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        org.mockito.Mockito.mockStatic(
+            JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(OM_ISSUER);
+      when(instance.getKid()).thenReturn(OM_KEY_ID);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      enforcingFilter.filter(context);
+    }
+
+    verify(context, times(1))
+        .setSecurityContext(org.mockito.ArgumentMatchers.any(SecurityContext.class));
+  }
+
+  @Test
+  void externalTokenStillEnforcedWhenServerHasNoSigningIdentity() throws Exception {
+    JwtFilter enforcingFilter = newEnforcingFilterForKeyId(OM_KEY_ID);
+    String jwt =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("email", "asmith@intermedia.com")
+            .sign(algorithm);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    try (MockedStatic<JWTTokenGenerator> generator =
+        org.mockito.Mockito.mockStatic(
+            JWTTokenGenerator.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      JWTTokenGenerator instance = mock(JWTTokenGenerator.class);
+      when(instance.getIssuer()).thenReturn(null);
+      when(instance.getKid()).thenReturn(null);
+      generator.when(JWTTokenGenerator::getInstance).thenReturn(instance);
+
+      Exception exception =
+          assertThrows(AuthenticationException.class, () -> enforcingFilter.filter(context));
+      assertTrue(
+          exception
+              .getMessage()
+              .toLowerCase(Locale.ROOT)
+              .contains("email does not match the principal domain"));
+    }
+  }
+
+  @Test
+  void spoofedOpenMetadataKeyIdWithoutMatchingSignatureIsRejected() throws Exception {
+    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+    keyPairGenerator.initialize(2048);
+    KeyPair attackerKeyPair = keyPairGenerator.generateKeyPair();
+    Algorithm attackerAlgorithm =
+        Algorithm.RSA256(
+            (RSAPublicKey) attackerKeyPair.getPublic(),
+            (RSAPrivateKey) attackerKeyPair.getPrivate());
+
+    String jwt =
+        JWT.create()
+            .withKeyId(OM_KEY_ID)
+            .withIssuer(OM_ISSUER)
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "asmith")
+            .withClaim("email", "asmith@intermedia.com")
+            .withClaim(TOKEN_TYPE, ServiceTokenType.OM_USER.value())
+            .sign(attackerAlgorithm);
+    JwtFilter enforcingFilter = newEnforcingFilterForKeyId(OM_KEY_ID);
+    ContainerRequestContext context = createRequestContextWithJwt(jwt);
+
+    Exception exception =
+        assertThrows(AuthenticationException.class, () -> enforcingFilter.filter(context));
+    assertTrue(
+        exception.getMessage().toLowerCase(Locale.ROOT).contains("token verification failed"));
+  }
+
+  private static JwtFilter newEnforcingFilterForKeyId(String keyId) throws Exception {
+    Jwk jwk = mock(Jwk.class);
+    when(jwk.getPublicKey()).thenReturn(publicKey);
+    JwkProvider keyIdAwareProvider = mock(JwkProvider.class);
+    when(keyIdAwareProvider.get(keyId)).thenReturn(jwk);
+    return new JwtFilter(keyIdAwareProvider, List.of("sub", "email"), OM_ISSUER, true);
   }
 
   /**

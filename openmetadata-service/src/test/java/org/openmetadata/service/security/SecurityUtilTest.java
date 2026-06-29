@@ -2,9 +2,13 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.auth0.jwt.interfaces.Claim;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -274,5 +278,44 @@ class SecurityUtilTest {
     String displayName = SecurityUtil.extractDisplayNameFromClaims(claims);
 
     assertEquals(null, displayName);
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenRequiresMatchingIssuerAndKeyId() {
+    Map<String, Claim> claims = Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertTrue(
+        SecurityUtil.isOpenMetadataIssuedToken(claims, "om-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            claims, "attacker-key", "open-metadata.org", "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(
+            Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("evil.com")),
+            "om-key",
+            "open-metadata.org",
+            "om-key"));
+
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(Map.of(), "om-key", "open-metadata.org", "om-key"));
+  }
+
+  @Test
+  void testIsOpenMetadataIssuedTokenFalseWhenServerHasNoSigningIdentity() {
+    Map<String, Claim> spoofed =
+        Map.of(SecurityUtil.ISSUER_CLAIM, stringClaim("open-metadata.org"));
+
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", null, "om-key"));
+    assertFalse(
+        SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "open-metadata.org", null));
+    assertFalse(SecurityUtil.isOpenMetadataIssuedToken(spoofed, "om-key", "", ""));
+  }
+
+  private static Claim stringClaim(String value) {
+    Claim claim = mock(Claim.class);
+    when(claim.asString()).thenReturn(value);
+    return claim;
   }
 }
