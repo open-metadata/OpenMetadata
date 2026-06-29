@@ -22,7 +22,7 @@ import { UploadCloud01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { showNotistackError } from '../../../utils/NotistackUtils';
+import { toast } from '@openmetadata/ui-core-components';
 import Loader from '../Loader/Loader';
 import { MUIFileUploadProps } from './MUIFileUpload.interface';
 

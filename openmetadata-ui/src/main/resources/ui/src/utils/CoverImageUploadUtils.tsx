@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { toast, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
@@ -19,11 +19,6 @@ import { CoverImageFileValue } from '../components/common/CoverImageUpload/Cover
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { getIsErrorMatch } from './APIUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-  showNotistackWarning,
-} from './NotistackUtils';
 
 /**
  * Options for uploading cover image after entity creation
@@ -227,7 +222,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
-      showNotistackWarning(
+      toast.warning(
         <Typography className="tw:font-bold">
           {t('message.entity-created-but-cover-image-failed', {
             entity: entityLabel,
@@ -236,8 +231,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
         { autoDismiss: false }
       );
     } else {
-      // Entity created successfully (with or without cover image)
-      showNotistackSuccess(
+      toast.success(
         <Typography className="tw:font-bold">
           {t('server.create-entity-success', { entity: entityLabel })}
         </Typography>
