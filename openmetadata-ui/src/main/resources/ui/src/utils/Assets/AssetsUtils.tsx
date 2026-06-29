@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
 import { HTMLAttributes } from 'react';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -343,17 +344,17 @@ export const getEntityIconWithBg = (
       align='center'
       justify='center'
       {...restContainerProps}
-      className={[
+      className={classNames(
         'tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
         style?.bgClass ?? 'tw:bg-gray-100',
-        containerClassName ?? '',
-      ].join(' ')}>
+        containerClassName
+      )}>
       {Icon && (
         <Icon
-          className={[
+          className={classNames(
             style?.iconClass ?? 'tw:text-gray-500',
-            iconClassName ?? '',
-          ].join(' ')}
+            iconClassName
+          )}
           height={size}
           strokeWidth={strokeWidth}
           width={size}

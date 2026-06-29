@@ -12,6 +12,7 @@
  */
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC } from 'react';
 import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
@@ -27,13 +28,13 @@ const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
 
   return (
     <button
-      className={[
+      className={classNames(
         'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
         'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
         'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
-        isSelected ? 'tw:bg-brand-primary' : '',
-        isFocused && !isSelected ? 'tw:bg-utility-gray-blue-50' : '',
-      ].join(' ')}
+        { 'tw:bg-brand-primary': isSelected },
+        { 'tw:bg-utility-gray-blue-50': isFocused && !isSelected }
+      )}
       data-picker-item="true"
       type="button"
       onClick={() => onSelect(option)}>
