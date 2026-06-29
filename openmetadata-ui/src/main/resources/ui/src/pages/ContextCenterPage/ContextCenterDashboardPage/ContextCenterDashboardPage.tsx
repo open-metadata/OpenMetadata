@@ -12,18 +12,23 @@
  */
 
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown, File05, Sun, UploadCloud02 } from '@untitledui/icons';
+import {
+  ChevronDown,
+  File05,
+  File06,
+  Sun,
+  UploadCloud02,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import AlertBar from '../../../components/AlertBar/AlertBar';
-import AiActivitySection from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
-import NeedsAttentionSection from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import {
   QuickLinkFormModal,
@@ -134,7 +139,6 @@ const ContextCenterDashboardPage: FC = () => {
       const response = await getListKnowledgePages({
         fields: 'tags,page',
         limit: RECENT_DASHBOARD_ARTICLES_LIMIT,
-        pageType: PageType.ARTICLE,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
@@ -227,8 +231,22 @@ const ContextCenterDashboardPage: FC = () => {
         const owner = getEntityName(article?.owners?.[0]);
         const time = getShortRelativeTime(article.updatedAt);
         const metaParts = [owner, time].filter(Boolean);
+        const icon =
+          article.pageType === PageType.QUICK_LINK ? (
+            <QuickLinkIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={13}
+              width={13}
+            />
+          ) : (
+            <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+          );
 
-        return { title: getEntityName(article), meta: metaParts.join(' · ') };
+        return {
+          icon,
+          meta: metaParts.join(' · '),
+          title: getEntityName(article),
+        };
       }),
     [articles]
   );
@@ -321,8 +339,6 @@ const ContextCenterDashboardPage: FC = () => {
             statSub={t('label.published')}
             subtitle={t('message.long-form-authored-versioned')}
             title={t('label.article-plural')}
-            tone="info"
-            trend="0 this week"
             onClick={() =>
               navigate(contextCenterClassBase.getArticlesListPath())
             }
@@ -340,8 +356,6 @@ const ContextCenterDashboardPage: FC = () => {
             statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
             subtitle={t('message.files-uploaded-for-ai-retrieval')}
             title={t('label.document-plural')}
-            tone="warning"
-            trend="0 processing"
             onClick={() =>
               navigate(contextCenterClassBase.getDocumentsListPath())
             }
@@ -358,19 +372,10 @@ const ContextCenterDashboardPage: FC = () => {
             statSub={t('label.memory-plural')}
             subtitle={t('message.atomic-facts-ai-should-remember')}
             title={t('label.memory-plural')}
-            tone="success"
-            trend="0 cites today"
             onClick={() =>
               navigate(contextCenterClassBase.getMemoriesListPath())
             }
           />
-        </div>
-
-        <div
-          className="tw:grid tw:gap-4 tw:h-full"
-          style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-          <AiActivitySection isLoading={false} items={[]} />
-          <NeedsAttentionSection isLoading={false} items={[]} />
         </div>
       </Box>
 

@@ -19,12 +19,6 @@ import '@fontsource/source-code-pro'; // Font 400
 // header in {@link ./inter-variable.css} for context.
 import './inter-variable.css';
 
-// Variable Geist Mono aliased under the "Geist Mono" family name. Used by the
-// AI Governance Studio for framework references, control codes, and inline
-// code blocks where the design depends on Geist Mono's monospace metrics.
-import './geist-mono-variable.css';
-
-import '@react-awesome-query-builder/antd/css/styles.css';
 // reactflow CSS is co-located with the runtime in LineageProvider so it only
 // loads when the lineage canvas mounts. Previously imported here, which kept
 // `vendor-reactflow` in the entry chunk's modulepreload list even after the

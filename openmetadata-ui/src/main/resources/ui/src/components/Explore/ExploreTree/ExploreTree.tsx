@@ -28,7 +28,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -36,10 +36,13 @@ import {
   findTreeNodeKeyByBrowsePath,
   getAggregations,
   getDisabledExploreTreeKeys,
+  getExploreQueryFilterMust,
+  getQueryFilterMust,
   getQuickFilterMust,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
   parseBrowsePathFields,
   updateTreeData,
@@ -95,6 +98,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
 };
 
 const ExploreTree = ({
+  additionalQueryFilter,
   onFieldValueSelect,
   onTreeSelect,
   selectedEntityTypes = [],
@@ -179,6 +183,10 @@ const ExploreTree = ({
           childEntities:
             (treeNode as ExploreTreeNode).data?.childEntities ?? [],
           activeQuickFilter: parsedSearch.quickFilter,
+          activeBrowsePath: isEmpty(filterField)
+            ? parsedSearch.browsePath
+            : undefined,
+          activeQueryFilter: additionalQueryFilter,
         });
 
         const res = await searchQuery({
@@ -303,6 +311,7 @@ const ExploreTree = ({
       setTreeData,
       selectedEntityTypes,
       parsedSearch,
+      additionalQueryFilter,
     ]
   );
 
@@ -361,7 +370,13 @@ const ExploreTree = ({
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     try {
       setIsLoading(true);
-      const filterMust = getQuickFilterMust(parsedSearch.quickFilter);
+      const filterMust = [
+        ...getQuickFilterMust(parsedSearch.quickFilter),
+        ...getQueryFilterMust(additionalQueryFilter),
+        ...getExploreQueryFilterMust(
+          parseBrowsePathFields(parsedSearch.browsePath)
+        ),
+      ];
       const countRes = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
@@ -443,7 +458,13 @@ const ExploreTree = ({
         setIsLoading(false);
       }
     }
-  }, [searchQueryParam, setTreeData, parsedSearch.quickFilter]);
+  }, [
+    searchQueryParam,
+    setTreeData,
+    parsedSearch.quickFilter,
+    parsedSearch.browsePath,
+    additionalQueryFilter,
+  ]);
 
   useEffect(() => {
     if (!hasFetchedRef.current) {
@@ -452,20 +473,29 @@ const ExploreTree = ({
     }
   }, []);
 
-  const quickFilterSignature = useMemo(
-    () => (isString(parsedSearch.quickFilter) ? parsedSearch.quickFilter : ''),
-    [parsedSearch.quickFilter]
+  const filterSignature = useMemo(
+    () =>
+      JSON.stringify({
+        browsePath: isString(parsedSearch.browsePath)
+          ? parsedSearch.browsePath
+          : '',
+        quickFilter: isString(parsedSearch.quickFilter)
+          ? parsedSearch.quickFilter
+          : '',
+        queryFilter: additionalQueryFilter ?? {},
+      }),
+    [parsedSearch.browsePath, parsedSearch.quickFilter, additionalQueryFilter]
   );
-  const previousQuickFilterRef = useRef(quickFilterSignature);
+  const previousFilterRef = useRef(filterSignature);
 
   useEffect(() => {
-    // When the active quick filter changes, rebuild the tree so the deeper
-    // levels (cached by antd) re-fetch and their counts reflect the filter.
-    if (previousQuickFilterRef.current !== quickFilterSignature) {
-      previousQuickFilterRef.current = quickFilterSignature;
+    // When the active filters change, rebuild the tree so the deeper levels
+    // cached by antd re-fetch and their counts reflect the current query.
+    if (previousFilterRef.current !== filterSignature) {
+      previousFilterRef.current = filterSignature;
       fetchEntityCounts();
     }
-  }, [quickFilterSignature, fetchEntityCounts]);
+  }, [filterSignature, fetchEntityCounts]);
 
   useEffect(() => {
     // Hierarchical selections live in browsePath, static leaves in quickFilter
@@ -493,8 +523,21 @@ const ExploreTree = ({
   // Top-level categories that cannot hold the selected asset type are grayed
   // out so the user can't browse into services that won't contain it.
   const disabledRootKeys = useMemo(
-    () => getDisabledExploreTreeKeys(treeData, selectedEntityTypes),
-    [treeData, selectedEntityTypes]
+    () =>
+      getDisabledExploreTreeKeys(treeData, selectedEntityTypes, {
+        disableEmptyRoots: hasServiceDrillDownFilter(
+          parsedSearch.quickFilter,
+          parsedSearch.browsePath,
+          additionalQueryFilter
+        ),
+      }),
+    [
+      treeData,
+      selectedEntityTypes,
+      parsedSearch.quickFilter,
+      parsedSearch.browsePath,
+      additionalQueryFilter,
+    ]
   );
 
   const displayTreeData = useMemo(

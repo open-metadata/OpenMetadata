@@ -12,7 +12,7 @@
  */
 
 import {
-  Badge,
+  BadgeWithDot,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -85,9 +85,9 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({
   }
 
   const badge = (
-    <Badge color={config.color} size="sm">
+    <BadgeWithDot color={config.color} size="sm" type="color">
       {t(config.labelKey)}
-    </Badge>
+    </BadgeWithDot>
   );
 
   return (
