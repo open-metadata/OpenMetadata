@@ -517,6 +517,45 @@ public class DatabaseServiceResourceIT
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
   }
 
+  /**
+   * Builds service → database → schema → table so the shared recursive-hard-delete regression
+   * ({@link BaseServiceIT#recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean}) can
+   * verify the bulk-delete optimization for the database hierarchy (Table / DatabaseSchema /
+   * Database carry {@code descendantsCoveredByAncestorCascade=true}).
+   */
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("del_subtree_svc")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("s1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("t1"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
+  }
+
   @Test
   void test_importExportRecursive_withColumnTagsAndGlossaryTerms(TestNamespace ns)
       throws IOException, InterruptedException {
@@ -855,11 +894,8 @@ public class DatabaseServiceResourceIT
   void test_csvImportEntityRuleValidation(TestNamespace ns)
       throws IOException, InterruptedException {
 
-    final String MULTI_DOMAIN_RULE = "Multiple Domains are not allowed";
-
     // Check if rule is currently enabled and store original state
-    boolean originalRuleState =
-        EntityRulesUtil.isRuleEnabled(SdkClients.adminClient(), MULTI_DOMAIN_RULE);
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(SdkClients.adminClient());
 
     try {
       // Enable the multi-domain rule for testing

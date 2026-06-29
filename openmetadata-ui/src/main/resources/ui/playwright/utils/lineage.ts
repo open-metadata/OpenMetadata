@@ -501,7 +501,7 @@ export const verifyPipelineDataInDrawer = async (
     .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -519,7 +519,7 @@ export const verifyPipelineDataInDrawer = async (
 
     await fromNode.visitEntityPage(page);
   } else {
-    await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
+    await page.getByTestId('drawer-close-icon').click();
   }
 };
 
@@ -851,7 +851,9 @@ export const verifyExportLineagePNG = async (
   ).toBeVisible();
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+    // render enough headroom before the download event fires.
+    page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
       '[data-testid="export-entity-modal"] button#submit-button:visible'
     ),

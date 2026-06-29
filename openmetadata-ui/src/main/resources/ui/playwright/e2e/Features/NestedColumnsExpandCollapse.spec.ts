@@ -13,6 +13,7 @@
 import { APIRequestContext, test } from '@playwright/test';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import {
   createApiEndpointEntity,
   createContainerEntity,
@@ -199,12 +200,12 @@ test.describe('API Endpoint Entity Summary Panel - Nested columns with duplicate
     await page.getByTestId('search-dropdown-Service').click();
     await page.getByTestId('search-input').fill(apiService.service.name);
     await serviceSearchResponse;
-    await page.getByTestId(apiService.service.name).click();
-
     const filteredSearchResponse = page.waitForResponse(
       '**/api/v1/search/query*'
     );
-    await page.getByTestId('update-btn').click();
+    await page.getByTestId(apiService.service.name).click();
+
+    await clickUpdateButtonIfVisible(page);
     await filteredSearchResponse;
     await waitForAllLoadersToDisappear(page);
 

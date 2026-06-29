@@ -50,6 +50,10 @@ class LongCompoundNameSearchUIIT {
 
   private static final Duration INDEX_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
+  // Short inner visibility timeout per Explore re-search tick: the Awaitility loop owns the long
+  // wait and re-issues the search each tick, so a long inner timeout would fire once and miss the
+  // next refresh on a loaded cluster.
+  private static final long EXPLORE_VISIBLE_TICK_MS = 5_000;
 
   @Test
   void longUnderscoreNameStaysSearchable(final UiSession ui, final TestNamespace ns) {
@@ -62,12 +66,27 @@ class LongCompoundNameSearchUIIT {
     final SearchAssertions search = new SearchAssertions(ui.server());
     final String index = new IndexAliasInspector(ui.server()).indexNameFor(Entity.TABLE);
     awaitIndexed(search, index, longTable.getFullyQualifiedName());
+    awaitDiscoverableInExplore(ui);
+  }
 
-    // The table is confirmed in the index above, so the Explore search returns it; give the result
-    // row the propagation budget to render rather than the default 5s (tight on a loaded cluster).
-    final ExplorePage explore = ExplorePage.openWithSearch(ui, Tab.TABLES, LONG_NAME);
-    PlaywrightAssertions.assertThat(explore.firstResultByName(LONG_NAME))
-        .isVisible(new IsVisibleOptions().setTimeout(INDEX_TIMEOUT.toMillis()));
+  /**
+   * The table is confirmed in the index above, so the Explore search returns it — but on a loaded
+   * cluster the search response or the React render can lag a beat. Re-issue the Explore search
+   * each tick (transient nav/search errors ignored) rather than relying on a single navigation,
+   * which would fail if it happened to land in that lag window.
+   */
+  private static void awaitDiscoverableInExplore(final UiSession ui) {
+    Awaitility.await("table '" + LONG_NAME + "' discoverable on Explore[Tables]")
+        .atMost(INDEX_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              final ExplorePage explore = ExplorePage.openWithSearch(ui, Tab.TABLES, LONG_NAME);
+              PlaywrightAssertions.assertThat(explore.firstResultByName(LONG_NAME))
+                  .isVisible(new IsVisibleOptions().setTimeout(EXPLORE_VISIBLE_TICK_MS));
+            });
   }
 
   private static void awaitIndexed(
@@ -76,7 +95,7 @@ class LongCompoundNameSearchUIIT {
         .atMost(INDEX_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
         .pollDelay(Duration.ZERO)
-        .ignoreNoExceptions()
+        .ignoreExceptions()
         .untilAsserted(() -> search.assertEntityIndexed(index, "table", fqn));
   }
 }

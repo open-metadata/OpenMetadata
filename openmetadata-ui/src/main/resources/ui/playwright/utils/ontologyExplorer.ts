@@ -18,6 +18,13 @@ import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, redirectToHomePage } from '../utils/common';
 import { sidebarClick } from '../utils/sidebar';
 
+export interface GraphTermRef {
+  id: string;
+  name: string;
+}
+
+export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
+
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
   await page.getByTestId('search-dropdown-Glossary').click();
   await page.getByTestId(glossaryId).click();
@@ -118,6 +125,38 @@ export async function readGraphEdges(
       (el: HTMLElement) =>
         JSON.parse(el.dataset.edges ?? '[]') as RenderedEdge[]
     );
+}
+
+export function buildRdfGraphJson(
+  glossaryId: string,
+  term1: GraphTermRef,
+  term2: GraphTermRef
+) {
+  return {
+    nodes: [
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term2.id, label: term2.name, type: 'glossaryTerm', glossaryId },
+    ],
+    edges: [{ from: term1.id, to: term2.id, relationType: 'relatedTo' }],
+  };
+}
+
+export function buildMalformedRdfGraphJson(
+  glossaryId: string,
+  term1: GraphTermRef,
+  term2: GraphTermRef
+) {
+  return {
+    nodes: [
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term1.id, label: term1.name, type: 'glossaryTerm', glossaryId },
+      { id: term2.id, label: term2.name, type: 'glossaryTerm', glossaryId },
+    ],
+    edges: [
+      { from: term1.id, to: term2.id, relationType: 'relatedTo' },
+      { from: term1.id, to: DANGLING_GRAPH_NODE_ID, relationType: 'relatedTo' },
+    ],
+  };
 }
 
 export async function createApiContext(browser: Browser) {
@@ -270,6 +309,68 @@ export async function readCardinalityMap(
     );
 }
 
+// The relation types live in a single global `glossaryTermRelationSettings`
+// document that only supports a full-document PUT. Parallel Playwright workers
+// each read-modify-write that document, so a stale snapshot can drop a peer's
+// concurrent change or be rejected by the backend's "relation type in use"
+// validation. Every mutation below therefore reads fresh, applies only its own
+// delta, writes, and verifies the result — retrying on conflict until it lands.
+const RELATION_SETTINGS_KEY = 'glossaryTermRelationSettings';
+const MAX_RELATION_SETTINGS_ATTEMPTS = 10;
+
+interface RelationTypeConfig {
+  name: string;
+  [key: string]: unknown;
+}
+
+async function getRelationTypes(
+  apiContext: APIRequestContext
+): Promise<RelationTypeConfig[]> {
+  const res = await apiContext.get(
+    `/api/v1/system/settings/${RELATION_SETTINGS_KEY}`
+  );
+  const settings = await res.json();
+
+  return settings.config_value?.relationTypes ?? [];
+}
+
+async function putRelationTypes(
+  apiContext: APIRequestContext,
+  relationTypes: RelationTypeConfig[]
+) {
+  return apiContext.put('/api/v1/system/settings', {
+    data: {
+      config_type: RELATION_SETTINGS_KEY,
+      config_value: { relationTypes },
+    },
+  });
+}
+
+async function backoffBeforeRetry(attempt: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 100 + attempt * 100));
+}
+
+function buildRelationTypeEntry(relationType: {
+  name: string;
+  displayName: string;
+  cardinality: string;
+  sourceMax?: number | null;
+  targetMax?: number | null;
+}): RelationTypeConfig {
+  return {
+    name: relationType.name,
+    displayName: relationType.displayName,
+    category: 'associative',
+    cardinality: relationType.cardinality,
+    ...(relationType.sourceMax === undefined
+      ? {}
+      : { sourceMax: relationType.sourceMax }),
+    ...(relationType.targetMax === undefined
+      ? {}
+      : { targetMax: relationType.targetMax }),
+  };
+}
+
 export async function addRelationTypeWithCardinality(
   apiContext: APIRequestContext,
   relationType: {
@@ -280,118 +381,30 @@ export async function addRelationTypeWithCardinality(
     targetMax?: number | null;
   }
 ): Promise<void> {
-  const settingsRes = await apiContext.get(
-    '/api/v1/system/settings/glossaryTermRelationSettings'
-  );
-  const settings = await settingsRes.json();
-  const existing: Array<{ name: string }> =
-    settings.config_value?.relationTypes ?? [];
-
-  if (existing.some((rt) => rt.name === relationType.name)) {
-    return;
-  }
-
-  const res = await apiContext.put('/api/v1/system/settings', {
-    data: {
-      config_type: 'glossaryTermRelationSettings',
-      config_value: {
-        relationTypes: [
-          ...existing,
-          {
-            name: relationType.name,
-            displayName: relationType.displayName,
-            category: 'associative',
-            cardinality: relationType.cardinality,
-            ...(relationType.sourceMax === undefined
-              ? {}
-              : { sourceMax: relationType.sourceMax }),
-            ...(relationType.targetMax === undefined
-              ? {}
-              : { targetMax: relationType.targetMax }),
-          },
-        ],
-      },
-    },
-  });
-
-  if (!res.ok()) {
-    throw new Error(
-      `addRelationTypeWithCardinality: failed to add "${
-        relationType.name
-      }" — HTTP ${res.status()}`
-    );
-  }
-}
-
-async function clearRelationTypeUsages(
-  apiContext: APIRequestContext,
-  relationTypeName: string
-): Promise<void> {
-  let after: string | undefined;
-  const pageSize = 100;
-
-  do {
-    const url =
-      `/api/v1/glossaryTerms?limit=${pageSize}&fields=relatedTerms` +
-      (after ? `&after=${after}` : '');
-    const res = await apiContext.get(url);
-    if (!res.ok()) {
-      break;
+  for (let attempt = 0; attempt < MAX_RELATION_SETTINGS_ATTEMPTS; attempt++) {
+    const existing = await getRelationTypes(apiContext);
+    if (existing.some((rt) => rt.name === relationType.name)) {
+      return;
     }
-    const body = await res.json();
-    const terms: Array<{
-      id: string;
-      relatedTerms?: Array<{ relationType: string }>;
-    }> = body.data ?? [];
 
-    for (const term of terms) {
-      const filtered = (term.relatedTerms ?? []).filter(
-        (r) => r.relationType !== relationTypeName
-      );
-      if (filtered.length !== (term.relatedTerms ?? []).length) {
-        await apiContext.patch(`/api/v1/glossaryTerms/${term.id}`, {
-          data: [{ op: 'add', path: '/relatedTerms', value: filtered }],
-          headers: { 'Content-Type': 'application/json-patch+json' },
-        });
+    const res = await putRelationTypes(apiContext, [
+      ...existing,
+      buildRelationTypeEntry(relationType),
+    ]);
+
+    if (res.ok()) {
+      const updated = await getRelationTypes(apiContext);
+      if (updated.some((rt) => rt.name === relationType.name)) {
+        return;
       }
     }
 
-    after = body.paging?.after;
-  } while (after);
-}
+    await backoffBeforeRetry(attempt);
+  }
 
-export async function removeRelationType(
-  apiContext: APIRequestContext,
-  relationTypeName: string
-): Promise<void> {
-  const settingsRes = await apiContext.get(
-    '/api/v1/system/settings/glossaryTermRelationSettings'
+  throw new Error(
+    `addRelationTypeWithCardinality: failed to add "${relationType.name}" after ${MAX_RELATION_SETTINGS_ATTEMPTS} attempts`
   );
-  const settings = await settingsRes.json();
-  const existing: Array<{ name: string }> =
-    settings.config_value?.relationTypes ?? [];
-
-  if (!existing.some((rt) => rt.name === relationTypeName)) {
-    return;
-  }
-
-  await clearRelationTypeUsages(apiContext, relationTypeName);
-
-  const res = await apiContext.put('/api/v1/system/settings', {
-    data: {
-      config_type: 'glossaryTermRelationSettings',
-      config_value: {
-        relationTypes: existing.filter((rt) => rt.name !== relationTypeName),
-      },
-    },
-  });
-
-  if (!res.ok()) {
-    const body = await res.text();
-    throw new Error(
-      `removeRelationType: failed to remove "${relationTypeName}" — HTTP ${res.status()}: ${body}`
-    );
-  }
 }
 
 export async function waitForMoreNodesThan(

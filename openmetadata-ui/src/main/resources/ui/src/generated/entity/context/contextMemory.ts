@@ -27,6 +27,11 @@ export interface ContextMemory {
      */
     deleted?: boolean;
     /**
+     * Derived: glossary terms and metrics created by the Memory Agent from this memory
+     * (DERIVED_FROM edges, agent-owned).
+     */
+    derivedEntities?: EntityReference[];
+    /**
      * Optional markdown description for the memory.
      */
     description?: string;
@@ -60,6 +65,7 @@ export interface ContextMemory {
     lastUsedAt?:            number;
     machineRepresentation?: MachineRepresentation;
     memoryScope?:           MemoryScope;
+    memoryStats?:           MemoryStats;
     memoryType?:            MemoryType;
     /**
      * Stable system name for the memory.
@@ -85,6 +91,11 @@ export interface ContextMemory {
      * Additional related entities this memory applies to.
      */
     relatedEntities?: EntityReference[];
+    /**
+     * Derived: glossary terms and metrics reused (not created) by the Memory Agent from this
+     * memory (RELATED_TO edges).
+     */
+    reusedEntities?: EntityReference[];
     /**
      * Root memory in an append-style memory thread.
      */
@@ -210,7 +221,8 @@ export interface FieldChange {
 }
 
 /**
- * Domains this memory belongs to.
+ * Derived: glossary terms and metrics created by the Memory Agent from this memory
+ * (DERIVED_FROM edges, agent-owned).
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -320,6 +332,40 @@ export enum MachineRepresentationStatus {
 export enum MemoryScope {
     EntityScoped = "EntityScoped",
     UserGlobal = "UserGlobal",
+}
+
+/**
+ * Telemetry + hash-gate for the Memory Agent derivation of this memory.
+ */
+export interface MemoryStats {
+    derivedMetricCount?: number;
+    derivedTermCount?:   number;
+    /**
+     * Error message from the most recent failed Memory Agent derivation run, if any.
+     */
+    error?:       string;
+    lastRunAt?:   number;
+    reusedCount?: number;
+    /**
+     * Hash of the ontology-relevant content last processed.
+     */
+    sourceHash?: string;
+    /**
+     * Status of the most recent Memory Agent derivation run on this memory.
+     */
+    status?: MemoryProcessingStatus;
+}
+
+/**
+ * Status of the most recent Memory Agent derivation run on this memory.
+ *
+ * Lifecycle status of the asynchronous Memory Agent derivation for a memory.
+ */
+export enum MemoryProcessingStatus {
+    Failed = "Failed",
+    Processed = "Processed",
+    Processing = "Processing",
+    Queued = "Queued",
 }
 
 /**
