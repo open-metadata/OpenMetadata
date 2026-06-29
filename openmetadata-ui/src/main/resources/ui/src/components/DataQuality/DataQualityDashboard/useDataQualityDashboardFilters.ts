@@ -748,8 +748,10 @@ export const useDataQualityDashboardFilters = ({
     setSelectedGlossaryTermFilter([]);
     setSelectedDataProductFilter([]);
     setSelectedOwnerFilter(undefined);
+    // Clear the chart filters to match the cleared selection — keep only the
+    // date range. Spreading initialFilters here would leave its entity filters
+    // (tier/tags/ownerFqn) applied to the charts while the dropdowns show empty.
     setChartFilter((prev) => ({
-      ...initialFilters,
       startTs: prev.startTs,
       endTs: prev.endTs,
     }));

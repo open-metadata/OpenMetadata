@@ -53,7 +53,6 @@ import {
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
 import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
-import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   checkPermission,
@@ -63,6 +62,7 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 
 /** Render-agnostic control kinds a single filter can use. */
@@ -401,9 +401,10 @@ export const useTestCaseListPage = () => {
     debounce(fetchTableData, 1000),
     []
   );
-  const debounceFetchTagOptions = useCallback(debounce(fetchTagOptions, 1000), [
-    selectedFilter,
-  ]);
+  const debounceFetchTagOptions = useCallback(
+    debounce(fetchTagOptions, 1000),
+    []
+  );
   const debounceFetchServiceOptions = useCallback(
     debounce(fetchServiceOptions, 1000),
     []
@@ -413,13 +414,16 @@ export const useTestCaseListPage = () => {
     []
   );
 
-  const asyncOptionsByKey: Record<string, FetchedOption[]> = {
-    [TEST_CASE_FILTERS.table]: tableOptions,
-    [TEST_CASE_FILTERS.tags]: tagOptions,
-    [TEST_CASE_FILTERS.tier]: tierOptions,
-    [TEST_CASE_FILTERS.service]: serviceOptions,
-    [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
-  };
+  const asyncOptionsByKey = useMemo<Record<string, FetchedOption[]>>(
+    () => ({
+      [TEST_CASE_FILTERS.table]: tableOptions,
+      [TEST_CASE_FILTERS.tags]: tagOptions,
+      [TEST_CASE_FILTERS.tier]: tierOptions,
+      [TEST_CASE_FILTERS.service]: serviceOptions,
+      [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
+    }),
+    [tableOptions, tagOptions, tierOptions, serviceOptions, dataProductOptions]
+  );
 
   const onSearchByKey: Record<string, (search: string) => void> = {
     [TEST_CASE_FILTERS.table]: debounceFetchTableData,

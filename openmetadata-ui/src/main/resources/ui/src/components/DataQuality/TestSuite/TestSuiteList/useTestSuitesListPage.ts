@@ -72,12 +72,19 @@ export const useTestSuitesListPage = () => {
     );
 
     return parsed as TestSuiteSearchParams;
-  }, [location]);
+  }, [location.search]);
   const { searchValue, owner } = params;
-  const selectedOwner = useMemo(
-    () => (owner ? JSON.parse(owner) : undefined),
-    [owner]
-  );
+  const selectedOwner = useMemo(() => {
+    if (!owner) {
+      return undefined;
+    }
+    try {
+      return JSON.parse(owner);
+    } catch {
+      // A malformed/hand-edited owner query param must not crash the render.
+      return undefined;
+    }
+  }, [owner]);
 
   const { permissions } = usePermissionProvider();
   const { testSuite: testSuitePermission } = permissions;
