@@ -122,6 +122,18 @@ AND TABLE_NAME NOT IN
 """
 )
 
+ORACLE_GET_TEMPORARY_TABLE_NAMES = textwrap.dedent(
+    """
+SELECT table_name FROM {prefix}_TABLES WHERE
+{tablespace}
+OWNER = :owner
+AND IOT_NAME IS NULL
+AND DURATION IS NOT NULL
+AND TABLE_NAME NOT IN
+(SELECT mview_name FROM {prefix}_MVIEWS WHERE owner = :owner)
+"""
+)
+
 ORACLE_IDENTITY_TYPE = textwrap.dedent(
     """\
 col.default_on_null,

@@ -13,7 +13,7 @@ Test Oracle using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -48,6 +48,8 @@ from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
+    ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_TEMPORARY_TABLE_NAMES,
     TEST_ORACLE_GET_STORED_PACKAGES,
 )
 
@@ -364,6 +366,95 @@ class OracleUnitTest(TestCase):
         executed_query = str(mock_conn.execute.call_args[0][0])
         assert "SAMPLE_SCHEMA" in executed_query
         assert "sample_schema" not in executed_query
+
+
+class TestOracleTemporaryTables:
+    """Verify Oracle Global Temporary Table (GTT) ingestion path."""
+
+    def setup_method(self):
+        patcher = patch(
+            "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+        )
+        patcher.start()
+        metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(
+                mock_oracle_config["workflowConfig"]["openMetadataServerConfig"]
+            )
+        )
+        self.oracle = OracleSource.create(mock_oracle_config["source"], metadata)
+        self.oracle.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+        patcher.stop()
+
+    def _patch_inspector(self, regular=None, mviews=None):
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names.return_value = regular or []
+        mock_inspector.get_mview_names.return_value = mviews or []
+        patcher = patch.object(
+            type(self.oracle),
+            "inspector",
+            new_callable=PropertyMock,
+            return_value=mock_inspector,
+        )
+        patcher.start()
+        return patcher
+
+    def _mock_engine_with_gtts(self, gtt_names):
+        mock_engine = MagicMock()
+        mock_engine.dialect = self.oracle.engine.dialect
+        mock_result = MagicMock()
+        mock_result.__iter__ = lambda self: iter([(n,) for n in gtt_names])
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+        self.oracle.engine = mock_engine
+        return mock_conn
+
+    def test_temporary_tables_query_filters_on_duration_not_null(self):
+        """Sanity: GTT query selects rows where DURATION IS NOT NULL; regular query keeps DURATION IS NULL."""
+        assert "DURATION IS NOT NULL" in ORACLE_GET_TEMPORARY_TABLE_NAMES
+        assert "DURATION IS NULL" in ORACLE_GET_TABLE_NAMES
+
+    def test_default_excludes_temporary_tables(self):
+        """When includeTemporaryTables is False (default), GTTs are not fetched and engine.connect is not called."""
+        from metadata.generated.schema.entity.data.table import TableType
+
+        patcher = self._patch_inspector(regular=["regular_t"], mviews=["mv_t"])
+        try:
+            mock_engine = MagicMock()
+            self.oracle.engine = mock_engine
+
+            result = self.oracle.query_table_names_and_types("scott")
+
+            assert mock_engine.connect.called is False
+            types = {t.type_ for t in result}
+            assert TableType.Local not in types
+        finally:
+            patcher.stop()
+
+    def test_include_temporary_tables_yields_local_type(self):
+        """When includeTemporaryTables is True, GTTs are returned with TableType.Local."""
+        from metadata.generated.schema.entity.data.table import TableType
+
+        self.oracle.service_connection.includeTemporaryTables = True
+        patcher = self._patch_inspector(regular=["regular_t"], mviews=["mv_t"])
+        try:
+            mock_conn = self._mock_engine_with_gtts(["gtt_session", "gtt_txn"])
+
+            result = self.oracle.query_table_names_and_types("scott")
+
+            executed_query = str(mock_conn.execute.call_args[0][0])
+            assert "DURATION IS NOT NULL" in executed_query
+
+            by_name = {t.name: t.type_ for t in result}
+            assert by_name["regular_t"] == TableType.Regular
+            assert by_name["mv_t"] == TableType.MaterializedView
+            assert by_name["gtt_session"] == TableType.Local
+            assert by_name["gtt_txn"] == TableType.Local
+        finally:
+            patcher.stop()
 
 
 class TestOraclePreserveIdentifierCase:
