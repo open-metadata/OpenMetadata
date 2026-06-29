@@ -6,9 +6,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -18,11 +18,11 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -199,7 +199,8 @@ public class FilterEntityImpl implements JavaDelegate {
 
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
+              || passesFieldBasedFilter(
+                  entityLink.getEntityType(), changedFields, includeFields, excludedFilter);
     }
 
     // Apply JSON filter
@@ -221,15 +222,17 @@ public class FilterEntityImpl implements JavaDelegate {
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    Set<String> triggerFields = WorkflowTriggerFieldsRegistry.getEffectiveTriggerFields(entityType);
     return changedFields.stream()
         .anyMatch(
             field -> {
               String fieldName = field.getName();
               boolean isTriggerField =
-                  Arrays.stream(WorkflowTriggerFields.values())
-                      .map(WorkflowTriggerFields::value)
-                      .anyMatch(tf -> matchesField(fieldName, tf));
+                  triggerFields.stream().anyMatch(tf -> matchesField(fieldName, tf));
               if (!isTriggerField) {
                 return false;
               }

@@ -32,7 +32,7 @@ class FilterEntityImplTest {
     filterEntity = new FilterEntityImpl();
     passesFieldBasedFilter =
         FilterEntityImpl.class.getDeclaredMethod(
-            "passesFieldBasedFilter", List.class, List.class, List.class);
+            "passesFieldBasedFilter", String.class, List.class, List.class, List.class);
     passesFieldBasedFilter.setAccessible(true);
   }
 
@@ -51,7 +51,6 @@ class FilterEntityImplTest {
             "domains",
             "dataProducts",
             "extension",
-            "deleted",
             "synonyms",
             "relatedTerms",
             "references",
@@ -70,7 +69,56 @@ class FilterEntityImplTest {
   @Test
   void testNewCommonFieldsAreRecognizedAsTriggerFields() throws Exception {
     assertTrue(invokeFilter(List.of(fieldChange("style")), null, null));
-    assertTrue(invokeFilter(List.of(fieldChange("lifeCycle")), null, null));
+  }
+
+  @Test
+  void testLifeCycleIsNoLongerATriggerField() throws Exception {
+    assertFalse(invokeFilter(List.of(fieldChange("lifeCycle")), null, null));
+  }
+
+  @Test
+  void testDeletedIsNoLongerATriggerField() throws Exception {
+    assertFalse(invokeFilter(List.of(fieldChange("deleted")), null, null));
+    assertFalse(invokeFilter("table", List.of(fieldChange("deleted")), null, null));
+    assertFalse(invokeFilter("glossaryTerm", List.of(fieldChange("deleted")), null, null));
+  }
+
+  @Test
+  void testPerEntityTriggerFieldsAreEntitySpecific() throws Exception {
+    // glossaryTerm declares synonyms but not testSuite.
+    assertTrue(invokeFilter("glossaryTerm", List.of(fieldChange("synonyms")), null, null));
+    assertFalse(invokeFilter("glossaryTerm", List.of(fieldChange("testSuite")), null, null));
+
+    // table declares testSuite but not synonyms.
+    assertTrue(invokeFilter("table", List.of(fieldChange("testSuite")), null, null));
+    assertFalse(invokeFilter("table", List.of(fieldChange("synonyms")), null, null));
+  }
+
+  @Test
+  void testTestCaseDoesNotTriggerOnInternalFields() throws Exception {
+    // testCase governs name/owners/testSuite but not its internal testCaseResolutionStatus.
+    assertTrue(invokeFilter("testCase", List.of(fieldChange("testSuite")), null, null));
+    assertFalse(
+        invokeFilter("testCase", List.of(fieldChange("testCaseResolutionStatus")), null, null));
+  }
+
+  @Test
+  void testUnknownEntityTypeFallsBackToGlobalTriggerFields() throws Exception {
+    assertTrue(invokeFilter("nonExistentEntity", List.of(fieldChange("description")), null, null));
+    assertTrue(invokeFilter("nonExistentEntity", List.of(fieldChange("synonyms")), null, null));
+  }
+
+  @Test
+  void testPerEntityStructuralFieldsTriggerButAreNotGlobal() throws Exception {
+    // Schema/structure fields are declared per entity and are not part of the global field set.
+    assertTrue(invokeFilter("table", List.of(fieldChange("columns")), null, null));
+    assertTrue(invokeFilter("table", List.of(fieldChange("dataContract")), null, null));
+    assertTrue(invokeFilter("apiEndpoint", List.of(fieldChange("requestSchema")), null, null));
+    assertTrue(invokeFilter("mlmodel", List.of(fieldChange("mlFeatures")), null, null));
+
+    // The global fallback must NOT treat these entity-specific fields as trigger fields.
+    assertFalse(invokeFilter(List.of(fieldChange("columns")), null, null));
+    assertFalse(invokeFilter("topic", List.of(fieldChange("columns")), null, null));
   }
 
   @Test
@@ -205,8 +253,19 @@ class FilterEntityImplTest {
   private boolean invokeFilter(
       List<FieldChange> changedFields, List<String> includeFields, List<String> excludeFields)
       throws Exception {
+    // A null entity type has no per-entity declaration, so it falls back to the global field set.
+    return invokeFilter(null, changedFields, includeFields, excludeFields);
+  }
+
+  private boolean invokeFilter(
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludeFields)
+      throws Exception {
     return (boolean)
-        passesFieldBasedFilter.invoke(filterEntity, changedFields, includeFields, excludeFields);
+        passesFieldBasedFilter.invoke(
+            filterEntity, entityType, changedFields, includeFields, excludeFields);
   }
 
   private FieldChange fieldChange(String name) {

@@ -25,14 +25,16 @@ import {
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../generated/type/workflowTriggerFields';
 import {
   BackendNodeConfig,
   DataAssetFilter,
   NodeConfig,
   NodeConfigSidebarProps,
 } from '../../../interface/workflow-builder-components.interface';
-import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
+import {
+  getCustomPropertiesByEntityType,
+  getWorkflowTriggerFieldsByEntityType,
+} from '../../../rest/metadataTypeAPI';
 import {
   convertDisplayToBackendTriggerType,
   getInitialNodeConfig,
@@ -122,31 +124,54 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const effectiveConfig = localConfig || config;
 
+  const [triggerFields, setTriggerFields] = useState<string[]>([]);
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
   );
 
   useEffect(() => {
+    let cancelled = false;
     const assets = effectiveConfig.dataAssets ?? [];
     if (assets.length === 0) {
+      setTriggerFields([]);
       setCustomPropertyFields([]);
 
       return;
     }
 
-    Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
-      .then((results) => {
-        const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
-        ];
-        setCustomPropertyFields(names);
-      })
-      .catch(() => setCustomPropertyFields([]));
+    // allSettled so a failure of one request (or one asset) does not wipe the
+    // whole exclude-field list; each source degrades independently.
+    Promise.all(
+      assets.map((asset) =>
+        Promise.allSettled([
+          getWorkflowTriggerFieldsByEntityType(asset),
+          getCustomPropertiesByEntityType(asset),
+        ])
+      )
+    ).then((results) => {
+      if (cancelled) {
+        return;
+      }
+      const fields = results.flatMap(([trigger]) =>
+        trigger.status === 'fulfilled' ? trigger.value : []
+      );
+      const properties = results.flatMap(([, custom]) =>
+        custom.status === 'fulfilled' ? custom.value : []
+      );
+      setTriggerFields([...new Set(fields)]);
+      setCustomPropertyFields([
+        ...new Set(properties.map((p) => `extension.${p.name}`)),
+      ]);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveConfig.dataAssets]);
 
   const availableExcludeFields = useMemo(() => {
-    return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
-  }, [customPropertyFields]);
+    return [...triggerFields, ...customPropertyFields];
+  }, [triggerFields, customPropertyFields]);
 
   useEffect(() => {
     if (isStartNode(node)) {

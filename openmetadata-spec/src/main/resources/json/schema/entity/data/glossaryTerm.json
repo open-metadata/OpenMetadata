@@ -226,6 +226,7 @@
       "$ref": "../../type/entityReference.json"
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "domains", "dataProducts", "extension", "synonyms", "relatedTerms", "references", "glossary", "parent", "children", "style", "dataContract"],
   "required": ["id", "name", "description", "glossary"],
   "additionalProperties": false
 }

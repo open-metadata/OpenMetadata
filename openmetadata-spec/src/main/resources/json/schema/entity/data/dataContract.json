@@ -419,6 +419,7 @@
       "default": false
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "extension", "schema", "semantics", "qualityExpectations", "termsOfUse", "security", "sla", "testSuite", "latestResult"],
   "required": ["id", "name", "entity"],
   "additionalProperties": false
 }

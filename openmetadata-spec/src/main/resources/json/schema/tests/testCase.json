@@ -191,6 +191,7 @@
       "default": null
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "tags", "domains", "dataProducts", "testSuite"],
   "required": ["name", "testDefinition", "entityLink", "testSuite"],
   "additionalProperties": false
 }

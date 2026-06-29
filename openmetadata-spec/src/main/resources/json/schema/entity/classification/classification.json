@@ -129,6 +129,7 @@
       "additionalProperties": false
     }
   },
+  "workflowTriggerFields": ["name", "displayName", "fullyQualifiedName", "description", "owners", "reviewers", "domains"],
   "required": ["id", "name", "description"],
   "additionalProperties": false
 }
