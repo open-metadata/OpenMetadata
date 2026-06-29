@@ -33,7 +33,7 @@ test.describe('Global Search Column Suggestions', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
+    await redirectToHomePage(page, true);
   });
 
   test('Navigate to column from column suggestion', async ({ page }) => {
