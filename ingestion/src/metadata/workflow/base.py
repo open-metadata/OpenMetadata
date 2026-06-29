@@ -404,17 +404,25 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
 
-    def _source_config_with_explicit_type(self):
+    def _source_config_with_explicit_type(self) -> Any:
         """
         Make generated source config discriminators survive exclude_unset serialization.
         """
-        source_config = self.config.source.sourceConfig
-        config = getattr(source_config, "config", None)
-        config_type = getattr(config, "type", None)
+        source = getattr(self.config, "source", None)
+        source_config = getattr(source, "sourceConfig", None)
+        if source_config is None:
+            return source_config
 
-        if config_type is not None and hasattr(source_config, "model_copy") and hasattr(config, "model_copy"):
-            source_config = source_config.model_copy(deep=True)
-            source_config.config = config.model_copy(update={"type": config_type})
+        config = getattr(source_config, "config", None)
+        if config is None:
+            return source_config
+
+        config_type = getattr(config, "type", None)
+        source_config_copy = getattr(source_config, "model_copy", None)
+        config_copy = getattr(config, "model_copy", None)
+
+        if config_type is not None and callable(source_config_copy) and callable(config_copy):
+            source_config = source_config_copy(update={"config": config_copy(update={"type": config_type})})
 
         return source_config
 
