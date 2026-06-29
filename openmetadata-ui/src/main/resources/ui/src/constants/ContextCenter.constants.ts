@@ -21,7 +21,7 @@ export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 10;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 10;
-export const RECENT_DASHBOARD_MEMORIES_LIMIT = 10
+export const RECENT_DASHBOARD_MEMORIES_LIMIT = 10;
 
 export const PILLAR_TONE_TEXT_CLASS: Record<string, string> = {
   info: 'tw:text-utility-brand-700',
