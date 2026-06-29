@@ -15,7 +15,7 @@ import {
   InfoCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
-import { ShowToastOptions, toast } from '@openmetadata/ui-core-components';
+import { toast } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
@@ -115,7 +115,10 @@ export const showErrorToast = (
   if (isRuleViolation) {
     toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
   } else {
-    toast.error(errorMessage, autoCloseTimer ? { timeout: autoCloseTimer } : {});
+    toast.error(
+      errorMessage,
+      autoCloseTimer ? { timeout: autoCloseTimer } : {}
+    );
   }
 };
 
