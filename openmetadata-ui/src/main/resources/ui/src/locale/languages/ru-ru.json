@@ -3083,6 +3083,7 @@
     "entity-owned-by-name": "Этот объект принадлежит {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} может содержать пробелы и только следующие специальные символы {{pattern}}",
     "entity-pipeline-information": "<0>Каждая {{entity}} должна быть связана с конвейером!</0> У этого {{type}} ещё нет конвейера. Давайте создадим его, чтобы ваша {{entity}} могла быть связана и запланирована.",
+    "entity-removed-from-folder": "Объект «{{entity}}» удалён из папки",
     "entity-restored-error": "Ошибка при восстановлении объекта «{{entity}}»",
     "entity-restored-success": "Объект «{{entity}}» восстановлен",
     "entity-saved-successfully": "Объект «{{entity}}» сохранен",
