@@ -714,7 +714,7 @@ const KnowledgePagesHierarchy = forwardRef<
     return (
       <Card
         aria-label={t('label.article-plural')}
-        className="tw:h-full tw:flex tw:flex-col tw:p-5 tw:overflow-auto"
+        className="tw:h-full tw:flex tw:flex-col tw:py-5 tw:px-0"
         data-testid="knowledge-pages-hierarchy-container"
         role="region"
         onDragOver={(e) => e.preventDefault()}
@@ -735,10 +735,12 @@ const KnowledgePagesHierarchy = forwardRef<
               targetNode: undefined,
             });
           }
-        }}
-        onScroll={handleScroll}>
+        }}>
         <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
-          <Box align="center" className="tw:pb-5" justify="between">
+          <Box
+            align="center"
+            className="tw:pb-5 tw:shrink-0 tw:px-5"
+            justify="between">
             <Box align="center" gap={3}>
               <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
                 <File06 className="tw:text-fg-tertiary" size={20} />
@@ -776,65 +778,70 @@ const KnowledgePagesHierarchy = forwardRef<
               />
             )}
           </Box>
-          {isLoading && (
-            <div className="tw:px-1.5">
-              {Array.from({ length: 8 }, (_, i) => (
-                <div
-                  className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
-                  key={`skeleton-${i}`}
-                  style={{ width: `${60 + (i % 3) * 15}%` }}
-                />
-              ))}
-            </div>
-          )}
 
-          {isHierarchyEmpty && (
-            <CreateErrorPlaceHolder
-              className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
-              permission={permissions.Create}
-              placeholderText={t('message.no-articles-listed')}
-              size={SIZE.MEDIUM}
-            />
-          )}
+          <div
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+            onScroll={handleScroll}>
+            {isLoading && (
+              <div className="tw:px-1.5">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div
+                    className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
+                    key={`skeleton-${i}`}
+                    style={{ width: `${60 + (i % 3) * 15}%` }}
+                  />
+                ))}
+              </div>
+            )}
 
-          {!isLoading && !isHierarchyEmpty && (
-            <Tree
-              aria-label={t('label.article-plural')}
-              className="knowledge-pages-tree"
-              data-testid="knowledge-pages-hierarchy"
-              expandedKeys={new Set(expandedKeys)}
-              selectedKeys={
-                activeKey ? new Set([activeKey]) : new Set<string>()
-              }
-              selectionMode="single"
-              onExpandedChange={(keys: Selection) => {
-                if (keys !== 'all') {
-                  setExpandedKeys(Array.from(keys).map(String));
-                }
-              }}
-              onItemMove={handleItemMove}
-              onItemRootDrop={(sourceKey) => {
-                if (!permissions.EditAll) {
-                  return;
-                }
-                const { page: sourceNode, parent: sourceNodeParent } =
-                  findPageAndParentInTreeData(
-                    knowledgePageHierarchy,
-                    sourceKey as string
-                  );
-                if (sourceNode && sourceNodeParent) {
-                  setMovedPage({
-                    sourceNode,
-                    sourceNodeParent,
-                    targetNode: undefined,
-                  });
-                }
-              }}>
-              {knowledgePageHierarchy.map(renderNode)}
-            </Tree>
-          )}
+            {isHierarchyEmpty && (
+              <CreateErrorPlaceHolder
+                className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
+                permission={permissions.Create}
+                placeholderText={t('message.no-articles-listed')}
+                size={SIZE.MEDIUM}
+              />
+            )}
 
-          {paginationState.paginationLoading && <Loader size="x-small" />}
+            {!isLoading && !isHierarchyEmpty && (
+              <Tree
+                aria-label={t('label.article-plural')}
+                className="knowledge-pages-tree"
+                data-testid="knowledge-pages-hierarchy"
+                expandedKeys={new Set(expandedKeys)}
+                selectedKeys={
+                  activeKey ? new Set([activeKey]) : new Set<string>()
+                }
+                selectionMode="single"
+                onExpandedChange={(keys: Selection) => {
+                  if (keys !== 'all') {
+                    setExpandedKeys(Array.from(keys).map(String));
+                  }
+                }}
+                onItemMove={handleItemMove}
+                onItemRootDrop={(sourceKey) => {
+                  if (!permissions.EditAll) {
+                    return;
+                  }
+                  const { page: sourceNode, parent: sourceNodeParent } =
+                    findPageAndParentInTreeData(
+                      knowledgePageHierarchy,
+                      sourceKey as string
+                    );
+                  if (sourceNode && sourceNodeParent) {
+                    setMovedPage({
+                      sourceNode,
+                      sourceNodeParent,
+                      targetNode: undefined,
+                    });
+                  }
+                }}>
+                {knowledgePageHierarchy.map(renderNode)}
+              </Tree>
+            )}
+
+            {paginationState.paginationLoading && <Loader size="x-small" />}
+          </div>
 
           <DeleteModal
             entityTitle={getKnowledgePageName(deletePage, t)}

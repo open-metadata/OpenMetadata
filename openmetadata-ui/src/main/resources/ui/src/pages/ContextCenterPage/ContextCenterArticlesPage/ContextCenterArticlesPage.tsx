@@ -403,19 +403,21 @@ const ContextCenterArticlesPage = () => {
             data-testid="center-panel"
             flex={rightSidebar ? 0.6 : 1}
             minSize={700}>
-            <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
-              <Card.Content
-                className={classNames(
-                  'tw:flex-1 tw:min-h-0 tw:overflow-auto',
-                  isActivityFeedTab && !version
-                    ? 'tw:p-0'
-                    : fqn
-                    ? 'tw:p-6 tw:pl-8'
-                    : 'tw:p-6'
-                )}>
+            {fqn || version ? (
+              <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
+                <Card.Content
+                  className={classNames(
+                    'tw:flex-1 tw:min-h-0 tw:overflow-auto',
+                    isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+                  )}>
+                  {centerContent}
+                </Card.Content>
+              </Card>
+            ) : (
+              <Box className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5" direction='col'>
                 {centerContent}
-              </Card.Content>
-            </Card>
+              </Box>
+            )}
           </ReflexElement>
 
           <ReflexSplitter
