@@ -112,14 +112,10 @@ export const showErrorToast = (
   }
   callback && callback(errorMessage);
 
-  const options: ShowToastOptions = autoCloseTimer
-    ? { timeout: autoCloseTimer }
-    : {};
-
   if (isRuleViolation) {
-    toast.warning(errorMessage, options);
+    toast.warning(errorMessage, { timeout: autoCloseTimer ?? 5000 });
   } else {
-    toast.error(errorMessage, options);
+    toast.error(errorMessage, autoCloseTimer ? { timeout: autoCloseTimer } : {});
   }
 };
 
