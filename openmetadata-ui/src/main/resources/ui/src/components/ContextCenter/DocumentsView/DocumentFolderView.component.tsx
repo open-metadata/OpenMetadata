@@ -16,9 +16,10 @@ import {
   ButtonUtility,
   Card,
   Dot,
+  FileIcon,
   Skeleton,
   Tree,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -33,6 +34,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
 export interface DocumentFolderViewProps {
+  files: any[];
   totalFileCount?: number;
   selectedFolderId?: string;
   canCreate?: boolean;
@@ -42,6 +44,7 @@ export interface DocumentFolderViewProps {
 }
 
 const DocumentFolderView = ({
+  files = [],
   totalFileCount = 0,
   selectedFolderId,
   canCreate = false,
@@ -162,6 +165,9 @@ const DocumentFolderView = ({
             <Tree aria-label={t('label.folder-plural')} className="tw:w-full">
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
+                const folderFiles = files.filter(
+                  (file) => file.folder?.id === folder.id
+                );
 
                 return (
                   <Tree.Item
@@ -202,6 +208,31 @@ const DocumentFolderView = ({
                         )}
                       </div>
                     </Tree.ItemContent>
+
+                    {folderFiles.map((file) => (
+                      <Tree.Item
+                        id={file.id}
+                        key={file.id}
+                        textValue={file.name}>
+                        <Tree.ItemContent
+                          className="tw:ml-7!"
+                          showExpandIcon={false}>
+                          <FileIcon
+                            className="tw:size-5 tw:shrink-0"
+                            theme="light"
+                            type={file.fileExtension ?? ''}
+                            variant="default"
+                          />
+                          <Typography
+                            ellipsis
+                            className="tw:truncate tw:text-secondary tw:max-w-[70%]"
+                            size="text-sm"
+                            weight="medium">
+                            {file.name}
+                          </Typography>
+                        </Tree.ItemContent>
+                      </Tree.Item>
+                    ))}
                   </Tree.Item>
                 );
               })}

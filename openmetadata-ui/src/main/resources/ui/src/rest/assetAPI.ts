@@ -135,6 +135,21 @@ export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
   await APIClient.put(`/contextCenter/drive/files/${driveFileId}/move`, {});
 };
 
+export const bulkMoveFilesToFolder = async (
+  ids: string[],
+  folderId: string
+): Promise<BulkOperationResult> => {
+  const response = await APIClient.put<
+    { ids: string[]; folder: { id: string; type: string } },
+    AxiosResponse<BulkOperationResult>
+  >('/contextCenter/drive/files/bulk/move', {
+    ids,
+    folder: { id: folderId, type: 'folder' },
+  });
+
+  return response.data;
+};
+
 export const uploadDriveFile = async (
   file: File,
   folderFqn?: string

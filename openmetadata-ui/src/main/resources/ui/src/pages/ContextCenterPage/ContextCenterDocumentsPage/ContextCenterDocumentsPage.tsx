@@ -475,6 +475,7 @@ const ContextCenterDocumentsPage: FC = () => {
           <DocumentFolderView
             canCreate={hasCreatePermission}
             canDelete={hasDeletePermission}
+            files={allDocuments}
             selectedFolderId={selectedFolderId}
             totalFileCount={totalFileCount}
             onFoldersLoaded={setFolders}
