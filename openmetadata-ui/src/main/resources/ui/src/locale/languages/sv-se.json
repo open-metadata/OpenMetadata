@@ -3083,6 +3083,7 @@
     "entity-owned-by-name": "Denna entitet ägs av {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} kan innehålla blanksteg och endast följande specialtecken {{pattern}}",
     "entity-pipeline-information": "<0>Varje {{entity}} måste kopplas till en pipeline!</0> Denna {{type}} har ingen pipeline ännu. Låt oss skapa en så att din {{entity}} kan kopplas och schemaläggas.",
+    "entity-removed-from-folder": "{{entity}} togs bort från mappen",
     "entity-restored-error": "Fel vid återställning av {{entity}}",
     "entity-restored-success": "{{entity}} återställdes",
     "entity-saved-successfully": "{{entity}} sparades",

@@ -69,6 +69,10 @@ export const moveFileToFolder = async (
   });
 };
 
+export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
+  await APIClient.put(`/contextCenter/drive/files/${driveFileId}/move`, {});
+};
+
 export const uploadDriveFile = async (
   file: File,
   folderFqn?: string

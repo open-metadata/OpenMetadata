@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Check,
   ChevronRight,
   Copy06,
   Download01,
@@ -39,7 +40,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { moveFileToFolder } from '../../../rest/assetAPI';
+import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -60,7 +61,11 @@ import {
    dropdown from the bulk Move button in ListHeader.
 --------------------------------------------------------------- */
 
-const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
+const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
+  folders,
+  currentFolderId,
+  onPick,
+}) => {
   const { t } = useTranslation();
 
   if (folders.length === 0) {
@@ -75,15 +80,39 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({ folders, onPick }) => {
     <Dropdown.Menu
       className="tw:max-h-48 tw:overflow-y-auto"
       onAction={(key) => onPick(key as string)}>
-      {folders.map((folder) => (
-        <Dropdown.Item
-          data-testid={`move-to-folder-${folder.id}`}
-          icon={FolderIcon}
-          id={folder.id}
-          key={folder.id}
-          label={folder.name}
-        />
-      ))}
+      {folders.map((folder) => {
+        const isCurrent = folder.id === currentFolderId;
+
+        return (
+          <Dropdown.Item
+            className={isCurrent ? 'tw:bg-secondary' : undefined}
+            data-testid={`move-to-folder-${folder.id}`}
+            id={folder.id}
+            key={folder.id}
+            textValue={folder.name}>
+            {() => (
+              <Box align="center" className="tw:w-full" justify="between">
+                <Box align="center" gap={2}>
+                  <FolderIcon
+                    aria-hidden="true"
+                    className="tw:size-4 tw:shrink-0"
+                  />
+                  <Typography ellipsis size="text-sm">
+                    {folder.name}
+                  </Typography>
+                </Box>
+                {isCurrent && (
+                  <Check
+                    aria-hidden="true"
+                    className="tw:size-4 tw:shrink-0 tw:text-brand-primary tw:ml-2"
+                    strokeWidth={2}
+                  />
+                )}
+              </Box>
+            )}
+          </Dropdown.Item>
+        );
+      })}
     </Dropdown.Menu>
   );
 };
@@ -103,19 +132,26 @@ const FileActions: FC<FileActionsProps> = ({
   const { t } = useTranslation();
   const [isMoving, setIsMoving] = useState(false);
 
-  const availableFolders = useMemo(
-    () => folders.filter((folder) => folder.id !== file.folder?.id),
-    [folders, file]
-  );
-
   const handleMoveToFolder = async (folderId: string) => {
     try {
       setIsMoving(true);
-      await moveFileToFolder(file.id, folderId);
-      onFileMoved?.(file, folderId);
-      showSuccessToast(
-        t('message.entity-moved-successfully', { entity: t('label.document') })
-      );
+      if (folderId === file.folder?.id) {
+        await moveFileToRoot(file.id);
+        onFileMoved?.(file, null);
+        showSuccessToast(
+          t('message.entity-removed-from-folder', {
+            entity: t('label.document'),
+          })
+        );
+      } else {
+        await moveFileToFolder(file.id, folderId);
+        onFileMoved?.(file, folderId);
+        showSuccessToast(
+          t('message.entity-moved-successfully', {
+            entity: t('label.document'),
+          })
+        );
+      }
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -147,7 +183,7 @@ const FileActions: FC<FileActionsProps> = ({
               <Dropdown.Item
                 data-testid="move-btn"
                 icon={Pin02}
-                isDisabled={isMoving || availableFolders.length === 0}>
+                isDisabled={isMoving || folders.length === 0}>
                 {() => (
                   <Box align="center" justify="between">
                     <Typography ellipsis className="tw:grow tw:text-secondary">
@@ -166,7 +202,8 @@ const FileActions: FC<FileActionsProps> = ({
                 offset={-6}
                 placement="right top">
                 <FolderPickerMenu
-                  folders={availableFolders}
+                  currentFolderId={file.folder?.id}
+                  folders={folders}
                   onPick={handleMoveToFolder}
                 />
               </Dropdown.Popover>
