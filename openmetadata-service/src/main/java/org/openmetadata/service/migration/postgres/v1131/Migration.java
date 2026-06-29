@@ -1,6 +1,5 @@
 package org.openmetadata.service.migration.postgres.v1131;
 
-import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.backfillDatabaseMetadataSourceConfigType;
 import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.migratePipelineServiceEdges;
 import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.redeployGovernanceWorkflows;
 import static org.openmetadata.service.migration.utils.v1131.MigrationUtil.repairChildFqns;
@@ -23,7 +22,6 @@ public class Migration extends MigrationProcessImpl {
     repairChildFqns(collectionDAO);
     initializeWorkflowHandler();
     redeployGovernanceWorkflows();
-    backfillDatabaseMetadataSourceConfigType(handle);
 
     try {
       migratePipelineServiceEdges(collectionDAO, handle);
