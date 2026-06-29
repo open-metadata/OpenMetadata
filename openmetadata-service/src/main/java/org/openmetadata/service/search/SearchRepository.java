@@ -37,6 +37,8 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_ID;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_SCHEMA_ID;
 import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
 import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
@@ -1104,6 +1106,49 @@ public class SearchRepository {
         throw re;
       }
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Remove descendant column docs when a table's ancestor (databaseService / database /
+   * databaseSchema) is hard-deleted recursively.
+   *
+   * <p>Column docs live in a flat secondary index ({@code column_search_index}). A table's own
+   * delete prunes them via {@link #deleteTableColumns} (by {@code table.id}), but a recursive
+   * service/database/schema hard delete skips the per-table search dispatch
+   * ({@code descendantsCoveredByAncestorCascade}) and the ancestor's {@link #deleteOrUpdateChildren}
+   * cascade only targets the service childAliases, which do not include {@code tableColumn} — so
+   * without this prune the descendant column docs linger in search. Column docs carry
+   * {@code service.id} / {@code database.id} / {@code databaseSchema.id}, so delete by whichever
+   * ancestor the deleted entity is.
+   */
+  private void deleteDescendantColumns(EntityInterface entity, String entityType) {
+    String columnParentField =
+        switch (entityType) {
+          case Entity.DATABASE_SERVICE -> SERVICE_ID;
+          case Entity.DATABASE -> DATABASE_ID;
+          case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_ID;
+          default -> null;
+        };
+    if (columnParentField != null) {
+      IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+      if (columnIndexMapping != null) {
+        try {
+          searchClient.deleteEntityByFields(
+              List.of(getWriteIndexName(columnIndexMapping)),
+              List.of(new ImmutablePair<>(columnParentField, entity.getId().toString())));
+        } catch (Exception e) {
+          LOG.error(
+              "Issue deleting descendant columns for {} [{}]: {}",
+              entityType,
+              entity.getFullyQualifiedName(),
+              e.getMessage());
+          if (e instanceof RuntimeException re) {
+            throw re;
+          }
+          throw new RuntimeException(e);
+        }
+      }
     }
   }
 
@@ -2657,6 +2702,8 @@ public class SearchRepository {
       deleteOrUpdateChildren(entity, indexMapping);
       if (Entity.TABLE.equals(entityType)) {
         deleteTableColumns((Table) entity);
+      } else {
+        deleteDescendantColumns(entity, entityType);
       }
     } catch (Exception ie) {
       SearchIndexRetryQueue.enqueue(
