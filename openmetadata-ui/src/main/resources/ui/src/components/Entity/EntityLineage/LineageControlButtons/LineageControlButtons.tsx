@@ -168,7 +168,7 @@ const LineageControlButtons: FC<{
       <Tooltip placement="top" title={t('label.mind-map')}>
         <ButtonGroupItem
           aria-label={t('label.mind-map')}
-          className="tw:selected:bg-[var(--ant-primary-1)] tw:[&[data-selected]>svg]:text-[var(--ant-primary-7)]"
+          className="tw:selected:bg-brand-primary tw:[&[data-selected]>svg]:text-fg-brand-primary"
           data-testid="toggle-mind-map"
           iconLeading={MapIcon as FC<{ className?: string }>}
           id="mind-map"
@@ -209,7 +209,7 @@ const LineageControlButtons: FC<{
               ? t('label.exit-full-screen')
               : t('label.full-screen-view')
           }
-          className="tw:selected:bg-[var(--ant-primary-1)] tw:[&[data-selected]>svg]:text-[var(--ant-primary-7)]"
+          className="tw:selected:bg-brand-primary tw:[&[data-selected]>svg]:text-fg-brand-primary"
           data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
           iconLeading={
             (isFullscreen ? ExitFullScreenIcon : FullscreenIcon) as FC<{
