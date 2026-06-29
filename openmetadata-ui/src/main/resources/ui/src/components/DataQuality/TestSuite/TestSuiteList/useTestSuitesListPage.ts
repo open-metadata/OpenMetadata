@@ -166,10 +166,11 @@ export const useTestSuitesListPage = () => {
 
   const handleTestSuitesPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
-      fetchTestSuites(page, { limit: pageSize });
+      // setCurrentPage triggers the fetch effect (currentPage is a dependency);
+      // fetching here too would duplicate the request.
       handlePageChange(page);
     },
-    [pageSize, handlePageChange]
+    [handlePageChange]
   );
 
   const handleSearchParam = (
