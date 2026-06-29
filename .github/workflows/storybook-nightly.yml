@@ -1,0 +1,94 @@
+#  Copyright 2024 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Builds openmetadata-ui-core-components Storybook nightly and pushes the image
+# to Docker Hub so the design team can review components without a local dev
+# environment.
+#
+# Required repository secrets (same ones used by other docker-* workflows):
+#   DOCKERHUB_OPENMETADATA_USERNAME
+#   DOCKERHUB_OPENMETADATA_TOKEN
+#
+# Image: openmetadata/storybook-ui:latest
+#         openmetadata/storybook-ui:<short-sha>
+#
+# To pull and run:
+#   docker run -p 6006:6006 openmetadata/storybook-ui:latest
+
+name: Storybook nightly build
+
+on:
+  schedule:
+    # 02:00 UTC every day.
+    - cron: '0 2 * * *'
+  # Allow a one-click manual run from the Actions tab.
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Push the built image to Docker Hub?"
+        type: boolean
+        default: true
+
+concurrency:
+  group: storybook-nightly
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get short commit SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Docker build
+        id: prepare
+        uses: ./.github/actions/prepare-for-docker-build-and-push
+        with:
+          image: openmetadata/storybook-ui
+          tag: value=${{ steps.sha.outputs.short }}
+          push_latest: "true"
+          is_ingestion: "false"
+          dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
+          dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_NO_SUMMARY: true
+        with:
+          context: .
+          file: docker/storybook/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          # On scheduled runs always push; on workflow_dispatch respect the input.
+          push: ${{ github.event_name == 'schedule' || inputs.push_image }}
+          tags: ${{ steps.prepare.outputs.tags }}
+
+      - name: Print image reference
+        run: |
+          echo "### Storybook image published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.prepare.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Run locally:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```bash' >> "$GITHUB_STEP_SUMMARY"
+          echo "docker run -p 6006:6006 openmetadata/storybook-ui:latest" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
