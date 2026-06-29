@@ -100,33 +100,63 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  public static void backfillDatabaseMetadataSourceConfigType(Handle handle) {
+  public static void backfillMetadataSourceConfigTypes(Handle handle) {
     boolean isMySQL = Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
     String sql =
         isMySQL
             ? "UPDATE ingestion_pipeline_entity i "
                 + "JOIN entity_relationship er ON er.toId = i.id "
                 + "AND er.toEntity = 'ingestionPipeline' "
-                + "AND er.fromEntity = 'databaseService' "
                 + "AND er.relation = 0 "
                 + "AND er.deleted = false "
-                + "SET i.json = JSON_SET(i.json, '$.sourceConfig.config.type', 'DatabaseMetadata') "
+                + "SET i.json = JSON_SET(i.json, '$.sourceConfig.config.type', "
+                + "CASE er.fromEntity "
+                + "WHEN 'apiService' THEN 'ApiMetadata' "
+                + "WHEN 'dashboardService' THEN 'DashboardMetadata' "
+                + "WHEN 'databaseService' THEN 'DatabaseMetadata' "
+                + "WHEN 'driveService' THEN 'DriveMetadata' "
+                + "WHEN 'mcpService' THEN 'McpMetadata' "
+                + "WHEN 'messagingService' THEN 'MessagingMetadata' "
+                + "WHEN 'mlmodelService' THEN 'MlModelMetadata' "
+                + "WHEN 'pipelineService' THEN 'PipelineMetadata' "
+                + "WHEN 'searchService' THEN 'SearchMetadata' "
+                + "WHEN 'securityService' THEN 'SecurityMetadata' "
+                + "WHEN 'storageService' THEN 'StorageMetadata' "
+                + "END) "
                 + "WHERE i.json ->> '$.pipelineType' = 'metadata' "
                 + "AND i.json ->> '$.sourceConfig.config.type' IS NULL "
-                + "AND JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"
+                + "AND JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT' "
+                + "AND er.fromEntity IN ('apiService', 'dashboardService', 'databaseService', "
+                + "'driveService', 'mcpService', 'messagingService', 'mlmodelService', "
+                + "'pipelineService', 'searchService', 'securityService', 'storageService')"
             : "UPDATE ingestion_pipeline_entity i "
-                + "SET json = jsonb_set(i.json, '{sourceConfig,config,type}', '\"DatabaseMetadata\"'::jsonb, true) "
+                + "SET json = jsonb_set(i.json, '{sourceConfig,config,type}', "
+                + "to_jsonb((CASE er.fromentity "
+                + "WHEN 'apiService' THEN 'ApiMetadata' "
+                + "WHEN 'dashboardService' THEN 'DashboardMetadata' "
+                + "WHEN 'databaseService' THEN 'DatabaseMetadata' "
+                + "WHEN 'driveService' THEN 'DriveMetadata' "
+                + "WHEN 'mcpService' THEN 'McpMetadata' "
+                + "WHEN 'messagingService' THEN 'MessagingMetadata' "
+                + "WHEN 'mlmodelService' THEN 'MlModelMetadata' "
+                + "WHEN 'pipelineService' THEN 'PipelineMetadata' "
+                + "WHEN 'searchService' THEN 'SearchMetadata' "
+                + "WHEN 'securityService' THEN 'SecurityMetadata' "
+                + "WHEN 'storageService' THEN 'StorageMetadata' "
+                + "END)::text), true) "
                 + "FROM entity_relationship er "
                 + "WHERE er.toid = i.id "
                 + "AND er.toentity = 'ingestionPipeline' "
-                + "AND er.fromentity = 'databaseService' "
                 + "AND er.relation = 0 "
                 + "AND er.deleted = false "
                 + "AND i.json ->> 'pipelineType' = 'metadata' "
                 + "AND i.json #>> '{sourceConfig,config,type}' IS NULL "
-                + "AND jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object'";
+                + "AND jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object' "
+                + "AND er.fromentity IN ('apiService', 'dashboardService', 'databaseService', "
+                + "'driveService', 'mcpService', 'messagingService', 'mlmodelService', "
+                + "'pipelineService', 'searchService', 'securityService', 'storageService')";
     int count = handle.execute(sql);
-    LOG.info("Backfilled DatabaseMetadata source config type for {} ingestion pipelines", count);
+    LOG.info("Backfilled metadata source config types for {} ingestion pipelines", count);
   }
 
   /**
