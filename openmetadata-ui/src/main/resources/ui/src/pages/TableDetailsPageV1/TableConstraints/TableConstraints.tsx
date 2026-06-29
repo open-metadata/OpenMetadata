@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import {
   WidgetEditButton,
   WidgetPlusButton,
-} from 'src/components/common/WidgetActionButton/WidgetActionButton';
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
