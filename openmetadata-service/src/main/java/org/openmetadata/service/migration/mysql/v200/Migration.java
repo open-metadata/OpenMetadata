@@ -39,7 +39,6 @@ public class Migration extends MigrationProcessImpl {
     backfillAnnouncementRelationships(handle);
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
-    addTaskRuleToDataConsumerPolicy(collectionDAO);
     SearchIndexMappingsSeeder.seedIfAbsent();
 
     // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues
