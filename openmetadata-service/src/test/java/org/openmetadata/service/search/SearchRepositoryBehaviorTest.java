@@ -122,6 +122,30 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
+  private static final IndexMapping DATABASE_MAPPING =
+      IndexMapping.builder()
+          .indexName("database_search_index")
+          .alias("database")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/database_index_mapping.json")
+          .build();
+
+  private static final IndexMapping DATABASE_SCHEMA_MAPPING =
+      IndexMapping.builder()
+          .indexName("database_schema_search_index")
+          .alias("databaseSchema")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/database_schema_index_mapping.json")
+          .build();
+
+  private static final IndexMapping COLUMN_MAPPING =
+      IndexMapping.builder()
+          .indexName("column_search_index")
+          .alias("tableColumn")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/column_index_mapping.json")
+          .build();
+
   private static final IndexMapping PAGE_MAPPING =
       IndexMapping.builder()
           .indexName("page_search_index")
@@ -1202,6 +1226,52 @@ class SearchRepositoryBehaviorTest {
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "table.id", table.getId().toString())));
+  }
+
+  /**
+   * Regression for the bulk-delete search gap: column docs live in a flat secondary index, and a
+   * recursive service/database/schema hard delete skips the per-table search dispatch
+   * ({@code descendantsCoveredByAncestorCascade}) while the ancestor's child cascade targets only
+   * the service childAliases (no {@code tableColumn}). Without an explicit prune the descendant
+   * column docs orphan in search. Each database-subtree ancestor must delete the column index by
+   * the parent id field its column docs carry.
+   */
+  @Test
+  void deleteEntityIndexRemovesDescendantColumnsForDatabaseSubtreeAncestors() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(
+                Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING,
+                Entity.DATABASE, DATABASE_MAPPING,
+                Entity.DATABASE_SCHEMA, DATABASE_SCHEMA_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING),
+            "cluster");
+    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
+    EntityInterface schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
+
+    repo.deleteEntityIndex(service);
+    repo.deleteEntityIndex(database);
+    repo.deleteEntityIndex(schema);
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "service.id", service.getId().toString())));
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "database.id", database.getId().toString())));
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "databaseSchema.id", schema.getId().toString())));
   }
 
   @Test
