@@ -225,10 +225,13 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
-
+        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -257,12 +260,15 @@ test.describe(
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
         await expandTreeNode(page, 'Databases');
 
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
         await page
           .getByTestId(
             `explore-tree-title-${table.service.serviceType.toLowerCase()}`
           )
           .click();
-
+        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
