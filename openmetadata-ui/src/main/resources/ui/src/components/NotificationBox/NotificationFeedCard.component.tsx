@@ -25,7 +25,7 @@ import { entityDisplayName, prepareFeedLink } from '../../utils/FeedUtilsPure';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
-} from '../../utils/TasksUtils';
+} from '../../utils/TaskNavigationUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { SourceType } from '../SearchedData/SearchedData.interface';
