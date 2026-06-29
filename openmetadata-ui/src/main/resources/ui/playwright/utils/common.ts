@@ -181,7 +181,10 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  const toast = page.getByTestId('alert-bar').filter({ hasText: message });
+  const toast = page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first();
 
   await toast.waitFor({ state: 'visible', timeout });
 

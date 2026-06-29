@@ -127,7 +127,7 @@ export const showErrorToast = (
  * @param message success message.
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
-export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
+export const showSuccessToast = (message: string, autoCloseTimer = 3000) => {
   toast.success(message, { timeout: autoCloseTimer });
 };
 
