@@ -360,6 +360,8 @@ export const openEntityTasksTab = async (page: Page) => {
   await activityFeedTab.waitFor({ state: 'visible' });
   await activityFeedTab.click();
   await waitForPageLoaded(page);
+  await waitForAllLoadersToDisappear(page);
+
   const menuItemTaskTab = page.getByRole('menuitem', { name: /tasks/i });
   await menuItemTaskTab.waitFor({ state: 'visible' });
 
@@ -368,6 +370,7 @@ export const openEntityTasksTab = async (page: Page) => {
   await taskListResponse.catch(() => undefined);
 
   await waitForPageLoaded(page);
+  await waitForAllLoadersToDisappear(page);
   logTaskDebug('openEntityTasksTab:done');
 };
 
