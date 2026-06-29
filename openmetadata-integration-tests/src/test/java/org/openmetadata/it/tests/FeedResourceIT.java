@@ -429,6 +429,42 @@ public class FeedResourceIT {
   }
 
   @Test
+  void post_tagTaskWithEmptyValues_200(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    User assigneeUser = SdkClients.adminClient().users().getByName("admin");
+    EntityReference assignee = assigneeUser.getEntityReference();
+
+    CreateTaskDetails taskDetails =
+        new CreateTaskDetails()
+            .withType(TaskType.RequestTag)
+            .withAssignees(List.of(assignee))
+            .withOldValue("")
+            .withSuggestion("");
+
+    Thread taskThread = null;
+    try {
+      taskThread =
+          createThread(
+              new CreateThread()
+                  .withMessage("Please update tags")
+                  .withAbout(about)
+                  .withType(ThreadType.Task)
+                  .withTaskDetails(taskDetails));
+
+      assertNotNull(taskThread);
+      assertNotNull(taskThread.getTask());
+      assertEquals(TaskStatus.Open, taskThread.getTask().getStatus());
+      assertTrue(threadListContainsTask(listTasks(about), taskThread));
+    } finally {
+      if (taskThread != null) {
+        deleteThread(taskThread.getId());
+      }
+    }
+  }
+
+  @Test
   void post_unsupportedLegacyFeedTaskType_400(TestNamespace ns) throws Exception {
     Table table = createTestTable(ns);
     String about = String.format("<#E::table::%s>", table.getFullyQualifiedName());
