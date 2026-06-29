@@ -248,8 +248,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
               {memory.tags.map((tag) => (
                 <Badge
-                  className="tw:max-w-90 tw:min-w-0"
-                  key={String(tag.tagFQN ?? '')}
+                  className="tw:max-w-60 tw:min-w-0"
+                  key={tag.tagFQN}
                   size="md"
                   type="color">
                   {tag.style?.color && (

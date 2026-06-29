@@ -70,3 +70,39 @@ def test_errno_accepts_multiple_codes():
     err.args = (1143, "column denied")
     pack = ErrorPack(when(Matchers.errno(1142, 1143)).diagnose("Denied"))
     assert pack.classify(err).title == "Denied"
+
+
+def test_exception_matches_type_in_cause_chain():
+    inner = ConnectionRefusedError(61, "refused")
+    wrapped = RuntimeError("driver wrapper")
+    wrapped.__cause__ = inner
+    pack = ErrorPack(when(Matchers.exception(ConnectionRefusedError)).diagnose("Refused"))
+    assert pack.classify(wrapped).title == "Refused"
+    assert pack.classify(Exception("no socket error here")) is None
+
+
+def test_exception_matches_any_of_several_types():
+    pack = ErrorPack(when(Matchers.exception(TimeoutError, ConnectionRefusedError)).diagnose("Net"))
+    assert pack.classify(TimeoutError("t")).title == "Net"
+    assert pack.classify(ConnectionRefusedError()).title == "Net"
+
+
+def test_including_appends_other_pack_as_fallback():
+    specific = ErrorPack(when(Matchers.contains("denied")).diagnose("Specific"))
+    fallback = ErrorPack(when(Matchers.contains("boom")).diagnose("Fallback"))
+    combined = specific.including(fallback)
+    assert combined.classify(Exception("denied")).title == "Specific"
+    assert combined.classify(Exception("boom")).title == "Fallback"
+
+
+def test_including_keeps_this_packs_precedence_on_overlap():
+    specific = ErrorPack(when(Matchers.contains("x")).diagnose("Specific"))
+    fallback = ErrorPack(when(Matchers.contains("x")).diagnose("Fallback"))
+    assert specific.including(fallback).classify(Exception("x")).title == "Specific"
+
+
+def test_including_returns_a_new_pack_leaving_the_original_unchanged():
+    base = ErrorPack(when(Matchers.contains("a")).diagnose("A"))
+    other = ErrorPack(when(Matchers.contains("b")).diagnose("B"))
+    base.including(other)
+    assert base.classify(Exception("b")) is None

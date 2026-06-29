@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,6 @@
  *  limitations under the License.
  */
 
-export type AttentionKind = 'memory' | 'article' | 'document';
-export type AttentionSeverity = 'error' | 'warning' | 'info';
-
-export interface AttentionItem {
-  id: string;
-  kind: AttentionKind;
-  title: string;
-  severity: AttentionSeverity;
-  reason: string;
-}
-
-export interface NeedsAttentionSectionProps {
-  items: AttentionItem[];
-  isLoading?: boolean;
+export interface DestinationFormItemV2Props {
+  isViewMode?: boolean;
 }
