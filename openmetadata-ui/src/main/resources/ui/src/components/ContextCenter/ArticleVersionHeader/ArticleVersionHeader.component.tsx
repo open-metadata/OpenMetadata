@@ -29,11 +29,10 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
   const breadcrumbItems = [
-    {
-      label: t('label.context-center'),
-      href: contextCenterClassBase.getContextCenterPath(),
-    },
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
     {
       label: t('label.article-plural'),
       href: contextCenterClassBase.getArticlesListPath(),
@@ -58,13 +57,11 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
   const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const breadcrumbEl = (
     <HeaderBreadcrumb
-      showHome
-      className={breadcrumbClassName}
       items={breadcrumbItems}
+      showHome={!isEmbedded}
     />
   );
 

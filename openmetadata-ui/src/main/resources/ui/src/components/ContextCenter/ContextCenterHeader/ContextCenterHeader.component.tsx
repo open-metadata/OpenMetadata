@@ -40,6 +40,12 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   const { t } = useTranslation();
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
   const cardStyle = contextCenterClassBase.getCardStyle();
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  const resolvedBreadcrumbs = [
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
+    ...breadcrumbs.slice(1),
+  ];
 
   const defaultActions = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
@@ -66,9 +72,8 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 
   const breadcrumbEl = (
     <HeaderBreadcrumb
-      showHome
-      className={contextCenterClassBase.getBreadcrumbClassName()}
-      items={breadcrumbs}
+      items={resolvedBreadcrumbs}
+      showHome={!isEmbedded}
     />
   );
 
