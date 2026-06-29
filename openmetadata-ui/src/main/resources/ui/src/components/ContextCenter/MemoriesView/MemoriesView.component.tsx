@@ -280,7 +280,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               {linkedEntities.map((entity) => (
                 <Badge
                   className="tw:max-w-60 tw:min-w-0"
-                  key={entity.id}
+                  key={entity.id ?? entity.fullyQualifiedName}
                   size="md"
                   type="color">
                   <div className="tw:shrink-0">

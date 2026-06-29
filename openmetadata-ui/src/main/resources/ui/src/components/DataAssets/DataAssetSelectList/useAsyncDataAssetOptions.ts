@@ -40,6 +40,11 @@ export const useAsyncDataAssetOptions = ({
   const [options, setOptions] = useState<DataAssetOption[]>([]);
   const [searchText, setSearchText] = useState('');
 
+  // Stabilize queryFilter by value so inline object literals from callers don't
+  // cause fetchOptions/loadOptions to change identity on every render.
+   
+  const stableQueryFilter = useMemo(() => queryFilter, [JSON.stringify(queryFilter)]);
+
   const fetchOptions = useCallback(
     async (
       searchQueryParam: string,
@@ -50,7 +55,7 @@ export const useAsyncDataAssetOptions = ({
         pageNumber: page,
         pageSize: PAGE_SIZE,
         searchIndex,
-        queryFilter: queryFilter ?? {
+        queryFilter: stableQueryFilter ?? {
           query: { bool: { must_not: [{ match: { isBot: true } }] } },
         },
       });
@@ -76,7 +81,7 @@ export const useAsyncDataAssetOptions = ({
 
       return { data, paging: { total } };
     },
-    [searchIndex, queryFilter]
+    [searchIndex, stableQueryFilter]
   );
 
   const loadOptions = useCallback(

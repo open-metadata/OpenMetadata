@@ -335,7 +335,7 @@ export const getEntityIconWithBg = (
   const {
     className: iconClassName,
     size = 14,
-    strokeWidth = 1.5,
+    strokeWidth = 1.2,
   } = iconProps ?? {};
 
   return (

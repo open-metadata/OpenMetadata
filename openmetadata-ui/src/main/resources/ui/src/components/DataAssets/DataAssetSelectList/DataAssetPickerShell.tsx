@@ -133,7 +133,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
 
   useEffect(() => {
     setFocusedIndex(-1);
-  }, [navigableOptions]);
+  }, [searchText, isOpen]);
 
   useEffect(() => {
     onOpenChange?.(isOpen);
