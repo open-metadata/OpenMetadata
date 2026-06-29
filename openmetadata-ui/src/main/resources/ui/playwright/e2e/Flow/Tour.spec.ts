@@ -80,7 +80,7 @@ const validateTourSteps = async (page: Page) => {
   await expectTourBadge(page, '4');
 
   await expect(
-    page.locator('#search-card-9d664bbd-8c9e-4068-9112-9ab0457d4c52')
+    page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
   ).toBeVisible();
 
   // step 3

@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
-import { TourContext } from '../../../context/TourProvider/TourProvider';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree from './ExploreTree';
 
@@ -67,7 +70,12 @@ describe('ExploreTree', () => {
       .mockResolvedValue(buildAggregationResponse([]));
 
     const { queryByTestId } = render(
-      <TourContext.Provider value={{ isTourOpen: true } as never}>
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen: true,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
         <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
       </TourContext.Provider>
     );
