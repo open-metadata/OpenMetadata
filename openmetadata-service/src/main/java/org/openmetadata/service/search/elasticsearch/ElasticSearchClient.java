@@ -65,6 +65,7 @@ import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchStatsResult;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
@@ -389,6 +390,18 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     return searchManager.listWithOffset(
         filter, limit, offset, index, searchSortFilter, q, queryString, subjectContext);
+  }
+
+  @Override
+  public SearchStatsResult statsWithSum(
+      String filter,
+      String index,
+      String sumField,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.statsWithSum(filter, index, sumField, q, queryString, subjectContext);
   }
 
   @Override

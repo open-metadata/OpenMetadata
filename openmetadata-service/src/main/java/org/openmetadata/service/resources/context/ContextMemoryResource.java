@@ -54,7 +54,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -67,9 +66,13 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.search.SearchStatsResult;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -83,8 +86,6 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
-  private static final String STATS_FIELDS = "owners";
-  private static final int STATS_PAGE_SIZE = 1000;
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
 
@@ -380,56 +381,43 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @DefaultValue("non-deleted")
           Include include)
       throws IOException {
-    int offset = 0;
-    int totalVisible = 0;
-    int pinnedVisible = 0;
-    int createdByMeVisible = 0;
-    long totalUsageCount = 0L;
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
     String currentUserName = securityContext.getUserPrincipal().getName();
+    SearchStatsResult totalStats =
+        getContextMemoryStatsFromSearch(include, null, null, "usageCount", subjectContext);
+    SearchStatsResult pinnedStats =
+        getContextMemoryStatsFromSearch(include, null, true, null, subjectContext);
+    SearchStatsResult createdByMeStats =
+        getContextMemoryStatsFromSearch(include, currentUserName, null, null, subjectContext);
+    return new ContextMemoryStats(
+        toInt(totalStats.total()),
+        toInt(pinnedStats.total()),
+        toInt(createdByMeStats.total()),
+        totalStats.sum());
+  }
 
-    while (true) {
-      ResultList<ContextMemory> page =
-          listInternalFromSearch(
-              uriInfo,
-              securityContext,
-              getFields(STATS_FIELDS),
-              buildContextMemorySearchFilter(
-                  include, null, null, null, "id,name,owners,pinned,usageCount"),
-              STATS_PAGE_SIZE,
-              offset,
-              new SearchSortFilter("updatedAt", "desc", null, null),
-              null,
-              null,
-              getAuthRequestsForListOps());
-      if (page.getPaging() != null && page.getPaging().getTotal() != null) {
-        totalVisible = page.getPaging().getTotal();
-      }
-      for (ContextMemory memory : page.getData()) {
-        if (Boolean.TRUE.equals(memory.getPinned())) {
-          pinnedVisible++;
-        }
-        if (isOwnedBy(memory, currentUserName)) {
-          createdByMeVisible++;
-        }
-        totalUsageCount += memory.getUsageCount() == null ? 0 : memory.getUsageCount();
-      }
-      if (page.getData().size() < STATS_PAGE_SIZE
-          || offset + page.getData().size() >= totalVisible) {
-        break;
-      }
-      offset += page.getData().size();
+  private SearchStatsResult getContextMemoryStatsFromSearch(
+      Include include,
+      String author,
+      Boolean pinned,
+      String sumField,
+      SubjectContext subjectContext)
+      throws IOException {
+    return Entity.getSearchRepository()
+        .statsWithSum(
+            buildContextMemorySearchFilter(include, null, author, pinned, null),
+            entityType,
+            sumField,
+            subjectContext);
+  }
+
+  private static int toInt(long value) {
+    if (value > Integer.MAX_VALUE) {
+      throw new IllegalStateException("Context memory stats count exceeds supported maximum");
     }
-    return new ContextMemoryStats(totalVisible, pinnedVisible, createdByMeVisible, totalUsageCount);
-  }
-
-  private static boolean isOwnedBy(ContextMemory memory, String userName) {
-    return CommonUtil.listOrEmpty(memory.getOwners()).stream()
-        .anyMatch(owner -> isOwner(owner, userName));
-  }
-
-  private static boolean isOwner(EntityReference owner, String userName) {
-    return userName != null
-        && (userName.equals(owner.getName()) || userName.equals(owner.getFullyQualifiedName()));
+    return (int) value;
   }
 
   @GET

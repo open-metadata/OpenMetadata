@@ -75,6 +75,7 @@ import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
+import org.openmetadata.service.search.SearchStatsResult;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
@@ -99,6 +100,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
   private final NLQService nlqService;
+  private static final String SUM_AGGREGATION = "sum";
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
@@ -295,6 +297,81 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     applyRbacCondition(subjectContext, requestBuilder);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  @Override
+  public SearchStatsResult statsWithSum(
+      String filter,
+      String index,
+      String sumField,
+      String q,
+      String queryString,
+      SubjectContext subjectContext)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+
+    ElasticSearchRequestBuilder requestBuilder = new ElasticSearchRequestBuilder();
+
+    if (!nullOrEmpty(q)) {
+      ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
+      requestBuilder = searchBuilderFactory.getSearchSourceBuilderV2(index, q, 0, 0, false);
+    }
+
+    if (!nullOrEmpty(queryString)) {
+      try {
+        String queryToProcess = EsUtils.parseJsonQuery(queryString);
+        Query query = Query.of(qb -> qb.withJson(new StringReader(queryToProcess)));
+        requestBuilder.query(query);
+      } catch (Exception e) {
+        LOG.warn("Error parsing queryString parameter, ignoring: {}", e.getMessage());
+      }
+    }
+
+    if (!nullOrEmpty(filter) && !filter.equals("{}")) {
+      applySearchFilter(filter, requestBuilder);
+    }
+
+    applyRbacCondition(subjectContext, requestBuilder);
+    requestBuilder.timeout("30s");
+    requestBuilder.from(0);
+    requestBuilder.size(0);
+    requestBuilder.fetchSource(false);
+    requestBuilder.trackTotalHits(true);
+    if (!nullOrEmpty(sumField)) {
+      requestBuilder.aggregation(
+          SUM_AGGREGATION, Aggregation.of(a -> a.sum(sum -> sum.field(sumField))));
+    }
+
+    try {
+      SearchRequest searchRequest = requestBuilder.build(index);
+      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
+      SearchResponse<JsonData> response;
+      try {
+        response = client.search(searchRequest, JsonData.class);
+      } finally {
+        if (searchTimerSample != null) {
+          RequestLatencyContext.endSearchOperation(searchTimerSample);
+        }
+      }
+
+      long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
+      long sum = 0;
+      if (response.aggregations() != null) {
+        Aggregate sumAggregation = response.aggregations().get(SUM_AGGREGATION);
+        if (sumAggregation != null && sumAggregation.isSum()) {
+          sum = Math.round(sumAggregation.sum().value());
+        }
+      }
+      return new SearchStatsResult(totalHits, sum);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+      } else {
+        throw buildSearchException(e);
+      }
+    }
   }
 
   @NotNull
