@@ -39,7 +39,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../utils/TableUtils', () => ({
   getServiceIcon: jest.fn(() => <div>ServiceIcon</div>),
-  getEntityTypeIcon: jest.fn(() => <div>EntityIcon</div>),
+  getEntityIcon: jest.fn(() => <div>EntityIcon</div>),
 }));
 
 jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
@@ -62,19 +62,20 @@ jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   }),
 }));
 
-jest.mock('../../../utils/EntityPureUtils', () => ({
-  getBreadcrumbsFromFqn: jest.fn((fqn) => {
+jest.mock('../../../utils/EntityBreadcrumbPureUtils', () => ({
+  getEntityBreadcrumbs: jest.fn((entity) => {
+    const fqn = entity?.fullyQualifiedName ?? '';
     if (!fqn) {
       return [];
     }
     const parts = fqn.split('.');
 
-    return parts.slice(0, -1).map((part) => ({ name: part }));
+    return parts.slice(0, -1).map((part: string) => ({ name: part, url: '' }));
   }),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn((entity) => entity.name || entity.displayName || ''),
+  getEntityName: jest.fn((entity) => entity?.name || entity?.displayName || ''),
 }));
 
 const mockToggleColumnsList = jest.fn();
@@ -422,7 +423,7 @@ describe('LineageNodeLabelV1', () => {
       expect(filterButton).toBeDisabled();
     });
 
-    it('should show tooltip on filter button hover', async () => {
+    it('should expose the filter button tooltip as an accessible label', () => {
       render(
         <LineageNodeLabelV1
           isChildrenListExpanded={false}
@@ -435,13 +436,11 @@ describe('LineageNodeLabelV1', () => {
       );
 
       const filterButton = screen.getByTestId('lineage-filter-button');
-      fireEvent.mouseOver(filterButton);
 
-      await waitFor(() => {
-        expect(
-          screen.getByText('Only show columns with Lineage')
-        ).toBeInTheDocument();
-      });
+      expect(filterButton).toHaveAttribute(
+        'aria-label',
+        'Only show columns with Lineage'
+      );
     });
 
     it('should stop event propagation when dropdown button is clicked', () => {

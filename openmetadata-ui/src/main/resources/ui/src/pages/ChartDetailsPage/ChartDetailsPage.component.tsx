@@ -41,7 +41,7 @@ import {
 } from '../../rest/chartsAPI';
 import { chartQueryFn, chartQueryKey } from '../../rest/queries/chartQuery';
 import { defaultFields } from '../../utils/ChartDetailsUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

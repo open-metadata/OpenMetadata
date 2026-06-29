@@ -4,20 +4,29 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.Query;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -32,15 +41,18 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MlFeature;
 import org.openmetadata.schema.type.MlFeatureSource;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 
 /**
  * Tests the one-time child-FQN repair migration. The DB is mocked at the DAO boundary; the real
@@ -480,5 +492,240 @@ class MigrationUtilTest {
 
   private Topic topic(String fqn) {
     return new Topic().withId(UUID.randomUUID()).withName("t").withFullyQualifiedName(fqn);
+  }
+
+  private CollectionDAO daoForPipelineEdgeBackfill(
+      CollectionDAO.EntityRelationshipDAO relationshipDAO) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    return collectionDAO;
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private Handle handleWithPreflight(
+      Optional<Integer> preflight, List<CollectionDAO.EntityRelationshipObject> scanBatch) {
+    Handle handle = mock(Handle.class);
+    Query preflightQuery = mock(Query.class);
+    Query scanQuery = mock(Query.class);
+    org.jdbi.v3.core.result.ResultIterable preflightResult =
+        mock(org.jdbi.v3.core.result.ResultIterable.class);
+    org.jdbi.v3.core.result.ResultIterable scanResult =
+        mock(org.jdbi.v3.core.result.ResultIterable.class);
+
+    when(handle.createQuery(anyString()))
+        .thenAnswer(
+            inv -> {
+              String sql = inv.getArgument(0);
+              return sql.contains("LIMIT 1") ? preflightQuery : scanQuery;
+            });
+
+    when(preflightQuery.bind(anyString(), anyInt())).thenReturn(preflightQuery);
+    when(preflightQuery.mapTo(Integer.class)).thenReturn(preflightResult);
+    when(preflightResult.findFirst()).thenReturn(preflight);
+
+    when(scanQuery.bind(anyString(), anyInt())).thenReturn(scanQuery);
+    when(scanQuery.bind(anyString(), anyLong())).thenReturn(scanQuery);
+    when(scanQuery.bindList(anyString(), any(List.class))).thenReturn(scanQuery);
+    when(scanQuery.map(any(RowMapper.class))).thenReturn(scanResult);
+    when(scanResult.list()).thenReturn((List) scanBatch).thenReturn(List.of());
+
+    return handle;
+  }
+
+  private EntityReference databaseServiceRef(UUID id) {
+    return new EntityReference().withId(id).withType(Entity.DATABASE_SERVICE);
+  }
+
+  private EntityReference pipelineServiceRef(UUID id) {
+    return new EntityReference().withId(id).withType(Entity.PIPELINE_SERVICE);
+  }
+
+  private Table tableWithService(UUID serviceId) {
+    Table table = new Table();
+    table.setId(UUID.randomUUID());
+    table.setService(databaseServiceRef(serviceId));
+    return table;
+  }
+
+  private Pipeline pipelineWithService(UUID serviceId) {
+    Pipeline pipeline = new Pipeline();
+    pipeline.setId(UUID.randomUUID());
+    pipeline.setService(pipelineServiceRef(serviceId));
+    return pipeline;
+  }
+
+  private CollectionDAO.EntityRelationshipObject lineageCandidate(
+      UUID fromTableId, UUID toTableId, UUID pipelineId) {
+    String json =
+        "{\"pipeline\":{\"id\":\""
+            + pipelineId
+            + "\",\"type\":\"pipeline\"},\"createdBy\":\"admin\",\"createdAt\":1,\"updatedBy\":\"admin\",\"updatedAt\":2}";
+    return CollectionDAO.EntityRelationshipObject.builder()
+        .fromEntity(Entity.TABLE)
+        .fromId(fromTableId.toString())
+        .toEntity(Entity.TABLE)
+        .toId(toTableId.toString())
+        .relation(Relationship.UPSTREAM.ordinal())
+        .json(json)
+        .build();
+  }
+
+  @Test
+  void migratePipelineServiceEdgesSkipsScanWhenPreflightFindsNoCandidates() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO collectionDAO = daoForPipelineEdgeBackfill(relationshipDAO);
+    Handle handle = handleWithPreflight(Optional.empty(), List.of());
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.migratePipelineServiceEdges(collectionDAO, handle));
+    }
+
+    verify(handle, times(1)).createQuery(anyString());
+    verify(relationshipDAO, never())
+        .insert(any(UUID.class), any(UUID.class), anyString(), anyString(), anyInt(), anyString());
+  }
+
+  @Test
+  void migratePipelineServiceEdgesIsNoOpWhenScanReturnsEmpty() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    CollectionDAO collectionDAO = daoForPipelineEdgeBackfill(relationshipDAO);
+    Handle handle = handleWithPreflight(Optional.of(1), List.of());
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      assertDoesNotThrow(() -> MigrationUtil.migratePipelineServiceEdges(collectionDAO, handle));
+    }
+
+    verify(relationshipDAO, never())
+        .insert(any(UUID.class), any(UUID.class), anyString(), anyString(), anyInt(), anyString());
+  }
+
+  @Test
+  void migratePipelineServiceEdgesCreatesTwoServiceEdgesForValidLineage() {
+    UUID fromTableId = UUID.randomUUID();
+    UUID toTableId = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+    UUID fromServiceId = UUID.randomUUID();
+    UUID toServiceId = UUID.randomUUID();
+    UUID pipelineServiceId = UUID.randomUUID();
+
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(relationshipDAO.getRecord(any(UUID.class), any(UUID.class), anyInt())).thenReturn(null);
+    CollectionDAO collectionDAO = daoForPipelineEdgeBackfill(relationshipDAO);
+
+    Handle handle =
+        handleWithPreflight(
+            Optional.of(1), List.of(lineageCandidate(fromTableId, toTableId, pipelineId)));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class);
+        MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(false);
+
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TABLE), eq(fromTableId), eq(Entity.FIELD_SERVICE), eq(Include.ALL)))
+          .thenReturn(tableWithService(fromServiceId));
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TABLE), eq(toTableId), eq(Entity.FIELD_SERVICE), eq(Include.ALL)))
+          .thenReturn(tableWithService(toServiceId));
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.PIPELINE),
+                      eq(pipelineId),
+                      eq(Entity.FIELD_SERVICE),
+                      eq(Include.ALL)))
+          .thenReturn(pipelineWithService(pipelineServiceId));
+
+      assertDoesNotThrow(() -> MigrationUtil.migratePipelineServiceEdges(collectionDAO, handle));
+
+      ArgumentCaptor<UUID> fromCaptor = ArgumentCaptor.forClass(UUID.class);
+      ArgumentCaptor<UUID> toCaptor = ArgumentCaptor.forClass(UUID.class);
+      verify(relationshipDAO, times(2))
+          .insert(
+              fromCaptor.capture(),
+              toCaptor.capture(),
+              anyString(),
+              anyString(),
+              eq(Relationship.UPSTREAM.ordinal()),
+              anyString());
+
+      List<UUID> fromIds = fromCaptor.getAllValues();
+      List<UUID> toIds = toCaptor.getAllValues();
+      assertEquals(fromServiceId, fromIds.get(0));
+      assertEquals(pipelineServiceId, toIds.get(0));
+      assertEquals(pipelineServiceId, fromIds.get(1));
+      assertEquals(toServiceId, toIds.get(1));
+    }
+  }
+
+  @Test
+  void migratePipelineServiceEdgesIsIdempotentWhenEdgeAlreadyExists() {
+    UUID fromTableId = UUID.randomUUID();
+    UUID toTableId = UUID.randomUUID();
+    UUID pipelineId = UUID.randomUUID();
+
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(relationshipDAO.getRecord(any(UUID.class), any(UUID.class), anyInt()))
+        .thenReturn(CollectionDAO.EntityRelationshipObject.builder().build());
+    CollectionDAO collectionDAO = daoForPipelineEdgeBackfill(relationshipDAO);
+
+    Handle handle =
+        handleWithPreflight(
+            Optional.of(1), List.of(lineageCandidate(fromTableId, toTableId, pipelineId)));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class);
+        MockedStatic<Entity> entityStatic = mockStatic(Entity.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TABLE), eq(fromTableId), eq(Entity.FIELD_SERVICE), eq(Include.ALL)))
+          .thenReturn(tableWithService(UUID.randomUUID()));
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.TABLE), eq(toTableId), eq(Entity.FIELD_SERVICE), eq(Include.ALL)))
+          .thenReturn(tableWithService(UUID.randomUUID()));
+      entityStatic
+          .when(
+              () ->
+                  Entity.getEntity(
+                      eq(Entity.PIPELINE),
+                      eq(pipelineId),
+                      eq(Entity.FIELD_SERVICE),
+                      eq(Include.ALL)))
+          .thenReturn(pipelineWithService(UUID.randomUUID()));
+
+      assertDoesNotThrow(() -> MigrationUtil.migratePipelineServiceEdges(collectionDAO, handle));
+
+      verify(relationshipDAO, never())
+          .insert(
+              any(UUID.class), any(UUID.class), anyString(), anyString(), anyInt(), anyString());
+    }
   }
 }
