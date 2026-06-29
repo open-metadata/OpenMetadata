@@ -13,7 +13,6 @@
 
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
-import { expect, test } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
@@ -22,6 +21,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { navigateToDomainDataProductsAndOpenPanel } from '../../utils/rightPanelNavigation';
+import { expect, test } from '../fixtures/pages';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import { RightPanelPageObject } from '../PageObject/Explore/RightPanelPageObject';
 

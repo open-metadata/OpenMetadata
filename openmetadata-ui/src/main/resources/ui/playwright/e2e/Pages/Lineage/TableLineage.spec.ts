@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+/**
+ * PR-side data asset lineage suite. The parameterized "verify create lineage
+ * for entity - X" loop runs for Table only (other entities run in
+ * stress/Lineage/DataAssetLineageAllEntities.spec.ts — identical UI flow,
+ * redundant per-PR). The non-parameterized Column Level Lineage / Temp /
+ * Settings describes stay here since they provide unique coverage.
+ */
+
 import { expect } from '@playwright/test';
-import { get, startCase } from 'lodash';
+import { get } from 'lodash';
+import { registerDataAssetLineageEntityTests } from '../../../shared/dataAssetLineageEntityTests';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -38,46 +48,18 @@ import {
   activateColumnLayer,
   addColumnLineage,
   addPipelineBetweenNodes,
-  applyPipelineFromModal,
-  clickLineageNode,
-  connectEdgeBetweenNodes,
-  deleteEdge,
   deleteNode,
-  editLineage,
   editLineageClick,
   getEntityColumns,
-  performZoomOut,
-  rearrangeNodes,
   removeColumnLineage,
   toggleLineageFilters,
   verifyColumnLineageInCSV,
-  verifyExportLineageCSV,
-  verifyExportLineagePNG,
-  verifyNodePresent,
   verifyPlatformLineageForEntity,
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
 // Contains list of entity supported
-const allEntities = {
-  table: TableClass,
-  container: ContainerClass,
-  topic: TopicClass,
-  dashboard: DashboardClass,
-  mlmodel: MlModelClass,
-  pipeline: PipelineClass,
-  storedProcedure: StoredProcedureClass,
-  searchIndex: SearchIndexClass,
-  dataModel: DashboardDataModelClass,
-  apiEndpoint: ApiEndpointClass,
-  metric: MetricClass,
-  directory: DirectoryClass,
-  file: FileClass,
-  spreadsheet: SpreadsheetClass,
-  worksheet: WorksheetClass,
-};
-
 const columnLevelEntities = {
   table: TableClass,
   container: ContainerClass,
@@ -106,157 +88,7 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
-test.describe('Data asset lineage', () => {
-  const pipeline = new PipelineClass();
-  const entities: EntityClassUnion[] = [];
-
-  test.beforeAll(
-    'setup lineage creation with other entity creation',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
-        browser
-      );
-
-      Object.values(allEntities).forEach((EntityClass) => {
-        const lineageEntity = new EntityClass();
-
-        entities.push(lineageEntity);
-      });
-
-      await pipeline.create(apiContext);
-      await Promise.all(entities.map((entity) => entity.create(apiContext)));
-
-      await afterAction();
-    }
-  );
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  Object.entries(allEntities).forEach(([key, EntityClass]) => {
-    const lineageEntity = new EntityClass();
-
-    test(`verify create lineage for entity - ${startCase(key)}`, async ({
-      page,
-    }) => {
-      // 5 minute timeout
-      test.setTimeout(5 * 60 * 1000);
-
-      await test.step('prepare entity', async () => {
-        const { apiContext } = await getApiContext(page);
-
-        await lineageEntity.create(apiContext);
-        await lineageEntity.visitEntityPage(page);
-        await visitLineageTab(page);
-        await editLineageClick(page);
-      });
-
-      await test.step('should create lineage with normal edge', async () => {
-        for (const entity of entities) {
-          await connectEdgeBetweenNodes(page, lineageEntity, entity);
-          await rearrangeNodes(page);
-          await performZoomOut(page);
-        }
-
-        const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
-        await page.reload();
-        await lineageRes;
-        await page.getByTestId('edit-lineage').waitFor({
-          state: 'visible',
-        });
-
-        await waitForAllLoadersToDisappear(page);
-        await page
-          .getByTestId(
-            `lineage-node-${lineageEntity.entityResponseData.fullyQualifiedName}`
-          )
-          .waitFor();
-        await rearrangeNodes(page);
-        await performZoomOut(page);
-
-        for (const entity of entities) {
-          await verifyNodePresent(page, entity);
-        }
-
-        // Check the Entity Drawer
-        await performZoomOut(page);
-
-        for (const entity of entities) {
-          const toNodeFqn = get(
-            entity,
-            'entityResponseData.fullyQualifiedName',
-            ''
-          );
-          const entityName = get(
-            entity,
-            'entityResponseData.displayName',
-            get(entity, 'entityResponseData.name', '')
-          );
-
-          await clickLineageNode(page, toNodeFqn);
-
-          await expect(
-            page
-              .locator('.lineage-entity-panel')
-              .getByTestId('entity-header-title')
-          ).toHaveText(entityName);
-
-          await page.getByTestId('drawer-close-icon').click();
-
-          // Panel should not be visible after closing it
-          await expect(page.locator('.lineage-entity-panel')).not.toBeVisible();
-        }
-      });
-
-      await test.step('should create lineage with edge having pipeline', async () => {
-        await editLineage(page);
-
-        await page.getByTestId('fit-screen').click();
-        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-        await performZoomOut(page, 8);
-        await waitForAllLoadersToDisappear(page);
-
-        const fromNodeFqn = get(
-          lineageEntity,
-          'entityResponseData.fullyQualifiedName',
-          ''
-        );
-
-        await clickLineageNode(page, fromNodeFqn);
-
-        for (const entity of entities) {
-          await applyPipelineFromModal(page, lineageEntity, entity, pipeline);
-        }
-      });
-
-      await test.step('Verify Lineage Export CSV', async () => {
-        await editLineageClick(page);
-        await waitForAllLoadersToDisappear(page);
-        await performZoomOut(page);
-        await verifyExportLineageCSV(page, lineageEntity, entities, pipeline);
-      });
-
-      await test.step('Verify Lineage Export PNG', async () => {
-        await verifyExportLineagePNG(page);
-      });
-
-      await test.step('Remove lineage between nodes for the entity', async () => {
-        await editLineage(page);
-        await page.getByTestId('fit-screen').click();
-        await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
-        await waitForAllLoadersToDisappear(page);
-
-        await performZoomOut(page);
-
-        for (const entity of entities) {
-          await deleteEdge(page, lineageEntity, entity);
-        }
-      });
-    });
-  });
-});
-
+registerDataAssetLineageEntityTests({ table: TableClass });
 test.describe('Column Level Lineage', () => {
   const entities: Map<string, EntityClassUnion> = new Map();
 

@@ -266,7 +266,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(500);
     });
 
     // Cleanup
@@ -440,7 +440,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(500);
     });
 
     // Cleanup
@@ -697,7 +697,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(500);
     });
 
     // Cleanup
@@ -801,7 +801,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
         .waitFor({ state: 'detached', timeout: 60000 });
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for async import processing to complete
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(500);
     });
 
     // Cleanup

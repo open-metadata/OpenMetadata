@@ -477,7 +477,7 @@ export const selectAssetTypes = async (
       // Search for the asset type
       await page.keyboard.type(searchTerm);
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200);
 
       // Try to click the filtered result
       const filteredElement = page.locator(`[data-testid="${index}-option"]`);
@@ -618,7 +618,7 @@ export const verifyWidgetEntityNavigation = async (
   // Wait again for any widget-specific loaders
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
   // eslint-disable-next-line playwright/no-wait-for-timeout -- widget rendering delay
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(300);
 
   // Check for entity items in the widget
   const entityItems = widget.locator(entitySelector);

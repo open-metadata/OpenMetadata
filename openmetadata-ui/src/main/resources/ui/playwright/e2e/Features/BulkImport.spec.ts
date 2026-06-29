@@ -49,6 +49,7 @@ import {
   startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 // use the admin user to login
 test.use({
@@ -105,6 +106,15 @@ const expectImportRowStatusesToContain = async (
   page: Page,
   rowStatus: string[]
 ) => {
+  // The result grid populates cells asynchronously after Next-click. Without
+  // first waiting for the row count to match, the toContainText assertion
+  // can run mid-render against 0 or partial cells, fail under retry too,
+  // and never recover. Wait for the expected number of detail cells before
+  // checking text.
+  await expect(page.locator('.rdg-cell-details')).toHaveCount(
+    rowStatus.length,
+    { timeout: 60_000 }
+  );
   await expect(page.locator('.rdg-cell-details')).toContainText(rowStatus);
 };
 
@@ -160,6 +170,14 @@ test.describe('Bulk Import Export', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await dbService.create(apiContext);
+
+    // Bulk-import reads the service's children list from ES; wait for the
+    // service to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      dbService.entityResponseData.fullyQualifiedName,
+      'database_service_search_index'
+    );
 
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
@@ -613,6 +631,14 @@ test.describe('Bulk Import Export', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await dbSchemaEntity.create(apiContext);
 
+    // Bulk-import reads the schema's children list from ES; wait for the
+    // schema to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      dbSchemaEntity.entityResponseData.fullyQualifiedName,
+      'database_schema_search_index'
+    );
+
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
@@ -774,6 +800,14 @@ test.describe('Bulk Import Export', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
+
+    // Bulk-import reads the table's columns from ES; wait for the table
+    // to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      tableEntity.entityResponseData.fullyQualifiedName ?? '',
+      'table_search_index'
+    );
 
     await test.step('should export data table details', async () => {
       await tableEntity.visitEntityPage(page);

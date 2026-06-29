@@ -203,7 +203,7 @@ export const updateRelatedMetric = async (
   );
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- right panel rendering delay
-  await page.waitForTimeout(1000);
+  await page.waitForTimeout(300);
 
   // Wait for the metrics API call to complete
   const metricsResponsePromise2 = page.waitForResponse(

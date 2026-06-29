@@ -48,11 +48,19 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
+  /* Retry on CI only. Kept at 2 — dropping to 1 surfaced a long tail of
+   * backend-propagation flakes (task feed not refreshing after API task
+   * create, RBAC index lag, search dropdown not rendering on the first
+   * query response, etc.) that are not deterministically reproducible
+   * and each take their own round-trip to investigate. maxFailures:50
+   * still bails fundamentally broken PRs in minutes. */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 3 : undefined,
-  maxFailures: 500,
+  /* Bail early when a PR is fundamentally broken — full-suite has ~4,400
+   * tests and 50 genuine failures is already far beyond a normal run.
+   * Healthy runs see <10 failures, so this only kicks in on broken PRs. */
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -109,6 +117,7 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
+        '**/stress/**',
         '**/Search/**',
         '**/Auth/**',
         '**/Http2/**',
@@ -220,6 +229,17 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,
+    },
+    // Stress suite: full multi-entity coverage (CustomProperties, DataAssetLineage)
+    // that's redundant per-PR. Picks up everything under e2e/stress/**. Run via
+    // postgresql-nightly-e2e.yml workflow_dispatch — NOT included in PR chromium.
+    {
+      name: 'stress',
+      testMatch: '**/stress/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      teardown: 'entity-data-teardown',
+      fullyParallel: true,
     },
     {
       name: 'IntakeForm',

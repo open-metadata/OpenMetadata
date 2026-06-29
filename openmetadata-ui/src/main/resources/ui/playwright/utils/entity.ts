@@ -1220,7 +1220,7 @@ export const removeGlossaryTerm = async (
       .getByTestId('edit-button')
       .click();
     // eslint-disable-next-line playwright/no-wait-for-timeout -- avoid popup collision with click
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(200);
 
     await page
       .getByTestId('glossary-container')

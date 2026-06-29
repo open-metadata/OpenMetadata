@@ -157,7 +157,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         // Ignore timeout
       });
     // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(200);
   };
 
   // Reusable helper to perform search
@@ -296,7 +296,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await page.locator('.ant-btn-primary', { hasText: 'Save' }).click();
       // eslint-disable-next-line playwright/no-wait-for-timeout -- filter state needs time to settle after save
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       const allCount = await getRowCount(page);
       expect(allCount).toBeGreaterThanOrEqual(filteredCount);
@@ -372,7 +372,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
       await clearSearch(page);
       // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render after clearing search
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(300);
 
       const restoredCount = await getRowCount(page);
       expect(restoredCount).toBeGreaterThanOrEqual(searchCount);
@@ -505,7 +505,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       await cancelButton.click();
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown dismiss animation needs time to settle
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(200);
 
       // Count should remain the same
       const afterCancelCount = await getRowCount(page);

@@ -32,6 +32,11 @@ const invalidPassword = 'testUsers@123';
 test.describe.configure({
   // 5 minutes max for refresh token tests
   timeout: 5 * 60 * 1000,
+  // Disable retries for this file. Two tests in it sleep on intentional
+  // JWT-expiry waits (3 min and ~2 min); a single retry under the global
+  // retries:1 would waste ~5 min reliving those sleeps before reporting.
+  // Token-expiry flakes are almost always real, not transient.
+  retries: 0,
 });
 
 test.describe('Login flow should work properly', () => {

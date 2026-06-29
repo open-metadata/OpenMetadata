@@ -15,6 +15,7 @@ import { Page, test as base } from '@playwright/test';
 // Define the type for our custom fixtures
 export type CustomFixtures = {
   page: Page;
+  adminPage: Page;
   dataConsumerPage: Page;
   dataStewardPage: Page;
   editDescriptionPage: Page;
@@ -34,6 +35,17 @@ export const test = base.extend<CustomFixtures>({
 
     await use(adminPage);
     await adminPage.close();
+  },
+  // Explicit alias for the default admin page — kept so specs migrating
+  // from the deprecated support/fixtures/userPages fixture don't have to
+  // rename `adminPage` → `page` at every call site.
+  adminPage: async ({ browser }, use) => {
+    const page = await browser.newPage({
+      storageState: 'playwright/.auth/admin.json',
+    });
+
+    await use(page);
+    await page.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage({
@@ -92,3 +104,5 @@ export const test = base.extend<CustomFixtures>({
     await page.close();
   },
 });
+
+export { expect } from '@playwright/test';

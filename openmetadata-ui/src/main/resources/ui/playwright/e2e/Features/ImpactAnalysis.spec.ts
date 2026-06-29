@@ -962,7 +962,7 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     // eslint-disable-next-line playwright/no-wait-for-timeout -- column level lineage data takes time to reflect due to UI processing
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(300);
 
     const searchInput = page.getByTestId('searchbar');
     await expect(searchInput).toBeVisible();
@@ -972,7 +972,7 @@ test.describe('Impact Analysis', () => {
 
     await waitForAllLoadersToDisappear(page);
     // eslint-disable-next-line playwright/no-wait-for-timeout -- search filtering needs time to complete
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(200);
 
     const rowsWithColumn = page.locator(
       `[data-row-key*="${columnName}"], tbody tr:has-text("${columnName}")`
