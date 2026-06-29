@@ -45,12 +45,13 @@ class IngestionPipelineIndexTest {
   }
 
   @Test
-  void buildDoc_stripsConfigFromPipelineStatuses_keepsOtherFields() {
+  void buildDoc_stripsFreeFormFieldsFromPipelineStatuses_keepsOtherFields() {
     PipelineStatus status =
         new PipelineStatus()
             .withRunId("run-1")
             .withConfig(
-                Map.of("appConfig", Map.of("actions", Map.of("customProperties", "jointure"))));
+                Map.of("appConfig", Map.of("actions", Map.of("customProperties", "jointure"))))
+            .withMetadata(Map.of("arbitraryKey", Map.of("nested", "value")));
     IngestionPipeline pipeline =
         new IngestionPipeline()
             .withName("p1")
@@ -66,6 +67,8 @@ class IngestionPipelineIndexTest {
     assertEquals(1, statuses.size());
     Map<?, ?> statusMap = (Map<?, ?>) statuses.getFirst();
     assertFalse(statusMap.containsKey("config"), "free-form config must be stripped from the doc");
+    assertFalse(
+        statusMap.containsKey("metadata"), "free-form metadata must be stripped from the doc");
     assertEquals("run-1", statusMap.get("runId"), "searchable status fields must be preserved");
   }
 }
