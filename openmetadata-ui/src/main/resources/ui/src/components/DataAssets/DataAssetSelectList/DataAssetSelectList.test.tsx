@@ -144,7 +144,7 @@ describe('DataAssetSelectList', () => {
       expect(screen.getByText('Orders')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Orders').closest('button')!);
+    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
 
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith(
@@ -191,7 +191,7 @@ describe('DataAssetSelectList', () => {
     });
 
     // Click to deselect
-    fireEvent.click(screen.getByText('Orders').closest('button')!);
+    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
 
     expect(onChange).toHaveBeenCalledWith([]);
   });
@@ -292,7 +292,7 @@ describe('DataAssetSelectList', () => {
       expect(screen.getByText('Orders')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Orders').closest('button')!);
+    fireEvent.click(screen.getByText('Orders').closest('[role="option"]')!);
 
     // Popover should still be open after selection in multi mode
     expect(screen.getByText('Products')).toBeInTheDocument();

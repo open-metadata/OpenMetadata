@@ -149,7 +149,9 @@ describe('DataAssetFilterPopover', () => {
     );
     openPopover();
 
-    fireEvent.click(screen.getAllByText('Orders')[0].closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getAllByText('Orders')[0].closest('[role="option"]')!
+    );
 
     expect(onChange).toHaveBeenCalledWith('db.schema.orders');
   });
@@ -170,7 +172,9 @@ describe('DataAssetFilterPopover', () => {
     );
     openPopover();
 
-    fireEvent.click(screen.getAllByText('Orders')[0].closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getAllByText('Orders')[0].closest('[role="option"]')!
+    );
 
     expect(onChange).toHaveBeenCalledWith('');
   });
@@ -281,7 +285,9 @@ describe('DataAssetFilterPopover', () => {
 
     expect(screen.getByText('Orders')).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByText('Orders')[0].closest('[role="option"]')!);
+    fireEvent.click(
+      screen.getAllByText('Orders')[0].closest('[role="option"]')!
+    );
 
     expect(screen.queryByText('Products')).not.toBeInTheDocument();
   });
