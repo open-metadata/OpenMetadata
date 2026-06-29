@@ -1023,7 +1023,7 @@ test.describe(
         const countEl = page.getByTestId('search-results-count');
 
         await expect(countEl).toBeVisible();
-        await expect(countEl).toContainText(String(resultTotal));
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
       });
 
       await test.step('Clear filters and verify count disappears', async () => {
@@ -1068,7 +1068,7 @@ test.describe(
         const countEl = page.getByTestId('search-results-count');
 
         await expect(countEl).toBeVisible();
-        await expect(countEl).toContainText(String(resultTotal));
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
       });
     });
 
