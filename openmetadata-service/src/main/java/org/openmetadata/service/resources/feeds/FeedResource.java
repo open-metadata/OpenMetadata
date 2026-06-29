@@ -59,8 +59,11 @@ import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FeedFilter;
@@ -74,6 +77,7 @@ import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -416,6 +420,7 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
+    validateCreateThread(create);
     Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
@@ -582,5 +587,61 @@ public class FeedResource {
           @PathParam("id")
           UUID id) {
     return new ResultList<>(dao.listPosts(id));
+  }
+
+  private void validateCreateThread(CreateThread create) {
+    if (create.getAbout() == null || create.getAbout().isBlank()) {
+      throw new IllegalArgumentException("Thread about is required.");
+    }
+
+    if (create.getTaskDetails() == null) {
+      if (create.getType() == ThreadType.Task) {
+        throw new IllegalArgumentException("Task details are required for task threads.");
+      }
+      return;
+    }
+
+    if (create.getType() != ThreadType.Task) {
+      throw new IllegalArgumentException("Task details are only allowed for task threads.");
+    }
+
+    TaskType taskType = create.getTaskDetails().getType();
+    if (taskType == null) {
+      throw new IllegalArgumentException("Task type is required for task threads.");
+    }
+
+    if (!isSupportedLegacyFeedTask(taskType)) {
+      throw new IllegalArgumentException(
+          String.format("Task type %s is not supported by feed threads.", taskType));
+    }
+
+    if (taskType == TaskType.RequestApproval) {
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(create.getAbout());
+      if (entityLink.getLinkType() != MessageParser.EntityLink.LinkType.ENTITY) {
+        throw new IllegalArgumentException("RequestApproval tasks must target an entity.");
+      }
+    }
+
+    if (EntityUtil.isTagTask(taskType)) {
+      validateTagTaskValue(create.getTaskDetails().getOldValue(), "oldValue");
+      validateTagTaskValue(create.getTaskDetails().getSuggestion(), "suggestion");
+    }
+  }
+
+  private boolean isSupportedLegacyFeedTask(TaskType taskType) {
+    return EntityUtil.isDescriptionTask(taskType)
+        || EntityUtil.isTagTask(taskType)
+        || EntityUtil.isApprovalTask(taskType);
+  }
+
+  private void validateTagTaskValue(String value, String fieldName) {
+    if (value != null) {
+      try {
+        JsonUtils.readObjects(value, TagLabel.class);
+      } catch (Exception ex) {
+        throw new IllegalArgumentException(
+            String.format("Task %s must be valid JSON for tag tasks.", fieldName), ex);
+      }
+    }
   }
 }
