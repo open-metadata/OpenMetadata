@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { FC, ReactElement } from 'react';
 
 export type PillarTone = 'info' | 'warning' | 'success';
 
 export interface PillarRecentItem {
   title: string;
   meta: string;
+  icon?: ReactElement;
 }
 
 export interface ContextKnowledgePillarCardProps {
@@ -27,8 +28,6 @@ export interface ContextKnowledgePillarCardProps {
   stat: string;
   statSub: string;
   statSubSecondary?: string;
-  trend: string;
-  tone: PillarTone;
   recent: PillarRecentItem[];
   cta: string;
   isLoading?: boolean;
