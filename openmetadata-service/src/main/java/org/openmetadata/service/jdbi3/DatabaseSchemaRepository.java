@@ -91,6 +91,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
+    // A recursive hard-delete of an ancestor (database service / database) removes schema/table
+    // docs from search (deleteOrUpdateChildren by service.id / database.id) and field_relationship
+    // /
+    // tag_usage via the root cleanup() FQN prefix, so the bulk path skips the per-entity search
+    // dispatch and FQN-satellite deletes.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override

@@ -47,7 +47,7 @@ import {
   getIngestionPipelineByFqn,
 } from '../../rest/ingestionPipelineAPI';
 import { getServiceByFQN } from '../../rest/serviceAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import {
   getBreadCrumbsArray,
   getIngestionHeadingName,

@@ -61,6 +61,10 @@ public class ChartRepository extends EntityRepository<Chart> {
         Set.of(),
         registerEntity);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("dashboards", this::fetchAndSetDashboards);

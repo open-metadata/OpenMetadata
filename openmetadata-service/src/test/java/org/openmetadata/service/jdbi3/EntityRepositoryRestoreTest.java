@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
@@ -472,6 +473,119 @@ class EntityRepositoryRestoreTest {
     assertTrue(repo.bulkHardDeleteInvokedWith.contains(a));
     assertTrue(repo.bulkHardDeleteInvokedWith.contains(b));
     // Verify the per-batch relationship + extension cleanup actually ran.
+    verify(relationshipDAO, times(1)).batchDeleteRelationships(anyList(), eq(Entity.PIPELINE));
+    verify(extensionDAO, times(1)).deleteAllBatch(anyList());
+    verify(pipelineDAO, times(1)).deleteByIds(anyList());
+  }
+
+  @Test
+  void bulkHardDeleteSubtree_processesLargeLevelInBoundedChunks() {
+    // A level far larger than the chunk size must be hydrated + purged in bounded chunks rather
+    // than loaded whole (the pre-chunking path called loadForBulk(allIds, ALL) once, OOMing on
+    // hundreds of thousands of tables). Verify: more than one chunk, each chunk strictly smaller
+    // than the whole level, every id covered exactly once, one batched cleanup/relationship/row
+    // delete per chunk, and the per-entity hook firing for every entity.
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    int total = 1500;
+    List<UUID> ids = new ArrayList<>(total);
+    for (int i = 0; i < total; i++) {
+      ids.add(UUID.randomUUID());
+    }
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL)))
+        .thenAnswer(
+            inv -> {
+              List<UUID> chunkIds = inv.getArgument(0);
+              List<Pipeline> out = new ArrayList<>(chunkIds.size());
+              for (UUID id : chunkIds) {
+                out.add(
+                    new Pipeline()
+                        .withId(id)
+                        .withName(id.toString())
+                        .withFullyQualifiedName(id.toString()));
+              }
+              return out;
+            });
+    when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
+        .thenReturn(List.of());
+
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    CollectionDAO.FieldRelationshipDAO fieldRelationshipDAO =
+        mock(CollectionDAO.FieldRelationshipDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+    CollectionDAO.UsageDAO usageDAO = mock(CollectionDAO.UsageDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(daoCollection.fieldRelationshipDAO()).thenReturn(fieldRelationshipDAO);
+    when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(daoCollection.usageDAO()).thenReturn(usageDAO);
+
+    FeedRepository feedRepository = mock(FeedRepository.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      repo.bulkHardDeleteSubtree(ids, "user");
+    }
+
+    ArgumentCaptor<List<UUID>> loadCap = captureUuidList();
+    verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(loadCap.capture(), eq(Include.ALL));
+    List<List<UUID>> chunks = loadCap.getAllValues();
+    assertTrue(chunks.size() > 1, "large level must be processed in more than one chunk");
+    Set<UUID> covered = new HashSet<>();
+    for (List<UUID> chunk : chunks) {
+      assertTrue(!chunk.isEmpty() && chunk.size() < total, "each chunk must be a bounded subset");
+      covered.addAll(chunk);
+    }
+    assertEquals(total, covered.size(), "every id must be loaded exactly once across chunks");
+
+    int chunkCount = chunks.size();
+    assertEquals(chunkCount, repo.bulkEntitySpecificCleanupCalls, "one bulk cleanup per chunk");
+    verify(relationshipDAO, times(chunkCount))
+        .batchDeleteRelationships(anyList(), eq(Entity.PIPELINE));
+    verify(extensionDAO, times(chunkCount)).deleteAllBatch(anyList());
+    verify(pipelineDAO, times(chunkCount)).deleteByIds(anyList());
+    assertEquals(
+        total, repo.hardDeleteAdditionalChildrenCalls, "per-entity hook fires for every id");
+  }
+
+  @Test
+  void bulkHardDeleteSubtree_cascadeCovered_skipsPerEntityFqnCleanupAndBatchesUsage() {
+    // When the type's descendants are covered by an ancestor's delete cascade (search docs by
+    // service.id, FQN-keyed satellites by the root cleanup() prefix delete), the bulk path must NOT
+    // fire the per-entity field_relationship / tag_usage deletes — those are redundant N no-op
+    // round-trips. usage is keyed by id (not covered by the FQN prefix), so it must still be
+    // cleared, but in ONE batched IN-list delete rather than one per entity.
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    repo.descendantsCoveredByAncestorCascade = true;
+    UUID a = UUID.randomUUID();
+    UUID b = UUID.randomUUID();
+    Pipeline pa = new Pipeline().withId(a).withName("a").withFullyQualifiedName("svc.a");
+    Pipeline pb = new Pipeline().withId(b).withName("b").withFullyQualifiedName("svc.b");
+    when(pipelineDAO.findEntitiesByIds(anyList(), eq(Include.ALL))).thenReturn(List.of(pa, pb));
+    when(relationshipDAO.findToBatchAllTypes(anyList(), eq(SUBTREE_RELATIONS), eq(Include.ALL)))
+        .thenReturn(List.of());
+
+    CollectionDAO.EntityExtensionDAO extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
+    CollectionDAO.FieldRelationshipDAO fieldRelationshipDAO =
+        mock(CollectionDAO.FieldRelationshipDAO.class);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+    CollectionDAO.UsageDAO usageDAO = mock(CollectionDAO.UsageDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(daoCollection.fieldRelationshipDAO()).thenReturn(fieldRelationshipDAO);
+    when(daoCollection.tagUsageDAO()).thenReturn(tagUsageDAO);
+    when(daoCollection.usageDAO()).thenReturn(usageDAO);
+
+    FeedRepository feedRepository = mock(FeedRepository.class);
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entityMock.when(Entity::getFeedRepository).thenReturn(feedRepository);
+      repo.bulkHardDeleteSubtree(List.of(a, b), "user");
+    }
+
+    // Per-entity FQN-keyed cleanup is skipped (covered by the ancestor's prefix cascade).
+    verify(fieldRelationshipDAO, never()).deleteAllByPrefix(any());
+    verify(tagUsageDAO, never()).deleteTagLabelsByTargetPrefix(any());
+    verify(tagUsageDAO, never()).deleteTagLabelsByFqn(any());
+    // usage is id-keyed: cleared once, batched, never per-entity.
+    verify(usageDAO, never()).delete(any(UUID.class));
+    verify(usageDAO, times(1)).deleteByIds(anyList());
+    // id-keyed batched cleanup still runs.
     verify(relationshipDAO, times(1)).batchDeleteRelationships(anyList(), eq(Entity.PIPELINE));
     verify(extensionDAO, times(1)).deleteAllBatch(anyList());
     verify(pipelineDAO, times(1)).deleteByIds(anyList());

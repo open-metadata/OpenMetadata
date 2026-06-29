@@ -37,6 +37,7 @@ const ExploreQueryFilterChips = ({
   onRemoveValue,
   onRemoveBrowseLevel,
   onClearAll,
+  hasAdditionalQuery = false,
   emptyText,
 }: ExploreQueryFilterChipsProps) => {
   const { t } = useTranslation();
@@ -77,7 +78,8 @@ const ExploreQueryFilterChips = ({
     [fields, t]
   );
 
-  const hasActiveQuery = !isEmpty(chips) || !isEmpty(browseFields);
+  const hasActiveQuery =
+    !isEmpty(chips) || !isEmpty(browseFields) || hasAdditionalQuery;
 
   if (!hasActiveQuery && !emptyText) {
     return null;

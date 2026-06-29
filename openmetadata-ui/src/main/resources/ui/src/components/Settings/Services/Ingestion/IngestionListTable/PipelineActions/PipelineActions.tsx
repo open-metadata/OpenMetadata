@@ -20,7 +20,7 @@ import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resum
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLoadingStatus } from '../../../../../../utils/EntityDisplayUtils';
+import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
