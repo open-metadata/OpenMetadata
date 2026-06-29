@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,11 +41,13 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
 class MigrationUtilTest {
@@ -53,6 +56,51 @@ class MigrationUtilTest {
   @BeforeEach
   void setUp() {
     handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+  }
+
+  @Test
+  void backfillsDatabaseMetadataSourceConfigTypeWithMySqlJsonSet() {
+    when(handle.execute(anyString())).thenReturn(2);
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(true);
+
+      MigrationUtil.backfillDatabaseMetadataSourceConfigType(handle);
+    }
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle).execute(sqlCaptor.capture());
+    String sql = sqlCaptor.getValue();
+    assertTrue(sql.contains("JSON_SET(i.json, '$.sourceConfig.config.type', 'DatabaseMetadata')"));
+    assertTrue(sql.contains("er.fromEntity = 'databaseService'"));
+    assertTrue(sql.contains("i.json ->> '$.pipelineType' = 'metadata'"));
+    assertTrue(
+        sql.contains("JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"));
+  }
+
+  @Test
+  void backfillsDatabaseMetadataSourceConfigTypeWithPostgresJsonbSet() {
+    when(handle.execute(anyString())).thenReturn(2);
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig cfg = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
+      when(cfg.isMySQL()).thenReturn(false);
+
+      MigrationUtil.backfillDatabaseMetadataSourceConfigType(handle);
+    }
+
+    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+    verify(handle).execute(sqlCaptor.capture());
+    String sql = sqlCaptor.getValue();
+    assertTrue(
+        sql.contains(
+            "jsonb_set(i.json, '{sourceConfig,config,type}', '\"DatabaseMetadata\"'::jsonb, true)"));
+    assertTrue(sql.contains("er.fromentity = 'databaseService'"));
+    assertTrue(sql.contains("i.json ->> 'pipelineType' = 'metadata'"));
+    assertTrue(sql.contains("jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object'"));
   }
 
   @Test

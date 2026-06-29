@@ -108,35 +108,6 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
-  public static void backfillDatabaseMetadataSourceConfigType(Handle handle) {
-    boolean isMySQL = Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
-    String sql =
-        isMySQL
-            ? "UPDATE ingestion_pipeline_entity i "
-                + "JOIN entity_relationship er ON er.toId = i.id "
-                + "AND er.toEntity = 'ingestionPipeline' "
-                + "AND er.fromEntity = 'databaseService' "
-                + "AND er.relation = 0 "
-                + "AND er.deleted = false "
-                + "SET i.json = JSON_SET(i.json, '$.sourceConfig.config.type', 'DatabaseMetadata') "
-                + "WHERE i.json ->> '$.pipelineType' = 'metadata' "
-                + "AND i.json ->> '$.sourceConfig.config.type' IS NULL "
-                + "AND JSON_EXTRACT(i.json, '$.sourceConfig.config') IS NOT NULL"
-            : "UPDATE ingestion_pipeline_entity i "
-                + "SET json = jsonb_set(i.json, '{sourceConfig,config,type}', '\"DatabaseMetadata\"'::jsonb, true) "
-                + "FROM entity_relationship er "
-                + "WHERE er.toid = i.id "
-                + "AND er.toentity = 'ingestionPipeline' "
-                + "AND er.fromentity = 'databaseService' "
-                + "AND er.relation = 0 "
-                + "AND er.deleted = false "
-                + "AND i.json ->> 'pipelineType' = 'metadata' "
-                + "AND i.json #>> '{sourceConfig,config,type}' IS NULL "
-                + "AND i.json #> '{sourceConfig,config}' IS NOT NULL";
-    int count = handle.execute(sql);
-    LOG.info("Backfilled DatabaseMetadata source config type for {} ingestion pipelines", count);
-  }
-
   /**
    * Regenerate and redeploy every governance workflow's BPMN from the current code.
    *

@@ -5,6 +5,7 @@ import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTa
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillDatabaseMetadataSourceConfigType;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
@@ -32,6 +33,7 @@ public class Migration extends MigrationProcessImpl {
     // runDataMigration() per PR #26571, so this dual-invoke is required to
     // close that path. The helper is idempotent — safe on every run.
     addTableColumnSearchSettings();
+    backfillDatabaseMetadataSourceConfigType(handle);
     migrateSuggestionsToTaskEntity(handle, POSTGRES);
     migrateThreadTasksToTaskEntity(handle, POSTGRES);
     migrateLegacyActivityThreadsToActivityStream(handle, POSTGRES);

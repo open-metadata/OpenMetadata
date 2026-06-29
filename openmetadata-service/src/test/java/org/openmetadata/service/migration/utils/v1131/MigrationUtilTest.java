@@ -224,50 +224,6 @@ class MigrationUtilTest {
   }
 
   @Test
-  void backfillsDatabaseMetadataSourceConfigTypeWithMySqlJsonSet() {
-    Handle handle = mock(Handle.class);
-    when(handle.execute(anyString())).thenReturn(2);
-
-    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
-      DatasourceConfig cfg = mock(DatasourceConfig.class);
-      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
-      when(cfg.isMySQL()).thenReturn(true);
-
-      MigrationUtil.backfillDatabaseMetadataSourceConfigType(handle);
-    }
-
-    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-    verify(handle).execute(sqlCaptor.capture());
-    String sql = sqlCaptor.getValue();
-    assertTrue(sql.contains("JSON_SET(i.json, '$.sourceConfig.config.type', 'DatabaseMetadata')"));
-    assertTrue(sql.contains("er.fromEntity = 'databaseService'"));
-    assertTrue(sql.contains("i.json ->> '$.pipelineType' = 'metadata'"));
-  }
-
-  @Test
-  void backfillsDatabaseMetadataSourceConfigTypeWithPostgresJsonbSet() {
-    Handle handle = mock(Handle.class);
-    when(handle.execute(anyString())).thenReturn(2);
-
-    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
-      DatasourceConfig cfg = mock(DatasourceConfig.class);
-      ds.when(DatasourceConfig::getInstance).thenReturn(cfg);
-      when(cfg.isMySQL()).thenReturn(false);
-
-      MigrationUtil.backfillDatabaseMetadataSourceConfigType(handle);
-    }
-
-    ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
-    verify(handle).execute(sqlCaptor.capture());
-    String sql = sqlCaptor.getValue();
-    assertTrue(
-        sql.contains(
-            "jsonb_set(i.json, '{sourceConfig,config,type}', '\"DatabaseMetadata\"'::jsonb, true)"));
-    assertTrue(sql.contains("er.fromentity = 'databaseService'"));
-    assertTrue(sql.contains("i.json ->> 'pipelineType' = 'metadata'"));
-  }
-
-  @Test
   void scansEveryPageAdvancingOffsetUntilAnEmptyPage() {
     String firstPage = pipelineJson("svc.pipeA", task(CORRUPT_NAME, CORRUPT_TASK_FQN));
     String secondPage = pipelineJson("svc.pipeZ", task(CORRUPT_NAME, CORRUPT_TASK_FQN));
