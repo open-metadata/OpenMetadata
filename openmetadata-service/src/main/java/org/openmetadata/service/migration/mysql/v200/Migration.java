@@ -13,8 +13,8 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.migration.utils.v200.MigrationUtil;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
