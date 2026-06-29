@@ -19,7 +19,7 @@ export type MemoryFilterTab =
   | 'pinned'
   | 'needs-review';
 
-export type MemorySortBy = 'updated' | 'created' | 'usage' | 'author';
+export type MemorySortBy = 'updated' | 'created' | 'usage' | 'updatedBy';
 
 export interface MemoriesViewProps {
   data: ContextMemory[];

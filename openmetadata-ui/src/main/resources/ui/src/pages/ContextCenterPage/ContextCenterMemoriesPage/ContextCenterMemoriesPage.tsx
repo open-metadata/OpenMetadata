@@ -124,7 +124,7 @@ const getSortConfig = (
   if (sortBy === 'usage') {
     return { sortBy: 'usageCount', sortOrder: 'desc' };
   }
-  if (sortBy === 'author') {
+  if (sortBy === 'updatedBy') {
     return { sortBy: 'updatedBy', sortOrder: 'asc' };
   }
 
@@ -170,7 +170,7 @@ const ContextCenterMemoriesPage: FC = () => {
     () => [
       { id: 'updated', label: t('label.recently-updated') },
       { id: 'usage', label: t('label.most-used') },
-      { id: 'author', label: t('label.author-a-z') },
+      { id: 'updatedBy', label: t('label.updated-by') },
     ],
     [t]
   );
