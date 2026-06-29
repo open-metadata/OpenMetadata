@@ -88,8 +88,6 @@ describe('DataAssetPickerRow', () => {
   it('does not show a check icon when the item is not selected', () => {
     renderInListBox(OPTION, []);
 
-    expect(
-      screen.getByRole('option', { selected: false })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('option', { selected: false })).toBeInTheDocument();
   });
 });

@@ -25,11 +25,8 @@ import {
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { ListBox as AriaListBox, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import {
-  ListBox as AriaListBox,
-  Selection,
-} from 'react-aria-components';
 import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
 import DataAssetPickerRow from './DataAssetPickerRow';
 
@@ -132,7 +129,14 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     if (selectionMode === 'single') {
       close();
     }
-  }, [keyboardFocusIndex, options, onSelectAll, onToggle, selectionMode, close]);
+  }, [
+    keyboardFocusIndex,
+    options,
+    onSelectAll,
+    onToggle,
+    selectionMode,
+    close,
+  ]);
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -270,7 +274,9 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             </Box>
           )}
 
-          <div className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col">
+          <div
+            className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col"
+            onScroll={onScroll}>
             {isLoading && (
               <Box align="center" className="tw:py-4" justify="center">
                 <Typography className="tw:text-quaternary" size="text-sm">
@@ -358,7 +364,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 ref={listBoxRef}
                 selectedKeys={selectedIds}
                 selectionMode={selectionMode}
-                onScroll={onScroll}
                 onSelectionChange={handleSelectionChange}>
                 {options.map((option, idx) => (
                   <DataAssetPickerRow
