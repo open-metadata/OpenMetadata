@@ -5770,6 +5770,27 @@ public interface CollectionDAO {
             String fqnhash);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :fqnHashPrefix AND deleted = FALSE")
+    int countTermsByFqnHashPrefix(@Bind("fqnHashPrefix") String fqnHashPrefix);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> '$.fullyQualifiedName' FROM glossary_term_entity "
+                + "WHERE fqnHash LIKE :fqnHashPrefix AND deleted = FALSE "
+                + "ORDER BY fqnHash LIMIT :limit OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json ->> 'fullyQualifiedName' FROM glossary_term_entity "
+                + "WHERE fqnHash LIKE :fqnHashPrefix AND deleted = FALSE "
+                + "ORDER BY fqnHash LIMIT :limit OFFSET :offset",
+        connectionType = POSTGRES)
+    List<String> listTermFqnsByFqnHashPrefix(
+        @Bind("fqnHashPrefix") String fqnHashPrefix,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    @SqlQuery(
         "SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash LIKE :glossaryHash AND LOWER(name) = LOWER(:termName)")
     int getGlossaryTermCountIgnoreCase(
         @BindConcat(

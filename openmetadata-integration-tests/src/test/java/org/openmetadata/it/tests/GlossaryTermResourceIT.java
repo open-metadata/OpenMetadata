@@ -3281,6 +3281,64 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void get_assetsCountsExcludeSoftDeletedTerms(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(ns.prefix("asset_count_soft_delete_glossary"))
+            .withDescription("Glossary for soft-deleted term exclusion test");
+    Glossary glossary = client.glossaries().create(createGlossary);
+
+    int termCount = 3;
+    java.util.List<String> createdTermFqns = new java.util.ArrayList<>();
+    String deletedTermId = null;
+    String deletedTermFqn = null;
+    for (int i = 0; i < termCount; i++) {
+      CreateGlossaryTerm req =
+          new CreateGlossaryTerm()
+              .withName(ns.prefix("soft_delete_term_" + i))
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withDescription("Soft delete term " + i);
+      GlossaryTerm term = createEntity(req);
+      createdTermFqns.add(term.getFullyQualifiedName());
+      if (i == 0) {
+        deletedTermId = term.getId().toString();
+        deletedTermFqn = term.getFullyQualifiedName();
+      }
+    }
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode beforeDelete =
+        mapper.readTree(getAssetCounts(client, glossary.getFullyQualifiedName()));
+    for (String fqn : createdTermFqns) {
+      assertTrue(beforeDelete.has(fqn), "Response should contain term " + fqn + " before delete");
+    }
+    try (Response response = rawGetAssetCounts(glossary.getFullyQualifiedName(), 100, 0)) {
+      assertEquals(
+          String.valueOf(termCount),
+          response.getHeaderString("X-Total-Count"),
+          "X-Total-Count should equal the number of live terms before delete");
+    }
+
+    deleteEntity(deletedTermId);
+
+    JsonNode afterDelete =
+        mapper.readTree(getAssetCounts(client, glossary.getFullyQualifiedName()));
+    assertFalse(
+        afterDelete.has(deletedTermFqn),
+        "Soft-deleted term " + deletedTermFqn + " should be excluded from asset counts");
+    assertEquals(
+        termCount - 1, afterDelete.size(), "Soft-deleted term should drop out of the count map");
+    try (Response response = rawGetAssetCounts(glossary.getFullyQualifiedName(), 100, 0)) {
+      assertEquals(
+          String.valueOf(termCount - 1),
+          response.getHeaderString("X-Total-Count"),
+          "X-Total-Count should drop by one after a term is soft-deleted");
+    }
+  }
+
+  @Test
   void get_termAssetsById(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

@@ -437,9 +437,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       summary = "Get all glossary terms with their asset counts",
       description =
           "Get a map of glossary term fully qualified names to their asset counts using search aggregation. "
-              + "Supports pagination via `limit` and `offset` query parameters. When pagination is used, "
-              + "the total number of glossary terms (before slicing) is returned in the `X-Total-Count` "
-              + "response header so callers can drive paged loading.",
+              + "Supports pagination via `limit` and `offset` query parameters. The total number of "
+              + "glossary terms (the full count, independent of any slicing) is always returned in the "
+              + "`X-Total-Count` response header so callers can drive paged loading.",
       responses = {
         @ApiResponse(
             responseCode = "200",
