@@ -101,9 +101,10 @@ class MigrationUtilTest {
     assertTrue(sql.contains("JOIN (VALUES ('apiService', 'ApiMetadata')"));
     assertTrue(sql.contains("('databaseService', 'DatabaseMetadata')"));
     assertTrue(sql.contains("metadata_config_type.from_entity = er.fromentity"));
-    assertTrue(sql.contains("to_jsonb(metadata_config_type.config_type::text)"));
+    assertTrue(sql.contains("jsonb_set(i.json::jsonb"));
+    assertTrue(sql.contains("to_jsonb(metadata_config_type.config_type::text), true)::json"));
     assertTrue(sql.contains("i.json ->> 'pipelineType' = 'metadata'"));
-    assertTrue(sql.contains("jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object'"));
+    assertTrue(sql.contains("json_typeof(i.json #> '{sourceConfig,config}') = 'object'"));
     assertTrue(!sql.contains("CASE er.fromentity"));
   }
 

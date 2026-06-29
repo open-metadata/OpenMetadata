@@ -128,8 +128,8 @@ public class MigrationUtil {
                 + "AND i.json ->> '$.sourceConfig.config.type' IS NULL "
                 + "AND JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"
             : "UPDATE ingestion_pipeline_entity i "
-                + "SET json = jsonb_set(i.json, '{sourceConfig,config,type}', "
-                + "to_jsonb(metadata_config_type.config_type::text), true) "
+                + "SET json = jsonb_set(i.json::jsonb, '{sourceConfig,config,type}', "
+                + "to_jsonb(metadata_config_type.config_type::text), true)::json "
                 + "FROM entity_relationship er "
                 + "JOIN (VALUES "
                 + "('apiService', 'ApiMetadata'), "
@@ -151,7 +151,7 @@ public class MigrationUtil {
                 + "AND er.deleted = false "
                 + "AND i.json ->> 'pipelineType' = 'metadata' "
                 + "AND i.json #>> '{sourceConfig,config,type}' IS NULL "
-                + "AND jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object'";
+                + "AND json_typeof(i.json #> '{sourceConfig,config}') = 'object'";
     int count = handle.execute(sql);
     LOG.info("Backfilled metadata source config types for {} ingestion pipelines", count);
   }
