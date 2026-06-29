@@ -168,7 +168,7 @@ export interface NodeConfiguration {
      * (Read/Write/Admin) from the request payload still flows through so the connector knows
      * which level to revoke. When unset, the agent uses the accessType from the request payload.
      */
-    accessType?: AccessTypeOverride;
+    accessType?: AccessType;
     /**
      * Maximum seconds to wait for the Policy Agent pipeline to complete.
      */
@@ -184,9 +184,12 @@ export interface NodeConfiguration {
  * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
  * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
  * (Read/Write/Admin) from the request payload still flows through so the connector knows
- * which level to revoke. When unset, the agent uses the accessType from the request payload.
+ * which level to revoke. When unset, the agent uses the accessType from the request
+ * payload.
+ *
+ * Pattern of access being requested.
  */
-export enum AccessTypeOverride {
+export enum AccessType {
     ColumnLevel = "ColumnLevel",
     FullAccess = "FullAccess",
     Masked = "Masked",
