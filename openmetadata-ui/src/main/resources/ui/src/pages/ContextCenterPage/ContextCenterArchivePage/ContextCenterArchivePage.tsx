@@ -16,6 +16,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
@@ -25,6 +26,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteDriveFile,
@@ -40,6 +42,7 @@ type FilterKey = 'all' | 'mine' | 'article' | 'document';
 
 const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
+  const { alert } = useAlertStore();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
   const [allItems, setAllItems] = useState<ArchiveItem[]>([]);
@@ -155,6 +158,7 @@ const ContextCenterArchivePage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-scroll tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
+      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
           {
@@ -166,7 +170,7 @@ const ContextCenterArchivePage: FC = () => {
           },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.context-center-archive-subtitle')}
+        subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
       <div className="tw:pb-5">

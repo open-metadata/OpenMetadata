@@ -2632,6 +2632,7 @@
     "view-all": "عرض الكل",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "عرض جميع المهام",
+    "view-archived-document-plural": "عرض المستندات المؤرشفة",
     "view-definition": "عرض التعريف",
     "view-detail-plural": "عرض التفاصيل",
     "view-entity": "عرض {{entity}}",
