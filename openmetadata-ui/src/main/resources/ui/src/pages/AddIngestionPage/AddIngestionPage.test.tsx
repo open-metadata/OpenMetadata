@@ -95,7 +95,7 @@ jest.mock('../../utils/IngestionUtils', () => ({
   getSettingsPathFromPipelineType: jest.fn().mockImplementation(() => ''),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 

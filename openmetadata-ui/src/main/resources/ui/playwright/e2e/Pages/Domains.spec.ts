@@ -83,6 +83,7 @@ import {
   followEntity,
   getEncodedFqn,
   unFollowEntity,
+  validateFollowedEntityToWidget,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { selectActiveGlossaryTerm } from '../../utils/glossary';
@@ -359,33 +360,20 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct1.data);
       await followEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
 
-      // Wait for the search query that will populate the following widget
-      const followingSearchResponse = page.waitForResponse(
-        '/api/v1/search/query?*index=all*'
+      await validateFollowedEntityToWidget(
+        page,
+        dataProduct1.data.displayName,
+        true
       );
-      await redirectToHomePage(page);
-      await followingSearchResponse;
-
-      // Check that the followed data product is shown in the following widget
-      await expect(
-        page.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-testid="following-widget"]')
-      ).toContainText(dataProduct1.data.displayName);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await unFollowEntity(page, EntityTypeEndpoint.DATA_PRODUCT);
-      await redirectToHomePage(page);
-
-      // Check that the data product is not shown in the following widget
-      await expect(
-        page.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
-      await expect(
-        page.locator('[data-testid="following-widget"]')
-      ).not.toContainText(dataProduct1.data.displayName);
+      await validateFollowedEntityToWidget(
+        page,
+        dataProduct1.data.displayName,
+        false
+      );
     });
 
     await test.step('Verify empty assets message and Add Asset button', async () => {
@@ -457,26 +445,12 @@ test.describe('Domains', () => {
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
 
-    // Wait for the search query that will populate the following widget
-    const followingSearchResponse = page.waitForResponse(
-      '/api/v1/search/query?*index=all*'
-    );
-    await redirectToHomePage(page);
-    await followingSearchResponse;
-
-    // Verify following widget is visible and contains the domain
-    const followingWidget = page.locator('[data-testid="following-widget"]');
-    await expect(followingWidget).toBeVisible();
-    await expect(followingWidget).toContainText(domain.data.displayName);
+    await validateFollowedEntityToWidget(page, domain.data.displayName, true);
 
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await unFollowEntity(page, EntityTypeEndpoint.Domain);
-    await redirectToHomePage(page);
-
-    // Verify domain is removed from following widget
-    await expect(followingWidget).toBeVisible();
-    await expect(followingWidget).not.toContainText(domain.data.displayName);
+    await validateFollowedEntityToWidget(page, domain.data.displayName, false);
 
     await domain.delete(apiContext);
     await afterAction();
@@ -559,17 +533,11 @@ test.describe('Domains', () => {
       // Follow domain
       await followEntity(page, EntityTypeEndpoint.Domain);
 
-      // Wait for the search query that will populate the following widget
-      const followingSearchResponse = page.waitForResponse(
-        '/api/v1/search/query?*index=all*'
+      const followingWidget = await validateFollowedEntityToWidget(
+        page,
+        subDomain.data.displayName,
+        true
       );
-      await redirectToHomePage(page);
-      await followingSearchResponse;
-
-      // Verify the followed domain is shown in the following widget
-      const followingWidget = page.locator('[data-testid="following-widget"]');
-      await expect(followingWidget).toBeVisible();
-      await expect(followingWidget).toContainText(subDomain.data.displayName);
 
       const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
       const followingLink = followingWidget.getByText(
@@ -582,12 +550,10 @@ test.describe('Domains', () => {
 
       // Unfollow domain
       await unFollowEntity(page, EntityTypeEndpoint.Domain);
-      await redirectToHomePage(page);
-
-      // Verify the domain is not shown in the following widget
-      await expect(followingWidget).toBeVisible();
-      await expect(followingWidget).not.toContainText(
-        subDomain.data.displayName
+      await validateFollowedEntityToWidget(
+        page,
+        subDomain.data.displayName,
+        false
       );
 
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -3703,5 +3669,75 @@ test.describe('Domain asset dryRun — add confirmation', () => {
       await domain.delete(apiContext);
       await afterAction();
     }
+  });
+});
+
+test.describe('Domain assets — glossary and inherited glossary term', () => {
+  test.slow(true);
+
+  let assetDomain: Domain;
+  let assetGlossary: Glossary;
+  let inheritedTerm: GlossaryTerm;
+
+  test.beforeAll(
+    'Setup domain with glossary and inherited term',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      assetDomain = new Domain();
+      assetGlossary = new Glossary();
+
+      await assetDomain.create(apiContext);
+      await assetGlossary.create(apiContext);
+
+      await assetGlossary.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/domains/0',
+          value: {
+            id: assetDomain.responseData.id,
+            type: 'domain',
+            name: assetDomain.responseData.name,
+            displayName: assetDomain.responseData.displayName,
+          },
+        },
+      ]);
+
+      inheritedTerm = new GlossaryTerm(assetGlossary);
+      await inheritedTerm.create(apiContext);
+
+      await afterAction();
+    }
+  );
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await inheritedTerm.delete(apiContext);
+    await assetGlossary.delete(apiContext);
+    await assetDomain.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit home page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('Assets tab lists the assigned glossary and its inherited term', async ({
+    page,
+  }) => {
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await waitForAllLoadersToDisappear(page);
+
+    await goToAssetsTab(page, assetDomain.data);
+
+    const glossaryCard = page.getByTestId(
+      `table-data-card_${assetGlossary.responseData.fullyQualifiedName}`
+    );
+    const inheritedTermCard = page.getByTestId(
+      `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
+    );
+
+    await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
+    await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
   });
 });
