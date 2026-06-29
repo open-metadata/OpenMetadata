@@ -15,7 +15,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  FileIcon,
   Skeleton,
   Tree,
   Typography,
@@ -26,7 +25,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -34,7 +32,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
 export interface DocumentFolderViewProps {
-  files?: ContextFile[];
+  totalFileCount?: number;
   selectedFolderId?: string;
   canCreate?: boolean;
   canDelete?: boolean;
@@ -43,7 +41,7 @@ export interface DocumentFolderViewProps {
 }
 
 const DocumentFolderView = ({
-  files = [],
+  totalFileCount = 0,
   selectedFolderId,
   canCreate = false,
   canDelete = false,
@@ -130,7 +128,7 @@ const DocumentFolderView = ({
                 </span>
                 <span className="tw:select-none tw:text-lg">&middot;</span>
                 <span>
-                  {files.length} {t('label.file-plural')}
+                  {totalFileCount} {t('label.file-plural')}
                 </span>
               </Typography>
             </div>
@@ -163,9 +161,6 @@ const DocumentFolderView = ({
             <Tree aria-label={t('label.folder-plural')} className="tw:w-full">
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
-                const folderFiles = files.filter(
-                  (file) => file.folder?.id === folder.id
-                );
 
                 return (
                   <Tree.Item
@@ -206,31 +201,6 @@ const DocumentFolderView = ({
                         )}
                       </div>
                     </Tree.ItemContent>
-
-                    {folderFiles.map((file) => (
-                      <Tree.Item
-                        id={file.id}
-                        key={file.id}
-                        textValue={file.name}>
-                        <Tree.ItemContent
-                          className="tw:ml-7!"
-                          showExpandIcon={false}>
-                          <FileIcon
-                            className="tw:size-5 tw:shrink-0"
-                            theme="light"
-                            type={file.fileExtension ?? ''}
-                            variant="default"
-                          />
-                          <Typography
-                            ellipsis
-                            className="tw:truncate tw:text-secondary tw:max-w-[70%]"
-                            size="text-sm"
-                            weight="medium">
-                            {file.name}
-                          </Typography>
-                        </Tree.ItemContent>
-                      </Tree.Item>
-                    ))}
                   </Tree.Item>
                 );
               })}

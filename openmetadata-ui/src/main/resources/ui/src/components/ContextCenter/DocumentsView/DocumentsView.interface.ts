@@ -24,6 +24,7 @@ export interface DocumentsViewProps {
   data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
   previewFileId?: string;
   selectedIds?: Set<string>;
   onDownload?: (file: ContextFile) => void;
@@ -34,6 +35,7 @@ export interface DocumentsViewProps {
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
+  onScrollEnd?: () => void;
 }
 
 export interface MetaRowProps {

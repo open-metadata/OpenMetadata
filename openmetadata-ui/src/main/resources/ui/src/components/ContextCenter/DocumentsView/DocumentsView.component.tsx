@@ -34,7 +34,7 @@ import {
   Trash01,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { FC, useMemo, useState } from 'react';
+import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
@@ -552,12 +552,15 @@ const DocumentViewLoading = () =>
 /* ---------------------------------------------------------------
    Main DocumentsView
 --------------------------------------------------------------- */
+const SCROLL_THRESHOLD = 100;
+
 const DocumentsView: FC<DocumentsViewProps> = ({
   canDelete,
   canEdit,
   data,
   folders,
   isLoading,
+  isLoadingMore,
   previewFileId,
   selectedIds,
   onBulkDelete,
@@ -568,6 +571,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onFileMoved,
   onPreview,
   onSelectFile,
+  onScrollEnd,
 }) => {
   const selectedCount = selectedIds?.size ?? 0;
 
@@ -577,6 +581,13 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         onSelectFile?.(file.id);
       }
     });
+  };
+
+  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+      onScrollEnd?.();
+    }
   };
 
   return (
@@ -602,26 +613,35 @@ const DocumentsView: FC<DocumentsViewProps> = ({
           )}
           <Box
             className="tw:flex-1 tw:overflow-y-auto tw:min-h-0"
-            direction="col">
+            direction="col"
+            onScroll={handleScroll}>
             {isLoading ? (
               <DocumentViewLoading />
             ) : (
-              data.map((file) => (
-                <FileRow
-                  canDelete={canDelete}
-                  canEdit={canEdit}
-                  file={file}
-                  folders={folders}
-                  isActive={previewFileId === file.id}
-                  isSelected={selectedIds?.has(file.id)}
-                  key={file.id}
-                  onDeleteFile={onDeleteFile}
-                  onDownload={onDownload}
-                  onFileMoved={onFileMoved}
-                  onPreview={onPreview}
-                  onSelectFile={onSelectFile}
-                />
-              ))
+              <>
+                {data.map((file) => (
+                  <FileRow
+                    canDelete={canDelete}
+                    canEdit={canEdit}
+                    file={file}
+                    folders={folders}
+                    isActive={previewFileId === file.id}
+                    isSelected={selectedIds?.has(file.id)}
+                    key={file.id}
+                    onDeleteFile={onDeleteFile}
+                    onDownload={onDownload}
+                    onFileMoved={onFileMoved}
+                    onPreview={onPreview}
+                    onSelectFile={onSelectFile}
+                  />
+                ))}
+                {isLoadingMore && (
+                  <>
+                    <FileRowSkeleton />
+                    <FileRowSkeleton />
+                  </>
+                )}
+              </>
             )}
           </Box>
         </Box>
