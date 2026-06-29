@@ -217,7 +217,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-external-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -226,7 +226,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-videos-external-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -235,7 +235,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-ui-it-external-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -364,7 +364,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-search-it-external-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -501,7 +501,7 @@ jobs:
 
       - name: Upload scale metrics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: scale-metrics-${{ matrix.seed }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/benchmark
@@ -510,7 +510,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-scale-${{ matrix.seed }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports

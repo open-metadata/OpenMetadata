@@ -201,7 +201,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sso-auth-test-results-${{ matrix.provider }}
           path: |
@@ -210,7 +210,7 @@ jobs:
           retention-days: 5
 
       - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: sso-results-json-${{ matrix.provider }}
