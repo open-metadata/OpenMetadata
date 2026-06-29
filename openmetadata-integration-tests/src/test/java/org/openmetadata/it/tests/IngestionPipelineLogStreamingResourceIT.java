@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,15 @@ import org.slf4j.LoggerFactory;
 @ExtendWith(TestNamespaceExtension.class)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled(
+    "By-FQN log endpoints (writePipelineLogs / closePipelineLogStream / getPipelineLogs / "
+        + "listPipelineRuns / streamPipelineLogs) were extracted from OM into the dedicated "
+        + "log-server sidecar. Requests under /api/v1/services/ingestionPipelines/logs/{fqn}/... "
+        + "now route via the ALB to that service, so these IT cases (which call OM directly) "
+        + "cannot pass against the OM API alone — they would need the log-server running. "
+        + "Coverage of the same contract lives in log-server's own integration suite "
+        + "(internal/integration/e2e_test.go). The legacy by-id endpoints (logs/{id}/last and "
+        + "/last/download) are still served by OM and remain covered by IngestionPipelineResourceIT.")
 public class IngestionPipelineLogStreamingResourceIT {
 
   private static final Logger LOG =

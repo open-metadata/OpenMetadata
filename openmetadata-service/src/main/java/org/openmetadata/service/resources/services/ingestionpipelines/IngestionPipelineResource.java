@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.TYPE_TO_TASK;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -48,7 +47,6 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -74,7 +72,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProviderType;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
@@ -1399,278 +1396,10 @@ public class IngestionPipelineResource
     }
   }
 
-  @POST
-  @Path("/logs/{fqn}/{runId}")
-  @Consumes(MediaType.APPLICATION_JSON)
-  @Operation(
-      operationId = "writePipelineLogs",
-      summary = "Write logs for a pipeline run",
-      description =
-          "Write or append logs for a specific pipeline run identified by FQN and runId. "
-              + "Supports both simple text logs and structured log batches with compression.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully wrote logs",
-            content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Pipeline not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
-  public Response writePipelineLogs(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpHeaders headers,
-      @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId,
-      @Parameter(description = "Log content - either raw string or LogBatch object")
-          Object logData) {
-    try {
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Parse log data
-      String logContent;
-      if (logData instanceof String) {
-        logContent = (String) logData;
-      } else if (logData instanceof Map) {
-        LogBatch batch = JsonUtils.convertValue(logData, LogBatch.class);
-        logContent = batch.getDecompressedLogs();
-        if (batch.getConnectorId() != null && !nullOrEmpty(logContent)) {
-          logContent = String.format("[%s] %s", batch.getConnectorId(), logContent);
-        }
-      } else {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity("Invalid log data format")
-            .build();
-      }
-
-      // Set session cookie for ALB stickiness
-      String sessionCookie =
-          String.format(
-              "PIPELINE_SESSION=%s_%s; Path=/; Max-Age=86400",
-              fqn.replaceAll("[^a-zA-Z0-9]", "_"), runId);
-
-      // Write logs using the repository's log storage - only if we have content
-      if (!nullOrEmpty(logContent)) {
-        repository.appendLogs(fqn, runId, logContent);
-      }
-
-      return Response.ok().header("Set-Cookie", sessionCookie).build();
-    } catch (Exception e) {
-      LOG.error("Failed to write logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.serverError()
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    }
-  }
-
-  @POST
-  @Path("/logs/{fqn}/{runId}/close")
-  @Operation(
-      operationId = "closePipelineLogStream",
-      summary = "Close log stream for a pipeline run",
-      description =
-          "Close and finalize the log stream for a specific pipeline run identified by FQN and runId. "
-              + "This ensures any buffered data is written and the stream is properly closed.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully closed log stream",
-            content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Pipeline not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-      })
-  public Response closePipelineLogStream(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId) {
-    try {
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Close the log stream
-      repository.closeStream(fqn, runId);
-
-      return Response.ok()
-          .entity(Map.of("message", "Log stream closed successfully"))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    } catch (Exception e) {
-      LOG.error("Failed to close log stream for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.serverError()
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    }
-  }
-
-  @GET
-  @Path("/logs/{fqn}/{runId}")
-  @Operation(
-      operationId = "getPipelineLogs",
-      summary = "Get logs for a pipeline run",
-      description =
-          "Get logs for a specific pipeline run identified by FQN and runId with pagination support",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Pipeline logs",
-            content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Logs not found")
-      })
-  public Response getPipelineLogs(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId,
-      @Parameter(
-              description = "Returns log chunk after this cursor",
-              schema = @Schema(type = "string"))
-          @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Maximum number of lines to return",
-              schema = @Schema(type = "integer"))
-          @QueryParam("limit")
-          @DefaultValue("1000")
-          int limit) {
-    try {
-      // Validate that the pipeline exists first
-      getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Get logs using the repository's log storage
-      Map<String, Object> logs = repository.getLogs(fqn, runId, after, limit);
-
-      return Response.ok(logs, MediaType.APPLICATION_JSON_TYPE).build();
-    } catch (Exception e) {
-      LOG.error("Failed to get logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    }
-  }
-
-  @GET
-  @Path("/logs/{fqn}")
-  @Operation(
-      operationId = "listPipelineRuns",
-      summary = "List available runs for a pipeline",
-      description = "Get a list of available run IDs for a pipeline",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of run IDs",
-            content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Pipeline not found")
-      })
-  public Response listPipelineRuns(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(
-              description = "Maximum number of runs to return",
-              schema = @Schema(type = "integer"))
-          @QueryParam("limit")
-          @DefaultValue("10")
-          int limit) {
-    try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // List runs using the repository's log storage
-      List<UUID> runIds = repository.listRuns(fqn, limit);
-
-      return Response.ok(Map.of("runs", runIds), MediaType.APPLICATION_JSON_TYPE).build();
-    } catch (Exception e) {
-      LOG.error("Failed to list runs for pipeline: {}", fqn, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    }
-  }
-
-  @GET
-  @Path("/logs/{fqn}/stream/{runId}")
-  @Produces("text/event-stream")
-  @Operation(
-      operationId = "streamPipelineLogs",
-      summary = "Stream logs for a pipeline run",
-      description = "Stream logs in real-time for a specific pipeline run using Server-Sent Events",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Log stream",
-            content = @Content(mediaType = "text/event-stream")),
-        @ApiResponse(responseCode = "404", description = "Pipeline or logs not found")
-      })
-  public Response streamPipelineLogs(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Fully qualified name of the ingestion pipeline",
-              schema = @Schema(type = "string"))
-          @PathParam("fqn")
-          String fqn,
-      @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
-          UUID runId) {
-    try {
-      // Validate that the pipeline exists first
-      IngestionPipeline pipeline =
-          getByNameInternal(uriInfo, securityContext, fqn, "", Include.NON_DELETED);
-
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
-      // Stream logs using the repository's log storage
-      return repository.streamLogs(fqn, runId);
-    } catch (Exception e) {
-      LOG.error("Failed to stream logs for pipeline: {}, runId: {}", fqn, runId, e);
-      return Response.status(Response.Status.NOT_FOUND)
-          .entity(Map.of("message", e.getMessage()))
-          .type(MediaType.APPLICATION_JSON_TYPE)
-          .build();
-    }
-  }
+  // Pipeline log read/write/SSE endpoints by FQN+runId were extracted to the
+  // log-server sidecar (see ~/Code/log-server). Requests under
+  // /api/v1/services/ingestionPipelines/logs/{fqn}/... are routed by the ALB
+  // to that service so the OM JVM is no longer in the log data path.
 
   @GET
   @Path("/progress/{fqn}/stream/{runId}")
