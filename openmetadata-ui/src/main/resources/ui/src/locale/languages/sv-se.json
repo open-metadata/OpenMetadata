@@ -2632,6 +2632,7 @@
     "view-all": "Visa alla",
     "view-all-entity": "Visa alla {{entity}}",
     "view-all-task-plural": "Visa alla uppgifter",
+    "view-archived-document-plural": "Visa arkiverade dokument",
     "view-definition": "Visa definition",
     "view-detail-plural": "Visa detaljer",
     "view-entity": "Visa {{entity}}",

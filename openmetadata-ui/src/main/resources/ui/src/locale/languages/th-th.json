@@ -2632,6 +2632,7 @@
     "view-all": "ดูทั้งหมด",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "ดูงานทั้งหมด",
+    "view-archived-document-plural": "ดูเอกสารที่เก็บถาวร",
     "view-definition": "ดูคำจำกัดความ",
     "view-detail-plural": "ดูรายละเอียด",
     "view-entity": "ดู {{entity}}",

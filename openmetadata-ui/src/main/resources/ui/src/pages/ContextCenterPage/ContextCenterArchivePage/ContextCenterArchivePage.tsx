@@ -166,7 +166,7 @@ const ContextCenterArchivePage: FC = () => {
           },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.context-center-archive-subtitle')}
+        subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
       <div className="tw:pb-5">

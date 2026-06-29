@@ -2632,6 +2632,7 @@
     "view-all": "Alle anzeigen",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "Alle Aufgaben anzeigen",
+    "view-archived-document-plural": "Archivierte Dokumente anzeigen",
     "view-definition": "Ansichtsdefinition",
     "view-detail-plural": "Details anzeigen",
     "view-entity": "{{entity}} anzeigen",
