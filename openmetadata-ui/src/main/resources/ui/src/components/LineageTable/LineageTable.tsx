@@ -426,7 +426,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
                 });
                 clearQuickFilterValues();
                 handlePageChange(1);
-              }}>
+              }}
+              onSelectionChange={() => void 0}>
               {LINEAGE_IMPACT_OPTIONS.map((option) => (
                 <Dropdown.Item
                   icon={option.icon as FC<{ className?: string }>}
