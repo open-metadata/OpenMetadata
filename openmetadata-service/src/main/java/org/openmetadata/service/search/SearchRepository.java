@@ -3293,19 +3293,6 @@ public class SearchRepository {
         subjectContext);
   }
 
-  public SearchStatsResult statsWithSum(
-      SearchListFilter filter, String entityType, String sumField, SubjectContext subjectContext)
-      throws IOException {
-    IndexMapping index = entityIndexMap.get(entityType);
-    return searchClient.statsWithSum(
-        filter.getCondition(entityType),
-        index.getIndexName(clusterAlias),
-        sumField,
-        null,
-        null,
-        subjectContext);
-  }
-
   public SearchResultListMapper listWithDeepPagination(
       String entityType,
       String query,

@@ -66,13 +66,9 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.SearchStatsResult;
 import org.openmetadata.service.security.AuthRequest;
-import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -96,9 +92,6 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static class ContextMemoryList extends ResultList<ContextMemory> {
     /* Required for serde */
   }
-
-  public record ContextMemoryStats(
-      int totalVisible, int pinnedVisible, int createdByMeVisible, long totalUsageCount) {}
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
@@ -354,70 +347,6 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return List.of(new AuthRequest(operationContext, getResourceContext()));
-  }
-
-  @GET
-  @Path("/stats")
-  @Operation(
-      operationId = "getContextMemoryStats",
-      summary = "Get visible context memory stats",
-      description = "Get aggregate stats for context memories visible to the caller.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Visible context memory stats",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = ContextMemoryStats.class)))
-      })
-  public ContextMemoryStats getStats(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include)
-      throws IOException {
-    authorizer.authorizeRequests(
-        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
-    SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    SearchStatsResult totalStats =
-        getContextMemoryStatsFromSearch(include, null, null, "usageCount", subjectContext);
-    SearchStatsResult pinnedStats =
-        getContextMemoryStatsFromSearch(include, null, true, null, subjectContext);
-    SearchStatsResult createdByMeStats =
-        getContextMemoryStatsFromSearch(include, currentUserName, null, null, subjectContext);
-    return new ContextMemoryStats(
-        toInt(totalStats.total()),
-        toInt(pinnedStats.total()),
-        toInt(createdByMeStats.total()),
-        totalStats.sum());
-  }
-
-  private SearchStatsResult getContextMemoryStatsFromSearch(
-      Include include,
-      String author,
-      Boolean pinned,
-      String sumField,
-      SubjectContext subjectContext)
-      throws IOException {
-    return Entity.getSearchRepository()
-        .statsWithSum(
-            buildContextMemorySearchFilter(include, null, author, pinned, null),
-            entityType,
-            sumField,
-            subjectContext);
-  }
-
-  private static int toInt(long value) {
-    if (value > Integer.MAX_VALUE) {
-      throw new IllegalStateException("Context memory stats count exceeds supported maximum");
-    }
-    return (int) value;
   }
 
   @GET

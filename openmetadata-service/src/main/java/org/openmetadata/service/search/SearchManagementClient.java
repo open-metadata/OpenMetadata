@@ -124,15 +124,6 @@ public interface SearchManagementClient {
       SubjectContext subjectContext)
       throws IOException;
 
-  SearchStatsResult statsWithSum(
-      String filter,
-      String index,
-      String sumField,
-      String q,
-      String queryString,
-      SubjectContext subjectContext)
-      throws IOException;
-
   /**
    * List entities with deep pagination using search_after.
    * This method uses the search_after parameter for efficient deep pagination.

@@ -60,7 +60,6 @@ import org.openmetadata.service.search.SearchManagementClient;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
-import org.openmetadata.service.search.SearchStatsResult;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -81,7 +80,6 @@ import os.org.opensearch.client.opensearch._types.SearchType;
 import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
-import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -102,7 +100,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final ContextMemorySearchVisibility contextMemoryVisibility =
       new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
   private final NLQService nlqService;
-  private static final String SUM_AGGREGATION = "sum";
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
   private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
@@ -416,103 +413,6 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     applyContextMemoryVisibility(subjectContext, requestBuilder);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
-  }
-
-  @Override
-  public SearchStatsResult statsWithSum(
-      String filter,
-      String index,
-      String sumField,
-      String q,
-      String queryString,
-      SubjectContext subjectContext)
-      throws IOException {
-    if (!isClientAvailable) {
-      throw new IOException("OpenSearch client is not available");
-    }
-
-    OpenSearchRequestBuilder requestBuilder = new OpenSearchRequestBuilder();
-
-    if (!nullOrEmpty(q)) {
-      OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-      requestBuilder = searchBuilderFactory.getSearchSourceBuilderV2(index, q, 0, 0, false);
-    }
-
-    if (!nullOrEmpty(queryString)) {
-      try {
-        String queryToProcess = OsUtils.parseJsonQuery(queryString);
-        Query query = Query.of(qb -> qb.wrapper(w -> w.query(queryToProcess)));
-        requestBuilder.query(query);
-      } catch (Exception e) {
-        LOG.warn("Error parsing queryString using OsUtils: {}", e.getMessage());
-      }
-    }
-
-    if (!nullOrEmpty(filter) && !filter.equals("{}")) {
-      applySearchFilter(filter, requestBuilder);
-    }
-
-    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-      OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-      if (rbacQueryBuilder != null) {
-        Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-        Query existingQuery = requestBuilder.query();
-        if (existingQuery != null) {
-          Query combinedQuery =
-              Query.of(
-                  qb ->
-                      qb.bool(
-                          b -> {
-                            b.must(existingQuery);
-                            b.filter(rbacQuery);
-                            return b;
-                          }));
-          requestBuilder.query(combinedQuery);
-        } else {
-          requestBuilder.query(rbacQuery);
-        }
-      }
-    }
-
-    applyContextMemoryVisibility(subjectContext, requestBuilder);
-    requestBuilder.timeout("30s");
-    requestBuilder.from(0);
-    requestBuilder.size(0);
-    requestBuilder.fetchSource(false);
-    requestBuilder.trackTotalHits(true);
-    if (!nullOrEmpty(sumField)) {
-      requestBuilder.aggregation(
-          SUM_AGGREGATION, Aggregation.of(a -> a.sum(sum -> sum.field(sumField))));
-    }
-
-    try {
-      SearchRequest searchRequest = requestBuilder.build(index);
-      Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
-      SearchResponse<JsonData> response;
-      try {
-        response = client.search(searchRequest, JsonData.class);
-      } finally {
-        if (searchTimerSample != null) {
-          RequestLatencyContext.endSearchOperation(searchTimerSample);
-        }
-      }
-
-      long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
-      long sum = 0;
-      if (response.aggregations() != null) {
-        Aggregate sumAggregation = response.aggregations().get(SUM_AGGREGATION);
-        if (sumAggregation != null && sumAggregation.isSum()) {
-          sum = Math.round(sumAggregation.sum().value());
-        }
-      }
-      return new SearchStatsResult(totalHits, sum);
-    } catch (OpenSearchException e) {
-      if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
-      } else {
-        throw buildSearchException(e);
-      }
-    }
   }
 
   @Override

@@ -56,11 +56,10 @@ import {
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  ContextMemoryStats,
+  ContextMemoryListParams,
   deleteContextMemory,
   getContextMemoryById,
   getContextMemoryByName,
-  getContextMemoryStats,
   getListContextMemories,
   pinContextMemory,
   unpinContextMemory,
@@ -108,6 +107,12 @@ interface SearchOptionSource {
   type?: string;
 }
 
+interface MemoryCounts {
+  totalVisible: number;
+  pinnedVisible: number;
+  createdByMeVisible: number;
+}
+
 const getOptionLabel = (source: SearchOptionSource) =>
   source.displayName ??
   source.name ??
@@ -139,11 +144,10 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
   const [totalMemories, setTotalMemories] = useState(0);
-  const [memoryListStats, setMemoryListStats] = useState<ContextMemoryStats>({
+  const [memoryCounts, setMemoryCounts] = useState<MemoryCounts>({
     totalVisible: 0,
     pinnedVisible: 0,
     createdByMeVisible: 0,
-    totalUsageCount: 0,
   });
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -237,14 +241,35 @@ const ContextCenterMemoriesPage: FC = () => {
     sortBy,
   ]);
 
-  const fetchStats = useCallback(async () => {
+  const getVisibleMemoryCount = useCallback(
+    async (params?: ContextMemoryListParams) => {
+      const response = await getListContextMemories({
+        ...params,
+        limit: 0,
+        offset: 0,
+      });
+
+      return response.paging?.total ?? 0;
+    },
+    []
+  );
+
+  const fetchMemoryCounts = useCallback(async () => {
     try {
-      const response = await getContextMemoryStats();
-      setMemoryListStats(response);
+      const authorFilter = currentUser?.id ?? currentUser?.name;
+      const [totalVisible, pinnedVisible, createdByMeVisible] =
+        await Promise.all([
+          getVisibleMemoryCount(),
+          getVisibleMemoryCount({ pinned: true }),
+          authorFilter
+            ? getVisibleMemoryCount({ author: authorFilter })
+            : Promise.resolve(0),
+        ]);
+      setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
-  }, []);
+  }, [currentUser?.id, currentUser?.name, getVisibleMemoryCount]);
 
   const fetchAuthorOptions = useCallback(async (query: string) => {
     setIsAuthorOptionsLoading(true);
@@ -292,8 +317,8 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     fetchPermission();
-    fetchStats();
-  }, [fetchPermission, fetchStats]);
+    fetchMemoryCounts();
+  }, [fetchPermission, fetchMemoryCounts]);
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
@@ -341,14 +366,14 @@ const ContextCenterMemoriesPage: FC = () => {
           )
         );
         await fetchMemories();
-        await fetchStats();
+        await fetchMemoryCounts();
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
         setIsPinningMemoryId(undefined);
       }
     },
-    [fetchMemories, fetchStats]
+    [fetchMemories, fetchMemoryCounts]
   );
 
   const handleConfirmDelete = useCallback(async () => {
@@ -363,13 +388,13 @@ const ContextCenterMemoriesPage: FC = () => {
       );
       setMemoryToDelete(undefined);
       await fetchMemories();
-      await fetchStats();
+      await fetchMemoryCounts();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeletingMemory(false);
     }
-  }, [memoryToDelete, fetchMemories, fetchStats, t]);
+  }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
 
   const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
     try {
@@ -444,31 +469,31 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
     fetchMemories();
-    fetchStats();
-  }, [handleModalClose, fetchMemories, fetchStats]);
+    fetchMemoryCounts();
+  }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
-  const statsCards = useMemo(
+  const countCards = useMemo(
     () => [
       {
         filterKey: 'all' as const,
         label: t('label.total-memory-plural'),
-        value: memoryListStats.totalVisible,
+        value: memoryCounts.totalVisible,
         icon: null,
       },
       {
         filterKey: 'pinned' as const,
         label: t('label.pinned'),
-        value: memoryListStats.pinnedVisible,
+        value: memoryCounts.pinnedVisible,
         icon: <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />,
       },
       {
         filterKey: 'created-by-me' as const,
         label: t('label.created-by-me'),
-        value: memoryListStats.createdByMeVisible,
+        value: memoryCounts.createdByMeVisible,
         icon: null,
       },
     ],
-    [memoryListStats, t]
+    [memoryCounts, t]
   );
 
   const headerActions = (
@@ -506,9 +531,8 @@ const ContextCenterMemoriesPage: FC = () => {
         onSearch={handleSearchChange}
       />
 
-      {/* Stats cards — clickable filters */}
-      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
-        {statsCards.map(({ filterKey, label, value, icon }) => {
+      <div className="tw:grid tw:grid-cols-3 tw:gap-6">
+        {countCards.map(({ filterKey, label, value, icon }) => {
           const isActive = activeFilter === filterKey;
 
           return (
@@ -543,16 +567,6 @@ const ContextCenterMemoriesPage: FC = () => {
             </Card>
           );
         })}
-
-        {/* Non-interactive usage card */}
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.cited-in-chats')}
-          </Typography>
-          <Typography size="display-xs" weight="semibold">
-            {memoryListStats.totalUsageCount}
-          </Typography>
-        </Card>
       </div>
 
       <Box align="center" className="tw:py-5" gap={3} wrap="wrap">

@@ -32,13 +32,6 @@ export type ContextMemoryListParams = ListParams & {
   offset?: number;
 };
 
-export interface ContextMemoryStats {
-  totalVisible: number;
-  pinnedVisible: number;
-  createdByMeVisible: number;
-  totalUsageCount: number;
-}
-
 export const getListContextMemories = async (
   params?: ContextMemoryListParams
 ) => {
@@ -81,12 +74,6 @@ export const unpinContextMemory = async (id: string) => {
   const response = await APIClient.delete<ContextMemory>(
     `${BASE_URL}/${id}/pin`
   );
-
-  return response.data;
-};
-
-export const getContextMemoryStats = async () => {
-  const response = await APIClient.get<ContextMemoryStats>(`${BASE_URL}/stats`);
 
   return response.data;
 };
