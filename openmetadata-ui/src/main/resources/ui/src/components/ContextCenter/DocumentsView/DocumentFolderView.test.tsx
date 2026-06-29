@@ -27,6 +27,15 @@ jest.mock('rest/assetAPI', () => ({
   deleteFolder: jest.fn(),
 }));
 
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.displayName ?? entity?.name ?? ''),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../../assets/svg/ic-folder-new.svg', () => ({
   ReactComponent: jest.fn(() => <span data-testid="folder-icon" />),
 }));
@@ -88,6 +97,15 @@ jest.mock('../../../components/common/DeleteModal/DeleteModal', () =>
 );
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn(
+    ({
+      children,
+      onClick,
+    }: {
+      children: React.ReactNode;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => <button onClick={onClick}>{children}</button>
+  ),
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -249,7 +267,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('opens the create folder modal when the add button is clicked', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -264,6 +289,8 @@ describe('DocumentFolderView', () => {
     const onFoldersLoaded = jest.fn();
     render(
       <DocumentFolderView
+        canCreate
+        canDelete
         files={mockFiles}
         onFoldersLoaded={onFoldersLoaded}
         onSelectFolder={jest.fn()}
@@ -289,7 +316,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows delete modal when delete button is clicked', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -307,6 +341,8 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
+        canCreate
+        canDelete
         files={mockFiles}
         onFoldersLoaded={onFoldersLoaded}
         onSelectFolder={jest.fn()}
@@ -335,6 +371,8 @@ describe('DocumentFolderView', () => {
 
     render(
       <DocumentFolderView
+        canCreate
+        canDelete
         files={mockFiles}
         selectedFolderId="folder-1"
         onSelectFolder={onSelectFolder}
@@ -355,7 +393,14 @@ describe('DocumentFolderView', () => {
   });
 
   it('closes delete modal on cancel without deleting', async () => {
-    render(<DocumentFolderView files={mockFiles} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView
+        canCreate
+        canDelete
+        files={mockFiles}
+        onSelectFolder={jest.fn()}
+      />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()

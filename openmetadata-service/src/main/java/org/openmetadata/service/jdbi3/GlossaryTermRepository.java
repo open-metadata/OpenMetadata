@@ -144,13 +144,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
+    this(true);
+  }
+
+  protected GlossaryTermRepository(boolean registerEntity) {
     super(
         GlossaryTermResource.COLLECTION_PATH,
         GLOSSARY_TERM,
         GlossaryTerm.class,
         Entity.getCollectionDAO().glossaryTermDAO(),
         PATCH_FIELDS,
-        UPDATE_FIELDS);
+        UPDATE_FIELDS,
+        Set.of(),
+        registerEntity);
     supportsSearch = true;
     renameAllowed = true;
     fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
@@ -2826,7 +2832,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
     Fields fields =
-        getFields("owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent");
+        getFields(
+            "owners,reviewers,tags,relatedTerms,synonyms,references,extension,parent,domains");
     GlossaryTerm glossaryTerm = getByName(null, name, fields);
     GlossaryRepository glossaryRepository =
         (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
