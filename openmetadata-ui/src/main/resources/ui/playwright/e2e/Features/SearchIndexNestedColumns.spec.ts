@@ -116,7 +116,16 @@ test.describe('Search index - deeply nested oversized columns', () => {
 
     // Indexing: the table indexed despite the >32 KB nested leaf, so it is found by name.
     await searchInput.click();
-    const byNameResponse = page.waitForResponse('/api/v1/search/query?*');
+    // Match the specific search response that carries the table name, not
+    // just any /api/v1/search/query call — the searchBox click triggers an
+    // empty-query suggestion fetch, and `waitForResponse('?*')` would
+    // resolve on that response and let the test race the actual name-query
+    // response, leaving the suggestion dropdown un-rendered.
+    const byNameResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/search/query') &&
+        r.url().includes(encodeURIComponent(table.entity.name))
+    );
     await searchInput.fill(table.entity.name);
     await byNameResponse;
 
@@ -126,7 +135,11 @@ test.describe('Search index - deeply nested oversized columns', () => {
     // Searching: the 25-level-deep column name surfaces the table via columnNamesFuzzy - the
     // mechanism that replaced the dropped flattened columns.children.name search field.
     await searchInput.clear();
-    const byColumnResponse = page.waitForResponse('/api/v1/search/query?*');
+    const byColumnResponse = page.waitForResponse(
+      (r) =>
+        r.url().includes('/api/v1/search/query') &&
+        r.url().includes(encodeURIComponent(leafColumnName))
+    );
     await searchInput.fill(leafColumnName);
     await byColumnResponse;
 
