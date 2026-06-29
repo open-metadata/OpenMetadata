@@ -165,12 +165,16 @@ jest.mock('../../../utils/EntityLink', () => ({
   },
 }));
 
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 describe('TaskFeedCardFromTask', () => {
