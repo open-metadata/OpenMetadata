@@ -71,7 +71,7 @@ jobs:
         uses: the-actions-org/workflow-dispatch@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         with:
           workflow: Workflows and Data Access Request E2E tests (from OpenMetadata PR)
           ref: main
