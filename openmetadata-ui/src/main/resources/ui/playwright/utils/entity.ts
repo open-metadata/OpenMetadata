@@ -1492,7 +1492,7 @@ const announcementForm = async (
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
-    await page.click('[data-testid="alert-icon-close"]');
+    await toastNotification(page, /Announcement created successfully/i);
   }
 };
 
