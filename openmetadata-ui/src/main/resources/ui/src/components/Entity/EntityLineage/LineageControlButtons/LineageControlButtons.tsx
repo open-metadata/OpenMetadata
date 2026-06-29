@@ -137,7 +137,7 @@ const LineageControlButtons: FC<{
           id="fit-view"
           onPress={() => setFitViewOpen(true)}
         />
-        <Dropdown.Popover>
+        <Dropdown.Popover placement="top right">
           <Dropdown.Menu
             aria-label={t('label.lineage-view-option-plural')}
             onAction={handleMenuAction}>
