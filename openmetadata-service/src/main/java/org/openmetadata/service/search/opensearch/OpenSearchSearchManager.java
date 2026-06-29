@@ -102,6 +102,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
+  private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
+  private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -1070,7 +1072,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1107,7 +1109,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1146,12 +1148,21 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  private void appendDeterministicTiebreak(
+      OpenSearchRequestBuilder requestBuilder, String sortField) {
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_NAME_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_ID_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+  }
+
   private OpenSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("OpenSearch client is not available");
@@ -1169,6 +1180,8 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             request.getSize(),
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
+
+    requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
 
     LOG.debug(
         "OpenSearch query for index '{}' with sanitized query '{}': {}",
@@ -1276,30 +1289,30 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder.query(deletedQuery);
     }
 
-    // Handle sorting
-    if (!nullOrEmpty(request.getSortFieldParam())
-        && !Boolean.TRUE.equals(request.getIsHierarchy())) {
-      String sortField =
-          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
-      String sortTypeCapitalized =
-          request.getSortOrder().substring(0, 1).toUpperCase()
-              + request.getSortOrder().substring(1).toLowerCase();
-      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
+    // Handle sorting — always append a deterministic tiebreaker so equal-ranked docs order
+    // identically across shards/replicas; without it the same query bounces between copies.
+    if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
+      if (!nullOrEmpty(request.getSortFieldParam())) {
+        String sortField =
+            SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(
+                request.getSortFieldParam());
+        String sortTypeCapitalized =
+            request.getSortOrder().substring(0, 1).toUpperCase()
+                + request.getSortOrder().substring(1).toLowerCase();
+        SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
-        boolean isKeywordField =
-            sortField.endsWith(".keyword")
-                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
-        requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
-      } else {
-        requestBuilder.sort(sortField, sortOrder, null);
-      }
-
-      if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        if (!sortField.equalsIgnoreCase("name.keyword")) {
-          requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
+          boolean isKeywordField =
+              sortField.endsWith(".keyword")
+                  || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+          requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
+        } else {
+          requestBuilder.sort(sortField, sortOrder, null);
         }
-        requestBuilder.sort("id.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        appendDeterministicTiebreak(requestBuilder, sortField);
+      } else {
+        requestBuilder.sort(SORT_FIELD_SCORE, SortOrder.Desc, null);
+        appendDeterministicTiebreak(requestBuilder, SORT_FIELD_SCORE);
       }
     }
 

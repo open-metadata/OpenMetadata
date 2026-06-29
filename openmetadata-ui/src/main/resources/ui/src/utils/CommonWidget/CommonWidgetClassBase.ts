@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import KnowledgePages from '../../components/KnowledgeCenter/KnowledgePages/KnowledgePages';
+import { lazy, type FC } from 'react';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 
+const KnowledgePages = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/KnowledgeCenter/KnowledgePages/KnowledgePages')
+  )
+);
+
 export class CommonWidgetClassBase {
-  public getCommonWidgetsFromConfig(
-    widgetConfig: WidgetConfig
-  ): null | React.FC {
+  public getCommonWidgetsFromConfig(widgetConfig: WidgetConfig): null | FC {
     const widgetKey = widgetConfig.i;
     const knowledgeArticleKey = DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
     const isKnowledgeArticle =
