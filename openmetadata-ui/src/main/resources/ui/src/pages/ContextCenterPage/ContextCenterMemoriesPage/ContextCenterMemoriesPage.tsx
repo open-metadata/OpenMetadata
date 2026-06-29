@@ -15,17 +15,20 @@ import {
   Button,
   Card,
   Dropdown,
+  Input,
   PaginationCardMinimal,
   Tabs,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import {
+  Check,
   ChevronDown,
   ChevronRight,
   Database01,
   FilterFunnel02,
   Pin01,
   Plus,
+  SearchLg,
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -43,21 +46,26 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetSelectList/DataAssetFilterPopover';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  ContextMemory,
-  MemoryStatus,
-} from '../../../generated/entity/context/contextMemory';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  ContextMemoryStats,
   deleteContextMemory,
+  getContextMemoryById,
+  getContextMemoryByName,
+  getContextMemoryStats,
   getListContextMemories,
+  pinContextMemory,
+  unpinContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -82,6 +90,47 @@ const FILTER_BUTTON_BASE_CLS =
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
 const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
+interface MemoryFilterOption {
+  id: string;
+  label: string;
+  displayName?: string | undefined;
+  name?: string | undefined;
+  type?: string | undefined;
+  fullyQualifiedName?: string | undefined;
+}
+
+interface SearchOptionSource {
+  id?: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  entityType?: string;
+  type?: string;
+}
+
+const getOptionLabel = (source: SearchOptionSource) =>
+  source.displayName ??
+  source.name ??
+  source.fullyQualifiedName ??
+  source.id ??
+  '';
+
+const getSortConfig = (
+  sortBy: MemorySortBy
+): {
+  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortOrder: 'asc' | 'desc';
+} => {
+  if (sortBy === 'usage') {
+    return { sortBy: 'usageCount', sortOrder: 'desc' };
+  }
+  if (sortBy === 'author') {
+    return { sortBy: 'updatedBy', sortOrder: 'asc' };
+  }
+
+  return { sortBy: 'updatedAt', sortOrder: 'desc' };
+};
+
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -89,11 +138,19 @@ const ContextCenterMemoriesPage: FC = () => {
   const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [totalMemories, setTotalMemories] = useState(0);
+  const [memoryListStats, setMemoryListStats] = useState<ContextMemoryStats>({
+    totalVisible: 0,
+    pinnedVisible: 0,
+    createdByMeVisible: 0,
+    totalUsageCount: 0,
+  });
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
+  const [isPinningMemoryId, setIsPinningMemoryId] = useState<string>();
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
   const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
   const [memoryToView, setMemoryToView] = useState<ContextMemory>();
@@ -102,8 +159,11 @@ const ContextCenterMemoriesPage: FC = () => {
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedAsset, setSelectedAsset] = useState<string>('');
-  const [selectedAuthor, setSelectedAuthor] = useState<string>('');
+  const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
+  const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
+  const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [isAuthorOptionsLoading, setIsAuthorOptionsLoading] = useState(false);
   const [sortBy, setSortBy] = useState<MemorySortBy>('updated');
 
   const SORT_OPTIONS = useMemo(
@@ -143,15 +203,75 @@ const ContextCenterMemoriesPage: FC = () => {
   const fetchMemories = useCallback(async () => {
     setIsMemoriesLoading(true);
     try {
+      const sortConfig = getSortConfig(sortBy);
+      const authorFilter =
+        activeFilter === 'created-by-me'
+          ? currentUser?.id ?? currentUser?.name
+          : selectedAuthor?.id;
       const response = await getListContextMemories({
-        limit: 1000,
+        limit: MEMORIES_PER_PAGE,
+        offset: (currentPage - 1) * MEMORIES_PER_PAGE,
         fields: MEMORY_FIELDS,
+        q: searchValue.trim() || undefined,
+        assets: selectedAsset?.id,
+        author: authorFilter,
+        pinned: activeFilter === 'pinned' ? true : undefined,
+        sortBy: sortConfig.sortBy,
+        sortOrder: sortConfig.sortOrder,
       });
       setMemories(response.data ?? []);
+      setTotalMemories(response.paging?.total ?? 0);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsMemoriesLoading(false);
+    }
+  }, [
+    activeFilter,
+    currentPage,
+    currentUser?.id,
+    currentUser?.name,
+    searchValue,
+    selectedAsset?.id,
+    selectedAuthor?.id,
+    sortBy,
+  ]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await getContextMemoryStats();
+      setMemoryListStats(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
+  const fetchAuthorOptions = useCallback(async (query: string) => {
+    setIsAuthorOptionsLoading(true);
+    try {
+      const response = await getUserAndTeamSearch(query, true, 25);
+      const options = response.data.hits.hits
+        .map((hit): MemoryFilterOption | undefined => {
+          const source = hit._source as SearchOptionSource;
+          const id = source.name ?? source.id ?? hit._id;
+          if (!id) {
+            return undefined;
+          }
+
+          return {
+            id,
+            label: getOptionLabel(source),
+            displayName: source.displayName,
+            name: source.name,
+            type: source.entityType ?? source.type,
+          };
+        })
+        .filter((option): option is MemoryFilterOption => Boolean(option));
+      setAuthorOptions(options);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsAuthorOptionsLoading(false);
     }
   }, []);
 
@@ -168,152 +288,20 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     fetchMemories();
+  }, [fetchMemories]);
+
+  useEffect(() => {
     fetchPermission();
-  }, [fetchMemories, fetchPermission]);
+    fetchStats();
+  }, [fetchPermission, fetchStats]);
 
-  const assetOptions = useMemo(() => {
-    const seen = new Map<
-      string,
-      { name: string; displayName: string; type: string }
-    >();
-
-    const addRef = (ref: {
-      fullyQualifiedName?: string;
-      id?: string;
-      name?: string;
-      displayName?: string;
-      type?: string;
-    }) => {
-      const fqn = ref.fullyQualifiedName ?? ref.id;
-      if (fqn && !seen.has(fqn)) {
-        seen.set(fqn, {
-          name: ref.name ?? fqn,
-          displayName: ref.displayName ?? ref.name ?? fqn,
-          type: ref.type ?? '',
-        });
-      }
-    };
-
-    memories.forEach((m) => {
-      if (m.primaryEntity) {
-        addRef(m.primaryEntity);
-      }
-      m.relatedEntities?.forEach(addRef);
-    });
-
-    return Array.from(seen.entries())
-      .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
-      .map(([fqn, meta]) => ({
-        id: fqn,
-        label: meta.displayName,
-        displayName: meta.displayName,
-        type: meta.type,
-      }));
-  }, [memories]);
-
-  const authorOptions = useMemo(() => {
-    const seen = new Map<string, string>();
-    memories.forEach((m) => {
-      const owner = m.owners?.[0];
-      if (owner?.name) {
-        seen.set(owner.name, owner.displayName ?? owner.name);
-      }
-    });
-
-    return [
-      ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.localeCompare(b))
-        .map(([name, displayName]) => ({ id: name, label: displayName })),
-    ];
-  }, [memories, t]);
-
-  const filteredMemories = useMemo(() => {
-    let list = memories;
-
-    if (activeFilter === 'created-by-me') {
-      list = list.filter((m) =>
-        m.owners?.some((o) => o.name === currentUser?.name)
-      );
-    } else if (activeFilter === 'pinned') {
-      list = list.filter(
-        (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
-      );
-    } else if (activeFilter === 'needs-review') {
-      list = list.filter((m) => m.status === MemoryStatus.Draft);
-    }
-
-    if (selectedAsset) {
-      list = list.filter((m) => {
-        const primaryFqn =
-          m.primaryEntity?.fullyQualifiedName ?? m.primaryEntity?.id;
-        if (primaryFqn === selectedAsset) {
-          return true;
-        }
-
-        return m.relatedEntities?.some(
-          (ref) => (ref.fullyQualifiedName ?? ref.id) === selectedAsset
-        );
-      });
-    }
-
-    if (selectedAuthor) {
-      list = list.filter((m) =>
-        m.owners?.some((o) => o.name === selectedAuthor)
-      );
-    }
-
-    if (searchValue.trim()) {
-      const q = searchValue.toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.title?.toLowerCase().includes(q) ||
-          m.summary?.toLowerCase().includes(q) ||
-          m.question?.toLowerCase().includes(q) ||
-          m.answer?.toLowerCase().includes(q)
-      );
-    }
-
-    // Client-side sort
-    const sorted = [...list];
-    if (sortBy === 'updated') {
-      sorted.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-    } else if (sortBy === 'usage') {
-      sorted.sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0));
-    } else if (sortBy === 'author') {
-      sorted.sort((a, b) =>
-        (a.owners?.[0]?.displayName ?? a.owners?.[0]?.name ?? '').localeCompare(
-          b.owners?.[0]?.displayName ?? b.owners?.[0]?.name ?? ''
-        )
-      );
-    }
-
-    return sorted;
-  }, [
-    memories,
-    activeFilter,
-    selectedAsset,
-    selectedAuthor,
-    searchValue,
-    sortBy,
-    currentUser,
-  ]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredMemories.length / MEMORIES_PER_PAGE)
-  );
-
-  const pagedMemories = useMemo(() => {
-    const start = (currentPage - 1) * MEMORIES_PER_PAGE;
-
-    return filteredMemories.slice(start, start + MEMORIES_PER_PAGE);
-  }, [filteredMemories, currentPage]);
+  const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
   const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
 
   const handleClearFilters = useCallback(() => {
-    setSelectedAsset('');
-    setSelectedAuthor('');
+    setSelectedAsset(undefined);
+    setSelectedAuthor(undefined);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -321,8 +309,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleFilterChange = useCallback((key: MemoryFilterTab) => {
     setActiveFilter(key);
     if (key === 'all') {
-      setSelectedAsset('');
-      setSelectedAuthor('');
+      setSelectedAsset(undefined);
+      setSelectedAuthor(undefined);
     }
     setCurrentPage(1);
   }, []);
@@ -340,6 +328,29 @@ const ContextCenterMemoriesPage: FC = () => {
     setMemoryToDelete(undefined);
   }, []);
 
+  const handleTogglePin = useCallback(
+    async (memory: ContextMemory) => {
+      setIsPinningMemoryId(memory.id);
+      try {
+        const updatedMemory = memory.pinned
+          ? await unpinContextMemory(memory.id)
+          : await pinContextMemory(memory.id);
+        setMemories((prev) =>
+          prev.map((item) =>
+            item.id === updatedMemory.id ? { ...item, ...updatedMemory } : item
+          )
+        );
+        await fetchMemories();
+        await fetchStats();
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsPinningMemoryId(undefined);
+      }
+    },
+    [fetchMemories, fetchStats]
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     if (!memoryToDelete) {
       return;
@@ -351,34 +362,50 @@ const ContextCenterMemoriesPage: FC = () => {
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
-      fetchMemories();
+      await fetchMemories();
+      await fetchStats();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeletingMemory(false);
     }
-  }, [memoryToDelete, fetchMemories, t]);
+  }, [memoryToDelete, fetchMemories, fetchStats, t]);
 
-  const handleEditMemory = useCallback((memory: ContextMemory) => {
-    setMemoryToEdit(memory);
-    setIsViewModalOpen(false);
-    setMemoryToView(undefined);
-    setIsCreateModalOpen(true);
+  const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
+    try {
+      return await getContextMemoryById(memory.id, MEMORY_FIELDS);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+
+      return memory;
+    }
   }, []);
 
+  const handleEditMemory = useCallback(
+    async (memory: ContextMemory) => {
+      const completeMemory = await fetchCompleteMemory(memory);
+      setMemoryToEdit(completeMemory);
+      setIsViewModalOpen(false);
+      setMemoryToView(undefined);
+      setIsCreateModalOpen(true);
+    },
+    [fetchCompleteMemory]
+  );
+
   const handleViewMemory = useCallback(
-    (memory: ContextMemory) => {
-      setMemoryToView(memory);
+    async (memory: ContextMemory) => {
+      const completeMemory = await fetchCompleteMemory(memory);
+      setMemoryToView(completeMemory);
       setIsViewModalOpen(true);
       setSearchParams((prev) => {
-        if (memory.name) {
-          prev.set('memory', memory.name);
+        if (completeMemory.name) {
+          prev.set('memory', completeMemory.name);
         }
 
         return prev;
       });
     },
-    [setSearchParams]
+    [fetchCompleteMemory, setSearchParams]
   );
 
   const handleModalClose = useCallback(() => {
@@ -398,71 +425,50 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     const memoryName = searchParams.get('memory');
-    if (!memoryName || isMemoriesLoading || isViewModalOpen) {
+    if (!memoryName || isViewModalOpen) {
       return;
     }
-    const match = memories.find((m) => m.name === memoryName);
-    if (match) {
-      handleViewMemory(match);
-    } else {
-      showErrorToast(
-        `${t('message.no-entity-available-with-name', {
-          entity: t('label.memory'),
-        })} "${memoryName}"`
-      );
-      setSearchParams((prev) => {
-        prev.delete('memory');
 
-        return prev;
+    getContextMemoryByName(memoryName, MEMORY_FIELDS)
+      .then((memory) => handleViewMemory(memory))
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+        setSearchParams((prev) => {
+          prev.delete('memory');
+
+          return prev;
+        });
       });
-    }
-  }, [
-    memories,
-    isMemoriesLoading,
-    isViewModalOpen,
-    searchParams,
-    handleViewMemory,
-    t,
-    setSearchParams,
-  ]);
+  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
     fetchMemories();
-  }, [handleModalClose, fetchMemories]);
-
-  const createdByMeCount = memories.filter((m) =>
-    m.owners?.some((o) => o.name === currentUser?.name)
-  ).length;
+    fetchStats();
+  }, [handleModalClose, fetchMemories, fetchStats]);
 
   const statsCards = useMemo(
     () => [
       {
         filterKey: 'all' as const,
         label: t('label.total-memory-plural'),
-        value: memories.length,
+        value: memoryListStats.totalVisible,
         icon: null,
       },
       {
         filterKey: 'pinned' as const,
         label: t('label.pinned'),
-        value: memories.filter(
-          (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
-        ).length,
+        value: memoryListStats.pinnedVisible,
         icon: <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />,
       },
       {
         filterKey: 'created-by-me' as const,
         label: t('label.created-by-me'),
-        value: createdByMeCount,
+        value: memoryListStats.createdByMeVisible,
         icon: null,
       },
     ],
-    [memories, createdByMeCount, t]
-  );
-  const totalUsageCount = memories.reduce(
-    (sum, m) => sum + (m.usageCount ?? 0),
-    0
+    [memoryListStats, t]
   );
 
   const headerActions = (
@@ -544,7 +550,7 @@ const ContextCenterMemoriesPage: FC = () => {
             {t('label.cited-in-chats')}
           </Typography>
           <Typography size="display-xs" weight="semibold">
-            {totalUsageCount}
+            {memoryListStats.totalUsageCount}
           </Typography>
         </Card>
       </div>
@@ -591,9 +597,9 @@ const ContextCenterMemoriesPage: FC = () => {
         </Tabs>
 
         <Box align="center" gap={2}>
-          <DataAssetFilterPopover
+           <DataAssetSelectList
             allowAllOption
-            options={assetOptions}
+            popoverPlacement="bottom"
             renderTrigger={({ open }) => (
               <AriaButton
                 className={classNames(
@@ -616,7 +622,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         : 'tw:text-secondary'
                     }
                     weight="medium">
-                    {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                    {selectedAsset?.label ??
                       t('label.all-entity', {
                         entity: t('label.asset-plural'),
                       })}
@@ -629,9 +635,10 @@ const ContextCenterMemoriesPage: FC = () => {
                 />
               </AriaButton>
             )}
-            selectedId={selectedAsset}
+            selectionMode = "single"
+            value={selectedAsset}
             onChange={(value) => {
-              setSelectedAsset(value);
+              setSelectedAsset(value as DataAssetOption);
               if (activeFilter === 'all') {
                 setActiveFilter('');
               }
@@ -643,7 +650,11 @@ const ContextCenterMemoriesPage: FC = () => {
             <AriaButton
               className={
                 selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-              }>
+              }
+              onPress={() => {
+                setAuthorSearch('');
+                fetchAuthorOptions('');
+              }}>
               <User03
                 className={classNames('tw:shrink-0', {
                   'tw:text-brand-secondary': selectedAuthor,
@@ -660,7 +671,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       : 'tw:text-secondary'
                   }
                   weight="medium">
-                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                  {selectedAuthor?.label ??
                     t('label.all-entity', { entity: t('label.author') })}
                 </Typography>
               </div>
@@ -671,36 +682,68 @@ const ContextCenterMemoriesPage: FC = () => {
               />
             </AriaButton>
             <Dropdown.Popover>
+              <div className="tw:p-2 tw:border-b tw:border-secondary">
+                <Input
+                  autoFocus
+                  className="tw:w-full"
+                  icon={SearchLg}
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.author'),
+                  })}
+                  value={authorSearch}
+                  onChange={(value) => {
+                    setAuthorSearch(value);
+                    fetchAuthorOptions(value);
+                  }}
+                />
+              </div>
               <Dropdown.Menu
-                className="tw:p-1.5"
-                selectedKeys={selectedAuthor ? [selectedAuthor] : []}
+                selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
                 selectionMode="single"
                 onAction={(key) => {
                   const next = String(key);
-                  const value =
-                    next === 'all-author' || next === selectedAuthor
-                      ? ''
-                      : next;
-                  setSelectedAuthor(value);
+                  if (next === 'all-authors') {
+                    setSelectedAuthor(undefined);
+                  } else {
+                    const option = authorOptions.find((opt) => opt.id === next);
+                    setSelectedAuthor(
+                      next === selectedAuthor?.id ? undefined : option
+                    );
+                  }
                   if (activeFilter === 'all') {
                     setActiveFilter('');
                   }
                   setCurrentPage(1);
                 }}>
                 <Dropdown.Item
-                  id="all-author"
-                  key="all-author"
+                  id="all-authors"
+                  key="all-authors"
                   textValue={t('label.all-entity', {
                     entity: t('label.author'),
                   })}>
-                  {t('label.all-entity', { entity: t('label.author') })}
+                  <span>
+                    {t('label.all-entity', { entity: t('label.author') })}
+                  </span>
                 </Dropdown.Item>
-                <Dropdown.Separator />
+                {isAuthorOptionsLoading && (
+                  <Dropdown.Item
+                    id="loading-authors"
+                    textValue={t('label.loading')}>
+                    <span>{t('label.loading')}</span>
+                  </Dropdown.Item>
+                )}
                 {authorOptions.map((opt) => (
                   <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
-                    <Box align="center" gap={2}>
+                    <Box align="center" gap={2} justify="between">
                       {opt.id && <ProfilePicture name={opt.id} size={20} />}
-                      <span>{opt.label}</span>
+                      <span className="tw:flex-1">{opt.label}</span>
+                      {selectedAuthor?.id === opt.id && (
+                        <Check
+                          className="tw:shrink-0 tw:text-brand-600"
+                          size={14}
+                          strokeWidth={2.5}
+                        />
+                      )}
                     </Box>
                   </Dropdown.Item>
                 ))}
@@ -760,11 +803,13 @@ const ContextCenterMemoriesPage: FC = () => {
             canDelete={hasDeletePermission}
             canEdit={hasEditPermission}
             currentUserName={currentUser?.name}
-            data={pagedMemories}
+            data={memories}
             isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
+            isPinningMemoryId={isPinningMemoryId}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
+            onTogglePin={handleTogglePin}
             onViewMemory={handleViewMemory}
           />
         </div>

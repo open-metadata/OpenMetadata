@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -42,15 +43,21 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -58,7 +65,12 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
 @Tag(name = "Context Memories", description = "APIs for managing reusable Context Center memories.")
@@ -69,6 +81,10 @@ import org.openmetadata.service.security.Authorizer;
 public class ContextMemoryResource extends EntityResource<ContextMemory, ContextMemoryRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
   public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
+  private static final String PIN_UPDATE_FIELDS =
+      FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
+  private static final String STATS_FIELDS = "owners";
+  private static final int STATS_PAGE_SIZE = 1000;
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
 
@@ -79,6 +95,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   public static class ContextMemoryList extends ResultList<ContextMemory> {
     /* Required for serde */
   }
+
+  public record ContextMemoryStats(
+      int totalVisible, int pinnedVisible, int createdByMeVisible, long totalUsageCount) {}
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
@@ -135,6 +154,21 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include,
+      @Parameter(description = "Search title, question, answer, and summary") @QueryParam("q")
+          String q,
+      @Parameter(
+              description =
+                  "Comma-separated asset UUIDs. Matches the memory primaryEntity or relatedEntities.")
+          @QueryParam("assets")
+          String assets,
+      @Parameter(description = "Memory author as user name or user UUID") @QueryParam("author")
+          String author,
+      @Parameter(description = "Filter by pinned state") @QueryParam("pinned") Boolean pinned,
+      @Parameter(description = "Sort field: updatedAt, usageCount, updatedBy") @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
+      @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
+          Integer offset,
       @Parameter(
               description =
                   "Only return knowledge pills extracted from the context file with this id",
@@ -146,7 +180,28 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                   "Only return knowledge pills extracted from the context entity (file or page) with this id",
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("sourceEntityId")
-          UUID sourceEntityId) {
+          UUID sourceEntityId)
+      throws IOException {
+    if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
+      return listMemoriesFromSearch(
+          uriInfo,
+          securityContext,
+          fieldsParam,
+          q,
+          assets,
+          author,
+          pinned,
+          sortBy,
+          sortOrder,
+          limitParam,
+          offset == null ? 0 : offset,
+          before,
+          after,
+          include,
+          sourceFileId,
+          sourceEntityId);
+    }
+
     ListFilter filter = new ListFilter(include);
     if (sourceFileId != null) {
       filter.addQueryParam("sourceFileId", sourceFileId.toString());
@@ -164,6 +219,217 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       return memories;
     }
     return new ResultList<>(visible);
+  }
+
+  private ResultList<ContextMemory> listMemoriesFromSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      String q,
+      String assets,
+      String author,
+      Boolean pinned,
+      String sortBy,
+      String sortOrder,
+      int limit,
+      int offset,
+      String before,
+      String after,
+      Include include,
+      UUID sourceFileId,
+      UUID sourceEntityId)
+      throws IOException {
+    validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId);
+    SearchListFilter searchListFilter =
+        buildContextMemorySearchFilter(include, assets, author, pinned, null);
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
+    EntityUtil.Fields fields = getFields(fieldsParam);
+    return listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        null,
+        getAuthRequestsForListOps());
+  }
+
+  private static boolean hasSearchBackedListParams(
+      String q, String assets, String author, Boolean pinned, String sortBy, Integer offset) {
+    return !CommonUtil.nullOrEmpty(q)
+        || !CommonUtil.nullOrEmpty(assets)
+        || !CommonUtil.nullOrEmpty(author)
+        || pinned != null
+        || !CommonUtil.nullOrEmpty(sortBy)
+        || offset != null;
+  }
+
+  private static void validateSearchBackedListParams(
+      String before, String after, UUID sourceFileId, UUID sourceEntityId) {
+    if (!CommonUtil.nullOrEmpty(before) || !CommonUtil.nullOrEmpty(after)) {
+      throw new BadRequestException(
+          "before/after cursor pagination cannot be combined with q/assets/author/pinned/sortBy/offset");
+    }
+    if (sourceFileId != null || sourceEntityId != null) {
+      throw new BadRequestException(
+          "sourceFileId/sourceEntityId cannot be combined with q/assets/author/pinned/sortBy/offset");
+    }
+  }
+
+  private SearchListFilter buildContextMemorySearchFilter(
+      Include include, String assets, String author, Boolean pinned, String includeFields) {
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    if (!CommonUtil.nullOrEmpty(assets)) {
+      searchListFilter.addQueryParam("assets", normalizeAssetIds(assets));
+    }
+    if (!CommonUtil.nullOrEmpty(author)) {
+      searchListFilter.addQueryParam("owners", resolveAuthorId(author));
+    }
+    if (pinned != null) {
+      searchListFilter.addQueryParam("pinned", pinned);
+    }
+    if (!CommonUtil.nullOrEmpty(includeFields)) {
+      searchListFilter.addQueryParam("includeFields", includeFields);
+    }
+    return searchListFilter;
+  }
+
+  private static String normalizeAssetIds(String assets) {
+    List<String> ids = new ArrayList<>();
+    for (String asset : assets.split(",")) {
+      String trimmed = asset.trim();
+      if (trimmed.isEmpty()) {
+        continue;
+      }
+      try {
+        ids.add(UUID.fromString(trimmed).toString());
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException(
+            String.format("Invalid assets value '%s'. Expected comma-separated UUIDs.", trimmed));
+      }
+    }
+    return String.join(",", ids);
+  }
+
+  private String resolveAuthorId(String author) {
+    String trimmed = author.trim();
+    try {
+      return UUID.fromString(trimmed).toString();
+    } catch (IllegalArgumentException ignored) {
+      User user = Entity.getEntityByName(Entity.USER, trimmed, "", Include.NON_DELETED);
+      return user.getId().toString();
+    }
+  }
+
+  private static String resolveSortField(String sortBy) {
+    if (CommonUtil.nullOrEmpty(sortBy)) {
+      return "updatedAt";
+    }
+    return switch (sortBy) {
+      case "updatedAt" -> "updatedAt";
+      case "usageCount" -> "usageCount";
+      case "updatedBy" -> "updatedBy.keyword";
+      default -> throw new BadRequestException(
+          "Unsupported sortBy value '" + sortBy + "'. Allowed: updatedAt, usageCount, updatedBy.");
+    };
+  }
+
+  private static String resolveSortOrder(String sortOrder) {
+    if (CommonUtil.nullOrEmpty(sortOrder)) {
+      return "desc";
+    }
+    if (!"asc".equals(sortOrder) && !"desc".equals(sortOrder)) {
+      throw new BadRequestException(
+          "Unsupported sortOrder value '" + sortOrder + "'. Allowed: asc, desc.");
+    }
+    return sortOrder;
+  }
+
+  private List<AuthRequest> getAuthRequestsForListOps() {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return List.of(new AuthRequest(operationContext, getResourceContext()));
+  }
+
+  @GET
+  @Path("/stats")
+  @Operation(
+      operationId = "getContextMemoryStats",
+      summary = "Get visible context memory stats",
+      description = "Get aggregate stats for context memories visible to the caller.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Visible context memory stats",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemoryStats.class)))
+      })
+  public ContextMemoryStats getStats(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include)
+      throws IOException {
+    int offset = 0;
+    int totalVisible = 0;
+    int pinnedVisible = 0;
+    int createdByMeVisible = 0;
+    long totalUsageCount = 0L;
+    String currentUserName = securityContext.getUserPrincipal().getName();
+
+    while (true) {
+      ResultList<ContextMemory> page =
+          listInternalFromSearch(
+              uriInfo,
+              securityContext,
+              getFields(STATS_FIELDS),
+              buildContextMemorySearchFilter(
+                  include, null, null, null, "id,name,owners,pinned,usageCount"),
+              STATS_PAGE_SIZE,
+              offset,
+              new SearchSortFilter("updatedAt", "desc", null, null),
+              null,
+              null,
+              getAuthRequestsForListOps());
+      if (page.getPaging() != null && page.getPaging().getTotal() != null) {
+        totalVisible = page.getPaging().getTotal();
+      }
+      for (ContextMemory memory : page.getData()) {
+        if (Boolean.TRUE.equals(memory.getPinned())) {
+          pinnedVisible++;
+        }
+        if (isOwnedBy(memory, currentUserName)) {
+          createdByMeVisible++;
+        }
+        totalUsageCount += memory.getUsageCount() == null ? 0 : memory.getUsageCount();
+      }
+      if (page.getData().size() < STATS_PAGE_SIZE
+          || offset + page.getData().size() >= totalVisible) {
+        break;
+      }
+      offset += page.getData().size();
+    }
+    return new ContextMemoryStats(totalVisible, pinnedVisible, createdByMeVisible, totalUsageCount);
+  }
+
+  private static boolean isOwnedBy(ContextMemory memory, String userName) {
+    return CommonUtil.listOrEmpty(memory.getOwners()).stream()
+        .anyMatch(owner -> isOwner(owner, userName));
+  }
+
+  private static boolean isOwner(EntityReference owner, String userName) {
+    return userName != null
+        && (userName.equals(owner.getName()) || userName.equals(owner.getFullyQualifiedName()));
   }
 
   @GET
@@ -352,6 +618,70 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PUT
+  @Path("/{id}/pin")
+  @Operation(
+      operationId = "pinContextMemory",
+      summary = "Pin a memory",
+      description = "Globally pin a context memory.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The pinned memory",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemory.class)))
+      })
+  public Response pin(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return setPinned(uriInfo, securityContext, id, true);
+  }
+
+  @DELETE
+  @Path("/{id}/pin")
+  @Operation(
+      operationId = "unpinContextMemory",
+      summary = "Unpin a memory",
+      description = "Remove the global pin from a context memory.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The unpinned memory",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemory.class)))
+      })
+  public Response unpin(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return setPinned(uriInfo, securityContext, id, false);
+  }
+
+  private Response setPinned(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean pinned) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+
+    ContextMemory original =
+        repository.get(uriInfo, id, getFields(PIN_UPDATE_FIELDS), Include.NON_DELETED, false);
+    ContextMemory updated = JsonUtils.deepCopy(original, ContextMemory.class);
+    updated.setPinned(pinned);
+    var response =
+        repository.update(uriInfo, original, updated, securityContext.getUserPrincipal().getName());
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE

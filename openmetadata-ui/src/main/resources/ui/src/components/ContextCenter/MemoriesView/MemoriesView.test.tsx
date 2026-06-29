@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
 
@@ -41,11 +41,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(
     ({
       onClick,
+      isDisabled,
       'data-testid': testId = 'button-utility',
     }: {
       onClick?: () => void;
+      isDisabled?: boolean;
       'data-testid'?: string;
-    }) => <button data-testid={testId} onClick={onClick} />
+    }) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
+    )
   ),
   Dot: jest.fn(() => <span />),
   Dropdown: {
@@ -136,5 +140,23 @@ describe('MemoriesView', () => {
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('calls toggle pin when the pin button is clicked', () => {
+    const onTogglePin = jest.fn();
+
+    render(
+      <MemoriesView
+        canEdit
+        isAdminUser
+        data={[mockMemories[0]]}
+        isLoading={false}
+        onTogglePin={onTogglePin}
+      />
+    );
+
+    fireEvent.click(screen.getAllByTestId('button-utility')[0]);
+
+    expect(onTogglePin).toHaveBeenCalledWith(mockMemories[0]);
   });
 });

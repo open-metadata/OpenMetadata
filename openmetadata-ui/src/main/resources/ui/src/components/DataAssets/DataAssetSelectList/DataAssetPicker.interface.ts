@@ -69,9 +69,11 @@ export interface DataAssetFilterPopoverProps {
 
 export interface DataAssetSelectListProps
   extends Omit<DataAssetAsyncSelectListProps, 'value'> {
+  allowAllOption?: boolean;
   value?: DataAssetOption | DataAssetOption[];
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
+  selectionMode?: 'single' | 'multiple';
   popoverAlign?: 'left' | 'right';
   popoverPlacement?: 'top' | 'bottom';
 }

@@ -30,7 +30,9 @@ export interface MemoriesViewProps {
   canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
+  onTogglePin?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
+  isPinningMemoryId?: string;
 }
 
 export interface MemoryActionsProps {

@@ -24,6 +24,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   onChange,
   debounceTimeout = 800,
   initialOptions,
+  allowAllOption=false,
   searchIndex = SearchIndex.DATA_ASSET,
   value: selectedValue,
   filterFqns = [],
@@ -32,6 +33,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   renderTrigger,
   popoverClassName,
   popoverAlign,
+  selectionMode = "multiple",
   popoverPlacement = 'top',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,6 +55,11 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
     queryFilter,
     debounceTimeout,
   });
+
+  const handleSelectAll = useCallback(() => {
+    onChange?.(undefined);
+    setSelected([]);
+  }, [onChange]);
 
   useEffect(() => {
     if (Array.isArray(selectedValue)) {
@@ -97,6 +104,12 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
       }
 
       const isSelected = selectedFqns.has(pickerOption.id);
+      if (selectionMode === 'single') {
+        setSelected(isSelected ? [] : [match]);
+        onChange?.(isSelected ? undefined : match);
+
+        return;
+      }
       const next = isSelected
         ? selected.filter((o) => String(o.value ?? '') !== pickerOption.id)
         : [...selected, match];
@@ -115,7 +128,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   return (
     <DataAssetPickerShell
       showFooterHints
-      allowAllOption={false}
+      allowAllOption={allowAllOption}
       isLoading={isLoading}
       options={pickerOptions}
       placeholder={placeholder}
@@ -125,11 +138,12 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
       renderTrigger={renderTrigger}
       searchText={searchText}
       selectedIds={selectedFqns}
-      selectionMode="multiple"
+      selectionMode={selectionMode}
       totalCount={totalCount}
       onOpenChange={setIsOpen}
       onScroll={handleScroll}
       onSearchChange={handleSearchChange}
+      onSelectAll={handleSelectAll}
       onToggle={handleToggle}
     />
   );
