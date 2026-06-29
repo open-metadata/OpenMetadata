@@ -10,9 +10,12 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrat
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v200.MigrationUtil;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
 
   public Migration(MigrationFile migrationFile) {
@@ -35,5 +38,20 @@ public class Migration extends MigrationProcessImpl {
     backfillAnnouncementRelationships(handle);
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+
+    // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues
+    // instead of aborting the rest of the v200 data migration. Matches v190/v171/v170/v1105.
+    try {
+      initializeWorkflowHandler();
+      MigrationUtil.TaskWorkflow taskWorkflow = new MigrationUtil.TaskWorkflow(handle);
+      taskWorkflow.runTaskWorkflowCutoverMigration();
+      taskWorkflow.addTaskResourceToMentionAlerts();
+      taskWorkflow.runRecognizerFeedbackTaskTypeMigration();
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to initialize WorkflowHandler or run task workflow cutover migration in v200. "
+              + "Workflow features may not work correctly until server restart.",
+          e);
+    }
   }
 }

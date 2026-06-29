@@ -118,7 +118,7 @@ jest.mock('../../rest/tableAPI', () => ({
     ),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
 }));
 
