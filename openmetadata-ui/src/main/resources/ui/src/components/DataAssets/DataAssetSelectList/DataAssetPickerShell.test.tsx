@@ -58,7 +58,8 @@ const defaultProps = {
 
 const openPicker = () => fireEvent.click(screen.getByTestId(TRIGGER_TEST_ID));
 
-const pressKey = (key: string) => fireEvent.keyDown(document, { key });
+const pressKey = (key: string) =>
+  fireEvent.keyDown(screen.getByTestId('picker-popover'), { key });
 
 describe('DataAssetPickerShell', () => {
   beforeEach(() => {
@@ -209,9 +210,9 @@ describe('DataAssetPickerShell', () => {
 
       pressKey('ArrowDown');
 
-      const firstBtn = screen.getByText('Orders').closest('button');
+      const firstOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(firstBtn?.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(firstOption.className).toContain('tw:bg-utility-gray-blue-50');
     });
 
     it('ArrowDown stays on last option when already at the end', () => {
@@ -224,21 +225,20 @@ describe('DataAssetPickerShell', () => {
       pressKey('ArrowDown');
       pressKey('ArrowDown');
 
-      const lastBtn = screen.getByText('Users').closest('button');
+      const lastOption = screen.getByRole('option', { name: /Users/i });
 
-      expect(lastBtn?.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(lastOption.className).toContain('tw:bg-utility-gray-blue-50');
     });
 
-    it('ArrowUp from unfocused state stays at index 0 (clamped)', () => {
+    it('ArrowUp from unfocused state leaves no option highlighted', () => {
       render(<DataAssetPickerShell {...defaultProps} />);
       openPicker();
 
-      // focusedIndex starts at -1; ArrowUp clamps to 0, highlighting Orders
       pressKey('ArrowUp');
 
-      const firstBtn = screen.getByText('Orders').closest('button');
+      const firstOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(firstBtn?.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(firstOption.className).not.toContain('tw:bg-utility-gray-blue-50');
     });
 
     it('Enter selects the focused option and closes in single mode', () => {
@@ -285,9 +285,9 @@ describe('DataAssetPickerShell', () => {
       pressKey('ArrowDown');
       pressKey('ArrowDown');
 
-      const ordersBtn = screen.getByText('Orders').closest('button');
+      const ordersOption = screen.getByRole('option', { name: /Orders/i });
 
-      expect(ordersBtn?.className).toContain('tw:bg-utility-gray-blue-50');
+      expect(ordersOption.className).toContain('tw:bg-utility-gray-blue-50');
     });
   });
 });

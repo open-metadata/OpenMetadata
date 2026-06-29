@@ -243,9 +243,11 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               : 'tw:top-full tw:mt-1',
             popoverClassName
           )}
-          direction="col">
+          data-testid="picker-popover"
+          direction="col"
+          onKeyDown={handleSearchKeyDown}>
           {searchable && (
-            <Box onKeyDown={handleSearchKeyDown}>
+            <Box>
               <Input
                 autoFocus
                 className="tw:w-full"
