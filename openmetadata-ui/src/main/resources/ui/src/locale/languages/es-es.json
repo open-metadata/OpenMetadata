@@ -3083,6 +3083,7 @@
     "entity-owned-by-name": "Esta entidad es propiedad de {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} puede incluir espacios y solo los siguientes caracteres especiales {{pattern}}",
     "entity-pipeline-information": "<0>¡Cada {{entity}} debe estar vinculada a un pipeline!</0> Este {{type}} aún no tiene un pipeline. Vamos a crear uno para que su {{entity}} pueda ser vinculada y programada.",
+    "entity-removed-from-folder": "{{entity}} eliminado de la carpeta",
     "entity-restored-error": "Error al restaurar {{entity}}",
     "entity-restored-success": "{{entity}} restaurado exitosamente",
     "entity-saved-successfully": "{{entity}} guardado exitosamente",

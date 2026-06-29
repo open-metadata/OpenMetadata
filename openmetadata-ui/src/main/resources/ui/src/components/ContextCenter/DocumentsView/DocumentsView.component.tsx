@@ -138,13 +138,20 @@ const FileActions: FC<FileActionsProps> = ({
       if (folderId === file.folder?.id) {
         await moveFileToRoot(file.id);
         onFileMoved?.(file, null);
+        showSuccessToast(
+          t('message.entity-removed-from-folder', {
+            entity: t('label.document'),
+          })
+        );
       } else {
         await moveFileToFolder(file.id, folderId);
         onFileMoved?.(file, folderId);
+        showSuccessToast(
+          t('message.entity-moved-successfully', {
+            entity: t('label.document'),
+          })
+        );
       }
-      showSuccessToast(
-        t('message.entity-moved-successfully', { entity: t('label.document') })
-      );
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {

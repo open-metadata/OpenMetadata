@@ -3083,6 +3083,7 @@
     "entity-owned-by-name": "Esta entidade é propiedade de {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} pode incluír espazos e só os seguintes caracteres especiais {{pattern}}",
     "entity-pipeline-information": "<0>Cada {{entity}} debe estar vinculada a unha canalización!</0> Este {{type}} aínda non ten unha canalización. Creamos unha para que a súa {{entity}} poida estar vinculada e programada.",
+    "entity-removed-from-folder": "{{entity}} eliminado do cartafol",
     "entity-restored-error": "Erro ao restaurar {{entity}}",
     "entity-restored-success": "{{entity}} restaurado correctamente",
     "entity-saved-successfully": "{{entity}} gardado correctamente",
