@@ -60,7 +60,12 @@ export const exploreShouldShowEntity = async (
   if (shouldSee) {
     await expect(resultCard.first()).toBeVisible();
   } else {
-    await expect(resultCard).toHaveCount(0);
+    // RBAC enforcement against newly-assigned user roles lags the patch
+    // call by several seconds — the search-index user doc needs to update
+    // before queries get filtered against the role's policies. Use a
+    // longer timeout on the negative assertion so the result-card has
+    // time to drop out as the role takes effect.
+    await expect(resultCard).toHaveCount(0, { timeout: 45_000 });
   }
 };
 

@@ -260,14 +260,21 @@ test.describe(
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
         await expandTreeNode(page, 'Databases');
 
+        // Explicit visibility wait before clicking. The expandTreeNode helper
+        // only waits for loaders to disappear, but the tree's child rows can
+        // continue to animate/reposition for a beat after that — the
+        // subsequent .click() then times out with "waiting for element to be
+        // visible, enabled and stable". toBeVisible polls until the element
+        // is stable too, which lets the click land cleanly.
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+        );
+        await expect(serviceTitle).toBeVisible();
+
         const browseRes = page.waitForResponse(
           '/api/v1/search/query?*index=dataAsset*'
         );
-        await page
-          .getByTestId(
-            `explore-tree-title-${table.service.serviceType.toLowerCase()}`
-          )
-          .click();
+        await serviceTitle.click();
         await browseRes;
         await waitForAllLoadersToDisappear(page);
 
