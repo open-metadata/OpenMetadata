@@ -20,12 +20,9 @@ jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: (...args: unknown[]) => mockUseUserProfile(...args),
 }));
 
-jest.mock(
-  '../../../../context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
-  })
-);
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockReturnValue({ permissions: {} }),
+}));
 
 jest.mock('../../../../utils/PermissionsUtils', () => ({
   userPermissions: { hasViewPermissions: jest.fn().mockReturnValue(true) },

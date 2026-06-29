@@ -12,7 +12,6 @@
  */
 
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { ComponentProps, useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -92,7 +91,7 @@ const ProfilePicture = ({
 
   return (
     <Avatar
-      className={classNames(!profileURL && container)}
+      className={container}
       contrastBorder={false}
       placeholder={placeholder}
       size={size}
