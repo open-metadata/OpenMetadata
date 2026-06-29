@@ -196,8 +196,7 @@ export const ComboBox = ({
             <Popover
               className={otherProps.popoverClassName}
               size={size}
-              style={{ width: popoverWidth }}
-              triggerRef={placeholderRef}>
+              style={{ width: popoverWidth }}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
                 items={items}>
