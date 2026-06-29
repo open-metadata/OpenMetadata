@@ -26,7 +26,7 @@ import {
   FilterFunnel02,
   Pin01,
   Plus,
-  User03
+  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
