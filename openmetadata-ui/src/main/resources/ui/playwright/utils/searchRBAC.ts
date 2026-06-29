@@ -60,7 +60,12 @@ export const exploreShouldShowEntity = async (
   if (shouldSee) {
     await expect(resultCard.first()).toBeVisible();
   } else {
-    await expect(resultCard).toHaveCount(0);
+    // RBAC enforcement against newly-assigned user roles lags the patch
+    // call by several seconds — the search-index user doc needs to update
+    // before queries get filtered against the role's policies. Use a
+    // longer timeout on the negative assertion so the result-card has
+    // time to drop out as the role takes effect.
+    await expect(resultCard).toHaveCount(0, { timeout: 45_000 });
   }
 };
 
@@ -82,16 +87,22 @@ export const exploreTreeCategories = async (
   await exploreRes;
   await waitForAllLoadersToDisappear(page);
 
-  for (const category of visible) {
-    await expect(
-      page.getByTestId(`explore-tree-title-${category}`)
-    ).toBeVisible();
-  }
-  for (const category of hidden) {
-    await expect(
-      page.getByTestId(`explore-tree-title-${category}`)
-    ).toHaveCount(0);
-  }
+  // The explore tree fires multiple aggregation queries to compute per-category
+  // counts; the tree DOM updates asynchronously as those resolve. Poll the
+  // category visibility/absence assertions to ride out renders that haven't
+  // settled yet, rather than relying on a single search-query wait.
+  await expect(async () => {
+    for (const category of visible) {
+      await expect(
+        page.getByTestId(`explore-tree-title-${category}`)
+      ).toBeVisible({ timeout: 2_000 });
+    }
+    for (const category of hidden) {
+      await expect(
+        page.getByTestId(`explore-tree-title-${category}`)
+      ).toHaveCount(0, { timeout: 2_000 });
+    }
+  }).toPass({ timeout: 20_000, intervals: [500, 1_000, 2_000] });
 };
 
 export const enableDisableSearchRBAC = async (
@@ -135,9 +146,14 @@ export const searchForEntityShouldWork = async (
 
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
-  await page.getByTestId('searchBox').press('Enter');
 
-  await page.waitForResponse(`api/v1/search/query?**`);
+  // Register waitForResponse BEFORE the action that triggers it. Registering
+  // after `press('Enter')` is racy — the search response can return before
+  // the listener is attached, leaving the assertion to run against stale UI
+  // state.
+  const searchResponse = page.waitForResponse(`api/v1/search/query?**`);
+  await page.getByTestId('searchBox').press('Enter');
+  await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
 
@@ -169,9 +185,12 @@ export const searchForEntityShouldWorkShowNoResult = async (
 
   await page.getByTestId('searchBox').click();
   await page.getByTestId('searchBox').fill(fqn);
-  await page.getByTestId('searchBox').press('Enter');
 
-  await page.waitForResponse(`api/v1/search/query?**`);
+  // Register waitForResponse BEFORE the action that triggers it. See the
+  // matching note in searchForEntityShouldWork for why.
+  const searchResponse = page.waitForResponse(`api/v1/search/query?**`);
+  await page.getByTestId('searchBox').press('Enter');
+  await searchResponse;
 
   await waitForAllLoadersToDisappear(page);
 

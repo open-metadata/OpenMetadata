@@ -458,7 +458,6 @@ test.describe('Task Activity Feed Integration', () => {
     await test.step('Resolve task and verify it moves to Closed', async () => {
       await resolveTaskWithApproval(page);
 
-      await page.waitForTimeout(1000);
       await page.reload();
 
       await navigateToActivityFeedTasks(page);
