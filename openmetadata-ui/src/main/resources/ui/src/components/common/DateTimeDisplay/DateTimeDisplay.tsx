@@ -10,37 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Fragment } from 'react';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 
-const DateTimeDisplay = ({ timestamp }: { timestamp?: number }) => {
+interface DateTimeDisplayProps {
+  timestamp?: number;
+  /** `compact` renders the stamp at 12px / text-secondary for dense tables. */
+  size?: 'default' | 'compact';
+}
+
+const DateTimeDisplay = ({
+  timestamp,
+  size = 'default',
+}: DateTimeDisplayProps) => {
   const dateValue = formatDateTimeLong(timestamp, 'MMMM dd, yyyy,');
   const timeValue = formatDateTimeLong(timestamp, 'h:mm a');
   const utcValue = formatDateTimeLong(timestamp, "'(UTC'ZZ')'");
+  const isCompact = size === 'compact';
 
   return timestamp ? (
-    <Row className="line-height-16">
-      <Col span={24}>
-        <Typography.Text
-          className="font-medium"
-          data-testid="schedule-primary-details">
-          {dateValue}
-        </Typography.Text>
-      </Col>
-      <Col span={24}>
-        <Typography.Text
-          className="text-xs m-r-xss"
-          data-testid="schedule-primary-details">
+    <Box className="tw:leading-4" direction="col">
+      <Typography
+        as="span"
+        className={isCompact ? 'tw:text-secondary' : undefined}
+        data-testid="schedule-primary-details"
+        size={isCompact ? 'text-xs' : 'text-sm'}
+        weight={isCompact ? 'regular' : 'medium'}>
+        {dateValue}
+      </Typography>
+      <Box align="center" gap={1}>
+        <Typography
+          as="span"
+          className={isCompact ? 'tw:text-secondary' : undefined}
+          data-testid="schedule-primary-details"
+          size="text-xs">
           {timeValue}
-        </Typography.Text>
-        <Typography.Text
-          className="text-xs text-grey-muted"
-          data-testid="schedule-secondary-details">
+        </Typography>
+        <Typography
+          as="span"
+          className="tw:text-tertiary"
+          data-testid="schedule-secondary-details"
+          size="text-xs">
           {utcValue}
-        </Typography.Text>
-      </Col>
-    </Row>
+        </Typography>
+      </Box>
+    </Box>
   ) : (
     <Fragment>--</Fragment>
   );

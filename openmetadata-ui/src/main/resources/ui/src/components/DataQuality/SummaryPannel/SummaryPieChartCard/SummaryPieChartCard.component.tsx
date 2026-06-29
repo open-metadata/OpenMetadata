@@ -57,7 +57,7 @@ const SummaryPieChartCard = ({
               {title}
             </Typography>
           </div>
-          <Typography size="display-sm" weight="semibold">
+          <Typography size="text-xl" weight="semibold">
             {formatNumberWithComma(value)}
           </Typography>
         </Box>

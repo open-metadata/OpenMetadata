@@ -614,7 +614,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Table.Cell
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('lastRun', 1)}>
-          <DateTimeDisplay timestamp={record.testCaseResult?.timestamp} />
+          <DateTimeDisplay
+            size="compact"
+            timestamp={record.testCaseResult?.timestamp}
+          />
         </Table.Cell>
         <Table.Cell
           className="tw:whitespace-nowrap"
