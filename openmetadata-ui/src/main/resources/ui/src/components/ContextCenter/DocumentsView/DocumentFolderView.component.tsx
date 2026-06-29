@@ -15,9 +15,10 @@ import {
   Button,
   ButtonUtility,
   Card,
+  Dot,
   Skeleton,
   Tree,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -111,7 +112,7 @@ const DocumentFolderView = ({
   return (
     <>
       <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
-        <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+        <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
               <FolderIcon className="tw:text-tertiary" height={20} width={20} />
@@ -126,7 +127,7 @@ const DocumentFolderView = ({
                 <span>
                   {folders.length} {t('label.folder-plural')}
                 </span>
-                <span className="tw:select-none tw:text-lg">&middot;</span>
+                <Dot className="tw:text-quaternary" size="micro" />
                 <span>
                   {totalFileCount} {t('label.file-plural')}
                 </span>
