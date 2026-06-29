@@ -13169,6 +13169,17 @@ public interface CollectionDAO {
       private final java.sql.Timestamp claimedAt;
     }
 
+    /** Bean class for @BindBean compatibility in batch upserts. */
+    @lombok.Getter
+    @lombok.AllArgsConstructor
+    class BatchUpsertEntry {
+      private final String entityId;
+      private final String entityFqn;
+      private final String failureReason;
+      private final String status;
+      private final String entityType;
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
@@ -13188,6 +13199,17 @@ public interface CollectionDAO {
         @Bind("failureReason") String failureReason,
         @Bind("status") String status,
         @Bind("entityType") String entityType);
+
+    default void batchUpsert(List<BatchUpsertEntry> entries) {
+      for (BatchUpsertEntry entry : entries) {
+        upsert(
+            entry.getEntityId(),
+            entry.getEntityFqn(),
+            entry.getFailureReason(),
+            entry.getStatus(),
+            entry.getEntityType());
+      }
+    }
 
     @SqlQuery(
         "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
@@ -13251,6 +13273,19 @@ public interface CollectionDAO {
         "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
             + "WHERE status = 'IN_PROGRESS' AND claimedAt < :cutoff")
     int recoverStaleInProgress(@Bind("cutoff") java.sql.Timestamp cutoff);
+
+    @SqlUpdate(
+        "UPDATE search_index_retry_queue SET status = 'PENDING', claimedAt = NULL "
+            + "WHERE status = 'SEARCH_UNAVAILABLE'")
+    int resetSearchUnavailableToPending();
+
+    @SqlUpdate(
+        "DELETE FROM search_index_retry_queue "
+            + "WHERE entityType IN (<entityTypes>) "
+            + "AND status IN (<statuses>)")
+    int deleteByEntityTypesAndStatuses(
+        @BindList("entityTypes") List<String> entityTypes,
+        @BindList("statuses") List<String> statuses);
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
