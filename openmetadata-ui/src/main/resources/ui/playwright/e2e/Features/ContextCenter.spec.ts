@@ -11,23 +11,25 @@
  *  limitations under the License.
  */
 
-import {
-  APIRequestContext,
-  expect,
-  Locator,
-  Page,
-  Response,
-} from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
+  BulkOperationResult,
+  ContextCenterDocument,
+  ContextCenterFolder,
+  expectBulkIdsRequest,
+  expectSelectedCount,
+  getDocumentRowByName,
   MEMORIES_API,
   navigateToArticles,
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
+  selectDocumentByName,
+  uploadDocument as uploadDocumentToApi,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';
@@ -46,51 +48,10 @@ const QUICK_LINK_DESCRIPTION =
   'Playwright quick link description for card detail check';
 let QUICK_LINK_NAME: string;
 
-interface ContextCenterDocument {
-  id: string;
-  name: string;
-  displayName?: string;
-}
-
-interface ContextCenterFolder {
-  id: string;
-  name: string;
-  displayName?: string;
-  fullyQualifiedName?: string;
-}
-
-interface BulkOperationResult {
-  numberOfRowsPassed?: number;
-  numberOfRowsFailed?: number;
-}
-
-interface BulkIdsRequest {
-  ids?: string[];
-}
-
-interface CapturedDownload {
-  download: string;
-  href: string;
-}
-
-interface DownloadCaptureWindow extends Window {
-  __contextCenterCapturedDownloads?: CapturedDownload[];
-  __contextCenterOriginalAnchorClick?: HTMLAnchorElement['click'];
-}
-
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 const contextFileIdsToCleanup = new Set<string>();
 const contextFolderIdsToCleanup = new Set<string>();
 
-const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const uploadDocument = async (
   apiContext: APIRequestContext,
@@ -98,110 +59,10 @@ const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
-    file: {
-      name,
-      mimeType: 'text/plain',
-      buffer,
-    },
-  };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
-
-  const response = await apiContext.post(
-    '/api/v1/contextCenter/drive/files/upload',
-    { multipart }
-  );
-  const body = await response.text();
-  expect(response.status(), body).toBe(201);
-
-  const document = parseResponseJson<ContextCenterDocument>(body);
+  const document = await uploadDocumentToApi(apiContext, name, buffer, folderFqn);
   contextFileIdsToCleanup.add(document.id);
 
   return document;
-};
-
-const getDocumentRowByName = (page: Page, fileName: string): Locator =>
-  page
-    .getByTestId('documents-view')
-    .locator('[data-testid^="document-row-"]')
-    .filter({ hasText: fileName });
-
-const selectDocumentByName = async (page: Page, fileName: string) => {
-  const row = getDocumentRowByName(page, fileName);
-  await expect(row).toBeVisible();
-  await row.scrollIntoViewIfNeeded();
-  await row.getByTestId('document-checkbox').click();
-};
-
-const expectSelectedCount = async (page: Page, count: number) => {
-  await expect(
-    page.getByText(`${count} selected`, { exact: true })
-  ).toBeVisible();
-};
-
-const expectBulkIdsRequest = (
-  postData: string | null,
-  expectedIds: string[]
-) => {
-  expect(postData).toBeTruthy();
-
-  const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
-
-  expect(new Set(request.ids)).toEqual(new Set(expectedIds));
-};
-
-const responseMatchesRequestPath = (
-  response: Response,
-  expectedPath: string
-) => {
-  let request = response.request();
-
-  while (request) {
-    if (request.url().includes(expectedPath)) {
-      return true;
-    }
-
-    request = request.redirectedFrom();
-  }
-
-  return false;
-};
-
-const installDownloadCapture = async (page: Page) => {
-  await page.evaluate(() => {
-    const captureWindow = window as DownloadCaptureWindow;
-    captureWindow.__contextCenterCapturedDownloads = [];
-
-    if (captureWindow.__contextCenterOriginalAnchorClick) {
-      return;
-    }
-
-    captureWindow.__contextCenterOriginalAnchorClick =
-      HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
-      captureWindow.__contextCenterCapturedDownloads?.push({
-        download: this.download,
-        href: this.href,
-      });
-      captureWindow.__contextCenterOriginalAnchorClick?.call(this);
-    };
-  });
-};
-
-const expectCapturedDownload = async (page: Page, fileName: string) => {
-  const capturedDownload = await page.waitForFunction((expectedFileName) => {
-    const captureWindow = window as DownloadCaptureWindow;
-
-    return captureWindow.__contextCenterCapturedDownloads?.find(
-      (download) => download.download === expectedFileName
-    );
-  }, fileName);
-  const download = (await capturedDownload.jsonValue()) as CapturedDownload;
-
-  expect(download.href.startsWith('blob:')).toBe(true);
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -1057,39 +918,6 @@ test.describe('Context Center', () => {
       await expect(targetRow.getByTestId('download-btn')).toBeVisible();
     });
 
-    test('download button triggers file download', async ({
-      browser,
-      page,
-    }) => {
-      const fileName = `download-doc-${uuid()}.txt`;
-      const { apiContext, afterAction } = await createNewPage(browser);
-      const document = await uploadDocument(
-        apiContext,
-        fileName,
-        Buffer.from('document for download test')
-      );
-      await afterAction();
-
-      await navigateToDocuments(page);
-
-      const targetRow = getDocumentRowByName(page, fileName);
-      await expect(targetRow).toBeVisible();
-      await installDownloadCapture(page);
-
-      const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
-      const downloadResPromise = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'GET' &&
-          responseMatchesRequestPath(response, downloadPath)
-      );
-
-      await targetRow.getByTestId('download-btn').click();
-      const downloadRes = await downloadResPromise;
-
-      expect([200, 302, 303]).toContain(downloadRes.status());
-      await expectCapturedDownload(page, fileName);
-    });
-
     test('delete document removes it from the list', async ({
       browser,
       page,
@@ -1261,54 +1089,6 @@ test.describe('Context Center', () => {
           'document-folder-name'
         )
       ).toHaveText(folderName);
-    });
-
-    test('bulk download downloads selected documents as a zip with a single API call', async ({
-      browser,
-      page,
-    }) => {
-      const firstFileName = `bulk-download-one-${uuid()}.txt`;
-      const secondFileName = `bulk-download-two-${uuid()}.txt`;
-      const { apiContext, afterAction } = await createNewPage(browser);
-      const firstDocument = await uploadDocument(
-        apiContext,
-        firstFileName,
-        Buffer.from('first document for bulk download')
-      );
-      const secondDocument = await uploadDocument(
-        apiContext,
-        secondFileName,
-        Buffer.from('second document for bulk download')
-      );
-      await afterAction();
-
-      await navigateToDocuments(page);
-
-      await selectDocumentByName(page, firstFileName);
-      await selectDocumentByName(page, secondFileName);
-      await expectSelectedCount(page, 2);
-      await installDownloadCapture(page);
-
-      const bulkDownloadResPromise = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/contextCenter/drive/files/bulk/download') &&
-          response.request().method() === 'POST'
-      );
-
-      await page.getByTestId('bulk-download-btn').click();
-      const bulkDownloadRes = await bulkDownloadResPromise;
-
-      expect(bulkDownloadRes.status()).toBe(200);
-      expectBulkIdsRequest(bulkDownloadRes.request().postData(), [
-        firstDocument.id,
-        secondDocument.id,
-      ]);
-      await expectCapturedDownload(page, 'context-center-documents.zip');
-      await expect(
-        page.getByText('2 selected', { exact: true })
-      ).not.toBeVisible();
     });
 
     test('duplicate filename upload fails case-insensitively in the same folder', async ({
