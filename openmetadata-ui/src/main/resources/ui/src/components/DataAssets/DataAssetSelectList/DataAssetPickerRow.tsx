@@ -14,72 +14,78 @@ import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
+import { ListBoxItem as AriaListBoxItem } from 'react-aria-components';
 import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
 import { DataAssetPickerRowProps } from './DataAssetPicker.interface';
 
 const DataAssetPickerRow: FC<DataAssetPickerRowProps> = ({
   option,
-  isSelected,
   isFocused = false,
-  onSelect,
 }) => {
   const { label, displayName, name, type, id } = option;
   const title = displayName || name || label;
 
   return (
-    <button
-      className={classNames(
-        'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
-        'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
-        'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
-        { 'tw:bg-brand-primary': isSelected },
-        { 'tw:bg-utility-gray-blue-50': isFocused && !isSelected }
-      )}
-      data-picker-item="true"
-      type="button"
-      onClick={() => onSelect(option)}>
-      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
-        {type && getEntityIconWithBg(type)}
+    <AriaListBoxItem
+      className={(state) =>
+        classNames(
+          'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
+          'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
+          'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
+          { 'tw:bg-brand-primary': state.isSelected },
+          {
+            'tw:bg-utility-gray-blue-50': isFocused && !state.isSelected,
+          }
+        )
+      }
+      id={option.id}
+      textValue={title}>
+      {(state) => (
+        <>
+          <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+            {type && getEntityIconWithBg(type)}
 
-        <Box
-          align="center"
-          className="tw:min-w-0 tw:flex-1"
-          gap={3}
-          justify="between">
-          <Box
-            className="tw:min-w-0 tw:flex-1 tw:[&_.prose]:leading-tight"
-            direction="col">
-            <Typography
-              ellipsis
-              className="tw:truncate tw:leading-tight"
-              size="text-xs"
-              weight="medium">
-              {title}
-            </Typography>
-            {id && (
-              <Typography
-                ellipsis
-                className="tw:text-tertiary tw:truncate tw:leading-tight"
-                size="text-xs">
-                {id}
-              </Typography>
-            )}
+            <Box
+              align="center"
+              className="tw:min-w-0 tw:flex-1"
+              gap={3}
+              justify="between">
+              <Box
+                className="tw:min-w-0 tw:flex-1 tw:[&_.prose]:leading-tight"
+                direction="col">
+                <Typography
+                  ellipsis
+                  className="tw:truncate tw:leading-tight"
+                  size="text-xs"
+                  weight="medium">
+                  {title}
+                </Typography>
+                {id && (
+                  <Typography
+                    ellipsis
+                    className="tw:text-tertiary tw:truncate tw:leading-tight"
+                    size="text-xs">
+                    {id}
+                  </Typography>
+                )}
+              </Box>
+              {type && (
+                <Badge
+                  className="tw:shrink-0 tw:uppercase tw:font-medium"
+                  color="gray"
+                  size="xs"
+                  type="color">
+                  {type}
+                </Badge>
+              )}
+            </Box>
           </Box>
-          {type && (
-            <Badge
-              className="tw:shrink-0 tw:uppercase tw:font-medium"
-              color="gray"
-              size="xs"
-              type="color">
-              {type}
-            </Badge>
+          {state.isSelected && (
+            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
           )}
-        </Box>
-      </Box>
-      {isSelected && (
-        <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+        </>
       )}
-    </button>
+    </AriaListBoxItem>
   );
 };
 

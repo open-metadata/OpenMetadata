@@ -24,13 +24,54 @@ import {
   SlashDivider,
 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  DataAssetPickerOption,
-  DataAssetPickerShellProps,
-} from './DataAssetPicker.interface';
+  ListBox as AriaListBox,
+  Selection,
+} from 'react-aria-components';
+import { DataAssetPickerShellProps } from './DataAssetPicker.interface';
 import DataAssetPickerRow from './DataAssetPickerRow';
+
+// Index -1 = "All Assets" button (only when allowAllOption=true).
+// Index 0..n-1 = asset list items.
+const ALL_IDX = -1;
+
+const nextFocusIndex = (
+  prev: number | null,
+  key: 'ArrowDown' | 'ArrowUp',
+  hasAll: boolean,
+  itemCount: number
+): number | null => {
+  const hasItems = itemCount > 0;
+  const lastIdx = itemCount - 1;
+  const firstIdx = hasAll ? ALL_IDX : 0;
+
+  if (!hasAll && !hasItems) {
+    return null;
+  }
+
+  if (key === 'ArrowDown') {
+    if (prev === null) {
+      return hasAll ? ALL_IDX : 0;
+    }
+    if (prev === ALL_IDX) {
+      return hasItems ? 0 : ALL_IDX;
+    }
+
+    return prev < lastIdx ? prev + 1 : prev;
+  }
+
+  // ArrowUp
+  if (prev === null || prev === firstIdx) {
+    return prev;
+  }
+  if (prev === 0 && hasAll) {
+    return ALL_IDX;
+  }
+
+  return prev - 1;
+};
 
 const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   renderTrigger,
@@ -57,101 +98,121 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
 }) => {
   const { t } = useTranslation();
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const listBoxRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(-1);
+  // keyboardFocusIndex: -1 = All Assets, 0..n-1 = list items, null = none
+  const [keyboardFocusIndex, setKeyboardFocusIndex] = useState<number | null>(
+    null
+  );
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => {
     setIsOpen(false);
-    setFocusedIndex(-1);
+    setKeyboardFocusIndex(null);
   }, []);
+
+  // Reset keyboard focus only when the list content changes (e.g. search),
+  // not on every render. Using length + first id as a stable identity signal.
+  const optionsKey = `${options.length}:${options[0]?.id ?? ''}`;
+  useEffect(() => {
+    setKeyboardFocusIndex(null);
+  }, [optionsKey]);
+
+  const confirmFocusedItem = useCallback(() => {
+    if (keyboardFocusIndex === ALL_IDX) {
+      onSelectAll?.();
+    } else if (keyboardFocusIndex !== null && keyboardFocusIndex >= 0) {
+      const option = options[keyboardFocusIndex];
+      if (option) {
+        onToggle(option);
+      }
+    } else {
+      return;
+    }
+    if (selectionMode === 'single') {
+      close();
+    }
+  }, [keyboardFocusIndex, options, onSelectAll, onToggle, selectionMode, close]);
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') {
+        return;
+      }
+      e.preventDefault();
+      if (e.key === 'Enter') {
+        confirmFocusedItem();
+
+        return;
+      }
+      setKeyboardFocusIndex((prev) =>
+        nextFocusIndex(
+          prev,
+          e.key as 'ArrowDown' | 'ArrowUp',
+          allowAllOption,
+          options.length
+        )
+      );
+    },
+    [confirmFocusedItem, allowAllOption, options.length]
+  );
+
+  // Scroll the focused list item into view
+  useEffect(() => {
+    if (keyboardFocusIndex === null || keyboardFocusIndex === ALL_IDX) {
+      return;
+    }
+    if (!listBoxRef.current) {
+      return;
+    }
+    const items = listBoxRef.current.querySelectorAll('[role="option"]');
+    const el = items[keyboardFocusIndex] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [keyboardFocusIndex]);
 
   const resolvedTotal = totalCount ?? options.length;
 
-  const handleRowSelect = useCallback(
-    (option: DataAssetPickerOption) => {
-      onToggle(option);
+  const handleSelectionChange = useCallback(
+    (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
+      const newKeys = keys as Set<string>;
+      const added = [...newKeys].find((k) => !selectedIds.has(k));
+      const removed = [...selectedIds].find((k) => !newKeys.has(k));
+      const changedId = added ?? removed;
+      if (!changedId) {
+        return;
+      }
+      const option = options.find((o) => o.id === changedId);
+      if (option) {
+        onToggle(option);
+      }
       if (selectionMode === 'single') {
         close();
       }
     },
-    [onToggle, selectionMode, close]
-  );
-
-  const handleSelectAll = useCallback(() => {
-    onSelectAll?.();
-    if (selectionMode === 'single') {
-      close();
-    }
-  }, [onSelectAll, selectionMode, close]);
-
-  // flat list including the virtual "__all__" entry at index 0 when enabled
-  const navigableOptions = useMemo(
-    () =>
-      allowAllOption ? [{ id: '__all__', label: '' }, ...options] : options,
-    [allowAllOption, options]
+    [options, selectedIds, onToggle, selectionMode, close]
   );
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    if (!isOpen) {
+      return;
+    }
+    const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         close();
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setFocusedIndex((prev) =>
-          prev < navigableOptions.length - 1 ? prev + 1 : prev
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
-      } else if (e.key === 'Enter' && focusedIndex >= 0) {
-        e.preventDefault();
-        const focused = navigableOptions[focusedIndex];
-        if (focused.id === '__all__') {
-          handleSelectAll();
-        } else {
-          handleRowSelect(focused);
-        }
       }
     };
+    document.addEventListener('keydown', handler, true);
 
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown, true);
-    }
-
-    return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [
-    isOpen,
-    focusedIndex,
-    navigableOptions,
-    close,
-    handleRowSelect,
-    handleSelectAll,
-  ]);
-
-  useEffect(() => {
-    setFocusedIndex(-1);
-  }, [searchText, isOpen]);
+    return () => document.removeEventListener('keydown', handler, true);
+  }, [isOpen, close]);
 
   useEffect(() => {
     onOpenChange?.(isOpen);
   }, [isOpen, onOpenChange]);
-
-  useEffect(() => {
-    if (focusedIndex < 0 || !scrollContainerRef.current) {
-      return;
-    }
-    const items =
-      scrollContainerRef.current.querySelectorAll<HTMLElement>(
-        '[data-picker-item]'
-      );
-    items[focusedIndex]?.scrollIntoView({ block: 'nearest' });
-  }, [focusedIndex]);
-
-  // offset: if allowAllOption the "All" button occupies index 0
-  const optionIndexOffset = allowAllOption ? 1 : 0;
 
   return (
     <div className="tw:relative" ref={wrapperRef}>
@@ -180,7 +241,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           )}
           direction="col">
           {searchable && (
-            <Box>
+            <Box onKeyDown={handleSearchKeyDown}>
               <Input
                 autoFocus
                 className="tw:w-full"
@@ -209,10 +270,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
             </Box>
           )}
 
-          <div
-            className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col"
-            ref={scrollContainerRef}
-            onScroll={onScroll}>
+          <div className="tw:overflow-y-auto tw:flex-1 tw:p-1 tw:max-h-80 tw:flex tw:flex-col">
             {isLoading && (
               <Box align="center" className="tw:py-4" justify="center">
                 <Typography className="tw:text-quaternary" size="text-sm">
@@ -220,17 +278,26 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 </Typography>
               </Box>
             )}
-            {allowAllOption && (
+
+            {!isLoading && allowAllOption && (
               <>
                 <button
                   className={classNames(
                     'tw:w-full tw:flex tw:items-center tw:gap-2 tw:px-2.5 tw:py-2 tw:rounded-md tw:mb-1 tw:justify-between',
                     'tw:cursor-pointer tw:text-left tw:transition tw:duration-100',
                     'tw:hover:bg-utility-gray-blue-50 tw:outline-hidden',
-                    focusedIndex === 0 ? 'tw:bg-utility-gray-blue-50' : ''
+                    {
+                      'tw:bg-utility-gray-blue-50':
+                        keyboardFocusIndex === ALL_IDX,
+                    }
                   )}
                   type="button"
-                  onClick={handleSelectAll}>
+                  onClick={() => {
+                    onSelectAll?.();
+                    if (selectionMode === 'single') {
+                      close();
+                    }
+                  }}>
                   <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
                     <span className="tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90 tw:bg-utility-gray-blue-50">
                       <SlashDivider
@@ -284,16 +351,24 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               </Box>
             )}
 
-            {!isLoading &&
-              options.map((option, idx) => (
-                <DataAssetPickerRow
-                  isFocused={focusedIndex === idx + optionIndexOffset}
-                  isSelected={selectedIds.has(option.id)}
-                  key={option.id}
-                  option={option}
-                  onSelect={handleRowSelect}
-                />
-              ))}
+            {!isLoading && options.length > 0 && (
+              <AriaListBox
+                aria-label={t('label.asset-plural')}
+                className="tw:outline-hidden tw:flex tw:flex-col"
+                ref={listBoxRef}
+                selectedKeys={selectedIds}
+                selectionMode={selectionMode}
+                onScroll={onScroll}
+                onSelectionChange={handleSelectionChange}>
+                {options.map((option, idx) => (
+                  <DataAssetPickerRow
+                    isFocused={keyboardFocusIndex === idx}
+                    key={option.id}
+                    option={option}
+                  />
+                ))}
+              </AriaListBox>
+            )}
           </div>
 
           {showFooterHints && (
