@@ -73,12 +73,14 @@ class MigrationUtilTest {
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
     verify(handle).execute(sqlCaptor.capture());
     String sql = sqlCaptor.getValue();
-    assertTrue(sql.contains("WHEN 'databaseService' THEN 'DatabaseMetadata'"));
-    assertTrue(sql.contains("WHEN 'dashboardService' THEN 'DashboardMetadata'"));
-    assertTrue(sql.contains("WHEN 'messagingService' THEN 'MessagingMetadata'"));
-    assertTrue(sql.contains("er.fromEntity IN ('apiService', 'dashboardService'"));
+    assertTrue(
+        sql.contains("JOIN (SELECT 'apiService' AS fromEntity, 'ApiMetadata' AS configType"));
+    assertTrue(sql.contains("UNION ALL SELECT 'databaseService', 'DatabaseMetadata'"));
+    assertTrue(sql.contains("metadata_config_type.fromEntity = er.fromEntity"));
+    assertTrue(sql.contains("metadata_config_type.configType"));
     assertTrue(sql.contains("i.json ->> '$.pipelineType' = 'metadata'"));
     assertTrue(sql.contains("JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"));
+    assertTrue(!sql.contains("CASE er.fromEntity"));
   }
 
   @Test
@@ -96,13 +98,13 @@ class MigrationUtilTest {
     ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
     verify(handle).execute(sqlCaptor.capture());
     String sql = sqlCaptor.getValue();
-    assertTrue(sql.contains("to_jsonb((CASE er.fromentity"));
-    assertTrue(sql.contains("WHEN 'databaseService' THEN 'DatabaseMetadata'"));
-    assertTrue(sql.contains("WHEN 'dashboardService' THEN 'DashboardMetadata'"));
-    assertTrue(sql.contains("WHEN 'messagingService' THEN 'MessagingMetadata'"));
-    assertTrue(sql.contains("er.fromentity IN ('apiService', 'dashboardService'"));
+    assertTrue(sql.contains("JOIN (VALUES ('apiService', 'ApiMetadata')"));
+    assertTrue(sql.contains("('databaseService', 'DatabaseMetadata')"));
+    assertTrue(sql.contains("metadata_config_type.from_entity = er.fromentity"));
+    assertTrue(sql.contains("to_jsonb(metadata_config_type.config_type::text)"));
     assertTrue(sql.contains("i.json ->> 'pipelineType' = 'metadata'"));
     assertTrue(sql.contains("jsonb_typeof(i.json #> '{sourceConfig,config}') = 'object'"));
+    assertTrue(!sql.contains("CASE er.fromentity"));
   }
 
   @Test
