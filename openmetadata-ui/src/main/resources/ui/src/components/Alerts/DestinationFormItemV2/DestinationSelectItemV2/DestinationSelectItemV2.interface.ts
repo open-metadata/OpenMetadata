@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,19 +11,13 @@
  *  limitations under the License.
  */
 
-export type ActivityKind = 'memory' | 'article' | 'document';
+import { Destination } from '../../../../generated/events/eventSubscription';
 
-export interface ActivityItem {
-  id: string;
-  kind: ActivityKind;
-  count: number;
-  title: string;
-  surface: string;
-  who: string;
-  when: string;
-}
-
-export interface AiActivitySectionProps {
-  items: ActivityItem[];
-  isLoading?: boolean;
+export interface DestinationSelectItemV2Props {
+  selectorKey: number;
+  id: number;
+  remove: (index: number) => void;
+  destinationsWithStatus?: Destination[];
+  isDestinationStatusLoading: boolean;
+  isViewMode?: boolean;
 }

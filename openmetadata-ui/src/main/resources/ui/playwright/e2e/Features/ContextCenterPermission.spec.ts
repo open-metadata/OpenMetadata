@@ -577,9 +577,7 @@ test.describe('Context Center Permissions', () => {
         await expect(shareBtn).toBeVisible();
         await shareBtn.click();
 
-        await expect(
-          viewOnlyPage.getByText('Link copied to clipboard')
-        ).toBeVisible();
+        await expect(shareBtn).toHaveClass(/tw:bg-success-solid/);
       });
 
       await test.step('can upvote and downvote the article', async () => {
