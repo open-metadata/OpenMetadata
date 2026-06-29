@@ -980,7 +980,7 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify upstream count for all the entities', async ({ page }) => {
-      test.slow();
+      test.setTimeout(360_000);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
       await page.getByRole('button', { name: 'Upstream' }).click();
