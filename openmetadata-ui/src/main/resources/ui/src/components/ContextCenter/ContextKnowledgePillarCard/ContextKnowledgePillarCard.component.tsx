@@ -15,12 +15,14 @@ import {
   Box,
   Button,
   Card,
+  Dot,
   FeaturedIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowNarrowRight } from '@untitledui/icons';
-import { FC } from 'react';
+import classNames from 'classnames';
+import { FC, Fragment } from 'react';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -45,20 +47,32 @@ function RecentItem({
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <Typography
-          ellipsis
-          as="span"
-          className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-          size="text-xs"
-          weight="medium">
-          {item.title}
-        </Typography>
-        <Typography
-          as="span"
-          className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-          size="text-xs">
-          {item.meta}
-        </Typography>
+        <div className='tw:min-w-40'>
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {item.title}
+          </Typography>
+        </div>
+        <Box align='center' gap={1}>
+          {item.meta.map((metaItem, index) => <Fragment key={metaItem}>
+            <div className="tw:max-w-20">
+              <Typography
+                ellipsis
+                className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                size="text-xs"
+              >
+                {metaItem}
+              </Typography>
+            </div>
+
+            {index < item.meta.length - 1 && (
+              <Dot className='tw:text-quaternary' size='micro' />
+            )}
+          </Fragment>)}
+        </Box>
       </Box>
     </Box>
   );
@@ -134,7 +148,10 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
+      className={classNames(
+        "tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between",
+        "tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px tw:h-[65vh]"
+      )}
       data-testid={dataTestId}
       onClick={onClick}>
       <div>

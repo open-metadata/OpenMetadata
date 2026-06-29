@@ -17,7 +17,7 @@ export type PillarTone = 'info' | 'warning' | 'success';
 
 export interface PillarRecentItem {
   title: string;
-  meta: string;
+  meta: string[];
   icon?: ReactElement;
 }
 
