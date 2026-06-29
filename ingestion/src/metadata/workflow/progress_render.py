@@ -16,7 +16,7 @@ Dependency-free on purpose (stdlib only) so both the workflow base and the
 status mixin can import it without a circular dependency.
 """
 
-from typing import List, Optional  # noqa: UP035
+from typing import List, Optional, Tuple  # noqa: UP035
 
 from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
 
@@ -76,6 +76,13 @@ class ProgressReporter:
         label, done, total = group
         counts = f"{done}/{total}" if total is not None else str(done)
         return f"{label} {counts} · {assets:,} assets"
+
+    def group(self) -> Optional[Tuple[str, int, Optional[int]]]:  # noqa: UP045,UP006
+        """The run-level grouping axis ``(label, done, total)`` for the SSE
+        ``ProgressUpdate`` (e.g. ``("Workspaces", 3, 10)``), or ``None`` when the
+        run has no such grouping. Independent of the progress tree, so it is
+        reported even when the active tree is momentarily empty."""
+        return self._registry.group_progress()
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
         """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,

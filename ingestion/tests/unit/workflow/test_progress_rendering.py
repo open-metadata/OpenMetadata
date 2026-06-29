@@ -170,3 +170,50 @@ class TestGroupHeader:
     def test_no_group_empty_tree_is_empty_string(self):
         reg = ProgressRegistry()
         assert ProgressReporter(reg).cli() == ""
+
+
+class TestGroupOnSseUpdate:
+    def test_reporter_group_returns_tuple_when_set(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 10)
+        reg.complete_group()
+        reg.complete_group()
+        reg.complete_group()
+        assert ProgressReporter(reg).group() == ("Workspaces", 3, 10)
+
+    def test_reporter_group_is_none_without_group(self):
+        assert ProgressReporter(ProgressRegistry()).group() is None
+
+    def test_progress_update_carries_group_fields(self):
+        reg = ProgressRegistry()
+        reg.set_group("Workspaces", 10)
+        reg.complete_group()
+        reg.complete_group()
+        reg.complete_group()
+        reporter = ProgressReporter(reg)
+        label, done, total = reporter.group()
+        update = ProgressUpdate(
+            runId="r",
+            timestamp=1,
+            updateType="PROCESSING",
+            progress=reporter.payload(),
+            groupLabel=label,
+            groupDone=done,
+            groupTotal=total,
+        )
+        assert update.groupLabel == "Workspaces"
+        assert update.groupDone == 3
+        assert update.groupTotal == 10
+        assert update.progress is None  # group rides the wrapper even with an empty tree
+
+    def test_progress_update_group_total_can_be_none(self):
+        update = ProgressUpdate(
+            runId="r",
+            timestamp=1,
+            updateType="PROCESSING",
+            groupLabel="Workspaces",
+            groupDone=2,
+            groupTotal=None,
+        )
+        assert update.groupDone == 2
+        assert update.groupTotal is None
