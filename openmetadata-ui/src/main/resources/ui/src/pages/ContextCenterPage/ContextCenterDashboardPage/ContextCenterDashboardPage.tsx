@@ -37,6 +37,7 @@ import {
 import {
   RECENT_DASHBOARD_ARTICLES_LIMIT,
   RECENT_DASHBOARD_DOCUMENTS_LIMIT,
+  RECENT_DASHBOARD_MEMORIES_LIMIT,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -80,7 +81,7 @@ const ContextCenterDashboardPage: FC = () => {
   const [documentsCount, setDocumentsCount] = useState(0);
   const [folderCount, setFolderCount] = useState(0);
   const [memories, setMemories] = useState<
-    Array<{ title: string; meta: string }>
+    Array<{ title: string; meta: string[] }>
   >([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
@@ -179,14 +180,14 @@ const ContextCenterDashboardPage: FC = () => {
     setIsMemoriesLoading(true);
     try {
       const response = await getListContextMemories({
-        limit: 3,
+        limit: RECENT_DASHBOARD_MEMORIES_LIMIT,
         sort: 'updatedAt',
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
       setMemories(
         response.data.map((m) => ({
           title: m.title ?? m.name,
-          meta: `cited ${m.usageCount}×`,
+          meta: [`cited ${m.usageCount}×`],
         }))
       );
     } catch (err) {
@@ -244,7 +245,7 @@ const ContextCenterDashboardPage: FC = () => {
 
         return {
           icon,
-          meta: metaParts.join(' · '),
+          meta: metaParts,
           title: getEntityName(article),
         };
       }),
@@ -259,7 +260,7 @@ const ContextCenterDashboardPage: FC = () => {
           getShortRelativeTime(doc.updatedAt),
         ].filter(Boolean);
 
-        return { title: getEntityName(doc), meta: metaParts.join(' · ') };
+        return { title: getEntityName(doc), meta: metaParts };
       }),
     [documents]
   );
