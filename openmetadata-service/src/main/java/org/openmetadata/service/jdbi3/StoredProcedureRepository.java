@@ -38,6 +38,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the database service / database / schema delete cascade (search by service.id,
+    // field_relationship / tag_usage by the root cleanup() FQN prefix) — see
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
