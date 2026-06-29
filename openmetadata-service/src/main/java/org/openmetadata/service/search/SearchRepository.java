@@ -2796,7 +2796,8 @@ public class SearchRepository {
                   Collections.singletonMap("suiteId", testSuite.getId().toString())));
         }
       }
-      case Entity.DASHBOARD_SERVICE,
+      case Entity.API_SERVICE,
+          Entity.DASHBOARD_SERVICE,
           Entity.DATABASE_SERVICE,
           Entity.MESSAGING_SERVICE,
           Entity.PIPELINE_SERVICE,

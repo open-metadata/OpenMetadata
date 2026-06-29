@@ -132,7 +132,7 @@ const FileActions: FC<FileActionsProps> = ({
       <Tooltip
         title={t('label.manage-entity', { entity: t('label.document') })}>
         <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1 tw:rotate-z-90" />
+          <Dropdown.DotsButton className="tw:flex tw:p-1" />
         </TooltipTrigger>
       </Tooltip>
       <Dropdown.Popover className="tw:w-46">
@@ -410,17 +410,12 @@ const FileRow: FC<FileRowProps> = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography
-            className="tw:truncate"
+            ellipsis
             data-testid="document-name"
             size="text-sm"
             weight="medium">
             {fileName}
           </Typography>
-          <DocumentStatusBadge
-            error={file.processingError}
-            stats={file.extractionStats}
-            status={file.processingStatus}
-          />
         </Box>
         <Box align="center" gap={2}>
           <Typography
@@ -476,28 +471,27 @@ const FileRow: FC<FileRowProps> = ({
         </Box>
       </Box>
 
-      <div
-        className="tw:flex tw:items-center tw:gap-2 tw:shrink-0"
+      <Box
+        align="center"
+        className="tw:shrink-0"
+        gap={2}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}>
-        <Tooltip title={t('label.download')}>
-          <TooltipTrigger>
-            <ButtonUtility
-              color="secondary"
-              data-testid="download-btn"
-              icon={
-                <Download01
-                  className="tw:text-quaternary"
-                  height={16}
-                  width={16}
-                />
-              }
-              onClick={() => onDownload?.(file)}
-            />
-          </TooltipTrigger>
-        </Tooltip>
-        <CopyLinkButton className="tw:w-8 tw:h-8" url={rowUrl}>
-          <Copy06 aria-hidden="true" size={20} strokeWidth={1.8} />
+        <DocumentStatusBadge
+          error={file.processingError}
+          stats={file.extractionStats}
+          status={file.processingStatus}
+        />
+        <ButtonUtility
+          className="tw:ml-1.5"
+          color="tertiary"
+          data-testid="download-btn"
+          icon={<Download01 size={19} />}
+          tooltip={t('label.download')}
+          onClick={() => onDownload?.(file)}
+        />
+        <CopyLinkButton className="tw:w-7.5 tw:h-7.5" url={rowUrl}>
+          <Copy06 aria-hidden="true" size={19} strokeWidth={1.8} />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
@@ -507,7 +501,7 @@ const FileRow: FC<FileRowProps> = ({
           onDeleteFile={onDeleteFile}
           onFileMoved={onFileMoved}
         />
-      </div>
+      </Box>
     </Box>
   );
 };
