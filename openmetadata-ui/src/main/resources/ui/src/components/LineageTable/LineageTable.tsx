@@ -261,7 +261,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <>
             {t('label.upstream')}{' '}
             {lineageDirection === LineageDirection.Upstream && (
-              <Badge className="tw:ml-1" color="brand" size="sm">
+              <Badge className="tw:ml-1" color="brand" size="xs">
                 {upstreamCount}
               </Badge>
             )}
@@ -274,7 +274,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <>
             {t('label.downstream')}{' '}
             {lineageDirection === LineageDirection.Downstream && (
-              <Badge className="tw:ml-1" color="brand" size="sm">
+              <Badge className="tw:ml-1" color="brand" size="xs">
                 {downstreamCount}
               </Badge>
             )}
@@ -291,7 +291,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         disallowEmptySelection
         selectedKeys={new Set([lineageDirection])}
         selectionMode="single"
-        size="sm"
+        size="md"
         onSelectionChange={(keys: Selection) => {
           const value = [...(keys as Set<LineageDirection>)][0];
           if (value) {
@@ -301,7 +301,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         }}>
         {radioGroupOptions.map((option) => (
           <ButtonGroupItem
-            className="tw:selected:bg-[var(--ant-primary-1)] tw:selected:text-[var(--ant-primary-7)]"
+            className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
             id={option.value}
             key={option.value}>
             {option.label}
