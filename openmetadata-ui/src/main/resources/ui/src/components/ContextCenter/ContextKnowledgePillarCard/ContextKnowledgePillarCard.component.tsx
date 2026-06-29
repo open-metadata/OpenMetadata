@@ -47,7 +47,7 @@ function RecentItem({
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <div className='tw:min-w-40'>
+        <div className="tw:min-w-40">
           <Typography
             ellipsis
             className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -56,22 +56,23 @@ function RecentItem({
             {item.title}
           </Typography>
         </div>
-        <Box align='center' gap={1}>
-          {item.meta.map((metaItem, index) => <Fragment key={`${index}-${metaItem}`}>
-            <div className="tw:max-w-20">
-              <Typography
-                ellipsis
-                className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-                size="text-xs"
-              >
-                {metaItem}
-              </Typography>
-            </div>
+        <Box align="center" gap={1}>
+          {item.meta.map((metaItem, index) => (
+            <Fragment key={`${index}-${metaItem}`}>
+              <div className="tw:max-w-20">
+                <Typography
+                  ellipsis
+                  className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                  size="text-xs">
+                  {metaItem}
+                </Typography>
+              </div>
 
-            {index < item.meta.length - 1 && (
-              <Dot className='tw:text-quaternary' size='micro' />
-            )}
-          </Fragment>)}
+              {index < item.meta.length - 1 && (
+                <Dot className="tw:text-quaternary" size="micro" />
+              )}
+            </Fragment>
+          ))}
         </Box>
       </Box>
     </Box>
@@ -149,8 +150,8 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   return (
     <Card
       className={classNames(
-        "tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between",
-        "tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px tw:h-[65vh]"
+        'tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between',
+        'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px tw:h-[65vh]'
       )}
       data-testid={dataTestId}
       onClick={onClick}>
