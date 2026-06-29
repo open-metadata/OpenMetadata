@@ -42,8 +42,11 @@ export const useAsyncDataAssetOptions = ({
 
   // Stabilize queryFilter by value so inline object literals from callers don't
   // cause fetchOptions/loadOptions to change identity on every render.
-   
-  const stableQueryFilter = useMemo(() => queryFilter, [JSON.stringify(queryFilter)]);
+
+  const stableQueryFilter = useMemo(
+    () => queryFilter,
+    [JSON.stringify(queryFilter)]
+  );
 
   const fetchOptions = useCallback(
     async (
