@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,26 +11,11 @@
  *  limitations under the License.
  */
 
-import { FC, ReactElement } from 'react';
+import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 
-export type PillarTone = 'info' | 'warning' | 'success';
-
-export interface PillarRecentItem {
-  title: string;
-  meta: string;
-  icon?: ReactElement;
-}
-
-export interface ContextKnowledgePillarCardProps {
-  icon: FC<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  stat: string;
-  statSub: string;
-  statSubSecondary?: string;
-  recent: PillarRecentItem[];
-  cta: string;
-  isLoading?: boolean;
-  onClick: () => void;
-  dataTestId?: string;
+export interface TeamAndUserSelectItemV2Props {
+  entityType: string;
+  onSearch: (value: string) => Promise<SelectOption[]>;
+  fieldName: (string | number)[];
+  destinationNumber: number;
 }
