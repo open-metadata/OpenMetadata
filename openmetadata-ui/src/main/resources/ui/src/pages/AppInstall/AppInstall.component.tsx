@@ -49,7 +49,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getCronDefaultValue } from '../../utils/CronExpressionUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
