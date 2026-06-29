@@ -59,7 +59,12 @@ const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const document = await uploadDocumentToApi(apiContext, name, buffer, folderFqn);
+  const document = await uploadDocumentToApi(
+    apiContext,
+    name,
+    buffer,
+    folderFqn
+  );
   contextFileIdsToCleanup.add(document.id);
 
   return document;
