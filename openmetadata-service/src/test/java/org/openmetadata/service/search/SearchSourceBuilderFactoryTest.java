@@ -212,6 +212,21 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testQuerySyntaxDetectionHandlesLongMalformedQueries() {
+    List.of(
+            "owner:john",
+            "name : test",
+            "name:test AND type:table",
+            "description:\"exact phrase\"",
+            "[a TO z]",
+            "*PII*")
+        .forEach(query -> assertTrue(SearchSourceBuilderFactory.containsQuerySyntax(query)));
+
+    List.of("customer order", "[".repeat(5000), "[a TO " + " ".repeat(5000), "a".repeat(5000))
+        .forEach(query -> assertFalse(SearchSourceBuilderFactory.containsQuerySyntax(query)));
+  }
+
+  @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
