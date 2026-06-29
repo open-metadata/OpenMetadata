@@ -680,12 +680,7 @@ export const useDataQualityDashboardFilters = ({
       onSearch: handleGlossaryTermSearch,
       isSuggestionsLoading: isGlossaryTermLoading,
     }),
-    [
-      isGlossaryTermLoading,
-      glossaryTermOptions,
-      selectedGlossaryTermFilter,
-      handleGlossaryTermChange,
-    ]
+    [isGlossaryTermLoading, glossaryTermOptions, selectedGlossaryTermFilter]
   );
 
   const tierFilter = useMemo<DqSearchFilterProps>(
