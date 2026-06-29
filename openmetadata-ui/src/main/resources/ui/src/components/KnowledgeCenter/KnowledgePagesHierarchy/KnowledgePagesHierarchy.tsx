@@ -781,6 +781,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
           <div
             className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+            data-testid="article-list-container"
             onScroll={handleScroll}>
             {isLoading && (
               <div className="tw:px-1.5">

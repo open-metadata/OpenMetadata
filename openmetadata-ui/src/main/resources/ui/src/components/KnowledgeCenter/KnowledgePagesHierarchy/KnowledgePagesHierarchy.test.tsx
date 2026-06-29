@@ -263,7 +263,6 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
           permissions={DEFAULT_ENTITY_PERMISSION}
         />,
         { wrapper: MemoryRouter }
@@ -359,7 +358,7 @@ describe('KnowledgePagesHierarchy', () => {
     });
 
     const getScrollContainer = () =>
-      screen.getByTestId('knowledge-pages-hierarchy-container');
+      screen.getByTestId('article-list-container');
 
     const fireScrollEvent = (
       scrollHeight: number,
