@@ -199,6 +199,8 @@
     "assume-role-session-name": "Rol Üstlenmek için Rol Oturum Adı",
     "assume-role-source-identity": "Rol Üstlenmek için Kaynak Kimliği",
     "attach-file-plural": "Dosya Ekle",
+    "attachment": "Ek",
+    "attachment-plural": "Ekler",
     "attention": "Dikkat",
     "audience": "Kitle",
     "audio": "Ses",

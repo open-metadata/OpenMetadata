@@ -199,6 +199,8 @@
     "assume-role-session-name": "نام جلسه برای فرض نقش",
     "assume-role-source-identity": "هویت منبع برای فرض نقش",
     "attach-file-plural": "Junte Os Ficheiros",
+    "attachment": "Anexo",
+    "attachment-plural": "Anexos",
     "attention": "توجه",
     "audience": "مخاطب",
     "audio": "صوت",
