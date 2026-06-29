@@ -670,11 +670,12 @@ public class FeedResource {
   private boolean isSupportedLegacyFeedTask(TaskType taskType) {
     return EntityUtil.isDescriptionTask(taskType)
         || EntityUtil.isTagTask(taskType)
-        || EntityUtil.isApprovalTask(taskType);
+        || EntityUtil.isApprovalTask(taskType)
+        || EntityUtil.isTestCaseFailureResolutionTask(taskType);
   }
 
   private void validateTagTaskValue(String value, String fieldName) {
-    if (!nullOrEmpty(value)) {
+    if (!nullOrEmpty(value) && !value.isBlank()) {
       try {
         JsonUtils.readObjects(value, TagLabel.class);
       } catch (Exception ex) {
