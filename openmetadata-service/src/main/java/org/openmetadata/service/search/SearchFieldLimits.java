@@ -12,9 +12,15 @@
  */
 package org.openmetadata.service.search;
 
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +35,18 @@ public final class SearchFieldLimits {
   private static final Logger LOG = LoggerFactory.getLogger(SearchFieldLimits.class);
 
   private static volatile SearchFieldLimits active;
+
+  /**
+   * Per-entity-type limits resolved from the stored, admin-editable mapping (its {@code
+   * settings.index.mapping.depth.limit}), so that updating a mapping via the search-index-mappings
+   * API and reindexing changes the document-build depth for that entity. Memoized to avoid
+   * deserializing the mapping blob on every document build; cleared by {@link #invalidateEntityCache}
+   * when the stored mappings change. Bounded by the number of entity types.
+   */
+  private static final Map<String, SearchFieldLimits> PER_ENTITY = new ConcurrentHashMap<>();
+
+  private static final List<String> DEPTH_LIMIT_PATH =
+      List.of("settings", "index", "mapping", "depth", "limit");
 
   /** Hard Lucene per-term limit ({@code IndexWriter.MAX_TERM_LENGTH}); not configurable upward. */
   public static final int LUCENE_KEYWORD_MAX_BYTES = 32766;
@@ -96,6 +114,81 @@ public final class SearchFieldLimits {
 
   public static void setActive(SearchFieldLimits limits) {
     active = limits;
+    PER_ENTITY.clear();
+  }
+
+  /**
+   * Limits for building documents of {@code entityType}, overlaying the depth limit from that
+   * entity's stored mapping onto {@link #active()}. Falls back to {@link #active()} when no entity
+   * type is given or no stored override exists.
+   */
+  public static SearchFieldLimits forEntity(String entityType) {
+    SearchFieldLimits result = active();
+    if (entityType != null && !entityType.isBlank()) {
+      result = PER_ENTITY.computeIfAbsent(entityType, SearchFieldLimits::resolveForEntity);
+    }
+    return result;
+  }
+
+  /** Drops the memoized per-entity limits so the next build re-reads the stored mappings. */
+  public static void invalidateEntityCache() {
+    PER_ENTITY.clear();
+  }
+
+  private static SearchFieldLimits resolveForEntity(String entityType) {
+    SearchFieldLimits base = active();
+    Integer storedDepth = storedDepthLimit(entityType);
+    SearchFieldLimits result = base;
+    if (storedDepth != null && storedDepth > 0 && storedDepth != base.getDepthLimit()) {
+      result = base.withDepthLimit(storedDepth);
+    }
+    return result;
+  }
+
+  private static Integer storedDepthLimit(String entityType) {
+    Integer result = null;
+    try {
+      SearchIndexMappings stored =
+          SettingsCache.getSettingOrDefault(
+              SettingsType.SEARCH_INDEX_MAPPINGS, null, SearchIndexMappings.class);
+      result = depthLimitFromMapping(entityMapping(stored, entityType));
+    } catch (Exception notResolved) {
+      LOG.debug("Could not resolve stored depth limit for entity {}", entityType, notResolved);
+    }
+    return result;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> entityMapping(SearchIndexMappings stored, String entityType) {
+    Map<String, Object> result = null;
+    if (stored != null && stored.getLanguages() != null) {
+      for (Map<String, Object> byEntity : stored.getLanguages().values()) {
+        if (byEntity != null && byEntity.get(entityType) instanceof Map<?, ?> mapping) {
+          result = (Map<String, Object>) mapping;
+          break;
+        }
+      }
+    }
+    return result;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Integer depthLimitFromMapping(Map<String, Object> mapping) {
+    Object node = mapping;
+    for (String key : DEPTH_LIMIT_PATH) {
+      node = node instanceof Map ? ((Map<String, Object>) node).get(key) : null;
+    }
+    return node instanceof Number depth ? depth.intValue() : null;
+  }
+
+  SearchFieldLimits withDepthLimit(int newDepthLimit) {
+    return new SearchFieldLimits(
+        hardeningEnabled,
+        keywordMaxBytes,
+        newDepthLimit,
+        nestedObjectsLimit,
+        totalFieldsLimit,
+        maxColumns);
   }
 
   private static synchronized SearchFieldLimits loadActive() {

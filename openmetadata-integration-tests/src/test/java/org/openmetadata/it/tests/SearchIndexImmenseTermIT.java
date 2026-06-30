@@ -13,8 +13,11 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -47,39 +50,70 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  * limit (32,766 bytes) — e.g. a ~50 KB Looker/DAX expression.
  *
  * <ul>
- *   <li><b>Depth:</b> a plain {@code object} mapping grows one mapping level per nesting and blows
- *       past the depth limit (the failure PR #28214 hit). Mapping the recursive {@code children} as
- *       {@code object}/{@code "enabled": false} makes it a terminal mapping node — the subtree is
- *       stored in {@code _source} but never parsed — so arbitrary document depth adds zero mapping
- *       depth, exactly like the previous {@code flattened} mapping.
- *   <li><b>Immense term:</b> {@code flattened} indexed every leaf as one keyword term, so the
- *       oversized leaf failed the whole bulk insert on OpenSearch (no {@code ignore_above} on
- *       {@code flat_object}). {@code enabled:false} indexes no leaf at all, removing the exposure
- *       identically on both engines.
+ *   <li><b>Indexing never fails:</b> mapping the recursive {@code children} as {@code object}/{@code
+ *       "enabled": false} makes it a terminal mapping node — the subtree is stored in {@code _source}
+ *       but never parsed — so arbitrary document depth adds zero mapping depth and the oversized leaf
+ *       is never indexed as a keyword term. The container always indexes on both engines.
+ *   <li><b>Column-name searchability is bounded by the configured depth and is tunable:</b> the
+ *       analyzed {@code columnNamesFuzzy} field is built from the flattened column hierarchy, capped
+ *       at the depth limit. With the default 20 a 25-level leaf name is dropped (not searchable);
+ *       after raising the limit through the admin search-index-mappings API, a container indexed
+ *       afterwards has that deep leaf name searchable again.
  * </ul>
- *
- * <p>Not engine-gated: the original break reproduces on OpenSearch, and the test also asserts the
- * deeply nested column name stays searchable via the analyzed {@code columnNamesFuzzy} field (built
- * from the full child hierarchy), not the dropped flattened {@code children} field.
  */
 @Slf4j
 @ExtendWith(TestNamespaceExtension.class)
 public class SearchIndexImmenseTermIT {
 
   private static final String CONTAINER_ASSET_TYPE = "container";
+  private static final String MAPPING_LANGUAGE = "en";
   private static final int LUCENE_MAX_TERM_BYTES = 32766;
   private static final int NESTING_DEPTH = 25;
+  private static final int RAISED_DEPTH_LIMIT = NESTING_DEPTH + 5;
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
+  private record NestedContainer(
+      String containerId, String leafColumnName, String descriptionToken) {}
+
   @Test
-  void oversizedLeafInDeeplyNestedColumnIndexesAndStaysSearchable(TestNamespace ns)
-      throws Exception {
+  void deepColumnSearchabilityFollowsConfiguredDepthLimit(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
-    // Letters-only token: word_delimiter fragments alphanumeric runs on letter/digit boundaries,
-    // so a token carrying RUN_ID hex digits would tokenize inconsistently between the indexed
-    // column name and the query. Letters keep the leaf name a single, exactly-matchable term.
-    String token = ns.prefix("immense").replaceAll("[^a-zA-Z]", "").toLowerCase();
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+
+    // Phase 1 — default depth limit (20): the container indexes despite the >32 KB leaf, but the
+    // 25-level-deep column name is dropped from columnNamesFuzzy and is not searchable.
+    NestedContainer withDefault = createDeeplyNestedContainer(ns, client, service, "depthdefault");
+    awaitContainerSearchable(withDefault.descriptionToken(), withDefault.containerId());
+    assertFalse(
+        searchFindsContainer(withDefault.leafColumnName(), withDefault.containerId()),
+        "With the default depth limit the 25-level-deep column name must not be searchable");
+
+    // Raise the container index depth limit past the nesting depth via the admin mappings API.
+    raiseContainerDepthLimit(RAISED_DEPTH_LIMIT);
+
+    // Phase 2 — a container indexed after the increase has its deep column name searchable again.
+    NestedContainer withRaised = createDeeplyNestedContainer(ns, client, service, "depthraised");
+    awaitContainerSearchable(withRaised.descriptionToken(), withRaised.containerId());
+    Awaitility.await("deep column searchable after raising the depth limit")
+        .atMost(120, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchFindsContainer(withRaised.leafColumnName(), withRaised.containerId()),
+                    "After raising the depth limit the 25-level-deep column name must be searchable"));
+  }
+
+  private NestedContainer createDeeplyNestedContainer(
+      TestNamespace ns, OpenMetadataClient client, StorageService service, String label)
+      throws Exception {
+    // Letters-only token: word_delimiter fragments alphanumeric runs on letter/digit boundaries, so
+    // a token carrying hex digits tokenizes inconsistently between the indexed column name and the
+    // query. Letters keep the leaf name a single, exactly-matchable term.
+    String token = ns.prefix(label).replaceAll("[^a-zA-Z]", "").toLowerCase();
     String descriptionToken = "immensedesc" + token;
     String leafColumnName = "deepleaf" + token;
     String oversizedLeaf = buildOversizedExpression();
@@ -87,31 +121,20 @@ public class SearchIndexImmenseTermIT {
         oversizedLeaf.getBytes(StandardCharsets.UTF_8).length > LUCENE_MAX_TERM_BYTES,
         "Fixture must exceed the Lucene term limit to exercise the original failure");
 
-    StorageService service = StorageServiceTestFactory.createS3(ns);
     Column topLevelColumn = buildDeeplyNestedColumn(token, leafColumnName, oversizedLeaf);
     ContainerDataModel dataModel = new ContainerDataModel().withColumns(List.of(topLevelColumn));
     CreateContainer request = new CreateContainer();
-    request.setName(ns.prefix("immense-container"));
+    request.setName(ns.prefix(label + "-container"));
     request.setService(service.getFullyQualifiedName());
     request.setDescription(descriptionToken);
     request.setDataModel(dataModel);
     Container container = client.containers().create(request);
-    String containerId = container.getId().toString();
     log.info(
         "Created container {} nested {} levels deep with a {}-byte leaf",
-        containerId,
+        container.getId(),
         NESTING_DEPTH,
         oversizedLeaf.getBytes(StandardCharsets.UTF_8).length);
-
-    // Plain-object mapping would exceed the depth limit; flattened would fail the oversized leaf
-    // (immense term) on OpenSearch. object/enabled:false lets the document index in both respects.
-    awaitContainerSearchable(descriptionToken, containerId);
-
-    HttpResponse<String> byDeepColumn = searchContainers(leafColumnName);
-    assertEquals(200, byDeepColumn.statusCode(), "Deep nested column-name search must not error");
-    assertTrue(
-        byDeepColumn.body().contains(containerId),
-        "A 25-level-deep column name must remain searchable via columnNamesFuzzy");
+    return new NestedContainer(container.getId().toString(), leafColumnName, descriptionToken);
   }
 
   private Column buildDeeplyNestedColumn(
@@ -143,17 +166,63 @@ public class SearchIndexImmenseTermIT {
     return builder.toString();
   }
 
+  /**
+   * Raises {@code settings.index.mapping.depth.limit} on the stored {@code container} mapping via the
+   * admin search-index-mappings API, leaving every other field intact. The change takes effect for
+   * containers indexed afterwards (the per-entity field limits are re-read once the setting cache is
+   * invalidated by the update).
+   */
+  private void raiseContainerDepthLimit(int newDepthLimit) throws Exception {
+    HttpResponse<String> current =
+        adminRequest(
+            "GET",
+            "/v1/system/settings/searchIndexMappings/"
+                + MAPPING_LANGUAGE
+                + "/"
+                + CONTAINER_ASSET_TYPE
+                + "?fallback=true",
+            null);
+    assertEquals(200, current.statusCode(), "Fetching the container mapping must succeed");
+
+    ObjectNode mapping = (ObjectNode) MAPPER.readTree(current.body());
+    ObjectNode depth =
+        objectChild(
+            objectChild(objectChild(objectChild(mapping, "settings"), "index"), "mapping"),
+            "depth");
+    depth.put("limit", newDepthLimit);
+
+    HttpResponse<String> updated =
+        adminRequest(
+            "PUT",
+            "/v1/system/settings/searchIndexMappings/"
+                + MAPPING_LANGUAGE
+                + "/"
+                + CONTAINER_ASSET_TYPE,
+            MAPPER.writeValueAsString(mapping));
+    assertEquals(200, updated.statusCode(), "Updating the container mapping must succeed");
+  }
+
+  private static ObjectNode objectChild(ObjectNode parent, String field) {
+    ObjectNode result;
+    if (parent.get(field) instanceof ObjectNode existing) {
+      result = existing;
+    } else {
+      result = parent.putObject(field);
+    }
+    return result;
+  }
+
   private void awaitContainerSearchable(String token, String containerId) {
     Awaitility.await("container indexed in search")
         .atMost(180, TimeUnit.SECONDS)
         .pollInterval(1, TimeUnit.SECONDS)
         .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              HttpResponse<String> response = searchContainers(token);
-              assertEquals(200, response.statusCode());
-              assertTrue(response.body().contains(containerId));
-            });
+        .untilAsserted(() -> assertTrue(searchFindsContainer(token, containerId)));
+  }
+
+  private boolean searchFindsContainer(String token, String containerId) throws Exception {
+    HttpResponse<String> response = searchContainers(token);
+    return response.statusCode() == 200 && response.body().contains(containerId);
   }
 
   private HttpResponse<String> searchContainers(String token) throws Exception {
@@ -163,15 +232,23 @@ public class SearchIndexImmenseTermIT {
             + "&index="
             + CONTAINER_ASSET_TYPE
             + "&from=0&size=10&deleted=false";
-    HttpRequest httpRequest =
+    return adminRequest("GET", path, null);
+  }
+
+  private HttpResponse<String> adminRequest(String method, String path, String body)
+      throws Exception {
+    HttpRequest.Builder builder =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + path))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-    return HTTP_CLIENT.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+            .timeout(Duration.ofSeconds(30));
+    if ("PUT".equals(method)) {
+      builder.PUT(HttpRequest.BodyPublishers.ofString(body));
+    } else {
+      builder.GET();
+    }
+    return HTTP_CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString());
   }
 }
