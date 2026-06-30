@@ -69,7 +69,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className={classNames("tw:mb-0 tw:p-6", headerCardClassName)}>
+      <Card className={classNames('tw:mb-0 tw:p-6', headerCardClassName)}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
           <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">

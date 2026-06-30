@@ -329,7 +329,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className={classNames("tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3", headerCardClassName)}>
+      <Card
+        className={classNames(
+          'tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3',
+          headerCardClassName
+        )}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">

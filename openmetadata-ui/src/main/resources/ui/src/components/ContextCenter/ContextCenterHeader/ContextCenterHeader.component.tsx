@@ -79,7 +79,12 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     <div className="tw:flex tw:flex-col" data-testid="context-center-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className={classNames('tw:mb-5 tw:p-5',className, headerCardClassName)}>
+      <Card
+        className={classNames(
+          'tw:mb-5 tw:p-5',
+          className,
+          headerCardClassName
+        )}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>
