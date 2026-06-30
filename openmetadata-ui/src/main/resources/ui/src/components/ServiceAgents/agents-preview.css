@@ -11,46 +11,57 @@
  *  limitations under the License.
  */
 
+/*
+ * Token bridge: aliases the design mock's bare token names to OpenMetadata's
+ * real Tailwind-v4 theme tokens, which are emitted with a `tw` prefix
+ * (`--tw-color-*`, `--tw-shadow-*`) because tailwind.css imports the theme via
+ * `@import 'tailwindcss/theme.css' prefix(tw)`. Components use the bare mock
+ * names; this scope resolves them to the live design-system values.
+ */
 .agents-preview-root {
-  --blue-25: var(--color-blue-25);
-  --blue-50: var(--color-blue-50);
-  --blue-100: var(--color-blue-100);
-  --blue-200: var(--color-blue-200);
-  --blue-300: var(--color-blue-300);
-  --blue-500: var(--color-blue-500);
-  --blue-600: var(--color-blue-600);
-  --blue-700: var(--color-blue-700);
-  --gray-25: var(--color-gray-25);
-  --gray-50: var(--color-gray-50);
-  --gray-100: var(--color-gray-100);
-  --gray-300: var(--color-gray-300);
-  --gray-400: var(--color-gray-400);
-  --gray-950: var(--color-gray-950);
-  --success-50: var(--color-success-50);
-  --success-200: var(--color-success-200);
-  --success-500: var(--color-success-500);
-  --success-600: var(--color-success-600);
-  --success-700: var(--color-success-700);
-  --error-50: var(--color-error-50);
-  --error-200: var(--color-error-200);
-  --error-500: var(--color-error-500);
-  --error-600: var(--color-error-600);
-  --error-700: var(--color-error-700);
-  --warning-50: var(--color-warning-50);
-  --warning-200: var(--color-warning-200);
-  --warning-500: var(--color-warning-500);
-  --warning-700: var(--color-warning-700);
-  --fg-primary: var(--color-text-primary);
-  --fg-secondary: var(--color-text-secondary);
-  --fg-tertiary: var(--color-text-tertiary);
-  --fg-muted: var(--color-text-quaternary);
-  --fg-link: var(--color-blue-600);
-  --border-default: var(--color-border-secondary);
-  --border-subtle: var(--color-border-secondary);
-  --border-brand: var(--color-blue-600);
-  --bg-app: var(--color-white);
-  --bg-subtle: var(--color-gray-25);
-  --surface-hover: var(--color-gray-100);
-  --shadow-btn-primary: var(--shadow-sm);
-  --shadow-btn-secondary: var(--shadow-xs);
+  --blue-25: var(--tw-color-blue-25);
+  --blue-50: var(--tw-color-blue-50);
+  --blue-100: var(--tw-color-blue-100);
+  --blue-200: var(--tw-color-blue-200);
+  --blue-300: var(--tw-color-blue-300);
+  --blue-500: var(--tw-color-blue-500);
+  --blue-600: var(--tw-color-blue-600);
+  --blue-700: var(--tw-color-blue-700);
+  --gray-25: var(--tw-color-gray-25);
+  --gray-50: var(--tw-color-gray-50);
+  --gray-100: var(--tw-color-gray-100);
+  --gray-300: var(--tw-color-gray-300);
+  --gray-400: var(--tw-color-gray-400);
+  --gray-950: var(--tw-color-gray-950);
+  --success-50: var(--tw-color-success-50);
+  --success-200: var(--tw-color-success-200);
+  --success-500: var(--tw-color-success-500);
+  --success-600: var(--tw-color-success-600);
+  --success-700: var(--tw-color-success-700);
+  --error-50: var(--tw-color-error-50);
+  --error-200: var(--tw-color-error-200);
+  --error-500: var(--tw-color-error-500);
+  --error-600: var(--tw-color-error-600);
+  --error-700: var(--tw-color-error-700);
+  --warning-50: var(--tw-color-warning-50);
+  --warning-200: var(--tw-color-warning-200);
+  --warning-500: var(--tw-color-warning-500);
+  --warning-700: var(--tw-color-warning-700);
+  --fg-primary: var(--tw-color-text-primary);
+  --fg-secondary: var(--tw-color-text-secondary);
+  --fg-tertiary: var(--tw-color-text-tertiary);
+  --fg-muted: var(--tw-color-text-quaternary);
+  --fg-link: var(--tw-color-blue-600);
+  --border-default: var(--tw-color-border-secondary);
+  --border-subtle: var(--tw-color-border-secondary);
+  --border-brand: var(--tw-color-blue-600);
+  --bg-app: var(--tw-color-white);
+  --bg-subtle: var(--tw-color-gray-25);
+  --surface-hover: var(--tw-color-gray-100);
+  --shadow-xs: var(--tw-shadow-xs);
+  --shadow-sm: var(--tw-shadow-sm);
+  --shadow-lg: var(--tw-shadow-lg);
+  --shadow-2xl: var(--tw-shadow-2xl);
+  --shadow-btn-primary: var(--tw-shadow-sm);
+  --shadow-btn-secondary: var(--tw-shadow-xs);
 }
