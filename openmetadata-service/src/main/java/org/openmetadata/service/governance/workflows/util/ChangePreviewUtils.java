@@ -188,26 +188,30 @@ public final class ChangePreviewUtils {
     if (entity == null) return existingPayload;
     ChangeDescription changeDescription = entity.getChangeDescription();
     if (hasNoChanges(changeDescription)) {
-      LOG.info(
-          "[ChangePreview] entity='{}' v={} changeDescription is empty/null; carrying existing payload",
-          entity.getFullyQualifiedName(),
-          entity.getVersion());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
+            "[ChangePreview] entity='{}' v={} changeDescription is empty/null; carrying existing payload",
+            entity.getFullyQualifiedName(),
+            entity.getVersion());
+      }
       return existingPayload;
     }
     try {
       Map<String, FieldDiff> priorMap = extractProposedChanges(existingPayload);
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
-      LOG.info(
-          "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",
-          entity.getFullyQualifiedName(),
-          entity.getVersion(),
-          listOrEmpty(changeDescription.getFieldsAdded()),
-          listOrEmpty(changeDescription.getFieldsDeleted()),
-          listOrEmpty(changeDescription.getFieldsUpdated()),
-          priorMap,
-          newMap,
-          merged);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
+            "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",
+            entity.getFullyQualifiedName(),
+            entity.getVersion(),
+            listOrEmpty(changeDescription.getFieldsAdded()),
+            listOrEmpty(changeDescription.getFieldsDeleted()),
+            listOrEmpty(changeDescription.getFieldsUpdated()),
+            priorMap,
+            newMap,
+            merged);
+      }
       Map<String, Object> updated = cloneAsMutableMap(existingPayload);
       if (merged.isEmpty()) {
         updated.remove(PROPOSED_CHANGES_KEY);

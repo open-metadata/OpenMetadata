@@ -168,6 +168,13 @@ const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   domains: (fqn) => getDomainDetailsPath(fqn),
 };
 
+const stripHtmlTags = (value: string): string =>
+  value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
   if (
     typeof payload !== 'object' ||
@@ -1701,7 +1708,7 @@ export const TaskTabNew = ({
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--removed"
                               key={`${field}-removed-${val}-${index}`}>
-                              {val}
+                              {stripHtmlTags(val)}
                             </span>
                           )
                         )}
@@ -1717,7 +1724,7 @@ export const TaskTabNew = ({
                             <span
                               className="task-proposed-changes-chip task-proposed-changes-chip--added"
                               key={`${field}-added-${val}-${index}`}>
-                              {val}
+                              {stripHtmlTags(val)}
                             </span>
                           )
                         )}
