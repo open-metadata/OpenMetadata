@@ -102,11 +102,11 @@ public class ExpireOnTimerImpl implements JavaDelegate {
 
   private void resolveTaskExpired(UUID taskId, String actingUser, String resolutionTypeValue) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    Task task =
-        taskRepository.get(
-            null,
-            taskId,
-            taskRepository.getFields("assignees,reviewers,about,createdBy,payload,resolution"));
+    // getFields("*") not the narrow set: TaskRepository.clearFields nulls comments when the field
+    // is not requested, and resolveTask -> storeEntity serializes the task back via pojoToJson —
+    // a narrow fetch silently erases all task comments on auto-close. Every other resolveTask
+    // call site already loads the full field set for this reason.
+    Task task = taskRepository.get(null, taskId, taskRepository.getFields("*"));
     if (!NON_TERMINAL_STATUSES.contains(task.getStatus())) {
       LOG.info(
           "[ExpireOnTimer] Task '{}' already terminal (status={}); skipping expiry close to avoid double-resolve",
