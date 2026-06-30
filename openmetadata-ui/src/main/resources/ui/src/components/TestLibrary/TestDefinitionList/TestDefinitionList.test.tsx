@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../../../generated/entity/bot';
@@ -24,34 +25,98 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionList from './TestDefinitionList.component';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  Popover: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  PopoverTrigger: jest
-    .fn()
-    .mockImplementation(({ children }) => <div>{children}</div>),
-  Button: jest
-    .fn()
-    .mockImplementation(({ children, onClick }) => (
-      <button onClick={onClick}>{children}</button>
-    )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({ icon, onClick, className, 'data-testid': testId }) => (
-        <button className={className} data-testid={testId} onClick={onClick}>
-          {icon}
-        </button>
-      )
+jest.mock('@openmetadata/ui-core-components', () => {
+  const TableMock = Object.assign(
+    ({
+      children,
+      'data-testid': testId,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      'data-testid'?: string;
+      'aria-label'?: string;
+    }) => (
+      <table aria-label={ariaLabel} data-testid={testId}>
+        {children}
+      </table>
     ),
-  FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
-  Typography: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-  defaultColors: { gray: { 50: '#fafafa' } },
-}));
+    {
+      Header: ({
+        columns,
+        children,
+      }: {
+        columns?: { id: string; label: string }[];
+        children: (col: { id: string; label: string }) => React.ReactNode;
+      }) => (
+        <thead>
+          <tr>
+            {columns?.map((col) => (
+              <th key={col.id}>{children(col)}</th>
+            ))}
+          </tr>
+        </thead>
+      ),
+      Head: ({ label }: { label?: string }) => <span>{label}</span>,
+      Body: ({
+        items,
+        children,
+        renderEmptyState,
+      }: {
+        items?: unknown[];
+        children: (item: unknown) => React.ReactNode;
+        renderEmptyState?: () => React.ReactNode;
+        dependencies?: unknown[];
+      }) => (
+        <tbody>
+          {!items || items.length === 0
+            ? renderEmptyState?.()
+            : items.map((item) => children(item))}
+        </tbody>
+      ),
+      Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
+        <tr data-rowid={id}>{children}</tr>
+      ),
+      Cell: ({ children }: { children?: React.ReactNode }) => (
+        <td>{children}</td>
+      ),
+    }
+  );
+
+  return {
+    Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    PopoverTrigger: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Button: jest
+      .fn()
+      .mockImplementation(({ children, onClick }) => (
+        <button onClick={onClick}>{children}</button>
+      )),
+    ButtonUtility: jest
+      .fn()
+      .mockImplementation(
+        ({ icon, onClick, className, 'data-testid': testId }) => (
+          <button className={className} data-testid={testId} onClick={onClick}>
+            {icon}
+          </button>
+        )
+      ),
+    FeaturedIcon: jest
+      .fn()
+      .mockImplementation(({ icon }) => <span>{icon}</span>),
+    Typography: jest
+      .fn()
+      .mockImplementation(({ children }) => <span>{children}</span>),
+    Skeleton: jest
+      .fn()
+      .mockImplementation(() => <div data-testid="skeleton" />),
+    Table: TableMock,
+    defaultColors: { gray: { 50: '#fafafa' } },
+  };
+});
 
 const mockTestDefinitions = {
   data: [
