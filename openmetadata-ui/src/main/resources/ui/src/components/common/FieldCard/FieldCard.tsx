@@ -340,16 +340,13 @@ const FieldCard: React.FC<FieldCardProps> = ({
                 />
               </div>
               {(shouldShowButton || isExpanded) && (
-                <button
-                  className={classNames(
-                    'tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:pt-1',
-                    'tw:text-xs tw:text-brand-secondary tw:no-underline',
-                    'tw:transition-colors hover:tw:underline'
-                  )}
-                  type="button"
+                <Button
+                  className="tw:mt-1"
+                  color="link-color"
+                  size="xs"
                   onClick={toggleExpanded}>
                   {isExpanded ? t('label.show-less') : t('label.show-more')}
-                </button>
+                </Button>
               )}
             </div>
           ) : (
