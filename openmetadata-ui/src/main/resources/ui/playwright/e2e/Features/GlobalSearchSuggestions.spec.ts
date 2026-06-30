@@ -38,6 +38,8 @@ test.describe('Global Search Column Suggestions', () => {
   });
 
   test('Navigate to column from column suggestion', async ({ page }) => {
+    await page.getByTestId('KnowledgePanel.ActivityFeed').waitFor({ state: 'visible' });
+    await waitForAllLoadersToDisappear(page);
     const column = table.entityResponseData?.columns?.[0];
     const columnName = column?.name;
     const columnSelector = `[data-testid="${table.service.name}-${columnName}"]`;
