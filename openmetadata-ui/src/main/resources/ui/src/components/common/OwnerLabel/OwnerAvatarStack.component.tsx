@@ -58,7 +58,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 
     return (
       <span
-        className="owner-avatar-stack-team tw:bg-brand-100 tw:text-brand-600"
+        className="owner-avatar-stack-team tw:bg-utility-gray-100 tw:text-utility-gray-600"
         data-testid={entityName}
         style={{ width: avatarSize, height: avatarSize }}>
         <TeamsIcons

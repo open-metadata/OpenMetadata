@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import {
@@ -126,24 +131,25 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         offset={6}
         placement="bottom start">
         <div
-          className="tw:flex tw:flex-col"
+          className="tw:flex tw:flex-col tw:p-4 tw:gap-3"
           data-testid="owners-overflow-popover">
           <Typography
-            as="div"
-            className="tw:px-3 tw:pb-2 tw:text-primary"
+            color="primary"
             data-testid="owners-overflow-total"
             size="text-sm"
-            weight="semibold">
+            weight="medium">
             {totalCount} {t('label.owner-plural')}
           </Typography>
 
+          <Divider className="tw-border-t tw:border-secondary" />
+
           {teamOwners.length > 0 && (
             <div
-              className="tw:flex tw:flex-col tw:py-1 tw:border-t tw:border-secondary"
+              className="tw:flex tw:flex-col "
               data-testid="owners-overflow-teams-section">
               <Typography
                 as="div"
-                className="tw:px-3 tw:py-1 tw:text-tertiary tw:tracking-wider"
+                className="tw:pb-2 tw:text-quaternary"
                 size="text-xs"
                 weight="medium">
                 {t('label.team-plural')} ({teamOwners.length})
@@ -152,13 +158,15 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
             </div>
           )}
 
+          <Divider className="tw-border-t tw:border-secondary" />
+
           {userOwners.length > 0 && (
             <div
-              className="tw:flex tw:flex-col tw:py-1 tw:border-t tw:border-secondary"
+              className="tw:flex tw:flex-col"
               data-testid="owners-overflow-users-section">
               <Typography
                 as="div"
-                className="tw:px-3 tw:py-1 tw:text-tertiary tw:tracking-wider"
+                className="tw:pb-2 tw:text-quaternary"
                 size="text-xs"
                 weight="medium">
                 {t('label.user-plural')} ({userOwners.length})
