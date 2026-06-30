@@ -158,7 +158,6 @@ export const handleAssetDownload = async (file: ContextFile) => {
   }
 };
 
-
 export const getSortConfig = (
   sortBy: MemorySortBy
 ): {

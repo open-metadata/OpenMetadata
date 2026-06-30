@@ -28,7 +28,7 @@ import {
   FilterFunnel02,
   Plus,
   SearchLg,
-  User03
+  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -47,6 +47,11 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import {
+  FILTER_TABS,
+  MEMORIES_PER_PAGE,
+  MEMORY_FIELDS,
+} from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -69,7 +74,11 @@ import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { MemoryCounts, MemoryFilterOption, SearchOptionSource } from './ContextCenterMemoriesPage.interface';
+import {
+  MemoryCounts,
+  MemoryFilterOption,
+  SearchOptionSource,
+} from './ContextCenterMemoriesPage.interface';
 
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
@@ -114,9 +123,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isAuthorOptionsLoading, setIsAuthorOptionsLoading] = useState(false);
   const [sortBy, setSortBy] = useState<MemorySortBy>('updated');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [debouncedAssetSearch, setDebouncedAssetSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
-  const isAssetSearchMounted = useRef(false);
   const isAuthorSearchMounted = useRef(false);
 
   const SORT_OPTIONS = useMemo(
@@ -272,12 +279,6 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [searchValue]);
 
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedAssetSearch(assetSearch), 300);
-
-    return () => clearTimeout(id);
-  }, [assetSearch]);
-
-  useEffect(() => {
     const id = setTimeout(() => setDebouncedAuthorSearch(authorSearch), 300);
 
     return () => clearTimeout(id);
@@ -286,15 +287,6 @@ const ContextCenterMemoriesPage: FC = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch]);
-
-  useEffect(() => {
-    if (!isAssetSearchMounted.current) {
-      isAssetSearchMounted.current = true;
-
-      return;
-    }
-    fetchAssetOptions(debouncedAssetSearch);
-  }, [debouncedAssetSearch, fetchAssetOptions]);
 
   useEffect(() => {
     if (!isAuthorSearchMounted.current) {
@@ -563,8 +555,7 @@ const ContextCenterMemoriesPage: FC = () => {
             className="tw:gap-2"
             items={FILTER_TABS.map((tab) => ({
               id: tab.id,
-              label:
-               <div className="tw:leading-4.5">{t(tab.label)}</div>,
+              label: <div className="tw:leading-4.5">{t(tab.label)}</div>,
             }))}
             type="button-brand">
             {(tab) => (
