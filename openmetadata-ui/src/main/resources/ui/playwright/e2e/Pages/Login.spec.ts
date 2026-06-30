@@ -19,6 +19,7 @@ import {
   clickOutside,
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  toastNotification,
   visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -124,9 +125,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="login"]').click();
     await loginResponse;
 
-    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
-      LOGIN_ERROR_MESSAGE
-    );
+    await toastNotification(page, LOGIN_ERROR_MESSAGE);
 
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
@@ -135,9 +134,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="login"]').click();
     await loginResponse2;
 
-    await expect(page.locator('[data-testid="alert-bar"]')).toHaveText(
-      LOGIN_ERROR_MESSAGE
-    );
+    await toastNotification(page, LOGIN_ERROR_MESSAGE);
   });
 
   test('Forgot password and login with new password', async ({ page }) => {

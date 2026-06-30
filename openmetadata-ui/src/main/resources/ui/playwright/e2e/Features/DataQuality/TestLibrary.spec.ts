@@ -12,7 +12,12 @@
  */
 import test, { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../../utils/common';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -155,7 +160,7 @@ test.describe(
         expect(responseData.status()).toBe(201);
 
         // Wait for success toast
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
 
         // Verify test definition appears in table
         await expect(page.getByTestId(TEST_DEFINITION_NAME)).toBeVisible();
@@ -206,7 +211,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('should enable/disable test definition', async () => {
@@ -235,7 +240,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
         await expect(firstSwitch).toHaveAttribute(
@@ -280,7 +285,7 @@ test.describe(
         expect(response.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Verify test definition is removed from table
         await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
@@ -391,7 +396,7 @@ test.describe(
           const responseBody = await responseData.json();
           createdTestDefinitionId = responseBody.id;
 
-          await expect(page.getByText(/created successfully/i)).toBeVisible();
+          await toastNotification(page, /created successfully/i);
         });
       } finally {
         if (createdTestDefinitionId) {
@@ -631,7 +636,7 @@ test.describe(
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).toBeVisible();
       });
 
@@ -720,7 +725,7 @@ test.describe(
         expect(updatedBody.parameterDefinition[0].dataType).toBeUndefined();
         expect(updatedBody.parameterDefinition[0].description).toBeUndefined();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete external test definition', async () => {
@@ -750,7 +755,7 @@ test.describe(
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).not.toBeVisible();
       });
     });
@@ -831,7 +836,7 @@ test.describe(
         const createdData = await responseData.json();
         createdTestId = createdData.id;
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).toBeVisible();
@@ -953,7 +958,7 @@ test.describe(
         expect(updatedData.supportedServices).toContain('BigQuery');
         expect(updatedData.supportedServices).not.toContain('MySql');
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Verify updated supported services are persisted', async () => {
@@ -1034,7 +1039,7 @@ test.describe(
             updatedData.supportedServices.length === 0
         ).toBeTruthy();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete test definition', async () => {
@@ -1060,7 +1065,7 @@ test.describe(
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).not.toBeVisible();
@@ -1114,7 +1119,7 @@ test.describe(
 
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
       });
 
       await test.step('Change page size to 25', async () => {
@@ -1190,7 +1195,7 @@ test.describe(
         const updateResponse = await patchResponse;
         expect(updateResponse.status()).toBe(200);
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify we stayed on the same page (previous button state should be unchanged)
         if (prevDisabledBefore) {
@@ -1232,7 +1237,7 @@ test.describe(
         // Wait for the GET that happens after delete (page reset + fetch)
         await getResponse;
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Previous button should be disabled on first page
         const previousButton = page.getByTestId('previous');
