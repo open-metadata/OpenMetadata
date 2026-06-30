@@ -10,24 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../styles/variables.less';
+@import (reference) '../../styles/variables.less';
 
 .search-index-mappings-page {
   padding: 16px;
 
-  &__header {
-    margin-top: 12px;
-  }
-
-  &__editor-card {
-    .ant-card-body {
-      padding: 0;
-    }
-
-    .CodeMirror {
-      height: calc(100vh - 380px);
-      min-height: 420px;
-    }
+  &__editor .CodeMirror {
+    height: calc(100vh - 380px);
+    min-height: 420px;
   }
 
   &__editor-loader,

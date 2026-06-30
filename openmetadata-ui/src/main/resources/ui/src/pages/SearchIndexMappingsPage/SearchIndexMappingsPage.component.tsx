@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Button, Card, Col, Empty, Row, Select, Space, Tag } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Select,
+  SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -36,7 +42,6 @@ import {
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './search-index-mappings-page.less';
-import { SelectOption } from './SearchIndexMappingsPage.interface';
 
 const DEFAULT_LANGUAGE = 'en';
 
@@ -59,29 +64,29 @@ const SearchIndexMappingsPage = () => {
   const [selectedEntityType, setSelectedEntityType] = useState<string>('');
   const [editorValue, setEditorValue] = useState<string>('');
 
-  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+  const breadcrumbs = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.PREFERENCES,
         t('label.search-mapping-plural')
-      ),
+      ).map((link) => ({ href: link.url, label: link.name })),
     [t]
   );
 
-  const languageOptions: SelectOption[] = useMemo(
+  const languageItems: SelectItemType[] = useMemo(
     () =>
       Object.keys(mappingsList).map((language) => ({
+        id: language,
         label: language.toUpperCase(),
-        value: language,
       })),
     [mappingsList]
   );
 
-  const entityTypeOptions: SelectOption[] = useMemo(
+  const entityTypeItems: SelectItemType[] = useMemo(
     () =>
       (mappingsList[selectedLanguage] ?? []).map((entityType) => ({
+        id: entityType,
         label: entityType,
-        value: entityType,
       })),
     [mappingsList, selectedLanguage]
   );
@@ -202,119 +207,125 @@ const SearchIndexMappingsPage = () => {
       <div
         className="search-index-mappings-page"
         data-testid="search-index-mappings-page">
-        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        <HeaderBreadcrumb items={breadcrumbs} />
 
-        <div className="d-flex justify-between items-start flex-wrap gap-4 search-index-mappings-page__header">
+        <div className="tw:flex tw:items-start tw:justify-between tw:flex-wrap tw:gap-4 tw:mt-3">
           <PageHeader
             data={{
               header: t(PAGE_HEADERS.SEARCH_INDEX_MAPPINGS.header),
               subHeader: t(PAGE_HEADERS.SEARCH_INDEX_MAPPINGS.subHeader),
             }}
           />
-          <Space size={12}>
+          <div className="tw:flex tw:gap-3">
             <Button
+              color="secondary"
               data-testid="reset-mapping-btn"
-              disabled={isActionDisabled || isSaving}
-              loading={isResetting}
-              onClick={handleReset}>
+              isDisabled={isActionDisabled || isSaving}
+              isLoading={isResetting}
+              onPress={handleReset}>
               {t('label.reset-to-default')}
             </Button>
             <Button
+              color="primary"
               data-testid="save-mapping-btn"
-              disabled={isActionDisabled || isResetting}
-              loading={isSaving}
-              type="primary"
-              onClick={handleSave}>
+              isDisabled={isActionDisabled || isResetting}
+              isLoading={isSaving}
+              onPress={handleSave}>
               {t('label.save')}
             </Button>
-          </Space>
+          </div>
         </div>
 
         <Alert
-          showIcon
-          className="m-t-md"
-          data-testid="reindex-info-banner"
-          message={t('message.search-index-mappings-reindex-info')}
-          type="info"
+          className="tw:mt-4"
+          title={t('message.search-index-mappings-reindex-info')}
+          variant="brand"
         />
 
-        <Card
-          className="m-t-md search-index-mappings-page__toolbar"
-          data-testid="mapping-selectors">
-          <Row gutter={[16, 16]}>
-            <Col lg={6} md={8} xs={24}>
-              <label
-                className="d-block m-b-xs text-grey-muted"
-                htmlFor="language-select">
-                {t('label.language')}
-              </label>
+        <Card className="tw:mt-4">
+          <Card.Content>
+            <div className="tw:flex tw:flex-wrap tw:gap-4">
               <Select
-                className="w-full"
-                data-testid="language-select"
-                id="language-select"
-                options={languageOptions}
-                value={selectedLanguage || undefined}
-                onChange={handleLanguageChange}
-              />
-            </Col>
-            <Col lg={6} md={8} xs={24}>
-              <label
-                className="d-block m-b-xs text-grey-muted"
-                htmlFor="entity-type-select">
-                {t('label.entity-type')}
-              </label>
+                className="tw:w-60"
+                items={languageItems}
+                label={t('label.language')}
+                placeholder={t('label.language')}
+                selectedKey={selectedLanguage || null}
+                onSelectionChange={(key) =>
+                  key != null && handleLanguageChange(String(key))
+                }>
+                {(item) => (
+                  <Select.Item
+                    id={item.id}
+                    key={item.id}
+                    textValue={item.label}>
+                    {item.label}
+                  </Select.Item>
+                )}
+              </Select>
               <Select
-                showSearch
-                className="w-full"
-                data-testid="entity-type-select"
-                id="entity-type-select"
-                options={entityTypeOptions}
-                value={selectedEntityType || undefined}
-                onChange={setSelectedEntityType}
-              />
-            </Col>
-          </Row>
+                className="tw:w-60"
+                items={entityTypeItems}
+                label={t('label.entity-type')}
+                placeholder={t('label.entity-type')}
+                selectedKey={selectedEntityType || null}
+                onSelectionChange={(key) =>
+                  key != null && setSelectedEntityType(String(key))
+                }>
+                {(item) => (
+                  <Select.Item
+                    id={item.id}
+                    key={item.id}
+                    textValue={item.label}>
+                    {item.label}
+                  </Select.Item>
+                )}
+              </Select>
+            </div>
+          </Card.Content>
         </Card>
 
-        <Card
-          className="m-t-md search-index-mappings-page__editor-card"
-          data-testid="mapping-editor-card"
-          extra={
-            <Button
-              data-testid="format-mapping-btn"
-              disabled={isActionDisabled}
-              size="small"
-              type="text"
-              onClick={handleFormat}>
-              {t('label.format')}
-            </Button>
-          }
-          title={
-            <Space size={8}>
-              <span>{selectedEntityType || '--'}</span>
-              {selectedLanguage ? (
-                <Tag className="m-r-0">{selectedLanguage.toUpperCase()}</Tag>
-              ) : null}
-            </Space>
-          }>
-          {!hasMappings || !isEntitySelected ? (
-            <Empty
-              className="search-index-mappings-page__empty"
-              description={t('message.no-data-available')}
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          ) : isMappingLoading ? (
-            <div className="search-index-mappings-page__editor-loader">
-              <Loader size="small" />
-            </div>
-          ) : (
-            <SchemaEditor
-              className="search-index-mappings-page__editor"
-              mode={{ name: CSMode.JAVASCRIPT, json: true }}
-              value={editorValue}
-              onChange={setEditorValue}
-            />
-          )}
+        <Card className="tw:mt-4 search-index-mappings-page__editor-card">
+          <Card.Header
+            extra={
+              <Button
+                color="link-gray"
+                data-testid="format-mapping-btn"
+                isDisabled={isActionDisabled}
+                size="sm"
+                onPress={handleFormat}>
+                {t('label.format')}
+              </Button>
+            }
+            title={
+              <div className="tw:flex tw:items-center tw:gap-2">
+                <span>{selectedEntityType || '--'}</span>
+                {selectedLanguage ? (
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {selectedLanguage.toUpperCase()}
+                  </Badge>
+                ) : null}
+              </div>
+            }
+          />
+          <Card.Content className="tw:p-0">
+            {!hasMappings || !isEntitySelected ? (
+              <div className="search-index-mappings-page__empty">
+                {t('message.no-data-available')}
+              </div>
+            ) : isMappingLoading ? (
+              <div className="search-index-mappings-page__editor-loader">
+                <Loader size="small" />
+              </div>
+            ) : (
+              <SchemaEditor
+                className="search-index-mappings-page__editor"
+                mode={{ name: CSMode.JAVASCRIPT, json: true }}
+                value={editorValue}
+                onChange={setEditorValue}
+              />
+            )}
+          </Card.Content>
         </Card>
       </div>
     </PageLayoutV1>
