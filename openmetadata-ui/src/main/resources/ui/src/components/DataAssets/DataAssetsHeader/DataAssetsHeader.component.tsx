@@ -467,11 +467,17 @@ export const DataAssetsHeader = ({
 
   const handleStyleUpdate = useCallback(
     async (style: Style) => {
-      await onStyleUpdate?.({
+      const updatedStyle: Style = {
         ...currentStyle,
-        color: style.color ?? '',
-        iconURL: style.iconURL ?? '',
-      });
+        ...style,
+        color: style.color?.trim() ?? '',
+        iconURL: style.iconURL?.trim() ?? '',
+      };
+      const hasStyleValue = Boolean(
+        updatedStyle.color || updatedStyle.iconURL || updatedStyle.coverImage
+      );
+
+      await onStyleUpdate?.(hasStyleValue ? updatedStyle : null);
       setIsStyleEditing(false);
     },
     [currentStyle, onStyleUpdate]

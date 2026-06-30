@@ -1091,12 +1091,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const handleUpdateServiceStyle = useCallback(
-    async (style: Style) => {
+    async (style: Style | null) => {
       if (isEmpty(serviceDetails)) {
         return;
       }
 
-      const updatedData = {
+      const updatedData: Record<string, unknown> = {
         ...serviceDetails,
         style,
       };
