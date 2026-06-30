@@ -88,11 +88,11 @@ export const Toast = ({ toast }: ToastProps) => {
           className={cx('tw:size-4', config.iconClass)}
         />
       </span>
-      {typeof messageOrNode === 'string' ? (
-        <span>{messageOrNode}</span>
-      ) : (
-        (messageOrNode as ReactNode)
-      )}
+      <span data-testid="alert-message">
+        {typeof messageOrNode === 'string'
+          ? messageOrNode
+          : (messageOrNode as ReactNode)}
+      </span>
       {showClose && state && (
         <Button
           aria-label="Close"

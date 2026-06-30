@@ -96,10 +96,11 @@ interface DialogFooterProps {
 
 const DialogFooter = ({ children, className }: DialogFooterProps) => (
   <div
-    className={cx('tw:z-10 tw:pt-6 tw:pb-4 tw:sm:pt-8 tw:sm:pb-6', className)}>
-    <div className="tw:w-full tw:border-t tw:border-secondary" />
-    <div className="tw:h-4 tw:w-full tw:sm:h-6" />
-    <div className="tw:flex tw:flex-1 tw:flex-col-reverse tw:gap-3 tw:sm:grid tw:sm:grid-cols-2 tw:sm:px-6 tw:px-4">
+    className={cx(
+      'tw:z-10 tw:mt-6 tw:sm:mt-8 tw:border-t tw:border-secondary',
+      className
+    )}>
+    <div className="tw:flex tw:flex-1 tw:gap-3 tw:sm:px-6 tw:px-4 tw:py-4 tw:justify-end">
       {children}
     </div>
   </div>
