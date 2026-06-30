@@ -278,46 +278,68 @@ class TestAssetCounterAndClose:
         assert registry.snapshot() is None
 
 
-class TestGroupCounter:
-    def test_group_progress_none_by_default(self):
+class TestGlobalCounters:
+    def test_global_counters_empty_by_default(self):
         reg = ProgressRegistry()
-        assert reg.group_progress() is None
+        assert reg.global_counters() == []
 
-    def test_set_group_then_complete_group(self):
+    def test_set_total_then_track(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 10)
-        assert reg.group_progress() == ("Workspaces", 0, 10)
-        reg.complete_group()
-        reg.complete_group()
-        assert reg.group_progress() == ("Workspaces", 2, 10)
+        reg.set_total("Database", 4)
+        assert reg.global_counters() == [("Database", 0, 4)]
+        reg.track("Database")
+        reg.track("Database")
+        assert reg.global_counters() == [("Database", 2, 4)]
 
-    def test_set_group_with_unknown_total(self):
+    def test_set_total_with_unknown_total(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", None)
-        reg.complete_group()
-        assert reg.group_progress() == ("Workspaces", 1, None)
+        reg.set_total("Workspaces", None)
+        reg.track("Workspaces")
+        assert reg.global_counters() == [("Workspaces", 1, None)]
 
-    def test_complete_group_does_not_touch_asset_counter(self):
+    def test_track_unknown_type_is_noop(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 3)
-        reg.advance(["ws", "Dashboard"], "Dashboard")
-        reg.complete_group()
+        reg.track("Nope")
+        assert reg.global_counters() == []
+
+    def test_track_does_not_touch_asset_counter(self):
+        reg = ProgressRegistry()
+        reg.advance([], "Table")
+        reg.set_total("Database", 3)
+        reg.track("Database")
         assert reg.assets_ingested() == 1
-        assert reg.group_progress() == ("Workspaces", 1, 3)
+        assert reg.global_counters() == [("Database", 1, 3)]
 
-    def test_group_counter_survives_close_of_subtree(self):
+    def test_seed_scope_total_sums_and_is_reconcilable(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 2)
-        reg.open(["ws", "Dashboard"], "Dashboard", None)
-        reg.advance(["ws", "Dashboard"], "Dashboard")
-        reg.complete_group()
-        reg.close(["ws"])
-        assert reg.group_progress() == ("Workspaces", 1, 2)
-        assert reg.assets_ingested() == 1
+        reg.seed_scope_total("DatabaseSchema", "db1", 10)
+        reg.seed_scope_total("DatabaseSchema", "db2", 35)
+        assert reg.global_counters() == [("DatabaseSchema", 0, 45)]
+        assert reg.is_reconcilable("DatabaseSchema") is True
+        assert reg.is_reconcilable("Database") is False
 
-    def test_set_group_resets_done_counter(self):
+    def test_reconcile_scope_total_applies_delta(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 5)
-        reg.complete_group()
-        reg.set_group("Tables", 10)
-        assert reg.group_progress() == ("Tables", 0, 10)
+        reg.seed_scope_total("DatabaseSchema", "db1", 10)
+        reg.seed_scope_total("DatabaseSchema", "db2", 35)
+        reg.reconcile_scope_total("DatabaseSchema", "db1", 12)
+        assert reg.global_counters() == [("DatabaseSchema", 0, 47)]
+
+    def test_reconcile_unknown_type_is_noop(self):
+        reg = ProgressRegistry()
+        reg.reconcile_scope_total("DatabaseSchema", "db1", 5)
+        assert reg.global_counters() == []
+
+    def test_total_never_below_done(self):
+        reg = ProgressRegistry()
+        reg.seed_scope_total("DatabaseSchema", "db1", 1)
+        reg.track("DatabaseSchema")
+        reg.track("DatabaseSchema")
+        assert reg.global_counters() == [("DatabaseSchema", 2, 2)]
+
+    def test_set_reconcilable_creates_counter(self):
+        reg = ProgressRegistry()
+        reg.set_reconcilable("DatabaseSchema")
+        assert reg.is_reconcilable("DatabaseSchema") is True
+        reg.reconcile_scope_total("DatabaseSchema", "db1", 7)
+        assert reg.global_counters() == [("DatabaseSchema", 0, 7)]

@@ -20,8 +20,10 @@ only two things, both free (no COUNT queries):
 * ``advance(path)`` — once per leaf entity processed.
 
 Leaf ``processed`` is authoritative; container progress is *derived* at
-``snapshot()`` time (a container is complete when all its children are). There
-is no global total and no ETA — a drifting denominator reads as broken.
+``snapshot()`` time (a container is complete when all its children are).
+Run-level ``GlobalCounter``s (declared via ``set_total``/``seed_scope_total``)
+live outside the tree and survive pruning; the tree itself carries no global
+total and no ETA.
 """
 
 import threading
@@ -61,6 +63,20 @@ class ProgressNodeSnapshot:
     processed_by_type: "Mapping[str, int]" = field(default_factory=dict)
 
 
+@dataclass
+class GlobalCounter:
+    """A run-level counter that lives outside the progress tree, so pruning a
+    completed scope never erases it. ``total`` is the declared denominator (None
+    = running count only). ``scope_estimates`` holds each scope's last-known
+    contribution so the total can be reconciled by delta. ``reconcilable`` marks
+    a counter whose total the framework may nudge toward observed counts."""
+
+    total: Optional[int] = None  # noqa: UP045
+    done: int = 0
+    scope_estimates: Dict[str, int] = field(default_factory=dict)  # noqa: UP006
+    reconcilable: bool = False
+
+
 class ProgressRegistry:
     """Per-Source generic progress tree. One lock guards every mutation and the
     snapshot; each operation is O(path depth)."""
@@ -68,9 +84,7 @@ class ProgressRegistry:
     def __init__(self, active_leaf_cap: int = DEFAULT_ACTIVE_LEAF_CAP) -> None:
         self._lock = threading.Lock()
         self._total_ingested = 0
-        self._group_label: Optional[str] = None  # noqa: UP045
-        self._group_total: Optional[int] = None  # noqa: UP045
-        self._group_done: int = 0
+        self._global: Dict[str, GlobalCounter] = {}  # noqa: UP006
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
 
@@ -95,27 +109,58 @@ class ProgressRegistry:
         with self._lock:
             return self._total_ingested
 
-    def set_group(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
-        """Declare a named grouping axis (e.g. "Workspaces") and its total.
-        ``total`` is None when the count is not known upfront. Header-level and
-        independent of the tree — like ``assets_ingested``, it survives pruning."""
+    def set_total(self, type_: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare a flat global total for ``type_`` (e.g. ``Database`` = 4).
+        Header-level and independent of the tree — survives pruning."""
         with self._lock:
-            self._group_label = label
-            self._group_total = total
-            self._group_done = 0
+            self._global.setdefault(type_, GlobalCounter()).total = total
 
-    def complete_group(self) -> None:
-        """Mark one group fully processed. Deliberately does NOT increment the
-        asset counter — a workspace is not an ingested asset."""
+    def set_reconcilable(self, type_: str) -> None:
+        """Mark ``type_`` as a reconcilable global counter without seeding a
+        total — the framework will build the total from observed scope counts."""
         with self._lock:
-            self._group_done += 1
+            self._global.setdefault(type_, GlobalCounter()).reconcilable = True
 
-    def group_progress(self) -> Optional[tuple[str, int, Optional[int]]]:  # noqa: UP045
-        """(label, done, total) when a grouping axis is active, else None."""
+    def seed_scope_total(self, type_: str, scope: str, n: int) -> None:
+        """Seed one scope's contribution to ``type_``'s total upfront (and mark
+        it reconcilable). The total is the running sum of all seeded scopes."""
         with self._lock:
-            if self._group_label is None:
-                return None
-            return self._group_label, self._group_done, self._group_total
+            self._apply_scope_total(type_, scope, n)
+
+    def reconcile_scope_total(self, type_: str, scope: str, observed: int) -> None:
+        """Nudge ``type_``'s total toward the real ``observed`` count for
+        ``scope``. No-op when ``type_`` was never declared."""
+        with self._lock:
+            if type_ in self._global:
+                self._apply_scope_total(type_, scope, observed)
+
+    def _apply_scope_total(self, type_: str, scope: str, n: int) -> None:
+        counter = self._global.setdefault(type_, GlobalCounter())
+        counter.reconcilable = True
+        previous = counter.scope_estimates.get(scope, 0)
+        counter.total = (counter.total or 0) + n - previous
+        counter.scope_estimates[scope] = n
+        counter.total = max(counter.total, counter.done)
+
+    def track(self, type_: str) -> None:
+        """Record one completed scope of ``type_``. No-op for an undeclared
+        type, so the framework may call it unconditionally at scope close."""
+        with self._lock:
+            counter = self._global.get(type_)
+            if counter is not None:
+                counter.done += 1
+                if counter.total is not None and counter.total < counter.done:
+                    counter.total = counter.done
+
+    def is_reconcilable(self, type_: str) -> bool:
+        with self._lock:
+            counter = self._global.get(type_)
+            return counter is not None and counter.reconcilable
+
+    def global_counters(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+        """``(type, done, total)`` per declared global counter, insertion order."""
+        with self._lock:
+            return [(type_, c.done, c.total) for type_, c in self._global.items()]
 
     def close(self, path: List[str]) -> None:  # noqa: UP006
         """Remove the node at ``path`` from its parent's children once its work
