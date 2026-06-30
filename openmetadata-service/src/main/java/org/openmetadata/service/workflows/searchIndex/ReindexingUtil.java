@@ -63,12 +63,12 @@ public class ReindexingUtil {
   public static final String RECREATE_CONTEXT = "recreateContext";
 
   /**
-   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} (today: upstream
-   * lineage for {@code LineageIndex} types) and stuffs the resulting {@code Map<UUID,
-   * DocBuildContext>} into {@code contextData} under {@link BulkSink#DOC_BUILD_CONTEXT_KEY}. The
-   * sink reads that map, hands the per-entity entry to {@code buildSearchIndexDoc(ctx)}, and
-   * stays ignorant of what the context carries — keeping the sink transport-only. No-op when the
-   * batch is empty or the entity type does not benefit from prefetch.
+   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} and stuffs the
+   * resulting {@code Map<UUID, DocBuildContext>} into {@code contextData} under {@link
+   * BulkSink#DOC_BUILD_CONTEXT_KEY}. The sink reads that map, hands the per-entity entry to {@code
+   * buildSearchIndexDoc(ctx)}, and stays ignorant of what the context carries — keeping the sink
+   * transport-only. No-op when the batch is empty or the entity type does not benefit from
+   * prefetch.
    */
   public static void populateDocBuildContext(
       Map<String, Object> contextData,
@@ -103,9 +103,12 @@ public class ReindexingUtil {
         }
         List<EsLineageData> lineage =
             prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
-        Optional<Style> serviceStyle =
-            prefetchedServiceStyles != null ? prefetchedServiceStyles.get(entityId) : null;
-        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStyle));
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
+            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId)
+                ? DocBuildContext.ServiceStylePrefetch.prefetched(
+                    prefetchedServiceStyles.get(entityId))
+                : DocBuildContext.ServiceStylePrefetch.notPrefetched();
+        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStylePrefetch));
       }
       contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
     }

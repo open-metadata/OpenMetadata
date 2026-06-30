@@ -2145,8 +2145,6 @@ public class SearchRepository {
       return;
     }
 
-    SearchIndex.SERVICE_STYLE_CACHE.put(service.getId(), Optional.ofNullable(style));
-
     Map<String, Object> params = new HashMap<>();
     params.put("style", style);
 

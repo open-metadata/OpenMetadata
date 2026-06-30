@@ -174,7 +174,10 @@ class BuildSearchIndexDocTest {
     mockAllStatics();
 
     Map<String, Object> result =
-        new DashboardIndex(d).buildSearchIndexDoc(DocBuildContext.of(null, Optional.of(style)));
+        new DashboardIndex(d)
+            .buildSearchIndexDoc(
+                DocBuildContext.of(
+                    null, DocBuildContext.ServiceStylePrefetch.prefetched(Optional.of(style))));
     Object serviceDoc = result.get("service");
 
     assertTrue(serviceDoc instanceof Map<?, ?>);

@@ -46,10 +46,11 @@ public interface ServiceBackedIndex extends SearchIndex {
       EntityReference service = ei.getService();
       if (service != null) {
         EntityReference serviceWithDisplayName = getEntityWithDisplayName(service);
-        Optional<Style> serviceStyle = ctx.prefetchedServiceStyle();
-        if (serviceStyle == null) {
-          serviceStyle = getServiceStyle(service);
-        }
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch = ctx.serviceStylePrefetch();
+        Optional<Style> serviceStyle =
+            serviceStylePrefetch.prefetched()
+                ? serviceStylePrefetch.style()
+                : getServiceStyle(service);
         if (serviceStyle.isPresent()) {
           Map<String, Object> serviceDoc = new HashMap<>(JsonUtils.getMap(serviceWithDisplayName));
           serviceDoc.put(FIELD_STYLE, serviceStyle.get());
@@ -72,15 +73,9 @@ public interface ServiceBackedIndex extends SearchIndex {
         || !Entity.entityHasField(service.getType(), FIELD_STYLE)) {
       return Optional.empty();
     }
-    Optional<Style> cached = SERVICE_STYLE_CACHE.getIfPresent(service.getId());
-    if (cached != null) {
-      return cached;
-    }
     try {
       ServiceEntityInterface serviceEntity = Entity.getEntity(service, FIELD_STYLE, Include.ALL);
-      Optional<Style> style = Optional.ofNullable(serviceEntity.getStyle());
-      SERVICE_STYLE_CACHE.put(service.getId(), style);
-      return style;
+      return Optional.ofNullable(serviceEntity.getStyle());
     } catch (Exception e) {
       LOG.warn("Failed to fetch service style for service [{}]", service.getId(), e);
       return Optional.empty();

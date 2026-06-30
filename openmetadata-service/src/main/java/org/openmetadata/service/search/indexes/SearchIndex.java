@@ -334,12 +334,6 @@ public interface SearchIndex {
   com.google.common.cache.Cache<String, Boolean> SERVICE_STYLE_PREFETCH_SUPPORT_CACHE =
       com.google.common.cache.CacheBuilder.newBuilder().maximumSize(256).build();
 
-  com.google.common.cache.Cache<UUID, Optional<Style>> SERVICE_STYLE_CACHE =
-      com.google.common.cache.CacheBuilder.newBuilder()
-          .maximumSize(1000)
-          .expireAfterWrite(60, java.util.concurrent.TimeUnit.SECONDS)
-          .build();
-
   /**
    * Type-level marker check: builds the index for {@code entityType} with a {@code null} entity
    * (the same null-entity probe pattern used by {@code SearchIndexFactory#getReindexFieldsFor})
@@ -438,7 +432,6 @@ public interface SearchIndex {
       if (entityId == null) {
         continue;
       }
-      result.put(entityId, Optional.empty());
       EntityReference service = entity.getService();
       if (service != null
           && service.getId() != null
@@ -448,6 +441,8 @@ public interface SearchIndex {
         serviceIdsByType
             .computeIfAbsent(service.getType(), ignored -> new HashSet<>())
             .add(service.getId());
+      } else {
+        result.put(entityId, Optional.empty());
       }
     }
     if (serviceIdsByType.isEmpty()) {
@@ -455,12 +450,10 @@ public interface SearchIndex {
     }
 
     Map<UUID, Optional<Style>> styleByServiceId = fetchServiceStyles(serviceIdsByType);
-    if (styleByServiceId == null) {
-      result.clear();
-      return;
-    }
     for (Map.Entry<UUID, UUID> entry : serviceIdByEntityId.entrySet()) {
-      result.put(entry.getKey(), styleByServiceId.getOrDefault(entry.getValue(), Optional.empty()));
+      if (styleByServiceId.containsKey(entry.getValue())) {
+        result.put(entry.getKey(), styleByServiceId.get(entry.getValue()));
+      }
     }
   }
 
@@ -473,18 +466,17 @@ public interface SearchIndex {
             entry.getValue().stream()
                 .map(id -> new EntityReference().withId(id).withType(entry.getKey()))
                 .toList();
+        entry.getValue().forEach(id -> result.put(id, Optional.empty()));
         List<ServiceEntityInterface> services = Entity.getEntities(refs, FIELD_STYLE, Include.ALL);
         for (ServiceEntityInterface service : services) {
-          Optional<Style> style = Optional.ofNullable(service.getStyle());
-          result.put(service.getId(), style);
-          SERVICE_STYLE_CACHE.put(service.getId(), style);
+          result.put(service.getId(), Optional.ofNullable(service.getStyle()));
         }
       } catch (Exception e) {
         LOG.warn(
             "Failed to batch-fetch service styles for type '{}' during search doc prefetch",
             entry.getKey(),
             e);
-        return null;
+        entry.getValue().forEach(result::remove);
       }
     }
     return result;
