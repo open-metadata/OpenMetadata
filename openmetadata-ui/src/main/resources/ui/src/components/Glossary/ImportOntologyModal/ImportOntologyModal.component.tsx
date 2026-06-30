@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { InboxOutlined } from '@ant-design/icons';
-import { Alert, Button, List, Modal, Space, Typography, Upload } from 'antd';
-import { RcFile } from 'antd/lib/upload';
+import {
+  Alert,
+  Button,
+  Dialog,
+  FileUploadDropZone,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useState } from 'react';
@@ -106,8 +112,14 @@ const ImportOntologyModal = ({
     [glossaryName]
   );
 
-  const handleBeforeUpload = useCallback(
-    (file: RcFile) => {
+  const handleDropFiles = useCallback(
+    (files: FileList) => {
+      const file = files[0];
+
+      if (!file) {
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = (event.target?.result as string) ?? '';
@@ -121,8 +133,6 @@ const ImportOntologyModal = ({
         showErrorToast(t('server.unexpected-error'));
       };
       reader.readAsText(file);
-
-      return false;
     },
     [t, validate]
   );
@@ -151,93 +161,127 @@ const ImportOntologyModal = ({
     validation.termsCreated + validation.termsUpdated > 0;
 
   return (
-    <Modal
-      destroyOnClose
-      data-testid="import-ontology-modal"
-      footer={[
-        <Button data-testid="cancel-button" key="cancel" onClick={handleCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="import-ontology-submit"
-          disabled={!hasMaterializedTerms}
-          key="import"
-          loading={isImporting}
-          type="primary"
-          onClick={handleImport}>
-          {t('label.import')}
-        </Button>,
-      ]}
-      open={open}
-      title={t('label.import-ontology')}
-      onCancel={handleCancel}>
-      <Space className="w-full" direction="vertical" size="middle">
-        <Typography.Text type="secondary">
-          {t('message.import-ontology-help')}
-        </Typography.Text>
+    <ModalOverlay
+      isDismissable={!isImporting}
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && !isImporting && handleCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.import-ontology')}
+          width={640}
+          onClose={handleCancel}>
+          <Dialog.Content>
+            <div
+              className="tw:flex tw:flex-col tw:gap-4 tw:pb-2"
+              data-testid="import-ontology-modal">
+              <Typography className="tw:text-secondary" size="text-sm">
+                {t('message.import-ontology-help')}
+              </Typography>
 
-        {/* Wrap the Dragger so the test id lands on a visible element: antd forwards
-            data-testid to the hidden <input type="file">, which is never visible. */}
-        <div data-testid="upload-ontology-dragger">
-          <Upload.Dragger
-            accept=".ttl,.rdf,.owl,.nt,.xml"
-            beforeUpload={handleBeforeUpload}
-            maxCount={1}
-            showUploadList={false}>
-            <p className="ant-upload-drag-icon">
-              <InboxOutlined />
-            </p>
-            <p className="ant-upload-text">
-              {t('message.upload-ontology-file')}
-            </p>
-            {fileName && (
-              <Typography.Text strong data-testid="ontology-file-name">
-                {fileName}
-              </Typography.Text>
-            )}
-          </Upload.Dragger>
-        </div>
+              {/* Wrap the dropzone so the test id lands on a visible element and
+                  scopes the hidden <input type="file"> for upload automation. */}
+              <div data-testid="upload-ontology-dragger">
+                <FileUploadDropZone
+                  accept=".ttl,.rdf,.owl,.nt,.xml"
+                  allowsMultiple={false}
+                  clickToUploadLabel={t('label.click-to-upload')}
+                  hint={t('message.upload-ontology-file')}
+                  input-data-testid="upload-ontology-input"
+                  isInvalid={false}
+                  orDragAndDropLabel={t('label.or-drag-and-drop')}
+                  // getOntologyFormat detects the serialization from content, so a
+                  // file whose extension is outside `accept` is still importable
+                  // (defaults to Turtle) — route both buckets through one handler.
+                  onDropFiles={handleDropFiles}
+                  onDropUnacceptedFiles={handleDropFiles}
+                />
+              </div>
 
-        {isValidating && (
-          <Typography.Text data-testid="ontology-validating">
-            {t('label.validating-ellipsis')}
-          </Typography.Text>
-        )}
+              {fileName && (
+                <Typography
+                  className="tw:text-secondary"
+                  data-testid="ontology-file-name"
+                  size="text-sm"
+                  weight="medium">
+                  {fileName}
+                </Typography>
+              )}
 
-        {!isUndefined(validation) && (
-          <Space className="w-full" direction="vertical" size="small">
-            <Alert
-              showIcon
-              data-testid="ontology-validation-summary"
-              message={t('message.ontology-import-summary', {
-                terms: validation.termsCreated + validation.termsUpdated,
-                relations: validation.relationsAdded,
-                mappings: validation.conceptMappingsAdded,
-                properties: validation.customPropertiesCreated,
-              })}
-              type={hasMaterializedTerms ? 'success' : 'warning'}
-            />
+              {isValidating && (
+                <Typography
+                  className="tw:text-secondary"
+                  data-testid="ontology-validating"
+                  size="text-sm">
+                  {t('label.validating-ellipsis')}
+                </Typography>
+              )}
 
-            {validation.messages.length > 0 && (
-              <List
-                bordered
-                data-testid="ontology-validation-issues"
-                dataSource={validation.messages}
-                header={t('message.ontology-import-issues-count', {
-                  count: validation.messages.length,
-                })}
-                renderItem={(message) => (
-                  <List.Item>
-                    <Typography.Text type="danger">{message}</Typography.Text>
-                  </List.Item>
-                )}
-                size="small"
-              />
-            )}
-          </Space>
-        )}
-      </Space>
-    </Modal>
+              {!isUndefined(validation) && (
+                <div className="tw:flex tw:flex-col tw:gap-2">
+                  <Alert
+                    data-testid="ontology-validation-summary"
+                    title={t('message.ontology-import-summary', {
+                      terms: validation.termsCreated + validation.termsUpdated,
+                      relations: validation.relationsAdded,
+                      mappings: validation.conceptMappingsAdded,
+                      properties: validation.customPropertiesCreated,
+                    })}
+                    variant={hasMaterializedTerms ? 'success' : 'warning'}
+                  />
+
+                  {validation.messages.length > 0 && (
+                    <div
+                      className="tw:flex tw:flex-col tw:gap-1 tw:rounded-lg tw:border tw:border-secondary tw:p-3"
+                      data-testid="ontology-validation-issues">
+                      <Typography
+                        className="tw:text-secondary"
+                        size="text-sm"
+                        weight="medium">
+                        {t('message.ontology-import-issues-count', {
+                          count: validation.messages.length,
+                        })}
+                      </Typography>
+                      <ul className="tw:flex tw:flex-col tw:gap-1 tw:pl-4">
+                        {validation.messages.map((message) => (
+                          <li className="tw:list-disc" key={message}>
+                            <Typography
+                              className="tw:text-error-primary"
+                              size="text-sm">
+                              {message}
+                            </Typography>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Dialog.Content>
+
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="cancel-button"
+              isDisabled={isImporting}
+              size="sm"
+              onPress={handleCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="import-ontology-submit"
+              isDisabled={!hasMaterializedTerms}
+              isLoading={isImporting}
+              size="sm"
+              onPress={handleImport}>
+              {t('label.import')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
