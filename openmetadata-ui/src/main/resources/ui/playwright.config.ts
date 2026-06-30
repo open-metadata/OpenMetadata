@@ -68,7 +68,10 @@ export default defineConfig({
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
-    ['@flakiness/playwright', { flakinessProject: 'OpenMetadata/OpenMetadata' }],
+    [
+      '@flakiness/playwright',
+      { flakinessProject: 'OpenMetadata/OpenMetadata' },
+    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -203,7 +206,7 @@ export default defineConfig({
       name: 'Basic',
       grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       fullyParallel: true,
     },
     {

@@ -156,6 +156,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => Boolean(searchQueryParam),
     [searchQueryParam]
   );
+  const hasActiveFilters = useMemo(
+    () => Boolean(queryFilter || quickFilters || sqlQuery || searchQueryParam),
+    [queryFilter, quickFilters, sqlQuery, searchQueryParam]
+  );
   const pageResultCount = useMemo(
     () => searchResults?.hits?.hits?.length ?? 0,
     [searchResults]
@@ -785,13 +789,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Card className="h-full tw:flex-1 explore-main-card">
                 {!loading && !isElasticSearchIssue ? (
                   <SearchedData
-                    isFilterSelected
-                    showResultCount
                     data={searchResults?.hits.hits ?? []}
                     filter={parsedSearch}
                     handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                    isFilterSelected={hasActiveFilters}
                     isSummaryPanelVisible={showSummaryPanel}
                     selectedEntityId={entityDetails?.id || ''}
+                    showResultCount={hasActiveFilters}
                     totalValue={searchResults?.hits.total.value ?? 0}
                     onPaginationChange={onChangePage}
                   />

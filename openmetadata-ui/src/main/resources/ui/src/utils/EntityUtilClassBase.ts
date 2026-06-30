@@ -268,6 +268,8 @@ class EntityUtilClassBase {
       case EntityType.STORAGE_SERVICE:
       case EntityType.SEARCH_SERVICE:
       case EntityType.API_SERVICE:
+      case EntityType.DRIVE_SERVICE:
+      case EntityType.SECURITY_SERVICE:
         return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
       case EntityType.WEBHOOK:
