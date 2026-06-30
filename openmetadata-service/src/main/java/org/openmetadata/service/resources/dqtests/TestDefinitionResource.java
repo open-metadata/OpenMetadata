@@ -164,7 +164,7 @@ public class TestDefinitionResource
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
+      filter.addQueryParam("entityType", entityType.toUpperCase());
     }
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);

@@ -255,4 +255,12 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
         () -> createEntity(request2),
         "Creating duplicate test definition should fail");
   }
+
+  @Test
+  void list_testDefinitionsByEntityType_caseInsensitive(TestNamespace ns) {
+    // #TODO
+    
+
+
+  }
 }
