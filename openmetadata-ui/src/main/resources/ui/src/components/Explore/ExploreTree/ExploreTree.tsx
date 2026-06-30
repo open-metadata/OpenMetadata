@@ -32,7 +32,6 @@ import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
-  applyRootCountsInPlace,
   buildTreeCountQueryFilter,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
@@ -47,6 +46,8 @@ import {
   isEntityTypeBucketSelected,
   isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  reconcilePresentRoots,
+  refreshRootCounts,
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExplorePureUtils';
@@ -449,19 +450,19 @@ const ExploreTree = ({
       // node they have selected — survive a filter or browse change, so the
       // tree no longer collapses on every selection. Only the root counts are
       // re-scoped here; a deeper node keeps the count from when it was expanded
-      // (the browse path never changes those) until the next full reload.
+      // (the browse path never changes those) until the next full reload. The
+      // root set is reseeded from the present static roots so a category that an
+      // earlier text query dropped can reappear, reusing the live root where it
+      // still exists so expanded children and the selection survive.
       setTreeData((origin) => {
-        const presentKeys = new Set(
-          updateTreeDataWithCounts(
-            searchClassBase.getExploreTree(),
-            presenceBuckets
-          )
-            .filter((node) => (node.totalCount ?? 0) > 0)
-            .map((node) => node.key)
-        );
+        const presentRoots = updateTreeDataWithCounts(
+          searchClassBase.getExploreTree(),
+          presenceBuckets
+        ).filter((node) => (node.totalCount ?? 0) > 0);
 
-        return applyRootCountsInPlace(origin, countBuckets).filter((node) =>
-          presentKeys.has(node.key)
+        return refreshRootCounts(
+          reconcilePresentRoots(presentRoots, origin),
+          countBuckets
         );
       });
     } catch {

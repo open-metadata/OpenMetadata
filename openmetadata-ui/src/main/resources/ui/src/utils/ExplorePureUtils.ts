@@ -356,15 +356,18 @@ export const updateTreeDataWithCounts = (
 };
 
 /**
- * Refresh the category-level counts on the existing tree without discarding the
+ * Refresh the category-level counts on the given tree without discarding the
  * lazily-loaded children the user has expanded. A filter or browse change
  * re-scopes only the root counts and the static governance/domain leaves (whose
  * key is an entity type); the lazily-loaded hierarchical nodes are recognised by
  * their `filterField` and left untouched, so they keep their own counts, keys,
  * and expansion. Rebuilding from the static tree instead would collapse the tree
  * and drop the current selection — see ExploreTree's count refresh.
+ *
+ * Returns new root-level objects (shallow copies) rather than mutating the input
+ * — "no full rebuild", not "in-place mutation".
  */
-export const applyRootCountsInPlace = (
+export const refreshRootCounts = (
   nodes: ExploreTreeNode[],
   entityCounts: Bucket[]
 ): ExploreTreeNode[] =>
@@ -394,6 +397,23 @@ export const applyRootCountsInPlace = (
 
     return updatedNode;
   });
+
+/**
+ * Reconcile the root categories after a count refresh: keep the live (expanded)
+ * root node when it still exists so its loaded children and the current
+ * selection survive, and fall back to the static node for a root that re-enters
+ * the presence set. Seeding from the freshly computed present roots — rather
+ * than the live tree alone — is what lets a category that an earlier text query
+ * dropped to zero reappear instead of staying gone until a full reload.
+ */
+export const reconcilePresentRoots = (
+  presentRoots: ExploreTreeNode[],
+  liveRoots: ExploreTreeNode[]
+): ExploreTreeNode[] => {
+  const liveRootByKey = new Map(liveRoots.map((node) => [node.key, node]));
+
+  return presentRoots.map((node) => liveRootByKey.get(node.key) ?? node);
+};
 
 /**
  * Given the explore tree root nodes and the entity types selected in the Data
@@ -697,6 +717,36 @@ const getBrowsePathSignature = (fields: ExploreQuickFilterField[]): string =>
     .join('|');
 
 /**
+ * A browse path that selects a whole category root (e.g. clicking "Databases")
+ * is a single entity-type field carrying that category's entity types.
+ */
+const isCategoryBrowsePath = (
+  browseFields: ExploreQuickFilterField[]
+): boolean =>
+  browseFields.length === 1 && browseFields[0].key === EntityFields.ENTITY_TYPE;
+
+/**
+ * Whether a category root node owns exactly the entity types of a category
+ * browse field — the root carries no `filterField`, so it is matched on its
+ * `childEntities` set instead.
+ */
+const categoryRootMatchesPath = (
+  node: ExploreTreeNode,
+  categoryField: ExploreQuickFilterField
+): boolean => {
+  const childEntities = (node.data?.childEntities ?? [])
+    .map((entityType) => entityType.toLowerCase())
+    .sort()
+    .join(',');
+  const targetEntities = (categoryField.value ?? [])
+    .map((option) => option.key.toLowerCase())
+    .sort()
+    .join(',');
+
+  return Boolean(node.data?.isRoot) && childEntities === targetEntities;
+};
+
+/**
  * Find the loaded tree node that corresponds to a browse path, so the tree
  * highlight can follow chip removals — dropping the Service chip moves the
  * selection back up to the category root.
@@ -708,29 +758,17 @@ export const findTreeNodeKeyByBrowsePath = (
   let result: string | null = null;
   if (!isEmpty(browseFields)) {
     const targetSignature = getBrowsePathSignature(browseFields);
-    const isCategoryPath =
-      browseFields.length === 1 &&
-      browseFields[0].key === EntityFields.ENTITY_TYPE;
+    const isCategoryPath = isCategoryBrowsePath(browseFields);
 
     const visit = (nodes: ExploreTreeNode[]) => {
       nodes.forEach((node) => {
         if (result) {
           return;
         }
-        if (isCategoryPath && node.data?.isRoot) {
-          const childEntities = (node.data?.childEntities ?? [])
-            .map((entityType) => entityType.toLowerCase())
-            .sort()
-            .join(',');
-          const targetEntities = (browseFields[0].value ?? [])
-            .map((option) => option.key.toLowerCase())
-            .sort()
-            .join(',');
-          if (childEntities === targetEntities) {
-            result = node.key;
+        if (isCategoryPath && categoryRootMatchesPath(node, browseFields[0])) {
+          result = node.key;
 
-            return;
-          }
+          return;
         }
         if (
           node.data?.filterField &&
@@ -782,11 +820,13 @@ const findTreeNodeByKey = (
 
 /**
  * Whether the currently highlighted node already corresponds to the active
- * browse path — either the browsed node itself, or an entity-type leaf
- * (Tables/Columns) whose parent levels are that path. The browse-path sync uses
- * this to leave such a selection alone: a leaf click stores only the parent
- * levels in browsePath (the type lands in quickFilter), so re-deriving the
- * highlight from browsePath would otherwise snap the leaf back up to its schema.
+ * browse path — the browsed node itself, an entity-type leaf (Tables/Columns)
+ * whose parent levels are that path, or a category root selected via a category
+ * path. The browse-path sync uses this to leave such a selection alone: a leaf
+ * click stores only the parent levels in browsePath (the type lands in
+ * quickFilter), so re-deriving the highlight from browsePath would otherwise
+ * snap the leaf back up to its schema; matching the root avoids a redundant
+ * re-select on every refresh while a category is highlighted.
  */
 export const isSelectionWithinBrowsePath = (
   treeNodes: ExploreTreeNode[],
@@ -806,6 +846,8 @@ export const isSelectionWithinBrowsePath = (
       result =
         getBrowsePathSignature(filterField) === targetSignature ||
         leafParentSignature === targetSignature;
+    } else if (node && isCategoryBrowsePath(browseFields)) {
+      result = categoryRootMatchesPath(node, browseFields[0]);
     }
   }
 

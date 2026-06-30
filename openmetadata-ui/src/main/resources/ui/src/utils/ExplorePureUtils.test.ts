@@ -14,7 +14,6 @@ import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.inter
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { EntityType } from '../enums/entity.enum';
 import {
-  applyRootCountsInPlace,
   buildTreeCountQueryFilter,
   findTreeNodeKeyByBrowsePath,
   getBrowsePathQueryFilter,
@@ -25,6 +24,8 @@ import {
   isEntityTypeBucketSelected,
   isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  reconcilePresentRoots,
+  refreshRootCounts,
   truncateBrowsePath,
 } from './ExplorePureUtils';
 
@@ -640,7 +641,7 @@ describe('findTreeNodeKeyByBrowsePath', () => {
   });
 });
 
-describe('applyRootCountsInPlace', () => {
+describe('refreshRootCounts', () => {
   const serviceField: ExploreQuickFilterField = {
     key: 'serviceType',
     label: 'serviceType',
@@ -698,7 +699,7 @@ describe('applyRootCountsInPlace', () => {
     ] as unknown as ExploreTreeNode[];
 
   it('recomputes the root totalCount from the childEntities buckets', () => {
-    const result = applyRootCountsInPlace(buildTree(), [
+    const result = refreshRootCounts(buildTree(), [
       { key: 'table', doc_count: 5 },
       { key: 'glossaryTerm', doc_count: 9 },
     ]);
@@ -708,7 +709,7 @@ describe('applyRootCountsInPlace', () => {
   });
 
   it('preserves lazily-loaded hierarchical children, their counts and subtree', () => {
-    const result = applyRootCountsInPlace(buildTree(), [
+    const result = refreshRootCounts(buildTree(), [
       { key: 'table', doc_count: 5 },
     ]);
     const serviceNode = result[0].children?.[0];
@@ -720,7 +721,7 @@ describe('applyRootCountsInPlace', () => {
   });
 
   it('refreshes static governance leaves, defaulting to 0 when absent', () => {
-    const result = applyRootCountsInPlace(buildTree(), [
+    const result = refreshRootCounts(buildTree(), [
       { key: 'glossaryTerm', doc_count: 9 },
     ]);
     const [glossaries, tags] = result[1].children ?? [];
@@ -731,9 +732,48 @@ describe('applyRootCountsInPlace', () => {
 
   it('does not mutate the input nodes', () => {
     const tree = buildTree();
-    applyRootCountsInPlace(tree, [{ key: 'table', doc_count: 5 }]);
+    refreshRootCounts(tree, [{ key: 'table', doc_count: 5 }]);
 
     expect(tree[0].totalCount).toBeUndefined();
+  });
+});
+
+describe('reconcilePresentRoots', () => {
+  const liveDatabases = {
+    key: 'Database',
+    title: 'Databases',
+    data: { isRoot: true, childEntities: [EntityType.TABLE] },
+    children: [{ key: 'service-uuid', title: 'mysql', count: 12 }],
+  } as unknown as ExploreTreeNode;
+  const staticDatabases = {
+    key: 'Database',
+    title: 'Databases',
+    data: { isRoot: true, childEntities: [EntityType.TABLE] },
+  } as unknown as ExploreTreeNode;
+  const staticDashboards = {
+    key: 'Dashboard',
+    title: 'Dashboards',
+    data: { isRoot: true, childEntities: [EntityType.DASHBOARD] },
+  } as unknown as ExploreTreeNode;
+
+  it('reuses the live root so its expanded children survive', () => {
+    const result = reconcilePresentRoots([staticDatabases], [liveDatabases]);
+
+    expect(result[0]).toBe(liveDatabases);
+    expect(result[0].children?.[0].key).toBe('service-uuid');
+  });
+
+  it('re-adds a present root that is no longer in the live tree', () => {
+    // Databases is the only live root, but the presence set now also has
+    // Dashboards — it must come back rather than stay dropped.
+    const result = reconcilePresentRoots(
+      [staticDatabases, staticDashboards],
+      [liveDatabases]
+    );
+
+    expect(result.map((node) => node.key)).toEqual(['Database', 'Dashboard']);
+    expect(result[0]).toBe(liveDatabases);
+    expect(result[1]).toBe(staticDashboards);
   });
 });
 
@@ -801,5 +841,25 @@ describe('isSelectionWithinBrowsePath', () => {
     expect(isSelectionWithinBrowsePath(tree, ['missing'], schemaPath)).toBe(
       false
     );
+  });
+
+  it('matches a selected category root by its entity-type set', () => {
+    expect(
+      isSelectionWithinBrowsePath(
+        tree,
+        ['database_root'],
+        [field('entityType', EntityType.TABLE)]
+      )
+    ).toBe(true);
+  });
+
+  it('does not match a category root whose entity types differ', () => {
+    expect(
+      isSelectionWithinBrowsePath(
+        tree,
+        ['database_root'],
+        [field('entityType', EntityType.DASHBOARD)]
+      )
+    ).toBe(false);
   });
 });
