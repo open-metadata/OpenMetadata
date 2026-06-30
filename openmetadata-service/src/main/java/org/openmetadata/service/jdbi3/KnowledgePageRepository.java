@@ -11,6 +11,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityReferencesByIds;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidPageMove;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -411,6 +412,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
     EntityUtil.populateEntityReferences(knowledgePage.getRelatedEntities());
 
+    validateParentHierarchy(knowledgePage);
+
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
 
@@ -425,6 +428,37 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         knowledgePage.setProcessingStatus(PageProcessingStatus.Queued);
       }
     }
+  }
+
+  /**
+   * Reject a reparent that would point a page at itself or at one of its own descendants. Without
+   * this guard the move is accepted and the FQN rewrite cascades into an ever-growing, self-
+   * referential chain (e.g. {@code a.b.a.b.a}), corrupting the whole subtree.
+   */
+  private void validateParentHierarchy(Page page) {
+    EntityReference parentRef = page.getParent();
+    if (parentRef != null && parentRef.getId() != null) {
+      EntityReference parent =
+          Entity.getEntityReferenceById(
+              KNOWLEDGE_PAGE_ENTITY, parentRef.getId(), Include.NON_DELETED);
+      if (isCyclicParentMove(
+          page.getId(),
+          page.getFullyQualifiedName(),
+          parent.getId(),
+          parent.getFullyQualifiedName())) {
+        String pageFqn =
+            page.getFullyQualifiedName() != null ? page.getFullyQualifiedName() : page.getName();
+        throw new IllegalArgumentException(
+            invalidPageMove(pageFqn, parent.getFullyQualifiedName()));
+      }
+    }
+  }
+
+  static boolean isCyclicParentMove(UUID pageId, String pageFqn, UUID parentId, String parentFqn) {
+    boolean isSelf = pageId != null && pageId.equals(parentId);
+    boolean isDescendant =
+        pageFqn != null && parentFqn != null && FullyQualifiedName.isParent(parentFqn, pageFqn);
+    return isSelf || isDescendant;
   }
 
   public ResultList<PageHierarchy> getHierarchyWithSearch(
