@@ -14,7 +14,6 @@ import test, { expect } from '@playwright/test';
 import { Column, DataType } from '../../../src/generated/entity/data/table';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
-import { escape } from 'lodash';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
