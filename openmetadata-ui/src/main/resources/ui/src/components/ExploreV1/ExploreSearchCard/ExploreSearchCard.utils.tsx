@@ -50,26 +50,16 @@ export const getTypeBadge = (label?: string) =>
     </span>
   ) : null;
 
-export const getBreadcrumbIconTypes = (
-  entityType?: string
-): Array<EntityType | undefined> => {
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.STORED_PROCEDURE:
-      return [undefined, EntityType.DATABASE, EntityType.DATABASE_SCHEMA];
-    case EntityType.TABLE_COLUMN:
-      return [
-        undefined,
-        EntityType.DATABASE,
-        EntityType.DATABASE_SCHEMA,
-        EntityType.TABLE,
-      ];
-    case EntityType.DATABASE_SCHEMA:
-      return [undefined, EntityType.DATABASE];
-    default:
-      return [undefined];
-  }
-};
+const BREADCRUMB_ENTITY_TYPES = [
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DATABASE,
+  EntityType.TABLE,
+] as const;
+
+export const getBreadcrumbEntityTypeFromHref = (href?: string) =>
+  BREADCRUMB_ENTITY_TYPES.find((entityType) =>
+    href?.includes(`/${entityType}/`)
+  );
 
 export const createBreadcrumbIcon = (
   icon: ReactNode

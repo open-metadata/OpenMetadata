@@ -45,7 +45,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('Mock Entity'),
+  getEntityName: jest.fn(
+    (entity?: { displayName?: string; name?: string }) =>
+      entity?.displayName ?? entity?.name ?? ''
+  ),
 }));
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn().mockReturnValue(''),
@@ -73,7 +76,11 @@ jest.mock('../../../utils/SearchClassBase', () => ({
     getListOfEntitiesWithoutTier: jest.fn().mockReturnValue([]),
     getServiceIcon: jest.fn().mockReturnValue(<span>service-icon</span>),
     getEntityBreadcrumbs: jest.fn().mockReturnValue([]),
-    getEntityIcon: jest.fn().mockReturnValue(<span>entity-icon</span>),
+    getEntityIcon: jest
+      .fn()
+      .mockImplementation((entityType: string) => (
+        <span>{`${entityType}-icon`}</span>
+      )),
     getEntityLink: jest.fn().mockReturnValue('/entity/test'),
     getEntityName: jest.fn().mockReturnValue('Test Domain'),
     getSearchEntityLinkTarget: jest.fn().mockReturnValue('_self'),
@@ -120,6 +127,10 @@ const baseSource: ExploreSearchCardProps['source'] = {
   fullyQualifiedName: 'test.fqn',
   name: 'test',
   entityType: 'table',
+  service: {
+    name: 'svc',
+    type: 'databaseService',
+  },
   tags: [],
   owners: [],
   domains: [],
@@ -664,16 +675,50 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
 
   it('passes icons for breadcrumb items from the source hierarchy', () => {
     (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
-      { name: 'svc', url: '/svc' },
-      { name: 'db', url: '/db' },
-      { name: 'schema', url: '/schema' },
+      { name: 'svc', url: '/settings/services/databaseServices/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/databaseSchema/schema' },
     ]);
 
     renderCard({ entityType: 'table' });
 
     expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(3);
     expect(screen.getByText('service-icon')).toBeInTheDocument();
-    expect(screen.getAllByText('entity-icon')).toHaveLength(2);
+    expect(screen.getByText('database-icon')).toBeInTheDocument();
+    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
+  });
+
+  it('does not shift icons when database schema breadcrumbs include a category crumb', () => {
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
+      { name: 'Database Services', url: '/settings/services/databaseServices' },
+      { name: 'svc', url: '/settings/services/databaseServices/svc' },
+      { name: 'db', url: '/database/db' },
+      { name: 'schema', url: '/databaseSchema/schema' },
+    ]);
+
+    renderCard({ entityType: 'databaseSchema' });
+
+    const items = MockBreadcrumbs.mock.calls.at(-1)?.[0].items;
+
+    expect(items[0].icon).toBeUndefined();
+    expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(3);
+    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getByText('database-icon')).toBeInTheDocument();
+    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
+  });
+
+  it('keeps schema icon mapping when the database breadcrumb is absent', () => {
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
+      { name: 'svc', url: '/settings/services/databaseServices/svc' },
+      { name: 'schema', url: '/databaseSchema/schema' },
+    ]);
+
+    renderCard({ entityType: 'table' });
+
+    expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(2);
+    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
+    expect(screen.queryByText('database-icon')).not.toBeInTheDocument();
   });
 
   it('does not render service icon when breadcrumbs list is empty', () => {

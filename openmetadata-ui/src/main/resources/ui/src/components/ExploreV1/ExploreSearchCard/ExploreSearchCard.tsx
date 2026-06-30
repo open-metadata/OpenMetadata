@@ -52,10 +52,22 @@ import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 import {
   createBreadcrumbIcon,
-  getBreadcrumbIconTypes,
+  getBreadcrumbEntityTypeFromHref,
   getTypeBadge,
   TYPE_BADGE_KEY,
 } from './ExploreSearchCard.utils';
+
+const ENTITY_BREADCRUMB_ICONS = {
+  [EntityType.DATABASE]: createBreadcrumbIcon(
+    searchClassBase.getEntityIcon(EntityType.DATABASE)
+  ),
+  [EntityType.DATABASE_SCHEMA]: createBreadcrumbIcon(
+    searchClassBase.getEntityIcon(EntityType.DATABASE_SCHEMA)
+  ),
+  [EntityType.TABLE]: createBreadcrumbIcon(
+    searchClassBase.getEntityIcon(EntityType.TABLE)
+  ),
+};
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -313,29 +325,34 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return searchClassBase.getServiceIcon(source);
     }, [source]);
 
-    const breadcrumbIconTypes = useMemo(
-      () => getBreadcrumbIconTypes(source.entityType),
-      [source.entityType]
+    const serviceBreadcrumbIcon = useMemo(
+      () => createBreadcrumbIcon(serviceIcon),
+      [serviceIcon]
     );
 
+    const serviceName = getEntityName(source.service);
+
     const breadcrumbItems = useMemo(() => {
-      return breadcrumbs.map((b, index) => {
-        const breadcrumbIconType = breadcrumbIconTypes[index];
-        const icon =
-          index === 0
-            ? serviceIcon
-            : breadcrumbIconType
-            ? searchClassBase.getEntityIcon(breadcrumbIconType)
-            : undefined;
+      return breadcrumbs.map((b) => {
+        const href = typeof b.url === 'string' ? b.url : b.url.pathname;
+        const breadcrumbEntityType = getBreadcrumbEntityTypeFromHref(href);
+        const isServiceBreadcrumb =
+          !isEmpty(serviceName) &&
+          getEntityName(b) === serviceName &&
+          isEmpty(breadcrumbEntityType);
 
         return {
           id: b.name,
           label: getEntityName(b),
-          href: typeof b.url === 'string' ? b.url : b.url.pathname,
-          icon: createBreadcrumbIcon(icon),
+          href,
+          icon: isServiceBreadcrumb
+            ? serviceBreadcrumbIcon
+            : breadcrumbEntityType
+            ? ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType]
+            : undefined,
         };
       });
-    }, [breadcrumbs, breadcrumbIconTypes, serviceIcon]);
+    }, [breadcrumbs, serviceBreadcrumbIcon, serviceName]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
