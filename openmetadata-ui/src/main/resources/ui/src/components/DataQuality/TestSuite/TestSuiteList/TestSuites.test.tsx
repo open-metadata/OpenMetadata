@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { act, render, screen } from '@testing-library/react';
+import { MemoryRouter, useParams } from 'react-router-dom';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import { TestSuites } from './TestSuites.component';
 
@@ -154,6 +157,16 @@ jest.mock('../../../../utils/TableColumn.util', () => ({
 }));
 
 describe('TestSuites component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    testSuitePermission.ViewAll = true;
+    mockLocation.search = '';
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    });
+  });
+
   it('component should render', async () => {
     render(<TestSuites />);
     const tableHeader = await screen.findAllByRole('columnheader');
@@ -272,5 +285,76 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByTestId('error-placeholder-type-PERMISSION')
     ).toBeInTheDocument();
+  });
+
+  it('should render loader while test suites are loading', async () => {
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    render(<TestSuites />);
+
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('filter-table-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should ignore stale table suite response after switching to bundle suites', async () => {
+    let resolveTableSuites: (value: typeof mockList) => void;
+    let resolveBundleSuites: (value: typeof mockList) => void;
+    const tableSuitesResponse = new Promise<typeof mockList>((resolve) => {
+      resolveTableSuites = resolve;
+    });
+    const bundleSuitesResponse = new Promise<typeof mockList>((resolve) => {
+      resolveBundleSuites = resolve;
+    });
+    const bundleSuiteName = 'bundle.suite';
+
+    (getListTestSuitesBySearch as jest.Mock)
+      .mockImplementationOnce(() => tableSuitesResponse)
+      .mockImplementationOnce(() => bundleSuitesResponse);
+
+    const { rerender } = render(<TestSuites />);
+
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      tab: DataQualityPageTabs.TEST_CASES,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
+    });
+
+    rerender(<TestSuites />);
+
+    await act(async () => {
+      resolveBundleSuites({
+        data: [
+          {
+            id: 'bundle-id',
+            name: bundleSuiteName,
+            fullyQualifiedName: bundleSuiteName,
+            basic: false,
+          },
+        ],
+        paging: {
+          offset: 0,
+          limit: 15,
+          total: 1,
+        },
+      });
+    });
+
+    expect(await screen.findByTestId(bundleSuiteName)).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTableSuites(mockList);
+    });
+
+    expect(screen.getByTestId(bundleSuiteName)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite'
+      )
+    ).not.toBeInTheDocument();
   });
 });
