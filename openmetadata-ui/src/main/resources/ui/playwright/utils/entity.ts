@@ -78,7 +78,8 @@ export const visitEntityPage = async (data: {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
-      response.url().includes('exclude_source_fields')
+      response.url().includes('exclude_source_fields'),
+    { timeout: 30000 }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
@@ -1492,7 +1493,7 @@ const announcementForm = async (
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
-    await page.click('[data-testid="alert-icon-close"]');
+    await toastNotification(page, /Announcement created successfully/i);
   }
 };
 
@@ -2196,9 +2197,10 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
+  await toastNotification(
+    page,
     /(deleted successfully!|Delete operation initiated)/,
-    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
+    BIG_ENTITY_DELETE_TIMEOUT
   );
 };
 
