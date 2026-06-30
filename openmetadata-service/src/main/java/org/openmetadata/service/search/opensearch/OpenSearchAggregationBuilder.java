@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch;
 
-import java.util.List;
 import os.org.opensearch.client.opensearch._types.Script;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
 
@@ -10,22 +9,6 @@ public class OpenSearchAggregationBuilder {
 
   public static Aggregation termsAggregation(String field, int size) {
     return Aggregation.of(a -> a.terms(t -> t.field(field).size(size)));
-  }
-
-  public static Aggregation termsAggregationWithTopHits(
-      String field, int size, List<String> sourceFields) {
-    return Aggregation.of(
-        a ->
-            a.terms(t -> t.field(field).size(size))
-                .aggregations(
-                    "top",
-                    Aggregation.of(
-                        th ->
-                            th.topHits(
-                                topHit ->
-                                    topHit
-                                        .size(1)
-                                        .source(s -> s.filter(f -> f.includes(sourceFields)))))));
   }
 
   public static Aggregation termsAggregationWithScript(String script, int size) {

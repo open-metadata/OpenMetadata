@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
-import ExploreTree from './ExploreTree';
+import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
@@ -26,6 +28,17 @@ const buildAggregationResponse = (
   ({
     aggregations: { entityType: { buckets } },
     hits: { hits: [], total: { value: 0 } },
+  } as never);
+
+const buildFieldAggregationResponse = (
+  field: string,
+  buckets: { key: string; doc_count: number; [key: string]: unknown }[]
+) =>
+  ({
+    data: {
+      aggregations: { [`sterms#${field}`]: { buckets } },
+      hits: { hits: [], total: { value: 0 } },
+    },
   } as never);
 
 const mustLength = (arg: { queryFilter?: unknown }): number =>
@@ -464,5 +477,52 @@ describe('ExploreTree', () => {
 
     expect(getByText('label.database-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
+  });
+
+  it('opts into service style top hits only for service name buckets', async () => {
+    const postAggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          {
+            key: 'custom_bigquery',
+            doc_count: 10,
+            'top_hits#top': {
+              hits: {
+                hits: [
+                  {
+                    _source: {
+                      service: {
+                        style: {
+                          iconURL: '/custom.svg',
+                        },
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ])
+      );
+
+    const response = await getExploreTreeAggregationResponse({
+      bucketToFind: EntityFields.SERVICE,
+      countQueryFilter: { query: { bool: {} } },
+      searchQueryParam: '',
+    });
+
+    expect(postAggregateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fieldName: 'service.displayName.keyword',
+        sourceFields: ['service.style'],
+        topHits: {
+          size: 1,
+        },
+      })
+    );
+    expect(
+      response.aggregations['sterms#service.displayName.keyword'].buckets
+    ).toHaveLength(1);
   });
 });

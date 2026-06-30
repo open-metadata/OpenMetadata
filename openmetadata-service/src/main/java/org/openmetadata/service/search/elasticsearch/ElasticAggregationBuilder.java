@@ -3,7 +3,6 @@ package org.openmetadata.service.search.elasticsearch;
 import es.co.elastic.clients.elasticsearch._types.Script;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
-import java.util.List;
 
 public class ElasticAggregationBuilder {
 
@@ -11,22 +10,6 @@ public class ElasticAggregationBuilder {
 
   public static Aggregation termsAggregation(String field, int size) {
     return Aggregation.of(a -> a.terms(t -> t.field(field).size(size)));
-  }
-
-  public static Aggregation termsAggregationWithTopHits(
-      String field, int size, List<String> sourceFields) {
-    return Aggregation.of(
-        a ->
-            a.terms(t -> t.field(field).size(size))
-                .aggregations(
-                    "top",
-                    Aggregation.of(
-                        th ->
-                            th.topHits(
-                                topHit ->
-                                    topHit
-                                        .size(1)
-                                        .source(s -> s.filter(f -> f.includes(sourceFields)))))));
   }
 
   public static Aggregation termsAggregationWithScript(String script, int size) {

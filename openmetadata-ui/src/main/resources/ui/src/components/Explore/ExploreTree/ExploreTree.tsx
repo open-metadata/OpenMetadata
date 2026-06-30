@@ -27,6 +27,7 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
@@ -63,6 +64,10 @@ import {
   ExploreTreeProps,
   TreeNodeData,
 } from './ExploreTree.interface';
+
+const SERVICE_STYLE_SOURCE_FIELDS = ['service.style'];
+const SERVICE_STYLE_TOP_HITS_SIZE = 1;
+
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
   const tooltipText = node.tooltip ?? node.title;
 
@@ -115,6 +120,41 @@ const getServiceStyleIcon = (bucket: Bucket) => {
 
   return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
 };
+
+export const getExploreTreeAggregationResponse = async ({
+  bucketToFind,
+  countQueryFilter,
+  searchQueryParam,
+}: {
+  bucketToFind: EntityFields;
+  countQueryFilter: Record<string, unknown>;
+  searchQueryParam: string;
+}) =>
+  bucketToFind === EntityFields.SERVICE
+    ? (
+        await postAggregateFieldOptions({
+          query: JSON.stringify(countQueryFilter),
+          fieldName: bucketToFind,
+          fieldValue: '',
+          index: SearchIndex.DATA_ASSET,
+          deleted: false,
+          size: Number(SIZE.X_LARGE),
+          sourceFields: SERVICE_STYLE_SOURCE_FIELDS,
+          topHits: {
+            size: SERVICE_STYLE_TOP_HITS_SIZE,
+          },
+        })
+      ).data
+    : searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: countQueryFilter,
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
 
 const ExploreTree = ({
   additionalQueryFilter,
@@ -208,15 +248,10 @@ const ExploreTree = ({
           activeQueryFilter: additionalQueryFilter,
         });
 
-        const res = await searchQuery({
-          query: searchQueryParam ?? '',
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter: countQueryFilter,
-          searchIndex: SearchIndex.DATA_ASSET,
-          includeDeleted: false,
-          trackTotalHits: true,
-          fetchSource: false,
+        const res = await getExploreTreeAggregationResponse({
+          bucketToFind,
+          countQueryFilter,
+          searchQueryParam,
         });
 
         const aggregations = getAggregations(res.aggregations);
