@@ -21,9 +21,14 @@ const advance = (agent: Agent): Agent => {
   let next = agent;
   if (agent.status === 'running') {
     const pct = Math.min(100, agent.pct + (2 + Math.random() * 3.5));
-    const assets = Math.min(agent.target, Math.round((agent.target * pct) / 100));
+    const assets = Math.min(
+      agent.target,
+      Math.round((agent.target * pct) / 100)
+    );
     const eta =
-      agent.eta === null ? null : Math.max(0, agent.eta - (3 + Math.round(Math.random() * 3)));
+      agent.eta === null
+        ? null
+        : Math.max(0, agent.eta - (3 + Math.round(Math.random() * 3)));
     next =
       pct >= 100
         ? {
@@ -45,7 +50,11 @@ const releaseQueued = (agent: Agent, all: Agent[]): Agent => {
   if (agent.status === 'queued' && agent.after) {
     const predecessor = all.find((x) => x.name === agent.after);
     if (predecessor && predecessor.status === 'success') {
-      next = { ...agent, status: 'running', eta: 180 + Math.round(Math.random() * 120) };
+      next = {
+        ...agent,
+        status: 'running',
+        eta: 180 + Math.round(Math.random() * 120),
+      };
     }
   }
 

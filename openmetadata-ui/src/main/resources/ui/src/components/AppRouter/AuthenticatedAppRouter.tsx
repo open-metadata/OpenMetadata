@@ -342,9 +342,7 @@ const McpChatPage = withSuspenseFallback(
 );
 
 const AgentsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../ServiceAgents/AgentsPage.component')
-  )
+  React.lazy(() => import('../ServiceAgents/AgentsPage.component'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {

@@ -13,8 +13,8 @@
 
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AgentTab } from '../AgentsPage.interface';
 import { IcCode, IcSparkle } from '../AgentIcons';
+import { AgentTab } from '../AgentsPage.interface';
 
 interface AgentsTabBarProps {
   counts: { ai: number; metadata: number };
@@ -24,21 +24,25 @@ interface AgentsTabBarProps {
 
 const AgentsTabBar: FC<AgentsTabBarProps> = ({ counts, onChange, tab }) => {
   const { t } = useTranslation();
-  const tabs: { count: number; icon: ReactNode; id: AgentTab; label: string }[] =
-    [
-      {
-        count: counts.metadata,
-        icon: <IcCode />,
-        id: 'metadata',
-        label: t('label.metadata'),
-      },
-      {
-        count: counts.ai,
-        icon: <IcSparkle />,
-        id: 'ai',
-        label: t('label.collate-ai'),
-      },
-    ];
+  const tabs: {
+    count: number;
+    icon: ReactNode;
+    id: AgentTab;
+    label: string;
+  }[] = [
+    {
+      count: counts.metadata,
+      icon: <IcCode />,
+      id: 'metadata',
+      label: t('label.metadata'),
+    },
+    {
+      count: counts.ai,
+      icon: <IcSparkle />,
+      id: 'ai',
+      label: t('label.collate-ai'),
+    },
+  ];
 
   return (
     <div className="tw:mb-[18px] tw:flex tw:gap-1 tw:border-b tw:border-[color:var(--border-subtle)]">

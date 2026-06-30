@@ -13,7 +13,12 @@
 
 export type AgentStatus = 'running' | 'success' | 'failed' | 'queued';
 
-export type RunStatus = 'success' | 'partial' | 'failed' | 'running' | 'skipped';
+export type RunStatus =
+  | 'success'
+  | 'partial'
+  | 'failed'
+  | 'running'
+  | 'skipped';
 
 export type AgentTab = 'metadata' | 'ai';
 

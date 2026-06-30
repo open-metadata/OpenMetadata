@@ -47,10 +47,7 @@ const AgentsPageHeader: FC<AgentsPageHeaderProps> = ({ service }) => (
       <span className="tw:text-[22px] tw:font-semibold tw:text-[color:var(--fg-primary)] tw:tracking-[-0.01em]">
         {service.name}
       </span>
-      <Badge
-        color="gray"
-        size="md"
-        type="pill-color">
+      <Badge color="gray" size="md" type="pill-color">
         {service.typeLabel}
       </Badge>
     </div>

@@ -93,10 +93,7 @@ const AgentsPage: FC = () => {
         />
       )}
       {logsFor && (
-        <LogViewerDrawer
-          agent={logsFor}
-          onClose={() => setLogsFor(null)}
-        />
+        <LogViewerDrawer agent={logsFor} onClose={() => setLogsFor(null)} />
       )}
     </div>
   );

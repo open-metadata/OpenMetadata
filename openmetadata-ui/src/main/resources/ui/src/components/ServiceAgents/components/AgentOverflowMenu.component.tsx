@@ -13,10 +13,10 @@
 
 import { Dropdown } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Button as AriaButton } from 'react-aria-components';
-import { AgentStatus } from '../AgentsPage.interface';
+import { useTranslation } from 'react-i18next';
 import { IcMore } from '../AgentIcons';
+import { AgentStatus } from '../AgentsPage.interface';
 
 interface AgentOverflowMenuProps {
   status: AgentStatus;
@@ -64,14 +64,9 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
       <Dropdown.Popover>
         <Dropdown.Menu onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
-            <Dropdown.Item
-              id={item.id}
-              key={item.id}
-              textValue={item.label}>
+            <Dropdown.Item id={item.id} key={item.id} textValue={item.label}>
               <span
-                style={
-                  item.danger ? { color: 'var(--error-600)' } : undefined
-                }>
+                style={item.danger ? { color: 'var(--error-600)' } : undefined}>
                 {item.label}
               </span>
             </Dropdown.Item>

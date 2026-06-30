@@ -14,8 +14,8 @@
 import { Button } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Agent } from '../AgentsPage.interface';
 import { IcChevD, IcPlus } from '../AgentIcons';
+import { Agent } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
 interface AgentGroupProps {

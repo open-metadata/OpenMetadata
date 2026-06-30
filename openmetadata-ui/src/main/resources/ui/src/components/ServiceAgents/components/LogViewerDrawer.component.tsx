@@ -88,6 +88,7 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
       a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
       a.download = `${(agent.name ?? 'agent').replace(/\s+/g, '_')}_logs.txt`;
       a.click();
+      URL.revokeObjectURL(a.href);
     } catch (_e) {
       // client-side blob download — silently ignore
     }
@@ -154,12 +155,10 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
             <Icon />
           </span>
           <div style={{ flex: 1 }}>
-            <div
-              style={{ color: 'var(--fg-primary)', font: '700 15px Inter' }}>
+            <div style={{ color: 'var(--fg-primary)', font: '700 15px Inter' }}>
               {agent.name} · {t('label.log-plural')}
             </div>
-            <div
-              style={{ color: 'var(--fg-muted)', font: '400 12px Inter' }}>
+            <div style={{ color: 'var(--fg-muted)', font: '400 12px Inter' }}>
               {t('message.latest-run-lines', { count: all.length })}
             </div>
           </div>
@@ -273,7 +272,7 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
             }}>
             {levelFilters.map(([id, lbl]) => {
               const isOn = level === id;
-              const n = id === 'all' ? all.length : (counts[id] ?? 0);
+              const n = id === 'all' ? all.length : counts[id] ?? 0;
 
               return (
                 <button

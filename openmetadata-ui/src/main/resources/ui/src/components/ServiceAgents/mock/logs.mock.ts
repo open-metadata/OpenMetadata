@@ -37,7 +37,10 @@ export function genLogLines(agent: Agent): LogLine[] {
       .toString(16)
       .slice(2, 10)}`
   );
-  push('info', 'Loading connection configuration from service banking-redshift');
+  push(
+    'info',
+    'Loading connection configuration from service banking-redshift'
+  );
   push(
     'debug',
     'Resolving credentials via IAM role arn:aws:iam::4417:role/collate-ingest'
@@ -50,7 +53,9 @@ export function genLogLines(agent: Agent): LogLine[] {
   for (let i = 1; i <= 8; i++) {
     push(
       'info',
-      `Scanning schema sales_${i} · ${Math.floor(Math.random() * 200 + 20)} ${unit}`
+      `Scanning schema sales_${i} · ${Math.floor(
+        Math.random() * 200 + 20
+      )} ${unit}`
     );
   }
   push('warn', 'Skipped 3 transient tables matching exclude pattern ^tmp_');
@@ -65,10 +70,7 @@ export function genLogLines(agent: Agent): LogLine[] {
     'info',
     'Sink to OpenMetadata complete · 2,844 entities written, 0 failed'
   );
-  push(
-    'info',
-    'Workflow finished · status PARTIAL_SUCCESS · elapsed 4m 12s'
-  );
+  push('info', 'Workflow finished · status PARTIAL_SUCCESS · elapsed 4m 12s');
 
   return lines;
 }

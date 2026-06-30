@@ -26,13 +26,17 @@ interface SummaryStatProps {
   value: string;
 }
 
-const SummaryStat: FC<SummaryStatProps> = ({ label, tone = 'neutral', value }) => {
+const SummaryStat: FC<SummaryStatProps> = ({
+  label,
+  tone = 'neutral',
+  value,
+}) => {
   const valueColor =
     tone === 'error'
       ? 'var(--error-600)'
       : tone === 'ok'
-        ? 'var(--success-700)'
-        : 'var(--fg-primary)';
+      ? 'var(--success-700)'
+      : 'var(--fg-primary)';
 
   return (
     <div className="tw:text-right">
@@ -46,7 +50,14 @@ const SummaryStat: FC<SummaryStatProps> = ({ label, tone = 'neutral', value }) =
         }}>
         {value}
       </div>
-      <div style={{ color: 'var(--fg-tertiary)', fontSize: 11.5, fontWeight: 400 }}>{label}</div>
+      <div
+        style={{
+          color: 'var(--fg-tertiary)',
+          fontSize: 11.5,
+          fontWeight: 400,
+        }}>
+        {label}
+      </div>
     </div>
   );
 };
@@ -66,21 +77,31 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
     .filter((a) => a.status === 'running' && a.eta !== null)
     .map((a) => a.eta as number);
   const maxEta = etas.length ? Math.max(...etas) : 0;
-  const overall = total > 0 ? Math.round(agents.reduce((sum, a) => sum + a.pct, 0) / total) : 0;
+  const overall =
+    total > 0
+      ? Math.round(agents.reduce((sum, a) => sum + a.pct, 0) / total)
+      : 0;
   const allDone = running === 0 && done + failed === total;
 
   const etaDisplay = maxEta
     ? fmtEta(maxEta).replace('~', '').replace(' left', '')
     : '—';
 
-  const failedSuffix = failed > 0 ? ` · ${failed} ${t('label.failed').toLowerCase()}` : '';
-  const attentionSuffix = failed > 0
-    ? ` · ${failed} ${t('label.needs-attention').toLowerCase()}`
-    : ` · ${t('message.everything-healthy')}`;
+  const failedSuffix =
+    failed > 0 ? ` · ${failed} ${t('label.failed').toLowerCase()}` : '';
+  const attentionSuffix =
+    failed > 0
+      ? ` · ${failed} ${t('label.needs-attention').toLowerCase()}`
+      : ` · ${t('message.everything-healthy')}`;
 
   const subtitle = allDone
     ? t('message.agents-finished-summary', { attentionSuffix, done, total })
-    : t('message.agents-deploy-progress', { done, failedSuffix, queued, running });
+    : t('message.agents-deploy-progress', {
+        done,
+        failedSuffix,
+        queued,
+        running,
+      });
 
   return (
     <div
@@ -145,11 +166,17 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
               fontSize: 17,
               letterSpacing: '-0.01em',
             }}>
-            {allDone ? t('label.deployment-complete') : t('message.agents-deploying-ingesting')}
+            {allDone
+              ? t('label.deployment-complete')
+              : t('message.agents-deploying-ingesting')}
           </div>
           <div
             className="tw:mt-0.5"
-            style={{ color: 'var(--fg-tertiary)', fontSize: 13, fontWeight: 400 }}>
+            style={{
+              color: 'var(--fg-tertiary)',
+              fontSize: 13,
+              fontWeight: 400,
+            }}>
             {subtitle}
           </div>
         </div>
@@ -160,22 +187,21 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
             value={fmtNum(assets)}
           />
           <SummaryStat
-            label={t('label.error-plural')}
+            label={t('label.error-plural').toLowerCase()}
             tone={errors > 0 ? 'error' : 'ok'}
             value={fmtNum(errors)}
           />
           {!allDone && (
-            <SummaryStat
-              label={t('label.est-remaining')}
-              value={etaDisplay}
-            />
+            <SummaryStat label={t('label.est-remaining')} value={etaDisplay} />
           )}
         </div>
       </div>
 
       {!allDone && (
         <div className="tw:mt-4">
-          <div className="tw:h-2 tw:overflow-hidden tw:rounded-full" style={{ background: 'var(--gray-100)' }}>
+          <div
+            className="tw:h-2 tw:overflow-hidden tw:rounded-full"
+            style={{ background: 'var(--gray-100)' }}>
             <div
               className="tw:h-full tw:rounded-full tw:transition-[width] tw:duration-700"
               style={{ background: 'var(--blue-600)', width: `${overall}%` }}
@@ -183,8 +209,14 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
           </div>
           <div
             className="tw:mt-[7px] tw:flex tw:justify-between"
-            style={{ color: 'var(--fg-muted)', fontSize: 11.5, fontWeight: 500 }}>
-            <span>{t('message.percent-complete-all-agents', { percent: overall })}</span>
+            style={{
+              color: 'var(--fg-muted)',
+              fontSize: 11.5,
+              fontWeight: 500,
+            }}>
+            <span>
+              {t('message.percent-complete-all-agents', { percent: overall })}
+            </span>
             <span>{t('message.leave-page-ingestion-continues')}</span>
           </div>
         </div>

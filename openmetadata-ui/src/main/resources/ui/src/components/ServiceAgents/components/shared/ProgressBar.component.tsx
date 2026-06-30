@@ -31,7 +31,10 @@ const ProgressBar: FC<ProgressBarProps> = ({ pct, status }) => {
     <div className="tw:h-1.5 tw:overflow-hidden tw:rounded-full tw:bg-[color:var(--gray-100)]">
       <div
         className="tw:h-full tw:rounded-full tw:transition-[width] tw:duration-700"
-        style={{ background: color, width: `${Math.max(2, Math.min(100, pct))}%` }}
+        style={{
+          background: color,
+          width: `${Math.max(2, Math.min(100, pct))}%`,
+        }}
       />
     </div>
   );

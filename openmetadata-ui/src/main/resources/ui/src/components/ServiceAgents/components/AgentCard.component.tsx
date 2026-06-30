@@ -14,7 +14,6 @@
 import { Button } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Agent } from '../AgentsPage.interface';
 import {
   AssetIcon,
   ClockIcon,
@@ -24,6 +23,7 @@ import {
   RunIcon,
   WarnIcon,
 } from '../AgentIcons';
+import { Agent } from '../AgentsPage.interface';
 import {
   agentAccentColor,
   AGENT_TYPE_ICON,
@@ -115,15 +115,14 @@ const AgentCard: FC<AgentCardProps> = ({
               />
             )}
             {isRunning && (
-              <Metric
-                icon={<ClockIcon />}
-                value={fmtEta(agent.eta)}
-              />
+              <Metric icon={<ClockIcon />} value={fmtEta(agent.eta)} />
             )}
             {isSuccess && (
               <Metric
                 icon={unitIcon}
-                label={`${agent.unit} · ${t('label.finished')} ${agent.finishedAt}`}
+                label={`${agent.unit} · ${t('label.finished')} ${
+                  agent.finishedAt
+                }`}
                 value={fmtNum(agent.assets)}
               />
             )}
@@ -138,7 +137,9 @@ const AgentCard: FC<AgentCardProps> = ({
             {isFailed && (
               <Metric
                 icon={<ErrIcon />}
-                label={`· ${fmtNum(agent.assets)} ${agent.unit} ${t('label.before-error')}`}
+                label={`· ${fmtNum(agent.assets)} ${agent.unit} ${t(
+                  'label.before-error'
+                )}`}
                 tone="error"
                 value={`${t('label.failed-at')} ${agent.failStep}`}
               />

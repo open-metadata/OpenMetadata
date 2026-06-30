@@ -14,8 +14,8 @@
 import { ToastProvider } from '@openmetadata/ui-core-components';
 import { createRoot } from 'react-dom/client';
 import { I18nextProvider } from 'react-i18next';
-import i18n from '../../../utils/i18next/LocalUtil';
 import '../../../styles/index';
+import i18n from '../../../utils/i18next/LocalUtil';
 import AgentsPage from '../AgentsPage.component';
 
 const container = document.getElementById('root');
