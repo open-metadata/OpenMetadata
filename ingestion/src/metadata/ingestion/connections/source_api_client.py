@@ -24,11 +24,57 @@ Usage:
     response = client.get("/dashboards")  # Automatically tracked
 """
 
+import re
 from time import perf_counter
 from typing import Any, Optional, Union
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.utils.operation_metrics import OperationMetricsState
+
+# Patterns used to detect path segments that are entity identifiers so they can be
+# collapsed to "{id}". Source APIs that embed opaque IDs deep in the path (e.g. Sigma's
+# /workbooks/{id}/lineage/elements/{elementId}) would otherwise produce a distinct metric
+# key per entity, exploding the cardinality of "source_api_calls" and the dynamic field
+# count of the ingestion_pipeline search index mapping. See issue #29141.
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+_NUMERIC_RE = re.compile(r"^\d+$")
+_HEX_TOKEN_RE = re.compile(r"^[0-9a-f]{24,}$", re.IGNORECASE)  # Mongo ObjectId & longer hex
+_VERSION_RE = re.compile(r"^v\d+$", re.IGNORECASE)  # API version segment, e.g. /v1 - not an id
+# Opaque identifier: an id-charset token of reasonable length that contains at least one
+# digit. Plain path words ("workbooks", "elements", "lineage", ...) have no digit and so
+# are preserved; version segments are excluded above.
+_OPAQUE_ID_RE = re.compile(r"^(?=.{4,}$)(?=.*\d)[A-Za-z0-9._~-]+$")
+
+
+def _is_id_segment(part: str) -> bool:
+    """Return True if a single path segment looks like an entity identifier."""
+    if _VERSION_RE.match(part):
+        return False
+    return bool(
+        _UUID_RE.match(part)
+        or _NUMERIC_RE.match(part)
+        or _HEX_TOKEN_RE.match(part)
+        or _OPAQUE_ID_RE.match(part)
+    )
+
+
+def normalize_api_path(path: str) -> str:
+    """
+    Normalize an API path for metrics by replacing identifier segments with ``{id}``.
+
+    This keeps the cardinality of recorded operations bounded regardless of how many
+    source entities are walked.
+    Example: ``/workbooks/3f2a.../lineage/elements/ab12`` -> ``/workbooks/{id}/lineage/elements/{id}``
+    """
+    cleaned_parts = [
+        "{id}" if _is_id_segment(part) else part
+        for part in path.split("?")[0].split("/")
+        if part
+    ]
+    return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
 
 
 class TrackedREST(REST):
@@ -76,28 +122,7 @@ class TrackedREST(REST):
         Replaces IDs and UUIDs with placeholders for better aggregation.
         Example: /dashboard/123-abc -> /dashboard/{id}
         """
-        import re  # noqa: PLC0415
-
-        parts = path.split("?")[0].split("/")  # noqa: PLC0207
-        cleaned_parts = []
-        for part in parts:
-            if not part:
-                continue
-            # Replace UUIDs and numeric IDs with {id}
-            if re.match(
-                r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-                part,
-                re.IGNORECASE,
-            ):
-                cleaned_parts.append("{id}")
-            elif re.match(r"^\d+$", part):
-                cleaned_parts.append("{id}")
-            elif re.match(r"^[a-f0-9]{24}$", part, re.IGNORECASE):
-                # MongoDB-style ObjectIds
-                cleaned_parts.append("{id}")
-            else:
-                cleaned_parts.append(part)
-        return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
+        return normalize_api_path(path)
 
     def _record_api_call(self, method: str, path: str, duration_ms: float) -> None:
         """Record an API call metric."""
