@@ -805,7 +805,7 @@ test.describe('Bulk Import Export', () => {
     // to be indexed before the test fetches its export/edit grid.
     await waitForSearchIndexed(
       apiContext,
-      tableEntity.entityResponseData.fullyQualifiedName ?? '',
+      tableEntity.entityResponseData.fullyQualifiedName,
       'table_search_index'
     );
 

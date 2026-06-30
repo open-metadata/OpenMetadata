@@ -52,7 +52,7 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     );
     await waitForSearchIndexed(
       apiContext,
-      opTable.entityResponseData.fullyQualifiedName ?? '',
+      opTable.entityResponseData.fullyQualifiedName,
       'table_search_index'
     );
 

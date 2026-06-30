@@ -76,7 +76,7 @@ test.describe(
       // `processed-row` reports "4" instead of the expected "5".
       await waitForSearchIndexed(
         apiContext,
-        table.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+        table.testCasesResponseData[0]?.fullyQualifiedName,
         'test_case_search_index'
       );
 
@@ -147,7 +147,7 @@ test.describe(
       // processed-row reports "4" instead of "5".
       await waitForSearchIndexed(
         apiContext,
-        table.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+        table.testCasesResponseData[0]?.fullyQualifiedName,
         'test_case_search_index'
       );
 
