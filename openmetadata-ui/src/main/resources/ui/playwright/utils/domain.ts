@@ -63,6 +63,87 @@ const waitForSearchDebounce = async (page: Page) => {
   }
 };
 
+export const addTierWidget = async (
+  page: Page,
+  tier: string,
+  endpoint: string
+) => {
+  const addBtn = page.getByTestId('add-tier');
+  const editBtn = page.getByTestId('edit-tier');
+  const isAdd = await addBtn.isVisible();
+  await (isAdd ? addBtn : editBtn).click();
+
+  await waitForAllLoadersToDisappear(page);
+
+  const tierRadioButton = page.getByTestId(`radio-btn-${tier}`);
+  await tierRadioButton.waitFor({ state: 'visible' });
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+
+  await tierRadioButton.click();
+
+  const updateButton = page.getByTestId('update-tier-card');
+  await updateButton.waitFor({ state: 'visible' });
+  await updateButton.click();
+
+  const response = await patchRequest;
+  expect(response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await clickOutside(page);
+
+  await expect(page.getByTestId('Tier')).toContainText(tier);
+};
+
+export const addCertificationWidget = async (
+  page: Page,
+  certification: TagClass,
+  endpoint: string
+) => {
+  const addBtn = page.getByTestId('add-certification');
+  const editBtn = page.getByTestId('edit-certification');
+  const isAdd = await addBtn.isVisible();
+  await (isAdd ? addBtn : editBtn).click();
+
+  await page.locator('.certification-card-popover').waitFor({
+    state: 'visible',
+  });
+  await waitForAllLoadersToDisappear(page);
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
+  await page
+    .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
+    .click();
+
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
+  await page.getByTestId('update-certification').click();
+
+  const patchResponse = await patchRequest;
+  expect(patchResponse.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await clickOutside(page);
+
+  await expect(page.getByTestId('certification-label')).toContainText(
+    certification.responseData.displayName
+  );
+};
+
 export const assignCertificationForWidget = async (
   page: Page,
   certification: TagClass,
@@ -122,9 +203,7 @@ export const removeTierFromWidget = async (page: Page, endpoint: string) => {
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
-  await expect(
-    page.locator('[data-testid="Tier"].no-data-placeholder')
-  ).toBeVisible();
+  await expect(page.getByTestId('add-tier')).toBeVisible();
 };
 
 export const removeCertificationFromWidget = async (
@@ -150,9 +229,7 @@ export const removeCertificationFromWidget = async (
   await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 
-  await expect(
-    page.locator('[data-testid="certification-label"] .no-data-placeholder')
-  ).toBeVisible();
+  await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {

@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Tooltip, Typography } from 'antd';
+import { Card, Tooltip, Typography as AntDTypography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,7 +29,11 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
@@ -115,11 +118,7 @@ export const DomainLabelV2 = <
   }, [domains]);
 
   const domainLink = useMemo(() => {
-    if (
-      activeDomain &&
-      Array.isArray(activeDomain) &&
-      activeDomain.length > 0
-    ) {
+    if (!isEmpty(activeDomain)) {
       return activeDomain.map((domain) => {
         const inheritedIcon = domain?.inherited ? (
           <Tooltip
@@ -132,7 +131,7 @@ export const DomainLabelV2 = <
 
         return (
           <div className="d-flex w-max-full items-center gap-1" key={domain.id}>
-            <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <AntDTypography.Text className="self-center text-xs whitespace-nowrap">
               <DomainIcon
                 className="d-flex"
                 color={DE_ACTIVE_COLOR}
@@ -140,7 +139,7 @@ export const DomainLabelV2 = <
                 name="folder"
                 width={16}
               />
-            </Typography.Text>
+            </AntDTypography.Text>
             {renderDomainLink(
               domain,
               getEntityName(domain),
@@ -152,18 +151,9 @@ export const DomainLabelV2 = <
           </div>
         );
       });
-    } else {
-      return (
-        <Typography.Text
-          className={classNames(
-            { 'font-medium text-xs': !props.showDomainHeading },
-            props.textClassName
-          )}
-          data-testid="no-domain-text">
-          {t('label.no-entity', { entity: t('label.domain-plural') })}
-        </Typography.Text>
-      );
     }
+
+    return null;
   }, [activeDomain]);
 
   const hasPermission = useMemo(() => {
@@ -171,38 +161,54 @@ export const DomainLabelV2 = <
   }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
+    if (!hasPermission) {
+      return null;
+    }
+
+    const actionButton = isEmpty(activeDomain) ? (
+      <WidgetPlusButton
+        data-testid="add-domain"
+        title={t('label.add-entity', {
+          entity: t('label.domain-plural'),
+        })}
+        onClick={(e) => e.stopPropagation()}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-domain"
+        disabled={!hasPermission}
+        title={t('label.edit-entity', {
+          entity: t('label.domain-plural'),
+        })}
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+
     return (
-      hasPermission && (
-        <DomainSelectableList
-          hasPermission={Boolean(hasPermission)}
-          isClearable={props.isClearable}
-          multiple={props.multiple}
-          selectedDomain={activeDomain}
-          onUpdate={handleDomainSave}
-        />
-      )
+      <DomainSelectableList
+        hasPermission={Boolean(hasPermission)}
+        isClearable={props.isClearable}
+        multiple={props.multiple}
+        selectedDomain={activeDomain}
+        onUpdate={handleDomainSave}>
+        {actionButton}
+      </DomainSelectableList>
     );
   }, [hasPermission, activeDomain, handleDomainSave, props.isClearable]);
 
   const label = useMemo(() => {
     if (props.showDomainHeading) {
       return (
-        <ExpandableCard
-          cardProps={{
-            title: (
-              <div className="d-flex items-center gap-1">
-                <Typography.Text className="text-sm font-medium">
-                  {t('label.domain-plural')}
-                </Typography.Text>
-                {selectableList}
-              </div>
-            ),
-          }}
-          isExpandDisabled={!Array.isArray(domainLink)}>
-          <div className="d-flex items-center gap-1 flex-wrap">
-            {domainLink}
-          </div>
-        </ExpandableCard>
+        <WidgetCard
+          headerExtra={selectableList}
+          isExpandDisabled={isEmpty(activeDomain)}
+          title={t('label.domain-plural')}>
+          {domainLink && (
+            <div className="d-flex items-center gap-1 flex-wrap">
+              {domainLink}
+            </div>
+          )}
+        </WidgetCard>
       );
     }
 

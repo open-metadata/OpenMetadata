@@ -199,6 +199,8 @@
     "assume-role-session-name": "Role Session Name för Assume Role",
     "assume-role-source-identity": "Source Identity för Assume Role",
     "attach-file-plural": "Bifoga filer",
+    "attachment": "Attachment",
+    "attachment-plural": "Attachments",
     "attention": "Observera",
     "audience": "Målgrupp",
     "audio": "Ljud",

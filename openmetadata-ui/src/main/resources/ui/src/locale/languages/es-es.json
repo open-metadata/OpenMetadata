@@ -199,6 +199,8 @@
     "assume-role-session-name": "Nombre de la Sesión de Rol para Asumir Rol",
     "assume-role-source-identity": "Identidad de Origen para Asumir Rol",
     "attach-file-plural": "Adjuntar archivos",
+    "attachment": "Archivo adjunto",
+    "attachment-plural": "Archivos adjuntos",
     "attention": "Atención",
     "audience": "Público",
     "audio": "Audio",

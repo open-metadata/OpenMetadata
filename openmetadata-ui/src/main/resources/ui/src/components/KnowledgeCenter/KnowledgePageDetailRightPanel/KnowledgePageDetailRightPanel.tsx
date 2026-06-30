@@ -29,6 +29,7 @@ import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
+import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 
 interface KnowledgePageDetailRightPanelProps {
@@ -122,7 +123,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
           relatedDataAssets={knowledgePage?.['relatedEntities']}
           onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
         />
-
+        <AttachmentWidget hasPermission={permissions.EditAll} />
         {knowledgePage?.id && (
           <div>
             {knowledgePage.processingStatus && (

@@ -102,7 +102,15 @@ export const updateTags = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page.click('[data-testid="tags-container"] [data-testid="add-tag"]');
+  const tagsContainer = page.locator('[data-testid="tags-container"]').first();
+  const addTagBtn = tagsContainer.getByTestId('add-tag');
+  const editTagBtn = tagsContainer.getByTestId('edit-button');
+  const isAdd = await addTagBtn.isVisible();
+  if (isAdd) {
+    await addTagBtn.click();
+  } else {
+    await editTagBtn.click();
+  }
 
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
@@ -140,8 +148,6 @@ export const updateDataAsset = async (
   );
   await page
     .getByTestId('add-data-assets-container')
-    .locator('span')
-    .first()
     .click();
 
   await page.waitForSelector(
