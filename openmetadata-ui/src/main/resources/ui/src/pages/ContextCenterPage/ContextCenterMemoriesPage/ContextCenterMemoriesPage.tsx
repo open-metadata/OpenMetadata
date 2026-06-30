@@ -343,9 +343,11 @@ const ContextCenterMemoriesPage: FC = () => {
     async (memory: ContextMemory) => {
       setIsPinningMemoryId(memory.id);
       try {
-        memory.pinned
-          ? await unpinContextMemory(memory.id)
-          : await pinContextMemory(memory.id);
+        if (memory.pinned) {
+          await unpinContextMemory(memory.id);
+        } else {
+          await pinContextMemory(memory.id);
+        }
         await fetchMemories(false);
         await fetchMemoryCounts();
       } catch (err) {
