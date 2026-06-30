@@ -77,6 +77,23 @@ import {
 } from './EntityServiceBreadcrumbUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 
+const BREADCRUMB_ENTITY_TYPES = [
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DATABASE,
+  EntityType.TABLE,
+] as const;
+
+export const getBreadcrumbEntityTypeFromHref = (href?: string) =>
+  BREADCRUMB_ENTITY_TYPES.find((entityType) =>
+    Boolean(href?.includes(`/${entityType}/`))
+  );
+
+export const isServiceBreadcrumbHref = (href?: string) =>
+  href
+    ? !getBreadcrumbEntityTypeFromHref(href) &&
+      !/^\/settings\/services\/[^/]+\/?$/.test(href)
+    : false;
+
 export const getEntityBreadcrumbs = (
   entity:
     | SearchedDataProps['data'][number]['_source']

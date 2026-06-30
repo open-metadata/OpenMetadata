@@ -16,7 +16,14 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import { forwardRef, useCallback, useMemo } from 'react';
+import type { FC } from 'react';
+import {
+  cloneElement,
+  forwardRef,
+  isValidElement,
+  useCallback,
+  useMemo,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -35,6 +42,10 @@ import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
+import {
+  getBreadcrumbEntityTypeFromHref,
+  isServiceBreadcrumbHref,
+} from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -50,24 +61,23 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
-import {
-  createBreadcrumbIcon,
-  getBreadcrumbEntityTypeFromHref,
-  getTypeBadge,
-  isServiceBreadcrumbHref,
-  TYPE_BADGE_KEY,
-} from './ExploreSearchCard.utils';
+import { getTypeBadge, TYPE_BADGE_KEY } from './ExploreSearchCard.utils';
 
-const ENTITY_BREADCRUMB_ICONS = {
-  [EntityType.DATABASE]: createBreadcrumbIcon(
-    searchClassBase.getEntityIcon(EntityType.DATABASE)
+type BreadcrumbIconProps = { className?: string };
+
+const createEntityBreadcrumbIcon =
+  (entityType: EntityType): FC<BreadcrumbIconProps> =>
+  ({ className }) =>
+    searchClassBase.getEntityIcon(entityType, className);
+
+const ENTITY_BREADCRUMB_ICONS: Partial<
+  Record<EntityType, FC<BreadcrumbIconProps>>
+> = {
+  [EntityType.DATABASE]: createEntityBreadcrumbIcon(EntityType.DATABASE),
+  [EntityType.DATABASE_SCHEMA]: createEntityBreadcrumbIcon(
+    EntityType.DATABASE_SCHEMA
   ),
-  [EntityType.DATABASE_SCHEMA]: createBreadcrumbIcon(
-    searchClassBase.getEntityIcon(EntityType.DATABASE_SCHEMA)
-  ),
-  [EntityType.TABLE]: createBreadcrumbIcon(
-    searchClassBase.getEntityIcon(EntityType.TABLE)
-  ),
+  [EntityType.TABLE]: createEntityBreadcrumbIcon(EntityType.TABLE),
 };
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
@@ -321,10 +331,27 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return searchClassBase.getServiceIcon(source);
     }, [source]);
 
-    const serviceBreadcrumbIcon = useMemo(
-      () => createBreadcrumbIcon(serviceIcon),
-      [serviceIcon]
-    );
+    const ServiceBreadcrumbIcon = useMemo<
+      FC<BreadcrumbIconProps> | undefined
+    >(() => {
+      if (!serviceIcon) {
+        return undefined;
+      }
+
+      const Icon: FC<BreadcrumbIconProps> = ({ className }) => {
+        if (isValidElement<{ className?: string }>(serviceIcon)) {
+          return cloneElement(serviceIcon, {
+            className: classNames(serviceIcon.props.className, className),
+          });
+        }
+
+        return <span className={className}>{serviceIcon}</span>;
+      };
+
+      Icon.displayName = 'ExploreSearchCardServiceBreadcrumbIcon';
+
+      return Icon;
+    }, [serviceIcon]);
 
     const breadcrumbItems = useMemo(() => {
       const serviceBreadcrumbIndex = breadcrumbs.findIndex((b) => {
@@ -343,13 +370,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           href,
           icon:
             index === serviceBreadcrumbIndex
-              ? serviceBreadcrumbIcon
+              ? ServiceBreadcrumbIcon
               : breadcrumbEntityType
               ? ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType]
               : undefined,
         };
       });
-    }, [breadcrumbs, serviceBreadcrumbIcon]);
+    }, [breadcrumbs, ServiceBreadcrumbIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
@@ -378,18 +405,19 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div
-                className={classNames(
-                  'explore-search-card-breadcrumbs tw:flex tw:min-w-0 tw:items-center tw:gap-2',
-                  classNameForBreadcrumb
-                )}>
-                {/* Always collapse the middle crumbs into a clickable "…" menu
+              {/* Always collapse the middle crumbs into a clickable "…" menu
                     (first / … / last) so a deep path stays compact and the
                     summary side-panel keeps its room; the hidden crumbs expand
                     on click. autoCollapse only collapses on overflow, so a wide
                     card would otherwise show the whole trail. */}
-                <Breadcrumbs items={breadcrumbItems} maxItems={2} />
-              </div>
+              <Breadcrumbs
+                className={classNames(
+                  'explore-search-card-breadcrumbs tw:min-w-0',
+                  classNameForBreadcrumb
+                )}
+                items={breadcrumbItems}
+                maxItems={2}
+              />
               {score && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />

@@ -12,8 +12,6 @@
  */
 
 import { startCase } from 'lodash';
-import type { FC, ReactNode } from 'react';
-import { EntityType } from '../../../enums/entity.enum';
 
 export const TYPE_BADGE_KEY = 'Type';
 
@@ -35,53 +33,9 @@ const TYPE_BADGE_CLASS_NAME = [
   'tw:whitespace-normal',
 ].join(' ');
 
-const BREADCRUMB_ICON_CLASS_NAME = [
-  'tw:inline-flex',
-  'tw:size-3.5',
-  'tw:shrink-0',
-  'tw:items-center',
-  'tw:justify-center',
-  'tw:align-middle',
-  'tw:leading-none',
-  'tw:[&>*]:size-3.5',
-].join(' ');
-
 export const getTypeBadge = (label?: string, preserveFormatting = false) =>
   label ? (
     <span className={TYPE_BADGE_CLASS_NAME}>
       {(preserveFormatting ? label : startCase(label)).toUpperCase()}
     </span>
   ) : null;
-
-const BREADCRUMB_ENTITY_TYPES = [
-  EntityType.DATABASE_SCHEMA,
-  EntityType.DATABASE,
-  EntityType.TABLE,
-] as const;
-
-export const getBreadcrumbEntityTypeFromHref = (href?: string) =>
-  BREADCRUMB_ENTITY_TYPES.find((entityType) =>
-    Boolean(href?.includes(`/${entityType}/`))
-  );
-
-export const isServiceBreadcrumbHref = (href?: string) =>
-  href
-    ? !getBreadcrumbEntityTypeFromHref(href) &&
-      !/^\/settings\/services\/[^/]+\/?$/.test(href)
-    : false;
-
-export const createBreadcrumbIcon = (
-  icon: ReactNode
-): FC<{ className?: string }> | undefined => {
-  if (!icon) {
-    return undefined;
-  }
-
-  const BreadcrumbIcon: FC<{ className?: string }> = () => (
-    <span className={BREADCRUMB_ICON_CLASS_NAME}>{icon}</span>
-  );
-
-  BreadcrumbIcon.displayName = 'ExploreSearchCardBreadcrumbIcon';
-
-  return BreadcrumbIcon;
-};
