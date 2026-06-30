@@ -222,13 +222,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockReturnValue({
-    resetAlert: jest.fn(),
-    animationClass: '',
-  }),
-}));
-
 describe('BundleSuiteForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();

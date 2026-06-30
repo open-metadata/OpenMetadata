@@ -14,7 +14,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
 import { mockPipelineActionsDropdownProps } from '../../../../../../mocks/IngestionListTable.mock';
+import { ENTITY_PERMISSIONS } from '../../../../../../mocks/Permissions.mock';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 jest.mock(
@@ -100,6 +103,36 @@ describe('PipelineActionsDropdown', () => {
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
     expect(screen.getByTestId('run-button')).toBeInTheDocument();
     expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
+  });
+
+  it('should hide run button when Trigger permission is absent', async () => {
+    const permissions = {
+      ...ENTITY_PERMISSIONS,
+      [Operation.Trigger]: false,
+    } as OperationPermission;
+
+    await act(async () => {
+      render(
+        <PipelineActionsDropdown
+          {...mockPipelineActionsDropdownProps}
+          ingestion={{
+            ...mockPipelineActionsDropdownProps.ingestion,
+            deployed: true,
+            enabled: true,
+          }}
+          ingestionPipelinePermissions={permissions}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    await clickOnMoreActions();
+
+    expect(screen.queryByTestId('run-button')).toBeNull();
+    expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
   });
 
   it('should call deployIngestion when clicked on deploy button', async () => {
