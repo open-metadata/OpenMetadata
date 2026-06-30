@@ -96,8 +96,8 @@ public class TaskRepository extends EntityRepository<Task> {
    * terminal status (Rejected / Completed / Cancelled / Failed / Revoked / Expired) — exposed so
    * other modules (e.g. ExpireOnTimerImpl) can avoid double-resolving an already-closed task.
    */
-  public static final java.util.Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
-      java.util.Set.of(
+  public static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      Set.of(
           TaskEntityStatus.Open,
           TaskEntityStatus.InProgress,
           TaskEntityStatus.Pending,
@@ -108,6 +108,7 @@ public class TaskRepository extends EntityRepository<Task> {
   public static boolean isTerminalStatus(TaskEntityStatus status) {
     return status != null && !NON_TERMINAL_STATUSES.contains(status);
   }
+
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
