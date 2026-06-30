@@ -512,7 +512,7 @@ describe('ExploreV1', () => {
     expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
   });
 
-  it('shows query-panel Clear for an advanced-search-only filter', () => {
+  it('does not show query-panel chips for an advanced-search-only filter', () => {
     const onResetAllFilters = jest.fn();
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
@@ -524,10 +524,11 @@ describe('ExploreV1', () => {
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('clear-all-chips'));
-
+    expect(
+      screen.queryByTestId('explore-query-filter-chips')
+    ).not.toBeInTheDocument();
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
-    expect(onResetAllFilters).toHaveBeenCalledTimes(1);
+    expect(onResetAllFilters).not.toHaveBeenCalled();
   });
 
   it('clears only advanced search when advanced search filter is cleared', () => {

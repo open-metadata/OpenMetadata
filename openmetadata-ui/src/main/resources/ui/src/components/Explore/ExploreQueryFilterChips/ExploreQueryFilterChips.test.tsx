@@ -47,6 +47,18 @@ describe('ExploreQueryFilterChips', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('renders nothing when only additional query is active', () => {
+    const { container } = render(
+      <ExploreQueryFilterChips
+        hasAdditionalQuery
+        fields={[emptyField]}
+        onRemoveValue={jest.fn()}
+      />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('renders one removable chip per selected value across fields', () => {
     render(
       <ExploreQueryFilterChips

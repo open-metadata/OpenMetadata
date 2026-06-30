@@ -565,8 +565,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [selectedQuickFilters]
   );
   const hasActiveFilterQuery = useMemo(
-    () => hasQuickFilterValues || !isEmpty(browseFields) || Boolean(sqlQuery),
-    [hasQuickFilterValues, browseFields, sqlQuery]
+    () => hasQuickFilterValues || !isEmpty(browseFields),
+    [hasQuickFilterValues, browseFields]
   );
 
   const selectedEntityTypes = useMemo(() => {

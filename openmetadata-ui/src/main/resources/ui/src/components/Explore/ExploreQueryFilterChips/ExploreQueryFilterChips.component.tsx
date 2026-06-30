@@ -78,10 +78,10 @@ const ExploreQueryFilterChips = ({
     [fields, t]
   );
 
-  const hasActiveQuery =
-    !isEmpty(chips) || !isEmpty(browseFields) || hasAdditionalQuery;
+  const hasFilterChips = !isEmpty(chips) || !isEmpty(browseFields);
+  const hasActiveQuery = hasFilterChips || hasAdditionalQuery;
 
-  if (!hasActiveQuery && !emptyText) {
+  if (!hasFilterChips && !emptyText) {
     return null;
   }
 
@@ -159,10 +159,10 @@ const ExploreQueryFilterChips = ({
 
       {hasActiveQuery && onClearAll && (
         <Button
-          className="tw:ml-auto tw:no-underline hover:tw:no-underline tw:hover:*:data-text:no-underline!"
-          color="link-color"
+          className="tw:ml-auto tw:p-0! tw:bg-transparent tw:shadow-none tw:ring-0 text-primary self-center cursor-pointer font-medium hover:tw:bg-transparent hover:tw:text-primary"
+          color="tertiary"
           data-testid="clear-all-chips"
-          size="xs"
+          size="sm"
           type="button"
           onClick={onClearAll}>
           {t('label.clear-entity', { entity: t('label.all') })}
