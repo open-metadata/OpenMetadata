@@ -465,4 +465,131 @@ describe('ExploreTree', () => {
     expect(getByText('label.database-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
   });
+
+  it('keeps expanded child levels mounted across a filter change', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue({
+        aggregations: {
+          entityType: {
+            buckets: [
+              { key: 'table', doc_count: 50 },
+              { key: 'dashboard', doc_count: 10 },
+            ],
+          },
+          serviceType: { buckets: [{ key: 'BigQuery', doc_count: 1687 }] },
+          'service.displayName.keyword': {
+            buckets: [{ key: 'bigquery_prod', doc_count: 900 }],
+          },
+        },
+        hits: { hits: [], total: { value: 0 } },
+      } as never);
+
+    const { findByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    // Databases is expanded by default and lazy-loads its service types; drill
+    // one level deeper into the service so a nested level is mounted.
+    const bigQueryNode = await findByText('BigQuery');
+    const switcher = bigQueryNode
+      .closest('.ant-tree-treenode')
+      ?.querySelector('.ant-tree-switcher');
+    fireEvent.click(switcher as Element);
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+
+    // A filter change used to rebuild the tree from the static structure,
+    // collapsing every expanded level. The nested level must now survive it.
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+          },
+        })
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(
+        searchQuerySpy.mock.calls.some(([arg]) =>
+          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+        )
+      ).toBe(true);
+    });
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+  });
+
+  it('does not blank the tree with a spinner on later count refreshes', async () => {
+    let releaseRefresh: (() => void) | undefined;
+    let refreshStarted = false;
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) => {
+        // Hold the post-initial filtered refresh open so the in-flight UI can be
+        // observed; the initial load and presence aggregation resolve at once.
+        if (JSON.stringify(queryFilter ?? {}).includes('Tier.Tier1')) {
+          refreshStarted = true;
+
+          return new Promise((resolve) => {
+            releaseRefresh = () =>
+              resolve(
+                buildAggregationResponse([{ key: 'table', doc_count: 5 }])
+              );
+          });
+        }
+
+        return Promise.resolve(
+          buildAggregationResponse([
+            { key: 'table', doc_count: 50 },
+            { key: 'dashboard', doc_count: 10 },
+          ])
+        );
+      });
+
+    const { getByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+          },
+        })
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => expect(refreshStarted).toBe(true));
+
+    // While the refresh is in flight the tree stays on screen instead of being
+    // replaced by the full-screen spinner (the "page reload" symptom).
+    expect(queryByTestId('loader')).not.toBeInTheDocument();
+    expect(getByText('label.database-plural')).toBeInTheDocument();
+
+    await act(async () => {
+      releaseRefresh?.();
+    });
+  });
 });

@@ -356,6 +356,46 @@ export const updateTreeDataWithCounts = (
 };
 
 /**
+ * Refresh the category-level counts on the existing tree without discarding the
+ * lazily-loaded children the user has expanded. A filter or browse change
+ * re-scopes only the root counts and the static governance/domain leaves (whose
+ * key is an entity type); the lazily-loaded hierarchical nodes are recognised by
+ * their `filterField` and left untouched, so they keep their own counts, keys,
+ * and expansion. Rebuilding from the static tree instead would collapse the tree
+ * and drop the current selection — see ExploreTree's count refresh.
+ */
+export const applyRootCountsInPlace = (
+  nodes: ExploreTreeNode[],
+  entityCounts: Bucket[]
+): ExploreTreeNode[] =>
+  nodes.map((node) => {
+    const updatedNode: ExploreTreeNode = { ...node };
+    const childEntities = node.data?.childEntities ?? [];
+    if (!isEmpty(childEntities)) {
+      updatedNode.totalCount = childEntities.reduce(
+        (total, child) =>
+          total +
+          (entityCounts.find((count) => count.key === child)?.doc_count ?? 0),
+        0
+      );
+    }
+    if (node.children) {
+      updatedNode.children = node.children.map((child) =>
+        child.data?.filterField
+          ? child
+          : {
+              ...child,
+              count:
+                entityCounts.find((count) => count.key === child.key)
+                  ?.doc_count ?? 0,
+            }
+      );
+    }
+
+    return updatedNode;
+  });
+
+/**
  * Given the explore tree root nodes and the entity types selected in the Data
  * Assets filter, return the set of root keys whose service category contains
  * none of the selected entity types. Those roots are grayed out so the user
@@ -715,6 +755,57 @@ export const findTreeNodeKeyByBrowsePath = (
         treeNodes,
         browseFields.slice(0, -1)
       );
+    }
+  }
+
+  return result;
+};
+
+const findTreeNodeByKey = (
+  treeNodes: ExploreTreeNode[],
+  key: string
+): ExploreTreeNode | undefined => {
+  let result: ExploreTreeNode | undefined;
+  treeNodes.forEach((node) => {
+    if (result) {
+      return;
+    }
+    if (node.key === key) {
+      result = node;
+    } else if (node.children) {
+      result = findTreeNodeByKey(node.children, key);
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Whether the currently highlighted node already corresponds to the active
+ * browse path — either the browsed node itself, or an entity-type leaf
+ * (Tables/Columns) whose parent levels are that path. The browse-path sync uses
+ * this to leave such a selection alone: a leaf click stores only the parent
+ * levels in browsePath (the type lands in quickFilter), so re-deriving the
+ * highlight from browsePath would otherwise snap the leaf back up to its schema.
+ */
+export const isSelectionWithinBrowsePath = (
+  treeNodes: ExploreTreeNode[],
+  selectedKeys: string[],
+  browseFields: ExploreQuickFilterField[]
+): boolean => {
+  let result = false;
+  const selectedKey = selectedKeys[0];
+  if (selectedKey && !isEmpty(browseFields)) {
+    const node = findTreeNodeByKey(treeNodes, selectedKey);
+    const filterField = node?.data?.filterField;
+    if (filterField) {
+      const targetSignature = getBrowsePathSignature(browseFields);
+      const leafParentSignature = node?.isLeaf
+        ? getBrowsePathSignature(filterField.slice(0, -1))
+        : undefined;
+      result =
+        getBrowsePathSignature(filterField) === targetSignature ||
+        leafParentSignature === targetSignature;
     }
   }
 

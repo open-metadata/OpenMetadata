@@ -32,6 +32,7 @@ import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
+  applyRootCountsInPlace,
   buildTreeCountQueryFilter,
   findTreeNodeKeyByBrowsePath,
   getAggregations,
@@ -44,6 +45,7 @@ import {
   getSubLevelHierarchyKey,
   hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
+  isSelectionWithinBrowsePath,
   parseBrowsePathFields,
   updateTreeData,
   updateTreeDataWithCounts,
@@ -114,12 +116,24 @@ const ExploreTree = ({
   // overlapping fetches; only the newest may commit so a slow earlier response
   // can't overwrite the tree with stale counts.
   const countFetchSeqRef = useRef(0);
+  // The full-screen spinner is for the first load only; later count refreshes
+  // update the tree in place so browsing never blanks it out (the "page
+  // reload" the user saw on every selection).
+  const hasLoadedOnceRef = useRef(false);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Latest selection for the browse-path sync effect to read without taking a
+  // dependency on it — that would re-run the effect on every click and fight
+  // the highlight the click handler just set.
+  const selectedKeysRef = useRef<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    selectedKeysRef.current = selectedKeys;
+  }, [selectedKeys]);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
@@ -369,7 +383,9 @@ const ExploreTree = ({
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     try {
-      setIsLoading(true);
+      if (!hasLoadedOnceRef.current) {
+        setIsLoading(true);
+      }
       const filterMust = [
         ...getQuickFilterMust(parsedSearch.quickFilter),
         ...getQueryFilterMust(additionalQueryFilter),
@@ -428,11 +444,13 @@ const ExploreTree = ({
         buckets: presenceBuckets,
       };
 
-      // Rebuild from the static tree so any previously-loaded children are
-      // dropped and re-fetched with the current filter on the next expand —
-      // antd caches loaded children, so a filter change would otherwise leave
-      // stale (unfiltered) counts deeper in the tree.
-      setTreeData(() => {
+      // Refresh the category counts on the live tree instead of rebuilding it
+      // from the static structure: the children the user has expanded — and the
+      // node they have selected — survive a filter or browse change, so the
+      // tree no longer collapses on every selection. Only the root counts are
+      // re-scoped here; a deeper node keeps the count from when it was expanded
+      // (the browse path never changes those) until the next full reload.
+      setTreeData((origin) => {
         const presentKeys = new Set(
           updateTreeDataWithCounts(
             searchClassBase.getExploreTree(),
@@ -442,10 +460,9 @@ const ExploreTree = ({
             .map((node) => node.key)
         );
 
-        return updateTreeDataWithCounts(
-          searchClassBase.getExploreTree(),
-          countBuckets
-        ).filter((node) => presentKeys.has(node.key));
+        return applyRootCountsInPlace(origin, countBuckets).filter((node) =>
+          presentKeys.has(node.key)
+        );
       });
     } catch {
       // Count fetch is best-effort: on failure the tree degrades to its current
@@ -456,6 +473,7 @@ const ExploreTree = ({
       // resolving later must not clear the spinner for the in-flight one.
       if (isLatestFetch()) {
         setIsLoading(false);
+        hasLoadedOnceRef.current = true;
       }
     }
   }, [
@@ -509,10 +527,21 @@ const ExploreTree = ({
     // Keep the highlight in sync with the browse-path chips: removing the
     // Service chip moves the selection back up to the matching ancestor
     // (e.g. the category root), and removing the last browse chip clears it.
+    // A selection that already sits on the active path — including an
+    // entity-type leaf (Tables/Columns) whose parent levels are that path — is
+    // left untouched so a count refresh can't snap the leaf back to its schema.
     const browseFields = parseBrowsePathFields(parsedSearch.browsePath);
     if (!isEmpty(browseFields)) {
-      const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
-      setSelectedKeys(matchedKey ? [matchedKey] : []);
+      if (
+        !isSelectionWithinBrowsePath(
+          treeData,
+          selectedKeysRef.current,
+          browseFields
+        )
+      ) {
+        const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
+        setSelectedKeys(matchedKey ? [matchedKey] : []);
+      }
       hadBrowsePathRef.current = true;
     } else if (hadBrowsePathRef.current) {
       hadBrowsePathRef.current = false;
