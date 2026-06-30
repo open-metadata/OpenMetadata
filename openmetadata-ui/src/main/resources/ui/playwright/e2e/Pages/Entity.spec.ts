@@ -46,6 +46,7 @@ import {
   getToken,
   redirectToHomePage,
   removeSingleSelectDomain,
+  toastNotification,
   uuid,
   verifyDomainPropagation,
 } from '../../utils/common';
@@ -1597,12 +1598,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
             await expect(saveButton).toBeEnabled();
             await saveButton.click();
             await saveResponse;
-            await expect(
-              page
-                .locator('.column-detail-panel')
-                .getByTestId('alert-bar')
-                .getByTestId('alert-message')
-            ).toContainText('Description updated successfully');
+            await toastNotification(page, /Description updated successfully/i);
 
             await waitForAllLoadersToDisappear(page);
 

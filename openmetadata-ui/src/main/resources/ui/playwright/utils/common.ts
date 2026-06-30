@@ -181,12 +181,14 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').getByText(message).waitFor({
-    state: 'visible',
-    timeout,
-  });
+  const toast = page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first();
 
-  await expect(page.getByTestId('alert-icon')).toBeVisible();
+  await toast.waitFor({ state: 'visible', timeout });
+
+  await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {

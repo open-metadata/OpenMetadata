@@ -44,24 +44,28 @@ const getTabStyles = ({
 }: AriaTabRenderProps) => ({
   'button-brand': cx(
     'tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     (isSelected || isHovered) &&
       'tw:bg-brand-primary_alt tw:text-brand-secondary'
   ),
   'button-gray': cx(
     'tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     isHovered && 'tw:bg-primary_hover tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected && 'tw:bg-active tw:text-secondary'
   ),
   'button-border': cx(
     'tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     (isSelected || isHovered) &&
       'tw:bg-primary_alt tw:text-secondary tw:shadow-sm',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
   'button-minimal': cx(
     'tw:rounded-lg tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     isHovered && 'tw:text-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
     isSelected &&
@@ -69,12 +73,14 @@ const getTabStyles = ({
   ),
   underline: cx(
     'tw:rounded-none tw:border-b-2 tw:border-transparent tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     (isSelected || isHovered) &&
       'tw:border-fg-brand-primary_alt tw:text-brand-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
   ),
   line: cx(
     'tw:rounded-none tw:border-l-2 tw:border-transparent tw:outline-focus-ring',
+    isSelected ? 'tw:font-semibold' : 'tw:font-medium',
     (isSelected || isHovered) &&
       'tw:border-fg-brand-primary_alt tw:text-brand-secondary',
     isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
@@ -83,20 +89,20 @@ const getTabStyles = ({
 
 const sizes = {
   sm: {
-    'button-brand': 'tw:text-sm tw:font-semibold tw:py-2 tw:px-3',
-    'button-gray': 'tw:text-sm tw:font-semibold tw:py-2 tw:px-3',
-    'button-border': 'tw:text-sm tw:font-semibold tw:py-2 tw:px-3',
-    'button-minimal': 'tw:text-sm tw:font-semibold tw:py-2 tw:px-3',
-    underline: 'tw:text-sm tw:font-semibold tw:px-1 tw:pb-2.5 tw:pt-0',
-    line: 'tw:text-sm tw:font-semibold tw:pl-2.5 tw:pr-3 tw:py-0.5',
+    'button-brand': 'tw:text-sm tw:py-2 tw:px-3',
+    'button-gray': 'tw:text-sm tw:py-2 tw:px-3',
+    'button-border': 'tw:text-sm tw:py-2 tw:px-3',
+    'button-minimal': 'tw:text-sm tw:py-2 tw:px-3',
+    underline: 'tw:text-sm tw:px-1 tw:pb-2.5 tw:pt-0',
+    line: 'tw:text-sm tw:pl-2.5 tw:pr-3 tw:py-0.5',
   },
   md: {
-    'button-brand': 'tw:text-md tw:font-semibold tw:py-2.5 tw:px-3',
-    'button-gray': 'tw:text-md tw:font-semibold tw:py-2.5 tw:px-3',
-    'button-border': 'tw:text-md tw:font-semibold tw:py-2.5 tw:px-3',
-    'button-minimal': 'tw:text-md tw:font-semibold tw:py-2.5 tw:px-3',
-    underline: 'tw:text-md tw:font-semibold tw:px-1 tw:pb-2.5 tw:pt-0',
-    line: 'tw:text-md tw:font-semibold tw:pr-3.5 tw:pl-3 tw:py-1',
+    'button-brand': 'tw:text-md tw:py-2.5 tw:px-3',
+    'button-gray': 'tw:text-md tw:py-2.5 tw:px-3',
+    'button-border': 'tw:text-md tw:py-2.5 tw:px-3',
+    'button-minimal': 'tw:text-md tw:py-2.5 tw:px-3',
+    underline: 'tw:text-md tw:px-1 tw:pb-2.5 tw:pt-0',
+    line: 'tw:text-md tw:pr-3.5 tw:pl-3 tw:py-1',
   },
 };
 
