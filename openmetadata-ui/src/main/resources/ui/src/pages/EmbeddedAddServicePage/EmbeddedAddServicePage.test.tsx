@@ -537,4 +537,42 @@ describe('EmbeddedAddServicePage', () => {
 
     expect(mockedModule.getExtraInfo).toHaveBeenCalled();
   });
+
+  describe('with a preselected service type from navigation state', () => {
+    const renderPreselected = () =>
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: ({ children }) => (
+          <MemoryRouter
+            initialEntries={[
+              { pathname: '/add-service', state: { serviceType: 'mysql' } },
+            ]}>
+            {children}
+          </MemoryRouter>
+        ),
+      });
+
+    it('starts on the Connect step with the connector preselected', async () => {
+      await act(async () => {
+        renderPreselected();
+      });
+
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'mysql label.service'
+      );
+      expect(screen.getByText('Save Connection')).toBeInTheDocument();
+      expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    });
+
+    it('returns to the origin on footer Back instead of the connector grid', async () => {
+      await act(async () => {
+        renderPreselected();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+  });
 });
