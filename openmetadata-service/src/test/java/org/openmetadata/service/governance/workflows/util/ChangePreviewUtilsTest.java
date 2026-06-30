@@ -375,6 +375,31 @@ class ChangePreviewUtilsTest {
   }
 
   @Test
+  void extractProposedChanges_jsonRoundTripShape_recoversMap() {
+    Map<String, Object> persisted =
+        Map.of(
+            "proposedChanges",
+            Map.of(
+                "tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of("PII.None"))));
+
+    Map<String, FieldDiff> recovered = ChangePreviewUtils.extractProposedChanges(persisted);
+
+    assertEquals(List.of("PII.Sensitive"), recovered.get("tags").added());
+    assertEquals(List.of("PII.None"), recovered.get("tags").removed());
+  }
+
+  @Test
+  void extractProposedChanges_jsonRoundTripMissingRemovedKey_defaultsToEmpty() {
+    Map<String, Object> persisted =
+        Map.of("proposedChanges", Map.of("tags", Map.of("added", List.of("PII.Sensitive"))));
+
+    Map<String, FieldDiff> recovered = ChangePreviewUtils.extractProposedChanges(persisted);
+
+    assertEquals(List.of("PII.Sensitive"), recovered.get("tags").added());
+    assertTrue(recovered.get("tags").removed().isEmpty());
+  }
+
+  @Test
   void buildProposedChangesPayload_entityWithoutChanges_returnsInput() {
     EntityInterface entity = new GlossaryTerm().withName("t");
     Map<String, Object> existing = Map.of("k", "v");

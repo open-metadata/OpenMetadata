@@ -170,12 +170,36 @@ public final class ChangePreviewUtils {
   public static Map<String, FieldDiff> extractProposedChanges(Object payload) {
     if (!(payload instanceof Map<?, ?> payloadMap)) return new LinkedHashMap<>();
     Object existing = payloadMap.get(PROPOSED_CHANGES_KEY);
-    if (existing == null) return new LinkedHashMap<>();
-    try {
-      return JsonUtils.convertValue(existing, CHANGE_MAP_TYPE);
-    } catch (Exception e) {
-      return new LinkedHashMap<>();
+    if (!(existing instanceof Map<?, ?> existingMap)) return new LinkedHashMap<>();
+    Map<String, FieldDiff> result = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : existingMap.entrySet()) {
+      String field = String.valueOf(entry.getKey());
+      FieldDiff diff = coerceFieldDiff(entry.getValue());
+      if (diff != null) {
+        result.put(field, diff);
+      }
     }
+    return result;
+  }
+
+  /**
+   * Accepts either an in-memory {@link FieldDiff} record (freshly built and not yet round-tripped
+   * through JSON) or a raw {@code Map<String, List<String>>} read back from the persisted task
+   * payload, and returns a {@link FieldDiff}. Returns {@code null} when the value is neither
+   * shape.
+   */
+  private static FieldDiff coerceFieldDiff(Object value) {
+    if (value instanceof FieldDiff fd) return fd;
+    if (value instanceof Map<?, ?> diffMap) {
+      return new FieldDiff(
+          coerceStringList(diffMap.get("added")), coerceStringList(diffMap.get("removed")));
+    }
+    return null;
+  }
+
+  private static List<String> coerceStringList(Object value) {
+    if (!(value instanceof Collection<?> collection)) return List.of();
+    return collection.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
   }
 
   /**
