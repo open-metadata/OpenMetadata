@@ -124,15 +124,14 @@ def test_checks_cover_exactly_the_wired_steps():
         DatabaseStep.GetStreams,
         DatabaseStep.GetTags,
         DatabaseStep.GetQueries,
+        DatabaseStep.GetAccessHistory,
     }
 
 
-def test_get_access_history_is_not_wired_pending_shared_enum_member():
-    # GetAccessHistory is in the seeded JSON but DatabaseStep has no member for it,
-    # so no @check can claim it and the runner reports it Skipped(NotImplemented).
-    # Wire it once the shared enum gains GetAccessHistory (orchestrator-owned).
+def test_get_access_history_is_wired():
+    # ACCESS_HISTORY is the default lineage source; its probe is the GetAccessHistory step.
     checks = SnowflakeChecks(client=MagicMock(), service_connection=_config())
-    assert "GetAccessHistory" not in collect_checks(checks)
+    assert DatabaseStep.GetAccessHistory in collect_checks(checks)
 
 
 def test_construction_touches_no_network():

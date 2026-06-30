@@ -305,6 +305,11 @@ class SnowflakeChecks:
         statement = SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema)
         return run_sql(self.client, statement, lambda _: "query history accessible")
 
+    @check(DatabaseStep.GetAccessHistory)
+    def get_access_history(self) -> Evidence:
+        statement = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=self.service_connection.accountUsageSchema)
+        return run_sql(self.client, statement, lambda _: "access history accessible")
+
 
 class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
