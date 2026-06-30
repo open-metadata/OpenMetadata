@@ -1174,6 +1174,7 @@ public class TaskWorkflowHandler {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
@@ -1242,7 +1243,8 @@ public class TaskWorkflowHandler {
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
-        case Failed, Expired -> TaskResolutionType.TimedOut;
+        case Failed -> TaskResolutionType.TimedOut;
+        case Expired -> TaskResolutionType.Expired;
         case Open, InProgress, Pending, Approved, Granted -> null;
       };
     }

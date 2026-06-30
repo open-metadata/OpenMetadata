@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -10,6 +11,7 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
@@ -21,16 +23,36 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  * the node {@code result} variable so the outer workflow edge with that condition routes the
  * process downstream. If the workflow author also configured {@code expiryTimer.closeAsResolution}
  * — pushed in here as {@code resolutionTypeExpr} — the OM Task entity is closed with that
- * resolutionType (and the matching status derived by {@link TaskRepository#resolveTask}, e.g.
- * {@code TimedOut → Expired}). Skip the close when downstream nodes own the task lifecycle (the
+ * resolutionType (status derived by {@link TaskRepository#resolveTask}; e.g.
+ * {@code Expired → Expired}). Skip the close when downstream nodes own the task lifecycle (the
  * GrantedAccess auto-revoke path lets RevokeAccess close the task as {@code Revoked}).
+ *
+ * <p>The close path is guarded against two failure modes that would otherwise corrupt task state:
+ * (a) a malformed {@code taskEntityId} variable that would throw on UUID parse and dead-letter the
+ * job, and (b) the rare race where a user resolves the task via the API in the same window the
+ * timer-job acquisition loop picks up the boundary timer — without the guard the delegate would
+ * overwrite a Completed/Approved/Revoked task with Expired and fire {@code postUpdate} hooks a
+ * second time. Both are handled by early returns that log + continue the BPMN flow.
  */
 @Slf4j
 public class ExpireOnTimerImpl implements JavaDelegate {
 
+  /**
+   * Statuses from which a task can still legitimately transition. Anything outside this set is
+   * already resolved — the expiry timer must NOT re-resolve it (would race with the user-initiated
+   * resolution that beat us to it).
+   */
+  private static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      Set.of(
+          TaskEntityStatus.Open,
+          TaskEntityStatus.InProgress,
+          TaskEntityStatus.Pending,
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Granted);
+
   private Expression transitionIdExpr;
-  private Expression
-      resolutionTypeExpr; // optional — null when the workflow leaves closeAsResolution unset
+  // Optional — null when the workflow leaves closeAsResolution unset.
+  private Expression resolutionTypeExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
@@ -60,14 +82,19 @@ public class ExpireOnTimerImpl implements JavaDelegate {
           execution.getProcessInstanceId());
       return;
     }
-    UUID taskId = UUID.fromString(taskIdStr);
     String actingUser = resolveActingUser(execution);
     try {
+      UUID taskId = UUID.fromString(taskIdStr);
       resolveTaskExpired(taskId, actingUser, resolutionTypeValue);
+    } catch (IllegalArgumentException badUuid) {
+      LOG.error(
+          "[ExpireOnTimer] taskEntityId '{}' is not a valid UUID; cannot close task on expiry",
+          taskIdStr,
+          badUuid);
     } catch (Exception e) {
       LOG.error(
           "[ExpireOnTimer] Expiry timer fired but closing task '{}' with resolutionType={} failed; workflow continues but task remains open",
-          taskId,
+          taskIdStr,
           resolutionTypeValue,
           e);
     }
@@ -80,6 +107,13 @@ public class ExpireOnTimerImpl implements JavaDelegate {
             null,
             taskId,
             taskRepository.getFields("assignees,reviewers,about,createdBy,payload,resolution"));
+    if (!NON_TERMINAL_STATUSES.contains(task.getStatus())) {
+      LOG.info(
+          "[ExpireOnTimer] Task '{}' already terminal (status={}); skipping expiry close to avoid double-resolve",
+          taskId,
+          task.getStatus());
+      return;
+    }
     EntityReference resolvedBy =
         Entity.getEntityReferenceByName(Entity.USER, actingUser, Include.NON_DELETED);
     TaskResolution resolution =

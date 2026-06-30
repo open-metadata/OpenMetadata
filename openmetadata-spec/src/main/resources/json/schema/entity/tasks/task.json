@@ -124,7 +124,8 @@
         "TimedOut",
         "AutoApproved",
         "AutoRejected",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Approved"},
@@ -134,7 +135,8 @@
         {"name": "TimedOut"},
         {"name": "AutoApproved"},
         {"name": "AutoRejected"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ]
     },
     "taskResolution": {

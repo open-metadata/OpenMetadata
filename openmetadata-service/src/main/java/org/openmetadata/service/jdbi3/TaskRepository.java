@@ -1112,7 +1112,8 @@ public class TaskRepository extends EntityRepository<Task> {
       case Completed -> TaskEntityStatus.Completed;
       case Cancelled -> TaskEntityStatus.Cancelled;
       case Revoked -> TaskEntityStatus.Revoked;
-      case TimedOut -> TaskEntityStatus.Expired;
+      case TimedOut -> TaskEntityStatus.Failed;
+      case Expired -> TaskEntityStatus.Expired;
     };
   }
 
