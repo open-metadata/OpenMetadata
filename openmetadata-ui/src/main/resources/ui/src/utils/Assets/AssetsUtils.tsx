@@ -329,7 +329,8 @@ export const getEntityIconWithBg = (
   containerProps?: HTMLAttributes<HTMLSpanElement>,
   iconProps?: EntityIconProps
 ) => {
-  const style = ENTITY_ICON_MAPPER[entityType ?? ''] ?? ENTITY_ICON_MAPPER['default'];
+  const style =
+    ENTITY_ICON_MAPPER[entityType ?? ''] ?? ENTITY_ICON_MAPPER['default'];
   const Icon = style?.icon;
   const { className: containerClassName, ...restContainerProps } =
     containerProps ?? {};
@@ -341,8 +342,8 @@ export const getEntityIconWithBg = (
 
   return (
     <Box
-      align='center'
-      justify='center'
+      align="center"
+      justify="center"
       {...restContainerProps}
       className={classNames(
         'tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
