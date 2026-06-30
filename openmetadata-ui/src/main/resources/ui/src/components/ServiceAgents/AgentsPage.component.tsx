@@ -18,17 +18,24 @@ import { IcCode, IcSparkle } from './AgentIcons';
 import AgentsPageHeader from './components/AgentsPageHeader.component';
 import AgentGroup from './components/AgentGroup.component';
 import AgentsTabBar from './components/AgentsTabBar.component';
-import { seedAgents, SERVICE_INFO } from './mock/agents.mock';
+import DeploymentSummaryCard from './components/DeploymentSummaryCard.component';
+import { useSimulatedAgents } from './hooks/useSimulatedAgents';
+import { SERVICE_INFO } from './mock/agents.mock';
 
 const AgentsPage: FC = () => {
-  const [data] = useState(seedAgents);
+  const { data, runAgent } = useSimulatedAgents();
   const [tab, setTab] = useState<AgentTab>('metadata');
   // TODO(real-data): replace with usePermissionProvider().permissions.ingestionPipeline.Create
   const canCreateAgent = true;
 
   const noop = (_agent: Agent) => undefined;
-  const noopAction = (_action: string, _agent: Agent) => undefined;
   const noopDetails = (_agent: Agent, _index: number) => undefined;
+  const onRun = (agent: Agent) => runAgent(agent.id);
+  const onAction = (action: string, agent: Agent) => {
+    if (action === 'run' || action === 'redeploy') {
+      runAgent(agent.id);
+    }
+  };
 
   const group =
     tab === 'metadata'
@@ -49,6 +56,7 @@ const AgentsPage: FC = () => {
     <div className="agents-preview-root tw:flex-1 tw:overflow-y-auto tw:bg-[color:var(--bg-app)]">
       <div className="tw:mx-auto tw:max-w-[1080px] tw:px-9 tw:pb-20 tw:pt-7">
         <AgentsPageHeader service={SERVICE_INFO} />
+        <DeploymentSummaryCard agents={[...data.metadata, ...data.ai]} />
         <AgentsTabBar
           counts={{ ai: data.ai.length, metadata: data.metadata.length }}
           tab={tab}
@@ -58,9 +66,9 @@ const AgentsPage: FC = () => {
           <AgentGroup
             {...group}
             canCreateAgent={canCreateAgent}
-            onAction={noopAction}
+            onAction={onAction}
             onLogs={noop}
-            onRun={noop}
+            onRun={onRun}
             onRunDetails={noopDetails}
           />
         </div>
