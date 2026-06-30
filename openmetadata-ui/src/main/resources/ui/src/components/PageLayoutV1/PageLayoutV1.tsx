@@ -19,14 +19,10 @@ import {
   Fragment,
   HTMLAttributes,
   ReactNode,
-  useEffect,
   useMemo,
-  useState,
 } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import { useAlertStore } from '../../hooks/useAlertStore';
-import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
 
@@ -105,9 +101,7 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   pageContainerStyle = {},
   fullHeight = false,
 }: PageLayoutProp) => {
-  const { alert, resetAlert, isErrorTimeOut } = useAlertStore();
   const location = useLocation();
-  const [prevPath, setPrevPath] = useState<string | undefined>();
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
@@ -133,25 +127,11 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
     return pageContainerStyle;
   }, [fullHeight, pageContainerStyle]);
 
-  useEffect(() => {
-    if (prevPath !== location.pathname) {
-      if (isErrorTimeOut) {
-        resetAlert();
-      }
-    }
-  }, [location.pathname, resetAlert, isErrorTimeOut]);
-
   const isFullScreen = useMemo(() => {
     const queryParams = new URLSearchParams(location.search);
 
     return queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   }, [location.search]);
-
-  useEffect(() => {
-    setTimeout(() => {
-      setPrevPath(location.pathname);
-    }, 3000);
-  }, [location.pathname]);
 
   const content = (
     <Fragment>
@@ -182,11 +162,6 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
           offset={center ? 3 : 0}
           span={center ? 18 : 24}>
           <Row>
-            {alert && (
-              <Col id="page-alert" span={24}>
-                <AlertBar message={alert.message} type={alert.type} />
-              </Col>
-            )}
             <Col span={24}>{children}</Col>
           </Row>
         </Col>
