@@ -17,7 +17,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -34,7 +33,6 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import {
   deleteDriveFile,
   listContextFiles,
@@ -49,7 +47,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
-  const { alert } = useAlertStore();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
   const [allDocuments, setAllDocuments] = useState<ContextFile[]>([]);
@@ -80,13 +77,15 @@ const ContextCenterDocumentsPage: FC = () => {
     }?${params.toString()}`;
   }, [previewFile, searchParams]);
 
-  const { hasCreatePermission, hasDeletePermission } = useMemo(
-    () => ({
-      hasCreatePermission: permissions.Create,
-      hasDeletePermission: permissions.Delete,
-    }),
-    [permissions.Create, permissions.Delete]
-  );
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
 
   const selectedFolderFqn = useMemo(
     () =>
@@ -380,7 +379,6 @@ const ContextCenterDocumentsPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
           {
@@ -407,6 +405,8 @@ const ContextCenterDocumentsPage: FC = () => {
         orientation="vertical">
         <ReflexElement className="tw:min-w-70" flex={0.25} minSize={280}>
           <DocumentFolderView
+            canCreate={hasCreatePermission}
+            canDelete={hasDeletePermission}
             files={allDocuments}
             selectedFolderId={selectedFolderId}
             onFoldersLoaded={setFolders}
@@ -426,6 +426,7 @@ const ContextCenterDocumentsPage: FC = () => {
           <Box className="tw:h-full tw:overflow-hidden" gap={4}>
             <DocumentsView
               canDelete={hasDeletePermission}
+              canEdit={hasEditPermission}
               data={documents}
               folders={folderOptions}
               isLoading={isDocumentsLoading}
@@ -464,8 +465,8 @@ const ContextCenterDocumentsPage: FC = () => {
         <DeleteModal
           entityTitle={getEntityName(fileToDelete)}
           isDeleting={isDeletingFile}
-          message={t('message.soft-delete-message-for-entity', {
-            entity: getEntityName(fileToDelete),
+          message={t('message.soft-delete-archive-message', {
+            entity: t('label.document').toLowerCase(),
           })}
           open={Boolean(fileToDelete)}
           onCancel={handleCancelDelete}

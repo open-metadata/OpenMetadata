@@ -23,9 +23,11 @@ import {
 import {
   ChevronDown,
   ChevronRight,
+  Database01,
   FilterFunnel02,
   Pin01,
   Plus,
+  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,7 +35,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -43,17 +44,22 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   ContextMemory,
   MemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteContextMemory,
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -75,15 +81,18 @@ const FILTER_BUTTON_BASE_CLS =
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { alert } = useAlertStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
@@ -107,6 +116,31 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
+
+  const canDeleteMemory = useMemo(() => {
+    const memory = memoryToEdit ?? memoryToView;
+
+    const isOwner =
+      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
+
+    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
+  }, [
+    hasDeletePermission,
+    memoryToEdit,
+    memoryToView,
+    currentUser?.name,
+    currentUser?.isAdmin,
+  ]);
+
   const fetchMemories = useCallback(async () => {
     setIsMemoriesLoading(true);
     try {
@@ -122,9 +156,21 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, []);
 
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.CONTEXT_MEMORY
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
   useEffect(() => {
     fetchMemories();
-  }, [fetchMemories]);
+    fetchPermission();
+  }, [fetchMemories, fetchPermission]);
 
   const assetOptions = useMemo(() => {
     const seen = new Map<
@@ -445,7 +491,6 @@ const ContextCenterMemoriesPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={headerActions}
         breadcrumbs={[
@@ -457,6 +502,7 @@ const ContextCenterMemoriesPage: FC = () => {
             label: t('label.memory-plural'),
           },
         ]}
+        hasPermission={hasCreatePermission}
         searchPlaceholder={t('label.search-memories')}
         searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
@@ -474,7 +520,7 @@ const ContextCenterMemoriesPage: FC = () => {
               className={classNames(
                 'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                 'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
-                { 'tw:bg-blue-50 tw:border-blue-200': isActive }
+                { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
               )}
               key={filterKey}
               onClick={() => handleFilterChange(filterKey)}>
@@ -526,12 +572,12 @@ const ContextCenterMemoriesPage: FC = () => {
               id: tab.id,
               label:
                 'icon' in tab ? (
-                  <Box align="center" gap={1}>
+                  <Box align="center" className="tw:gap-1.5 tw:leading-4.5">
                     <tab.icon size={12} strokeWidth={2} />
                     {t(tab.label)}
                   </Box>
                 ) : (
-                  t(tab.label)
+                  <div className="tw:leading-4.5">{t(tab.label)}</div>
                 ),
             }))}
             type="button-brand">
@@ -540,11 +586,11 @@ const ContextCenterMemoriesPage: FC = () => {
                 {...tab}
                 className={({ isSelected }) =>
                   classNames(
-                    'tw:rounded-full tw:border tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:cursor-pointer',
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
                     {
-                      'tw:border-brand-100 tw:bg-brand-50 tw:text-brand-700':
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
                         isSelected,
-                      'tw:border-gray-300 tw:bg-primary tw:text-secondary':
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
                         !isSelected,
                     }
                   )
@@ -560,14 +606,26 @@ const ContextCenterMemoriesPage: FC = () => {
               className={
                 selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
               }>
-              <Typography
-                className={
-                  selectedAsset ? 'tw:text-brand-700' : 'tw:text-secondary'
-                }
-                weight="medium">
-                {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                  t('label.all-entity', { entity: t('label.asset-plural') })}
-              </Typography>
+              <Database01
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAsset,
+                  'tw:text-secondary': !selectedAsset,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAsset
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                    t('label.all-entity', { entity: t('label.asset-plural') })}
+                </Typography>
+              </div>
               <ChevronDown
                 className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                 size={16}
@@ -594,7 +652,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <div className="tw:shrink-0">
                           {searchClassBase.getEntityIcon(
                             opt.type,
-                            'tw:w-6 tw:h-6 tw:text-gray-500'
+                            'tw:w-6 tw:h-6 tw:text-quaternary'
                           )}
                         </div>
                         <Box
@@ -604,14 +662,14 @@ const ContextCenterMemoriesPage: FC = () => {
                           <div className="tw:max-w-55">
                             <Typography
                               ellipsis
-                              className="tw:truncate tw:text-gray-800"
+                              className="tw:truncate tw:text-utility-gray-800"
                               size="text-sm"
                               weight="medium">
                               {opt.displayName}
                             </Typography>
                             <Typography
                               ellipsis
-                              className="tw:text-gray-400 tw:truncate"
+                              className="tw:text-utility-gray-400 tw:truncate"
                               size="text-xs">
                               {opt.id}
                             </Typography>
@@ -639,14 +697,26 @@ const ContextCenterMemoriesPage: FC = () => {
               className={
                 selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
               }>
-              <Typography
-                className={
-                  selectedAuthor ? 'tw:text-brand-700' : 'tw:text-secondary'
-                }
-                weight="medium">
-                {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
-                  t('label.all-entity', { entity: t('label.author') })}
-              </Typography>
+              <User03
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAuthor,
+                  'tw:text-secondary': !selectedAuthor,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAuthor
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                    t('label.all-entity', { entity: t('label.author') })}
+                </Typography>
+              </div>
               <ChevronDown
                 className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                 size={16}
@@ -717,6 +787,8 @@ const ContextCenterMemoriesPage: FC = () => {
         style={{ overflow: 'unset' }}>
         <div>
           <MemoriesView
+            canDelete={hasDeletePermission}
+            canEdit={hasEditPermission}
             currentUserName={currentUser?.name}
             data={pagedMemories}
             isAdminUser={currentUser?.isAdmin}
@@ -736,12 +808,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
-        canDelete={
-          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
-            false) ||
-          Boolean(currentUser?.isAdmin)
-        }
+        canCreate={hasCreatePermission}
+        canDelete={canDeleteMemory}
+        canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
+        isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -754,12 +825,10 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={
-            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
-              false) ||
-            Boolean(currentUser?.isAdmin)
-          }
+          canDelete={canDeleteMemory}
+          canEdit={hasEditPermission}
           currentUserName={currentUser?.name}
+          isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
@@ -774,8 +843,8 @@ const ContextCenterMemoriesPage: FC = () => {
         <DeleteModal
           entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
-          message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question ?? '',
+          message={t('message.delete-entity-permanently', {
+            entityType: t('label.memory-lowercase'),
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}
