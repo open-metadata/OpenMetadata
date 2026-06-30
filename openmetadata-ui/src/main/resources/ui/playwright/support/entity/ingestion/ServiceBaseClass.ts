@@ -121,23 +121,17 @@ class ServiceBaseClass {
 
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
-      await page.locator('.ant-select-dropdown:visible').first().waitFor({
-        state: 'visible',
-      });
-
-      // Search for the runner using the search input
-      await runnerSelector.locator('input').fill(this.ingestionRunner.name);
 
       // Using data-key which relies on `name` which is more reliable data in AUTs
       // instead of data-testid which depends on the `displayName` which can change
       await page
         .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
+          `[data-key="${this.ingestionRunner.name}"]`
         )
         .waitFor({ state: 'visible' });
       await page
         .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
+          `[data-key="${this.ingestionRunner.name}"]`
         )
         .click();
 
