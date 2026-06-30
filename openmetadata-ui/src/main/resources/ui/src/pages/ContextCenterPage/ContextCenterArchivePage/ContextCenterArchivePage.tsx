@@ -78,6 +78,7 @@ const ContextCenterArchivePage: FC = () => {
         id: file.id,
         name: getEntityName(file),
         type: 'document' as const,
+        fileExtension: file.fileExtension,
         updatedBy: file.updatedBy,
         updatedAt: file.updatedAt,
       }));
