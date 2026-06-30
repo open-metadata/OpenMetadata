@@ -54,6 +54,7 @@ import {
   createBreadcrumbIcon,
   getBreadcrumbEntityTypeFromHref,
   getTypeBadge,
+  isServiceBreadcrumbHref,
   TYPE_BADGE_KEY,
 } from './ExploreSearchCard.utils';
 
@@ -330,29 +331,30 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       [serviceIcon]
     );
 
-    const serviceName = getEntityName(source.service);
-
     const breadcrumbItems = useMemo(() => {
-      return breadcrumbs.map((b) => {
+      const serviceBreadcrumbIndex = breadcrumbs.findIndex((b) => {
+        const href = typeof b.url === 'string' ? b.url : b.url.pathname;
+
+        return isServiceBreadcrumbHref(href);
+      });
+
+      return breadcrumbs.map((b, index) => {
         const href = typeof b.url === 'string' ? b.url : b.url.pathname;
         const breadcrumbEntityType = getBreadcrumbEntityTypeFromHref(href);
-        const isServiceBreadcrumb =
-          !isEmpty(serviceName) &&
-          getEntityName(b) === serviceName &&
-          isEmpty(breadcrumbEntityType);
 
         return {
           id: b.name,
           label: getEntityName(b),
           href,
-          icon: isServiceBreadcrumb
-            ? serviceBreadcrumbIcon
-            : breadcrumbEntityType
-            ? ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType]
-            : undefined,
+          icon:
+            index === serviceBreadcrumbIndex
+              ? serviceBreadcrumbIcon
+              : breadcrumbEntityType
+              ? ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType]
+              : undefined,
         };
       });
-    }, [breadcrumbs, serviceBreadcrumbIcon, serviceName]);
+    }, [breadcrumbs, serviceBreadcrumbIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),

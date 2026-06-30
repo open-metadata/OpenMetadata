@@ -61,6 +61,11 @@ export const getBreadcrumbEntityTypeFromHref = (href?: string) =>
     href?.includes(`/${entityType}/`)
   );
 
+export const isServiceBreadcrumbHref = (href?: string) =>
+  Boolean(href) &&
+  !getBreadcrumbEntityTypeFromHref(href) &&
+  !/^\/settings\/services\/[^/]+\/?$/.test(href);
+
 export const createBreadcrumbIcon = (
   icon: ReactNode
 ): FC<{ className?: string }> | undefined => {

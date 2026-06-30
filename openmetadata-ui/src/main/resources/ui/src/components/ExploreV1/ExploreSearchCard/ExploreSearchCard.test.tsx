@@ -688,6 +688,40 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     expect(screen.getByText('databaseSchema-icon')).toBeInTheDocument();
   });
 
+  it('keeps the service icon when the breadcrumb label differs from the source service name', () => {
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
+      {
+        name: 'service-breadcrumb',
+        displayName: 'Service Breadcrumb',
+        url: '/settings/services/databaseServices/service-breadcrumb',
+      },
+      { name: 'db', url: '/database/db' },
+    ]);
+
+    renderCard({
+      service: {
+        displayName: 'Source Service',
+        name: 'source-service',
+        type: 'databaseService',
+      },
+    });
+
+    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getByText('database-icon')).toBeInTheDocument();
+  });
+
+  it('keeps the service icon when the source service reference is missing', () => {
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
+      { name: 'svc', url: '/settings/services/databaseServices/svc' },
+      { name: 'db', url: '/database/db' },
+    ]);
+
+    renderCard({ service: undefined });
+
+    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getByText('database-icon')).toBeInTheDocument();
+  });
+
   it('does not shift icons when database schema breadcrumbs include a category crumb', () => {
     (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
       { name: 'Database Services', url: '/settings/services/databaseServices' },
