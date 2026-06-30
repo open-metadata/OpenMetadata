@@ -301,6 +301,7 @@ export enum TaskStatus {
     Approved = "Approved",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Failed = "Failed",
     Granted = "Granted",
     InProgress = "InProgress",
