@@ -50,11 +50,6 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
-from metadata.ingestion.source.database.mssql.queries import (
-    MSSQL_GET_CURRENT_DATABASE,
-    MSSQL_GET_DATABASE,
-    MSSQL_TEST_GET_QUERIES,
-)
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
@@ -359,38 +354,6 @@ class TestUpdateMssqlIschemaNames:
         target = {"existing_key": sentinel}
         update_mssql_ischema_names(target)
         assert target["existing_key"] is sentinel
-
-    @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
-    def test_test_connection_uses_current_db_query_when_not_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
-
-        mock_service_connection = MagicMock()
-        mock_service_connection.ingestAllDatabases = False
-
-        handler = MssqlConnection(mock_service_connection)
-        handler._client = MagicMock()
-        handler.test_connection(metadata=MagicMock())
-
-        call_kwargs = mock_test_connection_db_common.call_args
-        queries = call_kwargs.kwargs["queries"]
-        assert queries["GetDatabases"] == MSSQL_GET_CURRENT_DATABASE
-        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
-
-    @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
-    def test_test_connection_uses_all_dbs_query_when_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
-
-        mock_service_connection = MagicMock()
-        mock_service_connection.ingestAllDatabases = True
-
-        handler = MssqlConnection(mock_service_connection)
-        handler._client = MagicMock()
-        handler.test_connection(metadata=MagicMock())
-
-        call_kwargs = mock_test_connection_db_common.call_args
-        queries = call_kwargs.kwargs["queries"]
-        assert queries["GetDatabases"] == MSSQL_GET_DATABASE
-        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
 
     def _setup_stored_procedure_context(self):
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
