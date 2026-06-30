@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Agent, AgentRun, RunStep } from '../AgentsPage.interface';
+import {
+  Agent,
+  AgentRun,
+  RunAttention,
+  RunStep,
+} from '../AgentsPage.interface';
 
 const defaultSteps = (recs: number, opts: Partial<RunStep> = {}): RunStep[] => [
   {
@@ -117,6 +122,14 @@ const failedSteps = (): RunStep[] => [
     warnings: 0,
     errors: 0,
   },
+];
+
+export const buildAttentionLogLines = (att: RunAttention): string[] => [
+  '[08:10:02] INFO  Starting BigQuery metadata workflow',
+  '[08:10:44] INFO  Scanned 18 datasets, 4587 tables',
+  `[08:11:03] ERROR ${att.message.slice(0, 90)}…`,
+  '[08:11:03] INFO  Continuing with remaining datasets',
+  '[08:13:20] INFO  Sink complete · 2844 entities written',
 ];
 
 export const seedRuns = (_agent: Agent): AgentRun[] => {

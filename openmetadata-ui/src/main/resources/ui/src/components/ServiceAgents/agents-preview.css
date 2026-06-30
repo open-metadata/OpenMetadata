@@ -77,3 +77,9 @@
     opacity: 1;
   }
 }
+
+@keyframes agspin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -302,7 +302,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               display: 'grid',
               placeItems: 'center',
             }}
-            title="Close"
+            title={t('label.close')}
             onClick={onClose}>
             <svg
               fill="none"

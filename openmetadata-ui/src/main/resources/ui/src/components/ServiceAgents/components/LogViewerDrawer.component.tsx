@@ -26,14 +26,13 @@ interface LogViewerDrawerProps {
 interface LvLevelMeta {
   color: string;
   label: string;
-  labelKey: string;
 }
 
 const LV_LEVEL: Record<LogLevel, LvLevelMeta> = {
-  info: { color: '#A6F4C5', label: 'INFO', labelKey: 'label.info' },
-  warn: { color: '#FEC84B', label: 'WARN', labelKey: 'label.warn' },
-  error: { color: '#FDA29B', label: 'ERROR', labelKey: 'label.error' },
-  debug: { color: '#84CAFF', label: 'DEBUG', labelKey: 'label.debug' },
+  info: { color: '#A6F4C5', label: 'INFO' },
+  warn: { color: '#FEC84B', label: 'WARN' },
+  error: { color: '#FDA29B', label: 'ERROR' },
+  debug: { color: '#84CAFF', label: 'DEBUG' },
 };
 
 type LevelFilter = 'all' | LogLevel;
@@ -204,7 +203,7 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
               placeItems: 'center',
               width: 34,
             }}
-            title="Close"
+            title={t('label.close')}
             onClick={onClose}>
             <svg
               fill="none"
@@ -315,7 +314,7 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
               height: 36,
               padding: '0 11px',
             }}
-            title="Toggle wrap"
+            title={t('label.toggle-wrap')}
             onClick={handleWrapToggle}>
             {t('label.wrap')}
           </button>

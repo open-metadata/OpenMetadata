@@ -15,16 +15,8 @@ import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RunGlyph } from '../AgentIcons';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
+import { buildAttentionLogLines } from '../mock/runs.mock';
 import { fmtNum } from '../utils/agents.utils';
-
-// Fake log lines shown in the raw log snippet — illustrative only.
-const buildLogLines = (att: RunAttention): string[] => [
-  '[08:10:02] INFO  Starting BigQuery metadata workflow',
-  '[08:10:44] INFO  Scanned 18 datasets, 4587 tables',
-  `[08:11:03] ERROR ${att.message.slice(0, 90)}…`,
-  '[08:11:03] INFO  Continuing with remaining datasets',
-  '[08:13:20] INFO  Sink complete · 2844 entities written',
-];
 
 interface AttentionCardProps {
   att: RunAttention;
@@ -206,7 +198,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
               maxHeight: 160,
               overflowY: 'auto',
             }}>
-            {buildLogLines(att).map((line, idx) => (
+            {buildAttentionLogLines(att).map((line, idx) => (
               <div
                 key={idx}
                 style={{
