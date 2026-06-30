@@ -79,9 +79,7 @@ const BookMarkWidget = ({
       isExpandDisabled={isEmpty(data)}
       title={t('label.bookmark-plural')}
       titleIcon={titleIcon}>
-      {isEmpty(data) ? (
-        null
-      ) : (
+      {isEmpty(data) ? null : (
         <Box direction="col" gap={2}>
           {map(data, (instance) => getLink(instance, 'bookmarked'))}
         </Box>

@@ -126,7 +126,9 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
           <File06 size={16} strokeWidth={1.5} />
         )}
 
-        <span className='tw:truncate'>{getKnowledgePageName(knowledgePage, t)}</span>
+        <span className="tw:truncate">
+          {getKnowledgePageName(knowledgePage, t)}
+        </span>
       </Box>
     </Link>
   );

@@ -199,44 +199,44 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
           refresh={refreshBookMarkWidget}
         />
 
-      <WidgetCard
-        title={t('label.recently-viewed')}
-        titleIcon={<EyeIcon height={16} width={16} />}>
-        {isEmpty(recentlyViewed) ? (
-          <Typography className="tw:text-gray-500" size="text-xs">
-            {t('message.no-recently-viewed-date')}
-          </Typography>
+        <WidgetCard
+          title={t('label.recently-viewed')}
+          titleIcon={<EyeIcon height={16} width={16} />}>
+          {isEmpty(recentlyViewed) ? (
+            <Typography className="tw:text-gray-500" size="text-xs">
+              {t('message.no-recently-viewed-date')}
+            </Typography>
+          ) : (
+            <Box direction="col" gap={2}>
+              {recentViewsElement}
+            </Box>
+          )}
+        </WidgetCard>
+
+        {refreshTagsCategory ? (
+          <Loader />
         ) : (
-          <Box direction="col" gap={2}>
-            {recentViewsElement}
-          </Box>
+          <>
+            {map(quickLinksByTag, ([tagFqn, uniqueLinks]) => {
+              if (isEmpty(uniqueLinks)) {
+                return null;
+              }
+
+              return (
+                <WidgetCard
+                  title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
+                  titleIcon={<IconArticle height={16} width={16} />}>
+                  <Box direction="col" gap={2}>
+                    {map(uniqueLinks, (matchedQuickLink) =>
+                      getLink(matchedQuickLink, `tag-category-${tagFqn}`)
+                    )}
+                  </Box>
+                </WidgetCard>
+              );
+            })}
+          </>
         )}
-      </WidgetCard>
-
-      {refreshTagsCategory ? (
-        <Loader />
-      ) : (
-        <>
-          {map(quickLinksByTag, ([tagFqn, uniqueLinks]) => {
-            if (isEmpty(uniqueLinks)) {
-              return null;
-            }
-
-            return (
-              <WidgetCard
-                title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
-                titleIcon={<IconArticle height={16} width={16} />}>
-                <Box direction="col" gap={2}>
-                  {map(uniqueLinks, (matchedQuickLink) =>
-                    getLink(matchedQuickLink, `tag-category-${tagFqn}`)
-                  )}
-                </Box>
-              </WidgetCard>
-            );
-          })}
-        </>
-      )}
-    </Card.Content>
+      </Card.Content>
     </Card>
   );
 };

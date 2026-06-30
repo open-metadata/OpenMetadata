@@ -146,9 +146,7 @@ export const updateDataAsset = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page
-    .getByTestId('add-data-assets-container')
-    .click();
+  await page.getByTestId('add-data-assets-container').click();
 
   await page.waitForSelector(
     '[data-testid="asset-select-list"] > .ant-select-selector input',

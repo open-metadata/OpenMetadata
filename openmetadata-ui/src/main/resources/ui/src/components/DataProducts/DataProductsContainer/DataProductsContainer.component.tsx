@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
-import { Typography as AntDTypography, Col, Row, Space, Tag } from 'antd';
+import { Col, Row, Space, Tag, Typography as AntDTypography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -163,7 +163,6 @@ const DataProductsContainer = ({
     if (!showHeader) {
       return null;
     }
-    console.log(activeDomains, dataProducts)
 
     return (
       <Space align="center" size="middle">

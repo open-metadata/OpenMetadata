@@ -127,7 +127,6 @@ describe('BookMarkWidget', () => {
     expect(screen.queryByText('test-page-name')).not.toBeInTheDocument();
     expect(screen.queryByText('test-page-fqn')).not.toBeInTheDocument();
     expect(screen.queryByText('Mocked showErrorToast')).not.toBeInTheDocument();
-
   });
 
   it("should render the title as 'Untitled' if the displayName is not present", async () => {
