@@ -37,13 +37,13 @@ const TYPE_BADGE_CLASS_NAME = [
 
 const BREADCRUMB_ICON_CLASS_NAME = [
   'tw:inline-flex',
-  'tw:size-2.5',
+  'tw:size-3.5',
   'tw:shrink-0',
   'tw:items-center',
   'tw:justify-center',
   'tw:align-middle',
   'tw:leading-none',
-  'tw:[&>*]:size-2.5',
+  'tw:[&>*]:size-3.5',
 ].join(' ');
 
 export const getTypeBadge = (label?: string, preserveFormatting = false) =>

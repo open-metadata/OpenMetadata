@@ -292,11 +292,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             return (
               <img
                 alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
+                className="align-middle object-contain"
                 data-testid="icon"
-                height={24}
+                height={20}
                 src={source.style.iconURL}
-                width={24}
+                width={20}
               />
             );
           }
@@ -305,13 +305,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span
-            className={classNames(
-              'tw:mr-2 tw:inline-flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:text-brand-secondary',
-              {
-                'tw:size-5': source.entityType === EntityType.TABLE_COLUMN,
-              }
-            )}>
+          <span className="tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center tw:text-brand-secondary">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
               'tw:size-full tw:text-inherit'
@@ -424,13 +418,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 </Typography.Text>
               </Button>
             ) : (
-              <div className="w-full d-flex items-center">
+              <div className="tw:flex tw:w-full tw:items-center tw:gap-1.5">
                 {entityIcon}
 
                 <Link
-                  className={classNames('d-flex no-underline line-height-22 ', {
+                  className={classNames('d-flex no-underline line-height-22', {
                     'w-max-full': !hasGlossaryTermStatus,
-                    'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
                   state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
@@ -442,7 +435,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onFocus={handlePrefetch}
                   onMouseEnter={handlePrefetch}>
                   <Typography.Text
-                    className="break-word whitespace-normal tw:text-lg tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
+                    className="break-word whitespace-normal tw:text-md tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
                     data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
@@ -451,7 +444,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {!isEmpty(
                   (source as Table)?.certification?.tagLabel?.tagFQN
                 ) && (
-                  <div className="p-l-sm">
+                  <div
+                    className={classNames(
+                      'tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center',
+                      'tw:[&_.certification-img]:size-5 tw:[&_.certification-img]:shrink-0',
+                      'tw:[&_svg]:size-5 tw:[&_svg]:shrink-0'
+                    )}>
                     <CertificationTag
                       certification={
                         (source as Table).certification as AssetCertification
@@ -507,7 +505,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             data-testid="matches-stats">
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-l-xs" key={uniqueId()}>
+              <span className="m-l-xss" key={uniqueId()}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
               </span>
