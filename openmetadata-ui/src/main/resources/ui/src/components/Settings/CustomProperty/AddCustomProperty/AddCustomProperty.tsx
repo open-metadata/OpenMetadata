@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Badge } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Button as CoreButton,
+  SelectItemType,
+  SlideoutMenu,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
-import MuiDrawer from '../../../common/MuiDrawer/MuiDrawer';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
@@ -92,6 +98,7 @@ const AddCustomProperty = ({
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [isFormInvalid, setIsFormInvalid] = useState<boolean>(true);
+  const [showSidePanel, setShowSidePanel] = useState<boolean>(false);
 
   const watchedPropertyType = Form.useWatch('propertyType', form);
 
@@ -118,7 +125,7 @@ const AddCustomProperty = ({
     [entityType]
   );
 
-  const propertyTypeOptions = useMemo(() => {
+  const propertyTypeOptions: SelectItemType[] = useMemo(() => {
     return map(propertyTypes, (type) => {
       const Icon =
         CUSTOM_PROPERTIES_ICON_MAP[
@@ -129,15 +136,9 @@ const AddCustomProperty = ({
       const title = startCase(getEntityName(type).replaceAll('-cp', ''));
 
       return {
-        searchField: title,
-        key: type.name,
-        label: (
-          <div className="d-flex gap-2 items-center" title={title}>
-            {Icon && <Icon width={20} />}
-            <span>{title}</span>
-          </div>
-        ),
-        value: type.id,
+        id: type.id ?? '',
+        label: title,
+        icon: Icon,
       };
     });
   }, [propertyTypes]);
@@ -146,32 +147,30 @@ const AddCustomProperty = ({
     hasEnumConfig,
     hasFormatConfig,
     hasEntityReferenceConfig,
-    watchedOption,
+    watchedTypeName,
     hasTableTypeConfig,
   } = useMemo(() => {
-    const watchedOption = propertyTypeOptions.find(
-      (option) => option.value === watchedPropertyType
-    );
-    const watchedOptionKey = watchedOption?.key ?? '';
+    const watchedTypeName =
+      propertyTypes.find((type) => type.id === watchedPropertyType)?.name ?? '';
 
-    const hasEnumConfig = watchedOptionKey === 'enum';
+    const hasEnumConfig = watchedTypeName === 'enum';
 
-    const hasTableTypeConfig = watchedOptionKey === TABLE_TYPE_CUSTOM_PROPERTY;
+    const hasTableTypeConfig = watchedTypeName === TABLE_TYPE_CUSTOM_PROPERTY;
 
     const hasFormatConfig =
-      PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
+      PROPERTY_TYPES_WITH_FORMAT.includes(watchedTypeName);
 
     const hasEntityReferenceConfig =
-      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
+      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedTypeName);
 
     return {
       hasEnumConfig,
       hasFormatConfig,
       hasEntityReferenceConfig,
-      watchedOption,
+      watchedTypeName,
       hasTableTypeConfig,
     };
-  }, [watchedPropertyType, propertyTypeOptions]);
+  }, [watchedPropertyType, propertyTypes]);
 
   const fetchPropertyType = async () => {
     try {
@@ -247,13 +246,12 @@ const AddCustomProperty = ({
   }, [t]);
 
   const supportedFormats = useMemo(() => {
-    const propertyName = watchedOption?.key ?? '';
-
     return (
-      SUPPORTED_FORMAT_MAP[propertyName as keyof typeof SUPPORTED_FORMAT_MAP] ??
-      []
+      SUPPORTED_FORMAT_MAP[
+        watchedTypeName as keyof typeof SUPPORTED_FORMAT_MAP
+      ] ?? []
     );
-  }, [watchedOption]);
+  }, [watchedTypeName]);
 
   const formFields: FieldProp[] = useMemo(
     () => [
@@ -262,7 +260,7 @@ const AddCustomProperty = ({
         required: true,
         label: t('label.name'),
         id: 'root/name',
-        type: FieldTypes.TEXT_MUI,
+        type: FieldTypes.UT_TEXT,
         props: {
           'data-testid': 'name',
           autoComplete: 'off',
@@ -289,7 +287,7 @@ const AddCustomProperty = ({
         label: t('label.display-name'),
         required: false,
         placeholder: t('label.display-name'),
-        type: FieldTypes.TEXT_MUI,
+        type: FieldTypes.UT_TEXT,
         props: {
           'data-testid': 'display-name',
         },
@@ -299,20 +297,13 @@ const AddCustomProperty = ({
         required: true,
         label: t('label.type'),
         id: 'root/propertyType',
-        type: FieldTypes.SELECT_MUI,
-        placeholder: t('label.select-property-type'),
+        type: FieldTypes.UT_SELECT,
+        placeholder: `${t('label.select-field', {
+          field: t('label.type'),
+        })}`,
         props: {
           'data-testid': 'propertyType',
-          options: propertyTypeOptions,
-          placeholder: `${t('label.select-field', {
-            field: t('label.type'),
-          })}`,
-          showSearch: true,
-          filterOption: (input: string, option: { searchField: string }) => {
-            return (option?.searchField ?? '')
-              .toLowerCase()
-              .includes(input.toLowerCase());
-          },
+          items: propertyTypeOptions,
         },
       },
       ...(entityType === EntityType.TABLE_COLUMN
@@ -361,6 +352,8 @@ const AddCustomProperty = ({
         placeholder: t('label.enum-value-plural'),
         open: false,
         className: 'trim-select',
+        getPopupContainer: (triggerNode: HTMLElement) =>
+          triggerNode.parentElement ?? document.body,
       },
       rules: [
         {
@@ -395,12 +388,12 @@ const AddCustomProperty = ({
       required: false,
       label: t('label.format'),
       id: 'root/formatConfig',
-      type: FieldTypes.SELECT_MUI,
+      type: FieldTypes.UT_SELECT,
       props: {
         'data-testid': 'formatConfig',
-        options: supportedFormats.map((option) => ({
+        items: supportedFormats.map((option) => ({
+          id: option,
           label: option,
-          value: option,
         })),
       },
       placeholder: t('label.format'),
@@ -437,6 +430,8 @@ const AddCustomProperty = ({
         placeholder: `${t('label.select-field', {
           field: t('label.type'),
         })}`,
+        getPopupContainer: (triggerNode: HTMLElement) =>
+          triggerNode.parentElement ?? document.body,
       },
     }),
     [t]
@@ -454,6 +449,8 @@ const AddCustomProperty = ({
           'data-testid': 'columns',
           mode: 'tags',
           placeholder: t('label.column-plural'),
+          getPopupContainer: (triggerNode: HTMLElement) =>
+            triggerNode.parentElement ?? document.body,
         },
         rules: [
           {
@@ -612,26 +609,89 @@ const AddCustomProperty = ({
   );
 
   if (!isUndefined(open)) {
+    const isDrawerLoading = loading || isCreating;
+
     return (
-      <MuiDrawer
-        hasSidePanel
-        formRef={form}
-        isFormInvalid={isFormInvalid}
-        isLoading={loading || isCreating}
-        open={open}
-        sidePanel={
-          <div className="service-doc-panel">
-            <ServiceDocPanel
-              activeField={activeField}
-              serviceName={CUSTOM_PROPERTY_CATEGORY}
-              serviceType={OPEN_METADATA as ServiceCategory}
-            />
-          </div>
-        }
-        title={t('label.add-entity', { entity: t('label.custom-property') })}
-        onClose={onClose ?? handleCancel}>
-        {formContent}
-      </MuiDrawer>
+      <SlideoutMenu
+        isDismissable
+        className="tw:z-1000"
+        data-testid="add-custom-property-drawer"
+        isOpen={open}
+        width={showSidePanel ? 1200 : 700}
+        onOpenChange={(isDrawerOpen) => {
+          if (!isDrawerOpen) {
+            (onClose ?? handleCancel)();
+          }
+        }}>
+        {({ close }) => (
+          <>
+            <SlideoutMenu.Header
+              className="tw:flex tw:items-center tw:justify-between tw:gap-4 tw:border-b tw:border-secondary tw:py-4"
+              onClose={close}>
+              <Typography
+                className="tw:text-primary"
+                size="text-lg"
+                weight="semibold">
+                {t('label.add-entity', {
+                  entity: t('label.custom-property'),
+                })}
+              </Typography>
+              <div className="tw:mr-8 tw:flex tw:items-center tw:gap-2">
+                <Toggle
+                  data-testid="show-side-panel-switch"
+                  isSelected={showSidePanel}
+                  onChange={setShowSidePanel}
+                />
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {t('label.show-help-text')}
+                </Typography>
+              </div>
+            </SlideoutMenu.Header>
+
+            <SlideoutMenu.Content>
+              <div className="tw:flex tw:size-full tw:gap-6">
+                <div
+                  className={
+                    showSidePanel ? 'tw:w-3/5 tw:overflow-y-auto' : 'tw:w-full'
+                  }>
+                  {formContent}
+                </div>
+                {showSidePanel && (
+                  <div className="tw:w-2/5 tw:overflow-y-auto tw:border-l tw:border-secondary tw:pl-6">
+                    <div className="service-doc-panel">
+                      <ServiceDocPanel
+                        activeField={activeField}
+                        serviceName={CUSTOM_PROPERTY_CATEGORY}
+                        serviceType={OPEN_METADATA as ServiceCategory}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SlideoutMenu.Content>
+
+            <SlideoutMenu.Footer>
+              <div className="tw:flex tw:justify-end tw:gap-4">
+                <CoreButton
+                  color="tertiary"
+                  data-testid="cancel-button"
+                  isDisabled={isDrawerLoading}
+                  onClick={close}>
+                  {t('label.cancel')}
+                </CoreButton>
+                <CoreButton
+                  color="primary"
+                  data-testid="create-button"
+                  isDisabled={isDrawerLoading || isFormInvalid}
+                  isLoading={isDrawerLoading}
+                  onClick={() => form.submit()}>
+                  {t('label.create')}
+                </CoreButton>
+              </div>
+            </SlideoutMenu.Footer>
+          </>
+        )}
+      </SlideoutMenu>
     );
   }
 
