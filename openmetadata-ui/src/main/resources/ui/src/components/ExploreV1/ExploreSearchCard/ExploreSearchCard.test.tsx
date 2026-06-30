@@ -240,6 +240,27 @@ describe('ExploreSearchCard - Type badge', () => {
 
     expect(screen.getByTestId('Type')).toHaveTextContent('STRING');
   });
+
+  it('preserves complex column data type syntax in uppercase', () => {
+    const complexDataType =
+      'struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>';
+
+    renderCard({
+      entityType: 'tableColumn',
+      dataType: 'STRUCT',
+      dataTypeDisplay: complexDataType,
+    });
+
+    expect(screen.getByTestId('Type')).toHaveTextContent(
+      complexDataType.toUpperCase()
+    );
+    expect(screen.getByText(complexDataType.toUpperCase())).toHaveClass(
+      'tw:max-w-full',
+      'tw:min-h-5.5',
+      'tw:break-words',
+      'tw:whitespace-normal'
+    );
+  });
 });
 
 describe('ExploreSearchCard - Highlight functionality', () => {

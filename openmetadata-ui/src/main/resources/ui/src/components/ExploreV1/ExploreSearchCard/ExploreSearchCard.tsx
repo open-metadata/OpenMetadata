@@ -147,7 +147,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           columnDetails.push({
             key: TYPE_BADGE_KEY,
             value: getTypeBadge(
-              columnSource.dataTypeDisplay ?? columnSource.dataType
+              columnSource.dataTypeDisplay ?? columnSource.dataType,
+              true
             ),
           });
         }

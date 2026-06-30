@@ -19,17 +19,20 @@ export const TYPE_BADGE_KEY = 'Type';
 
 const TYPE_BADGE_CLASS_NAME = [
   'tw:inline-flex',
-  'tw:h-5.5',
+  'tw:max-w-full',
+  'tw:min-h-5.5',
   'tw:items-center',
   'tw:rounded-md',
   'tw:border',
   'tw:border-utility-gray-blue-200',
   'tw:bg-utility-gray-blue-50',
+  'tw:break-words',
   'tw:px-1.5',
   'tw:py-0.5',
   'tw:text-xs',
   'tw:font-medium',
   'tw:text-utility-gray-blue-700',
+  'tw:whitespace-normal',
 ].join(' ');
 
 const BREADCRUMB_ICON_CLASS_NAME = [
@@ -43,10 +46,10 @@ const BREADCRUMB_ICON_CLASS_NAME = [
   'tw:[&>*]:size-2.5',
 ].join(' ');
 
-export const getTypeBadge = (label?: string) =>
+export const getTypeBadge = (label?: string, preserveFormatting = false) =>
   label ? (
     <span className={TYPE_BADGE_CLASS_NAME}>
-      {startCase(label).toUpperCase()}
+      {(preserveFormatting ? label : startCase(label)).toUpperCase()}
     </span>
   ) : null;
 
