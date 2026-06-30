@@ -180,6 +180,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => Math.min(getValidSearchNumber(parsedSearch.page, 1), totalPages),
     [parsedSearch.page, totalPages]
   );
+  const rawPage = useMemo(
+    () => getValidSearchNumber(parsedSearch.page, 1),
+    [parsedSearch.page]
+  );
 
   const {
     toggleModal,
@@ -311,14 +315,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
       if (!isVisibleScope || isSearchMode) {
         return undefined;
       }
-      const currentPage = isString(parsedSearch.page)
-        ? Number.parseInt(parsedSearch.page, 10) || 1
-        : 1;
-      const pageSize = isString(parsedSearch.size)
-        ? Number.parseInt(parsedSearch.size, 10) || pageResultCount
-        : pageResultCount;
 
-      return (currentPage - 1) * pageSize;
+      return (currentPage - 1) * currentPageSize;
     })();
 
     const params: Parameters<typeof exportSearchResultsAsync>[0] = {
@@ -364,7 +362,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     visibleResultCount,
     isSearchMode,
     pageResultCount,
-    parsedSearch,
+    currentPage,
+    currentPageSize,
     searchQueryParam,
     sortValue,
     sortOrder,
@@ -428,6 +427,27 @@ const ExploreV1: React.FC<ExploreProps> = ({
     },
     [currentPage, onChangePage, totalValue]
   );
+
+  useEffect(() => {
+    if (
+      loading ||
+      isElasticSearchIssue ||
+      !searchResults ||
+      rawPage === currentPage
+    ) {
+      return;
+    }
+
+    onChangePage?.(currentPage, currentPageSize);
+  }, [
+    currentPage,
+    currentPageSize,
+    isElasticSearchIssue,
+    loading,
+    onChangePage,
+    rawPage,
+    searchResults,
+  ]);
 
   const clearFilters = () => {
     onResetAllFilters();

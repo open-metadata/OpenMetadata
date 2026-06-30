@@ -451,6 +451,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.location.search = '';
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
@@ -471,6 +472,16 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
+  });
+
+  it('normalizes out-of-range page query to the last available page', async () => {
+    window.location.search = '?page=999&size=10';
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(onChangePage).toHaveBeenCalledWith(2, 10);
+    });
   });
 
   it('does not render the toolbar Clear All when no filters are active', () => {
