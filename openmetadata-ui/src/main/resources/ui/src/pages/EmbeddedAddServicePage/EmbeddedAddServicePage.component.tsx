@@ -29,7 +29,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
@@ -81,6 +81,10 @@ const ServiceDocPanel = lazy(
   () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
 );
 
+// "Back" target when opened with a preselected service type (e.g. the
+// onboarding connector picker), instead of the connector grid the user skipped.
+const PRESELECT_ORIGIN_PATH = '/';
+
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -88,15 +92,20 @@ const EmbeddedAddServicePage = () => {
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
+  const { state: locationState } = useLocation();
+  const preselectedServiceType =
+    (locationState as { serviceType?: string } | null)?.serviceType ?? '';
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
   );
-  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [activeServiceStep, setActiveServiceStep] = useState(
+    preselectedServiceType ? 2 : 1
+  );
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
     name: '',
     description: '',
-    serviceType: '',
+    serviceType: preselectedServiceType,
     connection: {
       config: {},
     },
@@ -333,7 +342,9 @@ const EmbeddedAddServicePage = () => {
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
       if (id === 'add-service') {
-        if (activeServiceStepRef.current > 1) {
+        if (preselectedServiceType) {
+          navigate(PRESELECT_ORIGIN_PATH);
+        } else if (activeServiceStepRef.current > 1) {
           setShowResetConfirm(true);
         } else {
           handleConnectorChangeClick();
@@ -342,7 +353,12 @@ const EmbeddedAddServicePage = () => {
         navigate(`/connections`);
       }
     },
-    [handleConnectorChangeClick, navigate, serviceCategory]
+    [
+      handleConnectorChangeClick,
+      navigate,
+      preselectedServiceType,
+      serviceCategory,
+    ]
   );
 
   const isStep2NextDisabled =
@@ -351,7 +367,11 @@ const EmbeddedAddServicePage = () => {
   const showFooter = activeServiceStep === 2 || activeServiceStep === 3;
 
   const handleFooterBack = () => {
-    setShowBackStepConfirm(true);
+    if (activeServiceStep === 2 && preselectedServiceType) {
+      navigate(PRESELECT_ORIGIN_PATH);
+    } else {
+      setShowBackStepConfirm(true);
+    }
   };
 
   const handleConfirmedStepBack = () => {
@@ -515,6 +535,7 @@ const EmbeddedAddServicePage = () => {
   return (
     <NavigationBlocker
       enabled={activeServiceStep > 1 && !isSavingService}
+      leaveTo={preselectedServiceType ? PRESELECT_ORIGIN_PATH : undefined}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}

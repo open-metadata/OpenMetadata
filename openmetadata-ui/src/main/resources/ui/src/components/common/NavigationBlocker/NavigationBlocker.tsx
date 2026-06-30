@@ -21,6 +21,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   enabled = false,
   onConfirm,
   onCancel,
+  leaveTo,
   renderModal,
 }) => {
   const navigate = useNavigate();
@@ -180,7 +181,9 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     pendingNavigationRef.current = null;
 
     setTimeout(() => {
-      if (pendingUrl === 'back') {
+      if (pendingUrl === 'back' && leaveTo) {
+        navigate(leaveTo);
+      } else if (pendingUrl === 'back') {
         // go(-2): past the re-pushed guard entry AND past the original page entry.
         globalThis.history.go(-2);
       } else if (pendingUrl === 'reload') {
@@ -200,7 +203,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
         navigate(pendingUrl);
       }
     }, 50);
-  }, [navigate]);
+  }, [navigate, leaveTo]);
 
   const handleSaveAndLeave = useCallback(async () => {
     setLoading(true);
@@ -215,7 +218,9 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       pendingNavigationRef.current = null;
 
       setTimeout(() => {
-        if (pendingUrl === 'back') {
+        if (pendingUrl === 'back' && leaveTo) {
+          navigate(leaveTo);
+        } else if (pendingUrl === 'back') {
           globalThis.history.go(-2);
         } else if (pendingUrl === 'reload') {
           globalThis.location.reload();
@@ -237,7 +242,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     } catch {
       setLoading(false);
     }
-  }, [navigate, onConfirm]);
+  }, [navigate, onConfirm, leaveTo]);
 
   const handleModalClose = useCallback(() => {
     setIsModalVisible(false);
