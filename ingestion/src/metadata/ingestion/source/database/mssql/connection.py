@@ -21,6 +21,7 @@ from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     list_schemas,
     list_tables,
@@ -48,6 +49,8 @@ from metadata.ingestion.source.database.mssql.queries import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
 
@@ -99,6 +102,18 @@ SQLSERVER_ERRORS = ErrorPack(
 MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
 
 
+def _databases_enumerated(rows: Sequence[object]) -> str:
+    """Summarize the GetDatabases probe without overstating the count.
+
+    ``run_sql`` fetches at most ``DEFAULT_SAMPLE_ROWS`` rows, so on an instance
+    with more databases than the cap the count saturates; report it as ``N+`` so
+    the evidence reads as a floor, not an exact total.
+    """
+    count = len(rows)
+    label = f"{count}+" if count >= DEFAULT_SAMPLE_ROWS else str(count)
+    return f"{label} databases enumerated"
+
+
 def get_connection_url(connection: MssqlConnectionConfig) -> str:
     if connection.scheme.value == connection.scheme.mssql_pyodbc.value:
         return get_pyodbc_connection_url(connection)
@@ -139,7 +154,7 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, self.get_databases_statement, lambda rows: f"{len(rows)} databases enumerated")
+        return run_sql(self.client, self.get_databases_statement, _databases_enumerated)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
