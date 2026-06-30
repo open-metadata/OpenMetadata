@@ -12,6 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -88,11 +89,27 @@ jest.mock('../../common/DomainDisplay/DomainDisplay.component', () => ({
 jest.mock('@openmetadata/ui-core-components', () => ({
   Breadcrumbs: jest.fn(({ items = [] }) => (
     <nav data-testid="breadcrumbs">
-      {items.map((item: { id: string; label: string; href: string }) => (
-        <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
-          {item.label}
-        </a>
-      ))}
+      {items.map(
+        (item: {
+          id: string;
+          label: string;
+          href: string;
+          icon?: (props: { className?: string }) => ReactElement;
+        }) => {
+          const Icon = item.icon;
+
+          return (
+            <a data-testid="breadcrumb-item" href={item.href} key={item.id}>
+              {Icon && (
+                <span data-testid="breadcrumb-icon">
+                  <Icon className="breadcrumb-icon" />
+                </span>
+              )}
+              {item.label}
+            </a>
+          );
+        }
+      )}
     </nav>
   )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
@@ -189,6 +206,28 @@ describe('ExploreSearchCard - Card container', () => {
 
     expect(card).toHaveClass('explore-search-card');
     expect(card).toHaveClass('highlight-card');
+  });
+});
+
+describe('ExploreSearchCard - Type badge', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders the entity type as the first metadata badge', () => {
+    renderCard({ entityType: 'pipeline' });
+
+    expect(screen.getByTestId('Type')).toHaveTextContent('PIPELINE');
+  });
+
+  it('renders the column data type as the first metadata badge for column cards', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      dataType: 'STRING',
+      dataTypeDisplay: 'STRING',
+    });
+
+    expect(screen.getByTestId('Type')).toHaveTextContent('STRING');
   });
 });
 
@@ -621,6 +660,20 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     renderCard({});
 
     expect(screen.getByText('service-icon')).toBeInTheDocument();
+  });
+
+  it('passes icons for breadcrumb items from the source hierarchy', () => {
+    (searchClassBase.getEntityBreadcrumbs as jest.Mock).mockReturnValue([
+      { name: 'svc', url: '/svc' },
+      { name: 'db', url: '/db' },
+      { name: 'schema', url: '/schema' },
+    ]);
+
+    renderCard({ entityType: 'table' });
+
+    expect(screen.getAllByTestId('breadcrumb-icon')).toHaveLength(3);
+    expect(screen.getByText('service-icon')).toBeInTheDocument();
+    expect(screen.getAllByText('entity-icon')).toHaveLength(2);
   });
 
   it('does not render service icon when breadcrumbs list is empty', () => {

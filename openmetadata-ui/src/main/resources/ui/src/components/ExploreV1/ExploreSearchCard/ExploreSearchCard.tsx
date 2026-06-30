@@ -50,6 +50,12 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+import {
+  createBreadcrumbIcon,
+  getBreadcrumbIconTypes,
+  getTypeBadge,
+  TYPE_BADGE_KEY,
+} from './ExploreSearchCard.utils';
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -126,11 +132,9 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         if (columnSource.dataType) {
           columnDetails.push({
-            key: t('label.type'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.dataTypeDisplay ?? columnSource.dataType}
-              </Typography.Text>
+            key: TYPE_BADGE_KEY,
+            value: getTypeBadge(
+              columnSource.dataTypeDisplay ?? columnSource.dataType
             ),
           });
         }
@@ -167,7 +171,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           key: 'Owner',
           value: (
             <OwnerLabel
-              avatarSize={18}
+              avatarSize={20}
               isCompactView={false}
               owners={columnSource?.owners ?? []}
               showLabel={false}
@@ -208,13 +212,22 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           : emptyDomainInfo;
 
       const _otherDetails: ExtraInfo[] = [
+        ...(source?.entityType
+          ? [
+              {
+                key: TYPE_BADGE_KEY,
+                value: getTypeBadge(source.entityType),
+              },
+            ]
+          : []),
+
         ...domainInfo,
 
         {
           key: 'Owner',
           value: (
             <OwnerLabel
-              avatarSize={18}
+              avatarSize={20}
               isCompactView={false}
               owners={(source?.owners as EntityReference[]) ?? []}
               showLabel={false}
@@ -278,10 +291,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         }
 
         return (
-          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
+          <span
+            className={classNames(
+              'tw:mr-2 tw:inline-flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:text-brand-secondary',
+              {
+                'tw:size-5': source.entityType === EntityType.TABLE_COLUMN,
+              }
+            )}>
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'text-link-color'
+              'tw:size-full tw:text-inherit'
             )}
           </span>
         );
@@ -293,6 +312,30 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const serviceIcon = useMemo(() => {
       return searchClassBase.getServiceIcon(source);
     }, [source]);
+
+    const breadcrumbIconTypes = useMemo(
+      () => getBreadcrumbIconTypes(source.entityType),
+      [source.entityType]
+    );
+
+    const breadcrumbItems = useMemo(() => {
+      return breadcrumbs.map((b, index) => {
+        const breadcrumbIconType = breadcrumbIconTypes[index];
+        const icon =
+          index === 0
+            ? serviceIcon
+            : breadcrumbIconType
+            ? searchClassBase.getEntityIcon(breadcrumbIconType)
+            : undefined;
+
+        return {
+          id: b.name,
+          label: getEntityName(b),
+          href: typeof b.url === 'string' ? b.url : b.url.pathname,
+          icon: createBreadcrumbIcon(icon),
+        };
+      });
+    }, [breadcrumbs, breadcrumbIconTypes, serviceIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
@@ -323,23 +366,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <Col className="d-flex justify-between items-center" flex="auto">
               <div
                 className={classNames(
-                  'd-flex gap-2 items-center tw:min-w-0',
+                  'explore-search-card-breadcrumbs tw:flex tw:min-w-0 tw:items-center tw:gap-2',
                   classNameForBreadcrumb
                 )}>
-                {breadcrumbs.length > 0 && serviceIcon}
                 {/* Always collapse the middle crumbs into a clickable "…" menu
                     (first / … / last) so a deep path stays compact and the
                     summary side-panel keeps its room; the hidden crumbs expand
                     on click. autoCollapse only collapses on overflow, so a wide
                     card would otherwise show the whole trail. */}
-                <Breadcrumbs
-                  items={breadcrumbs.map((b) => ({
-                    id: b.name,
-                    label: getEntityName(b),
-                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
-                  }))}
-                  maxItems={2}
-                />
+                <Breadcrumbs items={breadcrumbItems} maxItems={2} />
               </div>
               {score && (
                 <div className="flex items-center gap-1 score-container">
@@ -363,7 +398,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text
-                  className="text-lg font-medium text-link-color"
+                  className="tw:text-lg tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
                   data-testid="entity-header-display-name">
                   {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
@@ -387,7 +422,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onFocus={handlePrefetch}
                   onMouseEnter={handlePrefetch}>
                   <Typography.Text
-                    className="text-lg font-medium text-link-color break-word whitespace-normal"
+                    className="break-word whitespace-normal tw:text-lg tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
                     data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
@@ -420,6 +455,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       );
     }, [
       breadcrumbs,
+      breadcrumbItems,
       source,
       hideBreadcrumbs,
       showCheckboxes,
