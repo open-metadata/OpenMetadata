@@ -37,8 +37,9 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
-test.describe('Lineage Interactions', () => {
+test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const table1 = new TableClass();
   const table2 = new TableClass();
   const topic = new TopicClass();

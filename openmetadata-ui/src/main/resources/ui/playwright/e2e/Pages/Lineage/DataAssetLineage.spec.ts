@@ -58,6 +58,7 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 // Contains list of entity supported
 const allEntities = {
@@ -106,7 +107,7 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
-test.describe('Data asset lineage', () => {
+test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 

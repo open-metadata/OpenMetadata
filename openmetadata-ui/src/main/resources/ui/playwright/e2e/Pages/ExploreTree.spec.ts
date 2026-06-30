@@ -32,6 +32,7 @@ import {
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({
@@ -46,7 +47,7 @@ test.beforeEach(async ({ page }) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
 });
 
-test.describe('Explore Tree scenarios', () => {
+test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   let table1: TableClass;
   let table2: TableClass;
 

@@ -14,12 +14,13 @@ import test, { expect } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-test.describe('Glossary tests', () => {
+test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
   let parentTerm: GlossaryTerm;

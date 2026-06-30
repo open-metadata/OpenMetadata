@@ -14,6 +14,7 @@ import { expect, Page, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage, toastNotification } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -50,7 +51,7 @@ const expectSavedLoginConfig = async (
   await toastNotification(page, 'Login Configuration updated successfully.');
 };
 
-test.describe('Login configuration', () => {
+test.describe('Login configuration', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await settingClick(page, GlobalSettingOptions.LOGIN_CONFIGURATION);

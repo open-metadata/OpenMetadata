@@ -22,6 +22,7 @@ import {
 import { createSubDomain, selectDomain } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -29,7 +30,7 @@ const domain = new Domain();
 const subDomains: SubDomain[] = [];
 const SUBDOMAIN_COUNT = 60;
 
-test.describe('SubDomain Pagination', () => {
+test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.slow(true);
 
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {

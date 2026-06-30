@@ -31,6 +31,7 @@ import {
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 const table = new TableClass();
 const topic = new TopicClass();
@@ -94,7 +95,7 @@ test.beforeEach(async ({ page }) => {
 // ====================
 // Suite 1: Canvas Control Buttons (4 tests)
 // ====================
-test.describe('Canvas Controls', () => {
+test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await table.visitEntityPage(page);
     await visitLineageTab(page);
@@ -164,7 +165,7 @@ test.describe('Canvas Controls', () => {
   });
 });
 
-test.describe('Lineage Layers', () => {
+test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Data Observability Layer', () => {
     test.beforeEach(async ({ page }) => {
       await table.visitEntityPage(page);
