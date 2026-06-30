@@ -352,18 +352,15 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          <PinButton
+          {canPin && <PinButton
             animKey={pinAnimKey}
-            isDisabled={!canPin || isPinning}
+            isDisabled={isPinning}
             pinned={pinned}
             onClick={() => {
-              if (!canPin || isPinning) {
-                return;
-              }
               setPinAnimKey((prev) => prev + 1);
               onTogglePin?.(memory);
             }}
-          />
+          />}
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
             <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
