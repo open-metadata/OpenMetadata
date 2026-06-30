@@ -80,6 +80,17 @@ jobs:
           push: ${{ github.event_name == 'schedule' || inputs.push_image }}
           tags: ${{ steps.prepare.outputs.tags }}
 
+      - name: Trigger Collate Storybook UI image tag update
+        if: ${{ github.event_name == 'schedule' || inputs.push_image }}
+        uses: the-actions-org/workflow-dispatch@v4
+        with:
+          workflow: Update Storybook UI image tag
+          ref: main
+          repo: open-metadata/openmetadata-collate
+          token: ${{ secrets.COLLATE_PAT }}
+          wait-for-completion: true
+          inputs: '{ "STORYBOOK_UI_IMAGE_TAG": "${{ steps.sha.outputs.short }}" }'
+
       - name: Print image reference
         run: |
           echo "### Storybook image published" >> "$GITHUB_STEP_SUMMARY"
