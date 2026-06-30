@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
@@ -26,6 +27,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
@@ -56,9 +58,11 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *       is never indexed as a keyword term. The container always indexes on both engines.
  *   <li><b>Column-name searchability is bounded by the configured depth and is tunable:</b> the
  *       analyzed {@code columnNamesFuzzy} field is built from the flattened column hierarchy, capped
- *       at the depth limit. With the default 20 a 25-level leaf name is dropped (not searchable);
- *       after raising the limit through the admin search-index-mappings API, a container indexed
- *       afterwards has that deep leaf name searchable again.
+ *       at the depth limit. With the default 20 a 25-level leaf name is dropped; after raising the
+ *       limit through the admin search-index-mappings API, a container indexed afterwards carries the
+ *       deep leaf name. The assertion is on the indexed {@code columnNamesFuzzy} value (deterministic
+ *       given the depth), not on a fuzzy query match (whose relevance/refresh timing is unrelated to
+ *       the depth being exercised here).
  * </ul>
  */
 @Slf4j
@@ -82,39 +86,37 @@ public class SearchIndexImmenseTermIT {
     OpenMetadataClient client = SdkClients.adminClient();
     StorageService service = StorageServiceTestFactory.createS3(ns);
 
-    // Phase 1 — default depth limit (20): the container indexes despite the >32 KB leaf, but the
-    // 25-level-deep column name is dropped from columnNamesFuzzy and is not searchable.
+    // Default depth limit (20): the container indexes despite the >32 KB leaf, but the
+    // 25-level-deep
+    // column name is dropped from the flattened columnNamesFuzzy.
     NestedContainer withDefault = createDeeplyNestedContainer(ns, client, service, "depthdefault");
     awaitContainerSearchable(withDefault.descriptionToken(), withDefault.containerId());
     assertFalse(
-        searchFindsContainer(withDefault.leafColumnName(), withDefault.containerId()),
-        "With the default depth limit the 25-level-deep column name must not be searchable");
+        indexedColumnNamesFuzzy(withDefault).contains(withDefault.leafColumnName()),
+        "With the default depth limit the 25-level-deep column name must be dropped");
 
     // Raise the container index depth limit past the nesting depth via the admin mappings API.
     raiseContainerDepthLimit(RAISED_DEPTH_LIMIT);
 
-    // Phase 2 — a container indexed after the increase has its deep column name searchable again.
+    // A container indexed after the increase carries the deep column name in columnNamesFuzzy.
     NestedContainer withRaised = createDeeplyNestedContainer(ns, client, service, "depthraised");
     awaitContainerSearchable(withRaised.descriptionToken(), withRaised.containerId());
-    Awaitility.await("deep column searchable after raising the depth limit")
-        .atMost(120, TimeUnit.SECONDS)
-        .pollInterval(2, TimeUnit.SECONDS)
-        .ignoreExceptions()
-        .untilAsserted(
-            () ->
-                assertTrue(
-                    searchFindsContainer(withRaised.leafColumnName(), withRaised.containerId()),
-                    "After raising the depth limit the 25-level-deep column name must be searchable"));
+    assertTrue(
+        indexedColumnNamesFuzzy(withRaised).contains(withRaised.leafColumnName()),
+        "After raising the depth limit the 25-level-deep column name must be indexed");
   }
 
   private NestedContainer createDeeplyNestedContainer(
       TestNamespace ns, OpenMetadataClient client, StorageService service, String label)
       throws Exception {
-    // Letters-only token: word_delimiter fragments alphanumeric runs on letter/digit boundaries, so
-    // a token carrying hex digits tokenizes inconsistently between the indexed column name and the
-    // query. Letters keep the leaf name a single, exactly-matchable term.
-    String token = ns.prefix(label).replaceAll("[^a-zA-Z]", "").toLowerCase();
-    String descriptionToken = "immensedesc" + token;
+    // Short, letters-only token: keeps the leaf name a single exactly-matchable term and keeps
+    // columnNamesFuzzy small enough to index and refresh promptly.
+    String token =
+        "imm"
+            + (UUID.randomUUID() + UUID.randomUUID().toString())
+                .replaceAll("[^a-f]", "")
+                .substring(0, 10);
+    String descriptionToken = label + token;
     String leafColumnName = "deepleaf" + token;
     String oversizedLeaf = buildOversizedExpression();
     assertTrue(
@@ -215,14 +217,21 @@ public class SearchIndexImmenseTermIT {
   private void awaitContainerSearchable(String token, String containerId) {
     Awaitility.await("container indexed in search")
         .atMost(180, TimeUnit.SECONDS)
-        .pollInterval(1, TimeUnit.SECONDS)
+        .pollInterval(2, TimeUnit.SECONDS)
         .ignoreExceptions()
-        .untilAsserted(() -> assertTrue(searchFindsContainer(token, containerId)));
+        .untilAsserted(() -> assertTrue(searchContainers(token).body().contains(containerId)));
   }
 
-  private boolean searchFindsContainer(String token, String containerId) throws Exception {
-    HttpResponse<String> response = searchContainers(token);
-    return response.statusCode() == 200 && response.body().contains(containerId);
+  /** The indexed {@code columnNamesFuzzy} of the container, located by its unique description. */
+  private String indexedColumnNamesFuzzy(NestedContainer c) throws Exception {
+    JsonNode root = MAPPER.readTree(searchContainers(c.descriptionToken()).body());
+    String result = "";
+    for (JsonNode hit : root.path("hits").path("hits")) {
+      if (c.containerId().equals(hit.path("_source").path("id").asText())) {
+        result = hit.path("_source").path("columnNamesFuzzy").asText();
+      }
+    }
+    return result;
   }
 
   private HttpResponse<String> searchContainers(String token) throws Exception {
