@@ -89,6 +89,14 @@ def test_every_definition_step_resolves_to_a_check():
     }
 
 
+def test_close_disposes_the_engine():
+    with patch(f"{CONNECTION_MODULE}.create_generic_db_connection"):
+        connection = MssqlConnection(_config())
+        engine = connection.client
+        connection.close()
+    engine.dispose.assert_called_once()
+
+
 def test_building_checks_does_not_touch_the_network():
     with patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine:
         provider = MssqlConnection(_config()).checks()

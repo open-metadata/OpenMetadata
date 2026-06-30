@@ -175,11 +175,13 @@ class MssqlChecks:
 
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     def _get_databases_statement(self) -> str:
         if self.service_connection.ingestAllDatabases:
