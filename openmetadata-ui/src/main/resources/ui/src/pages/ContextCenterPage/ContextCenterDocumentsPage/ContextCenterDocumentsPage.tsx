@@ -17,7 +17,6 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -34,7 +33,6 @@ import {
 import { SearchIndex } from '../../../enums/search.enum';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import {
   deleteDriveFile,
   listContextFiles,
@@ -49,7 +47,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
-  const { alert } = useAlertStore();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
   const [allDocuments, setAllDocuments] = useState<ContextFile[]>([]);
@@ -382,7 +379,6 @@ const ContextCenterDocumentsPage: FC = () => {
       className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-documents-page"
       direction="col">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         breadcrumbs={[
           {
