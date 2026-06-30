@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Users03 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import {
@@ -20,6 +19,7 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as TeamsIcon } from '../../../assets/svg/ic-teams.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -67,9 +67,9 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         to={getOwnerPath(owner)}>
         {isTeam ? (
           <span
-            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-tertiary tw:text-tertiary"
+            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600"
             data-testid={entityName}>
-            <Users03 className="tw:w-3.5 tw:h-3.5" />
+            <TeamsIcon className="tw:w-3.5 tw:h-3.5" />
           </span>
         ) : (
           <span
@@ -143,7 +143,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
               data-testid="owners-overflow-teams-section">
               <Typography
                 as="div"
-                className="tw:px-3 tw:py-1 tw:text-tertiary tw:uppercase tw:tracking-wider"
+                className="tw:px-3 tw:py-1 tw:text-tertiary tw:tracking-wider"
                 size="text-xs"
                 weight="medium">
                 {t('label.team-plural')} ({teamOwners.length})
@@ -158,7 +158,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
               data-testid="owners-overflow-users-section">
               <Typography
                 as="div"
-                className="tw:px-3 tw:py-1 tw:text-tertiary tw:uppercase tw:tracking-wider"
+                className="tw:px-3 tw:py-1 tw:text-tertiary tw:tracking-wider"
                 size="text-xs"
                 weight="medium">
                 {t('label.user-plural')} ({userOwners.length})
