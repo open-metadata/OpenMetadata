@@ -34,6 +34,8 @@ import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipelin
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 
@@ -241,4 +243,25 @@ public class IngestionPipelineOwnerInheritanceIT {
       adminClient.policies().delete(ownerPolicy.getId());
     }
   }
+
+  @Test
+  void test_ingestionPipelineDescriptorExposesTrigger() {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    ResourceDescriptorList resources =
+        adminClient
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/policies/resources", null, ResourceDescriptorList.class);
+    ResourceDescriptor descriptor =
+        resources.getData().stream()
+            .filter(rd -> "ingestionPipeline".equals(rd.getName()))
+            .findFirst()
+            .orElseThrow(
+                () -> new AssertionError("ingestionPipeline resource descriptor not found"));
+    assertTrue(
+        descriptor.getOperations().contains(MetadataOperation.TRIGGER),
+        "ingestionPipeline descriptor must expose Trigger so it is grantable scoped to "
+            + "Ingestion Pipeline in the policy editor");
+  }
+
+  static class ResourceDescriptorList extends ResultList<ResourceDescriptor> {}
 }

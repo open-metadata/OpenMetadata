@@ -173,7 +173,8 @@ public class IngestionPipelineResource
   protected List<MetadataOperation> getEntitySpecificOperations() {
     return listOf(
         MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
-        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS,
+        MetadataOperation.TRIGGER);
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
