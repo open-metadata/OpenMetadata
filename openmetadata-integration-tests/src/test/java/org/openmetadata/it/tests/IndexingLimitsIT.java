@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -92,19 +93,29 @@ public class IndexingLimitsIT {
 
   private boolean rejects(String index, String mapping, String doc) throws Exception {
     createIndex(index, mapping);
-    boolean rejected;
-    try {
-      index(index, doc);
-      rejected = false;
-    } catch (Exception expected) {
-      rejected = true;
-    }
-    return rejected;
+    return indexStatus(index, doc) >= 400;
   }
 
   private boolean accepts(String index, String mapping, String doc) throws Exception {
     createIndex(index, mapping);
-    return index(index, doc).getStatusCode() < 400;
+    return indexStatus(index, doc) < 400;
+  }
+
+  /**
+   * Status code of indexing {@code doc} into {@code index}. The rest5 low-level client surfaces a
+   * rejected write as the {@link Response} carrying the 4xx (not always a thrown exception), so the
+   * status code is authoritative — mirroring how {@code ElasticSearchClient} reads {@code
+   * e.getResponse()}. A thrown {@link ResponseException} is unwrapped to its response so a rejection
+   * is detected whichever way the client surfaces it.
+   */
+  private int indexStatus(String index, String doc) throws Exception {
+    int statusCode;
+    try {
+      statusCode = index(index, doc).getStatusCode();
+    } catch (ResponseException rejected) {
+      statusCode = rejected.getResponse().getStatusCode();
+    }
+    return statusCode;
   }
 
   private void createIndex(String index, String mapping) throws Exception {
