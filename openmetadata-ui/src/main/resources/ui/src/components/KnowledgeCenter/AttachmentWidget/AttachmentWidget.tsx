@@ -99,7 +99,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ hasPermission }) => {
         ))}
       </div>
     );
-  }, [attachments, hasPermission]);
+  }, [attachments]);
 
   const headerExtra = hasPermission ? (
     attachments.length === 0 ? (

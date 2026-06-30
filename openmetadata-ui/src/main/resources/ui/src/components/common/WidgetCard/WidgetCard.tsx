@@ -43,12 +43,10 @@ const WidgetCard = ({
   );
 
   const handleExpandClick = useCallback(() => {
-    setIsExpanded((prev) => {
-      onExpandStateChange?.(prev);
-
-      return !prev;
-    });
-  }, [onExpandStateChange]);
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onExpandStateChange?.(next);
+  }, [isExpanded, onExpandStateChange]);
 
   useEffect(() => {
     setIsExpanded(isExpandDisabled ? false : defaultExpanded);

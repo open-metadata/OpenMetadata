@@ -328,7 +328,7 @@ const TagsContainerV2 = ({
         {addTagButton ?? (
           <WidgetEditButton
             data-testid="edit-button"
-            title={t('label.edit-entit', {
+            title={t('label.edit-entity', {
               entity:
                 tagType === TagSource.Classification
                   ? t('label.tag-plural')

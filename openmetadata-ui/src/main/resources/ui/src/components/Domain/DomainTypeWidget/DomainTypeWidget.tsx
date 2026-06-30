@@ -90,6 +90,7 @@ export const DomainTypeWidget = () => {
   return (
     <WidgetCard
       dataTestId="domainType"
+      forceExpand={editDomainType}
       headerExtra={headerExtra}
       helperText={domainTypeTooltipDataRender()}
       isExpandDisabled={!domain.domainType}
