@@ -874,10 +874,11 @@ export const DataAssetsHeader = ({
 
           <OwnerLabel
             showDashPlaceholder
-            avatarSize={24}
+            avatarSize={32}
             className="header-owner-heading"
             hasPermission={editOwnerPermission}
             isCompactView={false}
+            maxVisibleOwners={4}
             multiple={{
               user: entityRules.canAddMultipleUserOwners,
               team: entityRules.canAddMultipleTeamOwner,

@@ -105,7 +105,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         size="xs">
         <Avatar
           className={classNames(
-            'tw:bg-brand-50 tw:ring-1 tw:ring-brand-600 tw:text-brand-700 tw:font-medium',
+            'tw:bg-brand-50 tw:ring-2 tw:ring-primary tw:text-brand-700 tw:font-medium',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}
