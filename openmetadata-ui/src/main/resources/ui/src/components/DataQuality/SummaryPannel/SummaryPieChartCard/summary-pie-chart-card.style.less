@@ -16,6 +16,8 @@
 .pie-chart-summary-panel {
   container-type: inline-size;
   min-width: 0;
+  // Core Card no longer pads its root (#29578); restore the prior md padding.
+  padding: 12px 24px;
 
   .summary-title-row {
     display: flex;
