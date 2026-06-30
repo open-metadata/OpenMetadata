@@ -357,27 +357,18 @@ export const createTagTaskFromForm = async ({
 export const openEntityTasksTab = async (page: Page) => {
   logTaskDebug('openEntityTasksTab:start');
   const activityFeedTab = page.getByTestId('activity_feed');
-
-  if (await activityFeedTab.isVisible().catch(() => false)) {
-    await activityFeedTab.click();
-    await waitForPageLoaded(page);
-  }
+  await activityFeedTab.waitFor({ state: 'visible' });
+  await activityFeedTab.click();
+  await waitForPageLoaded(page);
 
   const menuItemTaskTab = page.getByRole('menuitem', { name: /tasks/i });
-  const buttonTaskTab = page.getByRole('button', { name: /tasks/i });
+  await menuItemTaskTab.waitFor({ state: 'visible' });
 
-  if (await menuItemTaskTab.isVisible().catch(() => false)) {
-    const taskListResponse = waitForTaskListResponse(page);
-    await menuItemTaskTab.click();
-    await taskListResponse.catch(() => undefined);
-  } else if (await buttonTaskTab.isVisible().catch(() => false)) {
-    const taskListResponse = waitForTaskListResponse(page);
-    await buttonTaskTab.click();
-    await taskListResponse.catch(() => undefined);
-  }
+  const taskListResponse = waitForTaskListResponse(page);
+  await menuItemTaskTab.click();
+  await taskListResponse.catch(() => undefined);
 
   await waitForPageLoaded(page);
-  await waitForAllLoadersToDisappear(page);
   logTaskDebug('openEntityTasksTab:done');
 };
 
