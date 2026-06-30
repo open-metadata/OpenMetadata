@@ -39,10 +39,10 @@ class TestDashboardGroupProgress:
         src._open_group_progress("Sales", {"Dashboard": 3, "Chart": None})
         src._advance_group_progress("Sales", "Dashboard")
         src._advance_group_progress("Sales", "Chart")
-        assert src.progress.group_progress() == ("Workspaces", 0, 2)
+        assert src.progress.global_counters() == [("Workspaces", 0, 2)]
         assert src.progress.assets_ingested() == 2
 
         src._close_group_progress("Sales")
-        assert src.progress.group_progress() == ("Workspaces", 1, 2)
+        assert src.progress.global_counters() == [("Workspaces", 1, 2)]
         snapshot = src.progress.snapshot()
         assert snapshot is None or all(child.label != "Sales" for child in snapshot.children)

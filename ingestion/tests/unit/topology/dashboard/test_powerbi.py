@@ -2462,7 +2462,7 @@ class PowerBIUnitTest(TestCase):
         produced = list(self.powerbi.get_dashboard())
 
         assert [w.id for w in produced] == ["wa", "wb"]
-        assert self.powerbi.progress.group_progress() == ("Workspaces", 2, 2)
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, 2)]
         assert self.powerbi.progress.snapshot() is None
 
     @pytest.mark.order(57)

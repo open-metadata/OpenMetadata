@@ -216,8 +216,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     chart_source_state: Set = set()  # noqa: RUF012, UP006
 
     def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
-        """Declare the grouping axis (e.g. workspaces) and its total count."""
-        self.progress.set_group(label, total)
+        """Declare the grouping axis (e.g. workspaces) as a global counter and
+        remember its label so completion can target it at scope close."""
+        self.__dict__["_progress_counter_label"] = label
+        self.progress.set_total(label, total)
 
     def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
         """Open one child node per asset type under ``group`` so each type renders
@@ -230,8 +232,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.progress.advance([group, asset_type], asset_type)
 
     def _close_group_progress(self, group: str) -> None:
-        """Complete the group and prune its subtree from the active tree."""
-        self.progress.complete_group()
+        """Count the finished group on its global counter and prune its subtree."""
+        label = self.__dict__.get("_progress_counter_label")
+        if label is not None:
+            self.progress.track(label)
         self.progress.close([group])
 
     @retry_with_docker_host()
