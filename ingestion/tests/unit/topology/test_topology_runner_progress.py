@@ -49,7 +49,6 @@ class TestRunnerProgressSurface:
     def test_no_count_pass_in_iter(self):
         source = inspect.getsource(topology_runner)
         assert "declare_totals" not in source
-        assert ".track(" not in source
 
     def test_root_node_detection_uses_iter_captured_ids(self):
         runner = TopologyRunnerMixin()
@@ -219,3 +218,24 @@ def test_leaf_is_eager_when_progress_on_recording_count():
     list(runner._process_node(get_topology_node("table", runner.topology)))
     assert runner.state_live_at_stage == [None, None]
     assert runner.progress.snapshot().processed == 2
+
+
+def test_closing_container_tracks_global_done():
+    runner = _CtxWalkRunner(enabled=True)
+    runner.progress.set_total("Database", 5)
+    runner.progress.set_total("DatabaseSchema", 9)
+    list(runner._process_node(get_topology_node("database", runner.topology)))
+    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    assert counters["Database"][0] == 2  # 2 databases ("a","b") closed
+    assert counters["DatabaseSchema"][0] == 4  # 2 schemas per database closed
+
+
+def test_reconcilable_container_reconciles_total():
+    runner = _CtxWalkRunner(enabled=True)
+    runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
+    runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
+    # upfront total = 2 (1 seeded per declared database)
+    list(runner._process_node(get_topology_node("database", runner.topology)))
+    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
+    assert counters["DatabaseSchema"] == (4, 4)

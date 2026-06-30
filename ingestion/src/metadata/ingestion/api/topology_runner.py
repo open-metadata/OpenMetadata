@@ -237,6 +237,8 @@ class TopologyRunnerMixin(Generic[C]):
         parent_path = self.current_progress_path(entity_type_name) if track_progress else None
         if track_progress:
             self.progress.open(parent_path, entity_type_name, node_entities_length)
+            if self.progress.is_reconcilable(entity_type_name) and parent_path:
+                self.progress.reconcile_scope_total(entity_type_name, parent_path[-1], node_entities_length)
 
         if node_entities_length == 0:
             return
@@ -293,9 +295,12 @@ class TopologyRunnerMixin(Generic[C]):
         track_progress = self._should_track_progress(node, entity_type_name)
         parent_path = self.current_progress_path(entity_type_name) if track_progress else []
 
-        if is_leaf and track_progress:
+        reconcilable = track_progress and not is_leaf and self.progress.is_reconcilable(entity_type_name)
+        if track_progress and (is_leaf or reconcilable):
             node_entities = list(self._run_node_producer(node) or [])
             self.progress.open(parent_path, entity_type_name, len(node_entities))
+            if reconcilable and parent_path:
+                self.progress.reconcile_scope_total(entity_type_name, parent_path[-1], len(node_entities))
         else:
             node_entities = self._run_node_producer(node) or []
             if track_progress:
@@ -316,6 +321,7 @@ class TopologyRunnerMixin(Generic[C]):
             yield from self.process_nodes(child_nodes)
             if scope_path is not None:
                 self.progress.close(scope_path)
+                self.progress.track(entity_type_name)
 
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
@@ -392,6 +398,7 @@ class TopologyRunnerMixin(Generic[C]):
                 self.queue.put(child_result)
             if scope_path is not None:
                 self.progress.close(scope_path)
+                self.progress.track(entity_type_name)
 
         # Merge thread-local metrics into global state before thread exits
         operation_metrics.merge_thread_metrics()
