@@ -276,6 +276,7 @@ export const FileUploadDropZone = ({
             tabIndex={-1}
             type="file"
             onChange={handleInputFileChange}
+            onClick={(e) => e.stopPropagation()}
           />
           <span
             className={cx(
