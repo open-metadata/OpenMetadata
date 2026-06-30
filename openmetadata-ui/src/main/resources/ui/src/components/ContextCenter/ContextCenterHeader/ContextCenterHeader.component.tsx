@@ -44,7 +44,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 
   const resolvedBreadcrumbs = [
     contextCenterClassBase.getContextCenterRootBreadcrumb(t),
-    ...breadcrumbs.slice(1),
+    ...breadcrumbs,
   ];
 
   const defaultActions = (

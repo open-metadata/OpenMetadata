@@ -309,10 +309,6 @@ const ContextCenterDashboardPage: FC = () => {
         }
         breadcrumbs={[
           {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
             label: t('label.dashboard'),
           },
         ]}

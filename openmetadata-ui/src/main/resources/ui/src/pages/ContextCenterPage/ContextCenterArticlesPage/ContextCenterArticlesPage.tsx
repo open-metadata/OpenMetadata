@@ -268,10 +268,6 @@ const ContextCenterArticlesPage = () => {
           </LimitWrapper>
         }
         breadcrumbs={[
-          {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
           { label: t('label.article-plural') },
         ]}
         hasPermission={permissions?.Create}
