@@ -1,7 +1,10 @@
 package org.openmetadata.service.resources.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
 
 class ContextFileResourceTest {
@@ -48,6 +51,34 @@ class ContextFileResourceTest {
   @Test
   void testSanitizeFileName_blankFallback() {
     assertEquals("download", ContextFileResource.sanitizeFileName("   "));
+  }
+
+  // ------------------------------------------------------------------
+  // isDuplicateKeyException
+  // ------------------------------------------------------------------
+
+  @Test
+  void testIsDuplicateKeyException_detectsMySqlDuplicateCode() {
+    SQLException mysqlDuplicate = new SQLException("Duplicate entry", "23000", 1062);
+
+    assertTrue(ContextFileResource.isDuplicateKeyException(new RuntimeException(mysqlDuplicate)));
+  }
+
+  @Test
+  void testIsDuplicateKeyException_detectsPostgresDuplicateState() {
+    SQLException postgresDuplicate =
+        new SQLException("duplicate key value violates unique constraint", "23505");
+
+    assertTrue(
+        ContextFileResource.isDuplicateKeyException(new RuntimeException(postgresDuplicate)));
+  }
+
+  @Test
+  void testIsDuplicateKeyException_ignoresNonDuplicateSqlErrors() {
+    SQLException connectionFailure = new SQLException("connection refused", "08001", 0);
+
+    assertFalse(
+        ContextFileResource.isDuplicateKeyException(new RuntimeException(connectionFailure)));
   }
 
   // ------------------------------------------------------------------
