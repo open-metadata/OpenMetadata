@@ -406,6 +406,12 @@ class DbtcloudSource(PipelineServiceSource):
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current job), falls back to cache for historical data.
         """
+
+        # Check if pipeline observability is disabled
+        if not self.source_config.includePipelineObservability:
+            logger.info("Pipeline observability extraction is disabled via configuration")
+            return
+
         try:
             table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
 
