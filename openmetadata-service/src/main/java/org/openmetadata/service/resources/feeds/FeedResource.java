@@ -56,6 +56,7 @@ import org.openmetadata.schema.api.feed.CreateThread;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Post;
@@ -638,7 +639,7 @@ public class FeedResource {
     if (value != null) {
       try {
         JsonUtils.readObjects(value, TagLabel.class);
-      } catch (Exception ex) {
+      } catch (JsonParsingException ex) {
         throw new IllegalArgumentException(
             String.format("Task %s must be valid JSON for tag tasks.", fieldName), ex);
       }
