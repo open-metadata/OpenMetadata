@@ -19,6 +19,7 @@ import AgentGroup from './components/AgentGroup.component';
 import AgentsPageHeader from './components/AgentsPageHeader.component';
 import AgentsTabBar from './components/AgentsTabBar.component';
 import DeploymentSummaryCard from './components/DeploymentSummaryCard.component';
+import LogViewerDrawer from './components/LogViewerDrawer.component';
 import RunHistoryDrawer from './components/RunHistoryDrawer.component';
 import { useSimulatedAgents } from './hooks/useSimulatedAgents';
 import { SERVICE_INFO } from './mock/agents.mock';
@@ -30,12 +31,13 @@ const AgentsPage: FC = () => {
     agent: Agent;
     index: number;
   } | null>(null);
+  const [logsFor, setLogsFor] = useState<Agent | null>(null);
   // TODO(real-data): replace with usePermissionProvider().permissions.ingestionPipeline.Create
   const canCreateAgent = true;
 
-  const noop = (_agent: Agent) => undefined;
   const onRunDetails = (agent: Agent, index: number) =>
     setRunsFor({ agent, index });
+  const onLogs = (agent: Agent) => setLogsFor(agent);
   const onRun = (agent: Agent) => runAgent(agent.id);
   const onAction = (action: string, agent: Agent) => {
     if (action === 'run' || action === 'redeploy') {
@@ -73,7 +75,7 @@ const AgentsPage: FC = () => {
             {...group}
             canCreateAgent={canCreateAgent}
             onAction={onAction}
-            onLogs={noop}
+            onLogs={onLogs}
             onRun={onRun}
             onRunDetails={onRunDetails}
           />
@@ -84,7 +86,16 @@ const AgentsPage: FC = () => {
           agent={runsFor.agent}
           initialIndex={runsFor.index}
           onClose={() => setRunsFor(null)}
-          onOpenLogs={() => setRunsFor(null)}
+          onOpenLogs={(agent) => {
+            setRunsFor(null);
+            setLogsFor(agent);
+          }}
+        />
+      )}
+      {logsFor && (
+        <LogViewerDrawer
+          agent={logsFor}
+          onClose={() => setLogsFor(null)}
         />
       )}
     </div>
