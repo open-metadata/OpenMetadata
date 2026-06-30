@@ -91,6 +91,14 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
     operations: ['Create'],
     effect: 'allow',
   },
+  {
+    name: 'DataConsumerPolicy-TaskRule',
+    description:
+      'Allow authenticated users to file and edit tasks (data access requests, suggestions, etc.) against any entity. Restrict this rule (e.g. with an isOwner condition) to limit who can file or edit tasks on which entities.',
+    resources: ['All'],
+    operations: ['CreateTask', 'EditTask'],
+    effect: 'allow',
+  },
 ];
 
 export const VIEW_ALL_RULE: PolicyRulesType[] = [
