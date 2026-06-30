@@ -45,8 +45,8 @@ class ContextCenterClassBase {
     return false;
   }
 
-  public getCardStyle(): React.CSSProperties {
-    return {};
+  public getHeaderCardClassName(): string {
+    return '';
   }
 
   public isBreadcrumbInsideCard(): boolean {

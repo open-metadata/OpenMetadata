@@ -13,6 +13,7 @@
 
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { File06 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
@@ -56,7 +57,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   }
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
 
   const breadcrumbEl = (
     <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
@@ -68,7 +69,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
       data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
+      <Card className={classNames("tw:mb-0 tw:p-6", headerCardClassName)}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
           <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
