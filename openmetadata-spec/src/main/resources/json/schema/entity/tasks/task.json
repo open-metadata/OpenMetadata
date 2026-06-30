@@ -81,7 +81,8 @@
         "Completed",
         "Cancelled",
         "Failed",
-        "Revoked"
+        "Revoked",
+        "Expired"
       ],
       "javaEnums": [
         {"name": "Open"},
@@ -93,7 +94,8 @@
         {"name": "Completed"},
         {"name": "Cancelled"},
         {"name": "Failed"},
-        {"name": "Revoked"}
+        {"name": "Revoked"},
+        {"name": "Expired"}
       ],
       "default": "Open"
     },

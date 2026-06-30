@@ -1242,7 +1242,7 @@ public class TaskWorkflowHandler {
         case Completed -> TaskResolutionType.Completed;
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
-        case Failed -> TaskResolutionType.TimedOut;
+        case Failed, Expired -> TaskResolutionType.TimedOut;
         case Open, InProgress, Pending, Approved, Granted -> null;
       };
     }
