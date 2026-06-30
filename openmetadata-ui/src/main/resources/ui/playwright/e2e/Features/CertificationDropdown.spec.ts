@@ -88,7 +88,7 @@ test.describe.serial('Certification Dropdown', () => {
           page.getByTestId(
             `radio-btn-${disabledTag.responseData.fullyQualifiedName}`
           )
-        ).not.toBeVisible();
+        ).not.toBeVisible({ timeout: 2_000 });
 
         await expect(
           page.getByTestId(
@@ -122,7 +122,7 @@ test.describe.serial('Certification Dropdown', () => {
       await assertCertificationDropdownState(page, async () => {
         await expect(
           page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-        ).not.toBeVisible();
+        ).not.toBeVisible({ timeout: 2_000 });
       });
 
       await closeCertificationDropdown(page);
@@ -170,13 +170,13 @@ test.describe.serial('Certification Dropdown', () => {
           page.getByTestId(
             `radio-btn-${disabledTag1.responseData.fullyQualifiedName}`
           )
-        ).not.toBeVisible();
+        ).not.toBeVisible({ timeout: 2_000 });
 
         await expect(
           page.getByTestId(
             `radio-btn-${disabledTag2.responseData.fullyQualifiedName}`
           )
-        ).not.toBeVisible();
+        ).not.toBeVisible({ timeout: 2_000 });
 
         await expect(
           page.getByTestId(
