@@ -160,6 +160,13 @@ def test_pyodbc_cannot_open_database_classifies():
     assert diagnosis.title == "Database not found or not accessible"
 
 
+def test_cannot_open_database_wins_over_login_failed():
+    """The SQL Server 4060 message embeds 'The login failed.', so the database
+    rule must be ordered before the login rule (regression for live-found bug)."""
+    message = "Cannot open database \"x\" requested by the login. The login failed. Login failed for user 'y'."
+    assert MSSQL_ERRORS.classify(Exception(message)).title == "Database not found or not accessible"
+
+
 def test_pymssql_permission_denied_classifies():
     diagnosis = MSSQL_ERRORS.classify(_pymssql_error(229, "The SELECT permission was denied on the object 'x'."))
     assert diagnosis is not None

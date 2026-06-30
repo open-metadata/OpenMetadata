@@ -68,17 +68,11 @@ if TYPE_CHECKING:
 # Error numbers are from the SQL Server system error message reference
 # (https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors).
 SQLSERVER_ERRORS = ErrorPack(
-    # Login failed (auth). SQL Server error 18456; pyodbc message "Login failed for user".
-    when(Matchers.errno(18456)).diagnose(
-        "Authentication failed",
-        fix="Check the username and password, and that the login is allowed to connect.",
-    ),
-    when(Matchers.contains("Login failed")).diagnose(
-        "Authentication failed",
-        fix="Check the username and password, and that the login is allowed to connect.",
-    ),
-    # Database missing / not accessible. 4060 (cannot open database requested by the
-    # login), 911 (database does not exist); pyodbc message "Cannot open database".
+    # Database missing / not accessible MUST be matched before the login rules: SQL
+    # Server's 4060 message is "Cannot open database "X" requested by the login. The
+    # login failed." - it contains "login failed", so a login-first ordering would
+    # misclassify a missing database as an auth failure (confirmed live on pytds).
+    # 4060 (cannot open database requested by the login), 911 (database does not exist).
     when(Matchers.errno(4060, 911)).diagnose(
         "Database not found or not accessible",
         fix="Verify the configured database exists and the login is allowed to open it.",
@@ -87,8 +81,17 @@ SQLSERVER_ERRORS = ErrorPack(
         "Database not found or not accessible",
         fix="Verify the configured database exists and the login is allowed to open it.",
     ),
+    # Login failed (auth). SQL Server error 18456; message "Login failed for user".
+    when(Matchers.errno(18456)).diagnose(
+        "Authentication failed",
+        fix="Check the username and password, and that the login is allowed to connect.",
+    ),
+    when(Matchers.contains("Login failed")).diagnose(
+        "Authentication failed",
+        fix="Check the username and password, and that the login is allowed to connect.",
+    ),
     # Permission denied. 229 (permission denied on object), 297 (no permission for the
-    # action), 262 (statement permission denied); pyodbc message "permission was denied".
+    # action), 262 (statement permission denied); message "permission was denied".
     when(Matchers.errno(229, 297, 262)).diagnose(
         "Insufficient privileges",
         fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
