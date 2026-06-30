@@ -10,7 +10,6 @@
 #  limitations under the License.
 """Unit tests for PostgreSQL connection handling (auth strategies + checks)."""
 
-import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -205,17 +204,28 @@ def test_checks_cover_exactly_the_seeded_steps():
 
 
 def test_check_access_reports_unreachable_host_as_network_failure():
-    sock = socket.socket()
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
+    # Prove the wiring: check_access -> ping -> _preflight raises whatever
+    # tcp_probe raises, wrapped as a CheckError whose cause classifies as a
+    # network failure. tcp_probe is stubbed so the test is deterministic and
+    # fast - no real socket, hence no ephemeral-port TOCTOU and no 20s timeout
+    # waiting on an unreachable host. tcp_probe's own socket behaviour is
+    # covered in the network module's tests.
     client = MagicMock()
-    client.url.host = "127.0.0.1"
-    client.url.port = port
+    client.url.host = "db.invalid"
+    client.url.port = 5432
     checks = PostgresChecks(client=client, query_statement_source=None)
-    with pytest.raises(CheckError) as exc:
+    probe_error = NetworkUnreachableError("db.invalid:5432 is not reachable")
+    probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
+    with (
+        patch(
+            "metadata.core.connections.test_connection.checks.database.tcp_probe",
+            side_effect=probe_error,
+        ) as mock_probe,
+        pytest.raises(CheckError) as exc,
+    ):
         checks.check_access()
-    assert isinstance(exc.value.cause, NetworkUnreachableError)
+    mock_probe.assert_called_once_with("db.invalid", 5432)
+    assert exc.value.cause is probe_error
     assert POSTGRES_ERRORS.classify(exc.value.cause).title == "Connection refused"
 
 

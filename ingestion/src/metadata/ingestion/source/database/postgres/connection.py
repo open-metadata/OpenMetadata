@@ -66,8 +66,10 @@ def _pgcode(error: BaseException) -> str | None:
     must be matched on message text instead.
     """
     for current in exception_chain(error):
-        code = getattr(current, "pgcode", None) or getattr(getattr(current, "orig", None), "pgcode", None)
-        if code:
+        code = getattr(current, "pgcode", None)
+        if code is None:
+            code = getattr(getattr(current, "orig", None), "pgcode", None)
+        if code is not None:
             return code
     return None
 
