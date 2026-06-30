@@ -34,6 +34,7 @@ from metadata.core.connections.test_connection import (
 )
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     ping,
     run_sql,
@@ -69,10 +70,18 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from sqlalchemy.engine import Row
+
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
+
+# Default value of the ``accountUsageSchema`` connection field, used to key the
+# account_usage-denial diagnosis when no custom schema is configured.
+DEFAULT_ACCOUNT_USAGE_SCHEMA = "SNOWFLAKE.ACCOUNT_USAGE"
 
 # The Snowflake driver connects to ``<account>.snowflakecomputing.com:443``; the
 # SQLAlchemy URL only carries the bare account as its host, so the shared TCP
@@ -171,59 +180,85 @@ def _message(error: BaseException) -> str:
     return " ".join(str(current) for current in exception_chain(error)).lower()
 
 
-def _account_usage_denied(error: BaseException) -> bool:
-    """The ACCOUNT_USAGE share (query_history, access_history, tag_references) is
-    not readable by the role. Key on the stable ``account_usage`` token plus an
-    access-denial marker so a missing privilege there is not misread as a generic
-    missing object - whatever schema name ``accountUsageSchema`` is set to."""
-    text_chain = _message(error)
-    return "account_usage" in text_chain and ("not authorized" in text_chain or "does not exist" in text_chain)
+def _account_usage_denied(account_usage_schema: str | None) -> Matcher:
+    """Match a privilege/visibility failure on the ACCOUNT_USAGE share
+    (query_history, access_history, tag_references) rather than a generic missing
+    object.
+
+    Keys on the *configured* ``accountUsageSchema`` token (default
+    ``SNOWFLAKE.ACCOUNT_USAGE``) plus an access-denial marker, so the rule holds
+    for any value the schema is set to - not just the default one."""
+    token = (account_usage_schema or DEFAULT_ACCOUNT_USAGE_SCHEMA).lower()
+
+    def match(error: BaseException) -> bool:
+        text_chain = _message(error)
+        return token in text_chain and ("not authorized" in text_chain or "does not exist" in text_chain)
+
+    return match
 
 
-# Connect-phase failures (auth) surface a driver errno and a stable message token;
-# query-phase failures (missing object, denied privilege) carry a Snowflake errno
-# and SQLSTATE. Both are matched here; bad host / port raise before the driver and
-# are caught by the explicit TCP preflight in CheckAccess via NETWORK_ERRORS. All
-# matchers below are best-effort hypotheses until validated against a live account.
-SNOWFLAKE_ERRORS = ErrorPack(
-    when(_sf_errno(250001)).diagnose(
-        "Authentication failed",
-        fix="Check the username and password (or private key) and that the user is allowed to connect.",
-    ),
-    when(Matchers.contains("incorrect username or password")).diagnose(
-        "Authentication failed",
-        fix="Check the username and password (or private key) and that the user is allowed to connect.",
-    ),
-    when(_account_usage_denied).diagnose(
-        "Account usage not accessible",
-        fix="Grant the role IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE (or SELECT on the "
-        "snowflake.account_usage views) so query history, tags, and lineage can be read; "
-        "otherwise usage and lineage won't be collected.",
-    ),
-    when(Matchers.contains("insufficient privileges")).diagnose(
-        "Insufficient privileges",
-        fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
-        "and SELECT on its objects).",
-    ),
-    when(_sf_errno(3001)).diagnose(
-        "Insufficient privileges",
-        fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
-        "and SELECT on its objects).",
-    ),
-    when(_sf_errno(2003)).diagnose(
-        "Object not found",
-        fix="Verify the configured database, schema, warehouse, and role exist and the role is authorized to use them.",
-    ),
-    when(Matchers.contains("does not exist or not authorized")).diagnose(
-        "Object not found",
-        fix="Verify the configured database, schema, warehouse, and role exist and the role is authorized to use them.",
-    ),
-    when(Matchers.contains("no active warehouse")).diagnose(
-        "No active warehouse",
-        fix="Set a warehouse on the connection (or grant the role a default warehouse) so queries "
-        "have compute to run on.",
-    ),
-).including(NETWORK_ERRORS)
+def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
+    """Build the Snowflake error pack, baking the configured ACCOUNT_USAGE schema
+    into the account_usage-denial rule.
+
+    Connect-phase failures (auth) surface a driver errno and a stable message
+    token; query-phase failures (missing object, denied privilege) carry a
+    Snowflake errno and SQLSTATE. Bad host / port raise before the driver and are
+    caught by the explicit TCP preflight in CheckAccess via NETWORK_ERRORS. All
+    matchers are best-effort hypotheses until validated against a live account."""
+    return ErrorPack(
+        when(_sf_errno(250001)).diagnose(
+            "Authentication failed",
+            fix="Check the username and password (or private key) and that the user is allowed to connect.",
+        ),
+        when(Matchers.contains("incorrect username or password")).diagnose(
+            "Authentication failed",
+            fix="Check the username and password (or private key) and that the user is allowed to connect.",
+        ),
+        when(_account_usage_denied(account_usage_schema)).diagnose(
+            "Account usage not accessible",
+            fix="Grant the role IMPORTED PRIVILEGES ON DATABASE SNOWFLAKE (or SELECT on the "
+            "snowflake.account_usage views) so query history, tags, and lineage can be read; "
+            "otherwise usage and lineage won't be collected.",
+        ),
+        when(Matchers.contains("insufficient privileges")).diagnose(
+            "Insufficient privileges",
+            fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
+            "and SELECT on its objects).",
+        ),
+        when(_sf_errno(3001)).diagnose(
+            "Insufficient privileges",
+            fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
+            "and SELECT on its objects).",
+        ),
+        when(_sf_errno(2003)).diagnose(
+            "Object not found",
+            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
+            "authorized to use them.",
+        ),
+        when(Matchers.contains("does not exist or not authorized")).diagnose(
+            "Object not found",
+            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
+            "authorized to use them.",
+        ),
+        when(Matchers.contains("no active warehouse")).diagnose(
+            "No active warehouse",
+            fix="Set a warehouse on the connection (or grant the role a default warehouse) so queries "
+            "have compute to run on.",
+        ),
+    ).including(NETWORK_ERRORS)
+
+
+# Default pack, keyed on the default ACCOUNT_USAGE schema. Each connection builds
+# its own from the configured ``accountUsageSchema`` (see ``SnowflakeChecks``).
+SNOWFLAKE_ERRORS = _snowflake_errors(DEFAULT_ACCOUNT_USAGE_SCHEMA)
+
+
+def _summarize_databases(rows: Sequence[Row]) -> str:
+    """``N databases enumerated``, with a trailing ``+`` when the probe hit the
+    row cap so the figure is not read as an exact total."""
+    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
+    return f"{len(rows)}{suffix} databases enumerated"
 
 
 def _snowflake_host(account: str) -> str:
@@ -243,11 +278,10 @@ class SnowflakeChecks:
     before the gate.
     """
 
-    errors = SNOWFLAKE_ERRORS
-
     def __init__(self, client: Engine, service_connection: SnowflakeConnectionConfig) -> None:
         self.client = client
         self.service_connection = service_connection
+        self.errors = _snowflake_errors(service_connection.accountUsageSchema)
         self._engine_wrapper = SnowflakeEngineWrapper(
             service_connection=service_connection,
             engine=client,
@@ -260,11 +294,27 @@ class SnowflakeChecks:
         _init_database(self._engine_wrapper)
         return self._engine_wrapper.database_name
 
+    def _probe_host(self) -> str | None:
+        """The host the driver will actually dial. An explicit ``host`` in
+        connectionArguments (a proxy, load balancer, or PrivateLink endpoint) wins
+        over the synthesized account host, so the gate's reachability probe targets
+        the real endpoint instead of a public host that may be unreachable. ``None``
+        when neither is set, which skips the preflight."""
+        arguments = self.service_connection.connectionArguments
+        overrides = arguments.root if arguments else None
+        host = overrides.get("host") if overrides else None
+        if host:
+            result = str(host)
+        elif self.service_connection.account:
+            result = _snowflake_host(self.service_connection.account)
+        else:
+            result = None
+        return result
+
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        account = self.service_connection.account
-        if account:
-            host = _snowflake_host(account)
+        host = self._probe_host()
+        if host:
             try:
                 tcp_probe(host, SNOWFLAKE_PORT)
             except NetworkUnreachableError as error:
@@ -273,7 +323,7 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, SNOWFLAKE_GET_DATABASES, lambda rows: f"{len(rows)} databases enumerated")
+        return run_sql(self.client, SNOWFLAKE_GET_DATABASES, _summarize_databases)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
