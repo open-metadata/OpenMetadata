@@ -235,6 +235,7 @@ export const FileUploadDropZone = ({
     <div
       data-dropzone
       aria-disabled={isDisabled}
+      aria-labelledby={`${id}-label`}
       className={cx(
         'tw:relative tw:flex tw:flex-col tw:items-center tw:gap-3 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-4 tw:text-tertiary tw:ring-1 tw:ring-secondary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
         isDraggingOver && 'tw:ring-2 tw:ring-brand',
@@ -272,6 +273,7 @@ export const FileUploadDropZone = ({
             id={id}
             multiple={allowsMultiple}
             ref={inputRef}
+            tabIndex={-1}
             type="file"
             onChange={handleInputFileChange}
           />
@@ -279,7 +281,8 @@ export const FileUploadDropZone = ({
             className={cx(
               'tw:text-sm tw:font-semibold tw:text-brand-secondary',
               isDisabled && 'tw:opacity-50'
-            )}>
+            )}
+            id={`${id}-label`}>
             {clickToUploadLabel}
           </span>
           <span className="tw:text-sm">{orDragAndDropLabel}</span>
