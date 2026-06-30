@@ -140,6 +140,13 @@
     }
   }
 
+  &.owner-avatar-stack-single {
+    .owner-avatar-stack-team {
+      background-color: var(--tw-color-utility-gray-100);
+      color: var(--tw-color-utility-gray-600);
+    }
+  }
+
   .owner-avatar-stack-team,
   .owner-avatar-stack-user {
     display: inline-flex;
@@ -147,6 +154,9 @@
     justify-content: center;
     border-radius: 50%;
     overflow: hidden;
+
+    background-color: var(--tw-color-brand-100);
+    color: var(--tw-color-brand-600);
   }
 
   .owner-avatar-stack-team-icon {
