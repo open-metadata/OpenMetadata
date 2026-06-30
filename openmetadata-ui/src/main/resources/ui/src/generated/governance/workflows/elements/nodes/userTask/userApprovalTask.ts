@@ -224,6 +224,7 @@ export enum TaskStatus {
     Expired = "Expired",
     Failed = "Failed",
     Granted = "Granted",
+    ManualRevoke = "ManualRevoke",
     InProgress = "InProgress",
     Open = "Open",
     Pending = "Pending",

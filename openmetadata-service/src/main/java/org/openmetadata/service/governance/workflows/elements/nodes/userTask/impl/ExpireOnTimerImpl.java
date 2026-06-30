@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -11,7 +10,6 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
@@ -36,19 +34,6 @@ import org.openmetadata.service.jdbi3.TaskRepository;
  */
 @Slf4j
 public class ExpireOnTimerImpl implements JavaDelegate {
-
-  /**
-   * Statuses from which a task can still legitimately transition. Anything outside this set is
-   * already resolved — the expiry timer must NOT re-resolve it (would race with the user-initiated
-   * resolution that beat us to it).
-   */
-  private static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
-      Set.of(
-          TaskEntityStatus.Open,
-          TaskEntityStatus.InProgress,
-          TaskEntityStatus.Pending,
-          TaskEntityStatus.Approved,
-          TaskEntityStatus.Granted);
 
   private Expression transitionIdExpr;
   // Optional — null when the workflow leaves closeAsResolution unset.
@@ -107,7 +92,7 @@ public class ExpireOnTimerImpl implements JavaDelegate {
     // a narrow fetch silently erases all task comments on auto-close. Every other resolveTask
     // call site already loads the full field set for this reason.
     Task task = taskRepository.get(null, taskId, taskRepository.getFields("*"));
-    if (!NON_TERMINAL_STATUSES.contains(task.getStatus())) {
+    if (!TaskRepository.NON_TERMINAL_STATUSES.contains(task.getStatus())) {
       LOG.info(
           "[ExpireOnTimer] Task '{}' already terminal (status={}); skipping expiry close to avoid double-resolve",
           taskId,

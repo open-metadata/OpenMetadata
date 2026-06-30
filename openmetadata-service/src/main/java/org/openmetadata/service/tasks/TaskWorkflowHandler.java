@@ -1245,7 +1245,7 @@ public class TaskWorkflowHandler {
         case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
         case Expired -> TaskResolutionType.Expired;
-        case Open, InProgress, Pending, Approved, Granted -> null;
+        case Open, InProgress, Pending, Approved, Granted, ManualRevoke -> null;
       };
     }
 

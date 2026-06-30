@@ -90,6 +90,24 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String COLLECTION_PATH = "/v1/tasks";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
   public static final String FIELD_ASSIGNEES = "assignees";
+
+  /**
+   * Statuses from which a task can still legitimately transition. Anything outside this set is a
+   * terminal status (Rejected / Completed / Cancelled / Failed / Revoked / Expired) — exposed so
+   * other modules (e.g. ExpireOnTimerImpl) can avoid double-resolving an already-closed task.
+   */
+  public static final java.util.Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      java.util.Set.of(
+          TaskEntityStatus.Open,
+          TaskEntityStatus.InProgress,
+          TaskEntityStatus.Pending,
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke);
+
+  public static boolean isTerminalStatus(TaskEntityStatus status) {
+    return status != null && !NON_TERMINAL_STATUSES.contains(status);
+  }
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
@@ -1580,9 +1598,12 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
-        if (updated.getStatus() != TaskEntityStatus.Open
-            && updated.getStatus() != TaskEntityStatus.InProgress
-            && updated.getStatus() != TaskEntityStatus.Pending) {
+        // Only stamp a fallback Completed resolution when the task is actually moving to a
+        // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
+        // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)
+        // are still in-flight — a Completed resolution at that point misrepresents the lifecycle
+        // and leaks into downstream consumers / reporting.
+        if (isTerminalStatus(updated.getStatus())) {
           updated.setResolution(
               updated.getResolution() != null
                   ? updated.getResolution()
