@@ -342,6 +342,12 @@ SHOW STREAMS IN DATABASE "{database_name}"
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
+# Account-wide schema listing in a single round-trip (one connection, no
+# per-database reconnect). Returns one row per schema with a `database_name`
+# column. NOTE: SHOW is capped at 10k rows; accounts above that fall back to
+# per-database enumeration via the caller's error handling.
+SNOWFLAKE_GET_SCHEMATA = "SHOW TERSE SCHEMAS IN ACCOUNT"
+
 SNOWFLAKE_GET_SCHEMA_COLUMNS = """
 SELECT /* sqlalchemy:_get_schema_columns */
         ic.table_name,

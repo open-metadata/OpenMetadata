@@ -106,20 +106,30 @@ def snowflake_source():
     return source
 
 
-def test_get_database_names_pushes_no_container_totals(snowflake_source):
+def test_declare_progress_totals_seeds_database_and_schema(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1", "db2"]
-    snowflake_source.set_inspector = lambda **_: None
-    snowflake_source.set_session_query_tag = lambda: None
-    snowflake_source.set_partition_details = lambda: None
-    snowflake_source.set_schema_description_map = lambda: None
-    snowflake_source.set_database_description_map = lambda: None
-    snowflake_source.set_external_location_map = lambda *_: None
-    snowflake_source.set_schema_tags_map = lambda *_: None
-    snowflake_source.set_database_tags_map = lambda *_: None
+    snowflake_source._schema_names_by_database = lambda: {"db1": ["s1", "s2"], "db2": ["s3"]}
+    snowflake_source._is_schema_filtered = lambda db, sch: False
+    snowflake_source._declare_progress_totals()
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    assert counters["Database"] == (0, 2)
+    assert counters["DatabaseSchema"] == (0, 3)
 
-    assert list(snowflake_source.get_database_names()) == ["db1", "db2"]
-    # no container totals are pushed any more — the tree stays empty until leaves advance
-    assert snowflake_source.progress.snapshot() is None
 
-    assert not hasattr(SnowflakeSource, "_push_progress_totals")
-    assert not hasattr(SnowflakeSource, "_schema_names_by_database")
+def test_declare_progress_totals_applies_schema_filter(snowflake_source):
+    snowflake_source._filtered_database_names = lambda: ["db1"]
+    snowflake_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}
+    snowflake_source._is_schema_filtered = lambda db, sch: sch == "drop"
+    snowflake_source._declare_progress_totals()
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    assert counters["DatabaseSchema"] == (0, 1)
+
+
+def test_declare_progress_totals_falls_back_when_account_show_unavailable(snowflake_source):
+    snowflake_source._filtered_database_names = lambda: ["db1"]
+    snowflake_source._schema_names_by_database = lambda: None
+    snowflake_source._declare_progress_totals()
+    assert snowflake_source.progress.is_reconcilable("DatabaseSchema") is True
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    assert counters["Database"] == (0, 1)
+    assert counters["DatabaseSchema"] == (0, None)

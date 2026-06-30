@@ -15,7 +15,7 @@ Snowflake source module
 import json  # noqa: I001
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 import sqlalchemy.types as sqltypes
 import sqlparse
@@ -100,6 +100,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
+    SNOWFLAKE_GET_SCHEMATA,
     SNOWFLAKE_GET_STORED_PROCEDURES_AND_FUNCTIONS,
     SNOWFLAKE_GET_STREAM,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
@@ -128,7 +129,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -189,6 +190,18 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
+
+
+def _show_column(row, name: str):
+    """Read a column from a Snowflake ``SHOW`` result row by name,
+    case-insensitively (SHOW exposes lowercase column names)."""
+    mapping = getattr(row, "_mapping", None)
+    if mapping is not None:
+        lowered = {str(key).lower(): value for key, value in mapping.items()}
+        result = lowered.get(name.lower())
+    else:
+        result = getattr(row, name, None)
+    return result
 
 
 # pylint: disable=too-many-public-methods
@@ -432,7 +445,64 @@ class SnowflakeSource(
             cached = self.__dict__["_filtered_database_names_cache"] = self._compute_filtered_database_names()
         return cached
 
+    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+        """``{database: [schema_names]}`` for every filtered database, from a
+        single account-wide ``SHOW SCHEMAS`` — one round-trip, no per-database
+        reconnect. Returns ``None`` when the account-level SHOW is unavailable
+        (e.g. role privileges) so the caller can fall back to reconcile-only."""
+        by_database: Dict[str, List[str]] = {db: [] for db in self._filtered_database_names()}  # noqa: UP006
+        try:
+            rows = self.connection.execute(text(SNOWFLAKE_GET_SCHEMATA)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "SHOW SCHEMAS IN ACCOUNT failed (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        for row in rows:
+            database_name = _show_column(row, "database_name")
+            schema_name = _show_column(row, "name")
+            if database_name in by_database and schema_name is not None:
+                by_database[database_name].append(str(schema_name))
+        return by_database
+
+    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
+        """Whether a schema fails the schema filter pattern, matched the same way
+        as the lazy producer (FQN or bare name per ``useFqnForFiltering``).
+        Context-free: the FQN is built with the explicit database name."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,
+            database_name=database_name,
+            schema_name=schema_name,
+        )
+        filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
+        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
+
+    def _declare_progress_totals(self) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` global counters
+        upfront. ``Database`` is the filtered DB count; ``DatabaseSchema`` is the
+        post-filter schema count per database from the account-wide SHOW. When
+        that SHOW is unavailable, the schema counter is marked reconcilable so the
+        walk fills its total instead."""
+        database_names = self._filtered_database_names()
+        self.progress.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            self.progress.set_reconcilable(DatabaseSchema.__name__)
+        else:
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_database.get(database_name, [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                self.progress.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
+
     def get_database_names(self) -> Iterable[str]:
+        if self.progress_tracking_enabled:
+            self._declare_progress_totals()
         for database_name in self._filtered_database_names():
             try:
                 self.set_inspector(database_name=database_name)
