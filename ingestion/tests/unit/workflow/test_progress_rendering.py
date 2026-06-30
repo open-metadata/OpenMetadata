@@ -134,6 +134,23 @@ class TestProgressReporter:
     def test_payload_is_none_before_anything_starts(self):
         assert ProgressReporter(ProgressRegistry()).payload() is None
 
+    def test_progress_update_carries_global_counters(self):
+        reg = ProgressRegistry()
+        reg.set_total("Workspaces", 10)
+        reg.track("Workspaces")
+        reg.track("Workspaces")
+        reg.track("Workspaces")
+        counters = ProgressReporter(reg).global_counters()
+        update = ProgressUpdate(
+            runId="r1",
+            timestamp=1,
+            updateType="PROCESSING",
+            globalCounters=[{"entityType": t, "done": d, "total": total} for t, d, total in counters],
+        )
+        assert update.globalCounters[0].entityType == "Workspaces"
+        assert update.globalCounters[0].done == 3
+        assert update.globalCounters[0].total == 10
+
 
 class TestGroupHeader:
     def test_header_shows_counters_then_assets(self):

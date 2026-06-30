@@ -73,17 +73,19 @@
       "description": "Root of the hierarchical progress tree for this run",
       "$ref": "#/definitions/progressNode"
     },
-    "groupLabel": {
-      "description": "Label of the run-level grouping axis when the connector groups progress by a unit that is not a topology level (e.g. PowerBI 'Workspaces'). Absent when the run has no such grouping.",
-      "type": "string"
-    },
-    "groupDone": {
-      "description": "Number of groups fully processed so far (paired with groupLabel/groupTotal).",
-      "type": "integer"
-    },
-    "groupTotal": {
-      "description": "Total number of groups, or null when the count is not known upfront.",
-      "type": ["integer", "null"]
+    "globalCounters": {
+      "description": "Run-level counters that survive scope pruning (e.g. Database, DatabaseSchema, Workspace). Each carries done and an optional upfront total.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.GlobalCounter",
+        "properties": {
+          "entityType": { "type": "string" },
+          "done": { "type": "integer" },
+          "total": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": false
+      }
     },
     "currentEntity": {
       "description": "FQN of the entity currently being processed",

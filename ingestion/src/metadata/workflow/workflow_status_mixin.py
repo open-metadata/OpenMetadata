@@ -201,16 +201,16 @@ class WorkflowStatusMixin:
             ):
                 reporter = self._progress_reporter()
                 progress_data = reporter.payload() if reporter is not None else None
-                group = reporter.group() if reporter is not None else None
+                counters = reporter.global_counters() if reporter is not None else []
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
                     updateType=update_type,
                     progress=progress_data if progress_data else None,
-                    groupLabel=group[0] if group is not None else None,
-                    groupDone=group[1] if group is not None else None,
-                    groupTotal=group[2] if group is not None else None,
+                    globalCounters=[
+                        {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
+                    ],
                 )
 
                 self.metadata.send_progress_update(
