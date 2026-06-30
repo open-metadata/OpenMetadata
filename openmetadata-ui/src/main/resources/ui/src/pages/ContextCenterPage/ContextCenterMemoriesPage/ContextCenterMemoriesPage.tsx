@@ -209,44 +209,47 @@ const ContextCenterMemoriesPage: FC = () => {
     currentUser?.isAdmin,
   ]);
 
-  const fetchMemories = useCallback(async (showLoader = true) => {
-    if (showLoader) {
-      setIsMemoriesLoading(true);
-    }
-    try {
-      const sortConfig = getSortConfig(sortBy);
-      const authorFilter =
-        activeFilter === 'created-by-me'
-          ? currentUser?.id ?? currentUser?.name
-          : selectedAuthor?.id;
-      const response = await getListContextMemories({
-        limit: MEMORIES_PER_PAGE,
-        offset: (currentPage - 1) * MEMORIES_PER_PAGE,
-        fields: MEMORY_FIELDS,
-        q: debouncedSearch.trim() || undefined,
-        assets: selectedAsset?.id,
-        author: authorFilter,
-        pinned: activeFilter === 'pinned' ? true : undefined,
-        sortBy: sortConfig.sortBy,
-        sortOrder: sortConfig.sortOrder,
-      });
-      setMemories(response.data ?? []);
-      setTotalMemories(response.paging?.total ?? 0);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsMemoriesLoading(false);
-    }
-  }, [
-    activeFilter,
-    currentPage,
-    currentUser?.id,
-    currentUser?.name,
-    debouncedSearch,
-    selectedAsset?.id,
-    selectedAuthor?.id,
-    sortBy,
-  ]);
+  const fetchMemories = useCallback(
+    async (showLoader = true) => {
+      if (showLoader) {
+        setIsMemoriesLoading(true);
+      }
+      try {
+        const sortConfig = getSortConfig(sortBy);
+        const authorFilter =
+          activeFilter === 'created-by-me'
+            ? currentUser?.id ?? currentUser?.name
+            : selectedAuthor?.id;
+        const response = await getListContextMemories({
+          limit: MEMORIES_PER_PAGE,
+          offset: (currentPage - 1) * MEMORIES_PER_PAGE,
+          fields: MEMORY_FIELDS,
+          q: debouncedSearch.trim() || undefined,
+          assets: selectedAsset?.id,
+          author: authorFilter,
+          pinned: activeFilter === 'pinned' ? true : undefined,
+          sortBy: sortConfig.sortBy,
+          sortOrder: sortConfig.sortOrder,
+        });
+        setMemories(response.data ?? []);
+        setTotalMemories(response.paging?.total ?? 0);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsMemoriesLoading(false);
+      }
+    },
+    [
+      activeFilter,
+      currentPage,
+      currentUser?.id,
+      currentUser?.name,
+      debouncedSearch,
+      selectedAsset?.id,
+      selectedAuthor?.id,
+      sortBy,
+    ]
+  );
 
   const getVisibleMemoryCount = useCallback(
     async (params?: ContextMemoryListParams) => {
