@@ -239,3 +239,35 @@ def test_reconcilable_container_reconciles_total():
     counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
     # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
     assert counters["DatabaseSchema"] == (4, 4)
+
+
+class _MultiThreadCtxWalkRunner(_CtxWalkRunner):
+    """Like _CtxWalkRunner but with context.threads=2 so the databaseSchema node
+    (which declares threads=True) is routed through _multithread_process_node
+    instead of _process_node.  Post-process methods are no-ops because the
+    runner stub does not implement the real connector hooks."""
+
+    def __init__(self, enabled):
+        super().__init__(enabled)
+        self.context.threads = 2
+
+    def _run_node_post_process(self, node):
+        return iter(())
+
+
+def test_multithread_schema_node_reconciles_and_tracks_done():
+    """Drives the databaseSchema node through _multithread_process_node
+    (context.threads=2, databaseSchema.threads=True) and asserts that
+    reconcile_scope_total and track are exercised identically to the
+    single-thread reconcile test: seed 1 per declared db, observe 2 per db,
+    final counters show (done=4, total=4)."""
+    runner = _MultiThreadCtxWalkRunner(enabled=True)
+    runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
+    runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
+    # upfront total = 2; driving _process_node(database) recurses into
+    # process_nodes([databaseSchema]) which routes to _multithread_process_node
+    # because databaseSchema.threads=True and context.threads=2
+    list(runner._process_node(get_topology_node("database", runner.topology)))
+    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
+    assert counters["DatabaseSchema"] == (4, 4)
