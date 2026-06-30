@@ -12,16 +12,31 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proc
 
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
+import org.openmetadata.service.search.SearchIndexUtils;
 
 /**
- * If the entity carries an {@code extension} field, copy it into a per-entity-type key (e.g.
- * {@code tableCustomProperty}, {@code dashboardCustomProperty}). The {@code extension} key is
- * intentionally left on the document — custom-property search filters key off it, so removing
- * it would break those filters.
+ * If the entity carries an {@code extension} field, project it into the two DI-queryable shapes the
+ * live data-asset index also exposes:
+ *
+ * <ul>
+ *   <li>a per-entity-type twin (e.g. {@code tableCustomProperty}, {@code dashboardCustomProperty}),
+ *       dynamically mapped so each sub-field is term-queryable — this is what Group By charts use;
+ *   <li>{@code customPropertiesTyped}, the typed {@code nested} structure produced by {@link
+ *       SearchIndexUtils#buildTypedCustomProperties}. The advanced-search builder emits custom-property
+ *       filters as {@code nested} queries against this path, so without it those saved filters match
+ *       nothing in the DI snapshot and the whole chart collapses to 0.
+ * </ul>
+ *
+ * <p>The raw {@code extension} key is intentionally left on the document — custom-property search
+ * filters key off it, so removing it would break those filters.
  */
 public final class CustomPropertiesStep implements EnrichmentStep {
 
   public static final String NAME = "customProperties";
+
+  private static final String CUSTOM_PROPERTY_TWIN_SUFFIX = "CustomProperty";
+  private static final String CUSTOM_PROPERTIES_TYPED_KEY = "customPropertiesTyped";
+  private static final String EXTENSION_KEY = "extension";
 
   @Override
   public String name() {
@@ -30,11 +45,15 @@ public final class CustomPropertiesStep implements EnrichmentStep {
 
   @Override
   public void apply(EnrichmentTarget target) {
-    Object customProperties = target.entityMap().get("extension");
+    Object customProperties = target.entityMap().get(EXTENSION_KEY);
     if (customProperties != null) {
+      String entityType = target.context().entityType();
+      target.entityMap().put(entityType + CUSTOM_PROPERTY_TWIN_SUFFIX, customProperties);
       target
           .entityMap()
-          .put(String.format("%sCustomProperty", target.context().entityType()), customProperties);
+          .put(
+              CUSTOM_PROPERTIES_TYPED_KEY,
+              SearchIndexUtils.buildTypedCustomProperties(customProperties, entityType));
     }
   }
 }
