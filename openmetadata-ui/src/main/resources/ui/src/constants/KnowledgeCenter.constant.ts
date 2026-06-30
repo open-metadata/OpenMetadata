@@ -20,8 +20,6 @@ const CENTER_PANEL_PADDING_HORIZONTAL = '16px';
 
 export const KNOWLEDGE_CENTER_PAGINATION_LIMIT = 100;
 export const KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT = 100;
-export const KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET = 190; // Height offset for the tree component
-export const KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET_CHILD_ARTICLE = 260; // Height offset for the tree component in child article
 export const KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH = 8;
 
 const KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE = [
