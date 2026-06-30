@@ -14,6 +14,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
@@ -128,6 +129,7 @@ const baseSource: ExploreSearchCardProps['source'] = {
   name: 'test',
   entityType: 'table',
   service: {
+    id: 'service-id',
     name: 'svc',
     type: 'databaseService',
   },
@@ -143,15 +145,18 @@ const defaultProps: Omit<ExploreSearchCardProps, 'source'> = {
 
 const renderCard = (
   sourceOverrides: Partial<ExploreSearchCardProps['source']>
-) =>
-  renderWithQueryClient(
+) => {
+  const source = {
+    ...baseSource,
+    ...sourceOverrides,
+  } as ExploreSearchCardProps['source'];
+
+  return renderWithQueryClient(
     <MemoryRouter>
-      <ExploreSearchCard
-        {...defaultProps}
-        source={{ ...baseSource, ...sourceOverrides }}
-      />
+      <ExploreSearchCard {...defaultProps} source={source} />
     </MemoryRouter>
   );
+};
 
 describe('ExploreSearchCard - Domain section', () => {
   beforeEach(() => {
@@ -234,7 +239,7 @@ describe('ExploreSearchCard - Type badge', () => {
   it('renders the column data type as the first metadata badge for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
-      dataType: 'STRING',
+      dataType: DataType.String,
       dataTypeDisplay: 'STRING',
     });
 
@@ -247,7 +252,7 @@ describe('ExploreSearchCard - Type badge', () => {
 
     renderCard({
       entityType: 'tableColumn',
-      dataType: 'STRUCT',
+      dataType: DataType.Struct,
       dataTypeDisplay: complexDataType,
     });
 
@@ -722,6 +727,7 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     renderCard({
       service: {
         displayName: 'Source Service',
+        id: 'source-service-id',
         name: 'source-service',
         type: 'databaseService',
       },

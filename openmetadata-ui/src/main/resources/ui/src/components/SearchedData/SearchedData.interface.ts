@@ -56,6 +56,19 @@ export type SourceType = (
       TableSearchSource,
       Fields | 'usageSummary' | 'database' | 'databaseSchema' | 'tableType'
     >
+  | Pick<
+      TableColumnSearchSource,
+      | 'name'
+      | 'fullyQualifiedName'
+      | 'description'
+      | 'serviceType'
+      | 'displayName'
+      | 'service'
+      | 'domains'
+      | 'dataType'
+      | 'dataTypeDisplay'
+      | 'table'
+    >
   | Pick<TopicSearchSource, Fields>
   | Pick<ContainerSearchSource, Fields>
   | Pick<PipelineSearchSource, Fields>
