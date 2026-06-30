@@ -139,7 +139,8 @@ import org.openmetadata.service.util.ValidatorUtil;
 public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
-  public static final String PATCH_FIELDS = "tableConstraints,tablePartition,columns";
+  public static final String PATCH_FIELDS =
+      "tableConstraints,tablePartition,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
       "tableConstraints,tablePartition,dataModel,sourceUrl,columns";
@@ -2403,11 +2404,32 @@ public class TableRepository extends EntityRepository<Table> {
                   "processedLineage",
                   original.getProcessedLineage(),
                   updated.getProcessedLineage()));
+      if (operation.isPatch()) {
+        compareAndUpdate(
+            "schemaDefinition",
+            () -> {
+              updateProcessedLineage(origTable, updatedTable);
+              // Record the processedLineage side-effect driven by schemaDefinition change;
+              // shouldCompare("processedLineage") is false on a schemaDefinition-only PATCH
+              // so the earlier compareAndUpdate("processedLineage", ...) never fires.
+              if (!Objects.equals(
+                  origTable.getProcessedLineage(), updatedTable.getProcessedLineage())) {
+                recordChange(
+                    "processedLineage",
+                    origTable.getProcessedLineage(),
+                    updatedTable.getProcessedLineage());
+              }
+              recordChange(
+                  "schemaDefinition",
+                  original.getSchemaDefinition(),
+                  updated.getSchemaDefinition());
+            });
+      }
     }
 
     private void updateProcessedLineage(Table origTable, Table updatedTable) {
       // if schema definition changes make processed lineage false
-      if (origTable.getProcessedLineage().booleanValue()
+      if (Boolean.TRUE.equals(origTable.getProcessedLineage())
           && origTable.getSchemaDefinition() != null
           && !origTable.getSchemaDefinition().equals(updatedTable.getSchemaDefinition())) {
         updatedTable.setProcessedLineage(false);
