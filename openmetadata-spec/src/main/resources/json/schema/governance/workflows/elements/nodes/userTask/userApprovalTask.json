@@ -136,6 +136,28 @@
             "additionalProperties": false
           },
           "default": []
+        },
+        "expiryTimer": {
+          "title": "Expiry Timer",
+          "description": "Auto-fires after the ISO 8601 duration in the named process variable elapses. The boundary timer interrupts the user task and exits the subprocess with the configured transitionId as the node's result, so an outgoing edge with that condition routes the workflow downstream (e.g. to auto-revoke or auto-close).",
+          "type": "object",
+          "properties": {
+            "durationVariable": {
+              "description": "Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' → 'P14D').",
+              "type": "string"
+            },
+            "transitionId": {
+              "description": "Result value emitted when the timer fires. Must match an outgoing edge condition from this node.",
+              "type": "string"
+            },
+            "closeAsResolution": {
+              "title": "Close As Resolution",
+              "description": "When set, the underlying Task entity is closed at the moment the timer fires with this resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps to Expired). Leave unset when a downstream node is responsible for closing the Task (avoids double-resolve).",
+              "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
+            }
+          },
+          "required": ["durationVariable", "transitionId"],
+          "additionalProperties": false
         }
       },
       "required": ["assignees"],

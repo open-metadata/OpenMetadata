@@ -209,8 +209,7 @@ public class TaskWorkflowHandler {
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
-        if (task.getStatus() != TaskEntityStatus.Open
-            && task.getStatus() != TaskEntityStatus.InProgress) {
+        if (org.openmetadata.service.jdbi3.TaskRepository.isTerminalStatus(task.getStatus())) {
           throw new IllegalStateException(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
@@ -1174,6 +1173,7 @@ public class TaskWorkflowHandler {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
@@ -1243,7 +1243,8 @@ public class TaskWorkflowHandler {
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
-        case Open, InProgress, Pending, Approved, Granted -> null;
+        case Expired -> TaskResolutionType.Expired;
+        case Open, InProgress, Pending, Approved, Granted, ManualRevoke -> null;
       };
     }
 
