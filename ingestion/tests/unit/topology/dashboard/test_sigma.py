@@ -156,6 +156,7 @@ EXPECTED_DASHBOARD = [
         description="SAMPLE DESCRIPTION",
         sourceUrl="http://url.com/to/dashboard",
         charts=[],
+        dataModels=[],
         service=FullyQualifiedEntityName("mock_sigma"),
     )
 ]
@@ -263,6 +264,36 @@ class SigmaUnitTest(TestCase):
         """
         results = list(self.sigma.yield_dashboard(MOCK_DASHBOARD_DETAILS))
         self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
+
+    def test_yield_dashboard_with_datamodels(self):
+        """
+        Function for testing that dashboard includes dataModels when includeDataModels is True
+        """
+        self.sigma.source_config.includeDataModels = True
+        original_data_models = self.sigma.context.get().dataModels
+        self.sigma.context.get().__dict__["dataModels"] = ["elem1", "elem2"]
+
+        try:
+            results = list(self.sigma.yield_dashboard(MOCK_DASHBOARD_DETAILS))
+            dashboard_request = results[0].right
+
+            self.assertIsNotNone(dashboard_request.dataModels)
+            self.assertEqual(len(dashboard_request.dataModels), 2)
+            self.assertEqual(dashboard_request.dataModels[0].root, "mock_sigma.elem1")
+            self.assertEqual(dashboard_request.dataModels[1].root, "mock_sigma.elem2")
+        finally:
+            self.sigma.context.get().__dict__["dataModels"] = original_data_models
+
+    def test_yield_dashboard_datamodels_disabled(self):
+        """
+        Function for testing that dataModels is None when includeDataModels is False
+        """
+        self.sigma.source_config.includeDataModels = False
+
+        results = list(self.sigma.yield_dashboard(MOCK_DASHBOARD_DETAILS))
+        dashboard_request = results[0].right
+
+        self.assertIsNone(dashboard_request.dataModels)
 
     def test_yield_chart(self):
         """
