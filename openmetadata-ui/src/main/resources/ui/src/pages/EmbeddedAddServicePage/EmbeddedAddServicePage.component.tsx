@@ -81,9 +81,30 @@ const ServiceDocPanel = lazy(
   () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
 );
 
-// "Back" target when opened with a preselected service type (e.g. the
+// Fallback "back" target when a deep-link does not specify one (e.g. the
 // onboarding connector picker), instead of the connector grid the user skipped.
-const PRESELECT_ORIGIN_PATH = '/';
+const DEFAULT_BACK_PATH = '/';
+
+// Only honour a deep-linked serviceType that is actually a supported connector
+// for the current category; otherwise fall back to the connector grid so we
+// never land on the Connect step with an unknown/empty connector.
+const getValidatedServiceType = (
+  state: unknown,
+  serviceCategory: ServiceCategory
+): string => {
+  const requested = (state as { serviceType?: string } | null)?.serviceType;
+  if (!requested) {
+    return '';
+  }
+  const supported = (
+    serviceUtilClassBase.getSupportedServiceFromList() as Record<
+      string,
+      string[]
+    >
+  )[serviceCategory];
+
+  return (supported ?? []).includes(requested) ? requested : '';
+};
 
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
@@ -93,8 +114,16 @@ const EmbeddedAddServicePage = () => {
   }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
   const { state: locationState } = useLocation();
-  const preselectedServiceType =
-    (locationState as { serviceType?: string } | null)?.serviceType ?? '';
+  const preselectedServiceType = useMemo(
+    () => getValidatedServiceType(locationState, serviceCategory),
+    [locationState, serviceCategory]
+  );
+  const backPath = useMemo(
+    () =>
+      (locationState as { backTo?: string } | null)?.backTo ??
+      DEFAULT_BACK_PATH,
+    [locationState]
+  );
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
@@ -343,7 +372,7 @@ const EmbeddedAddServicePage = () => {
     (id: React.Key) => {
       if (id === 'add-service') {
         if (preselectedServiceType) {
-          navigate(PRESELECT_ORIGIN_PATH);
+          navigate(backPath);
         } else if (activeServiceStepRef.current > 1) {
           setShowResetConfirm(true);
         } else {
@@ -354,6 +383,7 @@ const EmbeddedAddServicePage = () => {
       }
     },
     [
+      backPath,
       handleConnectorChangeClick,
       navigate,
       preselectedServiceType,
@@ -368,7 +398,7 @@ const EmbeddedAddServicePage = () => {
 
   const handleFooterBack = () => {
     if (activeServiceStep === 2 && preselectedServiceType) {
-      navigate(PRESELECT_ORIGIN_PATH);
+      navigate(backPath);
     } else {
       setShowBackStepConfirm(true);
     }
@@ -535,7 +565,7 @@ const EmbeddedAddServicePage = () => {
   return (
     <NavigationBlocker
       enabled={activeServiceStep > 1 && !isSavingService}
-      leaveTo={preselectedServiceType ? PRESELECT_ORIGIN_PATH : undefined}
+      leaveTo={preselectedServiceType ? backPath : undefined}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}

@@ -37,6 +37,9 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
   getServiceConfigData: jest.fn(),
   getProperties: jest.fn(),
+  getSupportedServiceFromList: jest
+    .fn()
+    .mockReturnValue({ databaseServices: ['mysql'] }),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -573,6 +576,50 @@ describe('EmbeddedAddServicePage', () => {
       });
 
       expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+
+    it('returns to a caller-supplied backTo origin on footer Back', async () => {
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                {
+                  pathname: '/add-service',
+                  state: { serviceType: 'mysql', backTo: '/connections' },
+                },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/connections');
+    });
+
+    it('falls back to the connector grid when the preselected type is unsupported', async () => {
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                { pathname: '/add-service', state: { serviceType: 'bogus' } },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'label.add-new-entity'
+      );
     });
   });
 });
