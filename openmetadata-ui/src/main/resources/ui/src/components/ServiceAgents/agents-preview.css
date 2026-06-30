@@ -64,4 +64,16 @@
   --shadow-2xl: var(--tw-shadow-2xl);
   --shadow-btn-primary: var(--tw-shadow-sm);
   --shadow-btn-secondary: var(--tw-shadow-xs);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@keyframes rddrawer {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }

@@ -12,24 +12,30 @@
  */
 
 import { FC, useState } from 'react';
+import { IcCode, IcSparkle } from './AgentIcons';
 import './agents-preview.css';
 import { Agent, AgentTab } from './AgentsPage.interface';
-import { IcCode, IcSparkle } from './AgentIcons';
-import AgentsPageHeader from './components/AgentsPageHeader.component';
 import AgentGroup from './components/AgentGroup.component';
+import AgentsPageHeader from './components/AgentsPageHeader.component';
 import AgentsTabBar from './components/AgentsTabBar.component';
 import DeploymentSummaryCard from './components/DeploymentSummaryCard.component';
+import RunHistoryDrawer from './components/RunHistoryDrawer.component';
 import { useSimulatedAgents } from './hooks/useSimulatedAgents';
 import { SERVICE_INFO } from './mock/agents.mock';
 
 const AgentsPage: FC = () => {
   const { data, runAgent } = useSimulatedAgents();
   const [tab, setTab] = useState<AgentTab>('metadata');
+  const [runsFor, setRunsFor] = useState<{
+    agent: Agent;
+    index: number;
+  } | null>(null);
   // TODO(real-data): replace with usePermissionProvider().permissions.ingestionPipeline.Create
   const canCreateAgent = true;
 
   const noop = (_agent: Agent) => undefined;
-  const noopDetails = (_agent: Agent, _index: number) => undefined;
+  const onRunDetails = (agent: Agent, index: number) =>
+    setRunsFor({ agent, index });
   const onRun = (agent: Agent) => runAgent(agent.id);
   const onAction = (action: string, agent: Agent) => {
     if (action === 'run' || action === 'redeploy') {
@@ -69,10 +75,18 @@ const AgentsPage: FC = () => {
             onAction={onAction}
             onLogs={noop}
             onRun={onRun}
-            onRunDetails={noopDetails}
+            onRunDetails={onRunDetails}
           />
         </div>
       </div>
+      {runsFor && (
+        <RunHistoryDrawer
+          agent={runsFor.agent}
+          initialIndex={runsFor.index}
+          onClose={() => setRunsFor(null)}
+          onOpenLogs={() => setRunsFor(null)}
+        />
+      )}
     </div>
   );
 };

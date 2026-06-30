@@ -12,6 +12,7 @@
  */
 
 import { FC, ReactNode, SVGProps } from 'react';
+import { RunStatus } from './AgentsPage.interface';
 
 type IconProps = SVGProps<SVGSVGElement>;
 
@@ -252,3 +253,91 @@ export const QueryIcon: FC = () => (
     <line x1="12" x2="20" y1="17" y2="17" />
   </svg>
 );
+
+// runs-view.jsx:5-11
+export const RunGlyph: FC<{ status: RunStatus; size?: number }> = ({
+  status,
+  size = 16,
+}) => {
+  if (status === 'success') {
+    return (
+      <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+        <circle cx="12" cy="12" fill="var(--success-500)" r="10" />
+        <path
+          d="M8 12.5l2.5 2.5 5-5.5"
+          stroke="#fff"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2.2"
+        />
+      </svg>
+    );
+  }
+
+  if (status === 'partial') {
+    return (
+      <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+        <circle cx="12" cy="12" fill="var(--warning-500)" r="10" />
+        <path
+          d="M12 7v6M12 16.5v.5"
+          stroke="#fff"
+          strokeLinecap="round"
+          strokeWidth="2.2"
+        />
+      </svg>
+    );
+  }
+
+  if (status === 'failed') {
+    return (
+      <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+        <circle cx="12" cy="12" fill="var(--error-600)" r="10" />
+        <path
+          d="M8.5 8.5l7 7M15.5 8.5l-7 7"
+          stroke="#fff"
+          strokeLinecap="round"
+          strokeWidth="2.2"
+        />
+      </svg>
+    );
+  }
+
+  if (status === 'running') {
+    return (
+      <svg
+        height={size}
+        style={{ animation: 'agspin 1.1s linear infinite' }}
+        viewBox="0 0 24 24"
+        width={size}>
+        <circle
+          cx="12"
+          cy="12"
+          fill="none"
+          r="9"
+          stroke="var(--blue-200)"
+          strokeWidth="3"
+        />
+        <path
+          d="M12 3a9 9 0 0 1 9 9"
+          fill="none"
+          stroke="var(--blue-600)"
+          strokeLinecap="round"
+          strokeWidth="3"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg fill="none" height={size} viewBox="0 0 24 24" width={size}>
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="var(--gray-300)"
+        strokeDasharray="2.5 2.5"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+};
