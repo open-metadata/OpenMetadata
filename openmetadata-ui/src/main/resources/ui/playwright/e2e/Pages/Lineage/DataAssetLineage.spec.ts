@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -58,7 +59,6 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 // Contains list of entity supported
 const allEntities = {

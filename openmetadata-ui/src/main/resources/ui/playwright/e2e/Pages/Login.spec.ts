@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -24,7 +25,6 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { updateJWTTokenExpiryTime } from '../../utils/login';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 const user = new UserClass();
 const CREDENTIALS = user.data;

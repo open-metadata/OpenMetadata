@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { Column } from '../../../../src/generated/entity/data/table';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import {
   getDefaultAdminAPIContext,
@@ -27,7 +28,6 @@ import {
   visitLineageTab,
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 const generateColumnsWithNames = (count: number) => {
   const columns = [];

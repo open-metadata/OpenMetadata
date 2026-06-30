@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -28,7 +29,6 @@ import {
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 // Create a table with '/' in the name to test encoding functionality
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;

@@ -12,6 +12,7 @@
  */
 import { expect, Request } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -46,7 +47,6 @@ import {
 } from '../../utils/lineage';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 test.describe.serial(
   'Lineage Settings Tests',

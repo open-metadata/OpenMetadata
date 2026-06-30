@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
@@ -31,7 +32,6 @@ import {
 } from '../../../utils/lineage';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 const table = new TableClass();
 const topic = new TopicClass();

@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

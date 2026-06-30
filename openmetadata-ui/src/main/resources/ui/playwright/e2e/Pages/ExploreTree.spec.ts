@@ -12,6 +12,7 @@
  */
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -32,7 +33,6 @@ import {
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 
 // use the admin user to login
 test.use({
