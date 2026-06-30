@@ -29,7 +29,14 @@ import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined, last, orderBy } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  last,
+  orderBy,
+  startCase,
+} from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   lazy,
@@ -95,7 +102,12 @@ import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getUserPath } from '../../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getDomainDetailsPath,
+  getGlossaryTermDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
@@ -145,6 +157,51 @@ import { TaskTabProps } from './TaskTab.interface';
 const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
 );
+
+type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
+
+const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
+  tags: (fqn) => getClassificationTagPath(fqn),
+  tier: (fqn) => getClassificationTagPath(fqn),
+  glossaryTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  relatedTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  domains: (fqn) => getDomainDetailsPath(fqn),
+};
+
+const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    Array.isArray(payload)
+  ) {
+    return null;
+  }
+  const raw = (payload as Record<string, unknown>).proposedChanges;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const normalized: ProposedChanges = Object.create(null) as ProposedChanges;
+  for (const [field, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    normalized[field] = {
+      added: Array.isArray(entry.added)
+        ? (entry.added as unknown[]).filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : [],
+      removed: Array.isArray(entry.removed)
+        ? (entry.removed as unknown[]).filter(
+            (v): v is string => typeof v === 'string'
+          )
+        : [],
+    };
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : null;
+};
 
 const TaskPayloadSchemaFields = withSuspenseFallback(
   lazy(
@@ -253,6 +310,10 @@ export const TaskTabNew = ({
     taskHandler.type === 'feedbackApproval';
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
+  const proposedChanges = useMemo(
+    () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
+    [isTaskApprovalRequest, task.payload]
+  );
   const readOnlyTaskPayload = useMemo(
     () =>
       applyTaskFormSchemaDefaults(
@@ -1609,6 +1670,66 @@ export const TaskTabNew = ({
       </Col>
       <Divider className="m-0" type="horizontal" />
       {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
+      {proposedChanges !== null && (
+        <Col span={24}>
+          <div className="task-proposed-changes">
+            <Typography.Text className="task-proposed-changes-title">
+              {t('label.proposed-change-plural')}
+            </Typography.Text>
+            <div className="task-proposed-changes-fields">
+              {Object.entries(proposedChanges).map(
+                ([field, { added, removed }]) => {
+                  const getUrl = FIELD_ROUTE_MAP[field];
+
+                  return (
+                    <div
+                      className="task-proposed-changes-field-row"
+                      key={field}>
+                      <Typography.Text className="task-proposed-changes-field-name">
+                        {startCase(field)}
+                      </Typography.Text>
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                        {added.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}>
+                              {val}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </Col>
+      )}
       <Col span={24}>
         {isTaskRecognizerFeedbackApproval && task.payload && (
           <div className="feedback-details-container">
