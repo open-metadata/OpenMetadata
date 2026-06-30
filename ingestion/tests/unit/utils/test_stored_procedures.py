@@ -12,88 +12,50 @@
 Test Stored Procedures Utils
 """
 
-from unittest import TestCase
-
 from metadata.utils.stored_procedures import get_procedure_name_from_call
 
 
-class StoredProceduresTests(TestCase):
+class TestStoredProcedures:
     """Group stored procedures tests"""
 
     def test_get_procedure_name_from_call(self):
         """Check that we properly parse CALL queries"""
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="CALL db.schema.procedure_name(...)",
-            ),
-            "procedure_name",
+        assert get_procedure_name_from_call(query_text="CALL db.schema.procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="CALL schema.procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="CALL procedure_name(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="CALL DB.SCHEMA.PROCEDURE_NAME(...)") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME; END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN schema.procedure_name; END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN procedure_name; END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME(...); END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN schema.procedure_name(...); END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="BEGIN procedure_name(...); END;") == "procedure_name"
+
+        assert get_procedure_name_from_call(query_text="something very random") is None
+
+    def test_get_procedure_name_with_nested_function_args(self):
+        """Oracle rewrites literal args as functions (e.g. TO_NUMBER(...)).
+        The procedure name must still be parsed without capturing the argument."""
+        assert (
+            get_procedure_name_from_call(query_text="BEGIN CDC.SP_INSERTA_NUMERO(TO_NUMBER(:1)); END;")
+            == "sp_inserta_numero"
         )
 
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="CALL schema.procedure_name(...)",
-            ),
-            "procedure_name",
+        assert (
+            get_procedure_name_from_call(query_text="CALL CDC.SP_INSERTA_NUMERO(TO_NUMBER(12345))")
+            == "sp_inserta_numero"
         )
 
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="CALL procedure_name(...)",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="CALL DB.SCHEMA.PROCEDURE_NAME(...)",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME; END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN schema.procedure_name; END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN procedure_name; END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME(...); END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN schema.procedure_name(...); END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertEqual(
-            get_procedure_name_from_call(
-                query_text="BEGIN procedure_name(...); END;",
-            ),
-            "procedure_name",
-        )
-
-        self.assertIsNone(
-            get_procedure_name_from_call(
-                query_text="something very random",
-            )
+        assert (
+            get_procedure_name_from_call(query_text="BEGIN SCHEMA.PROC(TO_DATE('2024-01-01'), NVL(x, 0)); END;")
+            == "proc"
         )

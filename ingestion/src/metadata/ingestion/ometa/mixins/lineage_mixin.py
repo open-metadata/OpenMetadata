@@ -248,6 +248,7 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
+                    original.edge.lineageDetails.sqlQuery = edge["edge"].get("sqlQuery")
                     # merge the original and new column level lineage
                     data.edge.lineageDetails.columnsLineage = self._merge_column_lineage(
                         original.edge.lineageDetails.columnsLineage,
@@ -313,12 +314,14 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
+                    original_sql_query = edge["edge"].get("sqlQuery")
                     original = LineageDetails.model_validate(
                         {
                             "columnsLineage": [
                                 ColumnLineage.model_validate(column_lineage) for column_lineage in original_columns
                             ],
                             "pipeline": original_pipeline,
+                            "sqlQuery": original_sql_query,
                         }
                     )
                     updated_columns = [
@@ -408,7 +411,7 @@ class OMetaLineageMixin(Generic[T]):
             bool: True if the patch operation is successful, False otherwise.
         """
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
             patch = build_patch(
                 source=original.edge.lineageDetails,
                 destination=updated.edge.lineageDetails,
@@ -441,7 +444,7 @@ class OMetaLineageMixin(Generic[T]):
         updated: LineageDetails,
     ) -> Optional[bool]:  # noqa: UP045
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
             patch = build_patch(
                 source=original,
                 destination=updated,
