@@ -188,37 +188,39 @@ public class RdfGlossaryGraphIT {
     Glossary glossary = GlossaryTestFactory.createWithName(ns, "labeled");
     GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "t1");
 
+    // The term node and its `group`/`glossaryId` projection land in RDF separately, so wait for the
+    // full projection — not just node presence — before asserting. Otherwise the node can already
+    // be
+    // present while `group` is still null on a slower run, which is exactly the flake this guards.
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(glossary.getId())).contains(term.getId()),
-                    "Term should be projected to RDF before assertion"));
+            () -> {
+              JsonNode scoped = fetchGlossaryGraph(glossary.getId());
+              JsonNode termNode = null;
+              for (JsonNode node : scoped.get("nodes")) {
+                JsonNode idNode = node.get("id");
+                if (idNode != null && term.getId().toString().equals(idNode.asText())) {
+                  termNode = node;
+                  break;
+                }
+              }
+              assertNotNull(termNode, "Scoped response should include the created term");
 
-    JsonNode scoped = fetchGlossaryGraph(glossary.getId());
-    JsonNode termNode = null;
-    for (JsonNode node : scoped.get("nodes")) {
-      JsonNode idNode = node.get("id");
-      if (idNode != null && term.getId().toString().equals(idNode.asText())) {
-        termNode = node;
-        break;
-      }
-    }
-    assertNotNull(termNode, "Scoped response should include the created term");
+              JsonNode groupNode = termNode.get("group");
+              assertNotNull(
+                  groupNode,
+                  "Term node should carry a `group` field with the parent glossary's name");
+              assertEquals(
+                  glossary.getName(),
+                  groupNode.asText(),
+                  "Group label should match the parent glossary's name");
 
-    JsonNode groupNode = termNode.get("group");
-    assertNotNull(
-        groupNode, "Term node should carry a `group` field with the parent glossary's name");
-    assertEquals(
-        glossary.getName(),
-        groupNode.asText(),
-        "Group label should match the parent glossary's name");
-
-    JsonNode glossaryIdNode = termNode.get("glossaryId");
-    assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
-    assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+              JsonNode glossaryIdNode = termNode.get("glossaryId");
+              assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
+              assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+            });
   }
 
   @Test

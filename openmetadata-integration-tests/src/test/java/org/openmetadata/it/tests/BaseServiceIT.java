@@ -1,10 +1,15 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -12,9 +17,12 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
@@ -145,5 +153,95 @@ public abstract class BaseServiceIT<T extends EntityInterface, K extends CreateE
         service.getFullyQualifiedName(),
         fetchedById.getFullyQualifiedName(),
         "FQN should be consistent");
+  }
+
+  // ===================================================================
+  // RECURSIVE HARD-DELETE REGRESSION (bulk subtree delete optimization)
+  // ===================================================================
+
+  /**
+   * A descendant search doc to assert is removed by the ancestor cascade. {@code index} is the
+   * search index alias (e.g. {@code table_search_index}) and {@code id} the doc id.
+   */
+  protected record SearchDoc(String index, String id) {}
+
+  /**
+   * A small CONTAINS/PARENT_OF subtree built under a freshly-created service of this type, used by
+   * {@link #recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean(TestNamespace)}.
+   *
+   * @param serviceId the root service id — deleted recursively
+   * @param descendantIds ids of created descendants, checked for orphaned relationship rows
+   * @param searchDocs descendant docs that must be searchable before and gone after the delete —
+   *     include one per hierarchy level whose cascade coverage you want to guard (e.g. both the
+   *     api_collection and api_endpoint docs); empty list skips the search-cleanliness assertion
+   */
+  protected record DeletableSubtree(
+      String serviceId, List<String> descendantIds, List<SearchDoc> searchDocs) {}
+
+  /**
+   * Override in a service IT to build a small subtree (service + descendants) so the recursive
+   * hard-delete regression below can run. Default returns {@code null} → the test is skipped for
+   * service types that don't build an asset subtree. This guards the bulk-delete optimization
+   * ({@code descendantsCoveredByAncestorCascade}): descendants must be removed from the DB, leave
+   * no orphaned relationship rows, and be removed from the search index by the ancestor cascade.
+   */
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    return null;
+  }
+
+  protected String searchById(String index, String id) throws Exception {
+    return SdkClients.adminClient().search().query("id:" + id).index(index).size(1).execute();
+  }
+
+  @Test
+  void recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean(TestNamespace ns) {
+    DeletableSubtree subtree = createDeletableSubtree(ns);
+    Assumptions.assumeTrue(
+        subtree != null, "service type provides no deletable subtree builder; skipping");
+
+    for (SearchDoc sd : subtree.searchDocs()) {
+      Awaitility.await("descendant indexed in search before delete: " + sd.index())
+          .atMost(Duration.ofSeconds(60))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      searchById(sd.index(), sd.id()).contains(sd.id()),
+                      sd.index() + " doc should be present in search before delete"));
+    }
+
+    // Recursive hard delete of the root service (hardDeleteEntity is recursive for services).
+    hardDeleteEntity(subtree.serviceId());
+
+    // (1) The whole subtree is hard-deleted (async — poll until the service is gone).
+    Awaitility.await("service subtree hard-deleted")
+        .atMost(Duration.ofSeconds(180))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(() -> assertThrows(Exception.class, () -> getEntity(subtree.serviceId())));
+
+    // (2) No orphaned (parent, CONTAINS, child) entity_relationship rows survive for the subtree.
+    List<CollectionDAO.EntityRelationshipObject> orphanRows =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFromBatch(subtree.descendantIds(), Relationship.CONTAINS.ordinal());
+    assertTrue(
+        orphanRows.isEmpty(),
+        "no CONTAINS entity_relationship rows must survive after recursive service delete — found "
+            + orphanRows.size());
+
+    // (3) Each descendant search doc is removed by the ancestor service.id cascade (the assertion
+    // the search-skip optimization relies on — one per hierarchy level the subtree opts to guard).
+    for (SearchDoc sd : subtree.searchDocs()) {
+      Awaitility.await("descendant search doc removed: " + sd.index())
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .untilAsserted(
+              () ->
+                  assertFalse(
+                      searchById(sd.index(), sd.id()).contains(sd.id()),
+                      sd.index() + " doc must be gone after recursive service hard delete"));
+    }
   }
 }

@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -515,6 +516,52 @@ public class DatabaseServiceResourceIT
         storedService.getTestConnectionResult(), "Test connection result should be persisted");
     assertEquals(
         TestConnectionResultStatus.SUCCESSFUL, storedService.getTestConnectionResult().getStatus());
+  }
+
+  /**
+   * Builds service → database → schema → table so the shared recursive-hard-delete regression
+   * ({@link BaseServiceIT#recursiveHardDelete_serviceSubtree_leavesNoOrphansAndSearchClean}) can
+   * verify the bulk-delete optimization for the database hierarchy (Table / DatabaseSchema /
+   * Database carry {@code descendantsCoveredByAncestorCascade=true}).
+   */
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("del_subtree_svc")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db1"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("s1"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("t1"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    // Column docs live in a separate column_search_index pruned only by the per-table search
+    // dispatch — which the recursive service hard delete skips — so guard it here to catch
+    // orphaned column docs that the ancestor service.id cascade must also remove.
+    String columnDocId =
+        ColumnSearchIndex.generateColumnId(table.getColumns().getFirst().getFullyQualifiedName());
+    return new DeletableSubtree(
+        service.getId().toString(),
+        List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
+        List.of(
+            new SearchDoc("table_search_index", table.getId().toString()),
+            new SearchDoc("column_search_index", columnDocId)));
   }
 
   @Test
