@@ -236,9 +236,19 @@ test.describe(
           .click();
         await patchRequest;
 
-        await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-        ).toBeVisible();
+        // With 3 owners (2 users + 1 team), the header shows 2 stacked
+        // avatars + a "+1" overflow trigger. The remaining owner is revealed
+        // by hovering the trigger to open the popover.
+        const overflowTrigger = page
+          .getByTestId('data-assets-header')
+          .getByTestId('owners-overflow-trigger');
+
+        await expect(overflowTrigger).toBeVisible();
+        await overflowTrigger.hover();
+
+        const overflowPopover = page.getByTestId('owners-overflow-popover');
+
+        await expect(overflowPopover).toBeVisible();
 
         for (const name of [
           user.getUserDisplayName(),
@@ -246,7 +256,7 @@ test.describe(
           teamName,
         ]) {
           await expect(
-            page.getByTestId('data-assets-header').getByTestId(`${name}`)
+            overflowPopover.getByTestId(`${name}`).first()
           ).toBeVisible();
         }
 

@@ -118,3 +118,85 @@
     }
   }
 }
+
+.owner-avatar-stack {
+  .owner-avatar-stack-list {
+    .owner-avatar-stack-item {
+      margin-inline-start: -6px;
+
+      &:first-child {
+        margin-inline-start: 0;
+      }
+    }
+  }
+
+  .owner-avatar-stack-link {
+    display: inline-flex;
+    text-decoration: none;
+    line-height: 0;
+
+    &:hover {
+      text-decoration: none;
+    }
+  }
+
+  .owner-avatar-stack-team,
+  .owner-avatar-stack-user {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--tw-color-bg-primary, #fff);
+    background-color: var(--tw-color-bg-primary, #fff);
+    overflow: hidden;
+  }
+
+  .owner-avatar-stack-team {
+    background-color: var(--tw-color-bg-tertiary, #f2f4f7);
+    color: var(--tw-color-text-tertiary, #667085);
+  }
+
+  .owner-avatar-stack-team-icon {
+    display: inline-flex;
+    line-height: 0;
+  }
+
+  .owner-avatar-stack-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--tw-color-text-primary, #101828);
+
+    &:hover {
+      text-decoration: none;
+      color: var(--tw-color-text-primary, #101828);
+    }
+  }
+
+  .owner-avatar-stack-row-name {
+    color: inherit;
+    max-width: 180px;
+  }
+
+  &.owner-avatar-stack-vertical {
+    .owner-avatar-stack-row-name {
+      max-width: 220px;
+    }
+  }
+
+  .owner-stack-overflow-trigger {
+    margin-inline-start: -6px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    line-height: 0;
+    outline: none;
+
+    &:hover,
+    &:focus {
+      background: transparent;
+    }
+  }
+}
