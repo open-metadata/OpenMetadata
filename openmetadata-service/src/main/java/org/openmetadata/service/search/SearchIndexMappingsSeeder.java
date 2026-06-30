@@ -91,11 +91,17 @@ public final class SearchIndexMappingsSeeder {
 
   /** Hardened default mapping for one (language, entityType), or {@code null} when none exists. */
   public static Map<String, Object> buildEntityMapping(String language, String entityType) {
-    ensureLoaderInitialized();
-    IndexMapping indexMapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
     Map<String, Object> result = null;
-    if (indexMapping != null) {
-      result = hardenedResourceMapping(indexMapping, language, SearchFieldLimits.active());
+    // Allowlist the language before it is used to build a classpath resource path: it originates
+    // from a request path parameter on the search-index-mappings endpoints, so an unvalidated value
+    // would be a path-injection sink.
+    if (supportedLanguages().contains(language)) {
+      ensureLoaderInitialized();
+      IndexMapping indexMapping =
+          IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
+      if (indexMapping != null) {
+        result = hardenedResourceMapping(indexMapping, language, SearchFieldLimits.active());
+      }
     }
     return result;
   }
