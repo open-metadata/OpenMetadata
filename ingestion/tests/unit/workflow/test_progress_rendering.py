@@ -136,29 +136,32 @@ class TestProgressReporter:
 
 
 class TestGroupHeader:
-    def test_header_shows_group_and_assets(self):
+    def test_header_shows_counters_then_assets(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 10)
-        reg.complete_group()
-        reg.complete_group()
-        reg.complete_group()
-        reg.open(["Sales", "Dashboard"], "Dashboard", 5)
-        reg.advance(["Sales", "Dashboard"], "Dashboard")
-        out = ProgressReporter(reg).cli()
-        assert out.splitlines()[0] == "Workspaces 3/10 · 1 assets"
+        reg.set_total("Database", 4)
+        reg.seed_scope_total("DatabaseSchema", "db1", 45)
+        reg.track("Database")
+        reg.track("Database")
+        for _ in range(12):
+            reg.track("DatabaseSchema")
+        reg.advance([], "Table")
+        lines = ProgressReporter(reg).cli().splitlines()
+        assert lines[0] == "Database 2/4"
+        assert lines[1] == "DatabaseSchema 12/45"
+        assert lines[2] == "Ingested: 1 assets"
 
-    def test_header_with_unknown_total_on_empty_tree(self):
+    def test_header_unknown_total_renders_bare_count(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", None)
-        reg.complete_group()
-        assert ProgressReporter(reg).cli() == "Workspaces 1 · 0 assets"
+        reg.set_total("Workspaces", None)
+        reg.track("Workspaces")
+        assert ProgressReporter(reg).cli() == "Workspaces 1\nIngested: 0 assets"
 
-    def test_header_renders_with_empty_tree_when_group_active(self):
+    def test_header_renders_with_empty_tree_when_counter_active(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 4)
+        reg.set_total("Workspaces", 4)
         for _ in range(4):
-            reg.complete_group()
-        assert ProgressReporter(reg).cli() == "Workspaces 4/4 · 0 assets"
+            reg.track("Workspaces")
+        assert ProgressReporter(reg).cli() == "Workspaces 4/4\nIngested: 0 assets"
 
     def test_no_group_keeps_legacy_header(self):
         reg = ProgressRegistry()
@@ -167,53 +170,16 @@ class TestGroupHeader:
         reg.advance(["x"], "Table")
         assert ProgressReporter(reg).cli().splitlines()[0] == "Ingested: 1 assets"
 
-    def test_no_group_empty_tree_is_empty_string(self):
+    def test_cli_empty_when_no_progress(self):
         reg = ProgressRegistry()
         assert ProgressReporter(reg).cli() == ""
 
 
-class TestGroupOnSseUpdate:
-    def test_reporter_group_returns_tuple_when_set(self):
+class TestGlobalCountersOnSseUpdate:
+    def test_reporter_global_counters_passthrough(self):
         reg = ProgressRegistry()
-        reg.set_group("Workspaces", 10)
-        reg.complete_group()
-        reg.complete_group()
-        reg.complete_group()
-        assert ProgressReporter(reg).group() == ("Workspaces", 3, 10)
-
-    def test_reporter_group_is_none_without_group(self):
-        assert ProgressReporter(ProgressRegistry()).group() is None
-
-    def test_progress_update_carries_group_fields(self):
-        reg = ProgressRegistry()
-        reg.set_group("Workspaces", 10)
-        reg.complete_group()
-        reg.complete_group()
-        reg.complete_group()
-        reporter = ProgressReporter(reg)
-        label, done, total = reporter.group()
-        update = ProgressUpdate(
-            runId="r",
-            timestamp=1,
-            updateType="PROCESSING",
-            progress=reporter.payload(),
-            groupLabel=label,
-            groupDone=done,
-            groupTotal=total,
-        )
-        assert update.groupLabel == "Workspaces"
-        assert update.groupDone == 3
-        assert update.groupTotal == 10
-        assert update.progress is None  # group rides the wrapper even with an empty tree
-
-    def test_progress_update_group_total_can_be_none(self):
-        update = ProgressUpdate(
-            runId="r",
-            timestamp=1,
-            updateType="PROCESSING",
-            groupLabel="Workspaces",
-            groupDone=2,
-            groupTotal=None,
-        )
-        assert update.groupDone == 2
-        assert update.groupTotal is None
+        reg.set_total("Workspaces", 10)
+        reg.track("Workspaces")
+        reg.track("Workspaces")
+        reg.track("Workspaces")
+        assert ProgressReporter(reg).global_counters() == [("Workspaces", 3, 10)]

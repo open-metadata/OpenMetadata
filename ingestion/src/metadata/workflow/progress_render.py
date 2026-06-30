@@ -60,29 +60,27 @@ class ProgressReporter:
 
     def cli(self) -> str:
         snapshot = self._registry.snapshot()
-        header = self._header()
+        counters = self._registry.global_counters()
+        header = self._header(counters)
         if snapshot is None:
-            return header if self._registry.group_progress() is not None else ""
+            return header if counters else ""
         lines: List[str] = []  # noqa: UP006
         _render_joined(snapshot, [], lines)
         tree = "\n".join(lines)
         return f"{header}\n{tree}" if tree else header
 
-    def _header(self) -> str:
-        assets = self._registry.assets_ingested()
-        group = self._registry.group_progress()
-        if group is None:
-            return f"Ingested: {assets:,} assets"
-        label, done, total = group
-        counts = f"{done}/{total}" if total is not None else str(done)
-        return f"{label} {counts} · {assets:,} assets"
+    def _header(self, counters: "List[Tuple[str, int, Optional[int]]]") -> str:  # noqa: UP006,UP045
+        lines: List[str] = []  # noqa: UP006
+        for type_, done, total in counters:
+            lines.append(f"{type_} {done}/{total}" if total is not None else f"{type_} {done}")
+        lines.append(f"Ingested: {self._registry.assets_ingested():,} assets")
+        return "\n".join(lines)
 
-    def group(self) -> Optional[Tuple[str, int, Optional[int]]]:  # noqa: UP045,UP006
-        """The run-level grouping axis ``(label, done, total)`` for the SSE
-        ``ProgressUpdate`` (e.g. ``("Workspaces", 3, 10)``), or ``None`` when the
-        run has no such grouping. Independent of the progress tree, so it is
+    def global_counters(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+        """Run-level counters ``(type, done, total)`` for the SSE
+        ``ProgressUpdate.globalCounters``. Independent of the progress tree, so
         reported even when the active tree is momentarily empty."""
-        return self._registry.group_progress()
+        return self._registry.global_counters()
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
         """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,
