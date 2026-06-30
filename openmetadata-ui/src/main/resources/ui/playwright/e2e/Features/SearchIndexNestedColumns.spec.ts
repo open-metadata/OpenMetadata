@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { Column, DataType } from '../../../src/generated/entity/data/table';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { escape } from 'lodash';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -116,18 +117,12 @@ test.describe('Search index - deeply nested oversized columns', () => {
 
     // Indexing: the table indexed despite the >32 KB nested leaf, so it is found by name.
     await searchInput.click();
-    // Match the specific search response that carries the table name, not
-    // just any /api/v1/search/query call — the searchBox click triggers an
-    // empty-query suggestion fetch, and `waitForResponse('?*')` would
-    // resolve on that response and let the test race the actual name-query
-    // response, leaving the suggestion dropdown un-rendered.
-    const byNameResponse = page.waitForResponse(
-      (r) =>
-        r.url().includes('/api/v1/search/query') &&
-        r.url().includes(encodeURIComponent(table.entity.name))
-    );
+
     await searchInput.fill(table.entity.name);
-    await byNameResponse;
+
+    await page
+      .getByTestId(table.service.name + '-' + table.entity.name)
+      .waitFor({ timeout: 15000 });
 
     await expect(suggestions).toBeVisible();
     await expect(suggestions).toContainText(table.entity.name);
