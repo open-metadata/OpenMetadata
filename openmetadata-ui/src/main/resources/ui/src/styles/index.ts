@@ -17,7 +17,6 @@ import '@fontsource/source-code-pro'; // Font 400
 // Unicode subset covering the full 100–900 weight axis, replacing the prior
 // 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
 // header in {@link ./inter-variable.css} for context.
-import './inter-variable.css';
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';
@@ -41,6 +40,7 @@ import './components/slider.less';
 import './components/step.less';
 import './components/tags.less';
 import './fonts.less';
+import './inter-variable.css';
 import './knowledge-center.less';
 import './modal.less';
 import './tailwind.css';
