@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
+import { Users03 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import {
@@ -19,7 +20,6 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -66,10 +66,11 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         key={owner.id}
         to={getOwnerPath(owner)}>
         {isTeam ? (
-          <IconTeamsGrey
-            className="tw:w-6 tw:h-6 tw:shrink-0 tw:text-tertiary"
-            data-testid={entityName}
-          />
+          <span
+            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-tertiary tw:text-tertiary"
+            data-testid={entityName}>
+            <Users03 className="tw:w-3.5 tw:h-3.5" />
+          </span>
         ) : (
           <span
             className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0"

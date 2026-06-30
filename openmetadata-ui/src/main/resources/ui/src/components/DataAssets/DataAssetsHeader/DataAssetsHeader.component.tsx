@@ -874,7 +874,7 @@ export const DataAssetsHeader = ({
 
           <OwnerLabel
             showDashPlaceholder
-            avatarSize={32}
+            avatarSize={24}
             className="header-owner-heading"
             hasPermission={editOwnerPermission}
             isCompactView={false}

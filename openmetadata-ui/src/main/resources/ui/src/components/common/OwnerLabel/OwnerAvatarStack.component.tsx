@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
+import { Users03 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { ReactNode, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -54,14 +54,14 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 
   const renderTeamBadge = (owner: EntityReference) => {
     const entityName = getEntityName(owner);
-    const iconSize = avatarSize - 4;
+    const iconSize = Math.round(avatarSize * 0.6);
 
     return (
       <span
         className="owner-avatar-stack-team"
         data-testid={entityName}
         style={{ width: avatarSize, height: avatarSize }}>
-        <IconTeamsGrey
+        <Users03
           className="owner-avatar-stack-team-icon"
           height={iconSize}
           width={iconSize}
