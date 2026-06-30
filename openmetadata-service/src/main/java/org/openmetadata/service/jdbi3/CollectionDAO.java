@@ -84,6 +84,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -1820,6 +1821,7 @@ public interface CollectionDAO {
     private String fromEntity;
     private String toEntity;
     private int relation;
+    private String relationType;
     private String json;
     private String jsonSchema;
   }
@@ -2646,6 +2648,30 @@ public interface CollectionDAO {
     List<EntityRelationshipObject> getAllRelationshipsPaginated(
         @Bind("offset") long offset, @Bind("limit") int limit);
 
+    // Keyset (seek) pagination over the FULL primary key (fromId, toId, relation, relationType).
+    // The whole PK is required for a strict total order: the same (fromId, toId, relation) tuple
+    // can
+    // carry multiple rows that differ only in relationType (e.g. glossary-term RELATED_TO rows with
+    // relationType 'synonym' and 'seeAlso'), so a shorter cursor would skip rows when a LIMIT
+    // boundary lands inside such a group. Unlike OFFSET pagination this stays correct and O(1) per
+    // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
+    // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
+    // page with fromId='', toId='', relation=-1, relationType=''.
+    @SqlQuery(
+        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
+            + "WHERE fromId > :fromId "
+            + "   OR (fromId = :fromId AND toId > :toId) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
+            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
+    List<EntityRelationshipObject> getAllRelationshipsAfter(
+        @Bind("fromId") String fromId,
+        @Bind("toId") String toId,
+        @Bind("relation") int relation,
+        @Bind("relationType") String relationType,
+        @Bind("limit") int limit);
+
     @SqlQuery("SELECT COUNT(*) FROM entity_relationship")
     long getTotalRelationshipCount();
 
@@ -2871,6 +2897,27 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
+            .jsonSchema(rs.getString("jsonSchema"))
+            .build();
+      }
+    }
+
+    // Like RelationshipObjectMapper but also projects relationType, needed by the keyset scan so
+    // its
+    // cursor can advance over the full primary key. Kept separate because the 27 other queries
+    // using
+    // RelationshipObjectMapper do not select relationType.
+    class RelationshipWithTypeObjectMapper implements RowMapper<EntityRelationshipObject> {
+      @Override
+      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipObject.builder()
+            .fromId(rs.getString("fromId"))
+            .fromEntity(rs.getString("fromEntity"))
+            .toEntity(rs.getString("toEntity"))
+            .toId(rs.getString("toId"))
+            .relation(rs.getInt("relation"))
+            .relationType(rs.getString("relationType"))
             .json(rs.getString("json"))
             .jsonSchema(rs.getString("jsonSchema"))
             .build();
@@ -5233,6 +5280,21 @@ public interface CollectionDAO {
                 parts = {":fqnhash", ".%"},
                 hash = true)
             String fqnhash);
+
+    @SqlQuery("SELECT fqnHash FROM domain_entity WHERE fqnHash LIKE :prefix")
+    List<String> listFqnHashesByPrefix(@Bind("prefix") String prefix);
+
+    @SqlQuery("SELECT fqnHash FROM domain_entity")
+    List<String> listAllFqnHashes();
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json ->> 'fullyQualifiedName' FROM domain_entity ORDER BY fqnHash",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) FROM domain_entity ORDER BY fqnHash",
+        connectionType = MYSQL)
+    List<String> listAllFqns();
   }
 
   interface DataProductDAO extends EntityDAO<DataProduct> {
@@ -7951,6 +8013,25 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+
+    @SqlUpdate("DELETE FROM entity_usage WHERE id IN (<ids>)")
+    void deleteByIdsInternal(@BindList("ids") List<String> ids);
+
+    /**
+     * Bulk-delete usage rows for many entities in one statement per chunk instead of one statement
+     * per entity. Used by the bulk hard-delete path so a service teardown does not fire one
+     * {@code DELETE FROM entity_usage} round-trip per descendant table.
+     */
+    default void deleteByIds(List<UUID> ids) {
+      if (ids == null || ids.isEmpty()) {
+        return;
+      }
+      List<String> stringIds = ids.stream().map(UUID::toString).toList();
+      int chunkSize = EntityDAO.MAX_IN_LIST_CHUNK_SIZE;
+      for (int i = 0; i < stringIds.size(); i += chunkSize) {
+        deleteByIdsInternal(stringIds.subList(i, Math.min(i + chunkSize, stringIds.size())));
+      }
+    }
 
     /**
      * TODO: Not sure I get what the next comment means, but tests now use mysql 8 so maybe tests can be improved here
@@ -10692,6 +10773,7 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
+            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

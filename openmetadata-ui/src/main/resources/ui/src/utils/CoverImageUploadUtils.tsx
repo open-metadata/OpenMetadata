@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { toast, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { omit } from 'lodash';
@@ -18,11 +18,6 @@ import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClas
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { getIsErrorMatch } from './APIUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-  showNotistackWarning,
-} from './NotistackUtils';
 
 /**
  * Position offset for cover image using CSS percentage values
@@ -137,11 +132,6 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
   createEntity: (cleanFormData: TFormData) => Promise<TEntity>;
   patchEntity: (entityId: string, patch: Operation[]) => Promise<TEntity>;
   onSuccess: (entity: TEntity) => void | Promise<void>;
-  enqueueSnackbar: (
-    message: React.ReactNode,
-    options?: Record<string, unknown>
-  ) => void;
-  closeSnackbar: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
 }
 
@@ -171,8 +161,6 @@ export interface CreateEntityWithCoverImageOptions<TFormData, TEntity> {
  *     closeDrawer();
  *     refetch();
  *   },
- *   enqueueSnackbar,
- *   closeSnackbar,
  *   t,
  * });
  * ```
@@ -188,8 +176,6 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     createEntity,
     patchEntity,
     onSuccess,
-    enqueueSnackbar,
-    closeSnackbar,
     t,
   } = options;
 
@@ -253,24 +239,19 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 5: Show appropriate notification based on upload status
     if (uploadFailed) {
-      // Entity created but upload failed - show warning
-      showNotistackWarning(
-        enqueueSnackbar,
+      toast.warning(
         <Typography className="tw:font-bold">
           {t('message.entity-created-but-cover-image-failed', {
             entity: entityLabel,
           })}
         </Typography>,
-        closeSnackbar
+        { autoDismiss: false }
       );
     } else {
-      // Entity created successfully (with or without cover image)
-      showNotistackSuccess(
-        enqueueSnackbar,
+      toast.success(
         <Typography className="tw:font-bold">
           {t('server.create-entity-success', { entity: entityLabel })}
-        </Typography>,
-        closeSnackbar
+        </Typography>
       );
     }
 
@@ -281,7 +262,6 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
   } catch (error) {
     // Error handling
     showNotistackError(
-      enqueueSnackbar,
       getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
         <Typography className="tw:font-bold">
           {t('server.entity-already-exist', {
@@ -295,9 +275,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
       ),
       t('server.add-entity-error', {
         entity: entityLabel.toLowerCase(),
-      }),
-      { vertical: 'top', horizontal: 'center' },
-      closeSnackbar
+      })
     );
 
     throw error;

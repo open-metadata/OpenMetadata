@@ -19,6 +19,7 @@ import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch'
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
+  ExploreQuickFilterField,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
@@ -40,6 +41,7 @@ import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePag
 import {
   extractTermKeys,
   findActiveSearchIndex,
+  getBrowsePathQueryFilter,
   parseSearchParams,
 } from '../../utils/ExplorePureUtils';
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
@@ -98,6 +100,7 @@ const ExplorePageV1: FC<unknown> = () => {
   const {
     parsedSearch,
     searchQueryParam,
+    browseFields,
     sortValue,
     sortOrder,
     page,
@@ -106,6 +109,13 @@ const ExplorePageV1: FC<unknown> = () => {
   } = useMemo(() => {
     return parseSearchParams(location.search, globalPageSize, queryFilter);
   }, [location.search, queryFilter]);
+
+  // ES filter contributed by the browse-tree location. It ANDs with the
+  // dropdown quickFilter so browsing never clears filters and vice versa.
+  const browseQueryFilter = useMemo(
+    () => getBrowsePathQueryFilter(browseFields),
+    [browseFields]
+  );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     setPreference({ globalPageSize: size ?? globalPageSize });
@@ -214,6 +224,32 @@ const ExplorePageV1: FC<unknown> = () => {
     [history, parsedSearch]
   );
 
+  // A tree click may update the browse location AND the Type quick filter
+  // (leaf rows). Both params must land in one navigate — two sequential
+  // navigates against the same memoized parsedSearch clobber each other.
+  const handleTreeSelect = useCallback(
+    (payload: {
+      browseFields: ExploreQuickFilterField[];
+      quickFilter?: QueryFilterInterface;
+    }) => {
+      const { browseFields: updatedBrowseFields, quickFilter } = payload;
+      if (quickFilter) {
+        setAdvancedSearchQuickFilters(quickFilter);
+      }
+      navigate({
+        search: Qs.stringify({
+          ...parsedSearch,
+          browsePath: isEmpty(updatedBrowseFields)
+            ? undefined
+            : JSON.stringify(updatedBrowseFields),
+          ...(quickFilter ? { quickFilter: JSON.stringify(quickFilter) } : {}),
+          page: 1,
+        }),
+      });
+    },
+    [parsedSearch]
+  );
+
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
@@ -316,6 +352,7 @@ const ExplorePageV1: FC<unknown> = () => {
   const fetchDependencies = useMemo(() => {
     return JSON.stringify({
       quickFilter: parsedSearch.quickFilter,
+      browsePath: parsedSearch.browsePath,
       queryFilter,
       searchQueryParam,
       sortValue,
@@ -327,6 +364,7 @@ const ExplorePageV1: FC<unknown> = () => {
     });
   }, [
     parsedSearch.quickFilter,
+    parsedSearch.browsePath,
     queryFilter,
     searchQueryParam,
     sortValue,
@@ -361,7 +399,13 @@ const ExplorePageV1: FC<unknown> = () => {
     const cacheKey = fetchDependencies;
     const cached = getCached<CachedSearchState>(cacheKey);
 
-    const updatedQuickFilters = getAdvancedSearchQuickFilters();
+    // Single injection point for the browse-tree location: pre-combining here
+    // scopes the tab counts, search and NLQ queries inside fetchEntityData
+    // without leaking browse terms into the dropdown chip state.
+    const updatedQuickFilters = getCombinedQueryFilterObject(
+      getAdvancedSearchQuickFilters(),
+      browseQueryFilter
+    );
 
     // Setters wrapped to (a) capture the resolved values for the eventual cache write and
     // (b) drop the update entirely if the user has navigated to a different search since the
@@ -533,6 +577,8 @@ const ExplorePageV1: FC<unknown> = () => {
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      browseFields={browseFields}
+      browseQueryFilter={browseQueryFilter}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancedSearchQuickFilters}
@@ -552,6 +598,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangeSortValue={(sortVal) => {
         handleSortValueChange(1, sortVal);
       }}
+      onTreeSelect={handleTreeSelect}
     />
   );
 };
