@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
@@ -76,16 +77,25 @@ public class IndexingLimitsIT {
     assertTrue(
         rejects(type + "_raw", rawMapping, doc),
         "raw " + type + " index must reject the bad value");
-    assertTrue(
+    // OpenSearch does not support ignore_malformed on boolean (OsUtils strips it), so a hardened
+    // boolean index there still rejects the malformed value; every other guarded type accepts on
+    // both engines.
+    boolean expectedToAccept = !("boolean".equals(type) && isOpenSearch());
+    assertEquals(
+        expectedToAccept,
         accepts(type + "_hardened", harden(rawMapping), doc),
-        "hardened " + type + " index (ignore_malformed) must accept the document");
+        "hardened " + type + " index acceptance must match the engine's ignore_malformed support");
+  }
+
+  private static boolean isOpenSearch() {
+    return "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch"));
   }
 
   private String harden(String mapping) {
     String hardened = SearchIndexSettings.harden(mapping, SearchFieldLimits.defaults());
     // Mirror the production OpenSearch path: harden() then enrichIndexMappingForOpenSearch()
     // (e.g. strips ignore_malformed from boolean, which OpenSearch rejects).
-    if ("opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch"))) {
+    if (isOpenSearch()) {
       hardened = OsUtils.enrichIndexMappingForOpenSearch(hardened);
     }
     return hardened;
