@@ -407,6 +407,41 @@ class ChangePreviewUtilsTest {
   }
 
   @Test
+  void buildProposedChangesPayload_prefersIncrementalOverCumulative() {
+    // Simulates the in-session-edit scenario: cumulative changeDescription reports a tag
+    // removal that the prior task payload already cancelled, while the latest hop only
+    // touches a different field. Without incremental preference, the cumulative removal
+    // double-counts and re-introduces the cancelled tag on the removed side.
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withOldValue("[{\"tagFQN\":\"PII.None\"}]"))))
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsDeleted(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withOldValue("[{\"tagFQN\":\"KnowledgeCenter.Article\"}]"))));
+
+    Map<String, Object> priorPayload = new LinkedHashMap<>();
+    priorPayload.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("KnowledgeCenter.Article"), "removed", List.of())));
+
+    Object result = ChangePreviewUtils.buildProposedChangesPayload(entity, priorPayload);
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+
+    assertNull(proposed.get("tags"));
+  }
+
+  @Test
   void buildProposedChangesPayload_freshChanges_writesKey() {
     EntityInterface entity =
         new GlossaryTerm()

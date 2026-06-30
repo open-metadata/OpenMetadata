@@ -210,7 +210,7 @@ public final class ChangePreviewUtils {
    */
   public static Object buildProposedChangesPayload(EntityInterface entity, Object existingPayload) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = entity.getChangeDescription();
+    ChangeDescription changeDescription = pickIncrementalOrFull(entity);
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -250,6 +250,23 @@ public final class ChangePreviewUtils {
           e);
       return existingPayload;
     }
+  }
+
+  /**
+   * Prefer {@code incrementalChangeDescription} (per-edit hop diff) over {@code changeDescription}
+   * (cumulative-between-versions diff). The cumulative form double-counts when prior task payload
+   * has already merged an intermediate state: e.g. a tag added in v0.3 then removed in v0.4 is
+   * already cancelled out in the prior task payload, but v0.4's cumulative changeDescription
+   * still reports the removal, which would re-introduce it on the {@code removed} side.
+   * Incremental change description always reflects just the latest patch, which is the right
+   * unit of work to fold into the running merge.
+   */
+  private static ChangeDescription pickIncrementalOrFull(EntityInterface entity) {
+    ChangeDescription incremental = entity.getIncrementalChangeDescription();
+    if (!hasNoChanges(incremental)) {
+      return incremental;
+    }
+    return entity.getChangeDescription();
   }
 
   private static Map<String, Object> cloneAsMutableMap(Object payload) {
