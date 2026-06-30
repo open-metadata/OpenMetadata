@@ -57,6 +57,12 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
     onChange('');
   }, [onChange]);
 
+  const handleOpenChange = useCallback((isOpen: boolean) => {
+    if (!isOpen) {
+      setSearchText('');
+    }
+  }, []);
+
   return (
     <DataAssetPickerShell
       allOptionLabel={allOptionLabel}
@@ -69,6 +75,8 @@ const DataAssetFilterPopover: FC<DataAssetFilterPopoverProps> = ({
       searchText={searchText}
       selectedIds={selectedId ? new Set([selectedId]) : new Set()}
       selectionMode="single"
+      totalCount={options.length}
+      onOpenChange={handleOpenChange}
       onSearchChange={setSearchText}
       onSelectAll={handleSelectAll}
       onToggle={handleToggle}

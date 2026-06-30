@@ -774,6 +774,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                         )}
                         <DataAssetSelectList
+                          placeholder={t('label.search-assets-to-link')}
                           popoverClassName="tw:h-100"
                           renderTrigger={({ open }) => (
                             <Button

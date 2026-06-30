@@ -346,7 +346,7 @@ export const getEntityIconWithBg = (
       {...restContainerProps}
       className={classNames(
         'tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90',
-        style?.bgClass ?? 'tw:bg-gray-100',
+        style?.bgClass ?? 'tw:bg-tertiary',
         containerClassName
       )}>
       {Icon && (
