@@ -78,7 +78,8 @@ export const visitEntityPage = async (data: {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
-      response.url().includes('exclude_source_fields')
+      response.url().includes('exclude_source_fields'),
+    { timeout: 30000 }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
