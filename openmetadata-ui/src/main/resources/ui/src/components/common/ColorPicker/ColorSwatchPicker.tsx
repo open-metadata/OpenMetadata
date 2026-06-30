@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, FormControl, FormLabel, useTheme } from '@mui/material';
+import { Box, Label } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 
 interface ColorPickerProps {
@@ -42,17 +42,9 @@ const defaultColorOptions = [
 // Check icon component following the checkbox-icons pattern
 const CheckIcon: FC = () => (
   <Box
-    sx={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      width: '45%',
-      height: '45%',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
+    align="center"
+    className="tw:absolute tw:top-1/2 tw:left-1/2 tw:h-[45%] tw:w-[45%] tw:-translate-x-1/2 tw:-translate-y-1/2"
+    justify="center">
     <svg fill="none" height="100%" viewBox="0 0 14 14" width="100%">
       <path
         d="M11.6666 3.5L5.24992 9.91667L2.33325 7"
@@ -65,14 +57,12 @@ const CheckIcon: FC = () => (
   </Box>
 );
 
-const MUIColorPicker: FC<ColorPickerProps> = ({
+const ColorSwatchPicker: FC<ColorPickerProps> = ({
   value,
   onChange,
   colors = defaultColorOptions,
   label,
 }) => {
-  const theme = useTheme();
-
   const handleColorClick = (color: string) => {
     if (onChange) {
       onChange(color);
@@ -80,14 +70,9 @@ const MUIColorPicker: FC<ColorPickerProps> = ({
   };
 
   return (
-    <FormControl component="fieldset">
-      {label && <FormLabel>{label}</FormLabel>}
-      <Box
-        sx={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '6px',
-        }}>
+    <Box direction="col" gap={2}>
+      {label && <Label>{label}</Label>}
+      <Box className="tw:gap-1.5" direction="row" wrap="wrap">
         {colors.map((color) => {
           const isSelected = value?.toLowerCase() === color.toLowerCase();
 
@@ -95,26 +80,10 @@ const MUIColorPicker: FC<ColorPickerProps> = ({
             <Box
               aria-label={`Select color ${color}`}
               aria-pressed={isSelected}
+              className="tw:relative tw:h-8.5 tw:w-8.5 tw:cursor-pointer tw:rounded tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:focus-visible:outline-focus-ring"
               key={color}
               role="button"
-              sx={{
-                position: 'relative',
-                width: 34,
-                height: 34,
-                borderRadius: '4px',
-                backgroundColor: color,
-                padding: '2px 3px',
-                cursor: 'pointer',
-                border: '2px solid transparent',
-                transition: 'all 0.2s ease',
-                opacity: 1,
-                '&:focus-visible': {
-                  outline: `2px solid ${
-                    theme.palette.primary?.main || '#1470EF'
-                  }`,
-                  outlineOffset: '2px',
-                },
-              }}
+              style={{ backgroundColor: color }}
               tabIndex={0}
               onClick={() => handleColorClick(color)}
               onKeyDown={(e) => {
@@ -128,8 +97,8 @@ const MUIColorPicker: FC<ColorPickerProps> = ({
           );
         })}
       </Box>
-    </FormControl>
+    </Box>
   );
 };
 
-export default MUIColorPicker;
+export default ColorSwatchPicker;
