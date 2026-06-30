@@ -85,7 +85,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
 
         return (
           <Dropdown.Item
-            className={isCurrent ? 'tw:bg-secondary' : undefined}
+            className={isCurrent ? 'tw:[&>div]:bg-utility-blue-50' : undefined}
             data-testid={`move-to-folder-${folder.id}`}
             id={folder.id}
             key={folder.id}
@@ -104,7 +104,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:text-brand-primary tw:ml-2"
+                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
                     strokeWidth={2}
                   />
                 )}
