@@ -33,6 +33,7 @@ import {
   getEntityTypeSearchIndexMapping,
   readElementInListWithScroll,
   redirectToHomePage,
+  removeLandingBanner,
   toastNotification,
   uuid,
 } from './common';
@@ -73,13 +74,15 @@ export const visitEntityPage = async (data: {
     await page.getByTestId('welcome-screen-close-btn').click();
   }
 
-  await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse(
+  const searchResponse = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
-      response.url().includes('exclude_source_fields')
+      response.url().includes('exclude_source_fields'),
+    { timeout: 30000 }
   );
+  await page.getByTestId('searchBox').fill(searchTerm);
+  await searchResponse;
 
   // Adding a failsafe for the operation below to avoid a tooltip overlap issue.
   // A tooltip over the option can cause Playwright click failures
@@ -1342,15 +1345,21 @@ export const followEntity = async (
   endpoint: EntityTypeEndpoint,
   verificationText = 'Unfollow'
 ) => {
+  const followButton = page.getByTestId('entity-follow-button');
+
+  await followButton.waitFor({ state: 'visible' });
+
+  if ((await followButton.textContent())?.includes(verificationText)) {
+    return;
+  }
+
   const followResponse = page.waitForResponse(
     `/api/v1/${endpoint}/*/followers`
   );
-  await page.getByTestId('entity-follow-button').click();
+  await followButton.click();
   await followResponse;
 
-  await expect(page.getByTestId('entity-follow-button')).toContainText(
-    verificationText
-  );
+  await expect(followButton).toContainText(verificationText);
 };
 
 export const unFollowEntity = async (
@@ -1374,22 +1383,82 @@ export const unFollowEntity = async (
   );
 };
 
+const LANDING_PAGE_SCROLL_CONTAINER =
+  '.page-layout-v1-center.page-layout-v1-vertical-scroll';
+const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.Following';
+
+const revealFollowingWidget = async (page: Page): Promise<Locator> => {
+  const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+
+  await expect
+    .poll(
+      async () => {
+        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+          return true;
+        }
+
+        if ((await followingWidgetPanel.count()) > 0) {
+          await followingWidgetPanel
+            .scrollIntoViewIfNeeded({ timeout: 1000 })
+            .catch(() => undefined);
+        }
+
+        await page.evaluate((scrollContainerSelector) => {
+          document
+            .querySelector(scrollContainerSelector)
+            ?.scrollBy({ top: 700, behavior: 'instant' });
+        }, LANDING_PAGE_SCROLL_CONTAINER);
+
+        return followingWidgetPanel.isVisible().catch(() => false);
+      },
+      {
+        timeout: 60_000,
+        intervals: [500, 1_000, 2_000],
+      }
+    )
+    .toBe(true);
+
+  return followingWidgetPanel;
+};
+
+const loadFollowingWidget = async (page: Page): Promise<Locator> => {
+  await redirectToHomePage(page, false);
+  await removeLandingBanner(page);
+  await waitForAllLoadersToDisappear(page).catch(() => undefined);
+
+  const followingWidgetPanel = await revealFollowingWidget(page);
+
+  const followingWidget = followingWidgetPanel.getByTestId('following-widget');
+  await expect(followingWidget).toBeVisible({ timeout: 60_000 });
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton').catch(
+    () => undefined
+  );
+
+  return followingWidget;
+};
+
 export const validateFollowedEntityToWidget = async (
   page: Page,
-  entity: string,
+  entity: string | undefined,
   isFollowing: boolean
-) => {
-  await redirectToHomePage(page);
-  await waitForAllLoadersToDisappear(page);
-  if (isFollowing) {
-    await page.getByTestId('following-widget').isVisible();
+): Promise<Locator> => {
+  const followingWidget = await loadFollowingWidget(page);
 
-    await page.getByTestId(`following-${entity}`).isVisible();
-  } else {
-    await page.getByTestId('following-widget').isVisible();
-
-    await expect(page.getByTestId(`following-${entity}`)).not.toBeVisible();
+  if (!entity) {
+    return followingWidget;
   }
+
+  if (isFollowing) {
+    await followingWidget.isVisible();
+    await followingWidget.getByTestId(`following-${entity}`).isVisible();
+  } else {
+    await followingWidget.isVisible();
+    await expect(
+      followingWidget.getByTestId(`following-${entity}`)
+    ).not.toBeVisible();
+  }
+
+  return followingWidget;
 };
 
 const announcementForm = async (
@@ -1424,7 +1493,7 @@ const announcementForm = async (
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
-    await page.click('[data-testid="alert-icon-close"]');
+    await toastNotification(page, /Announcement created successfully/i);
   }
 };
 
@@ -2128,9 +2197,10 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
+  await toastNotification(
+    page,
     /(deleted successfully!|Delete operation initiated)/,
-    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
+    BIG_ENTITY_DELETE_TIMEOUT
   );
 };
 

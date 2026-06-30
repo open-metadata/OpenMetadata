@@ -36,10 +36,26 @@ export const mockUserData: User = {
 
 export const mockDefaultLayout: Array<WidgetConfig> = [
   {
-    h: 6,
+    h: 3,
     i: LandingPageWidgetKeys.ACTIVITY_FEED,
-    w: 2,
+    w: 1,
     x: 0,
+    y: 0,
+    static: false,
+  },
+  {
+    h: 3,
+    i: LandingPageWidgetKeys.DATA_ASSETS,
+    w: 1,
+    x: 1,
+    y: 0,
+    static: false,
+  },
+  {
+    h: 3,
+    i: LandingPageWidgetKeys.KNOWLEDGE_CENTER,
+    w: 1,
+    x: 2,
     y: 0,
     static: false,
   },
@@ -48,39 +64,31 @@ export const mockDefaultLayout: Array<WidgetConfig> = [
     i: LandingPageWidgetKeys.MY_DATA,
     w: 1,
     x: 0,
-    y: 6,
+    y: 1,
     static: false,
   },
   {
     h: 3,
     i: LandingPageWidgetKeys.KPI,
-    w: 2,
+    w: 1,
     x: 1,
-    y: 6,
+    y: 1,
     static: false,
   },
   {
     h: 3,
     i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
-    w: 2,
-    x: 0,
-    y: 9,
+    w: 1,
+    x: 2,
+    y: 1,
     static: false,
   },
   {
     h: 3,
     i: LandingPageWidgetKeys.FOLLOWING,
     w: 1,
-    x: 3,
-    y: 1.5,
-    static: false,
-  },
-  {
-    h: 3,
-    i: LandingPageWidgetKeys.RECENTLY_VIEWED,
-    w: 1,
-    x: 3,
-    y: 3,
+    x: 0,
+    y: 2,
     static: false,
   },
 ];
@@ -112,6 +120,8 @@ export const mockCustomizedLayout: Array<WidgetConfig> = [
   },
 ];
 
+const widgetComponentCache: Record<string, () => JSX.Element> = {};
+
 export const mockCustomizePageClassBase = {
   defaultLayout: mockDefaultLayout,
   announcementWidget: {
@@ -125,7 +135,13 @@ export const mockCustomizePageClassBase = {
   landingPageMaxGridSize: 4,
   landingPageWidgetMargin: 16,
   landingPageRowHeight: 200,
-  getWidgetsFromKey: (i: string) => () => <div data-testid={i}>{i}</div>,
+  getWidgetsFromKey: (i: string) => {
+    if (!widgetComponentCache[i]) {
+      widgetComponentCache[i] = () => <div data-testid={i}>{i}</div>;
+    }
+
+    return widgetComponentCache[i];
+  },
 };
 
 export const mockDocumentData: Document = {
