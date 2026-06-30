@@ -459,8 +459,7 @@ test.describe('Task Activity Feed Integration', () => {
       await resolveTaskWithApproval(page);
 
       await page.reload();
-
-      await navigateToActivityFeedTasks(page);
+      await waitForPageLoaded(page);
 
       const closedTab = page.getByRole('tab', { name: /Closed/i });
       if (await closedTab.isVisible()) {
