@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -33,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
@@ -73,8 +75,10 @@ public class ReindexingUtil {
       String entityType,
       List<? extends EntityInterface> entities) {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
+    Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
     try {
       prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
+      prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
     } catch (Exception | LinkageError t) {
       // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
       // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
@@ -86,10 +90,22 @@ public class ReindexingUtil {
           entityType,
           t);
     }
-    if (prefetchedLineage != null) {
-      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(prefetchedLineage.size());
-      for (Map.Entry<UUID, List<EsLineageData>> entry : prefetchedLineage.entrySet()) {
-        docBuildContexts.put(entry.getKey(), DocBuildContext.withUpstreamLineage(entry.getValue()));
+    if (prefetchedLineage != null || prefetchedServiceStyles != null) {
+      int contextSize =
+          Math.max(
+              prefetchedLineage != null ? prefetchedLineage.size() : 0,
+              prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0);
+      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
+      for (EntityInterface entity : entities) {
+        UUID entityId = entity.getId();
+        if (entityId == null) {
+          continue;
+        }
+        List<EsLineageData> lineage =
+            prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
+        Optional<Style> serviceStyle =
+            prefetchedServiceStyles != null ? prefetchedServiceStyles.get(entityId) : null;
+        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStyle));
       }
       contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
     }

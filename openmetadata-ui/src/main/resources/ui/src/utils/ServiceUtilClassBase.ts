@@ -368,6 +368,10 @@ class ServiceUtilClassBase {
   public getServiceTypeLogo(searchSource: {
     serviceType?: string;
     entityType?: string;
+    style?: {
+      iconURL?: string;
+    };
+    service?: unknown;
   }): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
@@ -378,6 +382,16 @@ class ServiceUtilClassBase {
         PageType.QUICK_LINK;
 
       return isQuickLink ? LinkIcon : KnowledgePageIcon;
+    }
+
+    const ownIcon = get(searchSource, 'style.iconURL', '');
+    if (ownIcon) {
+      return ownIcon;
+    }
+
+    const serviceIcon = get(searchSource, 'service.style.iconURL', '');
+    if (serviceIcon) {
+      return serviceIcon;
     }
 
     // Handle entities that don't have serviceType by using entity-specific icons

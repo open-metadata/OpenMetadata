@@ -13,7 +13,7 @@
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { ServiceType } from '../generated/entity/services/serviceType';
-import { ServicesType } from '../interface/service.interface';
+import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getTestConnectionName } from './ServicePureUtils';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
@@ -118,6 +118,35 @@ describe('ServiceUtilClassBase', () => {
     expect(result).toEqual(ExplorePageTabs.TABLES);
   });
 
+  it('should prefer service style icon over service type logo', () => {
+    const iconURL = 'https://example.com/custom-database.svg';
+
+    expect(
+      serviceUtilClassBase.getServiceTypeLogo({
+        serviceType: 'CustomDatabase',
+        style: {
+          iconURL,
+        },
+      })
+    ).toBe(iconURL);
+  });
+
+  it('should use denormalized child service style icon', () => {
+    const iconURL = 'https://example.com/custom-service.svg';
+
+    expect(
+      serviceUtilClassBase.getServiceTypeLogo({
+        entityType: 'table',
+        service: {
+          style: {
+            iconURL,
+          },
+        },
+        serviceType: 'CustomDatabase',
+      })
+    ).toBe(iconURL);
+  });
+
   it.each([
     {
       connectionType: 'Snowflake',
@@ -183,7 +212,7 @@ describe('ServiceUtilClassBase', () => {
           connectionType,
           serviceType,
           serviceName,
-          configData
+          configData as unknown as ConfigData
         )
       ).toEqual({
         name: `${serviceName}_test_connection`,

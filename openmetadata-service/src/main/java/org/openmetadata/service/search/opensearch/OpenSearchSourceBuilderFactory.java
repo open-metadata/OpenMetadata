@@ -60,6 +60,8 @@ public class OpenSearchSourceBuilderFactory
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
   private static final float FUNCTION_BOOST_FACTOR = 0.3f;
+  private static final String SERVICE_DISPLAY_NAME_AGG = "service.displayName.keyword";
+  private static final List<String> SERVICE_STYLE_SOURCE_FIELDS = List.of("service.style");
 
   private final SearchSettings searchSettings;
 
@@ -729,7 +731,11 @@ public class OpenSearchSourceBuilderFactory
 
       if (!nullOrEmpty(agg.getField())) {
         String field = SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
-        termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
+        termsAgg =
+            SERVICE_DISPLAY_NAME_AGG.equals(field)
+                ? OpenSearchAggregationBuilder.termsAggregationWithTopHits(
+                    field, maxSize, SERVICE_STYLE_SOURCE_FIELDS)
+                : OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
       } else if (!nullOrEmpty(agg.getScript())) {
         termsAgg =
             OpenSearchAggregationBuilder.termsAggregationWithScript(agg.getScript(), maxSize);
@@ -751,7 +757,11 @@ public class OpenSearchSourceBuilderFactory
               if (!nullOrEmpty(agg.getField())) {
                 String field =
                     SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(agg.getField());
-                termsAgg = OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
+                termsAgg =
+                    SERVICE_DISPLAY_NAME_AGG.equals(field)
+                        ? OpenSearchAggregationBuilder.termsAggregationWithTopHits(
+                            field, maxSize, SERVICE_STYLE_SOURCE_FIELDS)
+                        : OpenSearchAggregationBuilder.termsAggregation(field, maxSize);
               } else if (!nullOrEmpty(agg.getScript())) {
                 termsAgg =
                     OpenSearchAggregationBuilder.termsAggregationWithScript(

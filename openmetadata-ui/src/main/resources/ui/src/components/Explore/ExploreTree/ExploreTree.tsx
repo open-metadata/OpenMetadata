@@ -14,7 +14,7 @@ import { Tooltip, Tree, TreeProps, Typography } from 'antd';
 import { DataNode } from 'antd/es/tree';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isString, isUndefined } from 'lodash';
+import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -95,6 +95,25 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
       </div>
     </Tooltip>
   );
+};
+
+const getServiceStyleIcon = (bucket: Bucket) => {
+  const iconURL = get(
+    bucket,
+    [
+      'top_hits#top',
+      'hits',
+      'hits',
+      0,
+      '_source',
+      'service',
+      'style',
+      'iconURL',
+    ],
+    ''
+  );
+
+  return isString(iconURL) && !isEmpty(iconURL) ? iconURL : undefined;
 };
 
 const ExploreTree = ({
@@ -238,7 +257,7 @@ const ExploreTree = ({
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
               <img
-                alt="logo"
+                alt={t('label.service')}
                 src={serviceIcon}
                 style={{ width: 18, height: 18 }}
               />
@@ -258,7 +277,16 @@ const ExploreTree = ({
               'service-icon w-4 h-4'
             ) ?? <></>;
           } else if (bucketToFind === EntityFields.SERVICE) {
-            logo = treeNode.icon;
+            const serviceIcon = getServiceStyleIcon(bucket);
+            logo = serviceIcon ? (
+              <img
+                alt={t('label.service')}
+                src={serviceIcon}
+                style={{ width: 18, height: 18 }}
+              />
+            ) : (
+              treeNode.icon
+            );
           }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {

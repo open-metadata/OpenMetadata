@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -147,6 +149,37 @@ class BuildSearchIndexDocTest {
     assertNotNull(result.get("serviceType"));
     // LineageIndex
     assertTrue(result.containsKey("upstreamLineage"));
+  }
+
+  @Test
+  void testServiceBackedIndex_usesPrefetchedServiceStyle() {
+    EntityReference serviceRef =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("dashboardService")
+            .withName("looker");
+    Style style =
+        new Style().withColor("#1A2B3C").withIconURL("https://example.com/custom-dashboard.svg");
+
+    Dashboard d =
+        new Dashboard()
+            .withId(UUID.randomUUID())
+            .withName("d")
+            .withFullyQualifiedName("looker.d")
+            .withService(serviceRef)
+            .withServiceType(
+                org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType
+                    .Looker);
+
+    mockAllStatics();
+
+    Map<String, Object> result =
+        new DashboardIndex(d).buildSearchIndexDoc(DocBuildContext.of(null, Optional.of(style)));
+    Object serviceDoc = result.get("service");
+
+    assertTrue(serviceDoc instanceof Map<?, ?>);
+    Map<?, ?> serviceMap = (Map<?, ?>) serviceDoc;
+    assertEquals(style, serviceMap.get(Entity.FIELD_STYLE));
   }
 
   @Test

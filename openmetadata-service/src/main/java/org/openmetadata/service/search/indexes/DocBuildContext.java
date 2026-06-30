@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.List;
+import java.util.Optional;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 
 /**
  * Optional pre-fetched data threaded into {@link SearchIndex#buildSearchIndexDoc(DocBuildContext)}
@@ -21,15 +23,21 @@ import org.openmetadata.schema.api.lineage.EsLineageData;
  * The context is passed by value down the doc-build call chain; nothing is stored in thread-local
  * state, so callers and mixins see the dependency in their method signatures.
  */
-public record DocBuildContext(List<EsLineageData> prefetchedUpstreamLineage) {
+public record DocBuildContext(
+    List<EsLineageData> prefetchedUpstreamLineage, Optional<Style> prefetchedServiceStyle) {
 
-  private static final DocBuildContext EMPTY = new DocBuildContext(null);
+  private static final DocBuildContext EMPTY = new DocBuildContext(null, null);
 
   public static DocBuildContext empty() {
     return EMPTY;
   }
 
   public static DocBuildContext withUpstreamLineage(List<EsLineageData> upstreamLineage) {
-    return new DocBuildContext(upstreamLineage);
+    return new DocBuildContext(upstreamLineage, null);
+  }
+
+  public static DocBuildContext of(
+      List<EsLineageData> upstreamLineage, Optional<Style> serviceStyle) {
+    return new DocBuildContext(upstreamLineage, serviceStyle);
   }
 }
