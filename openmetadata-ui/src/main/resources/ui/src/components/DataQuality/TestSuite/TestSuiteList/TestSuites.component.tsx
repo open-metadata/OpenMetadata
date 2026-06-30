@@ -24,7 +24,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
@@ -120,6 +120,7 @@ export const TestSuites = () => {
   } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const latestRequestId = useRef(0);
 
   const ownerFilterValue = useMemo(() => {
     return selectedOwner
@@ -212,41 +213,56 @@ export const TestSuites = () => {
     return data;
   }, []);
 
-  const fetchTestSuites = async (
-    currentPage = INITIAL_PAGING_VALUE,
-    params?: ListTestSuitePramsBySearch
-  ) => {
-    setIsLoading(true);
-    try {
-      const result = await getListTestSuitesBySearch({
-        ...params,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        owner: ownerFilterValue?.key,
-        offset: (currentPage - 1) * pageSize,
-        includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
-        testSuiteType:
-          subTab === DataQualitySubTabs.TABLE_SUITES
-            ? TestSuiteType.basic
-            : TestSuiteType.logical,
-        sortField: 'lastResultTimestamp',
-        sortType: SORT_ORDER.DESC,
-      });
-      setTestSuites(result.data);
-      handlePagingChange(result.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchTestSuites = useCallback(
+    async (
+      currentPage = INITIAL_PAGING_VALUE,
+      params?: ListTestSuitePramsBySearch
+    ) => {
+      const requestId = latestRequestId.current + 1;
+      latestRequestId.current = requestId;
+
+      setIsLoading(true);
+      try {
+        const result = await getListTestSuitesBySearch({
+          ...params,
+          fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
+          q: searchValue ? `*${searchValue}*` : undefined,
+          owner: ownerFilterValue?.key,
+          offset: (currentPage - 1) * pageSize,
+          includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
+          testSuiteType:
+            subTab === DataQualitySubTabs.TABLE_SUITES
+              ? TestSuiteType.basic
+              : TestSuiteType.logical,
+          sortField: 'lastResultTimestamp',
+          sortType: SORT_ORDER.DESC,
+        });
+
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
+
+        setTestSuites(result.data);
+        handlePagingChange(result.paging);
+      } catch (error) {
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [searchValue, ownerFilterValue?.key, pageSize, subTab, handlePagingChange]
+  );
 
   const handleTestSuitesPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, handlePageChange]
+    [fetchTestSuites, pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
@@ -324,7 +340,15 @@ export const TestSuites = () => {
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner, subTab, currentPage]);
+  }, [
+    testSuitePermission,
+    pageSize,
+    searchValue,
+    owner,
+    subTab,
+    currentPage,
+    fetchTestSuites,
+  ]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (

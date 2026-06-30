@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Route } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { Domain } from '../../support/domain/Domain';
+import { BundleTestSuiteClass } from '../../support/entity/BundleTestSuiteClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -50,6 +51,16 @@ const user1 = new UserClass();
 const user2 = new UserClass();
 const domain1 = new Domain();
 const domain2 = new Domain();
+const bundleTestSuite = new BundleTestSuiteClass();
+
+const createDeferred = () => {
+  let resolveDeferred: () => void = () => undefined;
+  const promise = new Promise<void>((resolve) => {
+    resolveDeferred = resolve;
+  });
+
+  return { promise, resolve: resolveDeferred };
+};
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -60,11 +71,81 @@ test.beforeAll(async ({ browser }) => {
   await table.createTestCase(apiContext);
   await domain1.create(apiContext);
   await domain2.create(apiContext);
+  await bundleTestSuite.createBundleTestSuite(apiContext);
   await afterAction();
+});
+
+test.afterAll(async ({ browser }) => {
+  const bundleSuiteName = bundleTestSuite.bundleTestSuiteResponseData?.name;
+
+  if (bundleSuiteName) {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await apiContext.delete(
+      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+        bundleSuiteName
+      )}?hardDelete=true&recursive=true`
+    );
+    await afterAction();
+  }
 });
 
 test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
+});
+
+test('Test suite tab switching keeps active bundle suite data after stale table suite response', async ({
+  page,
+}) => {
+  const bundleSuiteName =
+    bundleTestSuite.bundleTestSuiteResponseData?.name ?? '';
+  const tableFqn = table.entityResponseData?.fullyQualifiedName ?? '';
+  const tableSuiteRequestReceived = createDeferred();
+  const tableSuiteResponseRelease = createDeferred();
+  const tableSuiteResponseFulfilled = createDeferred();
+
+  expect(bundleSuiteName).not.toBe('');
+  expect(tableFqn).not.toBe('');
+
+  await page.route(
+    '**/api/v1/dataQuality/testSuites/search/list**',
+    async (route: Route) => {
+      const requestUrl = new URL(route.request().url());
+      const testSuiteType = requestUrl.searchParams.get('testSuiteType');
+
+      if (testSuiteType === 'basic') {
+        tableSuiteRequestReceived.resolve();
+        const tableSuiteResponse = await route.fetch();
+        await tableSuiteResponseRelease.promise;
+
+        await route.fulfill({
+          response: tableSuiteResponse,
+        });
+        tableSuiteResponseFulfilled.resolve();
+
+        return;
+      }
+
+      await route.continue();
+    }
+  );
+
+  await page.goto('/data-quality/test-suites/table-suites');
+  await tableSuiteRequestReceived.promise;
+
+  await expect(page.getByTestId('test-suite-table')).toBeVisible();
+  await expect(page.getByTestId('loader')).toBeVisible();
+
+  await page.getByTestId('bundle-suite-radio-btn').click();
+
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+
+  tableSuiteResponseRelease.resolve();
+  await tableSuiteResponseFulfilled.promise;
+
+  await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
 });
 
 test(
