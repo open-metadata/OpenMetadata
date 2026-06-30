@@ -209,8 +209,8 @@ public class TaskWorkflowHandler {
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
-        if (task.getStatus() != TaskEntityStatus.Open
-            && task.getStatus() != TaskEntityStatus.InProgress) {
+        if (!org.openmetadata.service.jdbi3.TaskRepository.NON_TERMINAL_STATUSES.contains(
+            task.getStatus())) {
           throw new IllegalStateException(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
