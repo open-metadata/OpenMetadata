@@ -60,26 +60,38 @@ class InspectorWrapper(BaseModel):
     inspector: Any
 
 
+def clone_connection_for_project(database_name: str, service_connection: BigQueryConnection) -> BigQueryConnection:
+    """
+    Return a copy of the service connection scoped to a single project, so each
+    project in a multi-project connection can be inspected/tested independently.
+    """
+    new_service_connection = deepcopy(service_connection)
+    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
+    return new_service_connection
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
     """
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
-    new_service_connection = deepcopy(service_connection)
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
     kwargs = {}
 
     if new_service_connection.usageLocation:
         kwargs["location"] = new_service_connection.usageLocation
 
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
-        if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs["impersonate_service_account"] = (
-                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-            )
+    if (
+        isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues)
+        and new_service_connection.credentials.gcpImpersonateServiceAccount
+    ):
+        kwargs["impersonate_service_account"] = (
+            new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+        )
 
-            kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
+        kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
     client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
     engine = get_connection(new_service_connection)
