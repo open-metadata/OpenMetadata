@@ -608,7 +608,6 @@ export const fetchEntityData = async ({
         queryFilter: combinedQueryFilter,
         searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: showDeleted,
-        trackTotalHits: true,
         fetchSource: false,
         filters: '',
       };
@@ -657,6 +656,9 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
+          // Results query backs the count badge and pagination total
+          // (searchResults.hits.total.value); without this ES caps it at 10000.
+          trackTotalHits: true,
           excludeSourceFields: [
             'columns',
             'queries',
@@ -694,6 +696,7 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
+        trackTotalHits: true,
         excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 
