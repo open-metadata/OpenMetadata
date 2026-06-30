@@ -405,7 +405,7 @@ public class SystemRepository {
   private SearchIndexMappings getOrBuildSearchIndexMappings() {
     SearchIndexMappings blob = getSearchIndexMappings();
     if (blob == null) {
-      blob = SearchIndexMappingsSeeder.buildDefaultBlob();
+      blob = new SearchIndexMappings();
     }
     if (blob.getLanguages() == null) {
       blob.setLanguages(new LinkedHashMap<>());

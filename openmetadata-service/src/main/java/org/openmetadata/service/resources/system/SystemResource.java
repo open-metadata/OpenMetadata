@@ -41,7 +41,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -59,7 +58,6 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -313,20 +311,12 @@ public class SystemResource {
       operationId = "listSearchIndexMappings",
       summary = "List editable search index mappings",
       description =
-          "List the entity types that have a stored, editable search index mapping, grouped by "
-              + "search index mapping language.")
+          "List every editable entity type, grouped by search index mapping language. Entities "
+              + "without a saved override resolve from the bundled default mapping.")
   public Map<String, List<String>> listSearchIndexMappings(
       @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    Map<String, List<String>> summary = new LinkedHashMap<>();
-    SearchIndexMappings stored = systemRepository.getSearchIndexMappings();
-    if (stored != null && stored.getLanguages() != null) {
-      stored
-          .getLanguages()
-          .forEach(
-              (language, byEntity) -> summary.put(language, new ArrayList<>(byEntity.keySet())));
-    }
-    return summary;
+    return SearchIndexMappingsSeeder.availableMappings();
   }
 
   @GET
@@ -370,7 +360,7 @@ public class SystemResource {
       @PathParam("entityType") String entityType,
       Map<String, Object> mapping) {
     authorizer.authorizeAdmin(securityContext);
-    validateSearchIndexMappingRequest(language, mapping);
+    validateSearchIndexMappingRequest(language, entityType, mapping);
     Settings updated =
         systemRepository.upsertSearchIndexMapping(
             language.toLowerCase(Locale.ROOT), entityType, mapping);
@@ -399,10 +389,14 @@ public class SystemResource {
     return Response.ok(reset).build();
   }
 
-  private void validateSearchIndexMappingRequest(String language, Map<String, Object> mapping) {
+  private void validateSearchIndexMappingRequest(
+      String language, String entityType, Map<String, Object> mapping) {
     if (!SearchIndexMappingsSeeder.supportedLanguages()
         .contains(language.toLowerCase(Locale.ROOT))) {
       throw new BadRequestException("Unsupported search index mapping language: " + language);
+    }
+    if (!SearchIndexMappingsSeeder.supportedEntityTypes().contains(entityType)) {
+      throw new BadRequestException("Unknown search index entity type: " + entityType);
     }
     if (!hasMappingProperties(mapping)) {
       throw new BadRequestException("Index mapping must contain a 'mappings.properties' object");

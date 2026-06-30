@@ -32,12 +32,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Builds the default, field-safety-hardened search index mappings that are persisted in settings
- * ({@code searchIndexMappings}) and read at index-creation time. The hardening transform ({@link
- * SearchIndexSettings#harden}) runs once here, when the default blob is produced, so the stored,
- * admin-editable mapping already carries {@code ignore_above}/{@code ignore_malformed}/limits
- * instead of having them injected on every index create. Shared by the fresh-install seeder, the
- * upgrade migration, the per-entity reset endpoint and the runtime resource fallback.
+ * Resolves the field-safety-hardened search index mappings used at index-creation time. The {@code
+ * searchIndexMappings} setting stores <em>only admin overrides</em> — entities the operator has
+ * explicitly edited — so an un-edited entity always resolves from the current bundled resource
+ * (hardened on the fly by {@link SearchIndexSettings#harden}). That means shipped mapping changes
+ * take effect automatically on the next reindex, while admin edits are preserved. Shared by the
+ * per-entity reset endpoint and the runtime resource fallback. {@link #buildDefaultBlob} remains for
+ * building a full hardened snapshot on demand (e.g. tooling/tests).
  */
 public final class SearchIndexMappingsSeeder {
 
@@ -46,10 +47,11 @@ public final class SearchIndexMappingsSeeder {
   private SearchIndexMappingsSeeder() {}
 
   /**
-   * Persists the default search index mappings setting if it is not already present. Insert-if-absent
-   * — never clobbers admin-customized mappings. Shared by fresh-install seeding ({@code
-   * SettingsCache}) and the upgrade data migration. Failures are logged, not propagated, so a seed
-   * hiccup never aborts startup or a migration.
+   * Initializes an empty override store for search index mappings if the setting is absent.
+   * Defaults are intentionally not pre-seeded — each (language, entityType) resolves from the
+   * bundled hardened resource unless an admin saved an override — so a later upgrade's mapping
+   * changes apply without a manual reset. Insert-if-absent, never clobbers existing overrides.
+   * Failures are logged, not propagated, so a hiccup never aborts startup or a migration.
    */
   public static void seedIfAbsent() {
     try {
@@ -59,12 +61,12 @@ public final class SearchIndexMappingsSeeder {
         Settings setting =
             new Settings()
                 .withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS)
-                .withConfigValue(buildDefaultBlob());
+                .withConfigValue(new SearchIndexMappings().withLanguages(new LinkedHashMap<>()));
         Entity.getSystemRepository().createNewSetting(setting);
-        LOG.info("Seeded default search index mappings setting");
+        LOG.info("Initialized empty search index mappings override store");
       }
     } catch (Exception seedFailed) {
-      LOG.error("Failed to seed default search index mappings", seedFailed);
+      LOG.error("Failed to initialize search index mappings setting", seedFailed);
     }
   }
 
@@ -72,6 +74,25 @@ public final class SearchIndexMappingsSeeder {
     return Arrays.stream(IndexMappingLanguage.values())
         .map(language -> language.value().toLowerCase(Locale.ROOT))
         .toList();
+  }
+
+  /** Entity types that have a bundled index mapping and are therefore editable. */
+  public static List<String> supportedEntityTypes() {
+    ensureLoaderInitialized();
+    return IndexMappingLoader.getInstance().getIndexMapping().keySet().stream().sorted().toList();
+  }
+
+  /**
+   * The editable (language → entity type) matrix, sourced from the bundled mappings rather than the
+   * stored overrides, so every editable entity is listed even before any override is saved.
+   */
+  public static Map<String, List<String>> availableMappings() {
+    List<String> entityTypes = supportedEntityTypes();
+    Map<String, List<String>> result = new LinkedHashMap<>();
+    for (String language : supportedLanguages()) {
+      result.put(language, entityTypes);
+    }
+    return result;
   }
 
   public static SearchIndexMappings buildDefaultBlob() {
