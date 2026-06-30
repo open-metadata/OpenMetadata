@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Card, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
-import './knowledge-page.less';
+
 interface KnowledgePageDetailRightPanelProps {
   permissions: OperationPermission;
   tags: Array<EntityTags>;
@@ -81,61 +81,55 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
   }, [genericPermissions?.EditAll, data?.deleted]);
 
   return (
-    <div
-      className="knowledge-page-right-panel"
+    <Card
+      className="tw:h-full tw:p-5 tw:overflow-auto"
       data-testid="knowledge-page-right-panel">
-      <Row gutter={[0, 24]}>
-        <Col span={24}>
-          <div data-testid="KnowledgePanel.DataProducts">
-            <DataProductsContainer
-              newLook
-              activeDomains={data?.domains ?? []}
-              dataProducts={data?.dataProducts ?? []}
-              hasPermission={hasDataProductsPermission}
-              multiple={entityRules?.canAddMultipleDataProducts}
-              onSave={handleDataProductsSave}
-            />
-          </div>
-        </Col>
-        <Col span={24}>
-          <ReviewerLabelV2 />
-        </Col>
-        <Col span={24}>
-          <TagsContainerV2
+      <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:gap-6">
+        <div data-testid="KnowledgePanel.DataProducts">
+          <DataProductsContainer
             newLook
-            displayType={DisplayType.POPOVER}
-            permission={permissions.EditAll || permissions.EditTags}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Classification}
-            onSelectionChange={updatePageTag}
+            activeDomains={data?.domains ?? []}
+            dataProducts={data?.dataProducts ?? []}
+            hasPermission={hasDataProductsPermission}
+            multiple={entityRules?.canAddMultipleDataProducts}
+            onSave={handleDataProductsSave}
           />
-        </Col>
-        <Col span={24}>
-          <TagsContainerV2
-            newLook
-            displayType={DisplayType.POPOVER}
-            permission={permissions.EditAll || permissions.EditTags}
-            selectedTags={tags}
-            showTaskHandler={false}
-            tagType={TagSource.Glossary}
-            onSelectionChange={updatePageTag}
-          />
-        </Col>
-        <Col span={24}>
-          <RelatedDataAssets
-            hasPermission={permissions.EditAll}
-            relatedDataAssets={knowledgePage?.['relatedEntities']}
-            onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
-          />
-        </Col>
+        </div>
+        <ReviewerLabelV2 />
+
+        <TagsContainerV2
+          newLook
+          displayType={DisplayType.POPOVER}
+          permission={permissions.EditAll || permissions.EditTags}
+          selectedTags={tags}
+          showTaskHandler={false}
+          tagType={TagSource.Classification}
+          onSelectionChange={updatePageTag}
+        />
+
+        <TagsContainerV2
+          newLook
+          displayType={DisplayType.POPOVER}
+          permission={permissions.EditAll || permissions.EditTags}
+          selectedTags={tags}
+          showTaskHandler={false}
+          tagType={TagSource.Glossary}
+          onSelectionChange={updatePageTag}
+        />
+
+        <RelatedDataAssets
+          hasPermission={permissions.EditAll}
+          relatedDataAssets={knowledgePage?.['relatedEntities']}
+          onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
+        />
+
         {knowledgePage?.id && (
-          <Col span={24}>
+          <div>
             {knowledgePage.processingStatus && (
               <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
-                <Typography.Text className="tw:text-gray-500 tw:text-sm">
+                <Typography className="tw:text-quaternary">
                   {t('label.memory-extraction')}
-                </Typography.Text>
+                </Typography>
                 <ArticleStatusBadge
                   error={knowledgePage.processingError}
                   status={knowledgePage.processingStatus}
@@ -143,10 +137,10 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
               </div>
             )}
             <ExtractedMemoriesCard sourceId={knowledgePage.id} />
-          </Col>
+          </div>
         )}
-      </Row>
-    </div>
+      </Card.Content>
+    </Card>
   );
 };
 
