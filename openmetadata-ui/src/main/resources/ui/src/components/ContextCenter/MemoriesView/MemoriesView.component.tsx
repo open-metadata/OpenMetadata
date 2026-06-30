@@ -21,9 +21,8 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Pin01, Trash01 } from '@untitledui/icons';
-import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { Clock, Copy06, Trash01 } from '@untitledui/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -80,44 +79,6 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
   );
 };
 
-interface PinButtonProps {
-  pinned: boolean;
-  animKey: number;
-  isDisabled?: boolean;
-  onClick: () => void;
-}
-
-const PinButton: FC<PinButtonProps> = ({
-  pinned,
-  animKey,
-  isDisabled,
-  onClick,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip title={pinned ? t('label.unpin') : t('label.pin')}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className={classNames('tw:transition-colors tw:duration-150', {
-            'tw:bg-utility-blue-50 tw:text-fg-brand-primary': pinned,
-          })}
-          color="tertiary"
-          icon={
-            <Pin01
-              className={pinned ? 'pin-icon-pinned' : 'pin-icon-unpinned'}
-              key={animKey}
-              size={15}
-            />
-          }
-          isDisabled={isDisabled}
-          onClick={onClick}
-        />
-      </TooltipTrigger>
-    </Tooltip>
-  );
-};
-
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
 const MAX_VISIBLE_LINKED_ENTITIES = 4;
@@ -164,18 +125,12 @@ const MemoryRow: FC<MemoryRowProps> = ({
   canDelete,
   onDeleteMemory,
   onEditMemory,
-  onTogglePin,
   onViewMemory,
-  isPinningMemoryId,
 }) => {
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
-  const pinned = Boolean(memory.pinned);
-  const canPin = canActOnMemory && canEdit && onTogglePin;
-  const isPinning = isPinningMemoryId === memory.id;
   const { t } = useTranslation();
-  const [pinAnimKey, setPinAnimKey] = useState(0);
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -217,31 +172,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
       data-testid={`memory-row-${memory.id}`}
       gap={3}
-      style={
-        pinned
-          ? {
-              background:
-                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-utility-brand-50) 80%, transparent) 0%, transparent 60%)',
-            }
-          : undefined
-      }
       onClick={() => onViewMemory?.(memory)}>
-      {pinned && (
-        <Box
-          align="start"
-          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-fg-brand-primary"
-          justify="end"
-          style={{
-            width: 28,
-            height: 28,
-            background:
-              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-utility-brand-100) 80%, transparent) 0%, transparent 70%)',
-            borderBottomLeftRadius: 12,
-            padding: '5px 7px 0 0',
-          }}>
-          <Pin01 size={11} strokeWidth={2.4} />
-        </Box>
-      )}
       {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
           <ProfilePicture name={getEntityName(memory.owners?.[0])} />
@@ -352,17 +283,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          {canPin && (
-            <PinButton
-              animKey={pinAnimKey}
-              isDisabled={isPinning}
-              pinned={pinned}
-              onClick={() => {
-                setPinAnimKey((prev) => prev + 1);
-                onTogglePin?.(memory);
-              }}
-            />
-          )}
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
             <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>

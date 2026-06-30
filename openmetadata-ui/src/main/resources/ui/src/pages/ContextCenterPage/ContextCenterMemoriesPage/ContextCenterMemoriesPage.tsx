@@ -26,10 +26,9 @@ import {
   ChevronRight,
   Database01,
   FilterFunnel02,
-  Pin01,
   Plus,
   SearchLg,
-  User03,
+  User03
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -66,19 +65,11 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS =
-  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
-
-const FILTER_TABS = [
-  { id: 'all', label: 'label.all' },
-  { id: 'created-by-me', label: 'label.created-by-me' },
-  { id: 'pinned', label: 'label.pinned', icon: Pin01 },
-  // { id: 'needs-review', label: 'label.needs-review' },
-] as const;
+import { MemoryCounts, MemoryFilterOption, SearchOptionSource } from './ContextCenterMemoriesPage.interface';
 
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
@@ -88,53 +79,6 @@ const FILTER_BUTTON_BASE_CLS =
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
 const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
-
-interface MemoryFilterOption {
-  id: string;
-  label: string;
-  displayName?: string | undefined;
-  name?: string | undefined;
-  type?: string | undefined;
-  fullyQualifiedName?: string | undefined;
-}
-
-interface SearchOptionSource {
-  id?: string;
-  name?: string;
-  displayName?: string;
-  fullyQualifiedName?: string;
-  entityType?: string;
-  type?: string;
-}
-
-interface MemoryCounts {
-  totalVisible: number;
-  pinnedVisible: number;
-  createdByMeVisible: number;
-}
-
-const getOptionLabel = (source: SearchOptionSource) =>
-  source.displayName ??
-  source.name ??
-  source.fullyQualifiedName ??
-  source.id ??
-  '';
-
-const getSortConfig = (
-  sortBy: MemorySortBy
-): {
-  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
-  sortOrder: 'asc' | 'desc';
-} => {
-  if (sortBy === 'usage') {
-    return { sortBy: 'usageCount', sortOrder: 'desc' };
-  }
-  if (sortBy === 'updatedBy') {
-    return { sortBy: 'updatedBy', sortOrder: 'asc' };
-  }
-
-  return { sortBy: 'updatedAt', sortOrder: 'desc' };
-};
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
@@ -295,7 +239,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
           return {
             id,
-            label: getOptionLabel(source),
+            label: getEntityName(source),
             displayName: source.displayName,
             name: source.name,
             type: source.entityType ?? source.type,
@@ -526,12 +470,6 @@ const ContextCenterMemoriesPage: FC = () => {
         icon: null,
       },
       {
-        filterKey: 'pinned' as const,
-        label: t('label.pinned'),
-        value: memoryCounts.pinnedVisible,
-        icon: <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />,
-      },
-      {
         filterKey: 'created-by-me' as const,
         label: t('label.created-by-me'),
         value: memoryCounts.createdByMeVisible,
@@ -626,14 +564,7 @@ const ContextCenterMemoriesPage: FC = () => {
             items={FILTER_TABS.map((tab) => ({
               id: tab.id,
               label:
-                'icon' in tab ? (
-                  <Box align="center" className="tw:gap-1.5 tw:leading-4.5">
-                    <tab.icon size={12} strokeWidth={2} />
-                    {t(tab.label)}
-                  </Box>
-                ) : (
-                  <div className="tw:leading-4.5">{t(tab.label)}</div>
-                ),
+               <div className="tw:leading-4.5">{t(tab.label)}</div>,
             }))}
             type="button-brand">
             {(tab) => (
