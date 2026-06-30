@@ -42,7 +42,7 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { fileDefaultFields } from '../../utils/FileDetailsUtils';
 import {
