@@ -10,6 +10,9 @@
 #  limitations under the License.
 """Unit tests for the shared database check helpers."""
 
+import socket
+from unittest.mock import MagicMock
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -23,6 +26,15 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.network import NetworkUnreachableError
+
+
+def _closed_port() -> int:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
 
 
 @pytest.fixture()
@@ -43,9 +55,21 @@ def test_database_step_values_match_schema():
 
 
 def test_ping_succeeds_on_a_live_engine(engine):
+    # the in-memory sqlite URL carries no host:port, so the preflight is skipped.
     evidence = ping(engine)
     assert evidence.summary == "connection established"
     assert evidence.command == "SELECT 1"
+
+
+def test_ping_fails_as_a_network_error_when_the_host_is_unreachable():
+    port = _closed_port()
+    client = MagicMock()
+    client.url.host = "127.0.0.1"
+    client.url.port = port
+    with pytest.raises(CheckError) as exc:
+        ping(client)
+    assert exc.value.evidence.command == f"TCP connect 127.0.0.1:{port}"
+    assert isinstance(exc.value.cause, NetworkUnreachableError)
 
 
 def test_run_sql_reports_the_same_statement_it_ran(engine):
