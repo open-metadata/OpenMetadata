@@ -34,7 +34,7 @@ import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { MUIColorPicker } from '../components/common/ColorPicker';
+import { ColorSwatchPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -405,7 +405,7 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.COLOR_PICKER_MUI: {
       return (
         <Form.Item {...formProps}>
-          <MUIColorPicker
+          <ColorSwatchPicker
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
           />
