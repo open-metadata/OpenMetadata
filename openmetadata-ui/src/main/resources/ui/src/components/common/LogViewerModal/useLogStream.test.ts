@@ -128,7 +128,7 @@ describe('useLogStream', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('sets error and clears loading on a non-2xx response', async () => {
+  it('sets error, clears loading, and marks streamDone on a non-2xx response', async () => {
     mockFetch([], false, 404);
 
     const { result } = renderHook(() =>
@@ -140,7 +140,34 @@ describe('useLogStream', () => {
     );
 
     expect(result.current.loading).toBe(false);
-    expect(result.current.streamDone).toBe(false);
+    expect(result.current.streamDone).toBe(true);
+  });
+
+  it('sets streamDone true on a network error so the live indicator stops', async () => {
+    (global.fetch as jest.Mock).mockRejectedValueOnce(
+      new Error('Network failure')
+    );
+
+    const { result } = renderHook(() =>
+      useLogStream('my.pipeline', 'run-1', true)
+    );
+
+    await waitFor(() => expect(result.current.error).toBe('Network failure'));
+
+    expect(result.current.streamDone).toBe(true);
+    expect(result.current.loading).toBe(false);
+  });
+
+  it('flushes the trailing buffer when the stream closes without a trailing newline', async () => {
+    mockFetch(['data: last line without newline']);
+
+    const { result } = renderHook(() =>
+      useLogStream('my.pipeline', 'run-1', true)
+    );
+
+    await waitFor(() => expect(result.current.streamDone).toBe(true));
+
+    expect(result.current.logs).toBe('last line without newline');
   });
 
   it('aborts the fetch on unmount', async () => {
@@ -156,7 +183,9 @@ describe('useLogStream', () => {
       .signal;
 
     expect(signal.aborted).toBe(false);
+
     unmount();
+
     expect(signal.aborted).toBe(true);
   });
 

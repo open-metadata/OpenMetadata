@@ -324,9 +324,7 @@ describe('LogViewerModal — stream mode', () => {
 
     render(<LogViewerModal {...streamBaseProps} />);
 
-    expect(
-      screen.getByTestId('log-viewer-live-indicator')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('log-viewer-live-indicator')).toBeInTheDocument();
     expect(
       screen.queryByTestId('log-viewer-done-indicator')
     ).not.toBeInTheDocument();
@@ -345,9 +343,7 @@ describe('LogViewerModal — stream mode', () => {
     expect(
       screen.queryByTestId('log-viewer-live-indicator')
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('log-viewer-done-indicator')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('log-viewer-done-indicator')).toBeInTheDocument();
   });
 
   it('forces follow=true while streaming, regardless of the prop', () => {
@@ -430,20 +426,28 @@ describe('LogViewerModal — stream mode', () => {
   it('calls useLogStream with enabled=true when open and mode=stream', () => {
     render(<LogViewerModal {...streamBaseProps} />);
 
-    expect(useLogStream).toHaveBeenCalledWith('service.pipeline', 'run-abc', true);
+    expect(useLogStream).toHaveBeenCalledWith(
+      'service.pipeline',
+      'run-abc',
+      true
+    );
   });
 
   it('calls useLogStream with enabled=false when closed', () => {
     render(<LogViewerModal {...streamBaseProps} open={false} />);
 
-    expect(useLogStream).toHaveBeenCalledWith('service.pipeline', 'run-abc', false);
+    expect(useLogStream).toHaveBeenCalledWith(
+      'service.pipeline',
+      'run-abc',
+      false
+    );
   });
 
   it('static mode callers still work with useLogStream disabled', () => {
     render(
       <LogViewerModal
-        logs="static log"
         open
+        logs="static log"
         title="Static"
         onClose={jest.fn()}
       />

@@ -49,7 +49,9 @@ export const useLogStream = (
     const connect = async () => {
       try {
         const token = await getOidcToken();
-        const url = `${getBasePath()}/api/v1/services/ingestionPipelines/logs/${getEncodedFqn(fqn)}/stream/${runId}`;
+        const url = `${getBasePath()}/api/v1/services/ingestionPipelines/logs/${getEncodedFqn(
+          fqn
+        )}/stream/${runId}`;
 
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` },
@@ -59,6 +61,7 @@ export const useLogStream = (
         if (!response.ok) {
           setError(`Server returned ${response.status}`);
           setLoading(false);
+          setStreamDone(true);
 
           return;
         }
@@ -79,6 +82,8 @@ export const useLogStream = (
           const { done, value } = await reader.read();
 
           if (done) {
+            buffer += decoder.decode();
+
             break;
           }
 
@@ -107,6 +112,14 @@ export const useLogStream = (
           }
         }
 
+        if (buffer.startsWith('data: ')) {
+          const content = buffer.slice(6);
+
+          if (content) {
+            setLogs((prev) => (prev ? `${prev}\n${content}` : content));
+          }
+        }
+
         setStreamDone(true);
         setLoading(false);
       } catch (err) {
@@ -116,6 +129,7 @@ export const useLogStream = (
 
         setError((err as Error).message ?? 'Unknown error');
         setLoading(false);
+        setStreamDone(true);
       }
     };
 

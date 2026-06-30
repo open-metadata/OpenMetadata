@@ -52,7 +52,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const isStream = props.mode === 'stream';
   const fqn = isStream ? props.fqn : '';
   const streamRunId = isStream ? props.runId : '';
-  const seedLogs = isStream ? (props.logs ?? '') : props.logs;
+  const seedLogs = isStream ? props.logs ?? '' : props.logs;
 
   const {
     logs: streamLogs,
@@ -77,9 +77,13 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
 
   const resolvedLoading = isStream ? streamLoading : loading;
   const resolvedFollow = isStream && !streamDone ? true : follow;
-  const resolvedTotalLines = isStream
-    ? resolvedLogs.split('\n').filter(Boolean).length || undefined
-    : totalLines;
+  const resolvedTotalLines = useMemo(
+    () =>
+      isStream
+        ? resolvedLogs.split('\n').filter(Boolean).length || undefined
+        : totalLines,
+    [isStream, resolvedLogs, totalLines]
+  );
 
   const hasFooter = Boolean(
     status || resolvedTotalLines !== undefined || runId || lastRun
@@ -257,7 +261,9 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                   )}
                   {resolvedTotalLines !== undefined && (
                     <span data-testid="log-viewer-total-lines">
-                      {`${resolvedTotalLines} ${t('label.line-plural').toLowerCase()}`}
+                      {`${resolvedTotalLines} ${t(
+                        'label.line-plural'
+                      ).toLowerCase()}`}
                     </span>
                   )}
                 </div>
