@@ -183,3 +183,18 @@ def test_get_tables_caps_probing_at_max_schemas():
         captured = _run_steps_capturing(conn)
     assert isinstance(captured["GetTables"], Exception)
     assert inspector.get_table_names.call_count <= athena_connection.MAX_SCHEMAS_TO_PROBE
+
+
+def test_targeted_schemas_listed_once_across_table_and_view_steps():
+    conn = AthenaConnection(_config())
+    conn._client = MagicMock()
+    inspector = MagicMock()
+    inspector.get_schema_names.return_value = ["db1"]
+    inspector.get_table_names.return_value = ["t1"]
+    inspector.get_view_names.return_value = []
+    with patch(f"{CONNECTION_MODULE}.inspect", return_value=inspector):
+        _run_steps_capturing(conn)
+    # The memoized table + view executors share a single schema listing on this
+    # inspector (1 call), instead of one each (2). GetSchemas uses its own
+    # inspector via execute_inspector_func and does not touch this mock.
+    assert inspector.get_schema_names.call_count == 1

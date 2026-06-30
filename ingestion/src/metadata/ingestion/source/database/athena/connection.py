@@ -97,17 +97,19 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
         """
         Return the schemas the configured schemaFilterPattern would target,
         mirroring what the ingestion run will actually read. With no pattern
-        configured, every schema in the catalog is returned. The list is capped
-        at MAX_SCHEMAS_TO_PROBE so a catalog with very many databases cannot
-        exhaust the test-connection timeout.
+        configured, every schema in the catalog is returned. Collection stops at
+        MAX_SCHEMAS_TO_PROBE so a catalog with very many databases cannot exhaust
+        the test-connection timeout.
         """
-        all_schemas = inspector.get_schema_names() or []
-        targeted = [
-            schema
-            for schema in all_schemas
-            if not filter_by_schema(self.service_connection.schemaFilterPattern, schema)
-        ]
-        return targeted[:MAX_SCHEMAS_TO_PROBE]
+        schema_filter_pattern = self.service_connection.schemaFilterPattern
+        targeted: List[str] = []  # noqa: UP006
+        for schema in inspector.get_schema_names() or []:
+            if filter_by_schema(schema_filter_pattern, schema):
+                continue
+            targeted.append(schema)
+            if len(targeted) >= MAX_SCHEMAS_TO_PROBE:
+                break
+        return targeted
 
     def test_connection(
         self,
@@ -124,15 +126,22 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
         converts the underlying ClientError into an empty list - so an empty
         result is indistinguishable from missing grants. Raising surfaces the
         missing DESCRIBE/SELECT grants instead of passing and then ingesting 0
-        tables.
+        tables. By design this also fails a genuinely empty or view-only catalog
+        (no tables anywhere); the error message calls out that possibility.
         """
         engine = self.client
         catalog_id = self.service_connection.catalogId
         catalog_label = f"catalog '{catalog_id}'" if catalog_id else "the default catalog (AwsDataCatalog)"
+        targeted_schemas_cache: dict = {}
+
+        def get_targeted_schemas() -> List[str]:  # noqa: UP006
+            if "value" not in targeted_schemas_cache:
+                targeted_schemas_cache["value"] = self._get_targeted_schemas(inspect(engine))
+            return targeted_schemas_cache["value"]
 
         def custom_executor_for_table():
+            targeted_schemas = get_targeted_schemas()
             inspector = inspect(engine)
-            targeted_schemas = self._get_targeted_schemas(inspector)
             if not targeted_schemas:
                 raise RuntimeError(
                     f"No schemas were available to read in {catalog_label}. This usually means the "
@@ -147,15 +156,18 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
                     f"{len(targeted_schemas)} targeted schema(s) of {catalog_label}. AWS Lake Formation "
                     "returns an empty list (instead of an error) when grants are missing, so ingestion "
                     "would succeed and ingest 0 tables. Grant Lake Formation DESCRIBE/SELECT to the IAM "
-                    "role on the catalog and its databases/tables, then retry."
+                    "role on the catalog and its databases/tables, then retry. If the catalog is "
+                    "genuinely empty (no tables yet), this failure is expected and can be ignored."
                 )
 
         def custom_executor_for_view():
+            targeted_schemas = get_targeted_schemas()
             inspector = inspect(engine)
-            targeted_schemas = self._get_targeted_schemas(inspector)
             # Views are frequently absent and GetViews is non-mandatory, so we
             # probe for visibility but never raise on an empty result.
-            any(inspector.get_view_names(schema) for schema in targeted_schemas)
+            for schema in targeted_schemas:
+                if inspector.get_view_names(schema):
+                    break
 
         test_fn = {
             "CheckAccess": partial(test_connection_engine_step, engine),
