@@ -23,11 +23,11 @@ interface AgentGroupProps {
   canCreateAgent: boolean;
   descKey: string;
   icon: ReactNode;
+  titleKey: string;
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, index: number) => void;
-  titleKey: string;
 }
 
 const AgentGroup: FC<AgentGroupProps> = ({
@@ -59,7 +59,12 @@ const AgentGroup: FC<AgentGroupProps> = ({
           </div>
         </div>
         {runningCount > 0 && (
-          <span className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:border-[color:var(--blue-200)] tw:bg-[color:var(--blue-50)] tw:px-[11px] tw:py-1 tw:text-xs tw:font-semibold tw:text-[color:var(--blue-700)]">
+          <span
+            className={
+              'tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-full' +
+              ' tw:border tw:border-[color:var(--blue-200)] tw:bg-[color:var(--blue-50)]' +
+              ' tw:px-[11px] tw:py-1 tw:text-xs tw:font-semibold tw:text-[color:var(--blue-700)]'
+            }>
             <span className="tw:h-1.5 tw:w-1.5 tw:animate-pulse tw:rounded-full tw:bg-[color:var(--blue-500)]" />
             {t('label.count-running', { count: runningCount })}
           </span>

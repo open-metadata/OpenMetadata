@@ -19,8 +19,8 @@ import { AgentStatus } from '../AgentsPage.interface';
 import { IcMore } from '../AgentIcons';
 
 interface AgentOverflowMenuProps {
-  onAction: (action: string) => void;
   status: AgentStatus;
+  onAction: (action: string) => void;
 }
 
 interface MenuItem {
@@ -54,7 +54,11 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
     <Dropdown.Root>
       <AriaButton
         aria-label={t('label.more-action-plural')}
-        className="tw:grid tw:h-[34px] tw:w-[34px] tw:cursor-pointer tw:place-items-center tw:rounded-lg tw:border tw:border-[color:var(--border-default)] tw:bg-white tw:text-[color:var(--fg-tertiary)] tw:shadow-xs tw:outline-none">
+        className={
+          'tw:grid tw:h-[34px] tw:w-[34px] tw:cursor-pointer tw:place-items-center' +
+          ' tw:rounded-lg tw:border tw:border-[color:var(--border-default)]' +
+          ' tw:bg-white tw:text-[color:var(--fg-tertiary)] tw:shadow-xs tw:outline-none'
+        }>
         <IcMore />
       </AriaButton>
       <Dropdown.Popover>

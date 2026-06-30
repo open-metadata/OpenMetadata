@@ -19,7 +19,9 @@ import {
   AssetIcon,
   ClockIcon,
   ErrIcon,
+  LogsIcon,
   QueryIcon,
+  RunIcon,
   WarnIcon,
 } from '../AgentIcons';
 import {
@@ -194,6 +196,7 @@ const AgentCard: FC<AgentCardProps> = ({
           {isFailed ? (
             <Button
               color="secondary"
+              iconLeading={WarnIcon}
               size="sm"
               onClick={() => onRunDetails(agent, 0)}>
               {t('label.diagnose')}
@@ -201,6 +204,7 @@ const AgentCard: FC<AgentCardProps> = ({
           ) : (
             <Button
               color="secondary"
+              iconLeading={LogsIcon}
               size="sm"
               onClick={() => onLogs(agent)}>
               {t('label.log-plural')}
@@ -209,6 +213,7 @@ const AgentCard: FC<AgentCardProps> = ({
           {!isRunning && (
             <Button
               color="secondary"
+              iconLeading={RunIcon}
               size="sm"
               onClick={() => onRun(agent)}>
               {t('label.run')}

@@ -18,8 +18,8 @@ import { IcCode, IcSparkle } from '../AgentIcons';
 
 interface AgentsTabBarProps {
   counts: { ai: number; metadata: number };
-  onChange: (tab: AgentTab) => void;
   tab: AgentTab;
+  onChange: (tab: AgentTab) => void;
 }
 
 const AgentsTabBar: FC<AgentsTabBarProps> = ({ counts, onChange, tab }) => {
