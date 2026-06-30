@@ -49,8 +49,10 @@ const mockGetEntityLink = jest.fn(
     serviceCategory?: string,
     serviceFqn?: string
   ) => {
+    // Mirror the real getEntityLink: the logs route is
+    // `/<serviceCategory>/<pipelineFqn>/logs` (pipeline fqn, not the service fqn).
     if (serviceCategory && serviceFqn) {
-      return `/${serviceCategory}/${serviceFqn}/logs`;
+      return `/${serviceCategory}/${fqn}/logs`;
     }
 
     return `/entity/${type}/${fqn}`;
@@ -200,7 +202,7 @@ describe('EntityMarkdownLink', () => {
       expect(link).toBeInTheDocument();
       expect(link.closest('a')).toHaveAttribute(
         'href',
-        '/databaseServices/bigquery-beta/logs'
+        '/databaseServices/bigquery-beta-1.7047fd1d-f7a0-42d3-b689-33ab54faaccc/logs'
       );
     });
 
