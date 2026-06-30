@@ -21,7 +21,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+)
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection as SnowflakeConnectionConfig,
@@ -30,6 +33,7 @@ from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_ERRORS,
     SNOWFLAKE_PORT,
     SnowflakeChecks,
+    _summarize_databases,
 )
 
 
@@ -86,6 +90,17 @@ def test_account_usage_denied_wins_over_generic_object_not_found():
     assert SNOWFLAKE_ERRORS.classify(error).title != "Object not found"
 
 
+def test_account_usage_denial_honors_custom_schema():
+    # The pack is built from the configured accountUsageSchema, so a denial on a
+    # custom schema is still diagnosed as an account_usage gap - not "Object not found".
+    schema = "MYDB.MY_USAGE"
+    checks = SnowflakeChecks(client=MagicMock(), service_connection=_config(accountUsageSchema=schema))
+    error = _SnowflakeError("Object 'MYDB.MY_USAGE.QUERY_HISTORY' does not exist or not authorized.", errno=2003)
+    assert checks.errors.classify(error).title == "Account usage not accessible"
+    # the default pack, keyed on snowflake.account_usage, does not recognize the custom schema
+    assert SNOWFLAKE_ERRORS.classify(error).title == "Object not found"
+
+
 def test_insufficient_privileges_is_classified():
     error = _SnowflakeError("SQL access control error: Insufficient privileges to operate on schema 'PUBLIC'")
     assert SNOWFLAKE_ERRORS.classify(error).title == "Insufficient privileges"
@@ -110,6 +125,12 @@ def test_network_errors_classify_through_including():
     error = NetworkUnreachableError("acc.snowflakecomputing.com:443 is not reachable")
     error.__cause__ = TimeoutError("timed out")
     assert SNOWFLAKE_ERRORS.classify(error).title == "Connection timed out"
+
+
+def test_get_databases_summary_marks_the_row_cap():
+    assert _summarize_databases([object()] * 3) == "3 databases enumerated"
+    capped = _summarize_databases([object()] * DEFAULT_SAMPLE_ROWS)
+    assert capped == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
 
 
 def test_checks_cover_exactly_the_wired_steps():
@@ -161,6 +182,26 @@ def test_check_access_probes_account_host_and_reports_network_failure():
     mock_probe.assert_called_once_with("acc.snowflakecomputing.com", SNOWFLAKE_PORT)
     assert exc.value.cause is probe_error
     assert SNOWFLAKE_ERRORS.classify(exc.value.cause).title == "Connection timed out"
+
+
+def test_check_access_prefers_explicit_connection_argument_host():
+    # A proxy / load balancer / PrivateLink endpoint set as connectionArguments
+    # host is what the driver dials, so the gate probe must target it - not the
+    # synthesized public account host (which may be unreachable for that deployment).
+    checks = SnowflakeChecks(
+        client=MagicMock(),
+        service_connection=_config(account="acc", connectionArguments={"host": "proxy.internal"}),
+    )
+    probe_error = NetworkUnreachableError("proxy.internal:443 is not reachable")
+    with (
+        patch(
+            "metadata.ingestion.source.database.snowflake.connection.tcp_probe",
+            side_effect=probe_error,
+        ) as mock_probe,
+        pytest.raises(CheckError),
+    ):
+        checks.check_access()
+    mock_probe.assert_called_once_with("proxy.internal", SNOWFLAKE_PORT)
 
 
 def test_account_usage_queries_built_lazily_not_at_construction():
