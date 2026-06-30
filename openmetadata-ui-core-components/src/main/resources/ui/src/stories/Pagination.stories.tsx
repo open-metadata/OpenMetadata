@@ -16,6 +16,7 @@ import {
   PaginationButtonGroup,
   PaginationCardDefault,
   PaginationCardMinimal,
+  PaginationCardWithControls,
   PaginationPageDefault,
   PaginationPageMinimalCenter,
 } from '../components/application/pagination/pagination';
@@ -102,6 +103,25 @@ export const ButtonGroup: StoryObj = {
     return (
       <div style={{ width: 600 }}>
         <PaginationButtonGroup page={page} total={10} onPageChange={setPage} />
+      </div>
+    );
+  },
+};
+
+export const CardWithControls: StoryObj = {
+  render: () => {
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    return (
+      <div style={{ width: 632 }}>
+        <PaginationCardWithControls
+          page={page}
+          pageSize={pageSize}
+          total={10}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     );
   },

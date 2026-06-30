@@ -214,6 +214,11 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, [config]);
 
+  const handleResetQueryFilter = useCallback(() => {
+    handleReset();
+    handleTreeUpdate();
+  }, [handleReset, handleTreeUpdate]);
+
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
@@ -346,6 +351,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       onReset: handleReset,
+      onResetQueryFilter: handleResetQueryFilter,
       onResetAllFilters: handleResetAllFilters,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
@@ -361,6 +367,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       handleReset,
+      handleResetQueryFilter,
       handleResetAllFilters,
       changeSearchIndex,
       handleSubmit,

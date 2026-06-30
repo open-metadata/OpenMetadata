@@ -18,6 +18,7 @@ import {
   Card as CoreCard,
   Divider,
   Dropdown,
+  PaginationCardWithControls,
   Toggle,
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
@@ -40,6 +41,11 @@ import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilter
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
 import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
+import {
   entitySortingFields,
   SUPPORTED_EMPTY_FILTER_FIELDS,
   TAG_FQN_KEY,
@@ -48,6 +54,7 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
@@ -91,6 +98,23 @@ const EntitySummaryPanel = withSuspenseFallback(
 );
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
+const EXPLORE_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
+
+const getValidSearchNumber = (value: unknown, fallback: number) => {
+  if (Array.isArray(value)) {
+    return fallback;
+  }
+
+  const parsedValue = Number(value);
+
+  return Number.isInteger(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : fallback;
+};
 
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
@@ -122,6 +146,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
+  const {
+    preferences: { globalPageSize },
+  } = useCurrentUserPreferences();
 
   const firstEntity = searchResults?.hits
     ?.hits[0] as SearchedDataProps['data'][number];
@@ -140,9 +167,27 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => (isString(parsedSearch.search) ? parsedSearch.search : ''),
     [location.search]
   );
+  const totalValue = searchResults?.hits.total.value ?? 0;
+  const currentPageSize = useMemo(
+    () => getValidSearchNumber(parsedSearch.size, globalPageSize),
+    [globalPageSize, parsedSearch.size]
+  );
+  const totalPages = useMemo(
+    () => Math.max(Math.ceil(totalValue / currentPageSize), 1),
+    [currentPageSize, totalValue]
+  );
+  const currentPage = useMemo(
+    () => Math.min(getValidSearchNumber(parsedSearch.page, 1), totalPages),
+    [parsedSearch.page, totalPages]
+  );
 
-  const { toggleModal, sqlQuery, queryFilter, onResetAllFilters } =
-    useAdvanceSearch();
+  const {
+    toggleModal,
+    sqlQuery,
+    queryFilter,
+    onResetQueryFilter,
+    onResetAllFilters,
+  } = useAdvanceSearch();
 
   const [showExportScopeModal, setShowExportScopeModal] = useState(false);
   const [exportScope, setExportScope] = useState<'visible' | 'all'>('all');
@@ -363,6 +408,25 @@ const ExploreV1: React.FC<ExploreProps> = ({
       setEntityDetails(details);
     },
     []
+  );
+
+  const handleExplorePageChange = useCallback(
+    (updatedPage: number) => {
+      onChangePage(updatedPage, currentPageSize);
+    },
+    [currentPageSize, onChangePage]
+  );
+
+  const handleExplorePageSizeChange = useCallback(
+    (updatedPageSize: number) => {
+      const updatedTotalPages = Math.max(
+        Math.ceil(totalValue / updatedPageSize),
+        1
+      );
+
+      onChangePage(Math.min(currentPage, updatedTotalPages), updatedPageSize);
+    },
+    [currentPage, onChangePage, totalValue]
   );
 
   const clearFilters = () => {
@@ -690,6 +754,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
               }
             />
 
+            <Divider className="tw:my-2" orientation="vertical" />
+
             <SortingDropDown
               fieldList={translatedSortingFields}
               handleFieldDropDown={onChangeSortValue}
@@ -733,15 +799,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {(hasActiveFilterQuery || !searchQueryParam) && (
+          {hasActiveFilterQuery && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
-                emptyText={
-                  searchQueryParam
-                    ? undefined
-                    : t('message.browse-estate-query-placeholder')
-                }
                 fields={selectedQuickFilters}
                 hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}
@@ -761,7 +822,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Col span={24}>
               <AppliedFilterText
                 filterText={sqlQuery}
-                onClear={() => onResetAllFilters()}
+                onClear={() => onResetQueryFilter()}
                 onEdit={() => toggleModal(true)}
               />
             </Col>
@@ -786,24 +847,38 @@ const ExploreV1: React.FC<ExploreProps> = ({
           minWidth: 800,
           children: (
             <Box className="tw:h-full" colGap={3}>
-              <Card className="h-full tw:flex-1 explore-main-card">
-                {!loading && !isElasticSearchIssue ? (
-                  <SearchedData
-                    data={searchResults?.hits.hits ?? []}
-                    filter={parsedSearch}
-                    handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-                    isFilterSelected={hasActiveFilters}
-                    isSummaryPanelVisible={showSummaryPanel}
-                    selectedEntityId={entityDetails?.id || ''}
-                    showResultCount={hasActiveFilters}
-                    totalValue={searchResults?.hits.total.value ?? 0}
-                    onPaginationChange={onChangePage}
+              <div className="h-full tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+                <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
+                  {!loading && !isElasticSearchIssue ? (
+                    <SearchedData
+                      data={searchResults?.hits.hits ?? []}
+                      filter={parsedSearch}
+                      handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                      isFilterSelected={hasActiveFilters}
+                      isSummaryPanelVisible={showSummaryPanel}
+                      selectedEntityId={entityDetails?.id || ''}
+                      showResultCount={hasActiveFilters}
+                      totalValue={totalValue}
+                    />
+                  ) : (
+                    <></>
+                  )}
+                  {loading ? <Loader /> : <></>}
+                </Card>
+                {!loading && !isElasticSearchIssue && totalValue > 0 ? (
+                  <PaginationCardWithControls
+                    className="tw:rounded-t-none"
+                    page={currentPage}
+                    pageSize={currentPageSize}
+                    pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+                    total={totalPages}
+                    onPageChange={handleExplorePageChange}
+                    onPageSizeChange={handleExplorePageSizeChange}
                   />
                 ) : (
                   <></>
                 )}
-                {loading ? <Loader /> : <></>}
-              </Card>
+              </div>
 
               {showSummaryPanel && entityDetails && !loading && (
                 <div className="explore-page-right-panel">

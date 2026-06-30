@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { FilterFunnel01, XCircle, XClose } from '@untitledui/icons';
+import { FilterFunnel01, XClose } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -159,14 +159,13 @@ const ExploreQueryFilterChips = ({
 
       {hasActiveQuery && onClearAll && (
         <Button
-          className="tw:ml-auto"
-          color="secondary"
+          className="tw:ml-auto tw:no-underline hover:tw:no-underline tw:hover:*:data-text:no-underline!"
+          color="link-color"
           data-testid="clear-all-chips"
-          iconLeading={XCircle}
           size="xs"
           type="button"
           onClick={onClearAll}>
-          {t('label.clear')}
+          {t('label.clear-entity', { entity: t('label.all') })}
         </Button>
       )}
     </div>

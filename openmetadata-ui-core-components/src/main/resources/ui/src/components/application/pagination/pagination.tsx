@@ -3,9 +3,18 @@ import {
   ButtonGroupItem,
 } from '@/components/base/button-group/button-group';
 import { Button } from '@/components/base/buttons/button';
+import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { cx } from '@/utils/cx';
-import { ArrowLeft, ArrowRight } from '@untitledui/icons';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from '@untitledui/icons';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import { useEffect, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';
 import { Pagination } from './pagination-base';
 
@@ -39,6 +48,42 @@ const PaginationItem = ({
     </Pagination.Item>
   );
 };
+
+const compactTextClassName =
+  'tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary';
+
+const compactControlClassName =
+  'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg';
+
+const compactPageControlClassName =
+  'tw:flex tw:h-6 tw:min-w-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:px-1.5';
+
+const compactIconButtonClassName = cx(
+  compactControlClassName,
+  'tw:border tw:border-primary tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+  'tw:hover:bg-primary_hover tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled'
+);
+
+const compactPageItemClassName = ({ isSelected }: { isSelected: boolean }) =>
+  cx(
+    compactPageControlClassName,
+    'tw:cursor-pointer tw:text-xs tw:leading-[18px] tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+    isSelected
+      ? 'tw:bg-tertiary tw:font-medium tw:text-primary'
+      : 'tw:bg-transparent tw:font-normal tw:text-quaternary tw:hover:bg-primary_hover tw:hover:text-secondary'
+  );
+
+const compactPageInputClassName = cx(
+  compactPageControlClassName,
+  'tw:w-[30px] tw:min-w-[30px] tw:border tw:border-primary tw:bg-primary tw:px-0 tw:text-center tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary tw:shadow-xs tw:outline-none',
+  'tw:focus-visible:outline-none'
+);
+
+const compactRowsPerPageButtonClassName =
+  'tw:h-6 tw:w-[44px] tw:shrink-0 tw:p-0! tw:outline-none! tw:focus-visible:outline-none!';
+
+const compactRowsPerPageItemClassName =
+  'tw:[&>div]:h-8 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>span]:text-sm tw:[&>div>span]:leading-5';
 
 interface MobilePaginationProps {
   /** The current page. */
@@ -347,6 +392,189 @@ export const PaginationCardMinimal = ({
         </div>
       </nav>
     </div>
+  );
+};
+
+interface PaginationCardWithControlsProps extends PaginationProps {
+  /** The selected rows per page value. */
+  pageSize?: number;
+  /** Available rows per page values. */
+  pageSizeOptions?: number[];
+  /** The function to call when rows per page changes. */
+  onPageSizeChange?: (pageSize: number) => void;
+}
+
+export const PaginationCardWithControls = ({
+  page = 1,
+  total = 10,
+  pageSize = 10,
+  pageSizeOptions = [10, 25, 50],
+  className,
+  onPageChange,
+  onPageSizeChange,
+  ...props
+}: PaginationCardWithControlsProps) => {
+  const totalPages = Math.max(total, 1);
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const [pageInput, setPageInput] = useState(String(currentPage));
+
+  useEffect(() => {
+    setPageInput(String(currentPage));
+  }, [currentPage]);
+
+  const getValidPage = (nextPage: number) =>
+    Math.min(Math.max(nextPage, 1), totalPages);
+
+  const handlePageChange = (nextPage: number) => {
+    onPageChange?.(getValidPage(nextPage));
+  };
+
+  const handlePageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+
+    if (value === '') {
+      setPageInput(value);
+
+      return;
+    }
+
+    if (!/^\d+$/.test(value)) {
+      return;
+    }
+
+    const nextPage = Number(value);
+    if (nextPage < 1 || nextPage > totalPages) {
+      return;
+    }
+
+    setPageInput(value);
+  };
+
+  const commitPageInput = () => {
+    if (pageInput === '') {
+      setPageInput(String(currentPage));
+
+      return;
+    }
+
+    const nextPage = getValidPage(Number(pageInput));
+
+    setPageInput(String(nextPage));
+    onPageChange?.(nextPage);
+  };
+
+  const handlePageInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      commitPageInput();
+      event.currentTarget.blur();
+    }
+
+    if (event.key === 'Escape') {
+      setPageInput(String(currentPage));
+      event.currentTarget.blur();
+    }
+  };
+
+  return (
+    <Pagination.Root
+      {...props}
+      className={cx(
+        'tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:bg-primary tw:px-4 tw:py-1 tw:shadow-[0px_-1px_2px_rgba(0,0,0,0.05)]',
+        className
+      )}
+      page={currentPage}
+      total={totalPages}
+      onPageChange={handlePageChange}>
+      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:items-center tw:justify-between tw:gap-6">
+        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+          <span className={compactTextClassName}>Page</span>
+          <input
+            aria-label="Current page"
+            className={compactPageInputClassName}
+            inputMode="numeric"
+            max={totalPages}
+            min={1}
+            type="text"
+            value={pageInput}
+            onBlur={commitPageInput}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputKeyDown}
+          />
+          <span className={compactTextClassName}>of {totalPages}</span>
+        </div>
+
+        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:py-3">
+          <Pagination.PrevTrigger asChild>
+            <button className={compactIconButtonClassName} type="button">
+              <ChevronLeft className="tw:size-3.5" />
+            </button>
+          </Pagination.PrevTrigger>
+
+          <Pagination.Context>
+            {({ pages }) => (
+              <div className="tw:flex tw:items-center tw:gap-1">
+                {pages.map((page, index) =>
+                  page.type === 'page' ? (
+                    <Pagination.Item
+                      className={compactPageItemClassName}
+                      key={index}
+                      {...page}
+                      asChild>
+                      <button type="button">{page.value}</button>
+                    </Pagination.Item>
+                  ) : (
+                    <Pagination.Ellipsis
+                      className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
+                      key={index}>
+                      &#8230;
+                    </Pagination.Ellipsis>
+                  )
+                )}
+              </div>
+            )}
+          </Pagination.Context>
+
+          <Pagination.NextTrigger asChild>
+            <button className={compactIconButtonClassName} type="button">
+              <ChevronRight className="tw:size-3.5" />
+            </button>
+          </Pagination.NextTrigger>
+        </div>
+
+        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+          <span className={compactTextClassName}>Rows per page</span>
+          <Dropdown.Root>
+            <Button
+              noTextPadding
+              className={compactRowsPerPageButtonClassName}
+              color="secondary"
+              size="xs"
+              type="button">
+              <span className="tw:inline-flex tw:w-full tw:items-center tw:justify-center tw:gap-1">
+                <span>{pageSize}</span>
+                <ChevronDown className="tw:size-3 tw:shrink-0" />
+              </span>
+            </Button>
+            <Dropdown.Popover className="tw:w-24" placement="top right">
+              <Dropdown.Menu
+                aria-label="Rows per page"
+                selectedKeys={[String(pageSize)]}
+                onAction={(key) => onPageSizeChange?.(Number(key))}>
+                {pageSizeOptions.map((option) => (
+                  <Dropdown.Item
+                    className={compactRowsPerPageItemClassName}
+                    id={String(option)}
+                    key={option}
+                    label={String(option)}
+                    textValue={String(option)}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </div>
+      </div>
+    </Pagination.Root>
   );
 };
 

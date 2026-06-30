@@ -158,7 +158,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     />
   );
 
-  return { Alert, Box, Button, Card, Divider, Dropdown, Toggle, Typography };
+  const PaginationCardWithControls = () => (
+    <div data-testid="explore-pagination" />
+  );
+
+  return {
+    Alert,
+    Box,
+    Button,
+    Card,
+    Divider,
+    Dropdown,
+    PaginationCardWithControls,
+    Toggle,
+    Typography,
+  };
 });
 
 jest.mock('@untitledui/icons', () => ({
@@ -248,6 +262,7 @@ jest.mock(
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     })),
   })
@@ -440,6 +455,7 @@ describe('ExploreV1', () => {
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     }));
     (searchQuery as jest.Mock).mockResolvedValue({
@@ -461,6 +477,9 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('explore-query-filter-chips')
+    ).not.toBeInTheDocument();
   });
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
@@ -488,6 +507,7 @@ describe('ExploreV1', () => {
       toggleModal: jest.fn(),
       sqlQuery: 'serviceType = BigQuery',
       queryFilter: { query: { bool: { must: [] } } },
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters,
     }));
 
@@ -497,6 +517,25 @@ describe('ExploreV1', () => {
 
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
     expect(onResetAllFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears only advanced search when advanced search filter is cleared', () => {
+    const onResetQueryFilter = jest.fn();
+    const onResetAllFilters = jest.fn();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: 'serviceType = BigQuery',
+      queryFilter: { query: { bool: { must: [] } } },
+      onResetQueryFilter,
+      onResetAllFilters,
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByTestId('advance-search-clear-btn'));
+
+    expect(onResetQueryFilter).toHaveBeenCalledTimes(1);
+    expect(onResetAllFilters).not.toHaveBeenCalled();
   });
 
   it('changes sort order when sort button is clicked', () => {
@@ -638,6 +677,7 @@ describe('ExploreV1', () => {
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     });
 
@@ -659,6 +699,7 @@ describe('ExploreV1', () => {
       queryFilter: {
         query: { bool: { must: [{ term: { 'owner.name': 'alice' } }] } },
       },
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     }));
 
