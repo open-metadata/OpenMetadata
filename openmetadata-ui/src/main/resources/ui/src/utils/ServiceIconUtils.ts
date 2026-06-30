@@ -71,6 +71,7 @@ import looker from '../assets/img/service-icon-looker.webp';
 import metabase from '../assets/img/service-icon-metabase.webp';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.webp';
+import omni from '../assets/img/service-icon-omni.webp';
 import powerbi from '../assets/img/service-icon-power-bi.webp';
 import qliksense from '../assets/img/service-icon-qlik-sense.webp';
 import quicksight from '../assets/img/service-icon-quicksight.webp';
@@ -199,6 +200,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   metabase: metabase,
   powerbi: powerbi,
   sigma: sigma,
+  omni: omni,
   mode: mode,
   domodashboard: domo,
   quicksight: quicksight,

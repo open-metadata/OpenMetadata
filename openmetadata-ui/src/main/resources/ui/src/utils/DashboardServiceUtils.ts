@@ -54,6 +54,10 @@ const dashboardSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json'
     ),
+  [DashboardServiceType.Omni]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/dashboard/omniConnection.json'
+    ),
   [DashboardServiceType.Tableau]: () =>
     import(
       '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json'
