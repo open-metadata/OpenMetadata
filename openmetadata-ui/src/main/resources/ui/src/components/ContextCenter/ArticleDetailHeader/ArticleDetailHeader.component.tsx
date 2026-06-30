@@ -298,10 +298,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const cardStyle = contextCenterClassBase.getCardStyle();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      items={breadcrumbItems}
-      showHome={!isEmbedded}
-    />
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   if (!knowledgePage && !tabs) {

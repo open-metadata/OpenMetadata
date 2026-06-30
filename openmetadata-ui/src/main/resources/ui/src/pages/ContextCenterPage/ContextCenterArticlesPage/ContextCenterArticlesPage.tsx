@@ -267,9 +267,7 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[
-          { label: t('label.article-plural') },
-        ]}
+        breadcrumbs={[{ label: t('label.article-plural') }]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {
           entity: t('label.article-plural'),

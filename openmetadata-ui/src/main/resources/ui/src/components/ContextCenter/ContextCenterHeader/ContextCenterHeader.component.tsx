@@ -71,10 +71,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      items={resolvedBreadcrumbs}
-      showHome={!isEmbedded}
-    />
+    <HeaderBreadcrumb items={resolvedBreadcrumbs} showHome={!isEmbedded} />
   );
 
   return (

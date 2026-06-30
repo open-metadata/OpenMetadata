@@ -59,10 +59,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   const cardStyle = contextCenterClassBase.getCardStyle();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      items={breadcrumbItems}
-      showHome={!isEmbedded}
-    />
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   return (
