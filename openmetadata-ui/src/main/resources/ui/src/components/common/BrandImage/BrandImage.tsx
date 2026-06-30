@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 
@@ -34,6 +35,7 @@ const BrandImage: FC<BrandImageProps> = ({
   isMonoGram = false,
 }) => {
   const { applicationConfig } = useApplicationStore();
+  const { t } = useTranslation();
 
   const { defaultLogo, logoSource } = useMemo(() => {
     const { customLogoUrlPath = '', customMonogramUrlPath = '' } =
@@ -51,7 +53,7 @@ const BrandImage: FC<BrandImageProps> = ({
 
   return (
     <img
-      alt={alt ?? 'OpenMetadata Logo'}
+      alt={alt ?? t('label.brand-name-logo')}
       className={className}
       data-testid={dataTestId ?? 'brand-logo-image'}
       height={height}

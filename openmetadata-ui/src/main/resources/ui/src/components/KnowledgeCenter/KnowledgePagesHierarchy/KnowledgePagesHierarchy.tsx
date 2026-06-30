@@ -10,25 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Skeleton, Tree, Typography } from 'antd';
-import { DataNode } from 'antd/es/tree';
-import { AntTreeNodeProps, DirectoryTreeProps, TreeProps } from 'antd/lib/tree';
-import { AxiosError } from 'axios';
-import { ReactComponent as KnowledgeCenterIcon } from '../../../assets/svg/ic-knowledge-page.svg';
-import { CREATE_PAGE_HASH } from '../../../constants/constants';
+import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import {
-  CreateKnowledgePage,
-  KnowledgePage,
-  KnowledgePagesHierarchyRef,
-  MovedEntity,
-  PageHierarchy,
-  PageType,
-  RecentlyViewedQuickLinks,
-} from '../../../interface/knowledge-center.interface';
-
+  Box,
+  Button,
+  ButtonUtility,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { File06, Trash01 } from '@untitledui/icons';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
   forwardRef,
-  Key,
   ReactNode,
   UIEventHandler,
   useCallback,
@@ -39,29 +37,17 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import {
-  getPageHierarchyFromES,
-  patchKnowledgePage,
-  postKnowledgePage,
-} from '../../../rest/knowledgeCenterAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
-
-import classNames from 'classnames';
-import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { compare } from 'fast-json-patch';
-import { isUndefined, uniq } from 'lodash';
+import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DragIcon } from '../../../assets/svg/drag.svg';
-import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
-import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
+import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
+import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { CREATE_PAGE_HASH } from '../../../constants/constants';
 import {
-  KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH,
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
   KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET,
@@ -70,41 +56,52 @@ import {
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import {
+  KnowledgePage,
+  KnowledgePagesHierarchyRef,
+  MovedEntity,
+  PageHierarchy,
+  PageType,
+  RecentlyViewedQuickLinks,
+} from '../../../interface/knowledge-center.interface';
+import {
+  deleteKnowledgePage,
+  getListKnowledgePages,
+  getPageHierarchyFromES,
+  patchKnowledgePage,
+} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import {
-  convertToTreeData,
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
   findPageInTreeData,
   getExpandedNodeKeys,
+  getKnowledgePageName,
   getPageAllChildren,
   getUpdatePageHierarchy,
   getUpdatePageHierarchyForDelete,
   hierarchyPaginationInitialState,
   hierarchyPaginationReducer,
   integrateNodesIntoHierarchy,
-  updateKnowledgeCenterRecentViewed,
   updateTreeData,
-} from '../../../utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import './knowledge-pages-hierarchy.less';
-const { DirectoryTree } = Tree;
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
   isPageHeaderAvailable: boolean;
-  activeKey?: DirectoryTreeProps['activeKey'];
+  activeKey?: string;
   activePage?: KnowledgePage;
   homeRoute?: string;
   onPageDelete?: (id: string | string[]) => void;
-  onLoading?: (isLoading: boolean) => void;
+  onQuickLinkClick?: (fqn: string) => void;
 }
 
 const KnowledgePagesHierarchy = forwardRef<
@@ -117,7 +114,7 @@ const KnowledgePagesHierarchy = forwardRef<
       activePage,
       homeRoute,
       onPageDelete,
-      onLoading,
+      onQuickLinkClick,
       permissions,
       isPageHeaderAvailable,
     },
@@ -126,22 +123,24 @@ const KnowledgePagesHierarchy = forwardRef<
     const { fqn } = useRequiredParams<{ fqn: string }>();
     const navigate = useNavigate();
     const { hash } = useCustomLocation();
-    const { currentUser } = useApplicationStore();
     const { t } = useTranslation();
     const [knowledgePageHierarchy, setKnowledgePageHierarchy] = useState<
       PageHierarchy[]
     >([]);
     const { getResourceLimit } = useLimitStore();
 
-    // Cache to track if initial hierarchy has been loaded
     const [isHierarchyInitialized, setIsHierarchyInitialized] =
       useState<boolean>(false);
-    // Track the last fqn for which hierarchy was fetched
     const lastFetchedFqnRef = useRef<string | null>(null);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
+    const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+    const [isUserExpandedAll, setIsUserExpandedAll] = useState(false);
     const [deletePage, setDeletePage] = useState<PageHierarchy>();
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isExpandingAll, setIsExpandingAll] = useState(false);
+    const [knowledgePagesTotalCount, setKnowledgePagesTotalCount] =
+      useState<number>(0);
 
     const [movedPage, setMovedPage] = useState<MovedEntity>();
     const [isMovingPage, setIsMovingPage] = useState<boolean>(false);
@@ -163,9 +162,95 @@ const KnowledgePagesHierarchy = forwardRef<
       [isPageHeaderAvailable]
     );
 
-    const treeData: DataNode[] = useMemo(() => {
-      return convertToTreeData(activePage, knowledgePageHierarchy);
-    }, [knowledgePageHierarchy, activePage]);
+    const handleExpandAll = useCallback(async () => {
+      setIsExpandingAll(true);
+      try {
+        let traversalHierarchy = knowledgePageHierarchy;
+        let nodesPendingChildren: PageHierarchy[] = [];
+        const fetchedChildrenByParentFqn = new Map<string, PageHierarchy[]>();
+
+        const collectUnloadedExpandableNodes = (
+          nodes: PageHierarchy[]
+        ): PageHierarchy[] => {
+          const unloaded: PageHierarchy[] = [];
+          nodes.forEach((n) => {
+            if (n.childrenCount > 0 && !n.children) {
+              unloaded.push(n);
+            } else if (n.children) {
+              unloaded.push(...collectUnloadedExpandableNodes(n.children));
+            }
+          });
+
+          return unloaded;
+        };
+
+        nodesPendingChildren =
+          collectUnloadedExpandableNodes(traversalHierarchy);
+
+        while (nodesPendingChildren.length > 0) {
+          const childrenResults = await Promise.all(
+            nodesPendingChildren.map((node) =>
+              getPageHierarchyFromES(node.fullyQualifiedName)
+            )
+          );
+
+          nodesPendingChildren.forEach((node, index) => {
+            fetchedChildrenByParentFqn.set(
+              node.fullyQualifiedName,
+              childrenResults[index].data
+            );
+            traversalHierarchy = updateTreeData(
+              traversalHierarchy,
+              childrenResults[index].data,
+              node.fullyQualifiedName
+            );
+          });
+
+          nodesPendingChildren =
+            collectUnloadedExpandableNodes(traversalHierarchy);
+        }
+
+        setKnowledgePageHierarchy((prev) => {
+          let merged = prev;
+          fetchedChildrenByParentFqn.forEach((children, parentFqn) => {
+            merged = updateTreeData(merged, children, parentFqn);
+          });
+
+          return merged;
+        });
+
+        const ids: string[] = [];
+        const collect = (nodes: PageHierarchy[]) => {
+          nodes.forEach((n) => {
+            if (n.childrenCount > 0 || !isEmpty(n.children)) {
+              ids.push(n.fullyQualifiedName);
+              if (n.children) {
+                collect(n.children);
+              }
+            }
+          });
+        };
+        collect(traversalHierarchy);
+
+        setExpandedKeys((prev) => uniq([...prev, ...ids]));
+        setIsUserExpandedAll(true);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsExpandingAll(false);
+      }
+    }, [knowledgePageHierarchy]);
+
+    const fetchKnowledgePagesTotalCount = useCallback(async () => {
+      try {
+        const { paging } = await getListKnowledgePages({
+          limit: 0,
+        });
+        setKnowledgePagesTotalCount(paging.total);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    }, []);
 
     const fetchKnowledgePageHierarchy = async (
       setLoading = true,
@@ -174,10 +259,8 @@ const KnowledgePagesHierarchy = forwardRef<
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
     ) => {
-      const isCreateHash = Boolean(hash && hash.slice(1) === CREATE_PAGE_HASH);
+      const isCreateHash = hash?.slice(1) === CREATE_PAGE_HASH;
 
-      // Skip fetching if hierarchy is already initialized and not forcing refresh
-      // and not doing pagination loading and the fqn hasn't changed
       if (
         !forceRefresh &&
         !isPaginationLoading &&
@@ -194,10 +277,7 @@ const KnowledgePagesHierarchy = forwardRef<
       }
 
       if (isPaginationLoading) {
-        setPaginationState({
-          type: 'SET_PAGINATION_LOADING',
-          value: true,
-        });
+        setPaginationState({ type: 'SET_PAGINATION_LOADING', value: true });
       }
       try {
         const { data, paging } = await getPageHierarchyFromES(
@@ -208,52 +288,36 @@ const KnowledgePagesHierarchy = forwardRef<
           fqn
         );
 
-        // Update the last fetched fqn
         lastFetchedFqnRef.current = fqn;
 
-        // set the pagination state
-        setPaginationState({
-          type: 'SET_PAGING_VALUE',
-          value: paging,
-        });
+        setPaginationState({ type: 'SET_PAGING_VALUE', value: paging });
 
-        // if the data is empty or the total count is equal to the current hierarchy
         if (
           data.length === 0 ||
           knowledgePageHierarchy.length === paging.total
         ) {
-          setPaginationState({
-            type: 'SET_IS_PAGINATION_END',
-            value: true,
-          });
+          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
         }
 
         if (isCreateHash || forceRefresh) {
           setKnowledgePageHierarchy(data);
         } else {
-          // Check if we have an activeFqn that represents a nested child node
           const fqnParts = fqn ? Fqn.split(fqn) : [];
           const isNestedNode = fqnParts.length > 1;
 
-          // If it's a nested node, we need to ensure all parent nodes exist in the hierarchy
           if (isNestedNode && data.length > 0) {
-            // Extract all parent FQNs from the activeFqn
             const parentFQN = extractKnowledgePageParentFQN(fqn);
-            setKnowledgePageHierarchy((prevHierarchy) => {
-              return integrateNodesIntoHierarchy(prevHierarchy, data);
-            });
-
-            // Ensure all parent nodes are expanded
-            setExpandedKeys((prevKeys) => uniq([...prevKeys, ...parentFQN]));
+            setKnowledgePageHierarchy((prev) =>
+              integrateNodesIntoHierarchy(prev, data)
+            );
+            setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
           } else {
-            // Standard merging logic for root-level items
-            setKnowledgePageHierarchy((prevHierarchy) => {
-              const mergedArray = prevHierarchy.concat(data);
-              const updatedHierarchy = Array.from(
-                new Map(mergedArray.map((item) => [item.id, item])).values()
-              );
+            setKnowledgePageHierarchy((prev) => {
+              const merged = prev.concat(data);
 
-              return updatedHierarchy;
+              return Array.from(
+                new Map(merged.map((item) => [item.id, item])).values()
+              );
             });
           }
         }
@@ -262,30 +326,23 @@ const KnowledgePagesHierarchy = forwardRef<
         showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
-        setPaginationState({
-          type: 'SET_PAGINATION_LOADING',
-          value: false,
-        });
+        setPaginationState({ type: 'SET_PAGINATION_LOADING', value: false });
       }
     };
 
-    const onLoadData = useCallback(
-      async (node: DataNode) => {
+    const fetchKnowledgePageHierarchyRef = useRef(fetchKnowledgePageHierarchy);
+    fetchKnowledgePageHierarchyRef.current = fetchKnowledgePageHierarchy;
+
+    const loadNodeChildren = useCallback(
+      async (nodeKey: string) => {
+        const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
+        if (!node || node.children) {
+          return;
+        }
         try {
-          if (node.children) {
-            return;
-          }
-
-          const { data: children } = await getPageHierarchyFromES(
-            node.key as string
-          );
-
+          const { data: children } = await getPageHierarchyFromES(nodeKey);
           setKnowledgePageHierarchy(
-            updateTreeData(
-              knowledgePageHierarchy,
-              children,
-              node.key.toString()
-            )
+            updateTreeData(knowledgePageHierarchy, children, nodeKey)
           );
         } catch {
           // do nothing
@@ -295,18 +352,11 @@ const KnowledgePagesHierarchy = forwardRef<
     );
 
     const handleDeletePage = useCallback(
-      (pageNode: DataNode) => {
-        // find the page in the tree data
-        const page = findPageInTreeData(
-          knowledgePageHierarchy,
-          pageNode.key as string
-        );
-        // if page is not found, return
-        if (!page) {
-          return;
+      (pageKey: string) => {
+        const page = findPageInTreeData(knowledgePageHierarchy, pageKey);
+        if (page) {
+          setDeletePage(page);
         }
-        // set the page to be deleted
-        setDeletePage(page);
       },
       [knowledgePageHierarchy]
     );
@@ -326,33 +376,28 @@ const KnowledgePagesHierarchy = forwardRef<
         const deletedPages = [
           deletedPageData.id,
           ...getPageAllChildren(deletedPageHierarchy?.children ?? []).map(
-            (children) => children.id
+            (c) => c.id
           ),
         ];
 
-        // call the callback if provided
         onPageDelete?.(deletedPages);
 
-        // Update current count when Create / Delete operation performed
         await getResourceLimit('knowledgeCenter', true, true);
+        await fetchKnowledgePagesTotalCount();
 
-        // update the recent views
         updateKnowledgeCenterRecentViewed(
           recentlyViewed.filter(
             (page) => !deletedPages.includes(page.id)
           ) as unknown as RecentlyViewedQuickLinks['data']
         );
 
-        // refresh the hierarchy
-        deletedPageData &&
-          setKnowledgePageHierarchy((prevHierarchy) =>
-            getUpdatePageHierarchyForDelete(
-              deletedPageData.fullyQualifiedName,
-              prevHierarchy
-            )
-          );
+        setKnowledgePageHierarchy((prev) =>
+          getUpdatePageHierarchyForDelete(
+            deletedPageData.fullyQualifiedName,
+            prev
+          )
+        );
 
-        // if the deleted page is the active page or parent of active page, navigate home
         if (
           activeKey === deletedPageData.fullyQualifiedName ||
           isActivePageParent
@@ -360,151 +405,26 @@ const KnowledgePagesHierarchy = forwardRef<
           navigate(homeRoute ?? contextCenterClassBase.getArticlesListPath());
         }
       },
-      [knowledgePageHierarchy, onPageDelete, activeKey, activePage]
-    );
-
-    const handleAddPage = useCallback(
-      async (pageNode: DataNode) => {
-        // find the page in the tree data
-        const page = findPageInTreeData(
-          knowledgePageHierarchy,
-          pageNode.key as string
-        );
-
-        // if page is not found, return
-        if (!page) {
-          return;
-        }
-
-        try {
-          onLoading?.(true);
-          const instanceName = `${PageType.ARTICLE}_${cryptoRandomString({
-            length: KNOWLEDGE_CENTER_INSTANCE_NAME_LENGTH,
-            type: 'alphanumeric',
-          })}`;
-
-          // create a new page
-          const data: CreateKnowledgePage = {
-            name: instanceName,
-            displayName: '',
-            description: '',
-            pageType: PageType.ARTICLE,
-            page: {
-              publicationDate: new Date(),
-              relatedArticles: [],
-            },
-            owners: [
-              {
-                type: 'user',
-                id: currentUser?.id ?? '',
-              },
-            ],
-            parent: { id: page.id, type: 'page' },
-          };
-          const response = await postKnowledgePage(data);
-
-          // Convert the created page response to PageHierarchy format
-          const newPageHierarchy: PageHierarchy = {
-            id: response.id,
-            name: response.name,
-            fullyQualifiedName: response.fullyQualifiedName,
-            displayName: response.displayName,
-            description: response.description,
-            pageType: response.pageType,
-            childrenCount: 0,
-          };
-
-          // Add the newly created page to the hierarchy tree immediately
-          setKnowledgePageHierarchy((prevHierarchy) =>
-            updateTreeData(
-              prevHierarchy,
-              [newPageHierarchy],
-              page.fullyQualifiedName
-            )
-          );
-
-          // Ensure parent node is expanded to show the new child
-          setExpandedKeys((prevKeys) =>
-            uniq([...prevKeys, page.fullyQualifiedName])
-          );
-
-          // Update resource limit count
-          await getResourceLimit('knowledgeCenter', true, true);
-
-          // push to the newly created page
-          navigate({
-            pathname: contextCenterClassBase.getArticlePath(
-              response.fullyQualifiedName
-            ),
-          });
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          onLoading?.(false);
-        }
-      },
-      [currentUser, knowledgePageHierarchy, getResourceLimit]
-    );
-
-    const titleRender = useCallback(
-      (node: DataNode) => {
-        const nodeKey = node.key as string;
-
-        return (
-          <div
-            data-isactive={activeKey === node.key}
-            data-testid={`page-node-${node.title}`}>
-            <Link
-              className="anchor-no-underline"
-              to={contextCenterClassBase.getArticlePath(nodeKey)}>
-              <div
-                className={classNames(
-                  'knowledge-hierarchy-page-title-wrapper',
-                  {
-                    'leaf-node-title': node.isLeaf,
-                  }
-                )}>
-                <span className="node-page-icon">
-                  <KnowledgeCenterIcon data-testid="page-icon" />
-                </span>
-                <Typography.Text
-                  ellipsis
-                  className="text-base-color knowledge-hierarchy-page-title">
-                  {node.title as ReactNode}
-                </Typography.Text>
-              </div>
-            </Link>
-            <div
-              className="d-flex knowledge-hierarchy-action-btn"
-              data-testid={`${node.title}-page-node-action-buttons`}>
-              <Button
-                className="knowledge-hierarchy-action-btn-item"
-                data-testid={`${node.title}-delete-page-btn`}
-                disabled={!permissions.Delete}
-                title="Delete Page"
-                type="text"
-                onClick={() => handleDeletePage(node)}>
-                <DeleteIcon
-                  className="text-grey-muted"
-                  style={{ verticalAlign: 'middle' }}
-                  width={12}
-                />
-              </Button>
-            </div>
-          </div>
-        );
-      },
-      [handleDeletePage, handleAddPage, activeKey]
+      [
+        knowledgePageHierarchy,
+        onPageDelete,
+        activeKey,
+        activePage,
+        fetchKnowledgePagesTotalCount,
+      ]
     );
 
     const handleMovePage = async (movedPageData: MovedEntity) => {
       try {
         setIsMovingPage(true);
         const { sourceNode, sourceNodeParent, targetNode } = movedPageData;
+        const newExpandedKeys: string[] = [];
 
-        const newExpandedKeys = [];
+        const oldSourceFQN = sourceNode.fullyQualifiedName;
+        const newSourceFQN = targetNode
+          ? Fqn.build(targetNode.fullyQualifiedName, sourceNode.name)
+          : Fqn.build(sourceNode.name);
 
-        // step1: update the source node parent
         const updatedSourceNodeForPatch = {
           ...sourceNode,
           parent: targetNode
@@ -518,57 +438,20 @@ const KnowledgePagesHierarchy = forwardRef<
             : undefined,
         };
 
-        const sourceNodePatch = compare(sourceNode, updatedSourceNodeForPatch);
+        await patchKnowledgePage(
+          sourceNode.id,
+          compare(sourceNode, updatedSourceNodeForPatch)
+        );
 
-        await patchKnowledgePage(sourceNode.id, sourceNodePatch);
+        setExpandedKeys((prev) =>
+          prev.map((key) =>
+            key === oldSourceFQN || key.startsWith(`${oldSourceFQN}.`)
+              ? newSourceFQN + key.slice(oldSourceFQN.length)
+              : key
+          )
+        );
 
-        if (!isUndefined(targetNode)) {
-          // step2: fetch updated children for the target node
-          const targetNodeChildren = await getPageHierarchyFromES(
-            targetNode.fullyQualifiedName
-          );
-
-          setKnowledgePageHierarchy((prevHierarchy) => {
-            return getUpdatePageHierarchy(
-              prevHierarchy,
-              {
-                ...targetNode,
-                children: targetNodeChildren.data,
-              },
-              true
-            );
-          });
-
-          newExpandedKeys.push(targetNode.fullyQualifiedName);
-
-          // step3: fetch updated children for the source node parent
-          if (sourceNodeParent) {
-            const sourceNodeParentChildren = await getPageHierarchyFromES(
-              sourceNodeParent.fullyQualifiedName
-            );
-
-            setKnowledgePageHierarchy((prevHierarchy) => {
-              return getUpdatePageHierarchy(
-                prevHierarchy,
-                {
-                  ...sourceNodeParent,
-                  children: sourceNodeParentChildren.data,
-                },
-                true
-              );
-            });
-
-            newExpandedKeys.push(sourceNodeParent.fullyQualifiedName);
-          } else {
-            // if the source node parent is not found, remove the source node from the hierarchy
-            setKnowledgePageHierarchy((prevHierarchy) => {
-              return prevHierarchy.filter((page) => page.id !== sourceNode.id);
-            });
-          }
-
-          // step4: update expanded keys
-          setExpandedKeys(newExpandedKeys);
-        } else {
+        if (isUndefined(targetNode)) {
           fetchKnowledgePageHierarchy(
             true,
             false,
@@ -576,7 +459,45 @@ const KnowledgePagesHierarchy = forwardRef<
             KNOWLEDGE_CENTER_PAGINATION_LIMIT,
             true
           );
-          setExpandedKeys([]);
+        } else {
+          const targetNodeChildren = await getPageHierarchyFromES(
+            targetNode.fullyQualifiedName
+          );
+
+          setKnowledgePageHierarchy((prev) =>
+            getUpdatePageHierarchy(
+              prev,
+              { ...targetNode, children: targetNodeChildren.data },
+              true
+            )
+          );
+
+          newExpandedKeys.push(targetNode.fullyQualifiedName);
+
+          if (sourceNodeParent) {
+            const sourceNodeParentChildren = await getPageHierarchyFromES(
+              sourceNodeParent.fullyQualifiedName
+            );
+
+            setKnowledgePageHierarchy((prev) =>
+              getUpdatePageHierarchy(
+                prev,
+                {
+                  ...sourceNodeParent,
+                  children: sourceNodeParentChildren.data,
+                },
+                true
+              )
+            );
+
+            newExpandedKeys.push(sourceNodeParent.fullyQualifiedName);
+          } else {
+            setKnowledgePageHierarchy((prev) =>
+              prev.filter((page) => page.id !== sourceNode.id)
+            );
+          }
+
+          setExpandedKeys((prev) => uniq([...prev, ...newExpandedKeys]));
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -586,52 +507,47 @@ const KnowledgePagesHierarchy = forwardRef<
       }
     };
 
-    const handleDragAndDrop: TreeProps['onDrop'] = async (info) => {
-      const isDropPositionParentLevel = info.dropPosition === -1;
-      const sources = info.dragNode;
-      const target = info.node;
+    const handleItemMove = useCallback(
+      ({ sourceKey, targetKey, dropPosition }: TreeItemMoveEvent) => {
+        if (!permissions.EditAll) {
+          return;
+        }
 
-      // if the source and target are same, return
-      if (sources.key === target.key) {
-        return;
-      }
+        if (sourceKey === targetKey) {
+          return;
+        }
 
-      const targetNode = findPageInTreeData(
-        knowledgePageHierarchy,
-        target.key.toString()
-      );
+        const isDropOnNode = dropPosition === 'on';
+        const targetNode = isDropOnNode
+          ? findPageInTreeData(knowledgePageHierarchy, targetKey as string)
+          : undefined;
 
-      if (!targetNode) {
-        return;
-      }
+        if (isDropOnNode && !targetNode) {
+          return;
+        }
 
-      const { page: sourceNode, parent: sourceNodeParent } =
-        findPageAndParentInTreeData(
-          knowledgePageHierarchy,
-          sources.key.toString()
-        );
+        const { page: sourceNode, parent: sourceNodeParent } =
+          findPageAndParentInTreeData(
+            knowledgePageHierarchy,
+            sourceKey as string
+          );
 
-      if (!sourceNode) {
-        return;
-      }
+        if (!sourceNode) {
+          return;
+        }
 
-      // if the source node is already a direct child of the target node, return
-      const isChild = (targetNode.children ?? []).find(
-        (child) => child.id === sourceNode.id
-      );
+        const isAlreadyChild =
+          targetNode &&
+          (targetNode.children ?? []).some((c) => c.id === sourceNode.id);
 
-      if (isChild && !isDropPositionParentLevel) {
-        return;
-      }
+        if (isAlreadyChild) {
+          return;
+        }
 
-      const movedPageData = {
-        sourceNode,
-        sourceNodeParent,
-        targetNode: isDropPositionParentLevel ? undefined : targetNode,
-      };
-
-      setMovedPage(movedPageData);
-    };
+        setMovedPage({ sourceNode, sourceNodeParent, targetNode });
+      },
+      [knowledgePageHierarchy, permissions.EditAll]
+    );
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
       (e) => {
@@ -639,19 +555,16 @@ const KnowledgePagesHierarchy = forwardRef<
           e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
         const windowHeight =
           window.innerHeight - KNOWLEDGE_CENTER_TREE_HEIGHT_OFFSET;
-
-        // if the scroll height is within the range of window height, fetch the next page,
-        // since on bigger screen there can be a chance the height is not exactly window height
-
         const finalScrollHeight =
-          scrollHeight + (isPageHeaderAvailable ? 70 : 0); // to maintain the height of panel after header added
+          scrollHeight + (isPageHeaderAvailable ? 70 : 0);
+
         if (
           finalScrollHeight >= windowHeight - 1 &&
           finalScrollHeight <= windowHeight + 1 &&
           !paginationState.isPaginationEnd &&
           !paginationState.paginationLoading
         ) {
-          fetchKnowledgePageHierarchy(
+          fetchKnowledgePageHierarchyRef.current(
             false,
             true,
             paginationState.paging.offset +
@@ -662,36 +575,134 @@ const KnowledgePagesHierarchy = forwardRef<
       [isPageHeaderAvailable, paginationState]
     );
 
+    const renderNode = useCallback(
+      (node: PageHierarchy): ReactNode => {
+        const isActive = activeKey === node.fullyQualifiedName;
+        const displayName = getKnowledgePageName(node);
+        const isQuickLink = node.pageType === PageType.QUICK_LINK;
+
+        const hasChildren = node.childrenCount > 0 || !isEmpty(node.children);
+
+        const nodeContent = (
+          <Box
+            align="center"
+            className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
+            gap={2}>
+            {isQuickLink ? (
+              <QuickLinkIcon
+                className="tw:shrink-0 tw:text-quaternary"
+                data-testid="quick-link-icon"
+                height={14}
+                width={14}
+              />
+            ) : (
+              <File06
+                className="tw:shrink-0 tw:text-quaternary"
+                data-testid="page-icon"
+                height={13}
+                width={13}
+              />
+            )}
+            <Typography
+              ellipsis
+              className="knowledge-hierarchy-page-title"
+              size="text-sm"
+              weight={isActive ? 'medium' : 'regular'}>
+              {displayName}
+            </Typography>
+          </Box>
+        );
+
+        const deleteButton = permissions.Delete ? (
+          <ButtonUtility
+            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
+            color="tertiary"
+            data-testid={`${displayName}-delete-page-btn`}
+            icon={Trash01}
+            size="xs"
+            tooltip={t('label.delete')}
+            onClick={(e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleDeletePage(node.fullyQualifiedName);
+            }}
+          />
+        ) : null;
+
+        return (
+          <Tree.Item
+            id={node.fullyQualifiedName}
+            key={node.fullyQualifiedName}
+            textValue={displayName}>
+            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
+              {() =>
+                isQuickLink && onQuickLinkClick ? (
+                  <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
+                    <button
+                      className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+                      data-isactive={isActive}
+                      data-testid={`page-node-${displayName}`}
+                      onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
+                      {nodeContent}
+                    </button>
+                    {deleteButton}
+                  </div>
+                ) : (
+                  <Link
+                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
+                    data-isactive={isActive}
+                    data-testid={`page-node-${displayName}`}
+                    to={contextCenterClassBase.getArticlePath(
+                      node.fullyQualifiedName
+                    )}>
+                    {nodeContent}
+                    {deleteButton}
+                  </Link>
+                )
+              }
+            </Tree.ItemContent>
+            {node.children?.map(renderNode)}
+          </Tree.Item>
+        );
+      },
+      [activeKey, onQuickLinkClick, permissions.Delete, handleDeletePage, t]
+    );
+
     useImperativeHandle(ref, () => ({
-      fetchKnowledgePageHierarchy: (forceRefresh = false) =>
-        fetchKnowledgePageHierarchy(
+      fetchKnowledgePageHierarchy: async (forceRefresh = false) => {
+        await fetchKnowledgePageHierarchy(
           true,
           false,
           0,
           KNOWLEDGE_CENTER_PAGINATION_LIMIT,
           forceRefresh
-        ),
+        );
+        if (forceRefresh) {
+          await fetchKnowledgePagesTotalCount();
+        }
+      },
     }));
 
     useEffect(() => {
-      // Only fetch on initial mount or when hash changes to CREATE_PAGE_HASH
-      const isCreateHash = Boolean(hash && hash.slice(1) === CREATE_PAGE_HASH);
+      const isCreateHash = hash?.slice(1) === CREATE_PAGE_HASH;
 
       if (!isHierarchyInitialized || isCreateHash) {
         fetchKnowledgePageHierarchy();
       } else if (fqn !== lastFetchedFqnRef.current) {
-        // FQN changed but we already have hierarchy data, just update the ref
-        // The tree selection will be handled by activeKey prop
         lastFetchedFqnRef.current = fqn;
       }
     }, [hash, fqn]);
 
     useEffect(() => {
+      fetchKnowledgePagesTotalCount();
+    }, [fetchKnowledgePagesTotalCount]);
+
+    useEffect(() => {
       if (activeKey) {
-        setExpandedKeys((prevKeys) =>
+        setExpandedKeys((prev) =>
           uniq([
-            ...prevKeys,
-            ...getExpandedNodeKeys(knowledgePageHierarchy, activeKey as string),
+            ...prev,
+            ...getExpandedNodeKeys(knowledgePageHierarchy, activeKey),
           ])
         );
       }
@@ -699,120 +710,230 @@ const KnowledgePagesHierarchy = forwardRef<
 
     useEffect(() => {
       if (activePage) {
-        setKnowledgePageHierarchy((prevHierarchy) => {
-          const updatedHierarchy = getUpdatePageHierarchy(
-            prevHierarchy,
-            activePage
-          );
-
-          return updatedHierarchy;
-        });
+        setKnowledgePageHierarchy((prev) =>
+          getUpdatePageHierarchy(prev, activePage)
+        );
       }
     }, [activePage]);
 
-    if (isLoading) {
-      return (
-        <div className="knowledge-pages-hierarchy-wrapper">
-          <Skeleton
-            active
-            className="w-max-200 knowledge-hierarchy-page-title m-l-lg"
-            paragraph={{ rows: 10 }}
-            title={false}
-          />
-        </div>
-      );
-    }
+    useEffect(() => {
+      expandedKeys.forEach((key) => {
+        const node = findPageInTreeData(knowledgePageHierarchy, key);
+        if (node && !node.children) {
+          loadNodeChildren(key);
+        }
+      });
+    }, [expandedKeys, knowledgePageHierarchy, loadNodeChildren]);
 
-    if (!isLoading && knowledgePageHierarchy.length === 0) {
-      return (
-        <CreateErrorPlaceHolder
-          className="border-none p-x-md"
-          permission={permissions.Create}
-          placeholderText={t('message.no-articles-listed')}
-          size={SIZE.MEDIUM}
-        />
-      );
-    }
+    const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
     return (
-      <div className="knowledge-pages-hierarchy-wrapper">
-        <DirectoryTree
-          data-testid="knowledge-pages-hierarchy"
-          defaultExpandAll={false}
-          draggable={{
-            icon: <DragIcon color={DE_ACTIVE_COLOR} />,
-            nodeDraggable: () => true,
-          }}
-          expandAction={false}
-          expandedKeys={expandedKeys}
-          height={TREE_HEIGHT}
-          icon={null}
-          loadData={onLoadData}
-          loadedKeys={expandedKeys}
-          selectedKeys={activeKey ? [activeKey] : []}
-          switcherIcon={(props: AntTreeNodeProps) => {
-            return props.expanded ? (
-              <IconDown data-testid={`${props.title}-collapse-icon`} />
-            ) : (
-              <IconRight data-testid={`${props.title}-collapse-icon`} />
-            );
-          }}
-          titleRender={titleRender}
-          treeData={treeData}
-          onDrop={handleDragAndDrop}
-          onExpand={(keys) => setExpandedKeys(keys)}
-          onScroll={handleScroll}
-        />
+      <section
+        aria-label={t('label.article-plural')}
+        className="tw:pt-2 tw:px-3 tw:flex tw:flex-col"
+        data-testid="knowledge-pages-hierarchy-container"
+        style={{
+          height: isHierarchyEmpty ? '100%' : TREE_HEIGHT,
+          overflow: isHierarchyEmpty ? 'hidden' : 'auto',
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          if (!permissions.EditAll) {
+            return;
+          }
+          const sourceKey = e.dataTransfer.getData('text/plain');
+          if (!sourceKey) {
+            return;
+          }
+          const { page: sourceNode, parent: sourceNodeParent } =
+            findPageAndParentInTreeData(knowledgePageHierarchy, sourceKey);
+          if (sourceNode && sourceNodeParent) {
+            setMovedPage({
+              sourceNode,
+              sourceNodeParent,
+              targetNode: undefined,
+            });
+          }
+        }}
+        onScroll={handleScroll}>
+        <Box align="center" className="tw:px-1.5 tw:pb-5" justify="between">
+          <Box align="center" gap={3}>
+            <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
+              <File06 className="tw:text-fg-tertiary" size={20} />
+            </div>
+            <div>
+              <Typography size="text-md" weight="medium">
+                {t('label.article-plural')}
+              </Typography>
+              <Typography
+                className="tw:text-quaternary tw:flex tw:items-center tw:gap-2"
+                size="text-xs">
+                {knowledgePagesTotalCount} {t('label.article-plural')}
+              </Typography>
+            </div>
+          </Box>
+          {isUserExpandedAll ? (
+            <ButtonUtility
+              color="tertiary"
+              icon={<CollapseAllIcon className="tw:size-6" />}
+              size="sm"
+              tooltip={t('label.collapse-all')}
+              onClick={() => {
+                setExpandedKeys([]);
+                setIsUserExpandedAll(false);
+              }}
+            />
+          ) : (
+            <ButtonUtility
+              color="tertiary"
+              icon={<ExpandAllIcon className="tw:size-6" />}
+              isDisabled={isExpandingAll}
+              size="sm"
+              tooltip={t('label.expand-all')}
+              onClick={handleExpandAll}
+            />
+          )}
+        </Box>
+        {isLoading && (
+          <div className="tw:px-1.5">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
+                key={`skeleton-${i}`}
+                style={{ width: `${60 + (i % 3) * 15}%` }}
+              />
+            ))}
+          </div>
+        )}
+
+        {isHierarchyEmpty && (
+          <CreateErrorPlaceHolder
+            className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
+            permission={permissions.Create}
+            placeholderText={t('message.no-articles-listed')}
+            size={SIZE.MEDIUM}
+          />
+        )}
+
+        {!isLoading && !isHierarchyEmpty && (
+          <Tree
+            aria-label={t('label.article-plural')}
+            className="knowledge-pages-tree"
+            data-testid="knowledge-pages-hierarchy"
+            expandedKeys={new Set(expandedKeys)}
+            selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
+            selectionMode="single"
+            onExpandedChange={(keys: Selection) => {
+              if (keys !== 'all') {
+                setExpandedKeys(Array.from(keys).map(String));
+              }
+            }}
+            onItemMove={handleItemMove}
+            onItemRootDrop={(sourceKey) => {
+              if (!permissions.EditAll) {
+                return;
+              }
+              const { page: sourceNode, parent: sourceNodeParent } =
+                findPageAndParentInTreeData(
+                  knowledgePageHierarchy,
+                  sourceKey as string
+                );
+              if (sourceNode && sourceNodeParent) {
+                setMovedPage({
+                  sourceNode,
+                  sourceNodeParent,
+                  targetNode: undefined,
+                });
+              }
+            }}>
+            {knowledgePageHierarchy.map(renderNode)}
+          </Tree>
+        )}
 
         {paginationState.paginationLoading && <Loader size="x-small" />}
 
-        {deletePage && (
-          <DeleteWidgetModal
-            isRecursiveDelete
-            afterDeleteAction={() => handleAfterDeletePage(deletePage)}
-            allowSoftDelete={false}
-            entityId={deletePage.id}
-            entityName={deletePage.displayName || t('label.untitled')}
-            entityType={EntityType.KNOWLEDGE_CENTER}
-            prepareType={false}
-            successMessage={t('server.entity-deleted-successfully', {
-              entity: t('label.article'),
-            })}
-            visible={!isUndefined(deletePage)}
-            onCancel={() => setDeletePage(undefined)}
-          />
-        )}
+        <DeleteModal
+          entityTitle={getKnowledgePageName(deletePage, t)}
+          isDeleting={isDeleting}
+          message={t('message.delete-entity-permanently', {
+            entityType:
+              deletePage?.pageType === PageType.QUICK_LINK
+                ? t('label.quick-link-lowercase')
+                : t('label.article-lowercase'),
+          })}
+          open={!isUndefined(deletePage)}
+          onCancel={() => setDeletePage(undefined)}
+          onDelete={async () => {
+            if (!deletePage?.id) {
+              return;
+            }
+            setIsDeleting(true);
+            try {
+              if (deletePage.pageType === PageType.QUICK_LINK) {
+                await deleteKnowledgePage(deletePage.id, false, true);
+              } else {
+                await deleteKnowledgePage(deletePage.id);
+              }
+              await handleAfterDeletePage(deletePage);
+              setDeletePage(undefined);
+            } catch (error) {
+              showErrorToast(error as AxiosError);
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+        />
 
-        {movedPage && (
-          <Modal
-            centered
-            destroyOnClose
-            cancelButtonProps={{ disabled: isMovingPage, type: 'text' }}
-            closable={false}
-            confirmLoading={isMovingPage}
-            data-testid="confirmation-modal"
-            maskClosable={false}
-            okText={t('label.confirm')}
-            open={Boolean(movedPage)}
-            title={t('label.move-the-entity', {
-              entity: t('label.knowledge-page'),
-            })}
-            onCancel={() => setMovedPage(undefined)}
-            onOk={() => handleMovePage(movedPage)}>
-            <Transi18next
-              i18nKey="message.entity-transfer-message"
-              renderElement={<strong />}
-              values={{
-                from: getEntityName(movedPage.sourceNode),
-                to: movedPage.targetNode
-                  ? getEntityName(movedPage.targetNode)
-                  : t('label.base-knowledge'),
-                entity: t('label.page-lowercase'),
-              }}
-            />
+        <ModalOverlay
+          isOpen={Boolean(movedPage)}
+          style={{ zIndex: 999 }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setMovedPage(undefined);
+            }
+          }}>
+          <Modal>
+            <Dialog
+              showCloseButton
+              data-testid="confirmation-modal"
+              onClose={() => setMovedPage(undefined)}>
+              <Dialog.Header
+                title={t('label.move-the-entity', {
+                  entity: t('label.knowledge-page'),
+                })}
+              />
+              <Dialog.Content className="tw:block">
+                <Transi18next
+                  i18nKey="message.entity-transfer-message"
+                  renderElement={<strong />}
+                  values={{
+                    from: getEntityName(movedPage?.sourceNode),
+                    to: movedPage?.targetNode
+                      ? getEntityName(movedPage.targetNode)
+                      : t('label.base-knowledge'),
+                    entity: t('label.page-lowercase'),
+                  }}
+                />
+              </Dialog.Content>
+              <Dialog.Footer className="quick-link-modal-footer">
+                <Button
+                  color="secondary"
+                  isDisabled={isMovingPage}
+                  size="sm"
+                  onPress={() => setMovedPage(undefined)}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  isLoading={isMovingPage}
+                  size="sm"
+                  onPress={() => movedPage && handleMovePage(movedPage)}>
+                  {t('label.confirm')}
+                </Button>
+              </Dialog.Footer>
+            </Dialog>
           </Modal>
-        )}
-      </div>
+        </ModalOverlay>
+      </section>
     );
   }
 );

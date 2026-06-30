@@ -50,7 +50,6 @@ import { CreatePasswordGenerator } from '../../../../enums/user.enum';
 import {
   AuthType,
   CreatePasswordType,
-  CreateUser as CreateUserSchema,
 } from '../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
@@ -65,10 +64,8 @@ import { generateRandomPwd } from '../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { AsyncSelect } from '../../../common/AsyncSelect/AsyncSelect';
@@ -77,7 +74,7 @@ import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import TeamsSelectable from '../../Team/TeamsSelectable/TeamsSelectable';
-import { CreateUserProps } from './CreateUser.interface';
+import { CreateUserFormData, CreateUserProps } from './CreateUser.interface';
 
 const CreateUser = ({
   isLoading,
@@ -93,7 +90,8 @@ const CreateUser = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const isAdminPage = Boolean(state?.isAdminPage);
-  const { authConfig, inlineAlertDetails } = useApplicationStore();
+  const { authConfig, currentUser, inlineAlertDetails } = useApplicationStore();
+  const isAdminUser = Boolean(currentUser?.isAdmin);
   const [isAdmin, setIsAdmin] = useState(isAdminPage);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<
@@ -243,10 +241,16 @@ const CreateUser = ({
         } as EntityReference)
     );
 
-    const { email, displayName, tokenExpiry, confirmPassword, description } =
-      values;
+    const {
+      email,
+      displayName,
+      tokenExpiry,
+      confirmPassword,
+      description,
+      allowImpersonation,
+    } = values;
 
-    const userProfile: CreateUserSchema = {
+    const userProfile: CreateUserFormData = {
       description,
       name: email.split('@')[0],
       displayName: trim(displayName),
@@ -265,6 +269,7 @@ const CreateUser = ({
                 JWTTokenExpiry: tokenExpiry,
               },
             },
+            allowImpersonation,
           }
         : isAuthProviderBasic
         ? {
@@ -366,6 +371,15 @@ const CreateUser = ({
             placeholder={t('message.select-token-expiration')}>
             {getJWTTokenExpiryOptions()}
           </Select>
+        </Form.Item>
+      )}
+      {forceBot && isAdminUser && (
+        <Form.Item
+          label={t('label.allow-impersonation')}
+          name="allowImpersonation"
+          tooltip={t('message.allow-impersonation-help')}
+          valuePropName="checked">
+          <Switch data-testid="allow-impersonation" />
         </Form.Item>
       )}
 

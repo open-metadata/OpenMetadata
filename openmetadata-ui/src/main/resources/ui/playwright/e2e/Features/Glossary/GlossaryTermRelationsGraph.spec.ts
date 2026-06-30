@@ -13,18 +13,20 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { AdminClass } from '../../../support/user/AdminClass';
-import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addTermRelation,
+  createApiContext,
+  deleteEntities,
+  disposeApiContext,
   readGraphEdges,
   readNodePositions,
   waitForGraphLoaded,
 } from '../../../utils/ontologyExplorer';
 
-const adminUser = new AdminClass();
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const glossary = new Glossary();
 const termA = new GlossaryTerm(glossary);
 const termB = new GlossaryTerm(glossary);
@@ -37,7 +39,7 @@ const termInX = new GlossaryTerm(glossaryX);
 const termInY = new GlossaryTerm(glossaryY);
 
 test.beforeAll('Seed test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { page, apiContext } = await createApiContext(browser);
 
   await glossary.create(apiContext);
   await termA.create(apiContext);
@@ -53,32 +55,32 @@ test.beforeAll('Seed test data', async ({ browser }) => {
   await termInY.create(apiContext);
   await addTermRelation(apiContext, termInX, termInY, 'relatedTo');
 
-  await afterAction();
+  await disposeApiContext(page, apiContext);
 });
 
 test.afterAll('Cleanup test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { page, apiContext } = await createApiContext(browser);
 
-  await termA.delete(apiContext);
-  await termB.delete(apiContext);
-  await termC.delete(apiContext);
-  await termD.delete(apiContext);
+  await deleteEntities(
+    apiContext,
+    termA,
+    termB,
+    termC,
+    termD,
+    termInX,
+    termInY
+  );
   await glossary.delete(apiContext);
-  await termInX.delete(apiContext);
-  await termInY.delete(apiContext);
   await glossaryX.delete(apiContext);
   await glossaryY.delete(apiContext);
 
-  await afterAction();
+  await disposeApiContext(page, apiContext);
 });
 
 test.describe('Glossary Term — Relations Graph tab', () => {
   test('Relations Graph tab renders the ontology explorer for a term with a same-glossary relation', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -86,16 +88,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     await waitForGraphLoaded(page);
-
-    await page.close();
   });
 
   test('the term itself appears as a node in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -110,16 +107,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       positions[termA.responseData.id],
       'termA (the viewed term) must be present as a node in the graph'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('the directly related term appears as a node in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -134,16 +126,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       positions[termB.responseData.id],
       'termB (directly related via relatedTo) must appear as a node'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('an edge with the correct relationType exists between the term and its related term', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -169,16 +156,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       edge?.relationType,
       'The edge relationType must be "relatedTo"'
     ).toBe('relatedTo');
-
-    await page.close();
   });
 
   test('all relation types from the same term appear as separate edges', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -223,16 +205,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       seeAlsoEdge,
       'A seeAlso edge to termD must be rendered'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('cross-glossary related term appears as a node in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termInX.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -247,17 +224,12 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       positions[termInY.responseData.id],
       'termInY (from a different glossary) must appear as a node when it is related to termInX'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('cross-glossary related term has an edge to the viewed term', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termInX.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -279,16 +251,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       hasEdge,
       'An edge between termInX and the cross-glossary termInY must be rendered'
     ).toBe(true);
-
-    await page.close();
   });
 
   test('unrelated term from the same glossary is NOT shown in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -312,16 +279,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       positions[termB.responseData.id],
       'termB (directly related to termA) must be present'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('a term with no relations shows only itself as a node with no edges', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termC.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -331,7 +293,7 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await waitForGraphLoaded(page);
 
     const positions = await readNodePositions(page);
-    const edges = await readGraphEdges(page);
+    const edges = await readGraphEdges(page, 0);
 
     expect(
       positions[termC.responseData.id],
@@ -341,17 +303,12 @@ test.describe('Glossary Term — Relations Graph tab', () => {
       edges.length,
       'There must be no edges for a term with zero relations'
     ).toBe(0);
-
-    await page.close();
   });
 
   test('clicking a node in the Relations Graph opens the entity summary panel', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -369,16 +326,11 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     await expect(
       page.getByTestId('entity-summary-panel-container')
     ).toBeVisible();
-
-    await page.close();
   });
 
   test('search in the Relations Graph filters to matching node and its neighbours', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -408,17 +360,12 @@ test.describe('Glossary Term — Relations Graph tab', () => {
     expect(Object.keys(restoredPositions).length).toBeGreaterThanOrEqual(
       Object.keys(positions).length
     );
-
-    await page.close();
   });
 
   test('search in the term Relations Graph returns empty state when no term matches', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await termA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -436,7 +383,5 @@ test.describe('Glossary Term — Relations Graph tab', () => {
 
     await searchInput.clear();
     await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-
-    await page.close();
   });
 });

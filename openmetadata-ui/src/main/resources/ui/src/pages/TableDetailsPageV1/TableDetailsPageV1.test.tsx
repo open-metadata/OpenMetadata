@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
@@ -18,6 +18,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TableType } from '../../generated/entity/data/table';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
 
@@ -138,11 +139,23 @@ jest.mock('../../rest/suggestionsAPI', () => ({
   getSuggestionsList: jest.fn().mockImplementation(() => Promise.resolve([])),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../utils/RecentActivityUtils'),
+  addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation(() => 'fqn'),
   getTableFQNFromColumnFQN: jest.fn(),
+}));
+jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -320,7 +333,7 @@ jest.mock(
 
 describe('TestDetailsPageV1 component', () => {
   it('TableDetailsPageV1 should fetch permissions', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <TableDetailsPageV1 />
       </MemoryRouter>
@@ -330,7 +343,7 @@ describe('TestDetailsPageV1 component', () => {
   });
 
   it('TableDetailsPageV1 should not fetch table details if permission is there', () => {
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <TableDetailsPageV1 />
       </MemoryRouter>
@@ -347,7 +360,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -369,7 +382,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -389,7 +402,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -435,7 +448,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -464,7 +477,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -493,7 +506,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -522,7 +535,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -551,7 +564,7 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -579,14 +592,20 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(screen.getByText('label.schema-definition')).toBeInTheDocument();
+    // useQuery resolves its promise on a microtask after the initial render — use findByText
+    // (waits up to the testing-library default timeout) rather than getByText, which would
+    // otherwise race the cache settle. The act-wrapper flushes effects but not the chained
+    // promise inside react-query's internal scheduler.
+    expect(
+      await screen.findByText('label.schema-definition')
+    ).toBeInTheDocument();
     expect(screen.queryByText('label.dbt-lowercase')).not.toBeInTheDocument();
   });
 
@@ -608,14 +627,16 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(screen.getByText('label.view-definition')).toBeInTheDocument();
+    expect(
+      await screen.findByText('label.view-definition')
+    ).toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render schemaTab by default', async () => {
@@ -626,7 +647,7 @@ describe('TestDetailsPageV1 component', () => {
     }));
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
@@ -659,18 +680,23 @@ describe('TestDetailsPageV1 component', () => {
     );
 
     await act(async () => {
-      render(
+      renderWithQueryClient(
         <MemoryRouter>
           <TableDetailsPageV1 />
         </MemoryRouter>
       );
     });
 
-    expect(PageLayoutV1).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pageTitle: 'test-table',
-      }),
-      expect.anything()
+    // Same reason as the schema-definition test above — useQuery's data is available on a
+    // subsequent render, not immediately after `act` flushes. waitFor polls until the page
+    // re-renders with the resolved title.
+    await waitFor(() =>
+      expect(PageLayoutV1).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageTitle: 'test-table',
+        }),
+        expect.anything()
+      )
     );
   });
 });

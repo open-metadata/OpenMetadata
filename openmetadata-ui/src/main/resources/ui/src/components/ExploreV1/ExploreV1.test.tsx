@@ -19,15 +19,14 @@ import {
   within,
 } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
-import {
-  exportSearchResultsCsvStream,
-  searchQuery,
-} from '../../rest/searchAPI';
+import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
+import { useAdvanceSearch } from '../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   MOCK_EXPLORE_SEARCH_RESULTS,
   MOCK_EXPLORE_TAB_ITEMS,
 } from '../Explore/Explore.mock';
 import { ExploreSearchIndex } from '../Explore/ExplorePage.interface';
+import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import ExploreV1 from './ExploreV1.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -163,12 +162,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
+  Edit05: () => <span data-testid="edit-05-icon" />,
+  FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
+  Trash01: () => <span data-testid="trash-icon" />,
+  XCircle: () => <span data-testid="x-circle-icon" />,
+  XClose: () => <span data-testid="x-close-icon" />,
 }));
 
 jest.mock('../../rest/searchAPI', () => ({
-  exportSearchResultsCsvStream: jest
+  exportSearchResultsAsync: jest
     .fn()
-    .mockResolvedValue(new Blob([''], { type: 'text/csv' })),
+    .mockResolvedValue({ jobId: '1', message: 'Export initiated' }),
   searchQuery: jest.fn().mockResolvedValue({
     hits: { total: { value: 100 }, hits: [] },
   }),
@@ -318,7 +322,7 @@ jest.mock('../../utils/AdvancedSearchUtils', () => ({
   getDropDownItems: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntitySearchUtils', () => ({
   highlightEntityNameAndDescription: jest
     .fn()
     .mockImplementation((entity) => entity),
@@ -430,18 +434,67 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: '',
+      queryFilter: undefined,
+      onResetAllFilters: jest.fn(),
+    }));
     (searchQuery as jest.Mock).mockResolvedValue({
       hits: { total: { value: 100 }, hits: [] },
     });
-    (exportSearchResultsCsvStream as jest.Mock).mockResolvedValue(
-      new Blob([''], { type: 'text/csv' })
-    );
+    (exportSearchResultsAsync as jest.Mock).mockResolvedValue({
+      jobId: '1',
+      message: 'Export initiated',
+    });
   });
 
   it('renders component without errors', async () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
+  });
+
+  it('does not render the toolbar Clear All when no filters are active', () => {
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+  });
+
+  it('uses the query-panel Clear action when a browse filter is active', () => {
+    render(
+      <ExploreV1
+        {...props}
+        browseFields={[
+          {
+            key: 'serviceType',
+            label: 'Service Type',
+            value: [{ key: 'Mysql', label: 'Mysql' }],
+          },
+        ]}
+      />,
+      { wrapper: Wrapper }
+    );
+
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
+  });
+
+  it('shows query-panel Clear for an advanced-search-only filter', () => {
+    const onResetAllFilters = jest.fn();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: 'serviceType = BigQuery',
+      queryFilter: { query: { bool: { must: [] } } },
+      onResetAllFilters,
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByTestId('clear-all-chips'));
+
+    expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(onResetAllFilters).toHaveBeenCalledTimes(1);
   });
 
   it('changes sort order when sort button is clicked', () => {
@@ -462,7 +515,7 @@ describe('ExploreV1', () => {
 
   it('shows inline export error in modal and keeps modal open on export failure', async () => {
     const errorMessage = 'Export failed due to a server error.';
-    (exportSearchResultsCsvStream as jest.Mock).mockRejectedValueOnce({
+    (exportSearchResultsAsync as jest.Mock).mockRejectedValueOnce({
       response: {
         data: errorMessage,
       },
@@ -520,6 +573,28 @@ describe('ExploreV1', () => {
 
     resolveCountRequest({ hits: { total: { value: 100 } } });
     await waitFor(() => expect(exportButton).toBeEnabled());
+  });
+
+  it('passes updated onFieldValueSelect to ExploreTree when onChangeAdvancedSearchQuickFilters prop changes', () => {
+    const callbackV1 = jest.fn();
+    const callbackV2 = jest.fn();
+    const ExploreTreeMock = ExploreTree as jest.Mock;
+
+    const { rerender } = render(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV1} />,
+      { wrapper: Wrapper }
+    );
+
+    rerender(
+      <ExploreV1 {...props} onChangeAdvancedSearchQuickFilters={callbackV2} />
+    );
+
+    const lastCallProps =
+      ExploreTreeMock.mock.calls[ExploreTreeMock.mock.calls.length - 1][0];
+    lastCallProps.onFieldValueSelect([]);
+
+    expect(callbackV2).toHaveBeenCalledTimes(1);
+    expect(callbackV1).not.toHaveBeenCalled();
   });
 
   it('disables export and shows alert when all matching assets exceed export limit', async () => {

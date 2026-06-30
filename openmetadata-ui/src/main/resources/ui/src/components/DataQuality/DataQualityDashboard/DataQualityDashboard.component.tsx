@@ -41,14 +41,12 @@ import {
 } from '../../../constants/DataQuality.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { SearchIndex } from '../../../enums/search.enum';
-import { Tag } from '../../../generated/entity/classification/tag';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getTags } from '../../../rest/tagAPI';
-import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchUtils';
+import { getSelectedOptionLabelString } from '../../../utils/AdvancedSearchPureUtils';
 import {
   formatDate,
   getCurrentMillis,
@@ -56,7 +54,7 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
@@ -68,7 +66,6 @@ import TestCaseStatusPieChartWidget from '../ChartWidgets/TestCaseStatusPieChart
 import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import './data-quality-dashboard.style.less';
 import { DqDashboardChartFilters } from './DataQualityDashboard.interface';
-
 const DataQualityDashboard = ({
   initialFilters,
   hideFilterBar = false,
@@ -165,29 +162,27 @@ const DataQualityDashboard = ({
   >([]);
   const [selectedCertificationFilter, setSelectedCertificationFilter] =
     useState<SearchDropdownOption[]>([]);
-  const [certification, setCertification] = useState<{
-    tags: Tag[];
-    isLoading: boolean;
+  const [certificationOptions, setCertificationOptions] = useState<{
+    defaultOptions: SearchDropdownOption[];
     options: SearchDropdownOption[];
   }>({
-    tags: [],
-    isLoading: true,
+    defaultOptions: [],
     options: [],
   });
+  const [isCertificationLoading, setIsCertificationLoading] = useState(false);
   const [selectedOwnerFilter, setSelectedOwnerFilter] =
     useState<EntityReference[]>();
 
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
-  const [tier, setTier] = useState<{
-    tags: Tag[];
-    isLoading: boolean;
+  const [tierOptions, setTierOptions] = useState<{
+    defaultOptions: SearchDropdownOption[];
     options: SearchDropdownOption[];
   }>({
-    tags: [],
-    isLoading: true,
+    defaultOptions: [],
     options: [],
   });
+  const [isTierLoading, setIsTierLoading] = useState(false);
   const [chartFilter, setChartFilter] = useState<DqDashboardChartFilters>({
     startTs: DEFAULT_RANGE_DATA.startTs,
     endTs: DEFAULT_RANGE_DATA.endTs,
@@ -236,20 +231,6 @@ const DataQualityDashboard = ({
       })) ?? []
     );
   }, [selectedOwnerFilter]);
-
-  const defaultTierOptions = useMemo(() => {
-    return tier.tags.map((op) => ({
-      key: op.fullyQualifiedName ?? op.name,
-      label: getEntityName(op),
-    }));
-  }, [tier]);
-
-  const defaultCertificationOptions = useMemo(() => {
-    return certification.tags.map((op) => ({
-      key: op.fullyQualifiedName ?? op.name,
-      label: getEntityName(op),
-    }));
-  }, [certification]);
 
   const handleTierChange = (tiers: SearchDropdownOption[] = []) => {
     setSelectedTierFilter(tiers);
@@ -415,43 +396,87 @@ const DataQualityDashboard = ({
     }
   };
 
+  const fetchTierOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.TAG,
+      query: query === WILD_CARD_CHAR ? query : `*${query}*`,
+      filters: 'disabled:false AND classification.name:Tier',
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const tierFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return {
+        key: source.fullyQualifiedName ?? source.name,
+        label: getEntityName(source),
+      };
+    });
+
+    return tierFilterOptions;
+  };
+
   const handleTierSearch = async (query: string) => {
-    if (query) {
-      setTier((prev) => ({
+    if (isEmpty(query)) {
+      setTierOptions((prev) => ({
         ...prev,
-        options: prev.options.filter(
-          (value) =>
-            value.label
-              .toLocaleLowerCase()
-              .includes(query.toLocaleLowerCase()) ||
-            value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
-        ),
+        options: [...selectedTierFilter, ...prev.defaultOptions],
       }));
     } else {
-      setTier((prev) => ({
-        ...prev,
-        options: defaultTierOptions,
-      }));
+      setIsTierLoading(true);
+      try {
+        const response = await fetchTierOptions(query);
+        setTierOptions((prev) => ({
+          ...prev,
+          options: response,
+        }));
+      } catch {
+        // we will not show the toast error message for suggestion API
+      } finally {
+        setIsTierLoading(false);
+      }
     }
   };
 
+  const fetchCertificationOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.TAG,
+      query: query === WILD_CARD_CHAR ? query : `*${query}*`,
+      filters: 'disabled:false AND classification.name:Certification',
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const certificationFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return {
+        key: source.fullyQualifiedName ?? source.name,
+        label: getEntityName(source),
+      };
+    });
+
+    return certificationFilterOptions;
+  };
+
   const handleCertificationSearch = async (query: string) => {
-    if (query) {
-      setCertification((prev) => ({
+    if (isEmpty(query)) {
+      setCertificationOptions((prev) => ({
         ...prev,
-        options: defaultCertificationOptions.filter(
-          (value) =>
-            value.label
-              .toLocaleLowerCase()
-              .includes(query.toLocaleLowerCase()) ||
-            value.key.toLocaleLowerCase().includes(query.toLocaleLowerCase())
-        ),
+        options: [...selectedCertificationFilter, ...prev.defaultOptions],
       }));
     } else {
-      setCertification((prev) => ({
-        ...prev,
-        options: defaultCertificationOptions,
-      }));
+      setIsCertificationLoading(true);
+      try {
+        const response = await fetchCertificationOptions(query);
+        setCertificationOptions((prev) => ({
+          ...prev,
+          options: response,
+        }));
+      } catch {
+        // we will not show the toast error message for suggestion API
+      } finally {
+        setIsCertificationLoading(false);
+      }
     }
   };
 
@@ -552,62 +577,54 @@ const DataQualityDashboard = ({
     }
   };
 
-  const getTierTag = async () => {
-    setTier((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { data } = await getTags({
-        parent: 'Tier',
-      });
-
-      setTier((prev) => ({
+  const fetchDefaultTierOptions = async () => {
+    if (tierOptions.defaultOptions.length) {
+      setTierOptions((prev) => ({
         ...prev,
-        tags: data,
-        options: data.map((op) => ({
-          key: op.fullyQualifiedName ?? op.name,
-          label: getEntityName(op),
-        })),
+        options: [...selectedTierFilter, ...prev.defaultOptions],
+      }));
+
+      return;
+    }
+
+    try {
+      setIsTierLoading(true);
+      const response = await fetchTierOptions();
+      setTierOptions((prev) => ({
+        ...prev,
+        defaultOptions: response,
+        options: response,
       }));
     } catch {
-      // error
+      // we will not show the toast error message for search API
     } finally {
-      setTier((prev) => ({ ...prev, isLoading: false }));
+      setIsTierLoading(false);
     }
   };
 
-  const fetchDefaultTierOptions = () => {
-    setTier((prev) => ({
-      ...prev,
-      options: defaultTierOptions,
-    }));
-  };
-
-  const getCertificationTag = async () => {
-    setCertification((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { data } = await getTags({
-        parent: 'Certification',
-      });
-
-      setCertification((prev) => ({
+  const fetchDefaultCertificationOptions = async () => {
+    if (certificationOptions.defaultOptions.length) {
+      setCertificationOptions((prev) => ({
         ...prev,
-        tags: data,
-        options: data.map((op) => ({
-          key: op.fullyQualifiedName ?? op.name,
-          label: getEntityName(op),
-        })),
+        options: [...selectedCertificationFilter, ...prev.defaultOptions],
+      }));
+
+      return;
+    }
+
+    try {
+      setIsCertificationLoading(true);
+      const response = await fetchCertificationOptions();
+      setCertificationOptions((prev) => ({
+        ...prev,
+        defaultOptions: response,
+        options: response,
       }));
     } catch {
-      // error
+      // we will not show the toast error message for search API
     } finally {
-      setCertification((prev) => ({ ...prev, isLoading: false }));
+      setIsCertificationLoading(false);
     }
-  };
-
-  const fetchDefaultCertificationOptions = () => {
-    setCertification((prev) => ({
-      ...prev,
-      options: defaultCertificationOptions,
-    }));
   };
 
   const handleOwnerChange = (owners: EntityReference[] = []) => {
@@ -642,10 +659,10 @@ const DataQualityDashboard = ({
       return;
     }
     if (showTierFilter) {
-      getTierTag();
+      fetchDefaultTierOptions();
     }
     if (showCertificationFilter) {
-      getCertificationTag();
+      fetchDefaultCertificationOptions();
     }
     if (showTagsFilter) {
       fetchDefaultTagOptions();
@@ -689,26 +706,26 @@ const DataQualityDashboard = ({
 
   const tierFilter = useMemo(
     () => ({
-      options: tier.options,
+      options: uniqBy(tierOptions.options, 'key'),
       selectedKeys: selectedTierFilter,
       onChange: handleTierChange,
       onGetInitialOptions: fetchDefaultTierOptions,
       onSearch: handleTierSearch,
-      isSuggestionsLoading: tier.isLoading,
+      isSuggestionsLoading: isTierLoading,
     }),
-    [selectedTierFilter, tier]
+    [isTierLoading, tierOptions, selectedTierFilter]
   );
 
   const certificationFilter = useMemo(
     () => ({
-      options: certification.options,
+      options: uniqBy(certificationOptions.options, 'key'),
       selectedKeys: selectedCertificationFilter,
       onChange: handleCertificationChange,
       onGetInitialOptions: fetchDefaultCertificationOptions,
       onSearch: handleCertificationSearch,
-      isSuggestionsLoading: certification.isLoading,
+      isSuggestionsLoading: isCertificationLoading,
     }),
-    [selectedCertificationFilter, certification]
+    [isCertificationLoading, certificationOptions, selectedCertificationFilter]
   );
 
   const dataProducts = useMemo(

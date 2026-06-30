@@ -67,15 +67,14 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
   return jest.fn().mockImplementation(() => <>LimitWrapper</>);
 });
 
-jest.mock('../../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../../utils/StringsUtils'),
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityUtils'),
+jest.mock('../../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../../utils/EntitySearchUtils'),
   highlightSearchText: jest.fn((text) => text),
-  getTitleCase: jest.fn((text) => text.charAt(0).toUpperCase() + text.slice(1)),
 }));
 
 jest.mock('../../../../rest/botsAPI', () => ({

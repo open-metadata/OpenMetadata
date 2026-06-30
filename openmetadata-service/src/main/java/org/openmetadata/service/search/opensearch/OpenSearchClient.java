@@ -67,6 +67,8 @@ import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import os.org.opensearch.client.opensearch.generic.Body;
+import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.OpenSearchTransport;
 import os.org.opensearch.client.transport.aws.AwsSdk2Transport;
@@ -200,6 +202,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    var builder = Requests.builder().method(method).endpoint(endpoint);
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      builder.json(jsonBody);
+    }
+    try (os.org.opensearch.client.opensearch.generic.Response response =
+        newClient.generic().execute(builder.build())) {
+      String body = response.getBody().map(Body::bodyAsString).orElse("");
+      return new RawSearchResponse(response.getStatus(), body);
+    }
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
     return indexManager.indexExists(indexName);
   }
@@ -250,8 +266,9 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
-    return indexManager.swapAliases(oldIndices, newIndex, aliases);
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
+    return indexManager.swapAliases(oldIndices, newIndex, aliases, indicesToRemove);
   }
 
   @Override
@@ -374,6 +391,9 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
     if (lineageGraphBuilder == null) {
+      initializeLineageBuilders();
+    }
+    if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
@@ -396,14 +416,23 @@ public class OpenSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
     if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -444,8 +473,14 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   @Override

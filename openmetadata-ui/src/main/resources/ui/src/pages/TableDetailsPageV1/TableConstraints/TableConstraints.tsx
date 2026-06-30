@@ -21,12 +21,12 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../../components/common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { tableConstraintRendererBasedOnType } from '../../../utils/TableUtils';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import './table-constraints.less';
@@ -44,7 +44,7 @@ const TableConstraints = ({
   const { deleted } = data ?? {};
 
   const hasPermission = useMemo(
-    () => permissions.EditAll && !deleted,
+    () => permissions?.EditAll && !deleted,
     [permissions, deleted]
   );
 

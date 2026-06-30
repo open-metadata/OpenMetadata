@@ -39,8 +39,12 @@
             "$ref": "../../data/table.json#/definitions/tableData"
         },
         "executedQuery": {
-            "description": "The actual query that was executed (may be transpiled or modified from the original)",
+            "description": "The query that was executed, post-transpile but without the guardrail row LIMIT. If the user supplied their own LIMIT in the original query, it is preserved here.",
             "type": "string"
+        },
+        "executionLimit": {
+            "description": "Row LIMIT injected by the query runner as a guardrail when the original query had no LIMIT. Null when the user's query already contained a LIMIT or when no cap was applied.",
+            "type": "integer"
         },
         "resultPath": {
             "description": "S3 or GCS key path where the query results CSV is stored. Present when storage mode is enabled; mutually exclusive with 'results'.",

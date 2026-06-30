@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { FormEvent, ReactNode } from 'react';
-import { useForm } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  type FieldValues,
+  type RegisterOptions,
+} from 'react-hook-form';
 import {
   CreateDomain,
   DomainType,
@@ -120,28 +125,34 @@ jest.mock('@openmetadata/ui-core-components', () => {
       USER_TEAM_SELECT: 'user_team_select',
       USER_TEAM_SELECT_INPUT: 'user_team_select_input',
     },
-    FormField: ({
+    FormField: <TFieldValues extends FieldValues = FieldValues>({
+      control,
+      name,
+      rules,
       children,
     }: {
+      control: import('react-hook-form').Control<TFieldValues>;
+      name: import('react-hook-form').FieldPath<TFieldValues>;
+      rules?: Omit<
+        RegisterOptions<TFieldValues>,
+        'valueAsNumber' | 'valueAsDate' | 'setValueAs' | 'disabled'
+      >;
       children: (controller: {
-        field: {
-          name: string;
-          onChange: (value: unknown) => void;
-          value: unknown;
-        };
-        fieldState: { error?: { message?: string } };
+        field: import('react-hook-form').ControllerRenderProps<
+          TFieldValues,
+          import('react-hook-form').FieldPath<TFieldValues>
+        >;
+        fieldState: import('react-hook-form').ControllerFieldState;
       }) => ReactNode;
     }) => (
-      <>
-        {children({
-          field: {
-            name: 'mock-field',
-            onChange: jest.fn(),
-            value: undefined,
-          },
-          fieldState: {},
-        })}
-      </>
+      <Controller
+        control={control}
+        name={name}
+        render={({ field, fieldState }) => (
+          <>{children({ field, fieldState })}</>
+        )}
+        rules={rules}
+      />
     ),
     FormItemLabel: ({ label }: { label: ReactNode }) => <div>{label}</div>,
     HintText: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -207,8 +218,22 @@ jest.mock(
       )
 );
 
+type RichTextEditorMockProps = {
+  initialValue?: string;
+  onTextChange?: (value: string) => void;
+};
+
+const richTextEditorRenders: RichTextEditorMockProps[] = [];
+
 jest.mock('../../common/RichTextEditor/RichTextEditor', () =>
-  jest.fn().mockReturnValue(<div data-testid="description">RichTextEditor</div>)
+  jest.fn().mockImplementation((props: RichTextEditorMockProps) => {
+    richTextEditorRenders.push({
+      initialValue: props.initialValue,
+      onTextChange: props.onTextChange,
+    });
+
+    return <div data-testid="description">RichTextEditor</div>;
+  })
 );
 
 const mockOnCancel = jest.fn();
@@ -247,6 +272,7 @@ const AddDomainFormHarness = ({
 describe('AddDomainForm', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    richTextEditorRenders.length = 0;
   });
 
   it('should render the form component', () => {
@@ -353,6 +379,33 @@ describe('AddDomainForm', () => {
 
     expect(cancelButton).not.toBeDisabled();
   });
+
+  it('keeps description editor uncontrolled so trailing whitespace is not stripped on each keystroke', async () => {
+    render(<AddDomainFormHarness />);
+
+    expect(richTextEditorRenders).not.toHaveLength(0);
+
+    const keystrokes = [
+      '<p>h</p>',
+      '<p>he</p>',
+      '<p>hel</p>',
+      '<p>hell</p>',
+      '<p>hello</p>',
+      '<p>hello </p>',
+    ];
+
+    for (const value of keystrokes) {
+      const latest = richTextEditorRenders[richTextEditorRenders.length - 1];
+      await act(async () => {
+        latest.onTextChange?.(value);
+      });
+    }
+
+    expect(richTextEditorRenders.length).toBeGreaterThan(1);
+    expect(richTextEditorRenders.every((r) => r.initialValue === '')).toBe(
+      true
+    );
+  });
 });
 
 describe('transformDomainFormData', () => {
@@ -396,8 +449,13 @@ describe('transformDomainFormData', () => {
     glossaryTerms: [],
     owners: [],
     experts: [],
+    reviewers: [],
     domainType: null,
     domains: undefined,
+    dataProductType: null,
+    visibility: null,
+    portfolioPriority: null,
+    extension: {},
   };
 
   it('maps a populated DOMAIN form into a CreateDomain payload', () => {
@@ -525,5 +583,57 @@ describe('transformDomainFormData', () => {
     expect(result.displayName).toBe('Marketing');
     expect(result.description).toBe('Marketing domain');
     expect(result.coverImage).toBe(coverImage);
+  });
+
+  it('unwraps a single entityReference extension picker item to its EntityReference', () => {
+    // USER_TEAM_SELECT_INPUT with multiple=false stores a single
+    // DomainFormSelectItem ({ id, label, value }), but the API expects the
+    // bare EntityReference. Regression guard for the intake-form entity-ref
+    // create flow returning 400.
+    const stewardRef: EntityReference = {
+      id: 'user-1',
+      type: 'user',
+      name: 'admin',
+    };
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        steward: { id: 'user-1', label: 'admin', value: stewardRef },
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.steward).toEqual(stewardRef);
+  });
+
+  it('unwraps entityReferenceList + enum extension items, leaving scalars intact', () => {
+    const userA: EntityReference = { id: 'a', type: 'user', name: 'a' };
+    const userB: EntityReference = { id: 'b', type: 'user', name: 'b' };
+    const formData: DomainFormValues = {
+      ...baseForm,
+      extension: {
+        stewards: [
+          { id: 'a', label: 'a', value: userA },
+          { id: 'b', label: 'b', value: userB },
+        ],
+        tier: { id: 'Gold', label: 'Gold', value: 'Gold' },
+        notes: 'plain text stays as-is',
+        count: 7,
+      },
+    };
+
+    const result = transformDomainFormData(
+      formData,
+      DomainFormType.DATA_PRODUCT
+    ) as CreateDomain & { extension?: Record<string, unknown> };
+
+    expect(result.extension?.stewards).toEqual([userA, userB]);
+    expect(result.extension?.tier).toBe('Gold');
+    expect(result.extension?.notes).toBe('plain text stays as-is');
+    expect(result.extension?.count).toBe(7);
   });
 });

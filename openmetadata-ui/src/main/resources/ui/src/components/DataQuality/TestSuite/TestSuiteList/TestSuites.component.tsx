@@ -51,8 +51,8 @@ import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
 } from '../../../../rest/testAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getPopupContainer } from '../../../../utils/formUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getPopupContainer } from '../../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';

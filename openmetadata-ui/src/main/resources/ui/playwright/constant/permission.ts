@@ -83,6 +83,14 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
     ],
     effect: 'allow',
   },
+  {
+    name: 'DataConsumerPolicy-CreateTask-Rule',
+    description:
+      'Allow authenticated users to create tasks (data access requests, suggestions, etc.).',
+    resources: ['task'],
+    operations: ['Create'],
+    effect: 'allow',
+  },
 ];
 
 export const VIEW_ALL_RULE: PolicyRulesType[] = [

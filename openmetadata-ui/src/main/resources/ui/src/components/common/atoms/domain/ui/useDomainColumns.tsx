@@ -16,7 +16,7 @@ import { Domain } from '../../../../../generated/entity/domains/domain';
 import {
   getClassificationTags,
   getGlossaryTags,
-} from '../../../../../utils/TagsUtils';
+} from '../../../../../utils/TagsPureUtils';
 import { ColumnConfig } from '../../shared/types';
 
 interface UseDomainColumnsConfig {

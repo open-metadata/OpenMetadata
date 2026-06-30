@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -43,46 +44,56 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Operation } from '../../generated/entity/policies/policy';
 import { PageType } from '../../generated/system/ui/page';
-import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
+  storedProcedureQueryFn,
+  storedProcedureQueryKey,
+} from '../../rest/queries/storedProcedureQuery';
+import {
   addStoredProceduresFollower,
-  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
   removeStoredProceduresFollower,
   restoreStoredProcedures,
   updateStoredProcedureVotes,
 } from '../../rest/storedProceduresAPI';
-import { addToRecentViewed, getFeedCounts } from '../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+} from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../utils/FeedUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import {
   getStoredProcedureDetailsPageTabs,
   STORED_PROCEDURE_DEFAULT_FIELDS,
 } from '../../utils/StoredProceduresUtils';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
-import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
+import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
+import {
+  updateCertificationTag,
+  updateTierTag,
+} from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { tab: activeTab = EntityTabs.CODE } = useRequiredParams<{
     tab: EntityTabs;
   }>();
@@ -91,8 +102,7 @@ const StoredProcedurePage = () => {
     type: EntityType.STORED_PROCEDURE,
   });
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [storedProcedure, setStoredProcedure] = useState<StoredProcedure>();
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [storedProcedurePermissions, setStoredProcedurePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -101,6 +111,101 @@ const StoredProcedurePage = () => {
   );
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
+  );
+
+  const {
+    editCustomAttributePermission,
+    editLineagePermission,
+    viewAllPermission,
+    viewBasicPermission,
+    viewCustomPropertiesPermission,
+  } = useMemo(
+    () => ({
+      editCustomAttributePermission:
+        storedProcedurePermissions.EditAll ||
+        storedProcedurePermissions.EditCustomFields,
+      editLineagePermission:
+        storedProcedurePermissions.EditAll ||
+        storedProcedurePermissions.EditLineage,
+      viewAllPermission: storedProcedurePermissions.ViewAll,
+      viewBasicPermission:
+        storedProcedurePermissions.ViewAll ||
+        storedProcedurePermissions.ViewBasic,
+      viewCustomPropertiesPermission: getPrioritizedViewPermission(
+        storedProcedurePermissions,
+        Operation.ViewCustomFields
+      ),
+    }),
+    [storedProcedurePermissions]
+  );
+
+  const storedProcedureCacheKey = useMemo(
+    () =>
+      storedProcedureQueryKey(
+        decodedStoredProcedureFQN,
+        STORED_PROCEDURE_DEFAULT_FIELDS
+      ),
+    [decodedStoredProcedureFQN]
+  );
+
+  const {
+    data: storedProcedure,
+    isLoading: storedProcedureLoading,
+    error: storedProcedureError,
+  } = useQuery({
+    queryKey: storedProcedureCacheKey,
+    queryFn: storedProcedureQueryFn(
+      decodedStoredProcedureFQN,
+      STORED_PROCEDURE_DEFAULT_FIELDS
+    ),
+    enabled: Boolean(
+      decodedStoredProcedureFQN && viewBasicPermission && !permissionsLoading
+    ),
+  });
+
+  useEffect(() => {
+    if (!storedProcedureError) {
+      return;
+    }
+    const status = (storedProcedureError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    }
+  }, [storedProcedureError, navigate]);
+
+  useEffect(() => {
+    if (!storedProcedure) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(storedProcedure),
+      entityType: EntityType.STORED_PROCEDURE,
+      fqn: storedProcedure.fullyQualifiedName ?? '',
+      serviceType: storedProcedure.serviceType,
+      timestamp: 0,
+      id: storedProcedure.id ?? '',
+    });
+  }, [storedProcedure]);
+
+  const setStoredProcedure = useCallback(
+    (
+      updater:
+        | StoredProcedure
+        | undefined
+        | ((prev: StoredProcedure | undefined) => StoredProcedure | undefined)
+    ) => {
+      queryClient.setQueryData<StoredProcedure | undefined>(
+        storedProcedureCacheKey,
+        updater
+      );
+    },
+    [queryClient, storedProcedureCacheKey]
+  );
+
+  const refetchStoredProcedureDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: storedProcedureCacheKey }),
+    [queryClient, storedProcedureCacheKey]
   );
 
   const {
@@ -133,6 +238,7 @@ const StoredProcedurePage = () => {
   }, [followers, USER_ID]);
 
   const fetchResourcePermission = useCallback(async () => {
+    setPermissionsLoading(true);
     try {
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.STORED_PROCEDURE,
@@ -147,9 +253,9 @@ const StoredProcedurePage = () => {
         })
       );
     } finally {
-      setIsLoading(false);
+      setPermissionsLoading(false);
     }
-  }, [getEntityPermissionByFqn]);
+  }, [getEntityPermissionByFqn, decodedStoredProcedureFQN, t]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -163,35 +269,21 @@ const StoredProcedurePage = () => {
     );
   };
 
-  const fetchStoredProcedureDetails = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getStoredProceduresByFqn(
-        decodedStoredProcedureFQN,
-        {
-          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
-          include: Include.All,
-        }
-      );
-
-      setStoredProcedure(response);
-
-      addToRecentViewed({
-        displayName: getEntityName(response),
-        entityType: EntityType.STORED_PROCEDURE,
-        fqn: response.fullyQualifiedName ?? '',
-        serviceType: response.serviceType,
-        timestamp: 0,
-        id: response.id ?? '',
-      });
-    } catch (error) {
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
-    } finally {
-      setIsLoading(false);
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedStoredProcedureFQN) {
+      fetchEntityTaskCountsInto(decodedStoredProcedureFQN, setFeedCount);
     }
-  };
+  }, [decodedStoredProcedureFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedStoredProcedureFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.STORED_PROCEDURE,
+        decodedStoredProcedureFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedStoredProcedureFQN]);
 
   const versionHandler = useCallback(() => {
     version &&
@@ -239,56 +331,75 @@ const StoredProcedurePage = () => {
     }
   };
 
-  const followEntity = useCallback(async () => {
-    try {
-      const res = await addStoredProceduresFollower(storedProcedureId, USER_ID);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      const newFollowers = [...(followers ?? []), ...newValue];
-      setStoredProcedure((prev) => {
-        if (!prev) {
-          return prev;
-        }
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: StoredProcedure | undefined }
+  >({
+    mutationFn: async () => {
+      if (!storedProcedureId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeStoredProceduresFollower(storedProcedureId, USER_ID);
+      } else {
+        await addStoredProceduresFollower(storedProcedureId, USER_ID);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: storedProcedureCacheKey });
+      const previous = queryClient.getQueryData<StoredProcedure | undefined>(
+        storedProcedureCacheKey
+      );
+      queryClient.setQueryData<StoredProcedure | undefined>(
+        storedProcedureCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== USER_ID),
+            };
+          }
 
-        return { ...prev, followers: newFollowers };
-      });
-    } catch (error) {
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: USER_ID, type: 'user' },
+            ] as StoredProcedure['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<StoredProcedure | undefined>(
+          storedProcedureCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(storedProcedure),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', {
+              entity: getEntityName(storedProcedure),
+            })
+          : t('server.entity-follow-error', {
+              entity: getEntityName(storedProcedure),
+            })
       );
-    }
-  }, [USER_ID, followers, storedProcedure, storedProcedureId]);
-
-  const unFollowEntity = useCallback(async () => {
-    try {
-      const res = await removeStoredProceduresFollower(
-        storedProcedureId,
-        USER_ID
-      );
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setStoredProcedure((pre) => {
-        if (!pre) {
-          return pre;
-        }
-
-        return {
-          ...pre,
-          followers: pre.followers?.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        };
-      });
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(storedProcedure),
-        })
-      );
-    }
-  }, [USER_ID, storedProcedureId]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: storedProcedureCacheKey });
+    },
+  });
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
     if (!storedProcedure) {
@@ -299,8 +410,8 @@ const StoredProcedurePage = () => {
   };
 
   const handleFollow = useCallback(async () => {
-    isFollowing ? await unFollowEntity() : await followEntity();
-  }, [isFollowing]);
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const handleUpdateOwner = useCallback(
     async (newOwner?: StoredProcedure['owners']) => {
@@ -371,14 +482,17 @@ const StoredProcedurePage = () => {
     [navigate]
   );
 
-  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as StoredProcedure;
+  const afterDomainUpdateAction = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as StoredProcedure;
 
-    setStoredProcedure((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+      setStoredProcedure((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setStoredProcedure]
+  );
 
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
@@ -411,47 +525,7 @@ const StoredProcedurePage = () => {
         });
       }
     },
-    [saveUpdatedStoredProceduresData, storedProcedure]
-  );
-
-  const {
-    editCustomAttributePermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewBasicPermission,
-    viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editTagsPermission:
-        (storedProcedurePermissions.EditTags ||
-          storedProcedurePermissions.EditAll) &&
-        !storedProcedure?.deleted,
-      editGlossaryTermsPermission:
-        (storedProcedurePermissions.EditGlossaryTerms ||
-          storedProcedurePermissions.EditAll) &&
-        !deleted,
-      editDescriptionPermission:
-        (storedProcedurePermissions.EditDescription ||
-          storedProcedurePermissions.EditAll) &&
-        !storedProcedure?.deleted,
-      editCustomAttributePermission:
-        (storedProcedurePermissions.EditAll ||
-          storedProcedurePermissions.EditCustomFields) &&
-        !storedProcedure?.deleted,
-      editLineagePermission:
-        (storedProcedurePermissions.EditAll ||
-          storedProcedurePermissions.EditLineage) &&
-        !storedProcedure?.deleted,
-      viewAllPermission: storedProcedurePermissions.ViewAll,
-      viewBasicPermission:
-        storedProcedurePermissions.ViewAll ||
-        storedProcedurePermissions.ViewBasic,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        storedProcedurePermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [storedProcedurePermissions, storedProcedure]
+    [saveUpdatedStoredProceduresData, storedProcedure, setStoredProcedure]
   );
 
   const tabs = useMemo(() => {
@@ -472,7 +546,7 @@ const StoredProcedurePage = () => {
       viewCustomPropertiesPermission,
       onExtensionUpdate,
       getEntityFeedCount: getEntityFeedCount,
-      fetchStoredProcedureDetails,
+      fetchStoredProcedureDetails: refetchStoredProcedureDetails,
       handleFeedCount: handleFeedCount,
       labelMap: tabLabelMap,
     });
@@ -499,7 +573,7 @@ const StoredProcedurePage = () => {
     viewCustomPropertiesPermission,
     onExtensionUpdate,
     getEntityFeedCount,
-    fetchStoredProcedureDetails,
+    refetchStoredProcedureDetails,
     handleFeedCount,
   ]);
 
@@ -516,13 +590,9 @@ const StoredProcedurePage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateStoredProcedureVotes(id, data);
-      const details = await getStoredProceduresByFqn(
-        decodedStoredProcedureFQN,
-        {
-          fields: STORED_PROCEDURE_DEFAULT_FIELDS,
-        }
-      );
-      setStoredProcedure(details);
+      await queryClient.invalidateQueries({
+        queryKey: storedProcedureCacheKey,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -546,6 +616,7 @@ const StoredProcedurePage = () => {
     },
     [storedProcedure, handleStoreProcedureUpdate]
   );
+
   useEffect(() => {
     if (decodedStoredProcedureFQN) {
       fetchResourcePermission();
@@ -554,12 +625,12 @@ const StoredProcedurePage = () => {
 
   useEffect(() => {
     if (viewBasicPermission) {
-      fetchStoredProcedureDetails();
-      getEntityFeedCount();
+      fetchTaskCounts();
+      fetchActivityCount();
     }
-  }, [decodedStoredProcedureFQN, storedProcedurePermissions]);
+  }, [decodedStoredProcedureFQN, viewBasicPermission]);
 
-  if (isLoading || loading) {
+  if (permissionsLoading || loading || storedProcedureLoading) {
     return <Loader />;
   }
 
@@ -575,7 +646,7 @@ const StoredProcedurePage = () => {
     );
   }
 
-  if (!storedProcedure) {
+  if (storedProcedureError || !storedProcedure) {
     return <ErrorPlaceHolder />;
   }
 

@@ -418,7 +418,6 @@ class PartitionWorkerTest {
                 statsTracker);
 
     assertEquals("table", contextData.get("entityType"));
-    assertEquals(Boolean.TRUE, contextData.get("recreateIndex"));
     assertEquals(statsTracker, contextData.get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
     assertEquals(stagedIndexContext, contextData.get("recreateContext"));
     assertEquals("table_staging", contextData.get("targetIndex"));
@@ -489,7 +488,6 @@ class PartitionWorkerTest {
     verify(bulkSink).write(entitiesCaptor.capture(), contextCaptor.capture());
     assertEquals(List.of(entityOne, entityTwo), entitiesCaptor.getValue());
     assertEquals("table", contextCaptor.getValue().get("entityType"));
-    assertEquals(Boolean.TRUE, contextCaptor.getValue().get("recreateIndex"));
     assertEquals(statsTracker, contextCaptor.getValue().get(BulkSink.STATS_TRACKER_CONTEXT_KEY));
   }
 

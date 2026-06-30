@@ -27,10 +27,8 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Paging } from '../../../generated/type/paging';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
@@ -227,7 +225,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
       </Button>
 
       {isOpen && (
-        <div className="tw:absolute tw:-top-76 tw:left-1 tw:mt-1 tw:z-50 tw:w-[95%] tw:rounded-lg tw:bg-white tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden">
+        <div className="tw:absolute tw:-top-76 tw:left-1 tw:mt-1 tw:z-50 tw:w-[95%] tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-gray-200 tw:overflow-hidden tw:h-74">
           <div className="tw:flex tw:flex-col">
             <div className="tw:p-2 tw:border-b tw:border-gray-100">
               <Input
@@ -282,7 +280,7 @@ const DataAssetSelectList: FC<DataAssetAsyncSelectListProps> = ({
                       onClick={() => handleToggle(opt)}>
                       {searchClassBase.getEntityIcon(
                         reference.type ?? '',
-                        'tw:h-8 tw:w-8'
+                        'tw:h-8 tw:w-8 tw:text-gray-500'
                       )}
 
                       <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">

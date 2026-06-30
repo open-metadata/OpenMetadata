@@ -25,13 +25,14 @@ import {
   readCardinalityMap,
   readGraphEdges,
   readNodePositions,
-  removeRelationType,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-const CUSTOM_OWNS_RELATION = 'pw-gp-owns';
+// Unique suffix per worker/repeat so parallel runs don't share relation type names.
+const RUN_ID = Math.random().toString(36).slice(2, 8);
+const CUSTOM_OWNS_RELATION = `pw-gp-owns-${RUN_ID}`;
 
 const catalog = new Glossary();
 const termProduct = new GlossaryTerm(catalog);
@@ -75,7 +76,6 @@ test.describe('Ontology Explorer — E2E', () => {
       termBrand,
       catalog
     );
-    await removeRelationType(apiContext, CUSTOM_OWNS_RELATION);
     await disposeApiContext(page, apiContext);
   });
 
@@ -115,7 +115,7 @@ test.describe('Ontology Explorer — E2E', () => {
   test('graph edges contain all four expected relation types', async ({
     page,
   }) => {
-    const edges = await readGraphEdges(page);
+    const edges = await readGraphEdges(page, 4);
     const types = new Set(
       edges.flatMap((e) =>
         e.inverseRelationType
@@ -132,7 +132,7 @@ test.describe('Ontology Explorer — E2E', () => {
   test('custom ONE_TO_MANY relation shows "1" at source and "M" at target', async ({
     page,
   }) => {
-    const map = await readCardinalityMap(page);
+    const map = await readCardinalityMap(page, CUSTOM_OWNS_RELATION);
 
     expect(map[CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
@@ -143,7 +143,7 @@ test.describe('Ontology Explorer — E2E', () => {
   test('built-in relations show M:M cardinality in the cardinality map', async ({
     page,
   }) => {
-    const map = await readCardinalityMap(page);
+    const map = await readCardinalityMap(page, ['relatedTo', 'partOf']);
 
     expect(map['relatedTo']).toEqual({
       startLabelText: 'M',
@@ -207,10 +207,10 @@ test.describe('Ontology Explorer — E2E', () => {
 
     await page.getByTestId('view-mode-select').click();
     await page.getByRole('option', { name: 'Overview' }).click();
-    await waitForGraphLoaded(page);
 
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
-      '6 Relations'
+      '6 Relations',
+      { timeout: 45000 }
     );
   });
 
@@ -292,7 +292,7 @@ test.describe('Ontology Explorer — E2E', () => {
     await expect(toggle).toHaveAttribute('data-selected', 'true');
     await page.getByTestId('graph-settings-close').click();
 
-    const map = await readCardinalityMap(page);
+    const map = await readCardinalityMap(page, CUSTOM_OWNS_RELATION);
     expect(map[CUSTOM_OWNS_RELATION]).toEqual({
       startLabelText: '1',
       endLabelText: 'M',
