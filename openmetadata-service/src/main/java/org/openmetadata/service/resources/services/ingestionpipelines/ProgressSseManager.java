@@ -67,6 +67,15 @@ public final class ProgressSseManager {
     return accepted;
   }
 
+  public void close(SseEventSink eventSink) {
+    connections.forEach(
+        (id, connection) -> {
+          if (connection.eventSink() == eventSink) {
+            cleanup(id);
+          }
+        });
+  }
+
   public int activeConnections() {
     return connections.size();
   }

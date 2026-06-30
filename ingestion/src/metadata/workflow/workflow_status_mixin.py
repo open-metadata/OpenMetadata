@@ -220,3 +220,9 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(f"Failed to send progress update: {err}")
+
+    def terminal_progress_update_type(self, pipeline_state: PipelineState) -> ProgressUpdateType:
+        if pipeline_state is PipelineState.failed:
+            return ProgressUpdateType.ERROR
+
+        return ProgressUpdateType.PIPELINE_COMPLETE

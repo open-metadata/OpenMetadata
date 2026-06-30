@@ -22,6 +22,12 @@ from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -226,11 +232,17 @@ class TestWorkflowExecuteTeardown:
                 wraps=workflow.set_ingestion_pipeline_status,
             ) as mock_set_ingestion_pipeline_status,
             patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
+            patch.object(
+                workflow,
+                "send_progress_update",
+                wraps=workflow.send_progress_update,
+            ) as mock_send_progress_update,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
             manager.attach_mock(mock_close_steps, "close_steps")
             manager.attach_mock(mock_build_ingestion_status, "build_ingestion_status")
             manager.attach_mock(mock_set_ingestion_pipeline_status, "set_ingestion_pipeline_status")
+            manager.attach_mock(mock_send_progress_update, "send_progress_update")
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
@@ -244,10 +256,36 @@ class TestWorkflowExecuteTeardown:
             "close_steps",
             "build_ingestion_status",
             "set_ingestion_pipeline_status",
+            "send_progress_update",
             "print_status",
             "stop",
             "close_steps",
         ]
+        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
+
+    def test_success_states_map_to_pipeline_complete_progress(self):
+        workflow = SimpleWorkflow(config=config)
+
+        assert (
+            workflow.terminal_progress_update_type(PipelineState.success)
+            is ProgressUpdateType.PIPELINE_COMPLETE
+        )
+        assert (
+            workflow.terminal_progress_update_type(PipelineState.partialSuccess)
+            is ProgressUpdateType.PIPELINE_COMPLETE
+        )
+
+    def test_failed_workflow_sends_terminal_error_progress(self):
+        workflow = BrokenWorkflow(config=config)
+
+        with patch.object(
+            workflow,
+            "send_progress_update",
+            wraps=workflow.send_progress_update,
+        ) as mock_send_progress_update:
+            workflow.execute()
+
+        mock_send_progress_update.assert_called_once_with(ProgressUpdateType.ERROR)
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)

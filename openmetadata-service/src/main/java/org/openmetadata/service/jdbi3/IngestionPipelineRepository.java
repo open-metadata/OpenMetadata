@@ -37,6 +37,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Setter;
@@ -54,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServic
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
 import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -1256,8 +1259,27 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void streamProgress(String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
-    sendInitialSnapshot(pipelineFQN, runId, eventSink, sse);
-    Consumer<ProgressUpdate> listener = update -> sendProgressEvent(eventSink, sse, update);
+    ProgressUpdate initialUpdate = getLatestProgressUpdate(pipelineFQN, runId);
+    if (initialUpdate != null) {
+      CompletionStage<?> initialEvent = sendProgressEvent(eventSink, sse, initialUpdate);
+      if (isTerminalProgressUpdate(initialUpdate)) {
+        initialEvent.whenComplete(
+            (result, error) -> {
+              if (!eventSink.isClosed()) {
+                eventSink.close();
+              }
+            });
+        return;
+      }
+    }
+    Consumer<ProgressUpdate> listener =
+        update -> {
+          CompletionStage<?> event = sendProgressEvent(eventSink, sse, update);
+          if (isTerminalProgressUpdate(update)) {
+            event.whenComplete(
+                (result, error) -> ProgressSseManager.getInstance().close(eventSink));
+          }
+        };
     progressTracker.registerProgressListener(pipelineFQN, runId, listener);
     Runnable onClose =
         () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
@@ -1267,18 +1289,25 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  private void sendInitialSnapshot(
-      String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
+  private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
     ProgressState state = progressTracker.getProgressState(pipelineFQN, runId);
     if (state != null && state.getLatestUpdate() != null) {
-      sendProgressEvent(eventSink, sse, state.getLatestUpdate());
+      return state.getLatestUpdate();
     }
+    return null;
   }
 
-  private void sendProgressEvent(SseEventSink eventSink, Sse sse, ProgressUpdate update) {
+  private CompletionStage<?> sendProgressEvent(
+      SseEventSink eventSink, Sse sse, ProgressUpdate update) {
     if (!eventSink.isClosed()) {
-      eventSink.send(sse.newEvent(JsonUtils.pojoToJson(update)));
+      return eventSink.send(sse.newEvent(JsonUtils.pojoToJson(update)));
     }
+    return CompletableFuture.completedFuture(null);
+  }
+
+  private boolean isTerminalProgressUpdate(ProgressUpdate update) {
+    return update.getUpdateType() == ProgressUpdateType.PIPELINE_COMPLETE
+        || update.getUpdateType() == ProgressUpdateType.ERROR;
   }
 
   public RestUtil.PutResponse<?> updateProgress(

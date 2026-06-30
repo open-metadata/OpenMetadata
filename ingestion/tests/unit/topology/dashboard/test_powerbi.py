@@ -41,6 +41,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Tile,
     UpstreaDataflow,
     UpstreamDatamart,
+    Workspaces,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
@@ -2466,6 +2467,42 @@ class PowerBIUnitTest(TestCase):
         assert self.powerbi.progress.snapshot() is None
 
     @pytest.mark.order(57)
+    def test_admin_workspace_progress_total_reconciles_to_active_scan_results(self):
+        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.pagination_entity_per_page = 100
+
+        candidate_workspaces = [
+            Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)
+        ]
+        active_workspaces = [
+            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Active")
+            for index in range(40)
+        ]
+        skipped_workspaces = [
+            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Deleted")
+            for index in range(40, 44)
+        ]
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = MagicMock()
+        self.powerbi.client.api_client.fetch_all_workspaces = MagicMock(
+            return_value=candidate_workspaces
+        )
+        self.powerbi.client.api_client.initiate_workspace_scan = MagicMock(
+            return_value=MagicMock(id="scan-1")
+        )
+        self.powerbi.client.api_client.wait_for_scan_complete = MagicMock(return_value=True)
+        self.powerbi.client.api_client.fetch_workspace_scan_result = MagicMock(
+            return_value=Workspaces(workspaces=active_workspaces + skipped_workspaces)
+        )
+
+        produced = list(self.powerbi.get_admin_workspace_data())
+
+        assert [workspace.id for workspace in produced] == [
+            f"ws-{index}" for index in range(40)
+        ]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 0, 40)]
+
+    @pytest.mark.order(58)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_unnamed_workspace_keys_progress_on_id(self, *_):
         from metadata.workflow.progress_render import ProgressReporter

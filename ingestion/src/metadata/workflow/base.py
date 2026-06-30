@@ -331,7 +331,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 logger.debug("close_steps failed", exc_info=True)
             try:
                 ingestion_status = self.build_ingestion_status()
-                self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                try:
+                    self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                finally:
+                    self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
                 try:
                     self.print_status()
                 finally:

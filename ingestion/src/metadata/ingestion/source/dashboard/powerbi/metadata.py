@@ -12,6 +12,7 @@
 
 import re
 import traceback
+from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable, List, Optional, Union  # noqa: UP035
@@ -231,10 +232,12 @@ class PowerbiSource(DashboardServiceSource):
                 f"Paginating workspace fetch with {len(paginated_filter_patterns)}"
                 f" batches to accommodate OData filter node limit"
             )
+        active_workspace_total = 0
         for filter_pattern in paginated_filter_patterns:
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
                 workspace_id_list = [workspace.id for workspace in workspaces]
+                workspace_name_by_id = {workspace.id: workspace.name for workspace in workspaces}
 
                 # Start the scan of the available workspaces for dashboard metadata
                 workspace_paginated_list = [
@@ -267,9 +270,42 @@ class PowerbiSource(DashboardServiceSource):
                         logger.error(f"Error getting workspace scan result for scan_id: {workspace_scan.id}")
                         count += 1
                         continue
-                    for active_workspace in response.workspaces:
-                        if active_workspace.state == "Active":
-                            yield active_workspace
+                    active_workspaces = []
+                    skipped_by_state = Counter()
+                    scan_workspace_ids = set()
+                    for workspace in response.workspaces:
+                        scan_workspace_ids.add(workspace.id)
+                        if workspace.state == "Active":
+                            active_workspaces.append(workspace)
+                        else:
+                            skipped_by_state[workspace.state or "<missing>"] += 1
+                    missing_from_scan = set(workspace_ids_chunk) - scan_workspace_ids
+                    logger.info(
+                        "PowerBI workspace scan summary: requested=%s, returned=%s, active=%s, skippedByState=%s, missingFromScan=%s",
+                        len(workspace_ids_chunk),
+                        len(response.workspaces),
+                        len(active_workspaces),
+                        dict(skipped_by_state),
+                        len(missing_from_scan),
+                    )
+                    if skipped_by_state or missing_from_scan:
+                        skipped_workspaces = [
+                            f"{workspace.id}:{workspace.name}:{workspace.state or '<missing>'}"
+                            for workspace in response.workspaces
+                            if workspace.state != "Active"
+                        ]
+                        missing_workspaces = [
+                            f"{workspace_id}:{workspace_name_by_id.get(workspace_id)}"
+                            for workspace_id in sorted(missing_from_scan)
+                        ]
+                        logger.debug(
+                            "PowerBI workspace scan skipped details: nonActive=%s, missingFromScan=%s",
+                            skipped_workspaces,
+                            missing_workspaces,
+                        )
+                    active_workspace_total += len(active_workspaces)
+                    self.progress.set_total("Workspaces", active_workspace_total)
+                    yield from active_workspaces
                     count += 1
             else:
                 logger.error("Unable to fetch any PowerBI workspaces")
