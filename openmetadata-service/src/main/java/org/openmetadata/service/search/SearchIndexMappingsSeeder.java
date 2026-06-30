@@ -113,15 +113,31 @@ public final class SearchIndexMappingsSeeder {
   /** Hardened default mapping for one (language, entityType), or {@code null} when none exists. */
   public static Map<String, Object> buildEntityMapping(String language, String entityType) {
     Map<String, Object> result = null;
-    // Allowlist the language before it is used to build a classpath resource path: it originates
-    // from a request path parameter on the search-index-mappings endpoints, so an unvalidated value
-    // would be a path-injection sink.
-    if (supportedLanguages().contains(language)) {
+    // Resolve to the enum's own value so the request-supplied language never composes the classpath
+    // resource path directly (path-injection barrier); an unknown language yields no mapping.
+    String safeLanguage = canonicalLanguage(language);
+    if (safeLanguage != null) {
       ensureLoaderInitialized();
       IndexMapping indexMapping =
           IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
       if (indexMapping != null) {
-        result = hardenedResourceMapping(indexMapping, language, SearchFieldLimits.active());
+        result = hardenedResourceMapping(indexMapping, safeLanguage, SearchFieldLimits.active());
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Maps a request-supplied language to the matching {@link IndexMappingLanguage} constant's own
+   * value, or {@code null} when unrecognized. The returned string originates from the enum, not the
+   * request, so callers can use it to build resource paths without carrying user-controlled taint.
+   */
+  private static String canonicalLanguage(String language) {
+    String result = null;
+    for (IndexMappingLanguage candidate : IndexMappingLanguage.values()) {
+      if (candidate.value().equalsIgnoreCase(language)) {
+        result = candidate.value().toLowerCase(Locale.ROOT);
+        break;
       }
     }
     return result;
