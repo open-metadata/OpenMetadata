@@ -228,6 +228,83 @@ export const navigateToArchive = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+// ─── Archive page test helpers ─────────────────────────────────────────────────
+
+export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
+  page
+     .getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+        name: folderName,
+      })
+    .first();
+
+export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
+
+export const getDocumentSearchInput = (page: Page): Locator =>
+  page.getByTestId('search-input').getByLabel('Search Documents');
+
+export const selectFolderInSidebar = async (
+  page: Page,
+  folderName: string
+): Promise<void> => {
+  await getFolderTreeItem(page, folderName).click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const openUploadModal = async (page: Page): Promise<void> => {
+  await page.getByRole('button', { name: /upload file/i }).click();
+  await expect(
+    page.getByRole('dialog', { name: /upload documents/i })
+  ).toBeVisible();
+};
+
+export const uploadFileViaModal = async (
+  page: Page,
+  fileName: string,
+  content: string
+): Promise<string> => {
+  const modal = page.getByRole('dialog', { name: /upload documents/i });
+  const fileInput = page.getByTestId('file-upload-input');
+  await fileInput.waitFor({ state: 'attached' });
+  await fileInput.setInputFiles({
+    buffer: Buffer.from(content),
+    mimeType: 'text/plain',
+    name: fileName,
+  });
+
+  await expect(modal.getByText(fileName).first()).toBeVisible();
+
+  const uploadResPromise = page.waitForResponse(
+    '/api/v1/contextCenter/drive/files/upload'
+  );
+  await modal.getByRole('button', { name: /attach/i }).click();
+  const uploadRes = await uploadResPromise;
+  expect(uploadRes.status()).toBe(201);
+
+  await expect(modal).not.toBeVisible();
+
+  const uploadData = (await uploadRes.json()) as { id: string };
+
+  return uploadData.id;
+};
+
+export const softDeleteDocument = async (
+  page: Page,
+  docRowId: string
+): Promise<void> => {
+  const docRow = page.getByTestId(docRowId);
+  await expect(docRow).toBeVisible();
+  await docRow.locator('button[aria-label="Open menu"]').click();
+  await page.getByTestId('delete-btn').click();
+
+  const deleteResPromise = page.waitForResponse(
+    /\/api\/v1\/contextCenter\/drive\/files\/[^?]+\?hardDelete=false/
+  );
+  await page.getByTestId('confirm-button').click();
+  const deleteRes = await deleteResPromise;
+  expect(deleteRes.status()).toBe(200);
+};
+
 export const buildPermissionRule = (
   namePrefix: string,
   resources: string[],
@@ -316,5 +393,48 @@ export async function waitForDocumentInArchive(
 
   throw new Error(
     `Document ${documentId} did not appear in archive API within ${timeout}ms`
+  );
+}
+
+export async function waitForDocumentPermanentlyDeleted(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+  const pageSize = 200;
+
+  while (Date.now() - start < timeout) {
+    let after: string | undefined;
+    let foundInArchive = false;
+
+    do {
+      const response = await apiContext.get(
+        `/api/v1/contextCenter/drive/files?include=deleted&limit=${pageSize}${
+          after ? `&after=${after}` : ''
+        }`
+      );
+
+      expect(response.ok()).toBeTruthy();
+
+      const files = await response.json();
+
+      foundInArchive = (files?.data ?? []).some(
+        (file: { id: string }) => file.id === documentId
+      );
+
+      after = files?.paging?.after;
+    } while (!foundInArchive && after);
+
+    if (!foundInArchive) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} was still present in the archive API after ${timeout}ms`
   );
 }
