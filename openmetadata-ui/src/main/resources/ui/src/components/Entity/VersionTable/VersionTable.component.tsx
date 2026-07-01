@@ -103,7 +103,9 @@ function VersionTable<T extends Column | SearchIndexField>({
     if (paginationProps) {
       return data;
     }
-    const start = (internalCurrentPage - 1) * internalPageSize;
+    const maxPage = Math.max(1, Math.ceil(data.length / internalPageSize));
+    const clampedPage = Math.min(internalCurrentPage, maxPage);
+    const start = (clampedPage - 1) * internalPageSize;
 
     return data.slice(start, start + internalPageSize);
   }, [data, paginationProps, internalCurrentPage, internalPageSize]);
