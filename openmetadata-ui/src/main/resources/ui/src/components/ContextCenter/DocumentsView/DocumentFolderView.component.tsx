@@ -19,7 +19,7 @@ import {
   FileIcon,
   Skeleton,
   Tree,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';

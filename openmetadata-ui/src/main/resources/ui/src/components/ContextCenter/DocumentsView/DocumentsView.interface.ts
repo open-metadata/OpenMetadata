@@ -21,7 +21,7 @@ export interface FolderOption {
 export interface DocumentsViewProps {
   canDelete?: boolean;
   canEdit?: boolean;
-  totalFileCount: number
+  totalFileCount: number;
   data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
