@@ -21,6 +21,7 @@ import {
   buildValidConfig,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
   getConnectionSchemas,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -740,5 +741,107 @@ describe('supported connector schema auth coverage', () => {
     }
 
     expect(synthesizedConnectorCount).toBeGreaterThan(0);
+  });
+});
+
+describe('getConnectionFieldSection', () => {
+  const schemaWithRequiredConnectionField: Record<string, unknown> = {
+    required: ['hostPort'],
+    properties: {
+      hostPort: { type: 'string' },
+      password: { type: 'string', format: 'password' },
+      authType: { type: 'object' },
+      connectionOptions: { type: 'object' },
+      billingProjectId: { type: 'string' },
+      usageLocation: { type: 'string' },
+    },
+  };
+
+  it('classifies a required field as connection', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'hostPort')
+    ).toBe('connection');
+  });
+
+  it('classifies a password-format field as authentication', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'password')
+    ).toBe('authentication');
+  });
+
+  it('classifies authType as authentication', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'authType')
+    ).toBe('authentication');
+  });
+
+  it('classifies an ADVANCED_PROPERTIES field as advanced', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'connectionOptions'
+      )
+    ).toBe('advanced');
+  });
+
+  it('classifies an OPTIONAL_CONNECTION_PROPERTIES field as connection even when optional', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'billingProjectId'
+      )
+    ).toBe('connection');
+  });
+
+  it('classifies an optional field with no explicit allowlist entry as scope when the schema has an explicit required connection field', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'usageLocation'
+      )
+    ).toBe('scope');
+  });
+
+  it('falls back to the OPTIONAL_SCOPE_PROPERTIES allowlist when the schema has no required connection field', () => {
+    const schemaWithoutRequiredConnectionField: Record<string, unknown> = {
+      required: [],
+      properties: {
+        databaseName: { type: 'string' },
+        someOtherOptionalField: { type: 'string' },
+      },
+    };
+
+    expect(
+      getConnectionFieldSection(
+        schemaWithoutRequiredConnectionField,
+        'databaseName'
+      )
+    ).toBe('scope');
+    expect(
+      getConnectionFieldSection(
+        schemaWithoutRequiredConnectionField,
+        'someOtherOptionalField'
+      )
+    ).toBe('connection');
+  });
+
+  it('resolves a slash-separated field id by its top-level property name', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'root/hostPort'
+      )
+    ).toBe('connection');
+  });
+
+  it('reproduces the BigQuery usageLocation regression as scope', async () => {
+    const connSch = await loadConnectionSchema(
+      ServiceCategory.DATABASE_SERVICES,
+      'BigQuery'
+    );
+
+    expect(getConnectionFieldSection(connSch.schema, 'usageLocation')).toBe(
+      'scope'
+    );
   });
 });

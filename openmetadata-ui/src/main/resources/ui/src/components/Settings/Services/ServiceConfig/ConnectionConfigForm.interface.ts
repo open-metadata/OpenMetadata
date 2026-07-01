@@ -17,6 +17,7 @@ import {
   ConfigData,
   ServicesType,
 } from '../../../../interface/service.interface';
+import { ConnectionFieldSection } from '../../../../utils/ServiceConnectionUtils';
 
 export interface ConnectionConfigFormProps {
   data?: ServicesType;
@@ -29,7 +30,11 @@ export interface ConnectionConfigFormProps {
   onBlur?: () => void;
   onFocus: (
     id: string,
-    schemaMeta?: { title?: string; description?: string }
+    schemaMeta?: {
+      title?: string;
+      description?: string;
+      section?: ConnectionFieldSection;
+    }
   ) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;

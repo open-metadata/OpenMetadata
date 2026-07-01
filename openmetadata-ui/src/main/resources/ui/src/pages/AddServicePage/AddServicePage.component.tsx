@@ -58,6 +58,7 @@ import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { ConnectionFieldSection } from '../../utils/ServiceConnectionUtils';
 import {
   getEntityTypeFromServiceCategory,
   getServiceRouteFromServiceType,
@@ -109,7 +110,8 @@ const AddServicePage = () => {
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeField, setActiveField] = useState<string>('');
   const [activeFieldMeta, setActiveFieldMeta] = useState<
-    { title?: string; description?: string } | undefined
+    | { title?: string; description?: string; section?: ConnectionFieldSection }
+    | undefined
   >();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
@@ -312,7 +314,11 @@ const AddServicePage = () => {
 
   const handleFieldFocus = (
     fieldName: string,
-    schemaMeta?: { title?: string; description?: string }
+    schemaMeta?: {
+      title?: string;
+      description?: string;
+      section?: ConnectionFieldSection;
+    }
   ) => {
     if (isEmpty(fieldName)) {
       return;

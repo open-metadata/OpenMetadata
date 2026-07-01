@@ -48,6 +48,7 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
   getFieldSchemaForId,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
@@ -401,7 +402,11 @@ const ConnectionConfigForm = forwardRef<
               schemaWithoutDefaultFilterPatternFields,
               id
             );
-            onFocus(id, schemaMeta);
+            const section = getConnectionFieldSection(
+              schemaWithoutDefaultFilterPatternFields,
+              id
+            );
+            onFocus(id, { ...schemaMeta, section });
           }}
           onSubmit={handleSave}>
           {formChildren}

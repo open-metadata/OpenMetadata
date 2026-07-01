@@ -56,6 +56,7 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { ConnectionFieldSection } from '../../utils/ServiceConnectionUtils';
 import {
   getEntityTypeFromServiceCategory,
   getServiceType,
@@ -105,6 +106,10 @@ const EmbeddedAddServicePage = () => {
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
   const [activeField, setActiveField] = useState<string>('');
+  const [activeFieldMeta, setActiveFieldMeta] = useState<
+    | { title?: string; description?: string; section?: ConnectionFieldSection }
+    | undefined
+  >();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
@@ -124,6 +129,7 @@ const EmbeddedAddServicePage = () => {
   const handleConnectorChangeClick = useCallback(() => {
     resetNameValidation();
     setActiveField('');
+    setActiveFieldMeta(undefined);
     setActiveServiceStep(1);
     setIsConnectionVerified(false);
     setServiceConfig({
@@ -305,17 +311,26 @@ const EmbeddedAddServicePage = () => {
     }
   };
 
-  const handleFieldFocus = (fieldName: string) => {
+  const handleFieldFocus = (
+    fieldName: string,
+    schemaMeta?: {
+      title?: string;
+      description?: string;
+      section?: ConnectionFieldSection;
+    }
+  ) => {
     if (isEmpty(fieldName)) {
       return;
     }
     setTimeout(() => {
       setActiveField(fieldName);
+      setActiveFieldMeta(schemaMeta);
     }, 50);
   };
 
   useEffect(() => {
     setActiveField('');
+    setActiveFieldMeta(undefined);
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(
@@ -540,6 +555,7 @@ const EmbeddedAddServicePage = () => {
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceConfig.serviceType}
                   serviceType={getServiceType(serviceCategory)}
                 />

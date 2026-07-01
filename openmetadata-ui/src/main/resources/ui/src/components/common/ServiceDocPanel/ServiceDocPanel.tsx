@@ -12,6 +12,7 @@
  */
 import { ArrowUpRight, BookOpen01, Key01, Lock01 } from '@untitledui/icons';
 import { Col, Row } from 'antd';
+import { TFunction } from 'i18next';
 import { first, last, noop, startCase } from 'lodash';
 import {
   FC,
@@ -28,11 +29,13 @@ import {
   ENDS_WITH_NUMBER_REGEX,
   ONEOF_ANYOF_ALLOF_REGEX,
 } from '../../../constants/regex.constants';
+import { OPTIONAL_SCOPE_PROPERTIES } from '../../../constants/ServiceType.constant';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { languageMap } from '../../../utils/i18next/i18nextUtil';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
+import { ConnectionFieldSection } from '../../../utils/ServiceConnectionUtils';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServicePureUtils';
 import { processDocMarkdown } from '../../../utils/ServiceUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -50,7 +53,11 @@ interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
-  activeFieldMeta?: { title?: string; description?: string };
+  activeFieldMeta?: {
+    title?: string;
+    description?: string;
+    section?: ConnectionFieldSection;
+  };
   focusedMode?: boolean;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
@@ -78,6 +85,33 @@ const NESTED_FOCUS_FIELDS = new Set([
   'policyAgentConfig',
 ]);
 const LINEAGE_FIELDS = new Set(['useAccessHistory', 'accessHistoryChunkSize']);
+
+const SECTION_EYEBROW_LABELS: Record<ConnectionFieldSection, string> = {
+  connection: 'label.connection',
+  authentication: 'label.authentication',
+  scope: 'label.scope-and-option-plural',
+  advanced: 'label.advanced-config',
+};
+
+const getSectionEyebrow = (
+  fieldName: string | undefined,
+  isWorkflow: boolean | undefined,
+  t: TFunction,
+  resolvedSection?: ConnectionFieldSection
+): string => {
+  let eyebrow = t('label.connection');
+  if (resolvedSection) {
+    eyebrow = t(SECTION_EYEBROW_LABELS[resolvedSection]);
+  } else if (fieldName && LINEAGE_FIELDS.has(fieldName)) {
+    eyebrow = t('label.advanced-config');
+  } else if (fieldName && OPTIONAL_SCOPE_PROPERTIES.has(fieldName)) {
+    eyebrow = t('label.scope-and-option-plural');
+  } else if (isWorkflow) {
+    eyebrow = t('label.configuration');
+  }
+
+  return eyebrow;
+};
 
 interface FocusedDocDetails {
   eyebrow: string;
@@ -561,7 +595,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
     if (activeFieldName && !activeFieldMarkdown) {
       return {
-        eyebrow: t('label.connection'),
+        eyebrow: getSectionEyebrow(
+          activeFieldName,
+          isWorkflow,
+          t,
+          activeFieldMeta?.section
+        ),
         title: activeFieldMeta?.title ?? startCase(activeFieldName),
         description:
           activeFieldMeta?.description ??
@@ -571,11 +610,12 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     }
 
     return {
-      eyebrow: LINEAGE_FIELDS.has(activeFieldName ?? '')
-        ? t('label.advanced-config')
-        : isWorkflow
-        ? t('label.configuration')
-        : t('label.connection'),
+      eyebrow: getSectionEyebrow(
+        activeFieldName,
+        isWorkflow,
+        t,
+        activeFieldMeta?.section
+      ),
       title:
         fieldTitle ??
         (activeFieldName ? startCase(activeFieldName) : t('label.setup-guide')),

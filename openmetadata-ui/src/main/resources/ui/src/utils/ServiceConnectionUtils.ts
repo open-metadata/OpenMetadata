@@ -13,6 +13,11 @@
 import { cloneDeep, isNil, reduce } from 'lodash';
 import { SERVICE_FILTER_PATTERN_FIELDS } from '../constants/ServiceConnection.constants';
 import {
+  ADVANCED_PROPERTIES,
+  OPTIONAL_CONNECTION_PROPERTIES,
+  OPTIONAL_SCOPE_PROPERTIES,
+} from '../constants/ServiceType.constant';
+import {
   ServiceCategory,
   ServiceNestedConnectionFields,
 } from '../enums/service.enum';
@@ -658,6 +663,55 @@ export const getFieldSchemaForId = (
     title: current.title as string | undefined,
     description: current.description as string | undefined,
   };
+};
+
+export type ConnectionFieldSection =
+  | 'connection'
+  | 'authentication'
+  | 'scope'
+  | 'advanced';
+
+/**
+ * Classifies a connection form field into the section it renders under
+ * (Connection / Authentication / Scope & Options / Advanced Config) by
+ * mirroring the grouping ConnectionObjectFieldTemplate derives for the same
+ * schema, so callers that only have a field id (e.g. the docs side panel)
+ * don't have to re-guess it from a static field-name list.
+ */
+export const getConnectionFieldSection = (
+  schema: Record<string, unknown>,
+  fieldId: string
+): ConnectionFieldSection => {
+  const cleanId = fieldId.replace(/__(oneof|anyof|allof)_select$/, '');
+  const topLevelName = cleanId.split('/').filter((p) => p && p !== 'root')[0];
+  const schemaProperties = (schema.properties ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  const isAdvanced = (name: string) => ADVANCED_PROPERTIES.includes(name);
+  const isAuth = (name: string) =>
+    name === AUTH_PROPERTY_KEY || schemaProperties[name]?.format === 'password';
+
+  let section: ConnectionFieldSection = 'connection';
+  if (!topLevelName) {
+    section = 'connection';
+  } else if (isAdvanced(topLevelName)) {
+    section = 'advanced';
+  } else if (isAuth(topLevelName)) {
+    section = 'authentication';
+  } else {
+    const requiredKeys = (schema.required as string[]) ?? [];
+    const hasExplicitRequiredConnectionField = requiredKeys.some(
+      (name) => !isAdvanced(name) && !isAuth(name)
+    );
+    const isConnection = hasExplicitRequiredConnectionField
+      ? requiredKeys.includes(topLevelName) ||
+        OPTIONAL_CONNECTION_PROPERTIES.has(topLevelName)
+      : !OPTIONAL_SCOPE_PROPERTIES.has(topLevelName);
+    section = isConnection ? 'connection' : 'scope';
+  }
+
+  return section;
 };
 
 export const flattenAuthTypeIntoConfig = (

@@ -56,6 +56,7 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
+import { ConnectionFieldSection } from '../../utils/ServiceConnectionUtils';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
@@ -104,6 +105,10 @@ function EditConnectionFormPage() {
     []
   );
   const [activeField, setActiveField] = useState<string>('');
+  const [activeFieldMeta, setActiveFieldMeta] = useState<
+    | { title?: string; description?: string; section?: ConnectionFieldSection }
+    | undefined
+  >();
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
 
@@ -218,12 +223,20 @@ function EditConnectionFormPage() {
     handleFiltersInputBackClick();
   };
 
-  const handleFieldFocus = (fieldName: string) => {
+  const handleFieldFocus = (
+    fieldName: string,
+    schemaMeta?: {
+      title?: string;
+      description?: string;
+      section?: ConnectionFieldSection;
+    }
+  ) => {
     if (isEmpty(fieldName)) {
       return;
     }
     setTimeout(() => {
       setActiveField(fieldName);
+      setActiveFieldMeta(schemaMeta);
     }, 50);
   };
 
@@ -405,6 +418,7 @@ function EditConnectionFormPage() {
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceDetails?.serviceType ?? ''}
                   serviceType={getServiceType(serviceCategory)}
                 />

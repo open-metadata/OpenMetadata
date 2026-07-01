@@ -454,6 +454,158 @@ describe('ServiceDocPanel Component', () => {
     });
   });
 
+  describe('Focused Doc Eyebrow', () => {
+    it('should show the Scope & Options eyebrow for a scope field with no matching docs section', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Host Port $(id="hostPort")',
+          'Host port guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/databaseFilterPattern"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should show the Scope & Options eyebrow for a scope field with a matching docs section', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Database Filter Pattern $(id="databaseFilterPattern")',
+          'Database filter pattern guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/databaseFilterPattern"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should still show the Connection eyebrow for a plain connection field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Host Port $(id="hostPort")',
+          'Host port guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/hostPort"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.connection');
+      });
+    });
+
+    it('should still show the Advanced Config eyebrow for a lineage field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# MySQL', '### Usage & Lineage', 'Lineage guidance.'].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/useAccessHistory"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.advanced-config');
+      });
+    });
+
+    it('should prioritize activeFieldMeta.section over the field-name heuristic', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# BigQuery',
+          '## Connection Details',
+          '$$section',
+          '### Usage Location $(id="usageLocation")',
+          'Usage location guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/usageLocation"
+          activeFieldMeta={{ section: 'scope' }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should use activeFieldMeta.section even when a matching docs section is absent', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# BigQuery', '## Connection Details'].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/usageLocation"
+          activeFieldMeta={{ section: 'scope' }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+  });
+
   describe('Brand Name Replacement', () => {
     const originalEnv = process.env;
 
