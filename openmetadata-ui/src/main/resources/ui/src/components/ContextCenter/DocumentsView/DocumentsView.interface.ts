@@ -28,7 +28,7 @@ export interface DocumentsViewProps {
   selectedIds?: Set<string>;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
   onBulkDelete?: () => void;
@@ -49,6 +49,7 @@ export interface DocumentPreviewPanelProps {
 
 export interface FolderPickerMenuProps {
   folders: FolderOption[];
+  currentFolderId?: string;
   onPick: (folderId: string) => void;
 }
 export interface FileActionsProps {
@@ -57,7 +58,7 @@ export interface FileActionsProps {
   file: ContextFile;
   folders?: FolderOption[];
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
 }
 export interface ListHeaderProps {
   canDelete?: boolean;
@@ -80,7 +81,7 @@ export interface FileRowProps {
   isSelected?: boolean;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
 }
