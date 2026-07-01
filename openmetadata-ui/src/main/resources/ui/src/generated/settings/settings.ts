@@ -2508,15 +2508,6 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
-}
-
 /**
  * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
  * grants into a single ingestion run per pipeline.
@@ -2548,6 +2539,15 @@ export interface PolicyAgentConfiguration {
      * PolicyAgentTaskDefinition.config.pollingIntervalSeconds.
      */
     pollingIntervalSeconds?: number;
+}
+
+export interface Prompts {
+    memoryAgent?:      PromptConfig;
+    memoryExtraction?: PromptConfig;
+}
+
+export interface PromptConfig {
+    systemPrompt?: string;
 }
 
 /**
