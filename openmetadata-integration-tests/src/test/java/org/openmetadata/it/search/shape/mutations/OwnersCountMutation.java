@@ -19,6 +19,7 @@ import org.openmetadata.it.search.shape.Rung;
 import org.openmetadata.it.search.shape.ShapeMutation;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.search.SearchFieldLimits;
 
 public final class OwnersCountMutation implements ShapeMutation {
 
@@ -32,9 +33,20 @@ public final class OwnersCountMutation implements ShapeMutation {
     return true;
   }
 
+  /**
+   * {@code owners} is a nested field, so the engine rejects a document once its owner array exceeds
+   * {@code index.mapping.nested_objects.limit}. That limit is server-controlled — its effective
+   * value is {@link SearchFieldLimits#getNestedObjectsLimit()} — so the boundary rungs are derived
+   * from it (not hardcoded) and stay correct if an operator retunes {@code searchIndexingLimits}.
+   * The {@code aboveNestedLimit} rung is the one {@code AcceptedLimits} tolerates as REJECTED.
+   */
   @Override
   public List<Rung> ladder() {
-    return List.of(Rung.of("50", 50), Rung.of("9k", 9_000), Rung.of("12k", 12_000));
+    final int nestedLimit = SearchFieldLimits.active().getNestedObjectsLimit();
+    return List.of(
+        Rung.of("50", 50),
+        Rung.of("belowNestedLimit", nestedLimit - Math.max(1, nestedLimit / 10)),
+        Rung.of("aboveNestedLimit", nestedLimit + Math.max(1, nestedLimit / 5)));
   }
 
   @Override

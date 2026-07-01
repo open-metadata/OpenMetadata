@@ -42,19 +42,21 @@ public final class AcceptedLimits {
           new Accepted(
               ALL_ENTITIES,
               "owners.count",
-              "12k",
+              "aboveNestedLimit",
               Outcome.REJECTED,
-              "owners is a nested field; 12k owners exceeds the inherent ES/OS "
-                  + "index.mapping.nested_objects.limit (10000). No real entity has thousands of "
-                  + "owners — raising the limit to admit pathological docs is worse than rejecting."),
+              "owners is a nested field; ramping past the server-controlled "
+                  + "index.mapping.nested_objects.limit (SearchFieldLimits.getNestedObjectsLimit) is "
+                  + "rejected by the engine. The rung magnitude is derived from that limit, so this "
+                  + "tracks the server config. No real entity has that many owners."),
           new Accepted(
               ALL_ENTITIES,
               "keyword.overIgnoreAbove",
               "300chars",
               Outcome.DEGRADED_UNSEARCHABLE,
-              "displayName.keyword uses ignore_above:256 (intentional immense-term guard). A "
-                  + "300-char value is kept in _source and stays full-text searchable, but is "
-                  + "dropped from the keyword term index so exact-match on displayName.keyword misses."));
+              "displayName.keyword sets ignore_above:256 in the served index mapping (a per-field "
+                  + "cap harden() preserves — not one of the tunable SearchFieldLimits). A 300-char "
+                  + "value stays in _source and full-text searchable, but is dropped from the keyword "
+                  + "term index so exact-match on displayName.keyword misses."));
 
   private AcceptedLimits() {}
 
