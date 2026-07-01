@@ -174,8 +174,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Parameter(description = "Sort files by updatedAt. Supported values: ASC, DESC.")
           @QueryParam("orderBy")
           String orderBy,
-      @Parameter(description = "Filter files by folder ID.")
-          @QueryParam("folderId")
+      @Parameter(description = "Filter files by folder ID.") @QueryParam("folderId")
           String folderId) {
     ListFilter filter = new ListFilter(include);
     if (folderId != null && !folderId.isBlank()) {
