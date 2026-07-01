@@ -1332,46 +1332,13 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
-  const maxRetries = 3;
-  const retryDelay = 1000; // 1 second delay between retries
-
   for (let i = 0; i < length; i++) {
-    let retryCount = 0;
-    let success = false;
-
-    while (!success && retryCount < maxRetries) {
-      try {
-        // Wait for the active cell to be visible
-        const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
-
-        // Ensure the cell is focused
-        if (!(await activeCell.isVisible())) {
-          await activeCell.click({ timeout: 5000 });
-        }
-
-        // Perform the key press with a longer delay
-        await activeCell.press(key, { delay: 200 });
-
-        // Verify the key press was successful by checking if the cell is still active
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- state update settling delay
-        await page.waitForTimeout(100);
-        const isStillActive = await activeCell.isVisible();
-
-        if (isStillActive) {
-          success = true;
-        } else {
-          // If cell lost focus, try to regain it
-          await activeCell.click({ timeout: 5000 });
-          retryCount++;
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-          await page.waitForTimeout(retryDelay);
-        }
-      } catch {
-        retryCount++;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-        await page.waitForTimeout(retryDelay);
-      }
+    if (key === 'ArrowLeft') {
+      await moveToPrevColumnWithVerification(page);
+    } else if (key === 'ArrowRight') {
+      await moveToNextColumnWithVerification(page);
+    } else {
+      await page.locator(RDG_ACTIVE_CELL_SELECTOR).press(key, { delay: 200 });
     }
   }
 };
@@ -1551,6 +1518,26 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
     retries < MAX_COLUMN_NAVIGATION_RETRIES
   ) {
     await page.keyboard.press('ArrowRight', { delay: 100 });
+    newColIndex = await activeCell.getAttribute('aria-colindex');
+    retries++;
+  }
+};
+
+const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+
+  const currentColIndex = await activeCell.getAttribute('aria-colindex');
+
+  await page.keyboard.press('ArrowLeft', { delay: 100 });
+
+  let newColIndex = await activeCell.getAttribute('aria-colindex');
+  let retries = 0;
+
+  while (
+    currentColIndex === newColIndex &&
+    retries < MAX_COLUMN_NAVIGATION_RETRIES
+  ) {
+    await page.keyboard.press('ArrowLeft', { delay: 100 });
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;
   }

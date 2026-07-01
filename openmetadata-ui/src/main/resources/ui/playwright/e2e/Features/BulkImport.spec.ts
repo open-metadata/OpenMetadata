@@ -741,8 +741,8 @@ test.describe('Bulk Import Export', () => {
 
       const rowStatus = [
         'Entity created',
-        'Entity created',
         'Entity updated',
+        'Entity created',
         'Entity updated',
       ];
 
