@@ -276,13 +276,28 @@ public final class AIContextMarkdown {
     for (ForeignKey foreignKey : foreignKeys) {
       markdown
           .append("- `")
-          .append(String.join(", ", listOrEmptyStrings(foreignKey.getColumns())))
+          .append(joinNonBlank(foreignKey.getColumns()))
           .append("` → `")
-          .append(String.join(", ", listOrEmptyStrings(foreignKey.getReferredColumns())))
+          .append(joinNonBlank(foreignKey.getReferredColumns()))
           .append('`')
           .append(cardinalitySuffix(foreignKey.getRelationshipType()))
           .append('\n');
     }
+  }
+
+  /** Joins column names defensively: a malformed constraint with null/blank entries must not
+   * render "null" into (or fail) the whole context response. */
+  private static String joinNonBlank(List<String> values) {
+    StringBuilder joined = new StringBuilder();
+    for (String value : values == null ? List.<String>of() : values) {
+      if (!nullOrEmpty(value)) {
+        if (joined.length() > 0) {
+          joined.append(", ");
+        }
+        joined.append(value);
+      }
+    }
+    return joined.toString();
   }
 
   private static String cardinalitySuffix(String relationshipType) {
@@ -362,9 +377,5 @@ public final class AIContextMarkdown {
 
   private static String truncate(String value) {
     return value.length() > MAX_CONTENT_CHARS ? value.substring(0, MAX_CONTENT_CHARS) + "…" : value;
-  }
-
-  private static List<String> listOrEmptyStrings(List<String> values) {
-    return values == null ? List.of() : values;
   }
 }

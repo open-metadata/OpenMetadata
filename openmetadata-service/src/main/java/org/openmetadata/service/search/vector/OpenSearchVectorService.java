@@ -459,6 +459,9 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void replaceChunks(
       String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
       throws IOException {
+    if (previousCount == 0) {
+      cleanOrphanChunks(indexName, parentId);
+    }
     if (chunkDocs.isEmpty() && previousCount == 0) {
       return;
     }
@@ -476,6 +479,33 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
     appendChunkDeletes(bulk, indexName, parentId, chunkDocs.size(), previousCount);
     executeGenericRequest("POST", "/_bulk", bulk.toString());
+  }
+
+  /**
+   * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure): if any
+   * chunk docs still exist for the parent, remove them by query before rewriting, so stale ids
+   * beyond the new count cannot linger. The {@code _count} guard keeps the common first-write path
+   * (genuinely no chunks yet) free of delete-by-query.
+   */
+  private void cleanOrphanChunks(String indexName, String parentId) {
+    try {
+      String body =
+          "{\"query\":{\"term\":{\"parentId\":\""
+              + VectorSearchQueryBuilder.escape(parentId)
+              + "\"}}}";
+      String response = executeGenericRequest("POST", "/" + indexName + "/_count", body);
+      long count = MAPPER.readTree(response).path("count").asLong(0);
+      if (count > 0) {
+        LOG.warn(
+            "Healing {} orphan chunk doc(s) for parent {} with missing chunk-0 header",
+            count,
+            parentId);
+        executeGenericRequest(
+            "POST", "/" + indexName + "/_delete_by_query?conflicts=proceed", body);
+      }
+    } catch (Exception e) {
+      LOG.debug("Orphan chunk cleanup skipped for {}: {}", parentId, e.getMessage());
+    }
   }
 
   private static void appendChunkDeletes(

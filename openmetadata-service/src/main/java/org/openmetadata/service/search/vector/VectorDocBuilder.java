@@ -165,7 +165,8 @@ public class VectorDocBuilder {
   /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
   public static List<Map<String, Object>> buildChunkFields(
       EntityInterface entity, EmbeddingClient embeddingClient) {
-    String entityType = entity.getEntityReference().getType();
+    EntityReference reference = entity.getEntityReference();
+    String entityType = reference == null ? null : reference.getType();
     ChunkContext ctx =
         new ChunkContext(
             entity,

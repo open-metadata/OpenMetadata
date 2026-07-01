@@ -559,7 +559,11 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
 
     private Map<String, List<EntityReference>> groupByType(List<EntityReference> refs) {
-      return listOrEmpty(refs).stream().collect(Collectors.groupingBy(EntityReference::getType));
+      // A null/blank type (bad or legacy data) would become a null groupingBy key and NPE the
+      // TreeSet union; such references cannot be diffed meaningfully, so skip them.
+      return listOrEmpty(refs).stream()
+          .filter(ref -> ref != null && !nullOrEmpty(ref.getType()))
+          .collect(Collectors.groupingBy(EntityReference::getType));
     }
   }
 

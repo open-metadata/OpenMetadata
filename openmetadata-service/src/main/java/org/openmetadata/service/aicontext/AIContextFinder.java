@@ -208,7 +208,9 @@ public class AIContextFinder {
               .withSortFieldParam("_score")
               .withDeleted(false)
               .withSortOrder("desc")
-              .withIncludeSourceFields(new ArrayList<>());
+              // Routing only reads identity fields; restricting _source keeps the tag search
+              // light on assets with large documents (wide tables, long descriptions).
+              .withIncludeSourceFields(List.of("fullyQualifiedName", "entityType"));
       Response response = Entity.getSearchRepository().search(request, subjectContext);
       parseTagHits((String) response.getEntity(), refs);
     } catch (Exception e) {
