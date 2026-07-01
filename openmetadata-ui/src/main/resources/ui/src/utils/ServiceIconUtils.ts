@@ -60,6 +60,7 @@ import teradata from '../assets/svg/teradata.svg';
 // Messaging services
 import kafka from '../assets/img/service-icon-kafka.webp';
 import kinesis from '../assets/img/service-icon-kinesis.webp';
+import nats from '../assets/img/service-icon-nats.png';
 import redpanda from '../assets/img/service-icon-redpanda.webp';
 import pubsub from '../assets/svg/service-icon-pubsub.svg';
 
@@ -189,6 +190,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   pubsub: pubsub,
   redpanda: redpanda,
   kinesis: kinesis,
+  nats: nats,
   custommessaging: topicdefault,
 
   // Dashboard services

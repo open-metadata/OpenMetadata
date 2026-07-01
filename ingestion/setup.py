@@ -332,6 +332,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "kafka": {*COMMONS["kafka"]},
     "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
+    "nats": {"nats-py>=2.7.0,<3.0.0"},
     "pubsub": {VERSIONS["google-cloud-pubsub"]},
     "looker": {
         VERSIONS["looker-sdk"],
