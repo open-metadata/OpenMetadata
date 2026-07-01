@@ -217,6 +217,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -227,6 +233,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     } else if (status != null) {
       filter.addQueryParam("taskStatus", status.value());
     }
+    applyTaskTimeRange(filter, startTs, endTs);
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -263,6 +270,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+  }
+
+  private void applyTaskTimeRange(ListFilter filter, Long startTs, Long endTs) {
+    if (startTs != null) {
+      filter.addQueryParam("taskStartTs", startTs.toString());
+    }
+    if (endTs != null) {
+      filter.addQueryParam("taskEndTs", endTs.toString());
+    }
   }
 
   @GET
@@ -537,12 +553,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("assigneeIds", getCurrentUserAssigneeIds(securityContext));
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

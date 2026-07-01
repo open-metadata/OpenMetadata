@@ -199,7 +199,19 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus) {
+          TaskStatus taskStatus,
+      @Parameter(
+              description =
+                  "Filter threads created on or after this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description =
+                  "Filter threads created on or before this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("endTs")
+          Long endTs) {
     rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
@@ -212,6 +224,8 @@ public class FeedResource {
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
             .before(before)
             .after(after)
+            .startTs(startTs)
+            .endTs(endTs)
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .domains(
