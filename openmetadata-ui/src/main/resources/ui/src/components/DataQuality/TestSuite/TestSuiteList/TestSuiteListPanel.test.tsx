@@ -11,35 +11,56 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   TestSuiteListPanel,
   TestSuiteListPanelProps,
 } from './TestSuiteListPanel.component';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@openmetadata/ui-core-components', () => {
-  const cloneWith = (children: any, props: any) =>
-    require('react').Children.map(children, (child: any) =>
-      require('react').isValidElement(child)
-        ? require('react').cloneElement(child, props)
-        : child
+  const react = require('react');
+  const cloneWith = (children: ReactNode, props: Record<string, unknown>) =>
+    react.Children.map(children, (child: ReactNode) =>
+      react.isValidElement(child) ? react.cloneElement(child, props) : child
     );
 
-  const Tabs: any = ({ children, onSelectionChange, selectedKey }: any) => (
+  type SelectionChange = (key: string | number) => void;
+
+  const TabsComponent = ({
+    children,
+    onSelectionChange,
+    selectedKey,
+  }: {
+    children?: ReactNode;
+    onSelectionChange?: SelectionChange;
+    selectedKey?: string | number;
+  }) => (
     <div data-selected-key={selectedKey} data-testid="sub-tabs">
       {cloneWith(children, { onSelectionChange })}
     </div>
   );
-  Tabs.List = ({ children, onSelectionChange }: any) => (
-    <div>{cloneWith(children, { onSelectionChange })}</div>
-  );
-  Tabs.Item = ({
+
+  const List = ({
+    children,
+    onSelectionChange,
+  }: {
+    children?: ReactNode;
+    onSelectionChange?: SelectionChange;
+  }) => <div>{cloneWith(children, { onSelectionChange })}</div>;
+
+  const Item = ({
     children,
     id,
     'data-testid': testId,
     onSelectionChange,
-  }: any) => (
+  }: {
+    children?: ReactNode;
+    id?: string | number;
+    'data-testid'?: string;
+    onSelectionChange?: SelectionChange;
+  }) => (
     <button
       data-testid={testId}
       onClick={() => id !== undefined && onSelectionChange?.(id)}>
@@ -47,13 +68,31 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
+  const Tabs = Object.assign(TabsComponent, { List, Item });
+
   return {
-    Box: ({ children, className, 'data-testid': testId }: any) => (
+    Box: ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
       <div className={className} data-testid={testId}>
         {children}
       </div>
     ),
-    Input: ({ placeholder, value, onChange }: any) => (
+    Input: ({
+      placeholder,
+      value,
+      onChange,
+    }: {
+      placeholder?: string;
+      value?: string;
+      onChange: (value: string) => void;
+    }) => (
       <input
         data-testid="search-input"
         placeholder={placeholder}
@@ -68,7 +107,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('@untitledui/icons', () => ({ SearchLg: () => <span /> }));
 
 jest.mock('./TestSuitesTable.component', () => ({
-  TestSuitesTable: (props: any) => (
+  TestSuitesTable: (props: {
+    isLoading: boolean;
+    data: TestSuite[];
+    subTab: string;
+  }) => (
     <div
       data-is-loading={String(props.isLoading)}
       data-rows={props.data.length}
@@ -121,7 +164,10 @@ describe('TestSuiteListPanel', () => {
   it('should forward table props to the shared table', () => {
     renderPanel({
       isLoading: true,
-      data: [{ id: '1' } as any, { id: '2' } as any],
+      data: [
+        { id: '1' } as unknown as TestSuite,
+        { id: '2' } as unknown as TestSuite,
+      ],
       subTab: DataQualitySubTabs.BUNDLE_SUITES,
     });
 

@@ -18,7 +18,7 @@ import { MenuItem as AriaMenuItem } from 'react-aria-components';
 
 export interface ManageMenuItem {
   key: string;
-  icon: FC<{ className?: string }>;
+  icon: SvgComponent;
   title: string;
   description?: string;
   disabled?: boolean;

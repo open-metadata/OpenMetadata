@@ -14,29 +14,54 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import ManageMenuButton, { ManageMenuItem } from './ManageMenuButton.component';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Typography: ({ children }: any) => <span>{children}</span>,
+  Typography: ({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
   Dropdown: {
-    Root: ({ children }: any) => (
+    Root: ({ children }: { children?: React.ReactNode }) => (
       <div data-testid="dropdown-root">{children}</div>
     ),
-    DotsButton: ({ className, 'data-testid': testId }: any) => (
+    DotsButton: ({
+      className,
+      'data-testid': testId,
+    }: {
+      className?: string;
+      'data-testid'?: string;
+    }) => (
       <button className={className} data-testid={testId} type="button">
         dots
       </button>
     ),
-    Popover: ({ children, className }: any) => (
+    Popover: ({
+      children,
+      className,
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+    }) => (
       <div className={className} data-testid="dropdown-popover">
         {children}
       </div>
     ),
     // Threads the component's onAction down to each item so a click on an
     // item drives the real handleAction path.
-    Menu: ({ children, onAction, 'aria-label': ariaLabel }: any) => (
+    Menu: ({
+      children,
+      onAction,
+      'aria-label': ariaLabel,
+    }: {
+      children?: React.ReactNode;
+      onAction?: (key: string) => void;
+      'aria-label'?: string;
+    }) => (
       <div aria-label={ariaLabel} data-testid="dropdown-menu">
-        {React.Children.map(children, (child: any) =>
-          React.cloneElement(child, { onAction })
+        {React.Children.map(children, (child: React.ReactNode) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child, { onAction } as Partial<
+                Record<string, unknown>
+              >)
+            : child
         )}
       </div>
     ),
@@ -51,7 +76,16 @@ jest.mock('react-aria-components', () => ({
     onAction,
     className,
     'data-testid': testId,
-  }: any) => {
+  }: {
+    children?: React.ReactNode;
+    id?: string;
+    isDisabled?: boolean;
+    onAction?: (key?: string) => void;
+    className?:
+      | string
+      | ((props: { isFocused: boolean; isDisabled: boolean }) => string);
+    'data-testid'?: string;
+  }) => {
     if (typeof className === 'function') {
       className({ isFocused: false, isDisabled: Boolean(isDisabled) });
     }
