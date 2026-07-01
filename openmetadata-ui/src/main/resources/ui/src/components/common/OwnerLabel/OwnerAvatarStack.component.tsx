@@ -206,7 +206,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
           avatarSize={avatarSize}
           hiddenCount={hiddenCount}
           ownerDisplayName={ownerDisplayName}
-          owners={hiddenOwners}
+          owners={owners}
         />
       )}
     </div>
