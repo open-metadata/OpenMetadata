@@ -1158,7 +1158,6 @@ const DomainDetails = ({
       {subDomainDrawer}
 
       <AnnouncementDrawer
-        showToastInSnackbar
         createPermission={domainPermission?.EditAll}
         entityFQN={domain.fullyQualifiedName ?? ''}
         entityType={EntityType.DOMAIN}
