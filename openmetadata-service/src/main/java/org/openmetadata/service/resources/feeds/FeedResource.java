@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -215,6 +216,9 @@ public class FeedResource {
     rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
+    if (startTs != null && endTs != null && startTs > endTs) {
+      throw BadRequestException.of("startTs must be less than or equal to endTs");
+    }
     FeedFilter filter =
         FeedFilter.builder()
             .threadType(threadType)

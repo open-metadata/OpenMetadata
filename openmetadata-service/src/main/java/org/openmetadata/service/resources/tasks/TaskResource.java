@@ -273,6 +273,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   }
 
   private void applyTaskTimeRange(ListFilter filter, Long startTs, Long endTs) {
+    if (startTs != null && endTs != null && startTs > endTs) {
+      throw BadRequestException.of("startTs must be less than or equal to endTs");
+    }
     if (startTs != null) {
       filter.addQueryParam("taskStartTs", startTs.toString());
     }

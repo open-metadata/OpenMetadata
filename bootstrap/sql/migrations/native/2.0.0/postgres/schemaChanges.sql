@@ -417,7 +417,3 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
-
--- Index thread_entity.createdAt (the $.threadTs generated column) to back the
--- Inbox activity date-range filter (startTs/endTs on /v1/feed).
-CREATE INDEX IF NOT EXISTS idx_thread_createdat ON thread_entity (createdat);
