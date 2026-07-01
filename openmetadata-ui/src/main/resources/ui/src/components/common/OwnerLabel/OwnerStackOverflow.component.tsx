@@ -12,7 +12,7 @@
  */
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dialog as AriaDialog,
   DialogTrigger as AriaDialogTrigger,
@@ -47,29 +47,43 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   const fontSizeClass = AVATAR_FONT_SIZE_MAP[avatarSize];
 
   const [isOpen, setIsOpen] = useState(false);
+  const [triggerHovered, setTriggerHovered] = useState(false);
+  const [popoverHovered, setPopoverHovered] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const clearTimer = useCallback(() => {
+  const shouldBeOpen = triggerHovered || popoverHovered;
+
+  useEffect(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
-      timerRef.current = undefined;
     }
-  }, []);
+    if (shouldBeOpen && !isOpen) {
+      timerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
+    } else if (!shouldBeOpen && isOpen) {
+      timerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
+    }
 
-  const scheduleOpen = useCallback(() => {
-    clearTimer();
-    timerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
-  }, [clearTimer]);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [shouldBeOpen, isOpen]);
 
-  const scheduleClose = useCallback(() => {
-    clearTimer();
-    timerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
-  }, [clearTimer]);
+  const handleTriggerHoverStart = useCallback(
+    () => setTriggerHovered(true),
+    []
+  );
+  const handleTriggerHoverEnd = useCallback(() => setTriggerHovered(false), []);
+  const handlePopoverEnter = useCallback(() => setPopoverHovered(true), []);
+  const handlePopoverLeave = useCallback(() => setPopoverHovered(false), []);
 
   const togglePress = useCallback(() => {
-    clearTimer();
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
     setIsOpen((prev) => !prev);
-  }, [clearTimer]);
+  }, []);
 
   const { teamOwners, userOwners, totalCount } = useMemo(() => {
     const teams = owners.filter((owner) => owner.type === OwnerType.TEAM);
@@ -128,8 +142,8 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         color="link-color"
         data-testid="owners-overflow-trigger"
         size="xs"
-        onHoverEnd={scheduleClose}
-        onHoverStart={scheduleOpen}
+        onHoverEnd={handleTriggerHoverEnd}
+        onHoverStart={handleTriggerHoverStart}
         onPress={togglePress}>
         <Avatar
           className={classNames(
@@ -152,8 +166,8 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         }
         offset={6}
         placement="bottom start"
-        onMouseEnter={clearTimer}
-        onMouseLeave={scheduleClose}>
+        onMouseEnter={handlePopoverEnter}
+        onMouseLeave={handlePopoverLeave}>
         <AriaDialog
           aria-label={t('label.owner-plural')}
           className="tw:outline-hidden">
