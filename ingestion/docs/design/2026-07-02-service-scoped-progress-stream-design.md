@@ -59,11 +59,13 @@ All new state is guarded by the existing locking model. Added:
 
 - `Map<String /*serviceFqn*/, Set<String /*runKey = fqn/runId*/>> serviceActiveRuns` — live runs per service.
 - `Map<String /*serviceFqn*/, List<Consumer<ServiceProgressEvent>>> serviceListeners`.
-- A **bounded** `Cache<String /*pipelineFqn*/, String /*serviceFqn*/>` (Guava `CacheBuilder.newBuilder().maximumSize(1000).expireAfterAccess(1, TimeUnit.HOURS).build()`, matching the tracker's existing cache sizing and the project's bounded-cache rule) resolving service from the pipeline's `service` `EntityReference` — **not** by string-splitting the FQN.
 
-Behavior changes:
+**`serviceFqn` resolution is a pure FQN function, not an entity lookup.** The pipeline FQN is constructed as `FullyQualifiedName.build(service.getFullyQualifiedName(), pipelineName)` (`IngestionPipelineRepository.setFullyQualifiedName`), so `FullyQualifiedName.getParentFQN(pipelineFqn)` returns the service FQN exactly and quoting-safe. `FullyQualifiedName` (`org.openmetadata.service.util`) is a pure static util in the **same module** as the tracker, so the tracker resolves `serviceFqn` **internally** — no DB read, no cache, no entity/DAO dependency. Resolution defends against a malformed FQN with no parent by skipping service routing when `getParentFQN` returns null/empty.
 
-- `updateProgress(fqn, runId, update)` — after the existing per-run state update and per-run listener notify: resolve `serviceFqn` (cache), add `runKey` to `serviceActiveRuns[serviceFqn]`, and notify `serviceListeners[serviceFqn]` with a `ServiceProgressEvent`. When the update is **terminal** (`PIPELINE_COMPLETE` or `ERROR`, matching `isTerminalProgressUpdate`), forward the terminal event to service listeners **then** remove `runKey` from the active set. Per-run `ProgressState` still lingers under the existing 1h `expireAfterAccess` TTL.
+Behavior changes (the existing 3-arg `updateProgress(pipelineFqn, runId, update)` signature is **unchanged**, so existing callers and tests are untouched):
+
+- `updateProgress(pipelineFqn, runId, update)` — after the existing per-run state update and per-run listener notify: compute `serviceFqn = FullyQualifiedName.getParentFQN(pipelineFqn)`; if non-empty, add `runKey` to `serviceActiveRuns[serviceFqn]` and notify `serviceListeners[serviceFqn]` with a `ServiceProgressEvent`. When the update is **terminal** (`PIPELINE_COMPLETE` or `ERROR`, matching `isTerminalProgressUpdate`), forward the terminal event to service listeners **then** remove `runKey` from the active set. Per-run `ProgressState` still lingers under the existing 1h `expireAfterAccess` TTL.
+- `IngestionPipelineRepository` is **unchanged** on the push path; it still calls the 3-arg tracker method.
 - New: `registerServiceListener(serviceFqn, listener)` / `unregisterServiceListener(serviceFqn, listener)`, mirroring the per-run registration (including the `activeProgressStreams` gauge).
 - New: `getActiveRunSnapshots(serviceFqn)` → for each live `runKey`, its latest `ProgressUpdate` wrapped as a `ServiceProgressEvent`, for at-connect replay.
 
@@ -79,11 +81,12 @@ Empty-collection cleanup and gauge bookkeeping mirror the existing per-run `unre
 Endpoint on `IngestionPipelineResource`:
 
 ```
-GET /v1/services/ingestionPipelines/progress/service/{serviceFqn}/stream
+GET /v1/services/ingestionPipelines/progress/service/{serviceType}/{serviceFqn}/stream
 Produces: text/event-stream
 ```
 
-- **Auth: service-level.** Authorize `VIEW_ALL` against the target **service** resource context derived from `serviceFqn` (stricter and more correct than the generic pipeline-type check the per-run endpoint uses).
+- **Auth: service-level.** `serviceFqn` alone does not carry the service entity type, and `ResourceContext(resource, id, name)` needs it — so the path carries `serviceType` (e.g. `databaseService`, `dashboardService`), which the UI already knows on a service page. Authorize `VIEW_ALL` via `new OperationContext(serviceType, MetadataOperation.VIEW_ALL)` against `new ResourceContext<>(serviceType, null, serviceFqn)`. This is stricter and more correct than the generic pipeline-type check the per-run endpoint uses.
+- Only `serviceFqn` is used for stream keying (it equals `getParentFQN(pipelineFqn)`); `serviceType` is used solely for authorization.
 - Returns 503 when `repository.isProgressTrackingEnabled()` is false, matching the per-run endpoint.
 
 ### Piece 4 — At-connect replay + lifecycle
@@ -99,7 +102,7 @@ One `EventSource` per service page. Route each `ServiceProgressEvent` by `pipeli
 
 ## Back-compat
 
-The per-run endpoint and its `streamProgress` path are retained unchanged. Both stream shapes read the same underlying tracker state; the only added cost on the hot `updateProgress` path is one cache lookup + one service-listener notify per update (~every 10s per run).
+The per-run endpoint and its `streamProgress` path are retained unchanged. Both stream shapes read the same underlying tracker state; the only added cost on the hot `updateProgress` path is one `getParentFQN` string parse + one service-listener notify per update (~every 10s per run).
 
 ## Testing
 
@@ -107,8 +110,8 @@ The per-run endpoint and its `streamProgress` path are retained unchanged. Both 
   - Two runs of two pipelines under the same service both land in `serviceActiveRuns[serviceFqn]` and both notify a single service listener.
   - A terminal update forwards the terminal event **and** removes only that run from the active set; the sibling run remains.
   - `getActiveRunSnapshots` returns the latest snapshot per active run.
-  - The `pipelineFqn → serviceFqn` cache is bounded (eviction past `maximumSize`) and resolves via the pipeline's `service` reference.
   - A second service's updates do **not** notify the first service's listeners (isolation).
+  - `FullyQualifiedName.getParentFQN(build(serviceFqn, name))` round-trips to `serviceFqn`, including quoted names containing dots (resolution correctness).
 - **Integration test (`openmetadata-integration-tests`):** open the service stream, push progress for two pipelines of one service, assert both multiplex onto the one stream with correct `pipelineFqn` routing, and that a second service's events never leak in.
 
 ## Open items / future seams
