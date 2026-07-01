@@ -75,7 +75,7 @@ jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
 );
 
 jest.mock(
-  '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList',
+  '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 

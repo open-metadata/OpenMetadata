@@ -74,7 +74,7 @@ export const Toast = ({ toast }: ToastProps) => {
   return (
     <AriaToast
       className={cx(
-        'tw:inline-flex tw:items-center tw:gap-2.5',
+        'tw:inline-flex tw:items-start tw:gap-2.5 tw:max-w-[600px]',
         'tw:rounded-[10px] tw:bg-primary-solid tw:px-4 tw:py-2.75',
         'tw:text-sm tw:font-medium tw:text-fg-white',
         'tw:shadow-2xl tw:outline-none',
@@ -82,13 +82,13 @@ export const Toast = ({ toast }: ToastProps) => {
       )}
       data-testid="alert-bar"
       toast={toast}>
-      <span className="tw:flex tw:shrink-0" data-testid="alert-icon">
+      <span className="tw:mt-0.5 tw:flex tw:shrink-0" data-testid="alert-icon">
         <Icon
           aria-hidden="true"
           className={cx('tw:size-4', config.iconClass)}
         />
       </span>
-      <span data-testid="alert-message">
+      <span className="tw:flex-1" data-testid="alert-message">
         {typeof messageOrNode === 'string'
           ? messageOrNode
           : (messageOrNode as ReactNode)}
@@ -96,7 +96,7 @@ export const Toast = ({ toast }: ToastProps) => {
       {showClose && state && (
         <Button
           aria-label="Close"
-          className="tw:-mr-1 tw:ml-1 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
+          className="tw:-mr-1 tw:mt-0.5 tw:ml-1 tw:flex tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-0.5 tw:text-fg-white/60 tw:outline-none tw:transition tw:hover:bg-white/10 tw:hover:text-fg-white"
           data-testid="alert-icon-close"
           slot="close"
           onPress={() => state.close(toast.key)}>
