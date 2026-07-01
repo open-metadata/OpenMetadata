@@ -44,8 +44,10 @@ const IncidentTypeAreaChartWidget = ({
         </div>
         <Typography
           as="p"
-          className="font-semibold display-xs chart-widget-link-underline"
-          data-testid="total-value">
+          className="chart-widget-link-underline"
+          data-testid="total-value"
+          size="text-xl"
+          weight="semibold">
           {latestValue}
         </Typography>
         <CustomAreaChart data={chartData} height={height} name={name} />

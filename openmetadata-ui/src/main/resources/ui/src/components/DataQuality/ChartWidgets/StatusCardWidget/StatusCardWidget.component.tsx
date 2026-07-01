@@ -66,8 +66,10 @@ const StatusDataWidget = ({
       <div className="d-flex flex-wrap justify-between gap-2">
         <Typography
           as="span"
-          className="font-semibold display-xs chart-widget-link-underline"
-          data-testid="total-value">
+          className="chart-widget-link-underline"
+          data-testid="total-value"
+          size="text-xl"
+          weight="semibold">
           {statusData.total}
         </Typography>
         <div className="d-flex items-center gap-3">

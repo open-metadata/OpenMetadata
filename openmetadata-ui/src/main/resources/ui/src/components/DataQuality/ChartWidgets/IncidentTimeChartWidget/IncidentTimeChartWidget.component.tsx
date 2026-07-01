@@ -42,8 +42,9 @@ const IncidentTimeChartWidget = ({
     return (
       <Typography
         as="p"
-        className="font-semibold display-xs"
-        data-testid="average-time">
+        data-testid="average-time"
+        size="text-xl"
+        weight="semibold">
         {chartData.length > 0
           ? convertMillisecondsToHumanReadableFormat(avgTime)
           : '--'}
