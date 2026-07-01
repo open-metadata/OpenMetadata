@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "nämnde dig på",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "Metadataagenter används för att extrahera metadata från källtjänsterna.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "Baserat på vald tjänsttyp, ange filtermönsterdetaljer för schemat eller tabellen (databas), eller ämnet (meddelanden), eller instrumentpanelen. Du kan inkludera eller exkludera filtermönstren. Välj att inkludera vyer, aktivera eller inaktivera dataprofileraren och mata in exempeldata efter behov.",
     "metadata-status-complete-description": "Metadata är helt ifyllda och konsekventa över alla kolumner",
     "metadata-status-incomplete-description": "Vissa metadatafält saknas",

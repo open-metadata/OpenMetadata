@@ -167,7 +167,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
               letterSpacing: '-0.01em',
             }}>
             {allDone
-              ? t('label.deployment-complete')
+              ? t('message.metadata-agents-up-to-date')
               : t('message.agents-deploying-ingesting')}
           </div>
           <div

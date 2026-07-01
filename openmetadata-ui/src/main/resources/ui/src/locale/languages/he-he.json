@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "ציין אותך ב",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "סוכני מטא-דאטה משמשים לחילוץ מטא-דאטה משירותי המקור.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "בהתאם לסוג השירות שנבחר, הזן פרטי דפוס הסינון עבור הסכמה או טבלה (מסד נתונים), או נושא (הודעות), או לוח בקרה. תוכל לכלול או לא כלול את פרטי דפוס הסינון. בחר לכלול צפיות, הפעל או השבת את פרופיל הנתונים, וחילוץ נתוני דוגמה, כפי שנדרש.",
     "metadata-status-complete-description": "המטא-נתונים מלאים ועקביים בכל העמודות",
     "metadata-status-incomplete-description": "חסרים שדות מטא-נתונים מסוימים",

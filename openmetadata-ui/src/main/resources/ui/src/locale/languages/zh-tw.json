@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "在...上提到了您",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "元資料代理程式用於從來源服務中擷取元資料。",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "根據所選的服務類型，輸入結構或資料表（資料庫）、主題（訊息傳遞）或儀表板的篩選模式詳細資料。您可以包含或排除篩選模式。根據需要選擇包含檢視、啟用或停用資料分析器，以及擷取範例資料。",
     "metadata-status-complete-description": "中繼資料在所有欄位中已完整填寫且一致",
     "metadata-status-incomplete-description": "部分中繼資料欄位遺失",

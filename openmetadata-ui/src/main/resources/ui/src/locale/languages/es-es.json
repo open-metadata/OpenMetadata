@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "te mencionó en",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "Los agentes de metadatos se utilizan para extraer metadatos de los servicios de origen.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "Basado en el tipo de servicio seleccionado, ingresa los detalles del patrón de filtro para el esquema o tabla (base de datos), o tema (mensajería), o tablero. Puedes incluir o excluir los patrones de filtro. Elije incluir vistas, habilitar o deshabilitar el perfilador de datos y ingerir datos de muestra, según sea necesario.",
     "metadata-status-complete-description": "Los metadatos están completamente rellenados y son coherentes en todas las columnas",
     "metadata-status-incomplete-description": "Faltan algunos campos de metadatos",

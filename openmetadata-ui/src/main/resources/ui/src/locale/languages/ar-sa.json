@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "أشار إليك في الـ",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "تُستخدم وكلاء البيانات الوصفية لاستخراج البيانات الوصفية من الخدمات المصدر.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "بناءً على نوع الخدمة المحدد، أدخل تفاصيل نمط المرشح للمخطط أو الجدول (قاعدة البيانات)، أو الموضوع (المراسلة)، أو لوحة المعلومات. يمكنك تضمين أو استبعاد أنماط المرشح. اختر تضمين العروض، وتفعيل أو تعطيل محلل البيانات، واستيعاب بيانات العينة، حسب الاقتضاء.",
     "metadata-status-complete-description": "البيانات الوصفية مكتملة ومتسقة عبر جميع الأعمدة",
     "metadata-status-incomplete-description": "بعض حقول البيانات الوصفية مفقودة",

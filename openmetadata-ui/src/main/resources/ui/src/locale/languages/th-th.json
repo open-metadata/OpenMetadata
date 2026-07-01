@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "กล่าวถึงคุณบน",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "Metadata Agents ใช้สำหรับดึงข้อมูลจากบริการต้นทาง",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "ตามประเภทบริการที่เลือก ให้ใส่รายละเอียดรูปแบบตัวกรองสำหรับสคีมาหรือตาราง (ฐานข้อมูล) หรือหัวข้อ (การส่งข้อความ) หรือแดชบอร์ด คุณสามารถรวมหรือยกเว้นรูปแบบตัวกรองได้ เลือกที่จะรวมมุมมอง เปิดหรือปิดตัวสร้างโปรไฟล์ข้อมูล และนำเข้าข้อมูลตัวอย่างตามต้องการ",
     "metadata-status-complete-description": "เมตาดาต้าถูกกรอกครบถ้วนและสอดคล้องกันในทุกคอลัมน์",
     "metadata-status-incomplete-description": "ฟิลด์เมตาดาต้าบางส่วนหายไป",

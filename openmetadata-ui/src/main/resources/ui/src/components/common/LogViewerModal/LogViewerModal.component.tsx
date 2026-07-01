@@ -16,7 +16,13 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { Copy01, Download01, File02, SearchMd } from '@untitledui/icons';
+import {
+  AlignLeft,
+  Copy01,
+  Download01,
+  File02,
+  SearchMd,
+} from '@untitledui/icons';
 import classNames from 'classnames';
 import { ChangeEvent, FunctionComponent, useMemo, useState } from 'react';
 import { Dialog as AriaDialog } from 'react-aria-components';
@@ -49,6 +55,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
     status || totalLines !== undefined || runId || lastRun
   );
   const [searchText, setSearchText] = useState('');
+  const [wrap, setWrap] = useState(false);
   const { hasCopied, onCopyToClipBoard } = useClipboard(logs);
 
   const query = searchText.trim().toLowerCase();
@@ -143,6 +150,17 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                     </span>
                   </button>
                 )}
+                <button
+                  aria-label={t('label.wrap')}
+                  aria-pressed={wrap}
+                  className={classNames('lvm-icon-button', {
+                    'lvm-icon-button--active': wrap,
+                  })}
+                  data-testid="log-viewer-wrap"
+                  type="button"
+                  onClick={() => setWrap((value) => !value)}>
+                  <AlignLeft aria-hidden className="lvm-icon" />
+                </button>
                 {onDownload && (
                   <button
                     aria-label={t('label.download')}
@@ -186,6 +204,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                   formatPart={colorize ? formatLogPart : undefined}
                   rowHeight={25}
                   text={filteredLogs}
+                  wrapLines={wrap}
                 />
               )}
             </div>

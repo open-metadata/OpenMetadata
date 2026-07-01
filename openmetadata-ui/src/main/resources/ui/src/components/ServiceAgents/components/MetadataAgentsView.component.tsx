@@ -13,21 +13,27 @@
 
 import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../interface/service.interface';
 import { deleteIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import { getEditIngestionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
+import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import { IcCode } from '../AgentIcons';
 import '../agents-preview.css';
 import { Agent } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
+import { useAgentLogs } from '../hooks/useAgentLogs';
 import AgentGroup from './AgentGroup.component';
 import DeploymentSummaryCard from './DeploymentSummaryCard.component';
-import LogViewerDrawer from './LogViewerDrawer.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
 interface MetadataAgentsViewProps {
@@ -49,6 +55,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   showAddAgent,
   onRefresh,
 }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
@@ -57,6 +64,14 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     index: number;
   } | null>(null);
   const [logsFor, setLogsFor] = useState<Agent | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { rawText, isLoading: isLogsLoading } = useAgentLogs(
+    logsFor?.id ?? '',
+    logsFor?.pipelineType ?? PipelineType.Metadata,
+    Boolean(logsFor)
+  );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
   const onRun = useCallback(
@@ -70,17 +85,21 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     []
   );
 
-  const deleteAgent = useCallback(
-    async (agent: Agent) => {
-      try {
-        await deleteIngestionPipelineById(agent.id);
-        onRefresh();
-      } catch (err) {
-        showErrorToast(err as AxiosError);
-      }
-    },
-    [onRefresh]
-  );
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget) {
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteIngestionPipelineById(deleteTarget.id);
+      onRefresh();
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, onRefresh]);
 
   const onAction = useCallback(
     (action: string, agent: Agent) => {
@@ -113,7 +132,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 
           break;
         case 'delete':
-          void deleteAgent(agent);
+          setDeleteTarget(agent);
 
           break;
         default:
@@ -128,9 +147,24 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       navigate,
       serviceCategory,
       serviceName,
-      deleteAgent,
     ]
   );
+
+  const handleDownloadLogs = useCallback(() => {
+    if (!logsFor) {
+      return;
+    }
+    try {
+      const blob = new Blob([rawText], { type: 'text/plain' });
+      const anchor = document.createElement('a');
+      anchor.href = URL.createObjectURL(blob);
+      anchor.download = `${logsFor.name.replace(/\s+/g, '_')}_logs.txt`;
+      anchor.click();
+      URL.revokeObjectURL(anchor.href);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [logsFor, rawText]);
 
   const addAgentSlot = useMemo(
     () =>
@@ -178,7 +212,28 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         />
       )}
       {logsFor && (
-        <LogViewerDrawer agent={logsFor} onClose={() => setLogsFor(null)} />
+        <LogViewerModal
+          open
+          loading={isLogsLoading}
+          logs={rawText}
+          title={`${logsFor.name} · ${t('label.log-plural')}`}
+          onClose={() => setLogsFor(null)}
+          onDownload={handleDownloadLogs}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmationModal
+          visible
+          bodyText={t('message.are-you-sure-want-to-text', {
+            text: `${t('label.delete').toLowerCase()} ${deleteTarget.name}`,
+          })}
+          cancelText={t('label.cancel')}
+          confirmText={t('label.delete')}
+          header={t('label.delete-agent')}
+          isLoading={isDeleting}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void confirmDelete()}
+        />
       )}
     </div>
   );

@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "तुमचा उल्लेख केला",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "मेटाडेटा एजेंट्स स्रोत सेवांमधून मेटाडेटा निकालण्यासाठी वापरले जातात.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "निवडलेल्या सेवा प्रकारावर आधारित, योजना किंवा टेबल (डेटाबेस), किंवा विषय (संदेशवहन), किंवा डॅशबोर्डसाठी फिल्टर पॅटर्न तपशील प्रविष्ट करा. तुम्ही फिल्टर पॅटर्न समाविष्ट किंवा वगळू शकता. दृश्ये समाविष्ट करण्यासाठी निवडा, डेटा प्रोफाइलर सक्षम किंवा अक्षम करा आणि आवश्यकतेनुसार नमुना डेटा अंतर्ग्रहण करा.",
     "metadata-status-complete-description": "मेटाडेटा सर्व स्तंभांमध्ये पूर्ण भरलेला आणि सुसंगत आहे",
     "metadata-status-incomplete-description": "काही मेटाडेटा फील्ड गहाळ आहेत",

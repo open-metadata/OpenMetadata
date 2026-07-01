@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "упомянул(а) вас в",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "Агенты метаданных используются для извлечения метаданных из исходных сервисов.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "В зависимости от выбранного типа службы введите сведения о шаблоне фильтра для схемы, таблицы (база данных), раздела (обмен сообщениями) или панели мониторинга. Вы можете включить или исключить шаблоны фильтров. При необходимости включите представления, включите или отключите профилировщик данных и примите образцы данных.",
     "metadata-status-complete-description": "Метаданные полностью заполнены и согласованы во всех столбцах",
     "metadata-status-incomplete-description": "Отсутствуют некоторые поля метаданных",

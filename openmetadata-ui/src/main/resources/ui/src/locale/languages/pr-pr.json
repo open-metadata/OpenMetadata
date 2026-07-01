@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "شما را در {{entity}} ذکر کرده است.",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "عوامل متادیتا برای استخراج متادیتا از سرویس‌های منبع استفاده می‌شوند.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "بر اساس نوع سرویسی که انتخاب کرده‌اید، جزئیات الگوی فیلتر برای طرح یا جدول (پایگاه داده)، یا موضوع (پیام‌رسانی)، یا داشبورد وارد کنید. می‌توانید الگوهای فیلتر را شامل کنید یا حذف کنید. انتخاب کنید که آیا می‌خواهید نماها را شامل کنید، پروفایل داده را فعال یا غیرفعال کنید و داده نمونه را استخراج کنید.",
     "metadata-status-complete-description": "فراداده به‌طور کامل پر شده و در همه ستون‌ها سازگار است",
     "metadata-status-incomplete-description": "برخی فیلدهای فراداده گم شده‌اند",

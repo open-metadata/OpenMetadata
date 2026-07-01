@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "sizi şurada bahsetti:",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "Metadata Agent'ları, kaynak servislerden metadata çıkarmak için kullanılır.",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "Seçilen servis türüne bağlı olarak, şema veya tablo (veritabanı), konu (mesajlaşma) veya kontrol paneli için filtre deseni ayrıntılarını girin. Filtre desenlerini dahil edebilir veya hariç tutabilirsiniz. Görünümleri dahil etmeyi, veri profilleyiciyi etkinleştirmeyi veya devre dışı bırakmayı ve gerektiğinde örnek veri almayı seçin.",
     "metadata-status-complete-description": "Meta veriler tüm sütunlarda tamamen doldurulmuş ve tutarlıdır",
     "metadata-status-incomplete-description": "Bazı meta veri alanları eksik",

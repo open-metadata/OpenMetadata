@@ -3381,6 +3381,7 @@
     "mentioned-you-on-the-lowercase": "であなたについて言及しました",
     "metadata-agents-description": "Extract metadata, usage, lineage and profiling from the source.",
     "metadata-agents-table-description": "メタデータエージェントは、ソースサービスからメタデータを抽出するために使用されます。",
+    "metadata-agents-up-to-date": "Metadata agents are up to date",
     "metadata-ingestion-description": "選択したサービスの種類に基づいて、スキーマまたはテーブル（データベース）、トピック（メッセージ）、またはダッシュボードのフィルターパターンの詳細を入力します。フィルターパターンを含めたり除外したりできます。ビューの含有、データプロファイラーの有効/無効、サンプルデータの取り込みも選択できます。",
     "metadata-status-complete-description": "メタデータはすべての列で完全に記入され、一貫しています",
     "metadata-status-incomplete-description": "一部のメタデータフィールドがありません",
