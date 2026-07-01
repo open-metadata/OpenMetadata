@@ -10,13 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Dialog as AriaDialog,
-  DialogTrigger as AriaDialogTrigger,
-  Popover as AriaPopover,
+  Avatar,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import { useMemo } from 'react';
+import {
+  Tooltip as AriaTooltip,
+  TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -33,8 +37,6 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';
 
 const POPOVER_AVATAR_SIZE = '24';
-const OPEN_DELAY_MS = 80;
-const CLOSE_DELAY_MS = 220;
 
 export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   owners,
@@ -45,45 +47,6 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   const { t } = useTranslation();
   const remainingCountLabel = `+${hiddenCount}`;
   const fontSizeClass = AVATAR_FONT_SIZE_MAP[avatarSize];
-
-  const [isOpen, setIsOpen] = useState(false);
-  const [triggerHovered, setTriggerHovered] = useState(false);
-  const [popoverHovered, setPopoverHovered] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-
-  const shouldBeOpen = triggerHovered || popoverHovered;
-
-  useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    if (shouldBeOpen && !isOpen) {
-      timerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
-    } else if (!shouldBeOpen && isOpen) {
-      timerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
-    }
-
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, [shouldBeOpen, isOpen]);
-
-  const handleTriggerHoverStart = useCallback(
-    () => setTriggerHovered(true),
-    []
-  );
-  const handleTriggerHoverEnd = useCallback(() => setTriggerHovered(false), []);
-  const handlePopoverEnter = useCallback(() => setPopoverHovered(true), []);
-  const handlePopoverLeave = useCallback(() => setPopoverHovered(false), []);
-
-  const togglePress = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    setIsOpen((prev) => !prev);
-  }, []);
 
   const { teamOwners, userOwners, totalCount } = useMemo(() => {
     const teams = owners.filter((owner) => owner.type === OwnerType.TEAM);
@@ -104,15 +67,19 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
     return (
       <Link
         className="tw:flex tw:items-center tw:gap-2 tw:px-3 tw:py-1.5 tw:no-underline tw:text-secondary tw:hover:bg-secondary tw:hover:text-primary tw:rounded-md"
-        data-testid={`overflow-owner-${entityName}`}
+        data-testid="owner-link"
         key={owner.id}
         to={getOwnerPath(owner)}>
         {isTeam ? (
-          <span className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600">
+          <span
+            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600"
+            data-testid={entityName}>
             <TeamsIcon className="tw:w-3.5 tw:h-3.5" />
           </span>
         ) : (
-          <span className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0">
+          <span
+            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0"
+            data-testid={entityName}>
             <ProfilePicture
               displayName={entityName}
               name={owner.name ?? ''}
@@ -133,7 +100,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   };
 
   return (
-    <AriaDialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+    <AriaTooltipTrigger closeDelay={150} delay={100}>
       <Button
         aria-label={t('label.view-entity', {
           entity: t('label.owner-plural'),
@@ -141,72 +108,75 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         className="owner-stack-overflow-trigger"
         color="link-color"
         data-testid="owners-overflow-trigger"
-        size="xs"
-        onHoverEnd={handleTriggerHoverEnd}
-        onHoverStart={handleTriggerHoverStart}
-        onPress={togglePress}>
+        size="xs">
         <Avatar
           className={classNames(
-            'tw:bg-brand-50 tw:ring-2 tw:ring-primary tw:text-brand-700 tw:font-medium',
+            'tw:bg-brand-50 tw:ring-2 tw:ring-white tw:text-brand-700 tw:font-medium',
             fontSizeClass
           )}
           placeholder={remainingCountLabel}
           size={AVATAR_SIZE_NAME_MAP[avatarSize]}
         />
       </Button>
-      <AriaPopover
-        className="tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:pt-1.5"
-        offset={0}
-        placement="bottom start"
-        onMouseEnter={handlePopoverEnter}
-        onMouseLeave={handlePopoverLeave}>
-        <AriaDialog
-          aria-label={t('label.owner-plural')}
-          className="tw:outline-hidden">
-          <div
-            className="tw:flex tw:flex-col tw:py-2"
-            data-testid="owners-overflow-popover">
-            <Typography
-              as="div"
-              className="tw:px-3 tw:pb-2 tw:text-primary"
-              data-testid="owners-overflow-total"
-              size="text-sm"
-              weight="semibold">
-              {totalCount} {t('label.owner-plural')}
-            </Typography>
+      <AriaTooltip
+        className={({ isEntering, isExiting }) =>
+          classNames(
+            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+            isEntering &&
+              'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
+            isExiting &&
+              'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-bottom:slide-out-to-top-1 tw:placement-top:slide-out-to-bottom-1'
+          )
+        }
+        offset={6}
+        placement="bottom start">
+        <div
+          className="tw:flex tw:flex-col tw:p-4 tw:gap-3"
+          data-testid="owners-overflow-popover">
+          <Typography
+            color="primary"
+            data-testid="owners-overflow-total"
+            size="text-sm"
+            weight="medium">
+            {totalCount} {t('label.owner-plural')}
+          </Typography>
 
-            {teamOwners.length > 0 && (
+          <Divider className="tw-border-t tw:border-secondary" />
+
+          {teamOwners.length > 0 && (
+            <>
               <div
-                className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-1"
+                className="tw:flex tw:flex-col "
                 data-testid="owners-overflow-teams-section">
                 <Typography
                   as="div"
-                  className="tw:px-3 tw:pt-1 tw:pb-2 tw:text-quaternary tw:uppercase tw:tracking-wider"
+                  className="tw:pb-2 tw:text-quaternary"
                   size="text-xs"
                   weight="medium">
                   {t('label.team-plural')} ({teamOwners.length})
                 </Typography>
                 {teamOwners.map(renderOwnerRow)}
               </div>
-            )}
+              <Divider className="tw-border-t tw:border-secondary" />
+            </>
+          )}
 
-            {userOwners.length > 0 && (
-              <div
-                className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-1"
-                data-testid="owners-overflow-users-section">
-                <Typography
-                  as="div"
-                  className="tw:px-3 tw:pt-1 tw:pb-2 tw:text-quaternary tw:uppercase tw:tracking-wider"
-                  size="text-xs"
-                  weight="medium">
-                  {t('label.user-plural')} ({userOwners.length})
-                </Typography>
-                {userOwners.map(renderOwnerRow)}
-              </div>
-            )}
-          </div>
-        </AriaDialog>
-      </AriaPopover>
-    </AriaDialogTrigger>
+          {userOwners.length > 0 && (
+            <div
+              className="tw:flex tw:flex-col"
+              data-testid="owners-overflow-users-section">
+              <Typography
+                as="div"
+                className="tw:pb-2 tw:text-quaternary"
+                size="text-xs"
+                weight="medium">
+                {t('label.user-plural')} ({userOwners.length})
+              </Typography>
+              {userOwners.map(renderOwnerRow)}
+            </div>
+          )}
+        </div>
+      </AriaTooltip>
+    </AriaTooltipTrigger>
   );
 };
