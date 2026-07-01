@@ -35,6 +35,7 @@ import {
   waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { test as testWithRolesPages } from '../fixtures/pages';
 
 const deleteDisposableArticleByFqn = async (
   apiContext: APIRequestContext,
@@ -1904,5 +1905,183 @@ test.describe('Context Center Permissions', () => {
         dialog.getByRole('button', { name: /^cancel$/i })
       ).toBeVisible();
     });
+  });
+
+  // ─── Article Role-Based Access (Standard Roles) ──────────────────────────
+
+  test.describe('Article Role-Based Access (Standard Roles)', () => {
+    test('ViewAll-only user cannot create or edit articles', async ({
+      viewOnlyPage,
+    }) => {
+      await navigateToArticles(viewOnlyPage);
+
+      await expect(
+        viewOnlyPage.getByTestId('create-knowledge-page-btn')
+      ).not.toBeVisible();
+
+      const articleResponse = viewOnlyPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/contextCenter/pages/') &&
+          response.request().method() === 'GET'
+      );
+
+      await viewOnlyPage
+        .getByTestId('knowledge-pages-hierarchy')
+        .getByRole('link')
+        .first()
+        .click();
+
+      await articleResponse;
+      await waitForAllLoadersToDisappear(viewOnlyPage);
+
+      await expect(
+        viewOnlyPage.getByTestId('entity-header-display-name')
+      ).toHaveAttribute('readOnly', '');
+      await expect(viewOnlyPage.getByTestId('add-domain')).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-container')
+          .getByTestId('add-data-product')
+      ).not.toBeVisible();
+      await expect(viewOnlyPage.getByTestId('Add')).not.toBeVisible();
+      await expect(
+        viewOnlyPage.getByTestId('edit-owner-btn')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.Tags')
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage.getByTestId('related-data-assets')
+      ).not.toBeVisible();
+    });
+
+    testWithRolesPages(
+      'Data Consumer can view and edit content but cannot add article, domain, reviewer, data product, or data assets',
+      async ({ dataConsumerPage }) => {
+        await navigateToArticles(dataConsumerPage);
+
+        await expect(
+          dataConsumerPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+
+        const articleResponse = dataConsumerPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'GET'
+        );
+
+        await dataConsumerPage
+          .getByTestId('knowledge-pages-hierarchy')
+          .getByRole('link')
+          .first()
+          .click();
+
+        await articleResponse;
+        await waitForAllLoadersToDisappear(dataConsumerPage);
+
+        await expect(
+          dataConsumerPage.getByTestId('entity-header-display-name')
+        ).toBeVisible();
+
+        const editor = dataConsumerPage
+          .locator('[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toHaveAttribute('contenteditable', 'true');
+        await expect(
+          dataConsumerPage.getByTestId('add-domain')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage
+            .getByTestId('KnowledgePanel.DataProducts')
+            .getByTestId('data-products-container')
+            .getByTestId('add-data-product')
+        ).not.toBeVisible();
+        await expect(dataConsumerPage.getByTestId('Add')).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('edit-owner-btn')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('add-data-assets-container')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('edit-data-assets')
+        ).not.toBeVisible();
+      }
+    );
+
+    testWithRolesPages(
+      'Data Steward can edit content, title, owners, tags, and glossary terms but cannot add article, domain, reviewer, data product, or data assets',
+      async ({ dataStewardPage }) => {
+        await navigateToArticles(dataStewardPage);
+
+        await expect(
+          dataStewardPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+
+        const articleResponse = dataStewardPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'GET'
+        );
+
+        await dataStewardPage
+          .getByTestId('knowledge-pages-hierarchy')
+          .getByRole('link')
+          .first()
+          .click();
+
+        await articleResponse;
+        await waitForAllLoadersToDisappear(dataStewardPage);
+
+        const titleInput = dataStewardPage.getByTestId(
+          'entity-header-display-name'
+        );
+
+        await expect(titleInput).not.toHaveAttribute('readOnly', '');
+
+        const editor = dataStewardPage
+          .locator('[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toHaveAttribute('contenteditable', 'true');
+        await expect(
+          dataStewardPage.getByTestId('edit-owner-btn')
+        ).toBeVisible();
+
+        const rightPanel = dataStewardPage.getByTestId('right-panel');
+
+        await rightPanel.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+
+        await expect(
+          dataStewardPage.getByTestId('tags-container').getByTestId('add-tag')
+        ).toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('add-domain')
+        ).not.toBeVisible();
+        await expect(
+          dataStewardPage
+            .getByTestId('data-products-container')
+            .getByTestId('add-data-product')
+        ).not.toBeVisible();
+        await expect(dataStewardPage.getByTestId('Add')).not.toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('add-data-assets-container')
+        ).not.toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('edit-data-assets')
+        ).not.toBeVisible();
+      }
+    );
   });
 });
