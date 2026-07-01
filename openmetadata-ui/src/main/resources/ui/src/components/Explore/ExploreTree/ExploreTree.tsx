@@ -346,8 +346,14 @@ const ExploreTree = ({
       info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
     ) => {
       const node = info.node as ExploreTreeNode;
-      // This refresh comes from a browse click, so keep the expanded subtree.
-      treeSelectRef.current = true;
+      // Arm the "keep the expanded subtree" flag only when the click moves the
+      // highlight to a different node — a new selection always drives a
+      // navigation and thus the count refresh that consumes the flag. Re-clicking
+      // the already-selected node navigates nowhere, so arming it here would
+      // leave a stale flag that a later external filter change would wrongly read.
+      if (selectedKeysRef.current[0] !== node.key) {
+        treeSelectRef.current = true;
+      }
       const filterField = node.data?.filterField;
       if (filterField) {
         if (node.isLeaf) {
@@ -523,6 +529,10 @@ const ExploreTree = ({
     if (previousFilterRef.current !== filterSignature) {
       previousFilterRef.current = filterSignature;
       fetchEntityCounts();
+    } else {
+      // This render did not trigger a refresh (only the text query changed),
+      // so drop any armed browse flag rather than let it apply to a later one.
+      treeSelectRef.current = false;
     }
   }, [filterSignature, fetchEntityCounts]);
 

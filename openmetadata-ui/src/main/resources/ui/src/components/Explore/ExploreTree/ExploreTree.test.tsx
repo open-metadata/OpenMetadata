@@ -581,6 +581,72 @@ describe('ExploreTree', () => {
     });
   });
 
+  it('does not leak the browse flag from a no-op re-select into a filter change', async () => {
+    const browsePath = encodeURIComponent(
+      JSON.stringify([
+        {
+          key: 'serviceType',
+          label: 'serviceType',
+          value: [{ key: 'BigQuery', label: 'BigQuery' }],
+        },
+      ])
+    );
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, getByTestId, queryByText, queryByTestId, rerender } =
+      render(
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // Select the service type and reflect its browsePath — the browse refresh
+    // consumes the flag and the highlight settles on the service-type node.
+    fireEvent.click(getByTestId('explore-tree-title-BigQuery'));
+    window.history.pushState({}, '', `/explore?browsePath=${browsePath}`);
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+
+    // Re-click the already-selected node (no navigation) then change a dropdown
+    // filter: the re-click must not leave the flag armed, so this still rebuilds.
+    fireEvent.click(getByTestId('explore-tree-title-BigQuery'));
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${browsePath}&quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+          },
+        })
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(
+        searchQuerySpy.mock.calls.some(([arg]) =>
+          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+        )
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
+    });
+  });
+
   it('does not blank the tree with a spinner on later count refreshes', async () => {
     let releaseRefresh: (() => void) | undefined;
     let refreshStarted = false;
