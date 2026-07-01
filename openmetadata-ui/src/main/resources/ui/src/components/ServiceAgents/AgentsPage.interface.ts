@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+
 export type AgentStatus = 'running' | 'success' | 'failed' | 'queued';
 
 export type RunStatus =
@@ -26,6 +28,8 @@ export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 export interface Agent {
   id: string;
+  fqn: string;
+  pipelineType: PipelineType;
   name: string;
   type: string;
   unit: string;

@@ -341,10 +341,6 @@ const McpChatPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/McpChatPage/McpChatPage'))
 );
 
-const AgentsPage = withSuspenseFallback(
-  React.lazy(() => import('../ServiceAgents/AgentsPage.component'))
-);
-
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
   const { t } = useTranslation();
@@ -842,7 +838,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
       <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
-      <Route element={<AgentsPage />} path={ROUTES.AGENTS_PREVIEW} />
 
       <Route
         element={<EntityRouter />}

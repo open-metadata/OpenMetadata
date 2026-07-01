@@ -248,6 +248,8 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
 
   return {
     id: pipeline.id ?? pipeline.fullyQualifiedName ?? pipeline.name,
+    fqn: pipeline.fullyQualifiedName ?? pipeline.name,
+    pipelineType: pipeline.pipelineType,
     name: pipeline.displayName ?? pipeline.name,
     type: agentType,
     unit,
