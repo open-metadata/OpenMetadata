@@ -13,7 +13,7 @@
 
 import { Box } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
@@ -85,6 +85,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastFileMoved, setLastFileMoved] = useState<FileMovedEvent>();
+  const fetchGenerationRef = useRef(0);
 
   const previewFileUrl = useMemo(() => {
     if (!previewFile) {
@@ -127,6 +128,11 @@ const ContextCenterDocumentsPage: FC = () => {
 
   const fetchDocuments = useCallback(
     async (after?: string) => {
+      if (!after) {
+        fetchGenerationRef.current += 1;
+      }
+      const generation = fetchGenerationRef.current;
+
       if (after) {
         setIsLoadingMore(true);
       } else {
@@ -140,6 +146,9 @@ const ContextCenterDocumentsPage: FC = () => {
             sortField: 'updatedAt',
             sortOrder: 'desc',
           });
+          if (generation !== fetchGenerationRef.current) {
+            return;
+          }
           setAllDocuments(
             results.hits.hits.map(
               (hit) => hit._source as unknown as ContextFile
@@ -151,6 +160,9 @@ const ContextCenterDocumentsPage: FC = () => {
             limit: pageSize,
             folderId: selectedFolderId,
           });
+          if (generation !== fetchGenerationRef.current) {
+            return;
+          }
           if (after) {
             setAllDocuments((prev) => [...prev, ...response.data]);
           } else {
@@ -165,10 +177,12 @@ const ContextCenterDocumentsPage: FC = () => {
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
-        if (after) {
-          setIsLoadingMore(false);
-        } else {
-          setIsDocumentsLoading(false);
+        if (generation === fetchGenerationRef.current) {
+          if (after) {
+            setIsLoadingMore(false);
+          } else {
+            setIsDocumentsLoading(false);
+          }
         }
       }
     },
