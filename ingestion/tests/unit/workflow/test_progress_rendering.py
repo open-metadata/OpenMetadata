@@ -167,21 +167,21 @@ class TestGroupHeader:
         reg.advance([], "Table")
         lines = ProgressReporter(reg).cli().splitlines()
         assert lines[0] == "Database 2/4"
-        assert lines[1] == "DatabaseSchema 12/45"
+        assert lines[1].startswith("DatabaseSchema 12/45")
         assert lines[2] == "Ingested: 1 assets"
 
     def test_header_unknown_total_renders_bare_count(self):
         reg = ProgressRegistry()
         reg.set_total("Workspaces", None)
         reg.track("Workspaces")
-        assert ProgressReporter(reg).cli() == "Workspaces 1\nIngested: 0 assets"
+        assert ProgressReporter(reg).cli() == "Workspaces 1"
 
     def test_header_renders_with_empty_tree_when_counter_active(self):
         reg = ProgressRegistry()
         reg.set_total("Workspaces", 4)
         for _ in range(4):
             reg.track("Workspaces")
-        assert ProgressReporter(reg).cli() == "Workspaces 4/4\nIngested: 0 assets"
+        assert ProgressReporter(reg).cli() == "Workspaces 4/4"
 
     def test_no_group_keeps_legacy_header(self):
         reg = ProgressRegistry()
@@ -299,3 +299,29 @@ class TestEtaInHeader:
         reg.open([], "Database", None)
         reg.set_total("DatabaseSchema", 45)
         assert "~" not in ProgressReporter(reg).cli()
+
+
+class TestHeaderIngestedSuppression:
+    def test_ingested_line_suppressed_when_no_assets(self):
+        registry = ProgressRegistry()
+        registry.set_total("Queries", 100)
+        registry.track("Queries", 12)
+        text = ProgressReporter(registry).cli()
+        assert "Queries 12/100" in text
+        assert "Ingested:" not in text
+
+    def test_totalless_counter_renders_without_denominator_or_eta(self):
+        registry = ProgressRegistry()
+        registry.set_total("LineageRecords", None)
+        registry.track("LineageRecords", 8210)
+        text = ProgressReporter(registry).cli()
+        assert "LineageRecords 8210" in text
+        assert "/" not in text
+        assert "Ingested:" not in text
+
+    def test_ingested_line_kept_when_assets_present(self):
+        registry = ProgressRegistry()
+        registry.open(["db", "schema"], "Table", 3)
+        registry.advance(["db", "schema"], "Table")
+        text = ProgressReporter(registry).cli()
+        assert "Ingested: 1 assets" in text

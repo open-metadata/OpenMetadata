@@ -89,7 +89,9 @@ class ProgressReporter:
             if eta is not None and driver is not None and type_ == driver[0]:
                 line = f"{line}  {format_eta(eta)}"
             lines.append(line)
-        lines.append(f"Ingested: {self._registry.assets_ingested():,} assets")
+        assets = self._registry.assets_ingested()
+        if assets > 0:
+            lines.append(f"Ingested: {assets:,} assets")
         return "\n".join(lines)
 
     def global_counters(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
