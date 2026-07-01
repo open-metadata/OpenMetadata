@@ -36,13 +36,14 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
 }) => {
   const isVertical = placement === 'vertical';
 
-  const { visibleOwners, hiddenCount } = useMemo(() => {
+  const { visibleOwners, hiddenOwners, hiddenCount } = useMemo(() => {
     const visible = owners.slice(0, maxVisibleOwners);
-    const remaining = Math.max(0, owners.length - maxVisibleOwners);
+    const hidden = owners.slice(maxVisibleOwners);
 
     return {
       visibleOwners: visible,
-      hiddenCount: remaining,
+      hiddenOwners: hidden,
+      hiddenCount: hidden.length,
     };
   }, [owners, maxVisibleOwners]);
 
@@ -179,7 +180,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
               avatarSize={avatarSize}
               hiddenCount={hiddenCount}
               ownerDisplayName={ownerDisplayName}
-              owners={owners}
+              owners={hiddenOwners}
             />
           </div>
         )}
@@ -206,7 +207,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
           avatarSize={avatarSize}
           hiddenCount={hiddenCount}
           ownerDisplayName={ownerDisplayName}
-          owners={owners}
+          owners={hiddenOwners}
         />
       )}
     </div>

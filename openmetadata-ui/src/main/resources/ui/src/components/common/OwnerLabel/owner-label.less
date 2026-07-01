@@ -195,11 +195,40 @@
     border: none;
     cursor: pointer;
     line-height: 0;
-    outline: none;
+    border-radius: 9999px;
 
     &:hover,
     &:focus {
       background: transparent;
     }
+
+    &:focus-visible {
+      outline: 2px solid var(--tw-color-brand-600, #1570ef);
+      outline-offset: 2px;
+    }
+  }
+}
+
+.owner-avatar-stack-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: 8px;
+  padding: 4px;
+  background: transparent;
+  border: 1px solid var(--tw-color-border-secondary, #eaecf0);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--tw-color-text-tertiary, #667085);
+  transition: background-color 100ms linear;
+
+  &:hover {
+    background-color: var(--tw-color-bg-secondary, #f9fafb);
+    color: var(--tw-color-text-primary, #101828);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tw-color-brand-600, #1570ef);
+    outline-offset: 2px;
   }
 }

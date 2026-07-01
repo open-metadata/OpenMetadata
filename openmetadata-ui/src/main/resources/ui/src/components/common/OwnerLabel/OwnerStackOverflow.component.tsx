@@ -10,17 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Avatar,
-  Button,
-  Divider,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Tooltip as AriaTooltip,
-  TooltipTrigger as AriaTooltipTrigger,
+  Dialog as AriaDialog,
+  DialogTrigger as AriaDialogTrigger,
+  Popover as AriaPopover,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -37,6 +33,8 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';
 
 const POPOVER_AVATAR_SIZE = '24';
+const OPEN_DELAY_MS = 100;
+const CLOSE_DELAY_MS = 150;
 
 export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   owners,
@@ -48,14 +46,38 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   const remainingCountLabel = `+${hiddenCount}`;
   const fontSizeClass = AVATAR_FONT_SIZE_MAP[avatarSize];
 
-  const { teamOwners, userOwners, totalCount } = useMemo(() => {
+  const [isOpen, setIsOpen] = useState(false);
+  const openTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const clearTimers = useCallback(() => {
+    if (openTimerRef.current) {
+      clearTimeout(openTimerRef.current);
+      openTimerRef.current = undefined;
+    }
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = undefined;
+    }
+  }, []);
+
+  const scheduleOpen = useCallback(() => {
+    clearTimers();
+    openTimerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
+  }, [clearTimers]);
+
+  const scheduleClose = useCallback(() => {
+    clearTimers();
+    closeTimerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
+  }, [clearTimers]);
+
+  const { teamOwners, userOwners } = useMemo(() => {
     const teams = owners.filter((owner) => owner.type === OwnerType.TEAM);
     const users = owners.filter((owner) => owner.type === OwnerType.USER);
 
     return {
       teamOwners: teams,
       userOwners: users,
-      totalCount: owners.length,
     };
   }, [owners]);
 
@@ -67,19 +89,15 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
     return (
       <Link
         className="tw:flex tw:items-center tw:gap-2 tw:px-3 tw:py-1.5 tw:no-underline tw:text-secondary tw:hover:bg-secondary tw:hover:text-primary tw:rounded-md"
-        data-testid="owner-link"
+        data-testid={`overflow-owner-${entityName}`}
         key={owner.id}
         to={getOwnerPath(owner)}>
         {isTeam ? (
-          <span
-            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600"
-            data-testid={entityName}>
+          <span className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0 tw:w-6 tw:h-6 tw:rounded-full tw:bg-brand-100 tw:text-brand-600">
             <TeamsIcon className="tw:w-3.5 tw:h-3.5" />
           </span>
         ) : (
-          <span
-            className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0"
-            data-testid={entityName}>
+          <span className="tw:inline-flex tw:items-center tw:justify-center tw:shrink-0">
             <ProfilePicture
               displayName={entityName}
               name={owner.name ?? ''}
@@ -100,7 +118,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   };
 
   return (
-    <AriaTooltipTrigger closeDelay={150} delay={100}>
+    <AriaDialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <Button
         aria-label={t('label.view-entity', {
           entity: t('label.owner-plural'),
@@ -108,7 +126,11 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         className="owner-stack-overflow-trigger"
         color="link-color"
         data-testid="owners-overflow-trigger"
-        size="xs">
+        size="xs"
+        onBlur={scheduleClose}
+        onFocus={() => setIsOpen(true)}
+        onHoverEnd={scheduleClose}
+        onHoverStart={scheduleOpen}>
         <Avatar
           className={classNames(
             'tw:bg-brand-50 tw:ring-2 tw:ring-primary tw:text-brand-700 tw:font-medium',
@@ -118,10 +140,10 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
           size={AVATAR_SIZE_NAME_MAP[avatarSize]}
         />
       </Button>
-      <AriaTooltip
+      <AriaPopover
         className={({ isEntering, isExiting }) =>
           classNames(
-            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
+            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
             isExiting &&
@@ -130,53 +152,46 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         }
         offset={6}
         placement="bottom start">
-        <div
-          className="tw:flex tw:flex-col tw:p-4 tw:gap-3"
-          data-testid="owners-overflow-popover">
-          <Typography
-            color="primary"
-            data-testid="owners-overflow-total"
-            size="text-sm"
-            weight="medium">
-            {totalCount} {t('label.owner-plural')}
-          </Typography>
-
-          <Divider className="tw-border-t tw:border-secondary" />
-
-          {teamOwners.length > 0 && (
-            <>
+        <AriaDialog
+          aria-label={t('label.owner-plural')}
+          className="tw:outline-hidden"
+          onMouseEnter={clearTimers}
+          onMouseLeave={scheduleClose}>
+          <div
+            className="tw:flex tw:flex-col tw:py-2"
+            data-testid="owners-overflow-popover">
+            {teamOwners.length > 0 && (
               <div
-                className="tw:flex tw:flex-col "
+                className="tw:flex tw:flex-col"
                 data-testid="owners-overflow-teams-section">
                 <Typography
                   as="div"
-                  className="tw:pb-2 tw:text-quaternary"
+                  className="tw:px-3 tw:pt-1 tw:pb-2 tw:text-quaternary tw:uppercase tw:tracking-wider"
                   size="text-xs"
                   weight="medium">
                   {t('label.team-plural')} ({teamOwners.length})
                 </Typography>
                 {teamOwners.map(renderOwnerRow)}
               </div>
-              <Divider className="tw-border-t tw:border-secondary" />
-            </>
-          )}
+            )}
 
-          {userOwners.length > 0 && (
-            <div
-              className="tw:flex tw:flex-col"
-              data-testid="owners-overflow-users-section">
-              <Typography
-                as="div"
-                className="tw:pb-2 tw:text-quaternary"
-                size="text-xs"
-                weight="medium">
-                {t('label.user-plural')} ({userOwners.length})
-              </Typography>
-              {userOwners.map(renderOwnerRow)}
-            </div>
-          )}
-        </div>
-      </AriaTooltip>
-    </AriaTooltipTrigger>
+            {userOwners.length > 0 && (
+              <div
+                className="tw:flex tw:flex-col"
+                data-testid="owners-overflow-users-section">
+                <Typography
+                  as="div"
+                  className="tw:px-3 tw:pt-1 tw:pb-2 tw:text-quaternary tw:uppercase tw:tracking-wider"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.user-plural')} ({userOwners.length})
+                </Typography>
+                {userOwners.map(renderOwnerRow)}
+              </div>
+            )}
+          </div>
+        </AriaDialog>
+      </AriaPopover>
+    </AriaDialogTrigger>
   );
 };
