@@ -37,12 +37,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
-  useCurrentUserPreferences: () => ({
-    preferences: { isSidebarCollapsed: false },
-  }),
-}));
-
 // The Untitled-UI Select/Checkbox (react-aria) are impractical to drive in
 // jsdom, so this lightweight mock renders native form controls the panels and
 // controls can share. Selecting the focal node and a link is driven through
@@ -188,9 +182,9 @@ const GRAPH_DATA = {
   edges: [{ from: 'entity-1', to: 'con-1', label: 'mappedTo' }],
 };
 
-const renderGraph = (): void => {
+const renderGraph = (initialEntries: string[] = ['/']): void => {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <KnowledgeGraph3D entity={ENTITY} entityType={EntityType.TABLE} />
     </MemoryRouter>
   );
@@ -333,5 +327,53 @@ describe('KnowledgeGraph3D', () => {
     expect(
       screen.queryByText('message.mapped-to-business-ontology')
     ).not.toBeInTheDocument();
+  });
+
+  it('should not apply the fullscreen layout class by default', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph();
+
+    await screen.findByTestId('kg3d-scene');
+
+    expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
+      'full-screen-knowledge-graph-3d'
+    );
+  });
+
+  it('should fill the viewport with the fullscreen class when the fullscreen query param is set', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph(['/?fullscreen=true']);
+
+    await screen.findByTestId('kg3d-scene');
+
+    const container = screen.getByTestId('knowledge-graph-3d');
+
+    expect(container).toHaveClass('full-screen-knowledge-graph-3d');
+    expect(container).not.toHaveClass('sidebar-collapsed');
+    expect(container).not.toHaveClass('sidebar-expanded');
+  });
+
+  it('should toggle fullscreen when the expand control is clicked', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph();
+
+    await screen.findByTestId('kg3d-scene');
+
+    expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
+      'full-screen-knowledge-graph-3d'
+    );
+
+    fireEvent.click(screen.getByTestId('full-screen'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('knowledge-graph-3d')).toHaveClass(
+        'full-screen-knowledge-graph-3d'
+      )
+    );
+
+    expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
   });
 });

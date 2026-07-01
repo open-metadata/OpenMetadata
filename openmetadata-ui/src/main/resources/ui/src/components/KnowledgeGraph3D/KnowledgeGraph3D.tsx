@@ -32,7 +32,6 @@ import { ReactComponent as FullscreenIcon } from '../../assets/svg/ic-fullscreen
 import { ReactComponent as LineageIcon } from '../../assets/svg/ic-platform-lineage.svg';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { getEntityGraphData } from '../../rest/rdfAPI';
 import { GraphData } from '../../rest/rdfAPI.interface';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -76,7 +75,6 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { preferences } = useCurrentUserPreferences();
 
   const [loading, setLoading] = useState(true);
   const [rawData, setRawData] = useState<GraphData | null>(null);
@@ -293,8 +291,6 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     <div
       className={classNames('knowledge-graph-3d', {
         'full-screen-knowledge-graph-3d': isFullscreen,
-        'sidebar-collapsed': isFullscreen && preferences?.isSidebarCollapsed,
-        'sidebar-expanded': isFullscreen && !preferences?.isSidebarCollapsed,
       })}
       data-testid="knowledge-graph-3d">
       <KnowledgeGraph3DControls

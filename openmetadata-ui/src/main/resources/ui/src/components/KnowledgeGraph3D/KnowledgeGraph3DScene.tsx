@@ -57,6 +57,7 @@ type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
 const FRAME_DELAY_MS = 500;
+const RESIZE_REFIT_DELAY_MS = 250;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 
 const nodeOpacityFor = (
@@ -129,6 +130,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
 }) => {
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const initialFitDoneRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -236,6 +238,23 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
 
     return () => observer.disconnect();
   }, []);
+
+  // Re-fit the camera whenever the stage is resized (e.g. entering or leaving
+  // fullscreen) so the graph keeps filling the available space. The first
+  // real measurement is skipped because the data-load effect already fits.
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    if (size.width > 0 && size.height > 0) {
+      if (initialFitDoneRef.current) {
+        const frame = window.setTimeout(resetView, RESIZE_REFIT_DELAY_MS);
+        cleanup = () => window.clearTimeout(frame);
+      } else {
+        initialFitDoneRef.current = true;
+      }
+    }
+
+    return cleanup;
+  }, [size.width, size.height, resetView]);
 
   useEffect(() => {
     const charge = fgRef.current?.d3Force('charge');
