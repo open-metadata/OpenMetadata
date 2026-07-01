@@ -39,9 +39,17 @@ RUN npm install -g serve@14
 
 COPY --from=builder /app/storybook-static /app/storybook-static
 
+# Storybook 8's manager requests the preview at /iframe (no .html extension).
+# serve's --single SPA fallback would intercept that path (no matching file on
+# disk) and return index.html — the manager shell — into the preview iframe,
+# so components never render.  This rewrite rule maps /iframe → /iframe.html
+# before the fallback runs, giving the preview iframe the correct content.
+RUN printf '{"rewrites":[{"source":"/iframe","destination":"/iframe.html"}]}' \
+    > /app/serve.json
+
 # Drop to the built-in unprivileged user — running a public server as root is unnecessary.
 USER node
 
 EXPOSE 6006
 
-CMD ["serve", "-s", "/app/storybook-static", "-l", "6006"]
+CMD ["serve", "/app/storybook-static", "-l", "6006", "-c", "/app/serve.json"]

@@ -135,8 +135,33 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
   await expect(page.getByTestId('loader')).toBeVisible();
 
-  await page.getByTestId('bundle-suite-radio-btn').click();
+  const bundleSuiteListResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
 
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) && responseUrl.searchParams.get('testSuiteType') === 'logical'
+    );
+  });
+
+  await page.getByTestId('bundle-suite-radio-btn').click();
+  await bundleSuiteListResponse;
+
+  const bundleSuiteSearchResponse = page.waitForResponse((response) => {
+    const responseUrl = new URL(response.url());
+
+    return (
+      responseUrl.pathname.includes(
+        '/api/v1/dataQuality/testSuites/search/list'
+      ) &&
+      responseUrl.searchParams.get('testSuiteType') === 'logical' &&
+      responseUrl.searchParams.get('q') === `*${bundleSuiteName}*`
+    );
+  });
+
+  await page.getByPlaceholder('Search Bundle Suites').fill(bundleSuiteName);
+  await bundleSuiteSearchResponse;
   await expect(page.getByTestId(bundleSuiteName)).toBeVisible();
 
   tableSuiteResponseRelease.resolve();
