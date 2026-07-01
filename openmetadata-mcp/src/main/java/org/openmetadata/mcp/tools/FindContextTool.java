@@ -39,6 +39,7 @@ public class FindContextTool implements McpTool {
   private static final int DEFAULT_SIZE = 10;
   private static final int MAX_SIZE = 50;
   private static final String FORMAT_JSON = "json";
+  private static final String NO_RESULTS_MESSAGE = "No company knowledge found for this query.";
   private static final List<String> KNOWLEDGE_TYPES =
       List.of(Entity.GLOSSARY_TERM, Entity.METRIC, Entity.PAGE);
 
@@ -113,19 +114,25 @@ public class FindContextTool implements McpTool {
 
   private Map<String, Object> render(FoundContext found, String format) {
     Map<String, Object> result;
-    if (found.isEmpty()) {
+    if (FORMAT_JSON.equalsIgnoreCase(format)) {
       result =
-          Map.of(
-              "items",
-              List.of(),
-              "candidateAssets",
-              List.of(),
-              "message",
-              "No company knowledge found for this query.");
-    } else if (FORMAT_JSON.equalsIgnoreCase(format)) {
-      result = JsonUtils.getMap(found);
+          found.isEmpty()
+              ? Map.of(
+                  "items", List.of(), "candidateAssets", List.of(), "message", NO_RESULTS_MESSAGE)
+              : JsonUtils.getMap(found);
     } else {
-      result = Map.of("format", "markdown", "content", AIContextMarkdown.renderFound(found));
+      // Keep the {format, content} shape on the empty case too, so markdown consumers never need
+      // a special branch; the message field carries the human-readable reason.
+      result =
+          found.isEmpty()
+              ? Map.of(
+                  "format",
+                  "markdown",
+                  "content",
+                  AIContextMarkdown.renderFound(found),
+                  "message",
+                  NO_RESULTS_MESSAGE)
+              : Map.of("format", "markdown", "content", AIContextMarkdown.renderFound(found));
     }
     return result;
   }
