@@ -16,14 +16,7 @@ import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
 import type { ExtraInfo } from 'Models';
-import type { FC } from 'react';
-import {
-  cloneElement,
-  forwardRef,
-  isValidElement,
-  useCallback,
-  useMemo,
-} from 'react';
+import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ScoreIcon } from '../../../assets/svg/score.svg';
@@ -42,10 +35,6 @@ import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
 import { prefetchPipeline } from '../../../rest/queries/pipelineQuery';
 import { prefetchTable } from '../../../rest/queries/tableQuery';
 import { prefetchTopic } from '../../../rest/queries/topicQuery';
-import {
-  getBreadcrumbEntityTypeFromHref,
-  isServiceBreadcrumbHref,
-} from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightEntityNameAndDescription } from '../../../utils/EntitySearchUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -62,23 +51,6 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 import { getTypeBadge, TYPE_BADGE_KEY } from './ExploreSearchCard.utils';
-
-type BreadcrumbIconProps = { className?: string };
-
-const createEntityBreadcrumbIcon =
-  (entityType: EntityType): FC<BreadcrumbIconProps> =>
-  ({ className }) =>
-    searchClassBase.getEntityIcon(entityType, className);
-
-const ENTITY_BREADCRUMB_ICONS: Partial<
-  Record<EntityType, FC<BreadcrumbIconProps>>
-> = {
-  [EntityType.DATABASE]: createEntityBreadcrumbIcon(EntityType.DATABASE),
-  [EntityType.DATABASE_SCHEMA]: createEntityBreadcrumbIcon(
-    EntityType.DATABASE_SCHEMA
-  ),
-  [EntityType.TABLE]: createEntityBreadcrumbIcon(EntityType.TABLE),
-};
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -327,56 +299,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return null;
     }, [source, showEntityIcon]);
 
-    const serviceIcon = useMemo(() => {
-      return searchClassBase.getServiceIcon(source);
-    }, [source]);
-
-    const ServiceBreadcrumbIcon = useMemo<
-      FC<BreadcrumbIconProps> | undefined
-    >(() => {
-      if (!serviceIcon) {
-        return undefined;
-      }
-
-      const Icon: FC<BreadcrumbIconProps> = ({ className }) => {
-        if (isValidElement<{ className?: string }>(serviceIcon)) {
-          return cloneElement(serviceIcon, {
-            className: classNames(serviceIcon.props.className, className),
-          });
-        }
-
-        return <span className={className}>{serviceIcon}</span>;
-      };
-
-      Icon.displayName = 'ExploreSearchCardServiceBreadcrumbIcon';
-
-      return Icon;
-    }, [serviceIcon]);
-
-    const breadcrumbItems = useMemo(() => {
-      const serviceBreadcrumbIndex = breadcrumbs.findIndex((b) => {
-        const href = typeof b.url === 'string' ? b.url : b.url.pathname;
-
-        return isServiceBreadcrumbHref(href);
-      });
-
-      return breadcrumbs.map((b, index) => {
-        const href = typeof b.url === 'string' ? b.url : b.url.pathname;
-        const breadcrumbEntityType = getBreadcrumbEntityTypeFromHref(href);
-
-        return {
-          id: b.name,
-          label: getEntityName(b),
-          href,
-          icon:
-            index === serviceBreadcrumbIndex
-              ? ServiceBreadcrumbIcon
-              : breadcrumbEntityType
-              ? ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType]
-              : undefined,
-        };
-      });
-    }, [breadcrumbs, ServiceBreadcrumbIcon]);
+    const breadcrumbItems = useMemo(
+      () => searchClassBase.getEntityBreadcrumbItems(source),
+      [source]
+    );
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),

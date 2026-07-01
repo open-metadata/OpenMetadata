@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { SearchOutlined } from '@ant-design/icons';
+import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
@@ -80,6 +81,7 @@ import {
   TableSearchSource,
 } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityBreadcrumbItems } from './EntityBreadcrumbIconUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import { getEntityLinkFromType } from './EntityLinkUtils';
 import { getEntityName } from './EntityNameUtils';
@@ -703,6 +705,12 @@ class SearchClassBase {
     includeCurrent?: boolean
   ) {
     return getEntityBreadcrumbs(entity, entityType, includeCurrent);
+  }
+
+  public getEntityBreadcrumbItems(
+    source: SearchSourceAlias
+  ): BreadcrumbItemType[] {
+    return getEntityBreadcrumbItems(source);
   }
 
   public getEntityLink(
