@@ -174,8 +174,7 @@ public class ListFilter extends Filter<ListFilter> {
             + "WHERE entity_relationship.fromId = :folderIdParam "
             + "AND entity_relationship.fromEntity = 'folder' "
             + "AND entity_relationship.toEntity = 'contextFile' "
-            + "AND entity_relationship.relation = %d "
-            + "AND entity_relationship.deleted = false))",
+            + "AND entity_relationship.relation = %d))",
         Relationship.CONTAINS.ordinal());
   }
 
