@@ -10,6 +10,8 @@
 #  limitations under the License.
 """One snapshot -> CLI tree string + nested progressNode payload."""
 
+from unittest.mock import patch
+
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressNode,
     ProgressUpdate,
@@ -17,6 +19,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
 from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
 from metadata.workflow.progress_render import (
     ProgressReporter,
+    format_eta,
     render_progress_tree,
     snapshot_to_progress_payload,
 )
@@ -200,3 +203,99 @@ class TestGlobalCountersOnSseUpdate:
         reg.track("Workspaces")
         reg.track("Workspaces")
         assert ProgressReporter(reg).global_counters() == [("Workspaces", 3, 10)]
+
+
+class TestFormatEta:
+    def test_sub_minute(self):
+        assert format_eta(59) == "~59s"
+
+    def test_minute_boundary(self):
+        assert format_eta(60) == "~1m"
+
+    def test_minutes(self):
+        assert format_eta(360) == "~6m"
+
+    def test_hour_boundary(self):
+        assert format_eta(3600) == "~1h 0m"
+
+    def test_hours_and_minutes(self):
+        assert format_eta(4800) == "~1h 20m"
+
+
+class TestEtaSeconds:
+    def test_warmup_done_zero_is_none(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.set_total("DatabaseSchema", 45)
+        assert ProgressReporter(reg).eta_seconds() is None
+
+    def test_no_counter_with_total_is_none(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.set_total("Workspaces", None)
+        reg.track("Workspaces")
+        assert ProgressReporter(reg).eta_seconds() is None
+
+    def test_complete_is_none(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.set_total("DatabaseSchema", 4)
+        for _ in range(4):
+            reg.track("DatabaseSchema")
+        assert ProgressReporter(reg).eta_seconds() is None
+
+    def test_none_before_first_open(self):
+        reg = ProgressRegistry()
+        reg.set_total("DatabaseSchema", 45)
+        reg.track("DatabaseSchema")
+        assert ProgressReporter(reg).eta_seconds() is None
+
+    def test_normal_case_uses_cumulative_rate(self):
+        reg = ProgressRegistry()
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 0.0
+            reg.open([], "Database", None)
+            reg.set_total("DatabaseSchema", 10)
+            for _ in range(2):
+                reg.track("DatabaseSchema")
+            clock.return_value = 60.0
+            assert ProgressReporter(reg).eta_seconds() == 240
+
+    def test_driver_is_last_counter_with_total(self):
+        reg = ProgressRegistry()
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 0.0
+            reg.open([], "Database", None)
+            reg.set_total("Database", 4)
+            reg.set_total("DatabaseSchema", 20)
+            reg.track("Database")
+            for _ in range(4):
+                reg.track("DatabaseSchema")
+            clock.return_value = 100.0
+            assert ProgressReporter(reg).eta_seconds() == 400
+
+
+class TestEtaInHeader:
+    def test_eta_suffix_on_driver_line_only(self):
+        reg = ProgressRegistry()
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 0.0
+            reg.open([], "Database", None)
+            reg.set_total("Database", 4)
+            reg.set_total("DatabaseSchema", 45)
+            reg.track("Database")
+            reg.track("Database")
+            for _ in range(9):
+                reg.track("DatabaseSchema")
+            clock.return_value = 120.0
+            lines = ProgressReporter(reg).cli().splitlines()
+        assert lines[0] == "Database 2/4"
+        assert lines[1].startswith("DatabaseSchema 9/45")
+        assert "~8m" in lines[1]
+        assert "~" not in lines[0]
+
+    def test_no_eta_suffix_when_not_computable(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.set_total("DatabaseSchema", 45)
+        assert "~" not in ProgressReporter(reg).cli()

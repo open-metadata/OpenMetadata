@@ -50,6 +50,17 @@ def snapshot_to_progress_payload(root: Optional[ProgressNodeSnapshot]) -> Option
     return _node_to_payload(root) if root is not None else None
 
 
+def format_eta(seconds: int) -> str:
+    """Human ``~45s`` / ``~6m`` / ``~1h 20m`` from a rounded seconds count."""
+    if seconds < 60:
+        result = f"~{seconds}s"
+    elif seconds < 3600:
+        result = f"~{seconds // 60}m"
+    else:
+        result = f"~{seconds // 3600}h {(seconds % 3600) // 60}m"
+    return result
+
+
 class ProgressReporter:
     """Presentation of a registry's state. The registry stays a pure state
     object; this reporter knows how to render it for CLI and for the SSE
@@ -71,8 +82,13 @@ class ProgressReporter:
 
     def _header(self, counters: "List[Tuple[str, int, Optional[int]]]") -> str:  # noqa: UP006,UP045
         lines: List[str] = []  # noqa: UP006
+        driver = self._driver_counter(counters)
+        eta = self.eta_seconds()
         for type_, done, total in counters:
-            lines.append(f"{type_} {done}/{total}" if total is not None else f"{type_} {done}")
+            line = f"{type_} {done}/{total}" if total is not None else f"{type_} {done}"
+            if eta is not None and driver is not None and type_ == driver[0]:
+                line = f"{line}  {format_eta(eta)}"
+            lines.append(line)
         lines.append(f"Ingested: {self._registry.assets_ingested():,} assets")
         return "\n".join(lines)
 
@@ -81,6 +97,34 @@ class ProgressReporter:
         ``ProgressUpdate.globalCounters``. Independent of the progress tree, so
         reported even when the active tree is momentarily empty."""
         return self._registry.global_counters()
+
+    def _driver_counter(
+        self,
+        counters: "Optional[List[Tuple[str, int, Optional[int]]]]" = None,  # noqa: UP006,UP045
+    ) -> "Optional[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+        """The ETA driver: the last-declared global counter that has a known
+        total (finest-grained real unit of work), or ``None`` when no counter
+        declares a total."""
+        pool = self._registry.global_counters() if counters is None else counters
+        driver = None
+        for counter in pool:
+            if counter[2] is not None:
+                driver = counter
+        return driver
+
+    def eta_seconds(self) -> Optional[int]:  # noqa: UP045
+        """Overall run ETA in seconds from the driver counter's cumulative rate:
+        ``elapsed * (total - done) / done``. ``None`` during warm-up (``done ==
+        0``), when there is no driver, when the driver is complete (``done >=
+        total``), or before elapsed time is available."""
+        driver = self._driver_counter()
+        result = None
+        if driver is not None:
+            _, done, total = driver
+            elapsed = self._registry.elapsed_seconds()
+            if done > 0 and done < total and elapsed is not None and elapsed > 0:
+                result = round(elapsed * (total - done) / done)
+        return result
 
     def payload(self) -> Optional[dict]:  # noqa: UP045
         """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,

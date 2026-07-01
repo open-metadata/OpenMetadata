@@ -11,6 +11,7 @@
 """Unit tests for the hierarchical (tree) ProgressRegistry."""
 
 import threading
+from unittest.mock import patch
 
 from metadata.utils.progress_registry import ProgressRegistry
 
@@ -343,3 +344,27 @@ class TestGlobalCounters:
         assert reg.is_reconcilable("DatabaseSchema") is True
         reg.reconcile_scope_total("DatabaseSchema", "db1", 7)
         assert reg.global_counters() == [("DatabaseSchema", 0, 7)]
+
+
+class TestElapsedSeconds:
+    def test_none_before_first_open(self):
+        reg = ProgressRegistry()
+        assert reg.elapsed_seconds() is None
+
+    def test_positive_after_first_open(self):
+        reg = ProgressRegistry()
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 100.0
+            reg.open([], "Database", None)
+            clock.return_value = 130.0
+            assert reg.elapsed_seconds() == 30.0
+
+    def test_marker_set_on_first_open_only(self):
+        reg = ProgressRegistry()
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 100.0
+            reg.open([], "Database", None)
+            clock.return_value = 200.0
+            reg.open(["db"], "DatabaseSchema", None)
+            clock.return_value = 250.0
+            assert reg.elapsed_seconds() == 150.0

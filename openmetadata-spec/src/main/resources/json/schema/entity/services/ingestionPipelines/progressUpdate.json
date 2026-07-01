@@ -87,6 +87,10 @@
         "additionalProperties": false
       }
     },
+    "estimatedSecondsRemaining": {
+      "description": "Estimated seconds until the run completes; null when not yet computable",
+      "type": ["integer", "null"]
+    },
     "currentEntity": {
       "description": "FQN of the entity currently being processed",
       "type": "string"

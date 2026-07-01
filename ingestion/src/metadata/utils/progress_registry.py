@@ -27,6 +27,7 @@ total and no ETA.
 """
 
 import threading
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Tuple  # noqa: UP035
 
@@ -87,9 +88,12 @@ class ProgressRegistry:
         self._global: Dict[str, GlobalCounter] = {}  # noqa: UP006
         self._root = ProgressNode(label="")
         self._active_leaf_cap = active_leaf_cap
+        self._started_at: Optional[float] = None  # noqa: UP045
 
     def open(self, path: List[str], child_type: str, expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
+            if self._started_at is None:
+                self._started_at = time.monotonic()
             node = self._navigate(path)
             if node.child_type is None:
                 node.child_type = child_type
@@ -108,6 +112,15 @@ class ProgressRegistry:
         tree — pruning a completed scope never decreases it."""
         with self._lock:
             return self._total_ingested
+
+    def elapsed_seconds(self) -> Optional[float]:  # noqa: UP045
+        """Monotonic seconds since the first ``open()`` — i.e. since the topology
+        walk began processing a scope. ``None`` before the first ``open()``.
+        Uses ``time.monotonic()`` so it can never go negative on a clock change."""
+        with self._lock:
+            if self._started_at is None:
+                return None
+            return time.monotonic() - self._started_at
 
     def set_total(self, type_: str, total: Optional[int]) -> None:  # noqa: UP045
         """Declare a flat global total for ``type_`` (e.g. ``Database`` = 4).

@@ -202,6 +202,7 @@ class WorkflowStatusMixin:
                 reporter = self._progress_reporter()
                 progress_data = reporter.payload() if reporter is not None else None
                 counters = reporter.global_counters() if reporter is not None else []
+                eta_seconds = reporter.eta_seconds() if reporter is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
@@ -211,6 +212,7 @@ class WorkflowStatusMixin:
                     globalCounters=[
                         {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
                     ],
+                    estimatedSecondsRemaining=eta_seconds,
                 )
 
                 self.metadata.send_progress_update(
