@@ -34,7 +34,6 @@ from sqlalchemy.dialects.mssql.base import (
 from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
-from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
@@ -94,6 +93,21 @@ def db_plus_owner(fn):
         )
 
     return update_wrapper(wrap, fn)
+
+
+def get_identity_values(coltype, identity_start, identity_increment):
+    """Build the reflected identity dict for an MSSQL column.
+
+    seed_value / increment_value come back from MSSQL as Decimal (or None).
+    Integer and BigInteger identities are normalised to ``int``; other numeric
+    identity types keep their original value. BigInteger previously used
+    ``sqlalchemy.util.compat.long_type``, which was removed in SQLAlchemy 2.0.
+    """
+    if identity_start is None or identity_increment is None:
+        return {}
+    if isinstance(coltype, sqltypes.Integer):
+        return {"start": int(identity_start), "increment": int(identity_increment)}
+    return {"start": identity_start, "increment": identity_increment}
 
 
 @reflection.cache
@@ -292,24 +306,7 @@ def get_columns(
             }
 
         if is_identity is not None:
-            # identity_start and identity_increment are Decimal or None
-            if identity_start is None or identity_increment is None:
-                cdict["identity"] = {}
-            else:
-                if isinstance(coltype, sqltypes.BigInteger):
-                    start = compat.long_type(identity_start)
-                    increment = compat.long_type(identity_increment)
-                elif isinstance(coltype, sqltypes.Integer):
-                    start = int(identity_start)
-                    increment = int(identity_increment)
-                else:
-                    start = identity_start
-                    increment = identity_increment
-
-                cdict["identity"] = {
-                    "start": start,
-                    "increment": increment,
-                }
+            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
 
         cols.append(cdict)
     return cols
