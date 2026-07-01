@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.knowledge-page-right-panel {
-  .new-header-border-card {
-    height: initial;
+@import (reference) '../../styles/variables.less';
+
+.search-index-mappings-page {
+  padding: 16px;
+
+  &__editor .CodeMirror {
+    height: calc(100vh - 380px);
+    min-height: 420px;
+  }
+
+  &__editor-loader,
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 420px;
   }
 }
