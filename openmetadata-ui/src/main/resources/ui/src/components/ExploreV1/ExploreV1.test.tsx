@@ -489,8 +489,9 @@ describe('ExploreV1', () => {
 
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
     expect(
-      screen.queryByTestId('explore-query-filter-chips')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('explore-query-filter-chips')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
   });
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
