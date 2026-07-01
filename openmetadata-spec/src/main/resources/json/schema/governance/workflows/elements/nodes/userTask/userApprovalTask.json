@@ -152,7 +152,7 @@
             },
             "closeAsResolution": {
               "title": "Close As Resolution",
-              "description": "When set, the underlying Task entity is closed at the moment the timer fires with this resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps to Expired). Leave unset when a downstream node is responsible for closing the Task (avoids double-resolve).",
+              "description": "When set, the underlying Task entity is closed at the moment the timer fires with this resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible for closing the Task (avoids double-resolve).",
               "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
             }
           },

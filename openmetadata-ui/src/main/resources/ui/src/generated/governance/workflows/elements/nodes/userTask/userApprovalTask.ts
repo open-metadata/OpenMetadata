@@ -175,9 +175,9 @@ export enum EmptyAssigneeStrategy {
 export interface ExpiryTimer {
     /**
      * When set, the underlying Task entity is closed at the moment the timer fires with this
-     * resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps
-     * to Expired). Leave unset when a downstream node is responsible for closing the Task
-     * (avoids double-resolve).
+     * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+     * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+     * for closing the Task (avoids double-resolve).
      */
     closeAsResolution?: ResolutionType;
     /**
@@ -194,9 +194,9 @@ export interface ExpiryTimer {
 
 /**
  * When set, the underlying Task entity is closed at the moment the timer fires with this
- * resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps
- * to Expired). Leave unset when a downstream node is responsible for closing the Task
- * (avoids double-resolve).
+ * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+ * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+ * for closing the Task (avoids double-resolve).
  *
  * How the task was resolved.
  */

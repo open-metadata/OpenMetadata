@@ -749,7 +749,8 @@ public class CreateTask implements TaskListener {
         && status != TaskEntityStatus.InProgress
         && status != TaskEntityStatus.Pending
         && status != TaskEntityStatus.Approved
-        && status != TaskEntityStatus.Granted;
+        && status != TaskEntityStatus.Granted
+        && status != TaskEntityStatus.ManualRevoke;
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(

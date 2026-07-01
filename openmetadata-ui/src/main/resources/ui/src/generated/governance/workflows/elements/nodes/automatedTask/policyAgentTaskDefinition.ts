@@ -15,6 +15,12 @@
  * manual grant step.
  */
 export interface PolicyAgentTaskDefinition {
+    /**
+     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
+     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
+     * authors declare only the branches their delegate actually emits, and each declared branch
+     * must have a matching outgoing edge in the workflow.
+     */
     branches?: string[];
     config?:   Config;
     /**
@@ -40,9 +46,11 @@ export interface Config {
     /**
      * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
      * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
-     * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
-     * (Read/Write/Admin) from the request payload still flows through so the connector knows
-     * which level to revoke. When unset, the agent uses the accessType from the request payload.
+     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+     * to decide what to tear down. When unset, the agent uses the accessType from the request
+     * payload.
      */
     accessType?: AccessType;
     /**
@@ -58,9 +66,10 @@ export interface Config {
 /**
  * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
  * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
- * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
- * (Read/Write/Admin) from the request payload still flows through so the connector knows
- * which level to revoke. When unset, the agent uses the accessType from the request
+ * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+ * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+ * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+ * to decide what to tear down. When unset, the agent uses the accessType from the request
  * payload.
  *
  * Pattern of access being requested.

@@ -89,6 +89,12 @@ export interface EdgeDefinition {
  * manual grant step.
  */
 export interface Definition {
+    /**
+     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
+     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
+     * authors declare only the branches their delegate actually emits, and each declared branch
+     * must have a matching outgoing edge in the workflow.
+     */
     branches?: string[];
     config?:   NodeConfiguration;
     /**
@@ -171,9 +177,11 @@ export interface NodeConfiguration {
     /**
      * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
      * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
-     * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
-     * (Read/Write/Admin) from the request payload still flows through so the connector knows
-     * which level to revoke. When unset, the agent uses the accessType from the request payload.
+     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+     * to decide what to tear down. When unset, the agent uses the accessType from the request
+     * payload.
      */
     accessType?: AccessType;
     /**
@@ -189,9 +197,10 @@ export interface NodeConfiguration {
 /**
  * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
  * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
- * access (the connector emits REVOKE instead of GRANT); the original requestedAccess level
- * (Read/Write/Admin) from the request payload still flows through so the connector knows
- * which level to revoke. When unset, the agent uses the accessType from the request
+ * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+ * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+ * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+ * to decide what to tear down. When unset, the agent uses the accessType from the request
  * payload.
  *
  * Pattern of access being requested.
@@ -304,9 +313,9 @@ export enum EmptyAssigneeStrategy {
 export interface ExpiryTimer {
     /**
      * When set, the underlying Task entity is closed at the moment the timer fires with this
-     * resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps
-     * to Expired). Leave unset when a downstream node is responsible for closing the Task
-     * (avoids double-resolve).
+     * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+     * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+     * for closing the Task (avoids double-resolve).
      */
     closeAsResolution?: ResolutionType;
     /**
@@ -323,9 +332,9 @@ export interface ExpiryTimer {
 
 /**
  * When set, the underlying Task entity is closed at the moment the timer fires with this
- * resolutionType (the final taskStatus is derived from it by TaskRepository — TimedOut maps
- * to Expired). Leave unset when a downstream node is responsible for closing the Task
- * (avoids double-resolve).
+ * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+ * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+ * for closing the Task (avoids double-resolve).
  *
  * How the task was resolved.
  */

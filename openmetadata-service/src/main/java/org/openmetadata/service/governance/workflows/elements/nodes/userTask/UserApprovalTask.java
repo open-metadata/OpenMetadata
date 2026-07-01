@@ -323,7 +323,7 @@ public class UserApprovalTask implements NodeInterface {
    * is set. On fire, a ServiceTask writes {@code result = transitionId} (the node variable that
    * outgoing edges condition on); when the workflow author also set
    * {@code expiryTimer.closeAsResolution}, the OM Task entity is closed with that resolutionType
-   * (status derived by TaskRepository — e.g. TimedOut → Expired). Skip the close when a
+   * (status derived by TaskRepository — e.g. Expired → Expired). Skip the close when a
    * downstream node owns the task lifecycle (e.g. GrantedAccess routes to RevokeAccess which
    * closes as Revoked).
    */
