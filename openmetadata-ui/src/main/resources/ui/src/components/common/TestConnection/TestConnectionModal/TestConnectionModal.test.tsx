@@ -153,7 +153,14 @@ describe('TestConnectionModal', () => {
 
   it('Should render the progress bar with proper value', () => {
     render(
-      <TestConnectionModal {...commonProps} isTestingConnection progress={90} />
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        progress={90}
+        testConnectionStepResult={[
+          { name: 'Step 1', passed: true, mandatory: true },
+        ]}
+      />
     );
     const progressBarValue = screen.getByTestId('progress-bar-value');
 

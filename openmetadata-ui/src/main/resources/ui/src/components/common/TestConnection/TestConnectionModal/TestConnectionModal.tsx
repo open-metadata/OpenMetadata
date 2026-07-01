@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
 import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
+import { Status } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -89,6 +90,15 @@ const TestConnectionModal = ({
     [testConnectionStepResult]
   );
 
+  const completedCount = useMemo(
+    () =>
+      testConnectionStepResult.filter(
+        (result) =>
+          result.status !== Status.Running && result.status !== Status.Queued
+      ).length,
+    [testConnectionStepResult]
+  );
+
   const totalCount = testConnectionStep.length;
   const requiredSteps = useMemo(
     () => testConnectionStep.filter((step) => step.mandatory),
@@ -108,7 +118,7 @@ const TestConnectionModal = ({
   const progressPercent = totalCount
     ? Math.min(
         100,
-        Math.max(progress, Math.round((passedCount / totalCount) * 100))
+        Math.max(progress, Math.round((completedCount / totalCount) * 100))
       )
     : progress;
 
@@ -142,6 +152,17 @@ const TestConnectionModal = ({
           }
           if (result.errorLog) {
             parts.push(result.errorLog);
+          }
+          if (result.diagnosis) {
+            parts.push(
+              [
+                result.diagnosis.title,
+                result.diagnosis.remediation,
+                result.diagnosis.docUrl,
+              ]
+                .filter(Boolean)
+                .join('\n')
+            );
           }
 
           return parts.join('\n');

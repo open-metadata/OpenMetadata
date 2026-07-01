@@ -74,6 +74,8 @@ export function getStepState(
   if (result) {
     if (result.status === Status.Running) {
       state = 'running';
+    } else if (result.status === Status.Skipped) {
+      state = 'skipped';
     } else if (result.passed) {
       state = 'passed';
     } else if (step.mandatory) {
@@ -621,13 +623,20 @@ export function ConnectionCapabilitySection(
       className="tw:flex tw:flex-col tw:gap-2"
       data-testid="capability-checks-phase">
       <Box align="center" justify="between">
-        <Typography
-          className="tw:tracking-[0.04em] tw:text-quaternary tw:uppercase"
-          size="text-xs"
-          weight="semibold">
-          {t('label.capability-check-plural')}
-        </Typography>
-        {showFraction ? (
+        <Box gap={2}>
+          <Typography
+            className="tw:tracking-[0.04em] tw:text-quaternary tw:uppercase"
+            size="text-xs"
+            weight="semibold">
+            {t('label.capability-check-plural')}
+          </Typography>
+          {connectionFailed && (
+            <Typography className="tw:text-quaternary" size="text-xs">
+              {t('message.connection-skipped-gate-failed')}
+            </Typography>
+          )}
+        </Box>
+        {showFraction && (
           <Typography
             className="tw:text-tertiary"
             size="text-xs"
@@ -639,12 +648,6 @@ export function ConnectionCapabilitySection(
               total: capabilitySteps.length,
             })}
           </Typography>
-        ) : (
-          connectionFailed && (
-            <span className="tw:normal-case tw:font-normal tw:tracking-normal">
-              {t('message.connection-skipped-gate-failed')}
-            </span>
-          )
         )}
       </Box>
       <Accordion>
@@ -682,7 +685,8 @@ export function ConnectionCapabilitySection(
             !isEmpty(result?.executedCommand) ||
             !isEmpty(result?.resultSummary) ||
             !isEmpty(result?.message) ||
-            !isEmpty(result?.errorLog);
+            !isEmpty(result?.errorLog) ||
+            !isEmpty(result?.diagnosis);
 
           const canExpand = isExpandableState && containsLogs;
 
@@ -772,6 +776,18 @@ export function ConnectionCapabilitySection(
                         result.errorLog,
                         'tw:text-utility-error-300',
                         'err-'
+                      )}
+                    {result.diagnosis &&
+                      renderColoredLines(
+                        `\n${[
+                          result.diagnosis.title,
+                          result.diagnosis.remediation,
+                          result.diagnosis.docUrl,
+                        ]
+                          .filter(Boolean)
+                          .join('\n')}`,
+                        'tw:text-utility-warning-300',
+                        'diag-'
                       )}
                   </pre>
                 </div>
@@ -863,6 +879,21 @@ export function ConnectionRawLogSection(
                   result.errorLog,
                   'tw:text-utility-error-300',
                   `${stepIdx}-err-`
+                )
+              );
+            }
+            if (result.diagnosis) {
+              parts.push(
+                ...renderColoredLines(
+                  `\n${[
+                    result.diagnosis.title,
+                    result.diagnosis.remediation,
+                    result.diagnosis.docUrl,
+                  ]
+                    .filter(Boolean)
+                    .join('\n')}`,
+                  'tw:text-utility-warning-300',
+                  `${stepIdx}-diag-`
                 )
               );
             }
@@ -991,6 +1022,17 @@ export function ConnectionRemediationCard(
         return r?.errorLog || r?.message || '';
       })();
 
+  const diagnosis = connectionFailed
+    ? gateResult?.diagnosis
+    : (() => {
+        const failed = capabilitySteps.find(
+          (s) => s.mandatory && getConnectionStepResult(s)?.passed === false
+        );
+        const r = failed ? getConnectionStepResult(failed) : undefined;
+
+        return r?.diagnosis;
+      })();
+
   if (!errorContent) {
     return null;
   }
@@ -1002,19 +1044,40 @@ export function ConnectionRemediationCard(
       : 'tw:border-utility-warning-200 tw:bg-utility-warning-50'
   );
 
+  let titleText = connectionFailed
+    ? t('message.connection-gate-failed')
+    : t('message.connection-required-check-failed');
+
+  if (diagnosis?.title) {
+    titleText = diagnosis.title;
+  }
+
   return (
     <div className={cardClass} data-testid="connection-remediation-card">
       <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
         <Lightbulb03 className="tw:shrink-0 tw:text-primary" size={17} />
         <span className="tw:text-sm tw:font-bold tw:text-primary">
-          {connectionFailed
-            ? t('message.connection-gate-failed')
-            : t('message.connection-required-check-failed')}
+          {titleText}
         </span>
       </div>
-      <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap">
-        {renderColoredLines(errorContent, 'tw:text-utility-error-300')}
-      </pre>
+      {diagnosis && (
+        <div className="tw:mt-3 tw:flex tw:flex-col tw:gap-1 tw:text-xs">
+          {diagnosis.remediation && (
+            <Typography className="tw:text-secondary">
+              {diagnosis.remediation}
+            </Typography>
+          )}
+          {diagnosis.docUrl && (
+            <a
+              className="tw:mt-1 tw:font-medium tw:text-primary tw:underline"
+              href={diagnosis.docUrl}
+              rel="noopener noreferrer"
+              target="_blank">
+              {t('label.learn-more')}
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
