@@ -42,21 +42,45 @@ public final class ShapeCanary {
     final String freshIndex = shadowIndex.create(entityType);
     ShapeResult result;
     try {
-      final SearchIndex index =
-          searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
-      final String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
-      searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
-      result = verify(freshIndex, docId, probe);
-    } catch (final Exception e) {
-      // Intentional broad catch: the engine refuses an unindexable doc with varied exception types.
-      // We do NOT classify the cause — REJECTED plus the full error chain is the honest signal.
-      final String detail = describe(e);
-      LOG.warn("REJECTED: PUT to {} failed for doc {}: {}", freshIndex, docId, detail, e);
-      result = new ShapeResult(Outcome.REJECTED, detail);
+      final String doc = buildDoc(entityType, entity);
+      final String rejection = putDoc(freshIndex, docId, doc);
+      result =
+          rejection != null
+              ? new ShapeResult(Outcome.REJECTED, rejection)
+              : verify(freshIndex, docId, probe);
     } finally {
       shadowIndex.drop(freshIndex);
     }
     return result;
+  }
+
+  /**
+   * Builds the search document from the entity. Deliberately NOT wrapped in the REJECTED path: a
+   * failure here is a doc-build/serialization bug in the harness or index code, not the engine
+   * refusing an unindexable shape, so it must surface as an error rather than masquerade as
+   * REJECTED (which is reserved for the write below).
+   */
+  private String buildDoc(final String entityType, final EntityInterface entity) {
+    final SearchIndex index =
+        searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
+    return JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+  }
+
+  /**
+   * PUTs the built doc into the shadow index. Returns the engine's rejection detail when the write
+   * fails, or {@code null} when it succeeds. Only this network write is caught — the engine refuses
+   * an unindexable doc with varied exception types, and REJECTED plus the raw error chain is the
+   * honest signal. We do NOT classify the cause.
+   */
+  private String putDoc(final String freshIndex, final String docId, final String doc) {
+    String rejection = null;
+    try {
+      searchRepository.getSearchClient().createEntity(freshIndex, docId, doc);
+    } catch (final Exception e) {
+      rejection = describe(e);
+      LOG.warn("REJECTED: PUT to {} failed for doc {}: {}", freshIndex, docId, rejection, e);
+    }
+    return rejection;
   }
 
   private ShapeResult verify(final String indexName, final String docId, final FieldProbe probe) {
@@ -65,7 +89,7 @@ public final class ShapeCanary {
     if (!response.path(FOUND).asBoolean(false)) {
       result =
           new ShapeResult(Outcome.ERROR_OTHER, notRetrievableDetail(indexName, docId, response));
-    } else if (probe == null || probe.searchable(httpSearch, indexName)) {
+    } else if (probe == null || isSearchable(indexName, probe)) {
       result = new ShapeResult(Outcome.OK, "");
     } else {
       result =
@@ -75,6 +99,16 @@ public final class ShapeCanary {
                   + " hits (value dropped from the term index, e.g. keyword ignore_above)");
     }
     return result;
+  }
+
+  /**
+   * Runs the probe's term query, refreshing first. The get-by-id above is realtime, but {@code
+   * _search} reads the near-real-time view — without a refresh a just-indexed searchable value can
+   * return zero hits and be misreported as DEGRADED_UNSEARCHABLE.
+   */
+  private boolean isSearchable(final String indexName, final FieldProbe probe) {
+    httpSearch.post("/" + indexName + "/_refresh", "");
+    return probe.searchable(httpSearch, indexName);
   }
 
   /**
