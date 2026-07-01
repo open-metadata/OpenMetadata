@@ -268,11 +268,15 @@ describe('TestConnectionModal', () => {
     expect(screen.queryByTestId('copy-raw-log-button')).not.toBeInTheDocument();
   });
 
-  it('should let the user collapse and reopen an auto-expanded capability step log', () => {
+  it('should let the user expand and collapse a capability step log', () => {
     render(<TestConnectionModal {...commonProps} />);
 
     const step = screen.getByTestId('test-connection-step-Step 2');
     const stepToggle = step.querySelector('button') as HTMLButtonElement;
+
+    expect(screen.queryByText('Error message')).not.toBeInTheDocument();
+
+    fireEvent.click(stepToggle);
 
     expect(screen.getByText('Error message')).toBeInTheDocument();
 
@@ -453,7 +457,7 @@ describe('TestConnectionModal', () => {
     fireEvent.click(screen.getByText('message.show-raw-connection-log-lines'));
 
     const rawLog = screen.getByTestId('raw-connection-log');
-    const errorSpans = rawLog.querySelectorAll('.tw\\:text-error-300');
+    const errorSpans = rawLog.querySelectorAll('.tw\\:text-utility-error-300');
 
     expect(errorSpans.length).toBe(6);
     expect(errorSpans[0]).toHaveTextContent('OperationalError');
@@ -489,13 +493,13 @@ describe('TestConnectionModal', () => {
     const rawLog = screen.getByTestId('raw-connection-log');
 
     const successSpan = Array.from(
-      rawLog.querySelectorAll('.tw\\:text-success-300')
+      rawLog.querySelectorAll('.tw\\:text-utility-success-300')
     ).find((el) => el.textContent?.includes('Connection successful'));
 
     expect(successSpan).toBeInTheDocument();
 
     const errorSpans = Array.from(
-      rawLog.querySelectorAll('.tw\\:text-error-300')
+      rawLog.querySelectorAll('.tw\\:text-utility-error-300')
     );
 
     expect(

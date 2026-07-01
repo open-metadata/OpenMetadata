@@ -52,6 +52,7 @@ test.describe('ServiceDocPanel', () => {
   test.describe('Content rendering', () => {
     test('should render headings not raw markdown', async ({ page }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-headings');
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
@@ -65,6 +66,7 @@ test.describe('ServiceDocPanel', () => {
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-admonition');
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
@@ -80,6 +82,7 @@ test.describe('ServiceDocPanel', () => {
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-codeblock');
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
@@ -238,11 +241,16 @@ test.describe('ServiceDocPanel', () => {
       });
       await waitForAllLoadersToDisappear(page);
       await selectServiceConnector(page, 'Snowflake');
+      await page.locator('#service-name').fill('pw-snowflake-test');
       await waitForServiceConnectionForm(page);
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
-      await page.locator(String.raw`#root\/accountUsageSchema`).focus();
+      const fieldLocator = page.locator(String.raw`#root\/accountUsageSchema`);
+
+      await expect(fieldLocator).toBeVisible({ timeout: 10000 });
+      await fieldLocator.focus();
 
       await expect(
         docPanel.getByRole('heading', {
@@ -282,6 +290,7 @@ test.describe('ServiceDocPanel', () => {
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-correct-doc');
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
@@ -300,6 +309,7 @@ test.describe('ServiceDocPanel', () => {
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-copy');
+      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
       const codeBlock = docPanel.locator('pre').first();
