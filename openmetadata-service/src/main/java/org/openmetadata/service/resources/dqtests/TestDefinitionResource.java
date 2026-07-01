@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
@@ -164,7 +165,7 @@ public class TestDefinitionResource
           Boolean enabledParam) {
     ListFilter filter = new ListFilter(include);
     if (entityType != null) {
-      filter.addQueryParam("entityType", entityType);
+      filter.addQueryParam("entityType", entityType.toUpperCase(Locale.ROOT));
     }
     if (testPlatformParam != null) {
       filter.addQueryParam("testPlatform", testPlatformParam);
