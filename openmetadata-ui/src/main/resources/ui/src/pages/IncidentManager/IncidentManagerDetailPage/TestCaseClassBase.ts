@@ -19,10 +19,9 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { FieldProp } from '../../../interface/FormUtils.interface';
-import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityUtils';
+import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';
-
 const DimensionalityTab = withSuspenseFallback(
   lazy(
     () =>
@@ -147,6 +146,8 @@ class TestCaseClassBase {
       TabSpecificField.OWNERS,
       TabSpecificField.INCIDENT_ID,
       TabSpecificField.TAGS,
+      TabSpecificField.DATA_PRODUCTS,
+      TabSpecificField.DOMAINS,
       'inspectionQuery',
     ];
   }

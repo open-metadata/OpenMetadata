@@ -34,6 +34,7 @@ const mockProps2 = {
 
 jest.mock('../../../../utils/RouterUtils', () => ({
   getUserPath: jest.fn().mockReturnValue('user-profile-path'),
+  getEntityDetailsPath: jest.fn().mockReturnValue('/entity/path'),
 }));
 
 jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
@@ -43,6 +44,10 @@ jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 jest.mock('../../../../utils/EntityNameUtils', () => ({
@@ -50,14 +55,16 @@ jest.mock('../../../../utils/EntityNameUtils', () => ({
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
-  entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   getEntityFieldDisplay: jest
     .fn()
     .mockImplementation((entityField) => entityField),
+}));
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
+  entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('task detail path'),
 }));
 

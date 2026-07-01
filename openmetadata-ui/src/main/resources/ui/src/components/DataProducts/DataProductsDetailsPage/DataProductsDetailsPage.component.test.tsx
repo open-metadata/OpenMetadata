@@ -11,16 +11,15 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { render } from '@testing-library/react';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
 import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
-  GenericProvider: jest.fn().mockReturnValue(null),
+  GenericProvider: jest
+    .fn()
+    .mockImplementation(({ children }) => children ?? null),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -30,8 +29,11 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockReturnValue({ state: null, pathname: '/data-product/test' }),
 }));
-jest.mock('notistack', () => ({
-  useSnackbar: jest.fn().mockReturnValue({ enqueueSnackbar: jest.fn() }),
+jest.mock('../../../utils/NotistackUtils', () => ({
+  showNotistackError: jest.fn(),
+  showNotistackSuccess: jest.fn(),
+  showNotistackInfo: jest.fn(),
+  showNotistackWarning: jest.fn(),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -60,23 +62,10 @@ jest.mock('../../../utils/EntityPureUtils', () => ({
 jest.mock('../../../utils/DataProduct/DataProductClassBase', () => ({
   __esModule: true,
   default: {
-    getShowRequestDataAccess: jest.fn().mockReturnValue(false),
-    getRequestDataAccessDrawer: jest.fn().mockReturnValue(null),
+    getRequestDataAccessButton: jest.fn().mockReturnValue(null),
+    getRequestDataAccessBanner: jest.fn().mockReturnValue(null),
     getDataProductDetailPageTabs: jest.fn().mockReturnValue([]),
   },
-}));
-
-jest.mock('../../../hooks/useDataAccessRequest', () => ({
-  useDataAccessRequest: jest.fn().mockReturnValue({
-    isDarDisabled: false,
-    isDarAwaitingGrant: false,
-    isDarGranted: false,
-    refetch: jest.fn(),
-  }),
-}));
-
-jest.mock('../../../utils/TasksUtils', () => ({
-  getDarButtonTooltip: jest.fn().mockReturnValue(''),
 }));
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
@@ -140,143 +129,52 @@ function getDataProductClassBase() {
     .default;
 }
 
-function enableRequestDataAccess() {
-  getDataProductClassBase().getShowRequestDataAccess.mockReturnValue(true);
-}
-
-describe('DataProductsDetailsPage — Request Data Access button', () => {
+describe('DataProductsDetailsPage — Request Data Access delegation', () => {
   beforeEach(() => {
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      currentUser: { id: 'user-1', name: 'test.user', isAdmin: false },
-    });
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermission: jest.fn().mockResolvedValue({}),
-      permissions: { task: { Create: true } },
-    });
-    getDataProductClassBase().getShowRequestDataAccess.mockReturnValue(false);
+    jest.clearAllMocks();
+    getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(null);
+    getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
   });
 
-  it('does not render when the feature flag is off (OSS default)', () => {
+  it('delegates the DAR button to dataProductClassBase', () => {
     render(<DataProductsDetailsPage {...defaultProps} />);
 
     expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
+      getDataProductClassBase().getRequestDataAccessButton
+    ).toHaveBeenCalled();
   });
 
-  it('does not render for admin without task-Create permission', () => {
-    enableRequestDataAccess();
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
-    });
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermission: jest.fn().mockResolvedValue({}),
-      permissions: { task: { Create: false } },
-    });
-
+  it('delegates the DAR banner to dataProductClassBase', () => {
     render(<DataProductsDetailsPage {...defaultProps} />);
 
     expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
+      getDataProductClassBase().getRequestDataAccessBanner
+    ).toHaveBeenCalled();
   });
 
-  it('renders and is enabled for an admin with task-Create permission', () => {
-    enableRequestDataAccess();
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      currentUser: { id: 'admin-1', name: 'admin', isAdmin: true },
-    });
-
-    render(<DataProductsDetailsPage {...defaultProps} />);
-
-    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
-  });
-
-  it('renders for entity owner with task-Create permission', () => {
-    enableRequestDataAccess();
-
-    render(
-      <DataProductsDetailsPage
-        {...defaultProps}
-        dataProduct={{
-          ...mockDataProduct,
-          owners: [{ id: 'user-1', type: 'user' }],
-        }}
-      />
+  it('renders the node returned by getRequestDataAccessButton', () => {
+    const mockButton = <button data-testid="mock-dar-button">Request</button>;
+    getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(
+      mockButton
     );
 
-    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
+    const { getByTestId } = render(
+      <DataProductsDetailsPage {...defaultProps} />
+    );
+
+    expect(getByTestId('mock-dar-button')).toBeInTheDocument();
   });
 
-  it('does not render when the user lacks task-Create permission', () => {
-    enableRequestDataAccess();
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermission: jest.fn().mockResolvedValue({}),
-      permissions: { task: { Create: false } },
-    });
+  it('renders the node returned by getRequestDataAccessBanner', () => {
+    const mockBanner = <div data-testid="mock-dar-banner">Banner</div>;
+    getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(
+      mockBanner
+    );
 
-    render(<DataProductsDetailsPage {...defaultProps} />);
+    const { getByTestId } = render(
+      <DataProductsDetailsPage {...defaultProps} />
+    );
 
-    expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
-  });
-
-  it('does not render in versions-history view', () => {
-    enableRequestDataAccess();
-
-    render(<DataProductsDetailsPage {...defaultProps} isVersionsView />);
-
-    expect(
-      screen.queryByTestId('request-data-access-button')
-    ).not.toBeInTheDocument();
-  });
-
-  it('renders and is enabled for a regular user with task-Create permission', () => {
-    enableRequestDataAccess();
-
-    render(<DataProductsDetailsPage {...defaultProps} />);
-
-    expect(screen.getByTestId('request-data-access-button')).toBeEnabled();
-  });
-});
-
-describe('DataProductsDetailsPage — awaiting-grant banner', () => {
-  beforeEach(() => {
-    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
-      currentUser: { id: 'user-1', name: 'test.user', isAdmin: false },
-    });
-    (usePermissionProvider as jest.Mock).mockReturnValue({
-      getEntityPermission: jest.fn().mockResolvedValue({}),
-      permissions: { task: { Create: true } },
-    });
-    getDataProductClassBase().getShowRequestDataAccess.mockReturnValue(true);
-    (useDataAccessRequest as jest.Mock).mockReturnValue({
-      isDarDisabled: false,
-      isDarAwaitingGrant: true,
-      isDarGranted: false,
-      refetch: jest.fn(),
-    });
-  });
-
-  it('shows the banner when the DAR is approved but not yet granted', () => {
-    render(<DataProductsDetailsPage {...defaultProps} />);
-
-    expect(screen.getByTestId('dar-awaiting-grant-banner')).toBeInTheDocument();
-  });
-
-  it('does not show the banner when there are no active DARs', () => {
-    (useDataAccessRequest as jest.Mock).mockReturnValue({
-      isDarDisabled: false,
-      isDarAwaitingGrant: false,
-      isDarGranted: false,
-      refetch: jest.fn(),
-    });
-
-    render(<DataProductsDetailsPage {...defaultProps} />);
-
-    expect(
-      screen.queryByTestId('dar-awaiting-grant-banner')
-    ).not.toBeInTheDocument();
+    expect(getByTestId('mock-dar-banner')).toBeInTheDocument();
   });
 });

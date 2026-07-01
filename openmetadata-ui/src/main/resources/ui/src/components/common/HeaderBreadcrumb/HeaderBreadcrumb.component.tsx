@@ -16,6 +16,7 @@ import {
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
 import { HomeLine } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +27,7 @@ const HOME_CRUMB_ID = '__breadcrumb_home__';
 
 const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   items,
-  showHome = false,
+  showHome = true,
   type,
   divider,
   size,
@@ -69,10 +70,11 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
-      className={className}
+      className={classNames('tw:mb-3', className)}
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}
+      maxItemWidth={256}
       size={size}
       type={type}
       onAction={handleAction}

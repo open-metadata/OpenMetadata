@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Alert,
   Button,
   Tooltip,
   TooltipTrigger,
@@ -65,7 +64,6 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useDataAccessRequest } from '../../../hooks/useDataAccessRequest';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import {
   AnnouncementEntity,
@@ -87,16 +85,15 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { getEntityTypeFromServiceCategory } from '../../../utils/ServiceUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
-import { getDarButtonTooltip } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
-import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -145,7 +142,6 @@ export const DataAssetsHeader = ({
   badge,
   isDqAlertSupported = false,
   isCustomizedView = false,
-  canCreateTask = false,
   disableRunAgentsButton = true,
   afterTriggerAction,
   isAutoPilotWorkflowStatusLoading = false,
@@ -176,17 +172,6 @@ export const DataAssetsHeader = ({
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
   const { entityRules } = useEntityRules(entityType);
   const [dataContract, setDataContract] = useState<DataContract>();
-  const [isRequestDataAccessOpen, setIsRequestDataAccessOpen] = useState(false);
-  const {
-    isDarDisabled,
-    isDarAwaitingGrant,
-    isDarGranted,
-    refetch: refetchExistingDar,
-  } = useDataAccessRequest({
-    entityFqn: dataAsset.fullyQualifiedName,
-    enabled: entityType === EntityType.TABLE,
-  });
-
   const fetchDataContract = async (entityId: string) => {
     try {
       const contract = await getContractByEntityId(entityId, entityType);
@@ -242,8 +227,9 @@ export const DataAssetsHeader = ({
 
   const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
     useState<boolean>(false);
-  const [activeAnnouncement, setActiveAnnouncement] =
-    useState<AnnouncementEntity>();
+  const [activeAnnouncements, setActiveAnnouncements] = useState<
+    AnnouncementEntity[]
+  >([]);
 
   const fetchDQFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus() || !isDqAlertSupported) {
@@ -325,9 +311,7 @@ export const DataAssetsHeader = ({
         getEntityFeedLink(entityType, dataAsset.fullyQualifiedName ?? '')
       );
 
-      if (!isEmpty(announcements.data)) {
-        setActiveAnnouncement(announcements.data[0]);
-      }
+      setActiveAnnouncements(announcements.data ?? []);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -617,47 +601,6 @@ export const DataAssetsHeader = ({
     t,
   ]);
 
-  const requestDataAccessButton = useMemo(() => {
-    if (
-      !tableClassBase.getShowRequestDataAccess() ||
-      entityType !== EntityType.TABLE ||
-      deleted ||
-      !canCreateTask
-    ) {
-      return null;
-    }
-
-    const tooltipTitle = getDarButtonTooltip(
-      isDarDisabled,
-      isDarGranted,
-      isDarAwaitingGrant,
-      t
-    );
-
-    return (
-      <Tooltip placement="top" title={tooltipTitle}>
-        <TooltipTrigger>
-          <Button
-            color="secondary"
-            data-testid="request-data-access-button"
-            isDisabled={isDarDisabled}
-            size="sm"
-            onPress={() => setIsRequestDataAccessOpen(true)}>
-            {t('label.request-data-access')}
-          </Button>
-        </TooltipTrigger>
-      </Tooltip>
-    );
-  }, [
-    entityType,
-    deleted,
-    isDarDisabled,
-    isDarAwaitingGrant,
-    isDarGranted,
-    canCreateTask,
-    t,
-  ]);
-
   const sourceUrlButton = useMemo(() => {
     const sourceUrl =
       get(dataAsset, 'sourceUrl') ?? get(dataAsset, 'endpointURL');
@@ -702,14 +645,7 @@ export const DataAssetsHeader = ({
           { 'has-editable-metadata': hasEditableMetadata }
         )}
         data-testid="data-assets-header">
-        {isDarAwaitingGrant && (
-          <Alert
-            data-testid="dar-awaiting-grant-banner"
-            title={t('label.data-access-request-awaiting-grant')}
-            variant="brand">
-            {t('message.data-access-request-awaiting-grant-message')}
-          </Alert>
-        )}
+        {tableClassBase.getRequestDataAccessBanner()}
 
         <div
           className={classNames(
@@ -719,6 +655,7 @@ export const DataAssetsHeader = ({
           <div className="tw:min-w-0 tw:flex-1">
             <TitleBreadcrumbSkeleton loading={isBreadcrumbLoading}>
               <HeaderBreadcrumb
+                className="tw:mb-0"
                 items={[
                   ...breadcrumbs.map((link) => ({
                     label: link.name,
@@ -729,6 +666,7 @@ export const DataAssetsHeader = ({
                   })),
                   { label: entityName },
                 ]}
+                showHome={false}
                 size="sm"
               />
             </TitleBreadcrumbSkeleton>
@@ -885,7 +823,7 @@ export const DataAssetsHeader = ({
             {triggerAutoPilotApplicationButton}
             {dataContractLatestResultButton}
             {sourceUrlButton}
-            {requestDataAccessButton}
+            {tableClassBase.getRequestDataAccessButton()}
             <ManageButton
               isAsyncDelete
               afterDeleteAction={afterDeleteAction}
@@ -913,13 +851,6 @@ export const DataAssetsHeader = ({
             />
           </div>
         </div>
-
-        {activeAnnouncement && (
-          <AnnouncementCard
-            announcement={activeAnnouncement}
-            onClick={handleOpenAnnouncementDrawer}
-          />
-        )}
 
         <div
           className="tw:flex tw:flex-wrap tw:items-start tw:gap-[18px]"
@@ -1117,6 +1048,16 @@ export const DataAssetsHeader = ({
         </div>
       </div>
 
+      {activeAnnouncements.length > 0 && (
+        <AnnouncementsWidgetV3Body
+          announcements={activeAnnouncements}
+          className="tw:mt-3"
+          testId="entity-header-announcements"
+          onItemClick={handleOpenAnnouncementDrawer}
+          onViewAll={handleOpenAnnouncementDrawer}
+        />
+      )}
+
       {isAnnouncementDrawerOpen && (
         <AnnouncementDrawer
           createPermission={permissions?.EditAll}
@@ -1125,15 +1066,6 @@ export const DataAssetsHeader = ({
           open={isAnnouncementDrawerOpen}
           onClose={handleCloseAnnouncementDrawer}
         />
-      )}
-
-      {tableClassBase.getRequestDataAccessDrawer(
-        isRequestDataAccessOpen,
-        () => setIsRequestDataAccessOpen(false),
-        dataAsset.fullyQualifiedName ?? '',
-        getEntityName(dataAsset),
-        entityType,
-        refetchExistingDar
       )}
     </>
   );

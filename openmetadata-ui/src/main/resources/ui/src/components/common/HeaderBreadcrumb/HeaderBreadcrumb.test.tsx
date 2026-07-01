@@ -68,16 +68,17 @@ describe('Breadcrumb', () => {
     expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument();
   });
 
-  it('renders provided items without a home crumb by default', () => {
+  it('renders provided items with a home crumb by default', () => {
     render(
       <Breadcrumb
         items={[{ label: 'Section', href: '/section' }, { label: 'Current' }]}
       />
     );
 
-    expect(capturedItems).toHaveLength(2);
-    expect(capturedItems[0].label).toBe('Section');
-    expect(capturedItems[1].label).toBe('Current');
+    expect(capturedItems).toHaveLength(3);
+    expect(capturedItems[0].id).toBe('__breadcrumb_home__');
+    expect(capturedItems[1].label).toBe('Section');
+    expect(capturedItems[2].label).toBe('Current');
   });
 
   it('assigns sequential string ids to items', () => {
@@ -87,8 +88,9 @@ describe('Breadcrumb', () => {
       />
     );
 
-    expect(capturedItems[0].id).toBe('0');
-    expect(capturedItems[1].id).toBe('1');
+    expect(capturedItems[0].id).toBe('__breadcrumb_home__');
+    expect(capturedItems[1].id).toBe('0');
+    expect(capturedItems[2].id).toBe('1');
   });
 
   it('prepends a home crumb when showHome is true', () => {
@@ -111,7 +113,7 @@ describe('Breadcrumb', () => {
   });
 
   it('does not prepend a home crumb when showHome is false', () => {
-    render(<Breadcrumb items={[{ label: 'Page' }]} />);
+    render(<Breadcrumb items={[{ label: 'Page' }]} showHome={false} />);
 
     expect(capturedItems).toHaveLength(1);
     expect(capturedItems[0].id).not.toBe('__breadcrumb_home__');

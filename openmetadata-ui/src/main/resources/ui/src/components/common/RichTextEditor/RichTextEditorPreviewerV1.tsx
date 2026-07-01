@@ -16,9 +16,9 @@ import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
-  formatContent,
+  formatClientContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorUtils';
+} from '../../../utils/BlockEditorPureUtils';
 import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
@@ -65,7 +65,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
-    setContent(formatContent(markdown, 'client'));
+    setContent(formatClientContent(markdown));
   }, [markdown]);
 
   useEffect(() => {

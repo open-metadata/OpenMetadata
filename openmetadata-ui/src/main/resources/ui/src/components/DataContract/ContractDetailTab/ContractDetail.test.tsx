@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
@@ -32,8 +33,7 @@ import {
   getContractResultByResultId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import '../../../test/unit/mocks/mui.mock';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -41,6 +41,189 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  BadgeWithIcon: jest.fn(({ children }: { children?: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  Box: jest.fn(
+    ({
+      children,
+      className,
+      ...rest
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      onClick,
+      ...rest
+    }: {
+      children: React.ReactNode;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      ...rest
+    }: {
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => <button onClick={onClick} {...rest} />
+  ),
+  Card: Object.assign(
+    jest.fn(
+      ({
+        children,
+        className,
+        style,
+      }: {
+        children: React.ReactNode;
+        className?: string;
+        style?: React.CSSProperties;
+      }) => (
+        <div className={className} style={style}>
+          {children}
+        </div>
+      )
+    ),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    }
+  ),
+  Divider: jest.fn(
+    ({
+      className,
+      orientation,
+    }: {
+      className?: string;
+      orientation?: string;
+    }) => (
+      <div
+        className={className}
+        role="separator"
+        {...(orientation
+          ? { 'aria-orientation': orientation as 'horizontal' | 'vertical' }
+          : {})}
+      />
+    )
+  ),
+  Dropdown: (() => {
+    const OnActionCtx = React.createContext<
+      ((key: string) => void) | undefined
+    >(undefined);
+
+    return {
+      Root: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Menu: jest.fn(
+        ({
+          children,
+          onAction,
+          ...rest
+        }: {
+          children: React.ReactNode;
+          onAction?: (key: string) => void;
+          [key: string]: unknown;
+        }) => (
+          <OnActionCtx.Provider value={onAction}>
+            <div {...rest}>{children}</div>
+          </OnActionCtx.Provider>
+        )
+      ),
+      Item: jest.fn(
+        ({
+          label,
+          id,
+          isDisabled,
+          ...rest
+        }: {
+          label?: string;
+          id?: string;
+          isDisabled?: boolean;
+          [key: string]: unknown;
+        }) => {
+          const onAction = React.useContext(OnActionCtx);
+
+          return (
+            <button
+              className={isDisabled ? 'disabled' : undefined}
+              disabled={isDisabled}
+              {...rest}
+              onClick={() => onAction?.(id ?? '')}>
+              {label}
+            </button>
+          );
+        }
+      ),
+      Separator: jest.fn(() => <hr />),
+    };
+  })(),
+  Tooltip: jest.fn(
+    ({
+      children,
+      title,
+    }: {
+      children: React.ReactNode;
+      title: React.ReactNode;
+    }) => (
+      <div title={typeof title === 'string' ? title : undefined}>
+        {children}
+      </div>
+    )
+  ),
+  TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
+  Typography: jest.fn(
+    ({
+      as: Tag = 'span',
+      children,
+      className,
+      ...rest
+    }: {
+      as?: React.ElementType;
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <Tag className={className} {...rest}>
+        {children}
+      </Tag>
+    )
+  ),
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   exportContractToODCSYaml: jest.fn(),
@@ -55,8 +238,11 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../../utils/BlockEditorUtils', () => ({
+  formatServerContent: jest.fn().mockReturnValue('formatted content'),
+}));
+
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
   isDescriptionContentEmpty: jest.fn(),
-  formatContent: jest.fn().mockReturnValue('formatted content'),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -584,7 +770,7 @@ describe('ContractDetail', () => {
     });
 
     it('should not validate when contract id is missing', async () => {
-      const contractWithoutId = { ...mockContract, id: '' } as DataContract;
+      const contractWithoutId = { ...mockContract, id: '' };
 
       render(
         <ContractDetail

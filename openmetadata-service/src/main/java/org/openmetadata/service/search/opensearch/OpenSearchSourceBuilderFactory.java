@@ -26,6 +26,7 @@ import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -50,6 +51,12 @@ public class OpenSearchSourceBuilderFactory
   private static final String MATCH_TYPE_STANDARD = "standard";
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
+
+  // OpenSearch maps the `extension` custom-properties object as flat_object (OsUtils transforms
+  // flattened -> flat_object). flat_object has no analyzer, so asking the highlighter to highlight
+  // `extension` or any `extension.*` subfield throws "no associated analyzer" and fails the whole
+  // shard (a 500 on the search). Elasticsearch tolerates it, so this guard is OpenSearch-only.
+  private static final String FLATTENED_EXTENSION_FIELD = "extension";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
@@ -505,6 +512,7 @@ public class OpenSearchSourceBuilderFactory
     Map<String, Map<String, Float>> fieldsByType = groupFieldsByMatchType(assetConfig);
 
     addMatchTypeQueriesV2(combinedQuery, query, fieldsByType, multipliers);
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
 
     combinedQuery.minimumShouldMatch(1);
     return OpenSearchQueryBuilder.boolQuery().must(combinedQuery.build()).build();
@@ -765,9 +773,21 @@ public class OpenSearchSourceBuilderFactory
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
     for (String field : listOrEmpty(fields)) {
-      hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
+      if (!isFlattenedExtensionField(field)) {
+        hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
+      }
     }
     return hb.build();
+  }
+
+  // The flat_object `extension` field (and its `extension.*` subfields) has no analyzer on
+  // OpenSearch; a mapped no-analyzer field fails the highlight shard, unlike an unmapped field
+  // which
+  // the highlighter silently skips. Drop it so a configured extension highlight field never 500s.
+  private static boolean isFlattenedExtensionField(String field) {
+    return field != null
+        && (field.equals(FLATTENED_EXTENSION_FIELD)
+            || field.startsWith(FLATTENED_EXTENSION_FIELD + "."));
   }
 
   public OpenSearchRequestBuilder getSearchSourceBuilderV2(
@@ -1057,9 +1077,67 @@ public class OpenSearchSourceBuilderFactory
     addFuzzyMatchQueriesV2(
         combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
     addStandardMatchQueriesV2(combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_STANDARD));
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
 
     combinedQuery.minimumShouldMatch(1);
     return OpenSearchQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  /**
+   * Adds a nested {@code customPropertiesTyped} clause for each admin-configured {@code
+   * extension.<name>} search field. The raw {@code extension} field is {@code enabled:false} so an
+   * oversized value can never reject the document, so the searchable value lives in the typed nested
+   * field — see {@link CustomPropertySearchFields}.
+   */
+  private void addCustomPropertyMatchQueriesV2(
+      OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      AssetTypeConfiguration assetConfig) {
+    for (CustomPropertySearchFields.Spec spec : CustomPropertySearchFields.from(assetConfig)) {
+      combinedQuery.should(customPropertyNestedQueryV2(query, spec));
+    }
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyNestedQueryV2(
+      String query, CustomPropertySearchFields.Spec spec) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query inner =
+        OpenSearchQueryBuilder.boolQuery()
+            .must(customPropertyTermV2(CustomPropertySearchFields.NAME_FIELD, spec.propertyName()))
+            .must(customPropertyValueQueryV2(query, spec))
+            .build();
+    return OpenSearchQueryBuilder.nestedQuery(
+        CustomPropertySearchFields.CUSTOM_PROPERTIES_TYPED, inner);
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyValueQueryV2(
+      String query, CustomPropertySearchFields.Spec spec) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query result;
+    if (spec.exact()) {
+      result =
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field(CustomPropertySearchFields.STRING_VALUE_FIELD)
+                              .value(FieldValue.of(query))
+                              .boost(spec.boost())));
+    } else {
+      result =
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.match(
+                      m ->
+                          m.field(CustomPropertySearchFields.TEXT_VALUE_FIELD)
+                              .query(FieldValue.of(query))
+                              .boost(spec.boost())));
+    }
+    return result;
+  }
+
+  private static os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyTermV2(
+      String field, String value) {
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
   }
 
   private void addExactMatchQueriesV2(

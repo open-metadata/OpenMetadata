@@ -1037,7 +1037,9 @@ public class CreateTask implements TaskListener {
       TaskEntityType taskType,
       Map<String, String> inputNamespaceMap,
       WorkflowVariableHandler varHandler) {
-    if (taskType != TaskEntityType.DataQualityReview || inputNamespaceMap == null) {
+    if ((taskType != TaskEntityType.RecognizerFeedbackApproval
+            && taskType != TaskEntityType.DataQualityReview)
+        || inputNamespaceMap == null) {
       return null;
     }
 

@@ -17,7 +17,7 @@ import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getKnowledgePageName } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 
 interface ArticleVersionHeaderProps {
@@ -70,16 +70,16 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
       <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
-          <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
+          <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
             <File06
-              className="tw:text-gray-500"
+              className="tw:text-quaternary"
               height={40}
               strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}

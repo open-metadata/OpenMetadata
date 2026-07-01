@@ -19,7 +19,7 @@ import { Col, Form, Row, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
@@ -52,13 +52,14 @@ import {
   ListTestSuitePramsBySearch,
 } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../../utils/formUtils';
+import { getPopupContainer } from '../../../../utils/formPureUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import Loader from '../../../common/Loader/Loader';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -116,6 +117,7 @@ export const TestSuites = () => {
   } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const latestRequestId = useRef(0);
 
   const ownerFilterValue = useMemo(() => {
     return selectedOwner
@@ -155,41 +157,55 @@ export const TestSuites = () => {
     });
   }, [testSuites, sortDescriptor]);
 
-  const fetchTestSuites = async (
-    currentPage = INITIAL_PAGING_VALUE,
-    params?: ListTestSuitePramsBySearch
-  ) => {
-    setIsLoading(true);
-    try {
-      const result = await getListTestSuitesBySearch({
-        ...params,
-        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
-        q: searchValue ? `*${searchValue}*` : undefined,
-        owner: ownerFilterValue?.key,
-        offset: (currentPage - 1) * pageSize,
-        includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
-        testSuiteType:
-          subTab === DataQualitySubTabs.TABLE_SUITES
-            ? TestSuiteType.basic
-            : TestSuiteType.logical,
-        sortField: 'lastResultTimestamp',
-        sortType: SORT_ORDER.DESC,
-      });
-      setTestSuites(result.data);
-      handlePagingChange(result.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const fetchTestSuites = useCallback(
+    async (
+      currentPage = INITIAL_PAGING_VALUE,
+      params?: ListTestSuitePramsBySearch
+    ) => {
+      const requestId = latestRequestId.current + 1;
+      latestRequestId.current = requestId;
+
+      setIsLoading(true);
+      try {
+        const result = await getListTestSuitesBySearch({
+          ...params,
+          fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
+          q: searchValue ? `*${searchValue}*` : undefined,
+          owner: ownerFilterValue?.key,
+          offset: (currentPage - 1) * pageSize,
+          includeEmptyTestSuites: subTab !== DataQualitySubTabs.TABLE_SUITES,
+          testSuiteType:
+            subTab === DataQualitySubTabs.TABLE_SUITES
+              ? TestSuiteType.basic
+              : TestSuiteType.logical,
+          sortField: 'lastResultTimestamp',
+          sortType: SORT_ORDER.DESC,
+        });
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
+
+        setTestSuites(result.data);
+        handlePagingChange(result.paging);
+      } catch (error) {
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [searchValue, ownerFilterValue?.key, pageSize, subTab, handlePagingChange]
+  );
 
   const handleTestSuitesPageChange = useCallback(
     ({ currentPage }: PagingHandlerParams) => {
       fetchTestSuites(currentPage, { limit: pageSize });
       handlePageChange(currentPage);
     },
-    [pageSize, handlePageChange]
+    [fetchTestSuites, pageSize, handlePageChange]
   );
 
   const handleSearchParam = (
@@ -315,7 +331,15 @@ export const TestSuites = () => {
     } else {
       setIsLoading(false);
     }
-  }, [testSuitePermission, pageSize, searchValue, owner, subTab, currentPage]);
+  }, [
+    testSuitePermission,
+    pageSize,
+    searchValue,
+    owner,
+    subTab,
+    currentPage,
+    fetchTestSuites,
+  ]);
 
   if (!testSuitePermission?.ViewAll && !testSuitePermission?.ViewBasic) {
     return (
@@ -417,7 +441,15 @@ export const TestSuites = () => {
             </Table.Header>
             <Table.Body
               items={isLoading ? [] : sortedData}
-              renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
+              renderEmptyState={() =>
+                isLoading ? (
+                  <div className="tw:flex tw:justify-center tw:p-8">
+                    <Loader />
+                  </div>
+                ) : (
+                  noDataPlaceholder
+                )
+              }>
               {(record) => renderRow(record as TestSuite)}
             </Table.Body>
           </Table>

@@ -45,10 +45,8 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
-import {
-  getFieldsByKeys,
-  renderJSONLogicQueryBuilderButtons,
-} from './QueryBuilderUtils';
+import { getFieldsByKeys } from './QueryBuilderPureUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -474,6 +472,13 @@ class JSONLogicSearchClassBase {
         },
       },
 
+      [EntityReferenceFields.TEST_SUITE]: {
+        label: t('label.test-suite'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: ['is_null', 'is_not_null'],
+      },
+
       [EntityReferenceFields.REVIEWERS]: {
         label: t('label.reviewer-plural'),
         type: '!group',
@@ -780,25 +785,24 @@ class JSONLogicSearchClassBase {
           Record<string, unknown>
         ];
 
-        // Check if the condition has a negated contains (indicating array_not_contains was used)
-        if (
-          condition &&
-          condition['!'] &&
-          typeof condition['!'] === 'object' &&
-          (condition['!'] as Record<string, unknown>).contains
-        ) {
-          // Transform to NOT around the entire some operation
-          return {
-            '!': {
-              some: [
-                variable,
-                {
-                  contains: (condition['!'] as Record<string, unknown>)
-                    .contains,
-                },
-              ],
-            },
-          };
+        if (condition && condition['!'] && typeof condition['!'] === 'object') {
+          const negated = condition['!'] as Record<string, unknown>;
+
+          if (negated.contains) {
+            return {
+              '!': {
+                some: [variable, { contains: negated.contains }],
+              },
+            };
+          }
+
+          if (negated.in) {
+            return {
+              '!': {
+                some: [variable, { in: negated.in }],
+              },
+            };
+          }
         }
       }
 

@@ -55,6 +55,7 @@ jest.mock('../../../utils/KnowledgePageUtils', () => ({
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
   default: {
+    isEmbeddedMode: jest.fn(() => false),
     isBreadcrumbInsideCard: jest.fn(() => false),
     getCardStyle: jest.fn(() => ({})),
     getBreadcrumbClassName: jest.fn(() => ''),
@@ -79,6 +80,16 @@ jest.mock('../../../utils/EntityLink', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn(() => ({
+    entityRules: {
+      canAddMultipleDomains: true,
+      canAddMultipleUserOwners: true,
+      canAddMultipleTeamOwner: true,
+    },
+  })),
 }));
 
 jest.mock('../../common/HeaderBreadcrumb/HeaderBreadcrumb.component', () =>

@@ -12,7 +12,8 @@
 Hex Service Specification
 """
 
+from metadata.ingestion.source.dashboard.hex.connection import HexConnection
 from metadata.ingestion.source.dashboard.hex.metadata import HexSource
 from metadata.utils.service_spec.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=HexSource)
+ServiceSpec = BaseSpec(metadata_source_class=HexSource, connection_class=HexConnection)  # pyright: ignore[reportArgumentType]
