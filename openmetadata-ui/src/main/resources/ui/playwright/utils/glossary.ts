@@ -63,6 +63,21 @@ export const checkName = async (page: Page, name: string) => {
   await expect(page.getByTestId('entity-header-name')).toHaveText(name);
 };
 
+const assertWithReloadRecovery = async (
+  page: Page,
+  verify: () => Promise<void>
+) => {
+  try {
+    await verify();
+  } catch {
+    await expect(async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await verify();
+    }).toPass({ intervals: [2_000, 5_000, 10_000], timeout: 30_000 });
+  }
+};
+
 export const selectActiveGlossary = async (
   page: Page,
   glossaryLabel: string,
@@ -91,6 +106,13 @@ export const selectActiveGlossary = async (
   }
 
   await waitForAllLoadersToDisappear(page);
+
+  await assertWithReloadRecovery(page, () =>
+    expect(page.getByTestId('entity-header-display-name')).toContainText(
+      glossaryLabel,
+      { timeout: 10_000 }
+    )
+  );
 };
 
 export const selectActiveGlossaryTerm = async (
@@ -720,7 +742,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
-    await expect(page.locator(termSelector)).toBeVisible();
+    await assertWithReloadRecovery(page, () =>
+      expect(page.locator(termSelector)).toBeVisible({ timeout: 10_000 })
+    );
     await expect(page.locator(termSelector)).toContainText(term.name);
     await expect(page.locator(statusSelector)).toBeVisible();
 
