@@ -179,8 +179,8 @@ test.describe('Context Center - Documents Page', () => {
   }) => {
     await navigateToDocuments(page);
     await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached'
-    })
+      state: 'detached',
+    });
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
