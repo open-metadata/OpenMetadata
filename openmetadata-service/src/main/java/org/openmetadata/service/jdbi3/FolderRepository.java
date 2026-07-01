@@ -2,7 +2,9 @@ package org.openmetadata.service.jdbi3;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Folder;
@@ -71,7 +73,21 @@ public class FolderRepository extends EntityRepository<Folder> {
     }
 
     if (fields.contains("childrenCount")) {
-      entities.forEach(folder -> folder.setChildrenCount(countChildren(folder.getId())));
+      List<String> ids = entities.stream().map(f -> f.getId().toString()).toList();
+      Map<UUID, Integer> countMap =
+          daoCollection
+              .relationshipDAO()
+              .countNonDeletedChildFilesBatch(
+                  ids,
+                  FOLDER_ENTITY,
+                  Relationship.CONTAINS.ordinal(),
+                  ContextFileRepository.CONTEXT_FILE_ENTITY)
+              .stream()
+              .collect(
+                  Collectors.toMap(
+                      CollectionDAO.EntityRelationshipCount::getId,
+                      CollectionDAO.EntityRelationshipCount::getCount));
+      entities.forEach(folder -> folder.setChildrenCount(countMap.getOrDefault(folder.getId(), 0)));
     }
 
     fetchAndSetFields(entities, fields);
@@ -82,7 +98,11 @@ public class FolderRepository extends EntityRepository<Folder> {
   private int countChildren(UUID folderId) {
     return daoCollection
         .relationshipDAO()
-        .countFindTo(folderId, FOLDER_ENTITY, List.of(Relationship.CONTAINS.ordinal()));
+        .countNonDeletedChildFiles(
+            folderId,
+            FOLDER_ENTITY,
+            Relationship.CONTAINS.ordinal(),
+            ContextFileRepository.CONTEXT_FILE_ENTITY);
   }
 
   @Override
