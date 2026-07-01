@@ -289,24 +289,28 @@ public class OpenSearchVectorService implements VectorIndexService {
     if (!chunkIndexEnsured) {
       synchronized (this) {
         if (!chunkIndexEnsured) {
-          createChunkIndexIfAbsent();
-          chunkIndexEnsured = true;
+          // Only latch on success so a transient failure (e.g. OpenSearch outage during startup)
+          // is retried on the next write instead of disabling chunk indexing until restart.
+          chunkIndexEnsured = createChunkIndexIfAbsent();
         }
       }
     }
   }
 
-  private void createChunkIndexIfAbsent() {
+  private boolean createChunkIndexIfAbsent() {
     String indexName = getChunkIndexName();
+    boolean ensured = false;
     try {
       boolean exists = client.indices().exists(e -> e.index(indexName)).value();
       if (!exists) {
         executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
         LOG.info("Created dedicated vector chunk index {}", indexName);
       }
+      ensured = true;
     } catch (Exception e) {
       LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
     }
+    return ensured;
   }
 
   private String buildChunkIndexMapping() {

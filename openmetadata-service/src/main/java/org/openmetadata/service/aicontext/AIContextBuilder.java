@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
@@ -64,7 +65,10 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 /**
  * Assembles the {@link AIContext} (Context Profile) for a data asset: the common knowledge envelope
@@ -299,12 +303,43 @@ public class AIContextBuilder {
     }
   }
 
+  /**
+   * Per-item PBAC: when the caller's security context is present (the MCP path), knowledge items
+   * the caller cannot view are dropped from the bundle — being allowed to view the asset does not
+   * imply access to every glossary term, article, pill, or metric attached to it. Server-internal
+   * callers (no security context) are not filtered.
+   */
+  private boolean canViewKnowledge(String knowledgeType, String knowledgeFqn) {
+    boolean visible = true;
+    if (authorizer != null && securityContext != null) {
+      try {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(knowledgeType, MetadataOperation.VIEW_BASIC),
+            new ResourceContext<>(knowledgeType, null, knowledgeFqn));
+      } catch (Exception e) {
+        LOG.debug(
+            "AIContext: dropping {} {} not viewable by caller: {}",
+            knowledgeType,
+            knowledgeFqn,
+            e.getMessage());
+        visible = false;
+      }
+    }
+    return visible;
+  }
+
+  private boolean canViewPill(ContextMemory pill) {
+    return securityContext == null
+        || !ContextMemoryVisibility.filterByVisibility(List.of(pill), securityContext).isEmpty();
+  }
+
   private KnowledgeItem toGlossaryKnowledgeItem(String termFqn) {
     KnowledgeItem item = null;
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
-      if (isApproved(term)) {
+      if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         item =
             new KnowledgeItem()
                 .withType(KnowledgeItem.Type.GLOSSARY_TERM)
@@ -361,13 +396,15 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
-      item =
-          new KnowledgeItem()
-              .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
-              .withName(pill.getName())
-              .withDisplayName(pill.getDisplayName())
-              .withFullyQualifiedName(pill.getFullyQualifiedName())
-              .withContent(pillContent(pill));
+      if (canViewPill(pill)) {
+        item =
+            new KnowledgeItem()
+                .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
+                .withName(pill.getName())
+                .withDisplayName(pill.getDisplayName())
+                .withFullyQualifiedName(pill.getFullyQualifiedName())
+                .withContent(pillContent(pill));
+      }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch knowledge pill {}: {}", ref.getName(), e.getMessage());
     }
@@ -409,13 +446,15 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       Metric metric = Entity.getEntity(ref, "", Include.NON_DELETED);
-      item =
-          new KnowledgeItem()
-              .withType(KnowledgeItem.Type.METRIC)
-              .withName(metric.getName())
-              .withDisplayName(metric.getDisplayName())
-              .withFullyQualifiedName(metric.getFullyQualifiedName())
-              .withContent(metricContent(metric));
+      if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
+        item =
+            new KnowledgeItem()
+                .withType(KnowledgeItem.Type.METRIC)
+                .withName(metric.getName())
+                .withDisplayName(metric.getDisplayName())
+                .withFullyQualifiedName(metric.getFullyQualifiedName())
+                .withContent(metricContent(metric));
+      }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch metric {}: {}", ref.getName(), e.getMessage());
     }
@@ -453,13 +492,15 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       Page page = Entity.getEntity(ref, "", Include.NON_DELETED);
-      item =
-          new KnowledgeItem()
-              .withType(KnowledgeItem.Type.PAGE)
-              .withName(page.getName())
-              .withDisplayName(page.getDisplayName())
-              .withFullyQualifiedName(page.getFullyQualifiedName())
-              .withContent(page.getDescription());
+      if (canViewKnowledge(Entity.PAGE, page.getFullyQualifiedName())) {
+        item =
+            new KnowledgeItem()
+                .withType(KnowledgeItem.Type.PAGE)
+                .withName(page.getName())
+                .withDisplayName(page.getDisplayName())
+                .withFullyQualifiedName(page.getFullyQualifiedName())
+                .withContent(page.getDescription());
+      }
     } catch (Exception e) {
       LOG.warn(
           "AIContext: failed to fetch article {}: {}", ref.getFullyQualifiedName(), e.getMessage());
@@ -609,6 +650,6 @@ public class AIContextBuilder {
   }
 
   private static <T> List<T> capList(List<T> values, int max) {
-    return values.size() > max ? values.subList(0, max) : values;
+    return values.size() > max ? new ArrayList<>(values.subList(0, max)) : values;
   }
 }

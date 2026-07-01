@@ -34,7 +34,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -503,6 +506,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      compareAndUpdate(FIELD_APPLIED_TO_ASSETS, () -> updateAppliedToAssets(original, updated));
       MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
     }
 
@@ -527,6 +531,35 @@ public class MetricRepository extends EntityRepository<Metric> {
           originalRelatedMetrics,
           updatedRelatedMetrics,
           true);
+    }
+
+    /**
+     * Diffs the metric→asset APPLIED_TO edges on update/patch. Applied-to assets are
+     * heterogeneous (tables, dashboards, ...), and updateToRelationships inserts additions under
+     * the single passed target type — so the diff runs once per asset type over the union of
+     * original and updated types.
+     */
+    private void updateAppliedToAssets(Metric original, Metric updated) {
+      Map<String, List<EntityReference>> originalByType =
+          groupByType(original.getAppliedToAssets());
+      Map<String, List<EntityReference>> updatedByType = groupByType(updated.getAppliedToAssets());
+      Set<String> assetTypes = new TreeSet<>(originalByType.keySet());
+      assetTypes.addAll(updatedByType.keySet());
+      for (String assetType : assetTypes) {
+        updateToRelationships(
+            FIELD_APPLIED_TO_ASSETS,
+            METRIC,
+            original.getId(),
+            Relationship.APPLIED_TO,
+            assetType,
+            originalByType.getOrDefault(assetType, List.of()),
+            updatedByType.getOrDefault(assetType, List.of()),
+            false);
+      }
+    }
+
+    private Map<String, List<EntityReference>> groupByType(List<EntityReference> refs) {
+      return listOrEmpty(refs).stream().collect(Collectors.groupingBy(EntityReference::getType));
     }
   }
 

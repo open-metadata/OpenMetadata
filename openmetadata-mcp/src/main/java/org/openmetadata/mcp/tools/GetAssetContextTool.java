@@ -32,18 +32,28 @@ public class GetAssetContextTool implements McpTool {
       throws IOException {
     String entityType = (String) params.get("entityType");
     String fqn = (String) params.get("fqn");
-    String format = (String) params.getOrDefault("format", "markdown");
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, VIEW_ALL),
-        new ResourceContext<>(entityType));
-    LOG.info(
-        "Assembling AI context for entity type: {}, FQN: {}, format: {}", entityType, fqn, format);
-    AIContext context =
-        new AIContextBuilder(entityType, fqn).withSecurity(authorizer, securityContext).build();
-    return FORMAT_JSON.equalsIgnoreCase(format)
-        ? JsonUtils.getMap(context)
-        : Map.of("format", "markdown", "content", AIContextMarkdown.render(context));
+    Map<String, Object> result;
+    if (entityType == null || entityType.isBlank() || fqn == null || fqn.isBlank()) {
+      result = Map.of("error", "'entityType' and 'fqn' parameters are required");
+    } else {
+      String format = (String) params.getOrDefault("format", "markdown");
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, VIEW_ALL),
+          new ResourceContext<>(entityType));
+      LOG.info(
+          "Assembling AI context for entity type: {}, FQN: {}, format: {}",
+          entityType,
+          fqn,
+          format);
+      AIContext context =
+          new AIContextBuilder(entityType, fqn).withSecurity(authorizer, securityContext).build();
+      result =
+          FORMAT_JSON.equalsIgnoreCase(format)
+              ? JsonUtils.getMap(context)
+              : Map.of("format", "markdown", "content", AIContextMarkdown.render(context));
+    }
+    return result;
   }
 
   @Override

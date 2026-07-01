@@ -141,6 +141,32 @@ class AIContextMcpIT extends McpTestBase {
   }
 
   @Test
+  void metricAppliedToAssets_updateViaPatchRewiresTheEdge() throws Exception {
+    Metric metric =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_patch_metric_" + suffix)
+                .withDescription("Metric whose applied assets get rewired.")
+                .withAppliedToAssets(
+                    List.of(new EntityReference().withId(ordersTable.getId()).withType("table"))),
+            Metric.class);
+
+    String rewirePatch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/appliedToAssets\",\"value\":[{\"id\":\"%s\",\"type\":\"table\"}]}]",
+            customersTable.getId());
+    patch("metrics/" + metric.getId(), rewirePatch);
+
+    JsonNode updated =
+        get("metrics/name/" + metric.getName() + "?fields=appliedToAssets", JsonNode.class);
+    JsonNode assets = updated.get("appliedToAssets");
+    assertThat(assets).isNotNull();
+    assertThat(assets.size()).isEqualTo(1);
+    assertThat(assets.get(0).get("id").asText()).isEqualTo(customersTable.getId().toString());
+  }
+
+  @Test
   void metricAppliedToAssets_roundTripsThroughApi() throws Exception {
     JsonNode metric =
         get("metrics/name/" + revenueMetric.getName() + "?fields=appliedToAssets", JsonNode.class);

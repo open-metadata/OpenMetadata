@@ -50,6 +50,11 @@ public class FindContextTool implements McpTool {
     Map<String, Object> result;
     if (query == null || query.isBlank()) {
       result = Map.of("error", "'query' parameter is required");
+    } else if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
+      result =
+          Map.of(
+              "error",
+              "Semantic search is not enabled. Configure vector embeddings in the OpenMetadata server settings.");
     } else {
       authorizeKnowledgeAccess(authorizer, securityContext);
       String format = (String) params.getOrDefault("format", "markdown");
