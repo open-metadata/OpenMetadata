@@ -38,11 +38,17 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
+export interface FileMovedEvent {
+  file: ContextFile;
+  targetFolderId: string;
+}
+
 export interface DocumentFolderViewProps {
   totalFileCount?: number;
   selectedFolderId?: string;
   canCreate?: boolean;
   canDelete?: boolean;
+  lastFileMoved?: FileMovedEvent;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersLoaded?: (folders: Folder[]) => void;
 }
@@ -52,6 +58,7 @@ const DocumentFolderView = ({
   selectedFolderId,
   canCreate = false,
   canDelete = false,
+  lastFileMoved,
   onSelectFolder,
   onFoldersLoaded,
 }: DocumentFolderViewProps) => {
@@ -99,6 +106,34 @@ const DocumentFolderView = ({
     },
     [folderFilesCache]
   );
+
+  useEffect(() => {
+    if (!lastFileMoved) {
+      return;
+    }
+    const { file, targetFolderId } = lastFileMoved;
+
+    setFolders((prev) =>
+      prev.map((f) =>
+        f.id === targetFolderId
+          ? { ...f, childrenCount: (f.childrenCount ?? 0) + 1 }
+          : f
+      )
+    );
+
+    setFolderFilesCache((prev) => {
+      if (!prev.has(targetFolderId)) {
+        return prev;
+      }
+      const existing = prev.get(targetFolderId) ?? [];
+      const alreadyInCache = existing.some((f) => f.id === file.id);
+      if (alreadyInCache) {
+        return prev;
+      }
+
+      return new Map(prev).set(targetFolderId, [file, ...existing]);
+    });
+  }, [lastFileMoved]);
 
   const handleFolderCreated = (folder: Folder) => {
     const updated = [...folders, folder];

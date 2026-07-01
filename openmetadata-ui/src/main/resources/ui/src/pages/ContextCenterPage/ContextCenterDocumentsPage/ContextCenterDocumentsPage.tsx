@@ -20,7 +20,9 @@ import { useSearchParams } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
+import DocumentFolderView, {
+  FileMovedEvent,
+} from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import { FolderOption } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
@@ -82,6 +84,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastFileMoved, setLastFileMoved] = useState<FileMovedEvent>();
 
   const previewFileUrl = useMemo(() => {
     if (!previewFile) {
@@ -289,6 +292,7 @@ const ContextCenterDocumentsPage: FC = () => {
             : d
         )
       );
+      setLastFileMoved({ file, targetFolderId });
     },
     [folders]
   );
@@ -471,6 +475,7 @@ const ContextCenterDocumentsPage: FC = () => {
           <DocumentFolderView
             canCreate={hasCreatePermission}
             canDelete={hasDeletePermission}
+            lastFileMoved={lastFileMoved}
             selectedFolderId={selectedFolderId}
             totalFileCount={globalFileCount}
             onFoldersLoaded={setFolders}
