@@ -2332,6 +2332,7 @@
     "stop": "Stop",
     "stop-re-index-all": "Stop Re-Index",
     "stopped": "Stopped",
+    "stopped-lowercase": "stopped",
     "storage": "Storage",
     "storage-plural": "Storages",
     "storage-service": "Storage Service",
