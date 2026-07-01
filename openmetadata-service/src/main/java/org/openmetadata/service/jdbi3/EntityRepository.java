@@ -5248,6 +5248,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("storeEntities")) {
       storeEntities(entities);
       storeExtensions(entities);
+      for (T entity : entities) {
+        storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
+      }
     }
     try (var ignored = phase("storeRelationships")) {
       storeRelationshipsInternal(entities);
