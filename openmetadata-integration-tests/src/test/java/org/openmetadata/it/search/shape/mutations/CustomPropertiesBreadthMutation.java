@@ -26,9 +26,24 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
     return "customProperties.breadth";
   }
 
+  /**
+   * Only entity types whose generated class overrides {@link EntityInterface#getExtension()} put the
+   * {@code extension} map into their search document. For the rest, {@code setExtension} is the
+   * no-op interface default, so ramping custom properties would index nothing and the case would
+   * pass trivially — masking the very gap this dimension exists to catch. Checking the declaring
+   * class (not {@code getExtension() != null}, which is always null on the un-mutated entity) keeps
+   * the filter type-aware.
+   */
   @Override
   public boolean appliesTo(final EntityInterface entity) {
-    return true;
+    boolean serializesExtension;
+    try {
+      serializesExtension =
+          entity.getClass().getMethod("getExtension").getDeclaringClass() != EntityInterface.class;
+    } catch (final NoSuchMethodException impossible) {
+      serializesExtension = false;
+    }
+    return serializesExtension;
   }
 
   @Override
