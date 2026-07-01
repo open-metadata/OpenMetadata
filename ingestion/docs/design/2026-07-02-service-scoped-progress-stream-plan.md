@@ -681,11 +681,9 @@ Expected: BUILD SUCCESS (no formatting diffs).
 Run: `git diff --stat main -- openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IngestionPipelineRepository.java`
 Expected: only one added method (`streamServiceProgress` delegating to `ServiceProgressStreamer`) plus one import; `updateProgress(fqn, runId, update)` and `streamProgress` bodies unchanged.
 
-- [ ] **Step 4: Commit any final formatting**
+- [ ] **Step 4: No commit needed**
 
-```bash
-git add -A && git commit -m "chore(progress): verification sweep for service-scoped stream" --allow-empty
-```
+Verification only — do not commit. If Step 2 reported spotless diffs, re-stage ONLY the specific `.java` files this feature touched (the tracker, streamer, repository, resource, and their tests) and commit `chore(progress): spotless formatting`. NEVER `git add -A` — pre-existing unrelated changes (`ingestion/Dockerfile.ci`, `2026-07-01-ingestion-eta-design.md`, untracked `CLAUDE.md` files) must stay unstaged.
 
 ---
 
