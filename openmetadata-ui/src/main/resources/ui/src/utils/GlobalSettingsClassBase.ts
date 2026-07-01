@@ -645,6 +645,13 @@ class GlobalSettingsClassBase {
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
+            label: t('label.search-mapping-plural'),
+            description: t('message.page-sub-header-for-search-index-mappings'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_MAPPINGS}`,
+            icon: PreferencesSearchIcon,
+          },
+          {
             label: t('label.lineage'),
             description: t(
               'message.page-sub-header-for-lineage-config-setting'
