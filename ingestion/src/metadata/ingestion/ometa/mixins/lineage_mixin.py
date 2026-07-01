@@ -248,7 +248,9 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
-                    original.edge.lineageDetails.sqlQuery = edge["edge"].get("sqlQuery")
+                    # `original` mirrors `data`, so build_patch would see no sqlQuery diff. Null it so
+                    # the incoming query is added/updated, while a missing one keeps the stored value.
+                    original.edge.lineageDetails.sqlQuery = None
                     # merge the original and new column level lineage
                     data.edge.lineageDetails.columnsLineage = self._merge_column_lineage(
                         original.edge.lineageDetails.columnsLineage,
@@ -314,14 +316,12 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
-                    original_sql_query = edge["edge"].get("sqlQuery")
                     original = LineageDetails.model_validate(
                         {
                             "columnsLineage": [
                                 ColumnLineage.model_validate(column_lineage) for column_lineage in original_columns
                             ],
                             "pipeline": original_pipeline,
-                            "sqlQuery": original_sql_query,
                         }
                     )
                     updated_columns = [
