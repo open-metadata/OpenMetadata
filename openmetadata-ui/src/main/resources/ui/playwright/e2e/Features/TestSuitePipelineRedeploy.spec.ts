@@ -14,7 +14,11 @@ import test, { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -69,9 +73,7 @@ test.describe('Bulk Re-Deploy pipelines ', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await page.getByRole('button', { name: 'Re Deploy' }).click();
     await redeployResponse;
 
-    await expect(page.getByTestId('alert-bar')).toHaveText(
-      /Pipelines Re Deploy Successfully/i
-    );
+    await toastNotification(page, /Pipelines Re Deploy Successfully/i);
   });
 
   // TODO: Add test to verify the re-deployed pipelines for Database, Dashboard and other entities
