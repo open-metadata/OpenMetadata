@@ -81,7 +81,7 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: () => [undefined, false, mockUser],
 }));
 
-jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+jest.mock('../../../utils/BlockEditorUtils', () => ({
   isDescriptionContentEmpty: (content?: string) =>
     !content || content.trim() === '',
 }));
