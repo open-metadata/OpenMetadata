@@ -14,6 +14,7 @@ package org.openmetadata.it.search.shape;
 
 import java.util.List;
 import java.util.Optional;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 
 /**
  * Opt-in list of search-index shapes whose non-OK outcome is consciously accepted. A case listed
@@ -21,9 +22,10 @@ import java.util.Optional;
  * and be queryable (Outcome.OK) or {@link org.openmetadata.it.tests.EntityShapeIT} fails red.
  *
  * <p>Add an entry to accept a limit (e.g. "1M columns may fail"); remove it (or fix the root cause)
- * to make the case red again. Granularity is per (entityType, dimension, rung). Use {@link
+ * to make the case red again. Granularity is per (engine, entityType, dimension, rung). Use {@link
  * #ALL_ENTITIES} as the entityType for a limit that is inherent to the engine (not one entity's
- * mapping) and therefore universal across every indexed type.
+ * mapping) and therefore universal across every indexed type, and {@link #ANY_ENGINE} unless the
+ * limit only trips on one engine.
  */
 public final class AcceptedLimits {
 
@@ -34,12 +36,26 @@ public final class AcceptedLimits {
    */
   public static final String ALL_ENTITIES = "*";
 
+  /**
+   * Sentinel engine: an {@link Accepted} declared with this applies regardless of the active search
+   * engine. Use a concrete {@link SearchType} only when a limit is engine-specific — e.g. the 10MB
+   * {@code http.max_content_length} on AWS-managed OpenSearch that rejects the 16MB size cases,
+   * which self-hosted Elasticsearch (100MB default) indexes fine.
+   */
+  public static final SearchType ANY_ENGINE = null;
+
   public record Accepted(
-      String entityType, String dimension, String rung, Outcome outcome, String reason) {}
+      SearchType engine,
+      String entityType,
+      String dimension,
+      String rung,
+      Outcome outcome,
+      String reason) {}
 
   private static final List<Accepted> ACCEPTED =
       List.of(
           new Accepted(
+              ANY_ENGINE,
               ALL_ENTITIES,
               "owners.count",
               "aboveNestedLimit",
@@ -49,6 +65,7 @@ public final class AcceptedLimits {
                   + "rejected by the engine. The rung magnitude is derived from that limit, so this "
                   + "tracks the server config. No real entity has that many owners."),
           new Accepted(
+              ANY_ENGINE,
               ALL_ENTITIES,
               "keyword.overIgnoreAbove",
               "300chars",
@@ -61,11 +78,12 @@ public final class AcceptedLimits {
   private AcceptedLimits() {}
 
   public static Optional<Accepted> find(
-      final String entityType, final String dimension, final String rung) {
+      final SearchType engine, final String entityType, final String dimension, final String rung) {
     return ACCEPTED.stream()
         .filter(
             a ->
-                (a.entityType().equals(ALL_ENTITIES) || a.entityType().equals(entityType))
+                (a.engine() == ANY_ENGINE || a.engine() == engine)
+                    && (a.entityType().equals(ALL_ENTITIES) || a.entityType().equals(entityType))
                     && a.dimension().equals(dimension)
                     && a.rung().equals(rung))
         .findFirst();

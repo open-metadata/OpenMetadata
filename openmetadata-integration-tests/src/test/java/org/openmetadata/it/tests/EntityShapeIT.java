@@ -31,6 +31,7 @@ import org.openmetadata.it.search.shape.ShapeCanary;
 import org.openmetadata.it.search.shape.ShapeResult;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration.SearchType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.Logger;
@@ -41,12 +42,14 @@ class EntityShapeIT {
   private static final Logger LOG = LoggerFactory.getLogger(EntityShapeIT.class);
 
   private static ShapeCanary canary;
+  private static SearchType engine;
 
   @BeforeAll
   static void setupAll() {
     SdkClients.adminClient();
     final SearchRepository searchRepository = Entity.getSearchRepository();
     canary = new ShapeCanary(searchRepository, new SearchClient(OssTestServer.defaultHandle()));
+    engine = searchRepository.getSearchType();
   }
 
   static Stream<Arguments> cases() {
@@ -61,7 +64,7 @@ class EntityShapeIT {
     final Outcome observed = result.outcome();
     final Optional<AcceptedLimits.Accepted> accepted =
         AcceptedLimits.find(
-            plannedCase.entityType(), plannedCase.dimension(), plannedCase.rung().label());
+            engine, plannedCase.entityType(), plannedCase.dimension(), plannedCase.rung().label());
     final boolean tolerated = accepted.map(a -> a.outcome() == observed).orElse(false);
     if (observed == Outcome.OK) {
       if (accepted.isPresent()) {
