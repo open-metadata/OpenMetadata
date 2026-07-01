@@ -19,6 +19,7 @@ import { Agent } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
 interface AgentGroupProps {
+  addAgentSlot?: ReactNode;
   agents: Agent[];
   canCreateAgent: boolean;
   descKey: string;
@@ -31,6 +32,7 @@ interface AgentGroupProps {
 }
 
 const AgentGroup: FC<AgentGroupProps> = ({
+  addAgentSlot,
   agents,
   canCreateAgent,
   descKey,
@@ -69,15 +71,16 @@ const AgentGroup: FC<AgentGroupProps> = ({
             {t('label.count-running', { count: runningCount })}
           </span>
         )}
-        {canCreateAgent && (
-          <Button
-            color="secondary"
-            iconLeading={<IcPlus />}
-            iconTrailing={<IcChevD />}
-            size="sm">
-            {t('label.add-entity', { entity: t('label.agent') })}
-          </Button>
-        )}
+        {addAgentSlot ??
+          (canCreateAgent && (
+            <Button
+              color="secondary"
+              iconLeading={<IcPlus />}
+              iconTrailing={<IcChevD />}
+              size="sm">
+              {t('label.add-entity', { entity: t('label.agent') })}
+            </Button>
+          ))}
       </div>
       <div className="tw:grid tw:gap-2.5">
         {agents.map((agent) => (

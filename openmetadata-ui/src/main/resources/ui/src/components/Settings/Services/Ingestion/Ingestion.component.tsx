@@ -22,44 +22,33 @@ import {
   Typography,
 } from 'antd';
 import { isUndefined } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ComponentType, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
 import { ReactComponent as CollateAI } from '../../../../assets/svg/ic-suggestions.svg';
+import { DISABLED } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
   ServiceAgentSubTabs,
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getCountBadge } from '../../../../utils/EntityDisplayPureUtils';
-import { getTypeAndStatusMenuItems } from '../../../../utils/IngestionConfigUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
-import SearchDropdown from '../../../SearchDropdown/SearchDropdown';
+import MetadataAgentsView from '../../../ServiceAgents/components/MetadataAgentsView.component';
+import { useMetadataAgents } from '../../../ServiceAgents/hooks/useMetadataAgents';
 import { IngestionProps } from './ingestion.interface';
 import './ingestion.less';
 
 const Ingestion: React.FC<IngestionProps> = ({
   serviceDetails,
   ingestionPipelineList,
-  ingestionPagingInfo,
-  onIngestionWorkflowsUpdate,
-  pipelineType,
-  isLoading,
-  handleIngestionListUpdate,
-  searchText,
-  handleSearchChange,
-  onPageChange,
   airflowInformation,
-  handleTypeFilterChange,
-  handleStatusFilterChange,
-  statusFilter,
-  typeFilter,
   isCollateAgentLoading,
   collateAgentsList,
   collateAgentPagingInfo,
@@ -76,27 +65,29 @@ const Ingestion: React.FC<IngestionProps> = ({
     tab: string;
     subTab: string;
   }>();
+  const { permissions } = usePermissionProvider();
 
-  const { typeMenuItems, statusMenuItems } = useMemo(
-    () => getTypeAndStatusMenuItems(),
-    []
-  );
+  const { agents } = useMetadataAgents(ingestionPipelineList);
+
   const isDBService = useMemo(
     () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
     [serviceCategory]
   );
-  const [statusFilters, setStatusFilters] =
-    useState<Array<{ key: string; label: string }>>(statusMenuItems);
-  const [typeFilters, setTypeFilters] =
-    useState<Array<{ key: string; label: string }>>(typeMenuItems);
 
-  const { CollateAIAgentsWidget, MetadataAgentsWidget } = useMemo(
+  const { CollateAIAgentsWidget } = useMemo(
     () => ({
       ...getDefaultAgentsTabWidgets(),
       ...serviceUtilClassBase.getAgentsTabWidgets(),
     }),
     [serviceCategory]
   );
+
+  // The community widget registry types every entry as the metadata widget;
+  // the Collate edition overrides it with the real Collate AI widget. Treat it
+  // as a props-bag component so the Collate sub-tab can render either.
+  const CollateAgentsWidget =
+    CollateAIAgentsWidget as unknown as ComponentType<Record<string, unknown>>;
+
   const isCollateAIWidgetSupported = useMemo(
     () => !isUndefined(CollateAIAgentsWidget) && isDBService,
     [CollateAIAgentsWidget, isDBService]
@@ -104,60 +95,43 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const isCollateSubTabSelected = subTab === ServiceAgentSubTabs.COLLATE_AI;
 
-  const { isAirflowAvailable } = useMemo(
+  const { isAirflowAvailable, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
 
-  const handleStatusFilterSearch = useCallback(
-    (searchValue: string) => {
-      setStatusFilters(
-        statusMenuItems.filter((item) =>
-          item.label.toLowerCase().includes(searchValue.toLowerCase())
-        )
-      );
-    },
-    [statusMenuItems]
-  );
-
-  const handleTypeFilterSearch = useCallback(
-    (searchValue: string) => {
-      setTypeFilters(
-        typeMenuItems.filter((item) =>
-          item.label.toLowerCase().includes(searchValue.toLowerCase())
-        )
-      );
-    },
-    [typeMenuItems]
+  const showAddAgent = useMemo(
+    () =>
+      Boolean(permissions['ingestionPipeline']?.Create) && platform !== DISABLED,
+    [permissions, platform]
   );
 
   const handleSubTabChange = useCallback(
     (e: RadioChangeEvent) => {
-      const key = e.target.value;
-
       navigate(
         {
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
             tab,
-            key
+            e.target.value
           ),
         },
-        {
-          replace: true,
-        }
+        { replace: true }
       );
     },
-    [history, decodedServiceFQN, serviceCategory, tab]
+    [decodedServiceFQN, serviceCategory, tab, navigate]
+  );
+
+  const handleRefresh = useCallback(
+    () => refreshAgentsList(subTab as ServiceAgentSubTabs),
+    [refreshAgentsList, subTab]
   );
 
   const subTabOptions = useMemo(() => {
     return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        tabName === ServiceAgentSubTabs.COLLATE_AI
-          ? CollateAI
-          : MetadataAgentIcon;
+        tabName === ServiceAgentSubTabs.COLLATE_AI ? CollateAI : MetadataAgentIcon;
       const label =
         tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')
@@ -178,7 +152,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         value: tabName,
       };
     });
-  }, [subTab, agentCounts]);
+  }, [subTab, agentCounts, t]);
 
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
@@ -201,7 +175,6 @@ const Ingestion: React.FC<IngestionProps> = ({
             />
           )}
         </Col>
-
         <Col className="flex items-center gap-2">
           <Tooltip
             title={t('label.refresh-entity', {
@@ -211,49 +184,14 @@ const Ingestion: React.FC<IngestionProps> = ({
               className="reload-button"
               icon={<ReloadOutlined className="reload-button-icon" />}
               size="large"
-              onClick={() => refreshAgentsList(subTab as ServiceAgentSubTabs)}
+              onClick={handleRefresh}
             />
           </Tooltip>
-          {!isCollateSubTabSelected && (
-            <>
-              <SearchDropdown
-                hideCounts
-                label={t('label.status')}
-                options={statusFilters}
-                searchKey="status"
-                selectedKeys={statusFilter ?? []}
-                triggerButtonSize="large"
-                onChange={handleStatusFilterChange}
-                onSearch={handleStatusFilterSearch}
-              />
-              <SearchDropdown
-                hideCounts
-                label={t('label.type')}
-                options={typeFilters}
-                searchKey="status"
-                selectedKeys={typeFilter ?? []}
-                triggerButtonSize="large"
-                onChange={handleTypeFilterChange}
-                onSearch={handleTypeFilterSearch}
-              />
-
-              <div className="search-bar-container">
-                <Searchbar
-                  removeMargin
-                  inputClassName="p-x-sm p-y-xs border-radius-xs"
-                  placeholder={t('label.search')}
-                  searchValue={searchText}
-                  typingInterval={500}
-                  onSearch={handleSearchChange}
-                />
-              </div>
-            </>
-          )}
         </Col>
       </Row>
 
       {isCollateSubTabSelected ? (
-        <CollateAIAgentsWidget
+        <CollateAgentsWidget
           collateAgentPagingInfo={collateAgentPagingInfo}
           collateAgentsList={collateAgentsList}
           isCollateAgentLoading={isCollateAgentLoading}
@@ -262,18 +200,14 @@ const Ingestion: React.FC<IngestionProps> = ({
           onCollateAgentPageChange={onCollateAgentPageChange}
         />
       ) : (
-        <MetadataAgentsWidget
-          airflowInformation={airflowInformation}
-          handleIngestionListUpdate={handleIngestionListUpdate}
-          ingestionPagingInfo={ingestionPagingInfo}
+        <MetadataAgentsView
+          agents={agents}
           ingestionPipelineList={ingestionPipelineList}
-          isLoading={isLoading}
-          pipelineType={pipelineType}
-          searchText={searchText}
+          serviceCategory={serviceCategory}
           serviceDetails={serviceDetails}
           serviceName={decodedServiceFQN}
-          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          onPageChange={onPageChange}
+          showAddAgent={showAddAgent}
+          onRefresh={handleRefresh}
         />
       )}
     </div>
