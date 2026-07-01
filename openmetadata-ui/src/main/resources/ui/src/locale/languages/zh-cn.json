@@ -2635,6 +2635,7 @@
     "view-all": "查看全部",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "查看所有任务",
+    "view-archived-document-plural": "查看已归档文件",
     "view-definition": "查看定义",
     "view-detail-plural": "查看详情",
     "view-entity": "查看{{entity}}",
