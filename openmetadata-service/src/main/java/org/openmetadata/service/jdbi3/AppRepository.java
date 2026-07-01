@@ -177,7 +177,10 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("bot");
+    // openMetadataServerConnection and privateConfiguration are runtime-only fields
+    // (re-injected on demand by ApplicationHandler.setAppRuntimeProperties). They carry
+    // secrets (app bot JWT, external tokens) and must never be persisted or serialized.
+    return List.of("bot", "openMetadataServerConnection", "privateConfiguration");
   }
 
   @Override
