@@ -602,7 +602,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <CopyLinkButton
               className="tw:w-8 tw:h-8"
               color="secondary"
-              testId="share-btn"
+              testId="copy-btn"
               url={window.location.href}>
               <Copy06 height={20} width={20} />
             </CopyLinkButton>
