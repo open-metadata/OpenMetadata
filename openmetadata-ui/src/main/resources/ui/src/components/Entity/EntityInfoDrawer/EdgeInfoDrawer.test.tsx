@@ -298,9 +298,10 @@ describe('EdgeInfoDrawer Component', () => {
       />
     );
 
-    expect(
-      await screen.findByText('SchemaEditor.component')
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId('sql-editor')).toHaveAttribute(
+      'data-value',
+      'CREATE TABLE customers AS SELECT * FROM stg_orders'
+    );
     expect(
       screen.queryByText('server.no-query-available')
     ).not.toBeInTheDocument();
