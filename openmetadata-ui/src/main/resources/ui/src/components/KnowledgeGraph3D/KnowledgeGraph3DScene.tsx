@@ -57,7 +57,6 @@ type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
 const FRAME_DELAY_MS = 500;
-const FULLSCREEN_REFIT_DELAY_MS = 300;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 
 const nodeOpacityFor = (
@@ -132,6 +131,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const didMountRef = useRef(false);
+  const refitPendingRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -240,20 +240,29 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Re-fit the camera only when fullscreen is toggled, once the stage has
-  // resized, so the graph fills the new space. Plain window resizes keep the
-  // same mode and are intentionally left alone, preserving any manual zoom/pan.
+  // Arm a re-fit when fullscreen is toggled. The fit itself runs below, once
+  // the stage has actually resized, so it never fits against stale dimensions.
+  // The first render is skipped because the data-load effect already fits.
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
     if (didMountRef.current) {
-      const frame = window.setTimeout(resetView, FULLSCREEN_REFIT_DELAY_MS);
-      cleanup = () => window.clearTimeout(frame);
+      refitPendingRef.current = true;
     } else {
       didMountRef.current = true;
     }
+  }, [isFullscreen]);
 
-    return cleanup;
-  }, [isFullscreen, resetView]);
+  // Run the armed re-fit once the ResizeObserver reports the new stage size, so
+  // the graph fills it. Plain window resizes (no pending toggle) are ignored,
+  // preserving any manual zoom/pan.
+  useEffect(() => {
+    let raf = 0;
+    if (refitPendingRef.current && size.width > 0 && size.height > 0) {
+      refitPendingRef.current = false;
+      raf = window.requestAnimationFrame(resetView);
+    }
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [size.width, size.height, resetView]);
 
   useEffect(() => {
     const charge = fgRef.current?.d3Force('charge');
