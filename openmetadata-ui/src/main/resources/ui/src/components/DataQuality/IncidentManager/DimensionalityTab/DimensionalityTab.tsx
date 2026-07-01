@@ -221,7 +221,7 @@ const DimensionalityTab = () => {
           );
         case 'lastRun':
           return row.result?.timestamp ? (
-            <DateTimeDisplay timestamp={row.result.timestamp} />
+            <DateTimeDisplay size="compact" timestamp={row.result.timestamp} />
           ) : (
             <span className="tw:text-sm">--</span>
           );

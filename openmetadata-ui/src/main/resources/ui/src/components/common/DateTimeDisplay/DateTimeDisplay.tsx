@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { Fragment } from 'react';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 
@@ -33,7 +34,7 @@ const DateTimeDisplay = ({
     <Box className="tw:leading-4" direction="col">
       <Typography
         as="span"
-        className={isCompact ? 'tw:text-secondary' : undefined}
+        className={classNames({ 'tw:text-secondary': isCompact })}
         data-testid="schedule-primary-details"
         size={isCompact ? 'text-xs' : 'text-sm'}
         weight={isCompact ? 'regular' : 'medium'}>
@@ -42,14 +43,17 @@ const DateTimeDisplay = ({
       <Box align="center" gap={1}>
         <Typography
           as="span"
-          className={isCompact ? 'tw:text-secondary' : undefined}
+          className={classNames({ 'tw:text-secondary': isCompact })}
           data-testid="schedule-primary-details"
           size="text-xs">
           {timeValue}
         </Typography>
         <Typography
           as="span"
-          className="tw:text-tertiary"
+          className={classNames({
+            'tw:text-secondary': isCompact,
+            'tw:text-tertiary': !isCompact,
+          })}
           data-testid="schedule-secondary-details"
           size="text-xs">
           {utcValue}

@@ -18,7 +18,6 @@ import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TEST_SUITE_DOCS } from '../../../../constants/docs.constants';
-import { PROGRESS_BAR_COLOR } from '../../../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -34,6 +33,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
+import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 
 // Fixed widths for the compact columns so the name column flexes to fill the
 // remaining (and largest) share of the table width.
@@ -118,7 +118,7 @@ export const TestSuitesTable = ({
     return (
       <ProfilerProgressWidget
         direction="right"
-        strokeColor={PROGRESS_BAR_COLOR}
+        strokeColor={DQ_CHART_SUCCESS_COLOR}
         value={percent}
       />
     );

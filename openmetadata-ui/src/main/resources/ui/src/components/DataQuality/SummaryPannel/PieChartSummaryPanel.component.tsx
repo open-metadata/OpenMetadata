@@ -16,11 +16,11 @@ import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
 import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import {
-  BLUE_2,
-  GREEN_3,
+  DQ_CHART_BLUE_COLOR,
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+  DQ_CHART_WARNING_COLOR,
   GREY_200,
-  RED_3,
-  YELLOW_2,
 } from '../../../constants/Color.constants';
 import {
   SummaryPanelProps,
@@ -31,12 +31,12 @@ import SummaryPieChartCard from './SummaryPieChartCard/SummaryPieChartCard.compo
 import { useTestSummaryCards } from './useTestSummaryCards';
 
 const SEGMENT_COLORS: Record<TestSummarySegmentId, string> = {
-  [TestSummarySegmentId.Success]: GREEN_3,
-  [TestSummarySegmentId.Aborted]: YELLOW_2,
-  [TestSummarySegmentId.Failed]: RED_3,
-  [TestSummarySegmentId.Healthy]: GREEN_3,
+  [TestSummarySegmentId.Success]: DQ_CHART_SUCCESS_COLOR,
+  [TestSummarySegmentId.Aborted]: DQ_CHART_WARNING_COLOR,
+  [TestSummarySegmentId.Failed]: DQ_CHART_FAILED_COLOR,
+  [TestSummarySegmentId.Healthy]: DQ_CHART_SUCCESS_COLOR,
   [TestSummarySegmentId.Unhealthy]: GREY_200,
-  [TestSummarySegmentId.Covered]: BLUE_2,
+  [TestSummarySegmentId.Covered]: DQ_CHART_BLUE_COLOR,
   [TestSummarySegmentId.Uncovered]: GREY_200,
 };
 
