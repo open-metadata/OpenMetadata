@@ -162,9 +162,12 @@ class PowerbiSource(DashboardServiceSource):
                 f"Paginating workspace fetch with {len(paginated_filter_patterns)}"
                 f" batches to accommodate OData filter node limit"
             )
+        workspace_total = 0
         for filter_pattern in paginated_filter_patterns:
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
+                workspace_total += len(workspaces)
+                self.progress.set_total("Workspaces", workspace_total)
                 for workspace in workspaces:
                     # add the dashboards to the workspace
                     workspace.dashboards.extend(
@@ -337,29 +340,14 @@ class PowerbiSource(DashboardServiceSource):
         workspace = self.context.get().workspace
         return str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
 
-    def _workspace_total_for_progress(self) -> Optional[int]:  # noqa: UP045
-        """Best-effort workspace count for the progress denominator, from the
-        lightweight listing (no per-workspace content fetch). On admin APIs this
-        counts candidate workspaces (pre active-filter), so the bar may finish
-        below total; returns None if the listing fails (header drops the
-        denominator)."""
-        total = 0
-        try:
-            for filter_pattern in self._paginate_project_filter_pattern(self.source_config.projectFilterPattern):
-                workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
-                total += len(workspaces or [])
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.debug("Could not pre-count PowerBI workspaces for progress: %s", exc)
-            total = None
-        return total
-
     def get_dashboard(self) -> Any:
         """
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
-        self._declare_progress_groups("Workspaces", self._workspace_total_for_progress())
+        self._declare_progress_groups("Workspaces", None)
         for workspace in self._prepare_workspace_data():
             workspace_name = str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
+            opened = False
             try:
                 self.state.enter(workspace)
                 self.context.get().workspace = workspace  # pyright: ignore[reportAttributeAccessIssue]
@@ -390,6 +378,7 @@ class PowerbiSource(DashboardServiceSource):
                         "DashboardDataModel": None,
                     },
                 )
+                opened = True
                 yield workspace
             except Exception as exc:  # pylint: disable=broad-except
                 ws_name = getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>")
@@ -402,7 +391,8 @@ class PowerbiSource(DashboardServiceSource):
                     )
                 )
             finally:
-                self._close_group_progress(workspace_name)
+                if opened:
+                    self._close_group_progress(workspace_name)
                 self.state.exit()
 
     def get_dashboards_list(

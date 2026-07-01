@@ -2456,40 +2456,45 @@ class PowerBIUnitTest(TestCase):
         ws_a = Group(id="wa", name="Alpha")
         ws_b = Group(id="wb", name="Beta")
         self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_a, ws_b]))
-        self.powerbi._workspace_total_for_progress = MagicMock(return_value=2)
         self.powerbi.get_dashboards_list = MagicMock(return_value=[])
         self.powerbi.context.get = MagicMock(return_value=MagicMock())
 
         produced = list(self.powerbi.get_dashboard())
 
         assert [w.id for w in produced] == ["wa", "wb"]
-        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, 2)]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, None)]
         assert self.powerbi.progress.snapshot() is None
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_does_not_count_workspace_failing_before_open(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_ok = Group(id="ok", name="Ok")
+        ws_bad = Group(id="bad", name="Bad")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_bad, ws_ok]))
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+        self.powerbi.get_dashboards_list = MagicMock(side_effect=[RuntimeError("boom"), []])
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["ok"]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 1, None)]
 
     @pytest.mark.order(57)
     def test_admin_workspace_progress_total_reconciles_to_active_scan_results(self):
         self.powerbi.__dict__.pop("_progress_registry", None)
         self.powerbi.pagination_entity_per_page = 100
 
-        candidate_workspaces = [
-            Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)
-        ]
-        active_workspaces = [
-            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Active")
-            for index in range(40)
-        ]
+        candidate_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)]
+        active_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}", state="Active") for index in range(40)]
         skipped_workspaces = [
-            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Deleted")
-            for index in range(40, 44)
+            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Deleted") for index in range(40, 44)
         ]
         self.powerbi.client = MagicMock()
         self.powerbi.client.api_client = MagicMock()
-        self.powerbi.client.api_client.fetch_all_workspaces = MagicMock(
-            return_value=candidate_workspaces
-        )
-        self.powerbi.client.api_client.initiate_workspace_scan = MagicMock(
-            return_value=MagicMock(id="scan-1")
-        )
+        self.powerbi.client.api_client.fetch_all_workspaces = MagicMock(return_value=candidate_workspaces)
+        self.powerbi.client.api_client.initiate_workspace_scan = MagicMock(return_value=MagicMock(id="scan-1"))
         self.powerbi.client.api_client.wait_for_scan_complete = MagicMock(return_value=True)
         self.powerbi.client.api_client.fetch_workspace_scan_result = MagicMock(
             return_value=Workspaces(workspaces=active_workspaces + skipped_workspaces)
@@ -2497,9 +2502,7 @@ class PowerBIUnitTest(TestCase):
 
         produced = list(self.powerbi.get_admin_workspace_data())
 
-        assert [workspace.id for workspace in produced] == [
-            f"ws-{index}" for index in range(40)
-        ]
+        assert [workspace.id for workspace in produced] == [f"ws-{index}" for index in range(40)]
         assert self.powerbi.progress.global_counters() == [("Workspaces", 0, 40)]
 
     @pytest.mark.order(58)
