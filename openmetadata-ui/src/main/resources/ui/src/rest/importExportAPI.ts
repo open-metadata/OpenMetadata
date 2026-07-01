@@ -150,6 +150,10 @@ export interface OntologyImportResult {
   messages: string[];
 }
 
+// JSON-LD is intentionally excluded — the backend rejects it (remote @context
+// resolution is an SSRF risk). Keep in sync with GlossaryRdfImporter.jenaLang().
+export type OntologyImportFormat = 'turtle' | 'rdfxml' | 'ntriples';
+
 export const importGlossaryOntology = async ({
   name,
   data,
@@ -159,7 +163,7 @@ export const importGlossaryOntology = async ({
   name: string;
   data: string;
   dryRun?: boolean;
-  format?: string;
+  format?: OntologyImportFormat;
 }) => {
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
@@ -170,7 +174,7 @@ export const importGlossaryOntology = async ({
   >(
     `/glossaries/name/${getEncodedFqn(
       name
-    )}/importRdf?dryRun=${dryRun}&format=${format}`,
+    )}/importRdf?dryRun=${dryRun}&format=${encodeURIComponent(format)}`,
     data,
     configOptions
   );

@@ -25,6 +25,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   importGlossaryOntology,
+  OntologyImportFormat,
   OntologyImportResult,
 } from '../../../rest/importExportAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -46,7 +47,10 @@ const looksLikeRdfXml = (content: string): boolean => {
   );
 };
 
-const getOntologyFormat = (fileName: string, content: string): string => {
+const getOntologyFormat = (
+  fileName: string,
+  content: string
+): OntologyImportFormat => {
   const extension = fileName.split('.').pop()?.toLowerCase();
 
   switch (extension) {
@@ -73,7 +77,7 @@ const ImportOntologyModal = ({
   const { t } = useTranslation();
   const [fileName, setFileName] = useState<string>('');
   const [fileContent, setFileContent] = useState<string>('');
-  const [format, setFormat] = useState<string>('turtle');
+  const [format, setFormat] = useState<OntologyImportFormat>('turtle');
   const [validation, setValidation] = useState<OntologyImportResult>();
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [isImporting, setIsImporting] = useState<boolean>(false);
@@ -92,7 +96,7 @@ const ImportOntologyModal = ({
   }, [onCancel, resetState]);
 
   const validate = useCallback(
-    async (content: string, ontologyFormat: string) => {
+    async (content: string, ontologyFormat: OntologyImportFormat) => {
       setIsValidating(true);
       try {
         const result = await importGlossaryOntology({
@@ -140,15 +144,22 @@ const ImportOntologyModal = ({
   const handleImport = useCallback(async () => {
     setIsImporting(true);
     try {
-      await importGlossaryOntology({
+      const result = await importGlossaryOntology({
         name: glossaryName,
         data: fileContent,
         dryRun: false,
         format,
       });
-      showSuccessToast(t('message.ontology-imported-successfully'));
       onSuccess();
-      handleCancel();
+      if (result.messages.length > 0) {
+        // Surface failures the dry-run did not catch (e.g. a concurrent write
+        // conflict) instead of a blanket success toast, and keep the modal open
+        // so the user can review which terms or relations were skipped.
+        setValidation(result);
+      } else {
+        showSuccessToast(t('message.ontology-imported-successfully'));
+        handleCancel();
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

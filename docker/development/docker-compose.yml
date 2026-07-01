@@ -624,11 +624,14 @@ services:
   # round-trip, semantic search). Start with `--profile rdf` and set RDF_ENABLED=true.
   # The glossary RDF import works without this; it only adds the transparent triplestore.
   fuseki:
-    image: stain/jena-fuseki:4.10.0
+    build:
+      context: ../rdf-store
     container_name: openmetadata_fuseki
     environment:
-      - ADMIN_PASSWORD=${RDF_REMOTE_PASSWORD:-admin}
-      - FUSEKI_DATASET_1=${RDF_DATASET:-openmetadata}
+      # The admin user carries the writer role; the server connects as
+      # RDF_REMOTE_USERNAME=admin, so keep this password in sync with
+      # RDF_REMOTE_PASSWORD. Dataset (/openmetadata) is baked into the image.
+      - FUSEKI_ADMIN_PASSWORD=${RDF_REMOTE_PASSWORD:-admin}
     networks:
       - local_app_net
     expose:
@@ -636,7 +639,7 @@ services:
     ports:
       - "3030:3030"
     volumes:
-      - fuseki-data:/fuseki
+      - fuseki-data:/fuseki-data
     profiles:
       - rdf
 

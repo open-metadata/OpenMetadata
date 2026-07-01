@@ -175,6 +175,38 @@ describe('ImportOntologyModal', () => {
     expect(onSuccess).toHaveBeenCalled();
   });
 
+  it('should surface warnings and keep the modal open when the commit reports messages', async () => {
+    mockImport.mockResolvedValueOnce(VALID_RESULT).mockResolvedValueOnce({
+      ...VALID_RESULT,
+      dryRun: false,
+      messages: ['Skipped http://x#B: conflict'],
+    });
+    const onSuccess = jest.fn();
+    renderModal({ onSuccess });
+
+    await uploadFile();
+    await waitFor(() =>
+      expect(screen.getByTestId('import-ontology-submit')).not.toBeDisabled()
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('import-ontology-submit'));
+    });
+
+    await waitFor(() =>
+      expect(mockImport).toHaveBeenLastCalledWith(
+        expect.objectContaining({ dryRun: false })
+      )
+    );
+
+    expect(
+      await screen.findByText('Skipped http://x#B: conflict')
+    ).toBeInTheDocument();
+    expect(showSuccessToast).not.toHaveBeenCalled();
+    expect(onSuccess).toHaveBeenCalled();
+    expect(screen.getByTestId('upload-ontology-dragger')).toBeInTheDocument();
+  });
+
   it('should call onCancel when cancel is clicked', () => {
     const onCancel = jest.fn();
     renderModal({ onCancel });

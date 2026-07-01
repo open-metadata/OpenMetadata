@@ -660,7 +660,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       operationId = "importGlossaryRdf",
       summary = "Import an OWL/SKOS ontology (RDF) into glossaries",
       description =
-          "Materialize an external OWL/SKOS ontology (Turtle, RDF/XML, N-Triples or JSON-LD) as "
+          "Materialize an external OWL/SKOS ontology (Turtle, RDF/XML or N-Triples) as "
               + "glossary terms and typed relations through the glossary repository. SKOS concepts / "
               + "OWL classes become GlossaryTerms, skos:broader / rdfs:subClassOf become the parent "
               + "hierarchy, skos:*Match become concept mappings, and owl:ObjectProperty edges become "
@@ -681,7 +681,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Parameter(description = "Name of the target glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
-      @Parameter(description = "RDF syntax of the payload (turtle, rdfxml, ntriples, jsonld)")
+      @Parameter(description = "RDF syntax of the payload (turtle, rdfxml, ntriples)")
           @QueryParam("format")
           @DefaultValue("turtle")
           String format,
