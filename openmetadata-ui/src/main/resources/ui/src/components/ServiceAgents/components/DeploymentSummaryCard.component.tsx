@@ -105,9 +105,8 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
       });
 
   return (
-    <Box
+    <div
       className="tw:mb-5 tw:rounded-2xl tw:border tw:p-5"
-      direction="col"
       style={{
         background: allDone
           ? 'var(--success-50)'
@@ -224,7 +223,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
           </Box>
         </div>
       )}
-    </Box>
+    </div>
   );
 };
 
