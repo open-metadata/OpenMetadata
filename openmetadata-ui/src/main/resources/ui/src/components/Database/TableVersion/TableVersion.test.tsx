@@ -192,14 +192,23 @@ describe('TableVersion tests', () => {
       },
     };
 
+    let rerender: ReturnType<typeof render>['rerender'] = () => {
+      throw new Error('rerender not initialized');
+    };
+
     await act(async () => {
-      render(<TableVersion {...updatedProps} />);
+      ({ rerender } = render(<TableVersion {...tableVersionMockProps} />));
+    });
+
+    await act(async () => {
+      rerender(<TableVersion {...updatedProps} />);
     });
 
     expect(VersionTable as jest.Mock).toHaveBeenCalled();
 
-    const receivedColumns: Column[] = (VersionTable as jest.Mock).mock
-      .calls[0][0].columns;
+    const mockCalls = (VersionTable as jest.Mock).mock.calls;
+    const receivedColumns: Column[] =
+      mockCalls[mockCalls.length - 1][0].columns;
 
     expect(receivedColumns.some((col) => col.name === 'updated_col')).toBe(
       true
