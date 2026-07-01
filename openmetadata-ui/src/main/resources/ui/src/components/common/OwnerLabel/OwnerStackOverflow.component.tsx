@@ -33,8 +33,8 @@ import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { OwnerStackOverflowProps } from './OwnerAvatarStack.interface';
 
 const POPOVER_AVATAR_SIZE = '24';
-const OPEN_DELAY_MS = 100;
-const CLOSE_DELAY_MS = 150;
+const OPEN_DELAY_MS = 80;
+const CLOSE_DELAY_MS = 220;
 
 export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   owners,
@@ -47,37 +47,38 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
   const fontSizeClass = AVATAR_FONT_SIZE_MAP[avatarSize];
 
   const [isOpen, setIsOpen] = useState(false);
-  const openTimerRef = useRef<ReturnType<typeof setTimeout>>();
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const clearTimers = useCallback(() => {
-    if (openTimerRef.current) {
-      clearTimeout(openTimerRef.current);
-      openTimerRef.current = undefined;
-    }
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = undefined;
+  const clearTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
     }
   }, []);
 
   const scheduleOpen = useCallback(() => {
-    clearTimers();
-    openTimerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
-  }, [clearTimers]);
+    clearTimer();
+    timerRef.current = setTimeout(() => setIsOpen(true), OPEN_DELAY_MS);
+  }, [clearTimer]);
 
   const scheduleClose = useCallback(() => {
-    clearTimers();
-    closeTimerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
-  }, [clearTimers]);
+    clearTimer();
+    timerRef.current = setTimeout(() => setIsOpen(false), CLOSE_DELAY_MS);
+  }, [clearTimer]);
 
-  const { teamOwners, userOwners } = useMemo(() => {
+  const togglePress = useCallback(() => {
+    clearTimer();
+    setIsOpen((prev) => !prev);
+  }, [clearTimer]);
+
+  const { teamOwners, userOwners, totalCount } = useMemo(() => {
     const teams = owners.filter((owner) => owner.type === OwnerType.TEAM);
     const users = owners.filter((owner) => owner.type === OwnerType.USER);
 
     return {
       teamOwners: teams,
       userOwners: users,
+      totalCount: owners.length,
     };
   }, [owners]);
 
@@ -127,10 +128,9 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         color="link-color"
         data-testid="owners-overflow-trigger"
         size="xs"
-        onBlur={scheduleClose}
-        onFocus={() => setIsOpen(true)}
         onHoverEnd={scheduleClose}
-        onHoverStart={scheduleOpen}>
+        onHoverStart={scheduleOpen}
+        onPress={togglePress}>
         <Avatar
           className={classNames(
             'tw:bg-brand-50 tw:ring-2 tw:ring-primary tw:text-brand-700 tw:font-medium',
@@ -151,18 +151,27 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
           )
         }
         offset={6}
-        placement="bottom start">
+        placement="bottom start"
+        onMouseEnter={clearTimer}
+        onMouseLeave={scheduleClose}>
         <AriaDialog
           aria-label={t('label.owner-plural')}
-          className="tw:outline-hidden"
-          onMouseEnter={clearTimers}
-          onMouseLeave={scheduleClose}>
+          className="tw:outline-hidden">
           <div
             className="tw:flex tw:flex-col tw:py-2"
             data-testid="owners-overflow-popover">
+            <Typography
+              as="div"
+              className="tw:px-3 tw:pb-2 tw:text-primary"
+              data-testid="owners-overflow-total"
+              size="text-sm"
+              weight="semibold">
+              {totalCount} {t('label.owner-plural')}
+            </Typography>
+
             {teamOwners.length > 0 && (
               <div
-                className="tw:flex tw:flex-col"
+                className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-1"
                 data-testid="owners-overflow-teams-section">
                 <Typography
                   as="div"
@@ -177,7 +186,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
 
             {userOwners.length > 0 && (
               <div
-                className="tw:flex tw:flex-col"
+                className="tw:flex tw:flex-col tw:border-t tw:border-secondary tw:pt-1"
                 data-testid="owners-overflow-users-section">
                 <Typography
                   as="div"
