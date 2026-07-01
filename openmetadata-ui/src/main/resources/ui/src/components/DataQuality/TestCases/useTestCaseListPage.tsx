@@ -61,41 +61,26 @@ import {
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  FilterControlType,
+  FilterDescriptor,
+  FilterOptionData,
+  FilterValue,
+} from '../../common/FilterChip/FilterChip.interface';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 
-/** Render-agnostic control kinds a single filter can use. */
-export type TestCaseFilterControl = 'select' | 'multiselect' | 'date';
-
-/** Union of every Test Cases filter value (string, string[], date range, …). */
-export type TestCaseFilterValue =
-  TestCaseSearchParams[keyof TestCaseSearchParams];
-
-export interface TestCaseFilterOptionData {
-  label: string;
-  value: string;
-  subLabel?: string;
-}
-
 /**
- * Normalized description of a single active Test Cases filter. Renderers map
- * over these: OSS keeps its antd form, the AI bar renders untitled-ui chips.
- * Adding a filter here surfaces it in both renderers.
+ * Back-compat aliases for existing importers. The descriptor the hook emits is
+ * the generic, filter-agnostic {@link FilterDescriptor}; these names are kept so
+ * Test-Cases callers keep compiling.
  */
-export interface TestCaseFilterDescriptor {
-  key: string;
-  paramKey: keyof TestCaseSearchParams;
-  label: string;
-  controlType: TestCaseFilterControl;
-  searchable: boolean;
-  value?: TestCaseFilterValue;
-  options: TestCaseFilterOptionData[];
-  isLoading: boolean;
-  onGetInitialOptions: () => void;
-  onSearch?: (query: string) => void;
-  onChange: (value?: TestCaseFilterValue) => void;
-}
+export type {
+  FilterDescriptor as TestCaseFilterDescriptor,
+  FilterOptionData as TestCaseFilterOptionData,
+  FilterValue as TestCaseFilterValue,
+} from '../../common/FilterChip/FilterChip.interface';
 
 interface FetchedOption extends DefaultOptionType {
   /** Plain name kept alongside the rich antd JSX label for renderer reuse. */
@@ -138,8 +123,8 @@ const FILTER_LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
   ])
 );
 
-const getControlType = (key: string): TestCaseFilterControl => {
-  let controlType: TestCaseFilterControl = 'select';
+const getControlType = (key: string): FilterControlType => {
+  let controlType: FilterControlType = 'select';
   if (key === TEST_CASE_FILTERS.lastRun) {
     controlType = 'date';
   } else if (MULTI_SELECT_FILTERS.has(key)) {
@@ -432,9 +417,7 @@ export const useTestCaseListPage = () => {
     [TEST_CASE_FILTERS.dataProduct]: debounceFetchDataProductOptions,
   };
 
-  const toPlainOptions = (
-    options: DefaultOptionType[]
-  ): TestCaseFilterOptionData[] =>
+  const toPlainOptions = (options: DefaultOptionType[]): FilterOptionData[] =>
     options.map((option) => ({
       value: String(option.value),
       label:
@@ -445,7 +428,7 @@ export const useTestCaseListPage = () => {
       subLabel: (option as FetchedOption).subLabel,
     }));
 
-  const filters = useMemo<TestCaseFilterDescriptor[]>(() => {
+  const filters = useMemo<FilterDescriptor[]>(() => {
     const keys = entries(TEST_CASE_FILTERS)
       .map(([, filter]) => filter)
       .filter((filter) => selectedFilter.includes(filter));
@@ -460,12 +443,16 @@ export const useTestCaseListPage = () => {
         label: FILTER_LABEL_BY_KEY[key],
         controlType: getControlType(key),
         searchable: SEARCHABLE_FILTERS.has(key),
-        value: params[paramKey],
+        value: params[paramKey] as FilterValue,
         options: toPlainOptions(options),
         isLoading: isOptionsLoading,
         onGetInitialOptions: () => getInitialOptions(key),
         onSearch: onSearchByKey[key],
-        onChange: (value) => handleSearchParam(paramKey, value),
+        onChange: (value?: FilterValue) =>
+          handleSearchParam(
+            paramKey,
+            value as TestCaseSearchParams[typeof paramKey]
+          ),
       };
     });
   }, [selectedFilter, params, isOptionsLoading, asyncOptionsByKey]);
