@@ -144,21 +144,22 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
           <Divider className="tw-border-t tw:border-secondary" />
 
           {teamOwners.length > 0 && (
-            <div
-              className="tw:flex tw:flex-col "
-              data-testid="owners-overflow-teams-section">
-              <Typography
-                as="div"
-                className="tw:pb-2 tw:text-quaternary"
-                size="text-xs"
-                weight="medium">
-                {t('label.team-plural')} ({teamOwners.length})
-              </Typography>
-              {teamOwners.map(renderOwnerRow)}
-            </div>
+            <>
+              <div
+                className="tw:flex tw:flex-col "
+                data-testid="owners-overflow-teams-section">
+                <Typography
+                  as="div"
+                  className="tw:pb-2 tw:text-quaternary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('label.team-plural')} ({teamOwners.length})
+                </Typography>
+                {teamOwners.map(renderOwnerRow)}
+              </div>
+              <Divider className="tw-border-t tw:border-secondary" />
+            </>
           )}
-
-          <Divider className="tw-border-t tw:border-secondary" />
 
           {userOwners.length > 0 && (
             <div
