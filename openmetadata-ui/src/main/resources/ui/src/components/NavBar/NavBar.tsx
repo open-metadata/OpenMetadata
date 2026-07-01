@@ -100,6 +100,14 @@ const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
+  // handleDeleteEntityWebsocketResponse is recreated every render (it closes
+  // over asyncDeleteJob) but the socket listener is registered once. Read it
+  // through a ref so the handler always uses the latest state instead of a
+  // stale closure — without re-registering the socket listener each render.
+  const handleDeleteEntityResponseRef = useRef(
+    handleDeleteEntityWebsocketResponse
+  );
+  handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
   const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
@@ -411,7 +419,7 @@ const NavBar = () => {
         const deleteResponseData = JSON.parse(
           deleteResponse
         ) as AsyncDeleteWebsocketResponse;
-        handleDeleteEntityWebsocketResponse(deleteResponseData);
+        handleDeleteEntityResponseRef.current(deleteResponseData);
       }
     };
 
