@@ -28,6 +28,7 @@ import {
 } from '@/components/base/select/select';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
+import { fontSizeClass } from '@/utils/tailwindClasses';
 
 interface ComboBoxProps
   extends Omit<AriaComboBoxProps<SelectItemType>, 'children' | 'items'>,
@@ -59,6 +60,7 @@ const ComboBoxValue = ({
   ...otherProps
 }: ComboBoxValueProps) => {
   const state = useContext(ComboBoxStateContext);
+  const { fontSize } = useContext(SelectContext);
 
   const value = state?.selectedItem?.value || null;
   const inputValue = state?.inputValue || null;
@@ -88,7 +90,8 @@ const ComboBoxValue = ({
                 className="tw:absolute tw:top-1/2 tw:z-0 tw:inline-flex tw:w-full tw:-translate-y-1/2 tw:gap-2 tw:truncate">
                 <p
                   className={cx(
-                    'tw:text-md tw:font-medium tw:text-primary',
+                    'tw:font-medium tw:text-primary',
+                    fontSizeClass[fontSize],
                     isDisabled && 'tw:text-disabled'
                   )}>
                   {first}
@@ -96,7 +99,8 @@ const ComboBoxValue = ({
                 {last && (
                   <p
                     className={cx(
-                      'tw:-ml-0.75 tw:text-md tw:text-tertiary',
+                      'tw:-ml-0.75 tw:text-tertiary',
+                      fontSizeClass[fontSize],
                       isDisabled && 'tw:text-disabled'
                     )}>
                     {last}
@@ -106,7 +110,10 @@ const ComboBoxValue = ({
             )}
 
             <AriaInput
-              className="tw:z-10 tw:w-full tw:appearance-none tw:bg-transparent tw:text-md tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+              className={cx(
+                'tw:z-10 tw:w-full tw:appearance-none tw:bg-transparent tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled',
+                fontSizeClass[fontSize]
+              )}
               placeholder={placeholder}
             />
           </div>
@@ -139,7 +146,7 @@ export const ComboBox = ({
   placeholder = 'Search',
   shortcut = true,
   size = 'sm',
-  fontSize = 'md',
+  fontSize = 'sm',
   children,
   items,
   shortcutClassName,
