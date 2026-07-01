@@ -85,6 +85,7 @@ export enum GlobalSettingOptions {
   OM_URL_CONFIG = 'om-url-config',
   AI_SETTINGS = 'ai-settings',
   SEARCH_SETTINGS = 'search-settings',
+  SEARCH_MAPPINGS = 'search-mappings',
   DATA_ASSETS = 'dataAssets',
   QUERY = 'query',
   TEST_CASES = 'testCases',
