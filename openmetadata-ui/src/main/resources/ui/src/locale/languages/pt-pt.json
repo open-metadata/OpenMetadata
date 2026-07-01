@@ -3086,6 +3086,7 @@
     "entity-owned-by-name": "Esta entidade é propriedade de {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} pode incluir espaços e apenas os seguintes caracteres especiais {{pattern}}",
     "entity-pipeline-information": "<0>Todas as {{entity}} devem estar ligadas a um pipeline!</0> Este {{type}} ainda não tem um pipeline. Vamos criar um para que a sua {{entity}} possa ser ligada e agendada.",
+    "entity-removed-from-folder": "{{entity}} removido da pasta",
     "entity-restored-error": "Erro ao restaurar {{entity}}",
     "entity-restored-success": "{{entity}} restaurado com sucesso",
     "entity-saved-successfully": "{{entity}} salvo com sucesso",

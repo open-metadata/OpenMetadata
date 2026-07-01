@@ -3086,6 +3086,7 @@
     "entity-owned-by-name": "此實體由 {{entityOwner}} 擁有",
     "entity-pattern-validation": "{{entity}} 可以包含空格和以下特殊字元 {{pattern}}",
     "entity-pipeline-information": "<0>每個 {{entity}} 都必須連結到一個管線！</0> 此 {{type}} 尚未有管線。讓我們建立一個，以便您的 {{entity}} 可以被連結和排程。",
+    "entity-removed-from-folder": "{{entity}} 已從資料夾中移除",
     "entity-restored-error": "還原 {{entity}} 時發生錯誤",
     "entity-restored-success": "{{entity}} 還原成功",
     "entity-saved-successfully": "{{entity}} 儲存成功",

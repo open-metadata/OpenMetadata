@@ -230,17 +230,19 @@ const ContextCenterDocumentsPage: FC = () => {
   }, [fileToDelete, t]);
 
   const handleFileMoved = useCallback(
-    (file: ContextFile, targetFolderId: string) => {
+    (file: ContextFile, targetFolderId: string | null) => {
       setAllDocuments((prev) =>
         prev.map((d) =>
           d.id === file.id
             ? {
                 ...d,
-                folder: {
-                  ...d.folder,
-                  id: targetFolderId,
-                  type: d.folder?.type ?? 'folder',
-                },
+                folder: targetFolderId
+                  ? {
+                      ...d.folder,
+                      id: targetFolderId,
+                      type: d.folder?.type ?? 'folder',
+                    }
+                  : undefined,
               }
             : d
         )

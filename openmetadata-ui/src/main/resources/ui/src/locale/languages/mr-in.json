@@ -3086,6 +3086,7 @@
     "entity-owned-by-name": "हा घटक {{entityOwner}} द्वारे मालकीचा आहे",
     "entity-pattern-validation": "{{entity}} मध्ये स्पेस आणि फक्त खालील विशेष वर्णांचा समावेश असू शकतो {{pattern}}",
     "entity-pipeline-information": "<0>प्रत्येक {{entity}} पाइपलाइनशी जोडलेले असावे!</0> या {{type}} कडे अजून पाइपलाइन नाही. आम्ही एक तयार करू या यातील तुमचे {{entity}} जोडले आणि नियोजित केले जाऊ शकते.",
+    "entity-removed-from-folder": "{{entity}} फोल्डरमधून काढले",
     "entity-restored-error": "{{entity}} पुनर्संचयित करताना त्रुटी",
     "entity-restored-success": "{{entity}} यशस्वीरित्या पुनर्संचयित केले",
     "entity-saved-successfully": "{{entity}} यशस्वीरित्या जतन केले",
