@@ -15,7 +15,6 @@ import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RunGlyph } from '../AgentIcons';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
-import { buildAttentionLogLines } from '../mock/runs.mock';
 import { fmtNum } from '../utils/agents.utils';
 
 interface AttentionCardProps {
@@ -26,6 +25,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
   const isError = att.severity === 'error';
   const bg = isError ? 'var(--error-50)' : 'var(--warning-50)';
   const bd = isError ? 'var(--error-200)' : 'var(--warning-200)';
@@ -157,6 +157,8 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
             </span>
           </div>
         )}
+        {stackLines.length > 0 && (
+          <>
         <button
           style={{
             display: 'inline-flex',
@@ -198,7 +200,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
               maxHeight: 160,
               overflowY: 'auto',
             }}>
-            {buildAttentionLogLines(att).map((line, idx) => (
+            {stackLines.map((line, idx) => (
               <div
                 key={idx}
                 style={{
@@ -210,6 +212,8 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

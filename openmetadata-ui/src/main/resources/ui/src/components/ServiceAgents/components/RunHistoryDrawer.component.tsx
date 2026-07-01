@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RunGlyph, RunIcon } from '../AgentIcons';
 import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
-import { seedRuns } from '../mock/runs.mock';
+import { useAgentRuns } from '../hooks/useAgentRuns';
 import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
 import RunStepRow from './RunStepRow.component';
 
@@ -70,7 +70,7 @@ const StatTile: FC<StatTileProps> = ({ value, label, tone }) => {
 // ---- run history rail ----
 interface RunHistoryProps {
   runs: AgentRun[];
-  selectedId: string;
+  selectedId?: string;
   onSelect: (id: string) => void;
 }
 
@@ -168,14 +168,21 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onOpenLogs,
 }) => {
   const { t } = useTranslation();
-  const runs = useMemo(() => seedRuns(agent), [agent.id]);
-  const safeIndex = Math.min(initialIndex, runs.length - 1);
-  const [selId, setSelId] = useState(runs[safeIndex].id);
-  const run = runs.find((r) => r.id === selId) ?? runs[0];
-  const m = RUN_META[run.status];
-  const runLabel = t(m.labelKey);
+  const { runs, isLoading } = useAgentRuns(agent.fqn, true);
+  const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
-  const tot = run.totals;
+
+  useEffect(() => {
+    if (runs.length > 0 && !runs.some((r) => r.id === selId)) {
+      const safeIndex = Math.min(initialIndex, runs.length - 1);
+      setSelId(runs[safeIndex].id);
+    }
+  }, [runs, initialIndex, selId]);
+
+  const run = runs.find((r) => r.id === selId) ?? runs[0];
+  const m = run ? RUN_META[run.status] : undefined;
+  const runLabel = m ? t(m.labelKey) : '';
+  const tot = run?.totals;
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -338,15 +345,17 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           </div>
           <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
 
-          {/* selected run header */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              margin: '22px 0 14px',
-            }}>
-            <RunGlyph size={20} status={run.status} />
+          {run && m && tot ? (
+            <>
+              {/* selected run header */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  margin: '22px 0 14px',
+                }}>
+                <RunGlyph size={20} status={run.status} />
             <div style={{ flex: 1 }}>
               <div
                 style={{ font: '700 15px Inter', color: 'var(--fg-primary)' }}>
@@ -433,6 +442,20 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               />
             ))}
           </div>
+            </>
+          ) : (
+            <div
+              style={{
+                color: 'var(--fg-muted)',
+                font: '400 13px Inter',
+                padding: '40px 4px',
+                textAlign: 'center',
+              }}>
+              {isLoading
+                ? `${t('label.loading')}...`
+                : t('message.no-recent-runs')}
+            </div>
+          )}
         </div>
       </div>
     </div>

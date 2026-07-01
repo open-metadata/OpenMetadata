@@ -302,6 +302,7 @@ const buildStepAttention = (step: StepSummary): RunAttention | undefined => {
         title: firstFailure.name,
         message: firstFailure.error,
         hint: undefined,
+        stackTrace: firstFailure.stackTrace,
       }
     : undefined;
 };

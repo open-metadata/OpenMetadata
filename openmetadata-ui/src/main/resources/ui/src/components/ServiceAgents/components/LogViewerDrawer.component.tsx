@@ -15,7 +15,7 @@ import { ChangeEvent, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IcSearch } from '../AgentIcons';
 import { Agent, LogLevel } from '../AgentsPage.interface';
-import { genLogLines } from '../mock/logs.mock';
+import { useAgentLogs } from '../hooks/useAgentLogs';
 import { AGENT_TYPE_ICON } from '../utils/agents.utils';
 
 interface LogViewerDrawerProps {
@@ -39,7 +39,11 @@ type LevelFilter = 'all' | LogLevel;
 
 const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
   const { t } = useTranslation();
-  const all = useMemo(() => genLogLines(agent), [agent.id]);
+  const { lines: all, isLoading, hasMore, loadMore } = useAgentLogs(
+    agent.id,
+    agent.pipelineType,
+    true
+  );
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState<LevelFilter>('all');
   const [wrap, setWrap] = useState(true);
@@ -335,7 +339,7 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
                 color: '#5D6B98',
                 font: '400 12.5px var(--font-mono)',
               }}>
-              {t('message.no-lines-match')}
+              {isLoading ? `${t('label.loading')}...` : t('message.no-lines-match')}
             </div>
           ) : (
             rows.map((l, i) => (
@@ -367,6 +371,22 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
                 <span style={{ color: '#CDD5E0', flex: 1 }}>{l.text}</span>
               </div>
             ))
+          )}
+          {hasMore && rows.length > 0 && (
+            <button
+              disabled={isLoading}
+              style={{
+                background: 'transparent',
+                border: 0,
+                color: '#84CAFF',
+                cursor: isLoading ? 'default' : 'pointer',
+                font: '600 12px var(--font-mono)',
+                marginTop: 12,
+                padding: '6px 0',
+              }}
+              onClick={loadMore}>
+              {isLoading ? `${t('label.loading')}...` : t('label.load-more')}
+            </button>
           )}
         </div>
       </div>

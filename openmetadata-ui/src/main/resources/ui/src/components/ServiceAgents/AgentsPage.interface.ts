@@ -56,6 +56,7 @@ export interface RunAttention {
   title: string;
   message: string;
   hint?: string;
+  stackTrace?: string;
 }
 
 export interface RunStep {
