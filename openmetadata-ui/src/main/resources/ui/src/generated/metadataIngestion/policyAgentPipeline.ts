@@ -80,7 +80,11 @@ export interface DatabasePolicyConfig {
 }
 
 /**
- * Pattern of access being requested.
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
  */
 export enum AccessType {
     ColumnLevel = "ColumnLevel",
