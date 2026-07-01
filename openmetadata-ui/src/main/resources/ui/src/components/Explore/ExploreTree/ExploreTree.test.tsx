@@ -647,15 +647,16 @@ describe('ExploreTree', () => {
     });
   });
 
-  it('does not blank the tree with a spinner on later count refreshes', async () => {
+  it('does not blank the tree with a spinner on a browse selection', async () => {
     let releaseRefresh: (() => void) | undefined;
     let refreshStarted = false;
     jest
       .spyOn(searchAPI, 'searchQuery')
       .mockImplementation(({ queryFilter }) => {
-        // Hold the post-initial filtered refresh open so the in-flight UI can be
-        // observed; the initial load and presence aggregation resolve at once.
-        if (JSON.stringify(queryFilter ?? {}).includes('Tier.Tier1')) {
+        // Hold the browse refresh (it carries the browsePath entity types) open
+        // so the in-flight UI can be observed; the initial load and presence
+        // aggregation resolve at once.
+        if (JSON.stringify(queryFilter ?? {}).includes('entityType.keyword')) {
           refreshStarted = true;
 
           return new Promise((resolve) => {
@@ -682,15 +683,20 @@ describe('ExploreTree', () => {
       expect(queryByTestId('loader')).not.toBeInTheDocument();
     });
 
+    // Selecting a category root is a browse click; reflect its browsePath so the
+    // browse refresh fires without rebuilding (and so without the spinner).
+    fireEvent.click(getByText('label.database-plural'));
     window.history.pushState(
       {},
       '',
-      `/explore?quickFilter=${encodeURIComponent(
-        JSON.stringify({
-          query: {
-            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+      `/explore?browsePath=${encodeURIComponent(
+        JSON.stringify([
+          {
+            key: 'entityType',
+            label: 'label.database-plural',
+            value: [{ key: 'table', label: 'table' }],
           },
-        })
+        ])
       )}`
     );
     rerender(
@@ -699,8 +705,8 @@ describe('ExploreTree', () => {
 
     await waitFor(() => expect(refreshStarted).toBe(true));
 
-    // While the refresh is in flight the tree stays on screen instead of being
-    // replaced by the full-screen spinner (the "page reload" symptom).
+    // A browse refresh keeps the tree on screen instead of swapping in the
+    // full-screen spinner (the "page reload" symptom the user reported).
     expect(queryByTestId('loader')).not.toBeInTheDocument();
     expect(getByText('label.database-plural')).toBeInTheDocument();
 

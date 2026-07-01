@@ -402,7 +402,11 @@ const ExploreTree = ({
     const preserveExpandedTree = treeSelectRef.current;
     treeSelectRef.current = false;
     try {
-      if (!hasLoadedOnceRef.current) {
+      // A rebuild drops the loaded children, so unmount the tree behind the
+      // spinner and let it remount fresh — refreshing in place would flicker the
+      // nodes as they drop and re-load. A browse selection keeps the subtree, so
+      // it refreshes silently (no spinner, no "page reload" feel).
+      if (!hasLoadedOnceRef.current || !preserveExpandedTree) {
         setIsLoading(true);
       }
       const filterMust = [
