@@ -37,6 +37,21 @@ class AIContextFinderTest {
   }
 
   @Test
+  void resolveKnowledgeId_fallsBackToParentIdForChunkDocs() {
+    String id = "11111111-1111-1111-1111-111111111111";
+    String parentId = "22222222-2222-2222-2222-222222222222";
+    assertEquals(
+        id,
+        AIContextFinder.resolveKnowledgeId(Map.of("id", id, "parentId", parentId)).toString(),
+        "entity-doc hits must use their own id");
+    assertEquals(
+        parentId,
+        AIContextFinder.resolveKnowledgeId(Map.of("parentId", parentId)).toString(),
+        "chunk-doc hits carry only parentId and must still route");
+    assertNull(AIContextFinder.resolveKnowledgeId(Map.of("name", "x")));
+  }
+
+  @Test
   void content_prefersLlmContextThenDescription() {
     assertEquals(
         "rich context",

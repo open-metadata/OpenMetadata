@@ -155,7 +155,7 @@ public class AIContextFinder {
 
   private List<CandidateAsset> routeToAssets(Map<String, Object> hit, KnowledgeItem item) {
     List<CandidateAsset> assets = new ArrayList<>();
-    UUID id = parseId(hit.get("id"));
+    UUID id = resolveKnowledgeId(hit);
     String via = item.getFullyQualifiedName();
     switch (item.getType()) {
       case GLOSSARY_TERM -> addRefs(assets, searchAssetsByTag(via), via);
@@ -231,6 +231,16 @@ public class AIContextFinder {
         }
       }
     }
+  }
+
+  /**
+   * The knowledge entity's id from a vector hit. Legacy entity docs carry {@code id}; chunk docs
+   * from the dedicated chunk index carry only {@code parentId} (which is the entity id) — without
+   * the fallback, metric/page hits surfaced from chunk docs would route to zero candidate assets.
+   */
+  static UUID resolveKnowledgeId(Map<String, Object> hit) {
+    Object rawId = hit.get("id");
+    return parseId(rawId != null ? rawId : hit.get("parentId"));
   }
 
   private static UUID parseId(Object value) {
