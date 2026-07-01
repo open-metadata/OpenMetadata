@@ -106,7 +106,9 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (params: ListParams = {}) => {
+type ListContextFilesParams = ListParams & { folderId?: string };
+
+export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
     {
