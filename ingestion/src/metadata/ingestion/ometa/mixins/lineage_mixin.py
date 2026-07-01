@@ -316,6 +316,8 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
+                    # sqlQuery is intentionally left out so it defaults to None: that forces build_patch
+                    # to add/update the incoming query. Do not populate it from the stored edge here.
                     original = LineageDetails.model_validate(
                         {
                             "columnsLineage": [
