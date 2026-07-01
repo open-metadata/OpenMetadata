@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.awaitility.Awaitility;
@@ -217,6 +219,60 @@ class RdfUpdaterTest {
       Awaitility.await()
           .atMost(Duration.ofSeconds(5))
           .untilAsserted(() -> verify(mockRepository, times(1)).removeRelationship(rel));
+    }
+  }
+
+  @Nested
+  @DisplayName("keyed-write striped locking")
+  class KeyedWriteConcurrency {
+
+    /**
+     * Relationship writes lock two stripes each (from + to). If those stripe
+     * locks were acquired in inconsistent order, two threads submitting the
+     * same pair of ids in opposite directions would deadlock. Guava's {@code
+     * bulkGet} returns the locks in a canonical order, so a high-contention
+     * mix of overlapping multi-key writes must all drain. A regression that
+     * breaks the ordering hangs the submitter threads and trips the timeout.
+     */
+    @Test
+    @DisplayName("concurrent overlapping multi-key writes drain without deadlock")
+    void concurrentMultiKeyWritesDoNotDeadlock() throws Exception {
+      int poolSize = 6;
+      List<UUID> ids = new ArrayList<>();
+      for (int i = 0; i < poolSize; i++) {
+        ids.add(UUID.randomUUID());
+      }
+
+      int submissions = 300;
+      CountDownLatch completed = new CountDownLatch(submissions);
+      doAnswer(
+              ignored -> {
+                completed.countDown();
+                return null;
+              })
+          .when(mockRepository)
+          .addRelationship(any());
+
+      ExecutorService submitters = Executors.newFixedThreadPool(12);
+      try {
+        for (int i = 0; i < submissions; i++) {
+          UUID from = ids.get(i % poolSize);
+          UUID to = ids.get((i * 5 + 1) % poolSize);
+          EntityRelationship rel =
+              new EntityRelationship()
+                  .withFromId(from)
+                  .withToId(to)
+                  .withFromEntity(Entity.TABLE)
+                  .withToEntity(Entity.TABLE)
+                  .withRelationshipType(Relationship.CONTAINS);
+          submitters.submit(() -> RdfUpdater.addRelationship(rel));
+        }
+        assertTrue(
+            completed.await(30, TimeUnit.SECONDS),
+            "all writes should drain — striped-lock acquisition must be deadlock-free");
+      } finally {
+        submitters.shutdownNow();
+      }
     }
   }
 
