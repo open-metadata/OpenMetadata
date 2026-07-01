@@ -135,13 +135,12 @@ const ExploreTree = ({
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   // Latest selection for the browse-path sync effect to read without taking a
   // dependency on it — that would re-run the effect on every click and fight
-  // the highlight the click handler just set.
+  // the highlight the click handler just set. Mirrored during render (not in an
+  // effect) so it is fresh for any effect regardless of effect declaration
+  // order, and only ever read from effects — never during render.
   const selectedKeysRef = useRef<string[]>([]);
+  selectedKeysRef.current = selectedKeys;
   const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    selectedKeysRef.current = selectedKeys;
-  }, [selectedKeys]);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
