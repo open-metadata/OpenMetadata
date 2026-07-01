@@ -21,6 +21,7 @@ import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import { EntityReference } from '../generated/type/entityReference';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
@@ -35,6 +36,7 @@ import {
   getLineageEdge,
   getLineageEdgeForAPI,
   getLineageTableConfig,
+  getNodeLineageData,
   getNodesBoundsReactFlow,
   getUpdatedColumnsFromEdge,
   getUpstreamDownstreamNodesEdges,
@@ -2154,5 +2156,25 @@ describe('extractTempLineageNodes (via parseLineageData)', () => {
     expect(edges).toHaveLength(1);
     expect(edges[0].fromEntity.fullyQualifiedName).toBe('db.tableA');
     expect(nodes.filter((n) => n.isTempTable)).toHaveLength(0);
+  });
+});
+
+describe('getNodeLineageData', () => {
+  it('should keep lineageSqlQueries on the node so the edge drawer can resolve sqlQueryKey', () => {
+    const lineageSqlQueries = {
+      '1': 'CREATE TABLE t AS SELECT * FROM s',
+    };
+    const node = {
+      id: 'n1',
+      name: 'target',
+      fullyQualifiedName: 'svc.db.sch.target',
+      lineageSqlQueries,
+    } as unknown as EntityReference;
+
+    const result = getNodeLineageData(node) as {
+      lineageSqlQueries?: Record<string, string>;
+    };
+
+    expect(result.lineageSqlQueries).toEqual(lineageSqlQueries);
   });
 });
