@@ -16,7 +16,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
+import {
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -65,12 +68,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(

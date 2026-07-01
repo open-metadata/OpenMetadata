@@ -30,19 +30,22 @@
   justify-content: center;
   border-radius: @border-rad-base;
 
+  // 2.0 redesign pill palette — untitled utility tokens (50 bg / 200 border /
+  // 700 text), referenced as the Tailwind-emitted CSS custom properties so the
+  // shades stay theme-aware.
   &.success {
-    background-color: @green-2;
-    border-color: #23aa66;
-    color: #01361e;
+    background-color: var(--tw-color-utility-success-50);
+    border-color: var(--tw-color-utility-success-200);
+    color: var(--tw-color-utility-success-700);
   }
   &.aborted {
-    background-color: @yellow-1;
-    border-color: #dc6803;
-    color: #6e1902;
+    background-color: var(--tw-color-utility-warning-50);
+    border-color: var(--tw-color-utility-warning-200);
+    color: var(--tw-color-utility-warning-700);
   }
   &.failed {
-    background-color: @red-2;
-    border-color: @red-14;
-    color: #710d05;
+    background-color: var(--tw-color-utility-error-50);
+    border-color: var(--tw-color-utility-error-200);
+    color: var(--tw-color-utility-error-700);
   }
 }

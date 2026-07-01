@@ -16,9 +16,9 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import {
-  GREEN_3,
-  RED_3,
-  YELLOW_2,
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+  DQ_CHART_WARNING_COLOR,
 } from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
@@ -76,17 +76,17 @@ const TestCaseStatusPieChartWidget = ({
         {
           name: t('label.success'),
           value: testCaseSummary.success,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.failed'),
           value: testCaseSummary.failed,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
         {
           name: t('label.aborted'),
           value: testCaseSummary.aborted,
-          color: YELLOW_2,
+          color: DQ_CHART_WARNING_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(
