@@ -847,4 +847,29 @@ describe('BulkEditEntity', () => {
       expect(screen.getByTestId('banner-loading')).toHaveTextContent('false');
     });
   });
+
+  describe('Export hydration error', () => {
+    it('should show a retriable error instead of the loader when export hydration fails', () => {
+      const triggerExport = jest.fn();
+      const clearData = jest.fn();
+      useEntityExportModalProvider.mockReturnValue({
+        triggerExportForBulkEdit: triggerExport,
+        csvExportData: undefined,
+        csvExportError: 'Entity not found: databaseService BigQuery',
+        clearCSVExportData: clearData,
+      });
+
+      renderComponent();
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('banner-message')).toHaveTextContent(
+        'Entity not found: databaseService BigQuery'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.try-again' }));
+
+      expect(clearData).toHaveBeenCalled();
+      expect(triggerExport).toHaveBeenCalled();
+    });
+  });
 });

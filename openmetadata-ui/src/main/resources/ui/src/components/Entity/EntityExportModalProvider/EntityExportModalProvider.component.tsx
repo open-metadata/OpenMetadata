@@ -68,6 +68,8 @@ export const EntityExportModalProvider = ({
 
   const [csvExportData, setCSVExportData] = useState<string>();
 
+  const [csvExportError, setCSVExportError] = useState<string>();
+
   const selectedExportType =
     Form.useWatch<ExportTypes>(['exportType'], form) ?? ExportTypes.CSV;
 
@@ -118,6 +120,7 @@ export const EntityExportModalProvider = ({
     if (exportData === null) {
       return;
     }
+    setCSVExportError(undefined);
     try {
       if (exportType !== ExportTypes.CSV) {
         // Force React to flush the loading state to the DOM before the heavy
@@ -177,6 +180,9 @@ export const EntityExportModalProvider = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
       setDownloading(false);
+      if (isBulkEdit) {
+        setCSVExportError(t('message.unexpected-error'));
+      }
       exportData.onError?.();
     }
   };
@@ -200,6 +206,7 @@ export const EntityExportModalProvider = ({
 
   const handleClearCSVExportData = useCallback(() => {
     setCSVExportData(undefined);
+    setCSVExportError(undefined);
     setCSVExportJob(undefined);
     setExportData(null);
     csvExportJobRef.current = undefined;
@@ -237,6 +244,9 @@ export const EntityExportModalProvider = ({
             .catch((error) => {
               showErrorToast(error as AxiosError);
               setDownloading(false);
+              if (isBulkEdit) {
+                setCSVExportError(t('message.unexpected-error'));
+              }
             });
         } else {
           setDownloading(false);
@@ -245,10 +255,15 @@ export const EntityExportModalProvider = ({
         // Keep downloading state true during progress
         setDownloading(true);
       } else {
+        // FAILED / CANCELLED — surface it to the bulk-edit grid so it stops
+        // waiting on an export that will never arrive.
         setDownloading(false);
+        if (isBulkEdit) {
+          setCSVExportError(response.error ?? t('message.unexpected-error'));
+        }
       }
     },
-    [isBulkEdit, handleCSVExportSuccess]
+    [isBulkEdit, handleCSVExportSuccess, t]
   );
 
   const runTrayExport = useCallback(async (data: ExportData) => {
@@ -290,6 +305,7 @@ export const EntityExportModalProvider = ({
   const providerValue = useMemo(
     () => ({
       csvExportData,
+      csvExportError,
       clearCSVExportData: handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit,
@@ -297,6 +313,7 @@ export const EntityExportModalProvider = ({
     }),
     [
       csvExportData,
+      csvExportError,
       handleClearCSVExportData,
       showModal,
       triggerExportForBulkEdit,

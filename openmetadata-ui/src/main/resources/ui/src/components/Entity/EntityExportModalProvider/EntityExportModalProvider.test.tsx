@@ -385,4 +385,60 @@ describe('EntityExportModalProvider component', () => {
 
     dispatchSpy.mockRestore();
   });
+
+  it('should expose csvExportError when a bulk-edit export job fails', async () => {
+    (useLocation as jest.Mock).mockReturnValue({
+      pathname: '/bulk/edit',
+    });
+    const onExport = jest.fn().mockResolvedValue(mockExportJob);
+
+    const ErrorConsumer = () => {
+      const { triggerExportForBulkEdit, onUpdateCSVExportJob, csvExportError } =
+        useEntityExportModalProvider();
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              triggerExportForBulkEdit({
+                name: 'g1',
+                onExport,
+                exportTypes: [ExportTypes.CSV],
+              })
+            }>
+            Trigger
+          </button>
+          <button
+            onClick={() =>
+              onUpdateCSVExportJob({
+                jobId: mockExportJob.jobId,
+                status: 'FAILED',
+                error: 'Export failed: boom',
+              })
+            }>
+            Fail
+          </button>
+          <div data-testid="export-error">{csvExportError ?? ''}</div>
+        </>
+      );
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <ErrorConsumer />
+      </EntityExportModalProvider>
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Trigger'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Fail'));
+    });
+
+    expect(screen.getByTestId('export-error')).toHaveTextContent(
+      'Export failed: boom'
+    );
+  });
 });

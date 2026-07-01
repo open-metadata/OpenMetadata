@@ -148,8 +148,12 @@ const BulkEditEntity = ({
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
-  const { triggerExportForBulkEdit, csvExportData, clearCSVExportData } =
-    useEntityExportModalProvider();
+  const {
+    triggerExportForBulkEdit,
+    csvExportData,
+    csvExportError,
+    clearCSVExportData,
+  } = useEntityExportModalProvider();
   const [searchText, setSearchText] = useState('');
   const [highlightedRowId, setHighlightedRowId] = useState<string>();
   const gridWrapperRef = useRef<HTMLDivElement | null>(null);
@@ -234,17 +238,8 @@ const BulkEditEntity = ({
   // provider value identity change) cannot spawn duplicate export jobs.
   const triggeredExportKeyRef = useRef<string>();
 
-  useEffect(() => {
-    if (!isExportHydrationRequired) {
-      return;
-    }
-
-    const exportKey = `${entityType}:${fqn}`;
-    if (triggeredExportKeyRef.current === exportKey) {
-      return;
-    }
-    triggeredExportKeyRef.current = exportKey;
-
+  const triggerHydrationExport = useCallback(() => {
+    triggeredExportKeyRef.current = `${entityType}:${fqn}`;
     triggerExportForBulkEdit({
       name: fqn,
       onExport: getBulkEditCSVExportEntityApi(entityType),
@@ -254,7 +249,23 @@ const BulkEditEntity = ({
         triggeredExportKeyRef.current = undefined;
       },
     });
-  }, [entityType, fqn, isExportHydrationRequired, triggerExportForBulkEdit]);
+  }, [entityType, fqn, triggerExportForBulkEdit]);
+
+  useEffect(() => {
+    if (!isExportHydrationRequired) {
+      return;
+    }
+
+    if (triggeredExportKeyRef.current === `${entityType}:${fqn}`) {
+      return;
+    }
+    triggerHydrationExport();
+  }, [entityType, fqn, isExportHydrationRequired, triggerHydrationExport]);
+
+  const handleRetryExport = useCallback(() => {
+    clearCSVExportData();
+    triggerHydrationExport();
+  }, [clearCSVExportData, triggerHydrationExport]);
 
   // Re-parses csvExportData into the grid exactly once per value. Without
   // this guard, onCSVReadComplete's identity churns whenever any of its own
@@ -559,8 +570,22 @@ const BulkEditEntity = ({
         )}
       </div>
 
-      {(isExportHydrationRequired && isEmpty(csvExportData)) ||
-      isLoadingSourceData ? (
+      {isExportHydrationRequired && csvExportError ? (
+        <div className="csv-import-card bulk-edit-card">
+          <Banner
+            className="border-radius"
+            isLoading={false}
+            message={csvExportError}
+            type="error"
+          />
+          <div className="bulk-edit-retry">
+            <Button color="primary" onPress={handleRetryExport}>
+              {t('label.try-again')}
+            </Button>
+          </div>
+        </div>
+      ) : (isExportHydrationRequired && isEmpty(csvExportData)) ||
+        isLoadingSourceData ? (
         <Loader />
       ) : (
         <>

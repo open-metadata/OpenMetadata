@@ -74,6 +74,7 @@ export type ExportData = {
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;
+  csvExportError?: string;
   clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
   triggerExportForBulkEdit: (data: ExportData) => void;
