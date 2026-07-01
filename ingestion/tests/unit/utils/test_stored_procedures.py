@@ -46,14 +46,10 @@ class TestStoredProcedures:
         """Oracle rewrites literal args as functions (e.g. TO_NUMBER(...)).
         The procedure name must still be parsed without capturing the argument."""
         assert (
-            get_procedure_name_from_call(query_text="BEGIN CDC.SP_INSERTA_NUMERO(TO_NUMBER(:1)); END;")
-            == "sp_inserta_numero"
+            get_procedure_name_from_call(query_text="BEGIN SALES.INSERT_NUMBER(TO_NUMBER(:1)); END;") == "insert_number"
         )
 
-        assert (
-            get_procedure_name_from_call(query_text="CALL CDC.SP_INSERTA_NUMERO(TO_NUMBER(12345))")
-            == "sp_inserta_numero"
-        )
+        assert get_procedure_name_from_call(query_text="CALL SALES.INSERT_NUMBER(TO_NUMBER(12345))") == "insert_number"
 
         assert (
             get_procedure_name_from_call(query_text="BEGIN SCHEMA.PROC(TO_DATE('2024-01-01'), NVL(x, 0)); END;")
