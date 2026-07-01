@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box, Card } from '@openmetadata/ui-core-components';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RunGlyph, RunIcon } from '../AgentIcons';
@@ -38,14 +39,15 @@ const StatTile: FC<StatTileProps> = ({ value, label, tone }) => {
   }
 
   return (
-    <div
+    <Card
       style={{
         flex: 1,
         padding: '12px 14px',
         background: '#fff',
         border: '1px solid var(--border-subtle)',
         borderRadius: 10,
-      }}>
+      }}
+      variant="ghost">
       <div
         style={{
           font: '700 20px Inter',
@@ -63,7 +65,7 @@ const StatTile: FC<StatTileProps> = ({ value, label, tone }) => {
         }}>
         {label}
       </div>
-    </div>
+    </Card>
   );
 };
 
@@ -78,8 +80,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
 
   return (
-    <div
-      style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+    <Box style={{ gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -116,18 +117,12 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
                 background: m.bar,
               }}
             />
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                marginBottom: 6,
-              }}>
+            <Box align="center" style={{ gap: 6, marginBottom: 6 }}>
               <RunGlyph size={14} status={r.status as RunStatus} />
               <span style={{ font: '600 11.5px Inter', color: m.fg }}>
                 {label}
               </span>
-            </div>
+            </Box>
             <div
               style={{
                 font: '500 11px Inter',
@@ -149,7 +144,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
           </button>
         );
       })}
-    </div>
+    </Box>
   );
 };
 
@@ -196,34 +191,31 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   }, [onClose]);
 
   return (
-    <div
+    <Box
+      justify="end"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 100,
         background: 'rgba(16,24,40,0.62)',
         backdropFilter: 'blur(3px)',
-        display: 'flex',
-        justifyContent: 'flex-end',
       }}
       onClick={onClose}>
-      <div
+      <Box
+        direction="col"
         style={{
           width: 720,
           maxWidth: '94vw',
           height: '100%',
           background: 'var(--bg-subtle)',
           boxShadow: 'var(--shadow-2xl)',
-          display: 'flex',
-          flexDirection: 'column',
           animation: 'rddrawer .22s ease',
         }}
         onClick={(e) => e.stopPropagation()}>
         {/* header */}
-        <div
+        <Box
+          align="center"
           style={{
-            display: 'flex',
-            alignItems: 'center',
             gap: 12,
             padding: '18px 22px',
             background: '#fff',
@@ -323,7 +315,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               <line x1="18" x2="6" y1="6" y2="18" />
             </svg>
           </button>
-        </div>
+        </Box>
 
         {/* scroll body */}
         <div
@@ -348,10 +340,9 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           {run && m && tot ? (
             <>
               {/* selected run header */}
-              <div
+              <Box
+                align="center"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
                   gap: 10,
                   margin: '22px 0 14px',
                 }}>
@@ -384,10 +375,10 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   }}>
                   {runLabel}
                 </span>
-              </div>
+              </Box>
 
               {/* stat strip */}
-              <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+              <Box style={{ gap: 10, marginBottom: 22 }}>
                 <StatTile
                   label={t('label.records-processed')}
                   value={fmtNum(tot.records)}
@@ -410,22 +401,22 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   tone={tot.errors ? 'error' : undefined}
                   value={fmtNum(tot.errors)}
                 />
-              </div>
+              </Box>
 
               {/* steps card */}
-              <div
+              <Card
                 style={{
                   background: '#fff',
                   border: '1px solid var(--border-default)',
                   borderRadius: 14,
                   padding: '4px 18px',
                   boxShadow: 'var(--shadow-xs)',
-                }}>
-                <div
+                }}
+                variant="ghost">
+                <Box
+                  align="center"
+                  justify="between"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
                     padding: '14px 0 10px',
                     borderBottom: '1px solid var(--border-subtle)',
                   }}>
@@ -443,7 +434,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                     }}>
                     {run.steps.length} {t('label.steps').toLowerCase()}
                   </span>
-                </div>
+                </Box>
                 {run.steps.map((s, idx) => (
                   <RunStepRow
                     isLast={idx === run.steps.length - 1}
@@ -451,7 +442,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                     step={s}
                   />
                 ))}
-              </div>
+              </Card>
             </>
           ) : (
             <div
@@ -467,8 +458,8 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

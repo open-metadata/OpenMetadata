@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Card } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IcChevD, IcPlus } from '../AgentIcons';
@@ -47,8 +47,10 @@ const AgentGroup: FC<AgentGroupProps> = ({
   const runningCount = agents.filter((a) => a.status === 'running').length;
 
   return (
-    <div className="tw:rounded-2xl tw:border tw:border-[color:var(--border-subtle)] tw:bg-[color:var(--bg-subtle)] tw:p-[18px]">
-      <div className="tw:mb-4 tw:flex tw:items-center tw:gap-3">
+    <Card
+      className="tw:rounded-2xl tw:border tw:border-[color:var(--border-subtle)] tw:bg-[color:var(--bg-subtle)] tw:p-[18px]"
+      variant="ghost">
+      <Box align="center" className="tw:mb-4 tw:gap-3">
         <span className="tw:grid tw:h-10 tw:w-10 tw:place-items-center tw:rounded-[10px] tw:border tw:border-[color:var(--border-default)] tw:bg-white tw:text-[color:var(--fg-secondary)]">
           {icon}
         </span>
@@ -81,7 +83,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>
           ))}
-      </div>
+      </Box>
       <div className="tw:grid tw:gap-2.5">
         {agents.map((agent) => (
           <AgentCard
@@ -94,7 +96,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
           />
         ))}
       </div>
-    </div>
+    </Card>
   );
 };
 

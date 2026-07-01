@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RunGlyph } from '../AgentIcons';
@@ -52,10 +53,9 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         border: `1px solid ${bd}`,
         overflow: 'hidden',
       }}>
-      <div
+      <Box
+        align="center"
         style={{
-          display: 'flex',
-          alignItems: 'center',
           gap: 8,
           padding: '10px 12px',
           borderBottom: `1px solid ${bd}`,
@@ -112,7 +112,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
           </svg>
           {copied ? t('label.copied') : t('label.copy')}
         </button>
-      </div>
+      </Box>
       <div style={{ padding: '12px' }}>
         <div
           style={{
@@ -123,9 +123,8 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
           {att.message}
         </div>
         {att.hint && (
-          <div
+          <Box
             style={{
-              display: 'flex',
               gap: 7,
               marginTop: 10,
               padding: '9px 11px',
@@ -155,7 +154,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
               </strong>
               {att.hint}
             </span>
-          </div>
+          </Box>
         )}
         {stackLines.length > 0 && (
           <>
@@ -251,7 +250,7 @@ const RunStepRow: FC<RunStepRowProps> = ({ step, isLast }) => {
         padding: '14px 0',
         borderBottom: isLast ? 0 : '1px solid var(--border-subtle)',
       }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Box align="center" style={{ gap: 12 }}>
         <RunGlyph size={18} status={step.status} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: '600 13.5px Inter', color: 'var(--fg-primary)' }}>
@@ -305,7 +304,7 @@ const RunStepRow: FC<RunStepRowProps> = ({ step, isLast }) => {
             {step.errors} {t('label.error-plural-lowercase')}
           </span>
         )}
-      </div>
+      </Box>
       {step.attention && <AttentionCard att={step.attention} />}
     </div>
   );

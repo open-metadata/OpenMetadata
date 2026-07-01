@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Card } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -68,20 +68,21 @@ const AgentCard: FC<AgentCardProps> = ({
   const unitIcon = agent.unit === 'queries' ? <QueryIcon /> : <AssetIcon />;
 
   return (
-    <div
+    <Card
       className="tw:relative tw:overflow-hidden tw:rounded-[14px] tw:border tw:bg-white tw:px-[18px] tw:py-4 tw:shadow-xs"
       style={{
         borderColor: isFailed ? 'var(--error-200)' : 'var(--border-default)',
-      }}>
+      }}
+      variant="ghost">
       {isRunning && (
         <div
           className="tw:absolute tw:bottom-0 tw:left-0 tw:top-0 tw:w-[3px]"
           style={{ background: 'var(--blue-500)' }}
         />
       )}
-      <div className="tw:flex tw:items-center tw:gap-3.5">
+      <Box align="center" className="tw:gap-3.5">
         {/* identity */}
-        <div className="tw:flex tw:w-[250px] tw:shrink-0 tw:items-center tw:gap-3">
+        <Box align="center" className="tw:w-[250px] tw:shrink-0 tw:gap-3">
           <span
             className="tw:grid tw:h-[38px] tw:w-[38px] tw:shrink-0 tw:place-items-center tw:rounded-[10px]"
             style={{
@@ -98,14 +99,13 @@ const AgentCard: FC<AgentCardProps> = ({
               {agent.type}
             </div>
           </div>
-        </div>
+        </Box>
 
         {/* live status zone */}
         <div className="tw:min-w-0 tw:flex-1">
-          <div
-            className={`tw:flex tw:items-center tw:gap-3.5${
-              isRunning ? ' tw:mb-2' : ''
-            }`}>
+          <Box
+            align="center"
+            className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
             <StatusPill status={agent.status} />
             {isRunning && (
               <Metric
@@ -161,14 +161,14 @@ const AgentCard: FC<AgentCardProps> = ({
                 value={agent.warnings}
               />
             )}
-          </div>
+          </Box>
           {isRunning && <ProgressBar pct={agent.pct} status={agent.status} />}
           {!isRunning && !isQueued && (
-            <div className="tw:mt-2 tw:flex tw:items-center tw:gap-2">
+            <Box align="center" className="tw:mt-2 tw:gap-2">
               <span className="tw:text-[11px] tw:text-[color:var(--fg-muted)]">
                 {t('label.recent-run-plural')}
               </span>
-              <div className="tw:flex tw:gap-1">
+              <Box className="tw:gap-1">
                 {recent.map((rs, index) => (
                   <button
                     className="tw:h-[13px] tw:w-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0"
@@ -181,19 +181,19 @@ const AgentCard: FC<AgentCardProps> = ({
                     onClick={() => onRunDetails(agent, index)}
                   />
                 ))}
-              </div>
+              </Box>
               <button
                 className="tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-[11.5px] tw:font-semibold tw:text-[color:var(--fg-link)]"
                 type="button"
                 onClick={() => onRunDetails(agent, 0)}>
                 {t('label.view-run-history')}
               </button>
-            </div>
+            </Box>
           )}
         </div>
 
         {/* actions */}
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2">
+        <Box align="center" className="tw:shrink-0 tw:gap-2">
           {isFailed ? (
             <Button
               color="secondary"
@@ -224,9 +224,9 @@ const AgentCard: FC<AgentCardProps> = ({
             status={agent.status}
             onAction={(action) => onAction(action, agent)}
           />
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Card>
   );
 };
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 
 interface MetricProps {
@@ -35,7 +36,7 @@ const Metric: FC<MetricProps> = ({ icon, label, tone, value }) => {
       : 'var(--fg-muted)';
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-1.5">
+    <Box align="center" className="tw:gap-1.5">
       <span
         className="tw:grid tw:place-items-center"
         style={{ color: iconColor }}>
@@ -51,7 +52,7 @@ const Metric: FC<MetricProps> = ({ icon, label, tone, value }) => {
           {label}
         </span>
       )}
-    </div>
+    </Box>
   );
 };
 

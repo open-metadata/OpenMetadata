@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Agent } from '../AgentsPage.interface';
@@ -104,15 +105,16 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
       });
 
   return (
-    <div
+    <Box
       className="tw:mb-5 tw:rounded-2xl tw:border tw:p-5"
+      direction="col"
       style={{
         background: allDone
           ? 'var(--success-50)'
           : 'linear-gradient(180deg, var(--blue-25), #fff)',
         borderColor: allDone ? 'var(--success-200)' : 'var(--blue-200)',
       }}>
-      <div className="tw:flex tw:items-center tw:gap-3.5">
+      <Box align="center" className="tw:gap-3.5">
         <span
           className="tw:grid tw:shrink-0 tw:place-items-center tw:rounded-xl"
           style={{
@@ -181,7 +183,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
           </div>
         </div>
 
-        <div className="tw:flex tw:items-center tw:gap-6">
+        <Box align="center" className="tw:gap-6">
           <SummaryStat
             label={t('label.assets-ingested')}
             value={fmtNum(assets)}
@@ -194,8 +196,8 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
           {!allDone && (
             <SummaryStat label={t('label.est-remaining')} value={etaDisplay} />
           )}
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       {!allDone && (
         <div className="tw:mt-4">
@@ -207,8 +209,9 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
               style={{ background: 'var(--blue-600)', width: `${overall}%` }}
             />
           </div>
-          <div
-            className="tw:mt-[7px] tw:flex tw:justify-between"
+          <Box
+            className="tw:mt-[7px]"
+            justify="between"
             style={{
               color: 'var(--fg-muted)',
               fontSize: 11.5,
@@ -218,10 +221,10 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
               {t('message.percent-complete-all-agents', { percent: overall })}
             </span>
             <span>{t('message.leave-page-ingestion-continues')}</span>
-          </div>
+          </Box>
         </div>
       )}
-    </div>
+    </Box>
   );
 };
 
