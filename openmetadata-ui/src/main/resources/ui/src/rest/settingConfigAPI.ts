@@ -14,9 +14,11 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { AISettings } from '../generated/configuration/aiSettings';
 import { RelationCardinality } from '../generated/configuration/glossaryTermRelationSettings';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
+import { MCPConfiguration } from '../generated/configuration/mcpConfiguration';
 import { SearchSettings } from '../generated/configuration/searchSettings';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
@@ -89,12 +91,15 @@ export const testEmailConnection = async (data: { email: string }) => {
 
 export const getSettingsByType = async (
   settingType: SettingType
-): Promise<SearchSettings | LineageSettings> => {
+): Promise<AISettings | LineageSettings | SearchSettings> => {
   const response = await axiosClient.get<Settings>(
     `/system/settings/${settingType}`
   );
 
-  return response.data.config_value as SearchSettings | LineageSettings;
+  return response.data.config_value as
+    | AISettings
+    | LineageSettings
+    | SearchSettings;
 };
 
 export const restoreSettingsConfig = async (settingType: SettingType) => {
@@ -105,11 +110,82 @@ export const restoreSettingsConfig = async (settingType: SettingType) => {
   return response;
 };
 
+export const getMcpConfiguration = async (): Promise<MCPConfiguration> => {
+  const response = await axiosClient.get<MCPConfiguration>(
+    '/system/mcp/config'
+  );
+
+  return response.data;
+};
+
+export const updateMcpConfiguration = async (
+  config: MCPConfiguration
+): Promise<MCPConfiguration> => {
+  const response = await axiosClient.put<MCPConfiguration>(
+    '/system/mcp/config',
+    config,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
 export const getSystemConfig = async () => {
   const response = await axiosClient.get<{
     basePath: string;
     rdfEnabled: boolean;
   }>(`system/config/rdf`);
+
+  return response.data;
+};
+
+export type SearchIndexMappingsList = Record<string, string[]>;
+
+export type SearchIndexMapping = Record<string, unknown>;
+
+export const getSearchIndexMappingsList =
+  async (): Promise<SearchIndexMappingsList> => {
+    const response = await axiosClient.get<SearchIndexMappingsList>(
+      '/system/settings/searchIndexMappings'
+    );
+
+    return response.data;
+  };
+
+export const getSearchIndexMapping = async (
+  language: string,
+  entityType: string,
+  fallback = true
+): Promise<SearchIndexMapping> => {
+  const response = await axiosClient.get<SearchIndexMapping>(
+    `/system/settings/searchIndexMappings/${language}/${entityType}`,
+    { params: { fallback } }
+  );
+
+  return response.data;
+};
+
+export const updateSearchIndexMapping = async (
+  language: string,
+  entityType: string,
+  mapping: SearchIndexMapping
+): Promise<Settings> => {
+  const response = await axiosClient.put<Settings>(
+    `/system/settings/searchIndexMappings/${language}/${entityType}`,
+    mapping,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
+
+  return response.data;
+};
+
+export const resetSearchIndexMapping = async (
+  language: string,
+  entityType: string
+): Promise<Settings> => {
+  const response = await axiosClient.put<Settings>(
+    `/system/settings/searchIndexMappings/reset/${language}/${entityType}`
+  );
 
   return response.data;
 };

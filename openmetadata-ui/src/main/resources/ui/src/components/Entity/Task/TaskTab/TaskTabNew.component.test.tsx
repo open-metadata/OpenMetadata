@@ -340,14 +340,22 @@ jest.mock('../../../../utils/EntityLink', () => {
   };
 });
 
-jest.mock('../../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../../utils/TaskAssigneeUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskAssigneeUtils'),
   fetchOptions: jest.fn(),
   generateOptions: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 jest.mock('../../../../utils/FqnUtils', () => ({
@@ -355,8 +363,11 @@ jest.mock('../../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
+}));
+
+jest.mock('../../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 
@@ -451,7 +462,7 @@ describe('TaskTabNew Component', () => {
       isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     const actualTaskFormSchemaUtils = jest.requireActual(
       '../../../../utils/TaskFormSchemaUtils'
     );
@@ -570,7 +581,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
@@ -598,7 +609,7 @@ describe('TaskTabNew Component', () => {
   it('should render FeedbackApprovalTask for recognizer feedback approval tasks', async () => {
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isRecognizerFeedbackTask.mockReturnValue(true);
 
     await act(async () => {
@@ -610,7 +621,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    expect(screen.getByText('FeedbackApprovalTask')).toBeInTheDocument();
+    expect(await screen.findByText('FeedbackApprovalTask')).toBeInTheDocument();
   });
 
   it('should display action required section for open tasks', async () => {
@@ -665,7 +676,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -738,7 +749,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -764,7 +775,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -819,7 +830,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -845,7 +856,7 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdownButton = screen.getByTestId(
+    const dropdownButton = await screen.findByTestId(
       'glossary-accept-reject-task-dropdown'
     );
 
@@ -873,7 +884,7 @@ describe('TaskTabNew Component', () => {
     } = require('../../../../hooks/useApplicationStore');
     const {
       isRecognizerFeedbackTask,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
 
     isRecognizerFeedbackTask.mockReturnValue(true);
 
@@ -894,7 +905,9 @@ describe('TaskTabNew Component', () => {
       );
     });
 
-    const dropdown = screen.getByTestId('glossary-accept-reject-task-dropdown');
+    const dropdown = await screen.findByTestId(
+      'glossary-accept-reject-task-dropdown'
+    );
 
     expect(dropdown).toBeInTheDocument();
     expect(dropdown).toHaveStyle('pointer-events: none');
@@ -930,7 +943,7 @@ describe('TaskTabNew Component', () => {
     const {
       isTagsTaskType,
       isDescriptionTaskType,
-    } = require('../../../../utils/TasksUtils');
+    } = require('../../../../utils/TaskActionUtils');
     isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 

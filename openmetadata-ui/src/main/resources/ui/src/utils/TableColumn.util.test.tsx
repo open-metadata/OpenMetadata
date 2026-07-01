@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import RichTextEditorPreviewerNew from '../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { TAG_LIST_SIZE } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -108,7 +108,7 @@ describe('TableColumn.util', () => {
       expect(typeof columns[0].render).toBe('function');
     });
 
-    it('should render OwnerLabel component with correct props', () => {
+    it('should render OwnerLabel component with correct props', async () => {
       const columns = ownerTableObject<{ owners?: EntityReference[] }>();
       const owners: EntityReference[] = [
         { id: '1', type: 'user', name: 'User1' },
@@ -116,25 +116,25 @@ describe('TableColumn.util', () => {
       ];
       const renderResult = columns[0].render?.(owners, {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const ownerLabel = container.querySelector('[data-testid="owner-label"]');
+      render(<>{renderResult}</>);
+      const ownerLabel = await screen.findByTestId('owner-label');
 
       expect(ownerLabel).toBeInTheDocument();
       expect(ownerLabel?.textContent).toBe('2');
     });
 
-    it('should render OwnerLabel with empty array when no owners provided', () => {
+    it('should render OwnerLabel with empty array when no owners provided', async () => {
       const columns = ownerTableObject<{ owners?: EntityReference[] }>();
       const renderResult = columns[0].render?.([], {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const ownerLabel = container.querySelector('[data-testid="owner-label"]');
+      render(<>{renderResult}</>);
+      const ownerLabel = await screen.findByTestId('owner-label');
 
       expect(ownerLabel).toBeInTheDocument();
       expect(ownerLabel?.textContent).toBe('0');
     });
 
-    it('should pass correct props to OwnerLabel component', () => {
+    it('should pass correct props to OwnerLabel component', async () => {
       const columns = ownerTableObject<{ owners?: EntityReference[] }>();
       const owners: EntityReference[] = [
         { id: '1', type: 'user', name: 'User1' },
@@ -146,15 +146,17 @@ describe('TableColumn.util', () => {
 
       render(<>{renderResult}</>);
 
-      expect(OwnerLabelMock).toHaveBeenCalledWith(
-        {
-          isCompactView: false,
-          maxVisibleOwners: 4,
-          owners,
-          showLabel: false,
-        },
-        {}
-      );
+      await waitFor(() => {
+        expect(OwnerLabelMock).toHaveBeenCalledWith(
+          {
+            isCompactView: false,
+            maxVisibleOwners: 4,
+            owners,
+            showLabel: false,
+          },
+          {}
+        );
+      });
     });
   });
 
@@ -178,7 +180,7 @@ describe('TableColumn.util', () => {
       expect(typeof columns[0].render).toBe('function');
     });
 
-    it('should render DomainLabel component with correct props', () => {
+    it('should render DomainLabel component with correct props', async () => {
       const columns = domainTableObject<{ domains?: EntityReference[] }>();
       const domains: EntityReference[] = [
         { id: '1', type: 'domain', name: 'Domain1' },
@@ -186,29 +188,25 @@ describe('TableColumn.util', () => {
       ];
       const renderResult = columns[0].render?.(domains, {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const domainLabel = container.querySelector(
-        '[data-testid="domain-label"]'
-      );
+      render(<>{renderResult}</>);
+      const domainLabel = await screen.findByTestId('domain-label');
 
       expect(domainLabel).toBeInTheDocument();
       expect(domainLabel?.textContent).toBe('2');
     });
 
-    it('should render DomainLabel with empty array when no domains provided', () => {
+    it('should render DomainLabel with empty array when no domains provided', async () => {
       const columns = domainTableObject<{ domains?: EntityReference[] }>();
       const renderResult = columns[0].render?.([], {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const domainLabel = container.querySelector(
-        '[data-testid="domain-label"]'
-      );
+      render(<>{renderResult}</>);
+      const domainLabel = await screen.findByTestId('domain-label');
 
       expect(domainLabel).toBeInTheDocument();
       expect(domainLabel?.textContent).toBe('0');
     });
 
-    it('should pass correct props to DomainLabel component', () => {
+    it('should pass correct props to DomainLabel component', async () => {
       const columns = domainTableObject<{ domains?: EntityReference[] }>();
       const domains: EntityReference[] = [
         { id: '1', type: 'domain', name: 'Domain1' },
@@ -220,16 +218,18 @@ describe('TableColumn.util', () => {
 
       render(<>{renderResult}</>);
 
-      expect(DomainLabelMock).toHaveBeenCalledWith(
-        {
-          domains,
-          entityFqn: '',
-          entityId: '',
-          entityType: EntityType.TABLE,
-          hasPermission: false,
-        },
-        {}
-      );
+      await waitFor(() => {
+        expect(DomainLabelMock).toHaveBeenCalledWith(
+          {
+            domains,
+            entityFqn: '',
+            entityId: '',
+            entityType: EntityType.TABLE,
+            hasPermission: false,
+          },
+          {}
+        );
+      });
     });
   });
 
@@ -257,7 +257,7 @@ describe('TableColumn.util', () => {
       expect(typeof columns[0].render).toBe('function');
     });
 
-    it('should render DataProductsContainer component with correct props', () => {
+    it('should render DataProductsContainer component with correct props', async () => {
       const columns = dataProductTableObject<{
         dataProducts?: EntityReference[];
       }>();
@@ -267,31 +267,31 @@ describe('TableColumn.util', () => {
       ];
       const renderResult = columns[0].render?.(dataProducts, {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const dataProductsContainer = container.querySelector(
-        '[data-testid="data-products-container"]'
+      render(<>{renderResult}</>);
+      const dataProductsContainer = await screen.findByTestId(
+        'data-products-container'
       );
 
       expect(dataProductsContainer).toBeInTheDocument();
       expect(dataProductsContainer?.textContent).toBe('2');
     });
 
-    it('should render DataProductsContainer with empty array when no data products provided', () => {
+    it('should render DataProductsContainer with empty array when no data products provided', async () => {
       const columns = dataProductTableObject<{
         dataProducts?: EntityReference[];
       }>();
       const renderResult = columns[0].render?.([], {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const dataProductsContainer = container.querySelector(
-        '[data-testid="data-products-container"]'
+      render(<>{renderResult}</>);
+      const dataProductsContainer = await screen.findByTestId(
+        'data-products-container'
       );
 
       expect(dataProductsContainer).toBeInTheDocument();
       expect(dataProductsContainer?.textContent).toBe('0');
     });
 
-    it('should pass correct props to DataProductsContainer component', () => {
+    it('should pass correct props to DataProductsContainer component', async () => {
       const columns = dataProductTableObject<{
         dataProducts?: EntityReference[];
       }>();
@@ -305,14 +305,16 @@ describe('TableColumn.util', () => {
 
       render(<>{renderResult}</>);
 
-      expect(DataProductsContainerMock).toHaveBeenCalledWith(
-        {
-          dataProducts,
-          hasPermission: false,
-          showHeader: false,
-        },
-        {}
-      );
+      await waitFor(() => {
+        expect(DataProductsContainerMock).toHaveBeenCalledWith(
+          {
+            dataProducts,
+            hasPermission: false,
+            showHeader: false,
+          },
+          {}
+        );
+      });
     });
   });
 
@@ -336,7 +338,7 @@ describe('TableColumn.util', () => {
       expect(typeof columns[0].render).toBe('function');
     });
 
-    it('should render TagsViewer component with correct props from record', () => {
+    it('should render TagsViewer component with correct props from record', async () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
       const tags: TagLabel[] = [
         {
@@ -355,26 +357,26 @@ describe('TableColumn.util', () => {
       const record = { tags };
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const tagsViewer = container.querySelector('[data-testid="tags-viewer"]');
+      render(<>{renderResult}</>);
+      const tagsViewer = await screen.findByTestId('tags-viewer');
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`2:${TAG_LIST_SIZE}`);
     });
 
-    it('should render TagsViewer with empty array when no tags provided', () => {
+    it('should render TagsViewer with empty array when no tags provided', async () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
       const record = {};
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const tagsViewer = container.querySelector('[data-testid="tags-viewer"]');
+      render(<>{renderResult}</>);
+      const tagsViewer = await screen.findByTestId('tags-viewer');
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`0:${TAG_LIST_SIZE}`);
     });
 
-    it('should pass correct props to TagsViewer component', () => {
+    it('should pass correct props to TagsViewer component', async () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
       const tags: TagLabel[] = [
         {
@@ -392,22 +394,24 @@ describe('TableColumn.util', () => {
 
       render(<>{renderResult}</>);
 
-      expect(TagsViewerMock).toHaveBeenCalledWith(
-        {
-          sizeCap: TAG_LIST_SIZE,
-          tags,
-        },
-        {}
-      );
+      await waitFor(() => {
+        expect(TagsViewerMock).toHaveBeenCalledWith(
+          {
+            sizeCap: TAG_LIST_SIZE,
+            tags,
+          },
+          {}
+        );
+      });
     });
 
-    it('should handle records with undefined tags', () => {
+    it('should handle records with undefined tags', async () => {
       const columns = tagTableObject<{ tags?: TagLabel[] }>();
       const record = { tags: undefined };
       const renderResult = columns[0].render?.(undefined, record as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const tagsViewer = container.querySelector('[data-testid="tags-viewer"]');
+      render(<>{renderResult}</>);
+      const tagsViewer = await screen.findByTestId('tags-viewer');
 
       expect(tagsViewer).toBeInTheDocument();
       expect(tagsViewer?.textContent).toBe(`0:${TAG_LIST_SIZE}`);
@@ -451,34 +455,30 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should render RichTextEditorPreviewerNew with markdown text', () => {
+    it('should render RichTextEditorPreviewerNew with markdown text', async () => {
       const columns = descriptionTableObject<{ description?: string }>();
       const description = '# Test Description\n\nThis is a test.';
       const renderResult = columns[0].render?.(description, {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const richTextPreview = container.querySelector(
-        '[data-testid="rich-text-preview"]'
-      );
+      render(<>{renderResult}</>);
+      const richTextPreview = await screen.findByTestId('rich-text-preview');
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe(description);
     });
 
-    it('should render RichTextEditorPreviewerNew with empty string', () => {
+    it('should render RichTextEditorPreviewerNew with empty string', async () => {
       const columns = descriptionTableObject<{ description?: string }>();
       const renderResult = columns[0].render?.('', {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const richTextPreview = container.querySelector(
-        '[data-testid="rich-text-preview"]'
-      );
+      render(<>{renderResult}</>);
+      const richTextPreview = await screen.findByTestId('rich-text-preview');
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe('');
     });
 
-    it('should pass correct props to RichTextEditorPreviewerNew component', () => {
+    it('should pass correct props to RichTextEditorPreviewerNew component', async () => {
       const columns = descriptionTableObject<{ description?: string }>();
       const description = 'Test description text';
 
@@ -486,23 +486,23 @@ describe('TableColumn.util', () => {
 
       render(<>{renderResult}</>);
 
-      expect(RichTextEditorPreviewerNew).toHaveBeenCalledWith(
-        {
-          markdown: description,
-        },
-        {}
-      );
+      await waitFor(() => {
+        expect(RichTextEditorPreviewerNew).toHaveBeenCalledWith(
+          {
+            markdown: description,
+          },
+          {}
+        );
+      });
     });
 
-    it('should handle complex markdown with special characters', () => {
+    it('should handle complex markdown with special characters', async () => {
       const columns = descriptionTableObject<{ description?: string }>();
       const description = '**Bold** _italic_ `code` [link](url)';
       const renderResult = columns[0].render?.(description, {} as never, 0);
 
-      const { container } = render(<>{renderResult}</>);
-      const richTextPreview = container.querySelector(
-        '[data-testid="rich-text-preview"]'
-      );
+      render(<>{renderResult}</>);
+      const richTextPreview = await screen.findByTestId('rich-text-preview');
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview?.textContent).toBe(description);
@@ -522,7 +522,7 @@ describe('TableColumn.util', () => {
       });
     });
 
-    it('should preserve render function when args are provided', () => {
+    it('should preserve render function when args are provided', async () => {
       const args = { width: 400 };
       const columns = descriptionTableObject<{ description?: string }>(args);
 
@@ -531,10 +531,8 @@ describe('TableColumn.util', () => {
 
       const description = 'Test';
       const renderResult = columns[0].render?.(description, {} as never, 0);
-      const { container } = render(<>{renderResult}</>);
-      const richTextPreview = container.querySelector(
-        '[data-testid="rich-text-preview"]'
-      );
+      render(<>{renderResult}</>);
+      const richTextPreview = await screen.findByTestId('rich-text-preview');
 
       expect(richTextPreview).toBeInTheDocument();
       expect(richTextPreview).toHaveTextContent(description);

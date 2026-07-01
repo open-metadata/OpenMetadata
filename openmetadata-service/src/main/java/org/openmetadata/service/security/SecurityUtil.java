@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.BOT_CLAIM;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
@@ -39,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -52,6 +54,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 @Slf4j
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
+  public static final String ISSUER_CLAIM = "iss";
 
   private SecurityUtil() {}
 
@@ -309,6 +312,19 @@ public final class SecurityUtil {
     return null;
   }
 
+  /**
+   * Builds the principal-claims mapping (logical name -> claim name) from the configured
+   * "name:claim" entries. Shared by {@link JwtFilter} and the SSO Test Login dry-run so both resolve
+   * identities with identical semantics.
+   */
+  public static Map<String, String> buildPrincipalClaimsMapping(
+      List<String> jwtPrincipalClaimsMapping) {
+    return listOrEmpty(jwtPrincipalClaimsMapping).stream()
+        .map(s -> s.split(":"))
+        .filter(parts -> parts.length == 2)
+        .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+  }
+
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);
@@ -410,6 +426,28 @@ public final class SecurityUtil {
   public static boolean isBotW(Map<String, ?> claims) {
     Claim isBotClaim = (Claim) claims.get("isBot");
     return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
+  }
+
+  /**
+   * Returns true only when the token was provably minted by OpenMetadata itself. A token qualifies
+   * when its key id matches OpenMetadata's own signing key id and its issuer matches OpenMetadata's
+   * configured issuer. The key id is the trust anchor: the signature has already been verified
+   * against the public key served for that key id, so a matching key id proves OpenMetadata's
+   * private key produced the signature - an external identity provider cannot forge it. The issuer
+   * check is defense in depth against a key id collision in a multi-source JWK provider.
+   */
+  public static boolean isOpenMetadataIssuedToken(
+      Map<String, Claim> claims,
+      String tokenKeyId,
+      String openMetadataIssuer,
+      String openMetadataKeyId) {
+    boolean issuedByOpenMetadata = false;
+    if (!nullOrEmpty(openMetadataIssuer) && !nullOrEmpty(openMetadataKeyId)) {
+      boolean keyIdMatches = openMetadataKeyId.equals(tokenKeyId);
+      boolean issuerMatches = openMetadataIssuer.equals(getClaimOrObject(claims.get(ISSUER_CLAIM)));
+      issuedByOpenMetadata = keyIdMatches && issuerMatches;
+    }
+    return issuedByOpenMetadata;
   }
 
   public static String validateRedirectUri(

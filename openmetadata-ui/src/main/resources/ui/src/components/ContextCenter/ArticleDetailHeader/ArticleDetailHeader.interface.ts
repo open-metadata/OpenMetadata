@@ -36,4 +36,5 @@ export interface ArticleDetailHeaderProps {
   onSave?: () => void;
   onSetThreadLink: (link: string) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
 }

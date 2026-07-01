@@ -29,6 +29,7 @@ jest.mock('./i18next/LocalUtil', () => ({
 }));
 
 import {
+  decodeHtmlEntities,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
@@ -37,6 +38,7 @@ import {
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
+  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -349,6 +351,38 @@ describe('StringUtils', () => {
       const result = removeAttachmentsWithoutUrl(htmlString);
 
       expect(result).toBe('<div class="regular">Keep this</div>');
+    });
+  });
+
+  describe('decodeHtmlEntities', () => {
+    it('should decode numeric HTML entities', () => {
+      expect(decodeHtmlEntities('This is &#98;old text')).toBe(
+        'This is bold text'
+      );
+    });
+
+    it('should decode named HTML entities', () => {
+      expect(decodeHtmlEntities('Tom &amp; Jerry')).toBe('Tom & Jerry');
+    });
+
+    it('should leave plain text unaffected', () => {
+      expect(decodeHtmlEntities('plain text')).toBe('plain text');
+    });
+  });
+
+  describe('stripMarkdown', () => {
+    it('should strip markdown syntax', () => {
+      expect(stripMarkdown('**bold** and `code`')).toBe('bold and code');
+    });
+
+    it('should decode HTML entities left over from markdown stripping', () => {
+      expect(stripMarkdown('This is &#98;old and &amp; italic')).toBe(
+        'This is bold and & italic'
+      );
+    });
+
+    it('should trim surrounding whitespace', () => {
+      expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
     });
   });
 });

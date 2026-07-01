@@ -14,24 +14,19 @@
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
-import type { ArticleCardItem } from '../components/ContextCenter/ArticleCard/ArticleCard.interface';
-import type { DocFile } from '../components/ContextCenter/DocumentsView/DocumentsView.interface';
-import type { UploadedDocumentItem } from '../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
+import { PagingResponse } from 'Models';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
 import { AssetType } from '../generated/attachments/asset';
 import type { ContextFile } from '../generated/entity/data/contextFile';
+import { ListParams } from '../interface/API.interface';
 import type {
   CreateKnowledgePage,
   QuickLink,
 } from '../interface/knowledge-center.interface';
 import { PageType } from '../interface/knowledge-center.interface';
-import {
-  downloadDriveFile,
-  listAssetsByFqn,
-  type ListAssetsByFqnParams,
-} from '../rest/assetAPI';
+import { downloadDriveFile, listAssetsByFqn } from '../rest/assetAPI';
 import { postKnowledgePage } from '../rest/knowledgeCenterAPI';
 import contextCenterClassBase from './ContextCenterClassBase';
 import EntityLink from './EntityLink';
@@ -59,42 +54,14 @@ export const formatBytes = (bytes?: number): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export const assetToDocumentItem = (
-  asset: ContextFile
-): UploadedDocumentItem => ({
-  fileExtension: asset.fileExtension ?? '',
-  id: asset.id,
-  name: getEntityName(asset) ?? '',
-  sizeLabel: formatBytes(asset.fileSize),
-  status: 'processed',
-  updatedBy: asset.updatedBy ?? '',
-  updatedAt: asset.updatedAt ?? 0,
-});
-
-export const contextFileToDocumentItem = (file: ContextFile): DocFile => ({
-  driveFileId: file.id,
-  folderId: file.folder?.id,
-  folderFqn: file.folder?.fullyQualifiedName,
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  fileExtension: file.fileExtension ?? '',
-  updatedAt: file.updatedAt,
-  updatedBy: file.updatedBy,
-});
-
-export const contextFileToUploadedDocumentItem = (
-  file: ContextFile
-): UploadedDocumentItem => ({
-  driveFileId: file.id,
-  id: file.assetId ?? file.id,
-  name: file.displayName ?? file.name,
-  sizeLabel: formatBytes(file.fileSize),
-  status: 'processed',
-  updatedAt: file.updatedAt ?? 0,
-  updatedBy: file.updatedBy ?? '',
-  fileExtension: file.fileExtension ?? '',
-});
+interface KnowledgePageArticleItem {
+  description: string;
+  href?: string;
+  id: string;
+  lastEditedAt: number;
+  tags: { label: string }[];
+  title: string;
+}
 
 export const knowledgePageToArticleItem = (
   data: {
@@ -108,7 +75,7 @@ export const knowledgePageToArticleItem = (
     page?: QuickLink | unknown;
   },
   untitledLabel: string
-): ArticleCardItem => ({
+): KnowledgePageArticleItem => ({
   description: data.description ?? '',
   href:
     data.pageType === PageType.QUICK_LINK
@@ -125,8 +92,8 @@ export const knowledgePageToArticleItem = (
 });
 
 export const fetchContextCenterDocuments = async (
-  params?: ListAssetsByFqnParams
-): Promise<Asset[]> => {
+  params?: ListParams
+): Promise<PagingResponse<Asset[]>> => {
   return listAssetsByFqn(
     CONTEXT_CENTER_DOCUMENTS_FQN,
     AssetType.External,
@@ -164,25 +131,28 @@ export const createArticleKnowledgePage = async (
   }
 };
 
-export const handleAssetDownload = async (file: DocFile) => {
-  let url: string | undefined;
-  let element: HTMLAnchorElement | undefined;
+const DOWNLOAD_URL_REVOKE_DELAY_MS = 1000;
+
+export const downloadBlob = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob);
+  const element = document.createElement('a');
 
   try {
-    const blob = await downloadDriveFile(file.driveFileId ?? file.id);
-    url = URL.createObjectURL(blob);
-    element = document.createElement('a');
     element.href = url;
-    element.download = file.name;
+    element.download = fileName;
     document.body.appendChild(element);
     element.click();
+  } finally {
+    element.remove();
+    setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_REVOKE_DELAY_MS);
+  }
+};
+
+export const handleAssetDownload = async (file: ContextFile) => {
+  try {
+    const blob = await downloadDriveFile(file.id);
+    downloadBlob(blob, file.displayName ?? file.name);
   } catch (err) {
     showErrorToast(err as AxiosError);
-  } finally {
-    element?.remove();
-
-    if (url) {
-      URL.revokeObjectURL(url);
-    }
   }
 };

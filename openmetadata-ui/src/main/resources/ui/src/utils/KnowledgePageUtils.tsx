@@ -31,28 +31,6 @@ import { t } from './i18next/LocalUtil';
 import { getKnowledgePageName } from './KnowledgePagePureUtils';
 import { arraySorterByKey } from './RecentActivityUtils';
 
-export {
-  convertToTreeData,
-  extractKnowledgePageParentFQN,
-  findPageAndParentInTreeData,
-  findPageInTreeData,
-  getContextCenterArticlePath,
-  getContextCenterArticleVersionsPath,
-  getExpandedNodeKeys,
-  getKnowledgePageName,
-  getKnowledgePagePath,
-  getKnowledgePageWidgetList,
-  getKnowledgeVersionsPath,
-  getPageAllChildren,
-  getUpdatePageHierarchy,
-  getUpdatePageHierarchyForDelete,
-  hierarchyPaginationInitialState,
-  hierarchyPaginationReducer,
-  integrateNodesIntoHierarchy,
-  updateTreeData,
-} from './KnowledgePagePureUtils';
-export type { ActionType } from './KnowledgePagePureUtils';
-
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']
 ): void => {

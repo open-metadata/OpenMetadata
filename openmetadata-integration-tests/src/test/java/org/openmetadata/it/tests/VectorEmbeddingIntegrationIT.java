@@ -438,23 +438,16 @@ class VectorEmbeddingIntegrationIT {
   }
 
   private DjlEmbeddingClient createTestEmbeddingClient() throws EmbeddingInitializationException {
-    org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration config =
-        new org.openmetadata.schema.service.configuration.elasticsearch
-            .ElasticSearchConfiguration();
-
-    org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
-        nlSearch =
-            new org.openmetadata.schema.service.configuration.elasticsearch
-                .NaturalLanguageSearchConfiguration();
-
-    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-
-    djlConfig.setEmbeddingModel(
-        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-    nlSearch.setDjl(djlConfig);
-    config.setNaturalLanguageSearch(nlSearch);
-
+    org.openmetadata.schema.configuration.LLMConfiguration config =
+        new org.openmetadata.schema.configuration.LLMConfiguration()
+            .withEmbeddings(
+                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
+                    .withProvider(
+                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
+                    .withDjl(
+                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
+                            .withEmbeddingModel(
+                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
     return new DjlEmbeddingClient(config);
   }
 

@@ -1,0 +1,169 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../styles/variables.less';
+
+// Scene chrome colors are WebGL/stage surface values fixed by the Knowledge
+// Graph 3D design spec; they are not part of the app's token surfaces.
+@kg3d-stage-overlay: rgba(13, 18, 38, 0.72);
+@kg3d-overlay-border: rgba(255, 255, 255, 0.1);
+@kg3d-caption-muted: #717680;
+@kg3d-caption-text: #414651;
+
+.knowledge-graph-3d {
+  height: @asset-details-tab-pane-height;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  &-caption {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 24px 12px;
+    font-size: 12px;
+    color: @kg3d-caption-muted;
+
+    .knowledge-graph-3d-scope {
+      font-weight: 600;
+      color: #181d27;
+    }
+
+    .knowledge-graph-3d-caption-sep {
+      color: #d5d7da;
+    }
+
+    .knowledge-graph-3d-caption-desc {
+      color: @kg3d-caption-text;
+      font-weight: 500;
+    }
+
+    .knowledge-graph-3d-caption-truncated {
+      color: var(--color-text-warning-primary, #b54708);
+      font-weight: 600;
+    }
+  }
+
+  &-stage {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    margin: 0 24px 22px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid @border-color;
+  }
+
+  &-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.kg3d-legend,
+.kg3d-hint {
+  background: @kg3d-stage-overlay;
+  backdrop-filter: blur(8px);
+}
+
+.kg3d-hint {
+  color: #94a3b8;
+}
+
+.kg3d-panel {
+  // Near-opaque so the busy 3D scene behind doesn't wash out the text.
+  background: rgba(11, 16, 33, 0.96);
+  backdrop-filter: blur(16px);
+  animation: kg3dPanelIn 0.22s ease;
+
+  // The detail panels are always a dark glass surface (over the 3D scene),
+  // independent of the app's light/dark theme. Pin the core-components text
+  // tokens to explicit light values so `tw:text-*` stays readable regardless
+  // of whether the .dark-mode token flip applies.
+  --color-text-primary: #f6f8fc;
+  --color-text-secondary: #dde4f0;
+  --color-text-tertiary: #aab3c7;
+  --color-text-quaternary: #aab3c7;
+  --text-color-primary: #f6f8fc;
+  --text-color-secondary: #dde4f0;
+  --text-color-tertiary: #aab3c7;
+}
+
+@keyframes kg3dPanelIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.kg3d-fullscreen-btn {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid @kg3d-overlay-border;
+  background: @kg3d-stage-overlay;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  color: #eaf0fb;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  &:hover {
+    background: rgba(13, 18, 38, 0.85);
+  }
+}
+
+.full-screen-knowledge-graph-3d {
+  position: fixed;
+  top: @om-navbar-height;
+  left: @sidebar-width;
+  width: calc(100vw - @sidebar-width);
+  height: calc(100vh - @om-navbar-height - 60px);
+  z-index: 999;
+  background: @white;
+
+  &.sidebar-collapsed {
+    left: calc(72px + @padding-mlg);
+    width: calc(100vw - 72px - @size-xl);
+  }
+
+  &.sidebar-expanded {
+    left: calc(228px + @padding-mlg);
+    width: calc(100vw - 228px - @size-xl);
+  }
+}

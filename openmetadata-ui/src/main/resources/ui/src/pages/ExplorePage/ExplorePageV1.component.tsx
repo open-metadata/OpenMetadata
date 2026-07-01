@@ -19,6 +19,7 @@ import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch'
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
   ExploreProps,
+  ExploreQuickFilterField,
   ExploreSearchIndex,
   SearchHitCounts,
   UrlParams,
@@ -39,11 +40,11 @@ import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
-  fetchEntityData,
   findActiveSearchIndex,
-  generateTabItems,
+  getBrowsePathQueryFilter,
   parseSearchParams,
-} from '../../utils/ExploreUtils';
+} from '../../utils/ExplorePureUtils';
+import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -58,7 +59,8 @@ const ExplorePageV1: FC<unknown> = () => {
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, tourMockSearchResults, tourMockSearchHitCounts } =
+    useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
@@ -72,9 +74,6 @@ const ExplorePageV1: FC<unknown> = () => {
   const { searchCriteria } = useApplicationStore();
 
   const [searchResults, setSearchResults] =
-    useState<SearchResponse<ExploreSearchIndex>>();
-
-  const [tourSearchResults, setTourSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
@@ -101,6 +100,7 @@ const ExplorePageV1: FC<unknown> = () => {
   const {
     parsedSearch,
     searchQueryParam,
+    browseFields,
     sortValue,
     sortOrder,
     page,
@@ -109,6 +109,13 @@ const ExplorePageV1: FC<unknown> = () => {
   } = useMemo(() => {
     return parseSearchParams(location.search, globalPageSize, queryFilter);
   }, [location.search, queryFilter]);
+
+  // ES filter contributed by the browse-tree location. It ANDs with the
+  // dropdown quickFilter so browsing never clears filters and vice versa.
+  const browseQueryFilter = useMemo(
+    () => getBrowsePathQueryFilter(browseFields),
+    [browseFields]
+  );
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
     setPreference({ globalPageSize: size ?? globalPageSize });
@@ -217,6 +224,32 @@ const ExplorePageV1: FC<unknown> = () => {
     [history, parsedSearch]
   );
 
+  // A tree click may update the browse location AND the Type quick filter
+  // (leaf rows). Both params must land in one navigate — two sequential
+  // navigates against the same memoized parsedSearch clobber each other.
+  const handleTreeSelect = useCallback(
+    (payload: {
+      browseFields: ExploreQuickFilterField[];
+      quickFilter?: QueryFilterInterface;
+    }) => {
+      const { browseFields: updatedBrowseFields, quickFilter } = payload;
+      if (quickFilter) {
+        setAdvancedSearchQuickFilters(quickFilter);
+      }
+      navigate({
+        search: Qs.stringify({
+          ...parsedSearch,
+          browsePath: isEmpty(updatedBrowseFields)
+            ? undefined
+            : JSON.stringify(updatedBrowseFields),
+          ...(quickFilter ? { quickFilter: JSON.stringify(quickFilter) } : {}),
+          page: 1,
+        }),
+      });
+    },
+    [parsedSearch]
+  );
+
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
@@ -308,25 +341,18 @@ const ExplorePageV1: FC<unknown> = () => {
   const getCached = useExploreCache((s) => s.getCached);
   const setCached = useExploreCache((s) => s.setCached);
 
-  // Effect for handling tour — lazy-load the ~113 KB mock dataset only when the tour is open.
   useEffect(() => {
-    if (isTourOpen) {
-      import('../../constants/mockTourData.constants').then(
-        ({ mockSearchData, MOCK_EXPLORE_PAGE_COUNT }) => {
-          setSearchHitCounts(MOCK_EXPLORE_PAGE_COUNT);
-          setTourSearchResults(
-            mockSearchData as unknown as SearchResponse<ExploreSearchIndex>
-          );
-        }
-      );
+    if (isTourOpen && tourMockSearchHitCounts) {
+      setSearchHitCounts(tourMockSearchHitCounts);
     }
-  }, [isTourOpen]);
+  }, [isTourOpen, tourMockSearchHitCounts]);
 
   // Create a dependency string to trigger fetch only when dependencies actually change. Also
   // doubles as the SWR cache key for {@link useExploreCache}.
   const fetchDependencies = useMemo(() => {
     return JSON.stringify({
       quickFilter: parsedSearch.quickFilter,
+      browsePath: parsedSearch.browsePath,
       queryFilter,
       searchQueryParam,
       sortValue,
@@ -338,6 +364,7 @@ const ExplorePageV1: FC<unknown> = () => {
     });
   }, [
     parsedSearch.quickFilter,
+    parsedSearch.browsePath,
     queryFilter,
     searchQueryParam,
     sortValue,
@@ -372,7 +399,13 @@ const ExplorePageV1: FC<unknown> = () => {
     const cacheKey = fetchDependencies;
     const cached = getCached<CachedSearchState>(cacheKey);
 
-    const updatedQuickFilters = getAdvancedSearchQuickFilters();
+    // Single injection point for the browse-tree location: pre-combining here
+    // scopes the tab counts, search and NLQ queries inside fetchEntityData
+    // without leaking browse terms into the dropdown chip state.
+    const updatedQuickFilters = getCombinedQueryFilterObject(
+      getAdvancedSearchQuickFilters(),
+      browseQueryFilter
+    );
 
     // Setters wrapped to (a) capture the resolved values for the eventual cache write and
     // (b) drop the update entirely if the user has navigated to a different search since the
@@ -544,11 +577,13 @@ const ExplorePageV1: FC<unknown> = () => {
     <ExploreV1
       activeTabKey={searchIndex}
       aggregations={updatedAggregations}
+      browseFields={browseFields}
+      browseQueryFilter={browseQueryFilter}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={isTourOpen ? tourSearchResults : searchResults}
+      searchResults={isTourOpen ? tourMockSearchResults : searchResults}
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
@@ -563,6 +598,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangeSortValue={(sortVal) => {
         handleSortValueChange(1, sortVal);
       }}
+      onTreeSelect={handleTreeSelect}
     />
   );
 };

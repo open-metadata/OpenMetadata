@@ -144,7 +144,8 @@
         "type": "keyword"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "path": {
         "type": "keyword"
@@ -180,7 +181,8 @@
                 "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "displayName": {
             "type": "keyword",
@@ -455,7 +457,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

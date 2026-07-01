@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,6 +89,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 public class LineageResourceIT {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String LINEAGE_PATH = "/v1/lineage";
 
   @Test
   void testAddLineageBetweenTables() throws Exception {
@@ -686,6 +689,39 @@ public class LineageResourceIT {
     }
   }
 
+  private JsonNode getLineageEdgeByName(OpenMetadataClient client, Table from, Table to)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                LINEAGE_PATH + "/getLineageEdge" + lineageEdgeByNamePath(from, to),
+                null);
+    return OBJECT_MAPPER.readTree(response);
+  }
+
+  private void deleteLineageByName(OpenMetadataClient client, Table from, Table to) {
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.DELETE, LINEAGE_PATH + lineageEdgeByNamePath(from, to), null);
+  }
+
+  private String lineageEdgeByNamePath(Table from, Table to) {
+    return "/table/name/"
+        + encodePathSegment(from.getFullyQualifiedName())
+        + "/table/name/"
+        + encodePathSegment(to.getFullyQualifiedName());
+  }
+
+  private RequestOptions jsonPatchRequestOptions() {
+    return RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
+  }
+
+  private String encodePathSegment(String segment) {
+    return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+  }
+
   private EntityLineage getLineage(
       OpenMetadataClient client,
       String entityType,
@@ -845,6 +881,130 @@ public class LineageResourceIT {
     deleteLineage(client, table1.getEntityReference(), table2.getEntityReference());
     cleanupTable(client, table1);
     cleanupTable(client, table2);
+  }
+
+  @Test
+  void testAddLineageByFQNPath() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_path_source");
+    Table targetTable = createTable(client, namespace, "fqn_path_target");
+    Pipeline pipeline = createPipeline(client, namespace, "fqn_path_pipeline");
+
+    LineageDetails details =
+        new LineageDetails()
+            .withDescription("FQN path lineage")
+            .withPipeline(pipeline.getEntityReference());
+
+    String result =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                LINEAGE_PATH + lineageEdgeByNamePath(sourceTable, targetTable),
+                details);
+    assertNotNull(result);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .anyMatch(
+                edge ->
+                    edge.getFromEntity().equals(sourceTable.getId())
+                        && edge.getToEntity().equals(targetTable.getId())));
+
+    JsonNode edge = getLineageEdgeByName(client, sourceTable, targetTable).get("edge");
+    assertEquals(pipeline.getId().toString(), edge.get("pipeline").get("id").asText());
+
+    deleteLineageByName(client, sourceTable, targetTable);
+    cleanupPipeline(client, pipeline);
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testPatchAndDeleteLineageEdgeByFQN() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_patch_source");
+    Table targetTable = createTable(client, namespace, "fqn_patch_target");
+
+    addLineage(client, sourceTable, targetTable);
+
+    JsonNode patch =
+        OBJECT_MAPPER.readTree(
+            """
+            [{"op":"add","path":"/description","value":"Updated by FQN route"}]
+            """);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            LINEAGE_PATH + lineageEdgeByNamePath(sourceTable, targetTable),
+            patch,
+            jsonPatchRequestOptions());
+
+    JsonNode edge = getLineageEdgeByName(client, sourceTable, targetTable).get("edge");
+    assertEquals("Updated by FQN route", edge.get("description").asText());
+
+    deleteLineageByName(client, sourceTable, targetTable);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .noneMatch(
+                downstreamEdge ->
+                    downstreamEdge.getFromEntity().equals(sourceTable.getId())
+                        && downstreamEdge.getToEntity().equals(targetTable.getId())));
+
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
+  }
+
+  @Test
+  void testDeleteLineageBySourceByFQN() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table sourceTable = createTable(client, namespace, "fqn_source_delete_source");
+    Table targetTable = createTable(client, namespace, "fqn_source_delete_target");
+
+    LineageDetails details =
+        new LineageDetails()
+            .withDescription("Query lineage by FQN")
+            .withSource(LineageDetails.Source.QUERY_LINEAGE);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(sourceTable.getEntityReference())
+                    .withToEntity(targetTable.getEntityReference())
+                    .withLineageDetails(details));
+
+    executeAddLineage(client, addLineage);
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            LINEAGE_PATH
+                + "/source/name/table/"
+                + encodePathSegment(targetTable.getFullyQualifiedName())
+                + "/type/"
+                + encodePathSegment(LineageDetails.Source.QUERY_LINEAGE.value()),
+            null);
+
+    EntityLineage lineage = getLineage(client, "table", sourceTable.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .noneMatch(
+                downstreamEdge ->
+                    downstreamEdge.getFromEntity().equals(sourceTable.getId())
+                        && downstreamEdge.getToEntity().equals(targetTable.getId())));
+
+    cleanupTable(client, sourceTable);
+    cleanupTable(client, targetTable);
   }
 
   @Test
@@ -2352,5 +2512,86 @@ public class LineageResourceIT {
       data.forEach(out::add);
     }
     return out;
+  }
+
+  // ====================================================================================
+  // Special-character FQN tests — quoted identifiers (dots, spaces)
+  // ====================================================================================
+
+  @Test
+  void testSpecialCharFQNLineageRoundtrip() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+
+    Table dotTable = createTableWithSpecialName(client, namespace, "special.dot.table");
+    Table spaceTable = createTableWithSpecialName(client, namespace, "space name table");
+    Table targetTable = createTable(client, namespace, "special_char_normal_target");
+
+    // OM quotes only segments containing dots (the FQN separator).
+    // Spaces are stored as literal characters in the FQN with no double-quote wrapping.
+    assertTrue(
+        dotTable.getFullyQualifiedName().contains("\""),
+        "Dot-name table FQN should be quoted by OM: " + dotTable.getFullyQualifiedName());
+    assertFalse(
+        spaceTable.getFullyQualifiedName().contains("\""),
+        "Space-name table FQN should NOT be quoted (spaces are literal): "
+            + spaceTable.getFullyQualifiedName());
+
+    try {
+      assertFQNLineageRoundtrip(client, dotTable, targetTable);
+      assertFQNLineageRoundtrip(client, spaceTable, targetTable);
+    } finally {
+      cleanupTable(client, dotTable);
+      cleanupTable(client, spaceTable);
+      cleanupTable(client, targetTable);
+    }
+  }
+
+  private void assertFQNLineageRoundtrip(OpenMetadataClient client, Table from, Table to)
+      throws Exception {
+    String path = lineageEdgeByNamePath(from, to);
+
+    String putResult =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PUT,
+                LINEAGE_PATH + path,
+                new LineageDetails().withDescription("special char FQN roundtrip"));
+    assertNotNull(putResult, "PUT by FQN returned null for: " + from.getFullyQualifiedName());
+
+    EntityLineage lineage = getLineage(client, "table", from.getId().toString(), "0", "1");
+    assertTrue(
+        lineage.getDownstreamEdges().stream()
+            .anyMatch(
+                e -> e.getFromEntity().equals(from.getId()) && e.getToEntity().equals(to.getId())),
+        "Edge not in graph after PUT by FQN: " + from.getFullyQualifiedName());
+
+    JsonNode edgeResponse = getLineageEdgeByName(client, from, to);
+    assertNotNull(
+        edgeResponse.get("edge"),
+        "GET by FQN returned no edge field for: " + from.getFullyQualifiedName());
+
+    client.getHttpClient().executeForString(HttpMethod.DELETE, LINEAGE_PATH + path, null);
+
+    EntityLineage lineageAfter = getLineage(client, "table", from.getId().toString(), "0", "1");
+    assertTrue(
+        lineageAfter.getDownstreamEdges().stream()
+            .noneMatch(
+                e -> e.getFromEntity().equals(from.getId()) && e.getToEntity().equals(to.getId())),
+        "Edge still in graph after DELETE by FQN: " + from.getFullyQualifiedName());
+  }
+
+  private Table createTableWithSpecialName(
+      OpenMetadataClient client, TestNamespace namespace, String specialName) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+
+    CreateTable createTable = new CreateTable();
+    createTable.setName(namespace.prefix(specialName));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    return client.tables().create(createTable);
   }
 }

@@ -60,7 +60,8 @@ export const ToggleBase = ({
         slim && isSelected && 'tw:ring-transparent',
         classes.root,
         className
-      )}>
+      )}
+      data-testid="toggle-root">
       <div
         className={cx(
           'tw:rounded-full tw:bg-fg-white tw:shadow-sm',
