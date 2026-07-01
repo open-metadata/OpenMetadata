@@ -2067,6 +2067,12 @@ test.describe('Context Center Permissions', () => {
           dataStewardPage.getByTestId('tags-container').getByTestId('add-tag')
         ).toBeVisible();
         await expect(
+          dataStewardPage
+            .getByTestId('KnowledgePanel.GlossaryTerms')
+            .getByTestId('glossary-container')
+            .getByTestId('add-tag')
+        ).toBeVisible();
+        await expect(
           dataStewardPage.getByTestId('add-domain')
         ).not.toBeVisible();
         await expect(

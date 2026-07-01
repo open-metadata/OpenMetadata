@@ -19,8 +19,9 @@ import {
   Response,
 } from '@playwright/test';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
+import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
-import { uuid } from './common';
+import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
 // ─── Document types ───────────────────────────────────────────────────────────
@@ -439,3 +440,203 @@ export async function waitForDocumentPermanentlyDeleted(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
   );
 }
+export const ARTICLE_DESCRIPTION =
+  'Playwright article description for card detail check';
+export const QUICK_LINK_URL = 'https://example.com';
+export const QUICK_LINK_DESCRIPTION =
+  'Playwright quick link description for card detail check';
+
+export const deleteArticleByFqn = async (
+  apiContext: APIRequestContext,
+  fqn: string
+) => {
+  const res = await apiContext.get(
+    `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
+  );
+
+  if (!res.ok()) {
+    return;
+  }
+
+  const data = await res.json();
+
+  if (data.id) {
+    await apiContext
+      .delete(
+        `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+      )
+      .catch(() => undefined);
+  }
+};
+
+export const createArticleViaApi = async (
+  apiContext: APIRequestContext,
+  data?: Partial<{
+    name: string;
+    displayName: string;
+    description: string;
+    owners: Array<{ id: string; type: string }>;
+  }>
+): Promise<KnowledgeCenterResponseDataType> => {
+  const response = await apiContext.post('/api/v1/contextCenter/pages', {
+    data: {
+      name: data?.name ?? `cc_article_${uuid()}`,
+      displayName: data?.displayName ?? `CC Article ${uuid()}`,
+      description: data?.description ?? ARTICLE_DESCRIPTION,
+      pageType: 'Article',
+      page: { publicationDate: Date.now(), relatedArticles: [] },
+      ...(data?.owners && { owners: data.owners }),
+    },
+  });
+  const body = await response.json();
+
+  expect(response.status(), JSON.stringify(body)).toBe(201);
+
+  return body;
+};
+
+export const createQuickLinkViaApi = async (
+  apiContext: APIRequestContext,
+  displayName: string,
+  url = QUICK_LINK_URL
+): Promise<KnowledgeCenterResponseDataType> => {
+  const response = await apiContext.post('/api/v1/contextCenter/pages', {
+    data: {
+      name: `cc_quicklink_${uuid()}`,
+      displayName,
+      description: QUICK_LINK_DESCRIPTION,
+      pageType: 'QuickLink',
+      page: { url, publicationDate: Date.now(), relatedArticles: [] },
+    },
+  });
+  const body = await response.json();
+
+  expect(response.status(), JSON.stringify(body)).toBe(201);
+
+  return body;
+};
+
+export const scrollHierarchyToNode = async (
+  page: Page,
+  displayName: string
+) => {
+  const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
+  const node = hierarchy.getByTestId(`page-node-${displayName}`);
+
+  await hierarchy.waitFor({ state: 'visible' });
+
+  let previousLastNode = '';
+  for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
+    await hierarchy.hover();
+    await page.mouse.wheel(0, 3000);
+    await expect(
+      hierarchy.locator('[data-testid^="page-node-"]').first()
+    ).toBeVisible();
+
+    const lastNode = await hierarchy
+      .locator('[data-testid^="page-node-"]')
+      .last()
+      .getAttribute('data-testid');
+
+    if (lastNode === previousLastNode) {
+      break;
+    }
+    previousLastNode = lastNode ?? '';
+  }
+
+  await expect(node).toBeVisible();
+
+  return node;
+};
+
+export const createArticleFromButton = async (page: Page) => {
+  await page.getByTestId('create-knowledge-page-btn').click();
+  await page.getByTestId('create-article-btn').click();
+};
+
+export const getArticleFqnFromUrl = (page: Page) =>
+  decodeURIComponent(
+    page.url().split('/context-center/articles/').pop()?.split('/')[0] ?? ''
+  );
+
+export const cleanupCurrentArticle = async (page: Page) => {
+  const browser = page.context().browser();
+  const fqn = getArticleFqnFromUrl(page);
+
+  if (!browser || !fqn) {
+    return;
+  }
+
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await deleteArticleByFqn(apiContext, fqn);
+  await afterAction();
+};
+
+export const verifyArticleSearch = async (page: Page, searchTerm: string) => {
+  const header = page.getByTestId('context-center-header');
+  const searchInput = header
+    .getByTestId('search-input')
+    .getByLabel('Search Articles');
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.url().includes('index=page')
+  );
+
+  await searchInput.fill(searchTerm);
+  const searchRes = await searchResPromise;
+  expect(searchRes.status()).toBe(200);
+
+  return searchInput;
+};
+
+export const assertArticleEditorSaved = async (page: Page) => {
+  await expect(page.getByTestId('content-change-state')).toHaveText('Saved');
+};
+
+export const scrollListingToCard = async (page: Page, displayName: string) => {
+  const listing = page.getByTestId('knowledge-page-listing');
+  const card = listing.getByTestId(`knowledge-card-${displayName}`);
+
+  await listing.waitFor({ state: 'visible' });
+
+  let previousLastCard = '';
+  for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
+    await listing.hover();
+    await page.mouse.wheel(0, 3000);
+    await expect(
+      listing.locator('[data-testid^="knowledge-card-"]').first()
+    ).toBeVisible();
+
+    const lastCard = await listing
+      .locator('[data-testid^="knowledge-card-"]')
+      .last()
+      .getAttribute('data-testid');
+
+    if (lastCard === previousLastCard) {
+      break;
+    }
+    previousLastCard = lastCard ?? '';
+  }
+
+  await expect(card).toBeVisible();
+
+  return card;
+};
+
+const ARTICLE_DETAIL_ROUTE = `${ARTICLES_URL}/:fqn`;
+
+export const navigateToArticle = async (page: Page, articleFqn: string) => {
+  const getArticleResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
+      response.status() === 200
+  );
+
+  const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
+  await page.goto(articlePath);
+  await getArticleResponse;
+  await waitForAllLoadersToDisappear(page);
+};
