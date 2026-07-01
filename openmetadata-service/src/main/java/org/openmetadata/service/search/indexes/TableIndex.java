@@ -14,7 +14,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
+public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AIContextIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",

@@ -181,6 +181,200 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
+  private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
+  private volatile boolean chunkIndexEnsured = false;
+
+  /**
+   * Name of the dedicated chunk index (issue #4789). Lives alongside the entity indices; the
+   * {@code dataAssetEmbeddings} alias is attached to it so the vector read path sees chunk docs
+   * together with legacy entity-doc embeddings during migration.
+   */
+  public String getChunkIndexName() {
+    String clusterAlias = null;
+    try {
+      clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    } catch (Exception ignored) {
+      // No SearchRepository in standalone/test contexts; fall back to the unprefixed name.
+    }
+    return clusterAlias == null || clusterAlias.isEmpty()
+        ? CHUNK_INDEX_BASE
+        : clusterAlias.toLowerCase(java.util.Locale.ROOT) + "_" + CHUNK_INDEX_BASE;
+  }
+
+  @Override
+  public void updateEntityEmbeddingChunks(EntityInterface entity) {
+    ensureChunkIndex();
+    updateEntityEmbeddingChunks(entity, getChunkIndexName());
+  }
+
+  @Override
+  public void deleteEntityChunks(String parentId) {
+    try {
+      deleteChunksByParent(getChunkIndexName(), parentId);
+    } catch (Exception e) {
+      LOG.debug("Failed to delete chunks for {}: {}", parentId, e.getMessage());
+    }
+  }
+
+  /**
+   * Idempotently creates the dedicated chunk index (dynamic:false mapping with the KNN vector and
+   * the filter fields the vector query uses) and attaches the {@code dataAssetEmbeddings} alias so
+   * reads cover both legacy entity-doc embeddings and the new chunk docs.
+   */
+  private void ensureChunkIndex() {
+    if (!chunkIndexEnsured) {
+      synchronized (this) {
+        if (!chunkIndexEnsured) {
+          createChunkIndexIfAbsent();
+          chunkIndexEnsured = true;
+        }
+      }
+    }
+  }
+
+  private void createChunkIndexIfAbsent() {
+    String indexName = getChunkIndexName();
+    try {
+      boolean exists = client.indices().exists(e -> e.index(indexName)).value();
+      if (!exists) {
+        executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
+        LOG.info("Created dedicated vector chunk index {}", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
+    }
+  }
+
+  private String buildChunkIndexMapping() {
+    var method =
+        MAPPER
+            .createObjectNode()
+            .put("name", "hnsw")
+            .put("engine", "lucene")
+            .put("space_type", "cosinesimil")
+            .set("parameters", MAPPER.createObjectNode().put("m", 48).put("ef_construction", 256));
+    var embedding =
+        MAPPER
+            .createObjectNode()
+            .put("type", "knn_vector")
+            .put("dimension", embeddingClient.getDimension())
+            .set("method", method);
+    var properties = MAPPER.createObjectNode();
+    properties.set("embedding", embedding);
+    for (String keyword :
+        List.of(
+            "parentId", "fingerprint", "entityType", "name", "displayName", "fullyQualifiedName")) {
+      properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
+    }
+    for (String integer : List.of("chunkIndex", "chunkCount")) {
+      properties.set(integer, MAPPER.createObjectNode().put("type", "integer"));
+    }
+    for (String text : List.of("textToEmbed", "textToLLMContext")) {
+      properties.set(text, MAPPER.createObjectNode().put("type", "text"));
+    }
+    properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
+    properties.set("tags", nestedKeyword("tagFQN"));
+    properties.set("domains", nestedKeyword("name"));
+    properties.set("tier", nestedKeyword("tagFQN"));
+    properties.set(
+        "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
+    var mappings = MAPPER.createObjectNode().put("dynamic", "false").set("properties", properties);
+    var root = MAPPER.createObjectNode();
+    root.set(
+        "settings",
+        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
+    root.set("mappings", mappings);
+    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
+    return root.toString();
+  }
+
+  private com.fasterxml.jackson.databind.node.ObjectNode nestedKeyword(String field) {
+    return (com.fasterxml.jackson.databind.node.ObjectNode)
+        MAPPER
+            .createObjectNode()
+            .set(
+                "properties",
+                MAPPER
+                    .createObjectNode()
+                    .set(field, MAPPER.createObjectNode().put("type", "keyword")));
+  }
+
+  /**
+   * Multi-chunk write path (issue #4789): index one standalone document per body chunk into the
+   * dedicated chunk index, keyed {@code <parentId>_<chunkIndex>}, after deleting the entity's stale
+   * chunks so a shrinking body never leaves orphans. Skips work when the whole-body fingerprint is
+   * unchanged. Unlike the legacy {@link #updateEntityEmbedding} partial-update, each chunk doc is a
+   * complete, independently filterable/rankable document.
+   */
+  public void updateEntityEmbeddingChunks(EntityInterface entity, String chunkIndexName) {
+    try {
+      String parentId = entity.getId().toString();
+      if (chunkFingerprintUnchanged(chunkIndexName, parentId, entity)) {
+        LOG.debug("Skipping chunk embedding for {} - fingerprint unchanged", parentId);
+        return;
+      }
+      List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+      deleteChunksByParent(chunkIndexName, parentId);
+      bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+    } catch (Exception e) {
+      LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  private boolean chunkFingerprintUnchanged(
+      String indexName, String parentId, EntityInterface entity) {
+    String existing = getExistingChunkFingerprint(indexName, parentId);
+    String current = VectorDocBuilder.computeFingerprintForEntity(entity);
+    return current.equals(existing);
+  }
+
+  private String getExistingChunkFingerprint(String indexName, String parentId) {
+    String fingerprint = null;
+    try {
+      String query =
+          "{\"size\":1,\"_source\":[\"fingerprint\"],\"query\":{\"term\":{\"parentId\":\""
+              + VectorSearchQueryBuilder.escape(parentId)
+              + "\"}}}";
+      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
+      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+      if (hits.isArray() && !hits.isEmpty()) {
+        fingerprint = hits.get(0).path("_source").path("fingerprint").asText(null);
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "No existing chunk fingerprint for {} in {}: {}", parentId, indexName, e.getMessage());
+    }
+    return fingerprint;
+  }
+
+  private void deleteChunksByParent(String indexName, String parentId) {
+    String body =
+        "{\"query\":{\"term\":{\"parentId\":\""
+            + VectorSearchQueryBuilder.escape(parentId)
+            + "\"}}}";
+    executeGenericRequest("POST", "/" + indexName + "/_delete_by_query?refresh=true", body);
+  }
+
+  private void bulkIndexChunks(
+      String indexName, String parentId, List<Map<String, Object>> chunkDocs) throws IOException {
+    if (chunkDocs.isEmpty()) {
+      return;
+    }
+    StringBuilder bulk = new StringBuilder();
+    for (int i = 0; i < chunkDocs.size(); i++) {
+      bulk.append("{\"index\":{\"_index\":\"")
+          .append(indexName)
+          .append("\",\"_id\":\"")
+          .append(parentId)
+          .append('_')
+          .append(i)
+          .append("\"}}\n")
+          .append(MAPPER.writeValueAsString(chunkDocs.get(i)))
+          .append('\n');
+    }
+    executeGenericRequest("POST", "/_bulk?refresh=true", bulk.toString());
+  }
+
   @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(
@@ -271,9 +465,29 @@ public class OpenSearchVectorService implements VectorIndexService {
       hitMap.put("_score", score);
 
       String parentId = (String) hitMap.getOrDefault("parentId", hit.path("_id").asText());
-      byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>()).add(hitMap);
+      List<Map<String, Object>> group =
+          byParent.computeIfAbsent(parentId, ignored -> new ArrayList<>());
+      // During chunk-index migration the same chunk can surface twice — once from the legacy
+      // entity-doc embedding and once from the dedicated chunk index. Keep the first (higher
+      // scoring) occurrence per chunkIndex.
+      if (!isDuplicateChunk(group, hitMap.get("chunkIndex"))) {
+        group.add(hitMap);
+      }
     }
     return pageHitCount;
+  }
+
+  private static boolean isDuplicateChunk(List<Map<String, Object>> group, Object chunkIndex) {
+    boolean duplicate = false;
+    if (chunkIndex != null) {
+      for (Map<String, Object> member : group) {
+        if (chunkIndex.equals(member.get("chunkIndex"))) {
+          duplicate = true;
+          break;
+        }
+      }
+    }
+    return duplicate;
   }
 
   private static long extractTotalHits(JsonNode root) {

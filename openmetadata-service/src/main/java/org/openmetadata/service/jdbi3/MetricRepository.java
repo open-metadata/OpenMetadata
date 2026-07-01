@@ -73,9 +73,10 @@ import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
-  private static final String UPDATE_FIELDS = "relatedMetrics";
-  private static final String PATCH_FIELDS = "relatedMetrics";
+  private static final String UPDATE_FIELDS = "relatedMetrics,appliedToAssets";
+  private static final String PATCH_FIELDS = "relatedMetrics,appliedToAssets";
   static final String FIELD_DERIVED_FROM = "derivedFrom";
+  static final String FIELD_APPLIED_TO_ASSETS = "appliedToAssets";
 
   public MetricRepository() {
     super(
@@ -101,6 +102,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   public void prepare(Metric metric, boolean update) {
     validateRelatedTerms(metric, metric.getRelatedMetrics());
     validateCustomUnitOfMeasurement(metric);
+    metric.setAppliedToAssets(EntityUtil.populateEntityReferences(metric.getAppliedToAssets()));
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -125,6 +127,10 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
+    metric.setAppliedToAssets(
+        fields.contains(FIELD_APPLIED_TO_ASSETS)
+            ? getAppliedToAssets(metric)
+            : metric.getAppliedToAssets());
     if (fields.contains(FIELD_DERIVED_FROM)) {
       metric.setDerivedFrom(getDerivedFrom(metric));
     }
@@ -133,9 +139,19 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+    entity.setAppliedToAssets(
+        fields.contains(FIELD_APPLIED_TO_ASSETS) ? entity.getAppliedToAssets() : null);
     if (!fields.contains(FIELD_DERIVED_FROM)) {
       entity.setDerivedFrom(null);
     }
+  }
+
+  /**
+   * Data assets this metric applies to. Edge direction: from=metric to=asset via APPLIED_TO;
+   * findTo resolves the to-side (the assets).
+   */
+  private List<EntityReference> getAppliedToAssets(Metric metric) {
+    return findTo(metric.getId(), METRIC, Relationship.APPLIED_TO, null);
   }
 
   /**
@@ -159,7 +175,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("relatedMetrics");
+    return List.of("relatedMetrics", "appliedToAssets");
   }
 
   @Override
@@ -182,10 +198,13 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void storeRelationships(Metric metric) {
-    // Nothing to do
     for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
       addRelationship(
           metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO, true);
+    }
+    for (EntityReference asset : listOrEmpty(metric.getAppliedToAssets())) {
+      addRelationship(
+          metric.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
     }
   }
 

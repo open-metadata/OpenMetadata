@@ -110,30 +110,155 @@ public class VectorDocBuilder {
     BODY_TEXT_EXTRACTORS.put(entityType, extractor);
   }
 
+  /**
+   * Build one standalone embedding document per body chunk (issue #4789). Each doc carries its own
+   * per-chunk {@code embedding}/{@code textToEmbed}/{@code textToLLMContext} plus {@code chunkIndex},
+   * a shared {@code parentId}/{@code fingerprint}, and the KNN filter fields (entityType, deleted,
+   * tags, domains, tier) so the docs can live in the dedicated {@code dataAssetEmbeddings} chunk
+   * index and still be filtered by the vector query. Callers index each doc under the id
+   * {@code <parentId>_<chunkIndex>}.
+   */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
-    Map<String, Object> doc = new HashMap<>(buildEmbeddingFields(entity, embeddingClient));
-
+    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingClient);
     if (entity instanceof GlossaryTerm term) {
-      List<TermRelation> relatedTerms = term.getRelatedTerms();
-      if (relatedTerms != null && !relatedTerms.isEmpty()) {
-        List<Map<String, Object>> relatedTermDocs = new ArrayList<>();
-        for (TermRelation rel : relatedTerms) {
-          EntityReference ref = rel.getTerm();
-          if (ref == null) continue;
-          Map<String, Object> refMap = new HashMap<>();
-          if (ref.getId() != null) refMap.put("id", ref.getId().toString());
-          if (ref.getName() != null) refMap.put("name", ref.getName());
-          if (ref.getType() != null) refMap.put("type", ref.getType());
-          if (ref.getFullyQualifiedName() != null)
-            refMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
-          relatedTermDocs.add(refMap);
+      List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
+      if (!relatedTermDocs.isEmpty()) {
+        for (Map<String, Object> doc : docs) {
+          doc.put("relatedTerms", relatedTermDocs);
         }
-        doc.put("relatedTerms", relatedTermDocs);
       }
     }
+    return docs;
+  }
 
-    return List.of(doc);
+  private static List<Map<String, Object>> buildRelatedTermRefs(GlossaryTerm term) {
+    List<Map<String, Object>> refs = new ArrayList<>();
+    List<TermRelation> relatedTerms =
+        term.getRelatedTerms() != null ? term.getRelatedTerms() : Collections.emptyList();
+    for (TermRelation rel : relatedTerms) {
+      EntityReference ref = rel.getTerm();
+      if (ref != null) {
+        Map<String, Object> refMap = new HashMap<>();
+        if (ref.getId() != null) refMap.put("id", ref.getId().toString());
+        if (ref.getName() != null) refMap.put("name", ref.getName());
+        if (ref.getType() != null) refMap.put("type", ref.getType());
+        if (ref.getFullyQualifiedName() != null) {
+          refMap.put("fullyQualifiedName", ref.getFullyQualifiedName());
+        }
+        refs.add(refMap);
+      }
+    }
+    return refs;
+  }
+
+  private record ChunkContext(
+      EntityInterface entity,
+      String entityType,
+      String parentId,
+      String fingerprint,
+      String metaLight,
+      String semanticMetaLight,
+      List<String> chunks,
+      List<String> semanticChunks) {}
+
+  /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
+  public static List<Map<String, Object>> buildChunkFields(
+      EntityInterface entity, EmbeddingClient embeddingClient) {
+    String entityType = entity.getEntityReference().getType();
+    ChunkContext ctx =
+        new ChunkContext(
+            entity,
+            entityType,
+            entity.getId().toString(),
+            computeFingerprintForEntity(entity),
+            buildMetaLightText(entity, entityType),
+            buildSemanticMetaLightText(entity, entityType),
+            TextChunkManager.chunk(buildBodyText(entity, entityType)),
+            TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)));
+    List<Map<String, Object>> docs = new ArrayList<>(ctx.chunks().size());
+    for (int index = 0; index < ctx.chunks().size(); index++) {
+      docs.add(buildChunkDoc(ctx, index, embeddingClient));
+    }
+    return docs;
+  }
+
+  private static Map<String, Object> buildChunkDoc(
+      ChunkContext ctx, int index, EmbeddingClient embeddingClient) {
+    int chunkCount = ctx.chunks().size();
+    String semanticChunk =
+        index < ctx.semanticChunks().size() ? ctx.semanticChunks().get(index) : "";
+    String textToEmbed = joinSemanticParts(ctx.semanticMetaLight(), semanticChunk);
+    String textToLLMContext =
+        String.format(
+            "%s%s | chunk %d/%d", ctx.metaLight(), ctx.chunks().get(index), index + 1, chunkCount);
+    Map<String, Object> fields = new HashMap<>();
+    fields.put("embedding", embeddingClient.embed(textToEmbed));
+    fields.put("textToLLMContext", textToLLMContext);
+    fields.put("textToEmbed", textToEmbed);
+    fields.put("chunkIndex", index);
+    fields.put("chunkCount", chunkCount);
+    fields.put("parentId", ctx.parentId());
+    fields.put("fingerprint", ctx.fingerprint());
+    addFilterFields(fields, ctx.entity(), ctx.entityType());
+    return fields;
+  }
+
+  /**
+   * Copies onto each chunk doc the fields the vector KNN query filters on (see
+   * VectorSearchQueryBuilder): {@code entityType}, {@code deleted}, the identity fields the read
+   * side returns, and {@code tags}/{@code domains}/{@code tier}. Chunk docs live in a dedicated
+   * index, so unlike the legacy entity-doc path these fields must be materialized here.
+   */
+  private static void addFilterFields(
+      Map<String, Object> fields, EntityInterface entity, String entityType) {
+    fields.put("entityType", entityType);
+    fields.put("deleted", Boolean.TRUE.equals(entity.getDeleted()));
+    putIfPresent(fields, "name", entity.getName());
+    putIfPresent(fields, "fullyQualifiedName", entity.getFullyQualifiedName());
+    putIfPresent(fields, "displayName", entity.getDisplayName());
+    List<Map<String, Object>> tags = tagFqnObjects(entity);
+    if (!tags.isEmpty()) {
+      fields.put("tags", tags);
+    }
+    List<Map<String, Object>> domains = domainNameObjects(entity);
+    if (!domains.isEmpty()) {
+      fields.put("domains", domains);
+    }
+    String tier = extractTierLabel(entity);
+    if (tier != null) {
+      fields.put("tier", Map.of("tagFQN", tier));
+    }
+  }
+
+  private static void putIfPresent(Map<String, Object> fields, String key, String value) {
+    if (value != null && !value.isBlank()) {
+      fields.put(key, value);
+    }
+  }
+
+  private static List<Map<String, Object>> tagFqnObjects(EntityInterface entity) {
+    List<Map<String, Object>> tags = new ArrayList<>();
+    List<TagLabel> tagLabels =
+        entity.getTags() != null ? entity.getTags() : Collections.emptyList();
+    for (TagLabel tag : tagLabels) {
+      if (tag.getTagFQN() != null) {
+        tags.add(Map.of("tagFQN", tag.getTagFQN()));
+      }
+    }
+    return tags;
+  }
+
+  private static List<Map<String, Object>> domainNameObjects(EntityInterface entity) {
+    List<Map<String, Object>> domains = new ArrayList<>();
+    List<EntityReference> domainRefs =
+        entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
+    for (EntityReference domain : domainRefs) {
+      if (domain.getName() != null) {
+        domains.add(Map.of("name", domain.getName()));
+      }
+    }
+    return domains;
   }
 
   /**
@@ -349,7 +474,8 @@ public class VectorDocBuilder {
     List<String> phrases = new ArrayList<>();
     appendSubjectPhrase(phrases, entity, entityType);
 
-    BiConsumer<List<String>, EntityInterface> enricher = SEMANTIC_ENRICHERS.get(entityType);
+    BiConsumer<List<String>, EntityInterface> enricher =
+        entityType == null ? null : SEMANTIC_ENRICHERS.get(entityType);
     if (enricher != null) {
       enricher.accept(phrases, entity);
     }

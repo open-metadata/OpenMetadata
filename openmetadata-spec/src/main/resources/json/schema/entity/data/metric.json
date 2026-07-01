@@ -144,6 +144,10 @@
       "description": "Related Metrics.",
       "$ref": "../../type/entityReferenceList.json"
     },
+    "appliedToAssets": {
+      "description": "Data assets (tables, columns, dashboards, etc.) this metric is computed on or applies to. Establishes a first-class metric-to-asset relationship so the metric can be surfaced as context for those assets.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"

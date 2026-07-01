@@ -146,13 +146,22 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                   "Only return knowledge pills extracted from the context entity (file or page) with this id",
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("sourceEntityId")
-          UUID sourceEntityId) {
+          UUID sourceEntityId,
+      @Parameter(
+              description =
+                  "Only return knowledge pills whose primaryEntity (the data asset the pill applies to) has this id",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("primaryEntityId")
+          UUID primaryEntityId) {
     ListFilter filter = new ListFilter(include);
     if (sourceFileId != null) {
       filter.addQueryParam("sourceFileId", sourceFileId.toString());
     }
     if (sourceEntityId != null) {
       filter.addQueryParam("sourceEntityId", sourceEntityId.toString());
+    }
+    if (primaryEntityId != null) {
+      filter.addQueryParam("primaryEntityId", primaryEntityId.toString());
     }
     ResultList<ContextMemory> memories =
         addHref(

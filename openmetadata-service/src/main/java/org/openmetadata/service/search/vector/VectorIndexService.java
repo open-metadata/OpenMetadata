@@ -13,6 +13,16 @@ public interface VectorIndexService {
 
   void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
 
+  /**
+   * Multi-chunk write path (issue #4789): index one document per body chunk into the dedicated
+   * chunk index so long articles are fully retrievable. Default is a no-op for backends without
+   * chunk support.
+   */
+  default void updateEntityEmbeddingChunks(EntityInterface entity) {}
+
+  /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
+  default void deleteEntityChunks(String parentId) {}
+
   default VectorSearchResponse search(
       String query,
       Map<String, List<String>> filters,

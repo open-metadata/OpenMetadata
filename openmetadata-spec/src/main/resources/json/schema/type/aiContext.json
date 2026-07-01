@@ -1,0 +1,435 @@
+{
+    "$id": "https://open-metadata.org/schema/type/aiContext.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "AIContext",
+    "description": "AI Context (also called a Context Profile) for a data asset. A normalized, LLM-ready projection of an asset's structural signals and the business knowledge attached to it (glossary terms, metrics, Context Center articles). It is assembled server-side so any agent can pull the full context for an asset of any type (table, dashboard, pipeline, topic, ...) in a single call to give strong signals to downstream tasks such as SQL generation. The common envelope (identity, knowledge, lineage) applies to every entity type; the type-specific structural details live under `assetContext`.",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.type.AIContext",
+    "definitions": {
+        "knowledgeItem": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.KnowledgeItem",
+            "description": "A single piece of business knowledge attached to the asset (glossary term definition, metric definition, or Context Center article/pill).",
+            "properties": {
+                "type": {
+                    "description": "The entity type of the knowledge item.",
+                    "type": "string",
+                    "enum": ["glossaryTerm", "metric", "page", "contextMemory"]
+                },
+                "name": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
+                "fullyQualifiedName": {
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "content": {
+                    "description": "The definition, business rule, metric expression, or article body for this item.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "fieldContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.FieldContext",
+            "description": "Compact, query-relevant description of a field. Reused across the columnar/field-bearing asset types (table columns, topic schema fields, search-index fields, ML features, container columns, API request/response fields).",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "dataType": {
+                    "type": "string"
+                },
+                "constraint": {
+                    "description": "Field-level constraint (e.g. PRIMARY_KEY, NOT_NULL), when applicable.",
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "foreignKey": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.ForeignKey",
+            "description": "A foreign-key relationship derived from a table's constraints. Provides explicit join keys to other tables.",
+            "properties": {
+                "columns": {
+                    "description": "Local column names participating in the foreign key.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "referredColumns": {
+                    "description": "Fully qualified names of the referenced columns in the parent table(s).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "relationshipType": {
+                    "description": "Cardinality of the relationship (e.g. MANY_TO_ONE).",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "joinHint": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.JoinHint",
+            "description": "An empirical join between a column of this table and a column of another table, derived from observed query usage. A strong, data-driven signal for how tables are joined in practice.",
+            "properties": {
+                "column": {
+                    "description": "Local column name on this table.",
+                    "type": "string"
+                },
+                "joinedWith": {
+                    "description": "Fully qualified name of the column this column is frequently joined with.",
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "joinCount": {
+                    "description": "Number of observed joins over the recorded window.",
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tableContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.TableContext",
+            "description": "Table-specific structural context (schema, keys, joins) that gives strong signals for SQL generation.",
+            "properties": {
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fieldContext"
+                    }
+                },
+                "primaryKey": {
+                    "description": "Column names forming the primary key.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "foreignKeys": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/foreignKey"
+                    }
+                },
+                "frequentJoins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/joinHint"
+                    }
+                },
+                "partitionColumns": {
+                    "description": "Column names the table is partitioned on.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "schemaDefinition": {
+                    "description": "DDL for tables and views, when available.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "dashboardContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.DashboardContext",
+            "description": "Dashboard-specific context: the charts it renders, its data models, and the tables it is ultimately backed by.",
+            "properties": {
+                "charts": {
+                    "description": "Fully qualified names of the charts on this dashboard.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "dataModels": {
+                    "description": "Fully qualified names of the data models backing this dashboard.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "sourceTables": {
+                    "description": "Fully qualified names of upstream tables that feed this dashboard.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "project": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "pipelineContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.PipelineContext",
+            "description": "Pipeline-specific context: its tasks and the assets it reads from and writes to.",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fieldContext"
+                    }
+                },
+                "sourceAssets": {
+                    "description": "Fully qualified names of assets this pipeline reads from.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "sinkAssets": {
+                    "description": "Fully qualified names of assets this pipeline writes to.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "scheduleInterval": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "topicContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.TopicContext",
+            "description": "Topic-specific context: its message schema and partitioning.",
+            "properties": {
+                "schemaType": {
+                    "type": "string"
+                },
+                "schemaFields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fieldContext"
+                    }
+                },
+                "partitions": {
+                    "type": "integer"
+                },
+                "cleanupPolicies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "genericAssetContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.GenericAssetContext",
+            "description": "Fallback structural context for asset types without a dedicated context (container, mlmodel, searchIndex, storedProcedure, apiEndpoint, ...). Holds the asset's fields/columns and an optional definition (DDL, code, or query).",
+            "properties": {
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/fieldContext"
+                    }
+                },
+                "definition": {
+                    "description": "DDL, stored-procedure code, or query text backing this asset, when available.",
+                    "type": "string"
+                },
+                "sourceAssets": {
+                    "description": "Fully qualified names of upstream assets, when known.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "columnProfileSummary": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.ColumnProfileSummary",
+            "description": "Latest profiled shape of a column: the signals an LLM needs to write accurate filters (null ratio, cardinality, observed value bounds).",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "nullProportion": {
+                    "description": "Fraction of rows where this column is null (0..1).",
+                    "type": "number"
+                },
+                "distinctCount": {
+                    "description": "Number of distinct values observed.",
+                    "type": "number"
+                },
+                "min": {
+                    "description": "Observed minimum value (numeric/date columns).",
+                    "type": "string"
+                },
+                "max": {
+                    "description": "Observed maximum value (numeric/date columns).",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "dataQuality": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.DataQuality",
+            "description": "Data-quality standing of the asset, so an agent can caveat its answer when tests are failing or an incident is open.",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "passed": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "aborted": {
+                    "type": "integer"
+                },
+                "openIncidents": {
+                    "description": "Number of currently-open (unresolved) data-quality incidents on the asset.",
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false
+        },
+        "observability": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.Observability",
+            "description": "Runtime signals about the asset: its profiled shape (for constructing accurate queries) and its data-quality/incident standing (for qualifying answers). Volatile — assembled on read, not part of the semantic embedding.",
+            "properties": {
+                "rowCount": {
+                    "description": "Latest profiled row count.",
+                    "type": "number"
+                },
+                "profiledAt": {
+                    "description": "Timestamp of the latest profile run.",
+                    "$ref": "basic.json#/definitions/timestamp"
+                },
+                "columnProfiles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/columnProfileSummary"
+                    }
+                },
+                "dataQuality": {
+                    "$ref": "#/definitions/dataQuality"
+                }
+            },
+            "additionalProperties": false
+        },
+        "assetContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.AssetContext",
+            "description": "Type-specific structural context. Exactly one sub-context is populated, selected by the asset's entity type. New asset types are added as new optional sub-contexts here without breaking existing consumers.",
+            "properties": {
+                "table": {
+                    "$ref": "#/definitions/tableContext"
+                },
+                "dashboard": {
+                    "$ref": "#/definitions/dashboardContext"
+                },
+                "pipeline": {
+                    "$ref": "#/definitions/pipelineContext"
+                },
+                "topic": {
+                    "$ref": "#/definitions/topicContext"
+                },
+                "generic": {
+                    "$ref": "#/definitions/genericAssetContext"
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    "properties": {
+        "fullyQualifiedName": {
+            "description": "Fully qualified name of the asset this context describes.",
+            "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "entityType": {
+            "description": "Entity type of the asset (table, dashboard, pipeline, topic, ...).",
+            "type": "string"
+        },
+        "displayName": {
+            "type": "string"
+        },
+        "description": {
+            "type": "string"
+        },
+        "tags": {
+            "description": "Classification tags and tier applied to the asset (tag fully qualified names).",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "glossaryTerms": {
+            "description": "Approved glossary terms attached to the asset (asset-level and field/column-level).",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/knowledgeItem"
+            }
+        },
+        "metrics": {
+            "description": "Metrics associated with the asset.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/knowledgeItem"
+            }
+        },
+        "articles": {
+            "description": "Context Center articles and knowledge pills attached to the asset.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/knowledgeItem"
+            }
+        },
+        "upstream": {
+            "description": "Immediate upstream lineage (fully qualified names).",
+            "type": "array",
+            "items": {
+                "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+            }
+        },
+        "downstream": {
+            "description": "Immediate downstream lineage (fully qualified names).",
+            "type": "array",
+            "items": {
+                "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+            }
+        },
+        "assetContext": {
+            "description": "Type-specific structural context for the asset.",
+            "$ref": "#/definitions/assetContext"
+        },
+        "observability": {
+            "description": "Runtime signals (profiled shape + data-quality standing) for query construction and answer qualification.",
+            "$ref": "#/definitions/observability"
+        },
+        "fingerprint": {
+            "description": "Content fingerprint of this context, including attached knowledge, used to detect staleness.",
+            "type": "string"
+        },
+        "generatedAt": {
+            "description": "Time at which this context was assembled.",
+            "$ref": "basic.json#/definitions/timestamp"
+        }
+    },
+    "additionalProperties": false
+}
