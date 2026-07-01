@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import com.google.common.util.concurrent.Striped;
 import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -31,6 +33,13 @@ public class RdfUpdater {
   private static final AtomicLong droppedWrites = new AtomicLong(0L);
   private static final ConcurrentMap<UUID, CompletableFuture<Void>> keyedWriteTails =
       new ConcurrentHashMap<>();
+  // Per-key write ordering is guarded by a bounded pool of stripe locks rather
+  // than one global monitor over every submission: writes whose keys fall on
+  // disjoint stripes no longer block each other, while writes sharing a key
+  // still serialize. 64 stripes gives ample submission-path concurrency — the
+  // critical section is only a few map ops (the Fuseki write runs off-lock).
+  private static final int WRITE_LOCK_STRIPES = 64;
+  private static final Striped<Lock> writeLocks = Striped.lock(WRITE_LOCK_STRIPES);
 
   private static RdfRepository rdfRepository;
 
@@ -241,8 +250,13 @@ public class RdfUpdater {
   }
 
   private static void submitKeyedAsync(String description, Set<UUID> writeKeys, Runnable task) {
+    // Lock only the stripes these keys map to, acquired in Guava's canonical
+    // (ascending stripe-index) order so concurrent multi-key submissions can
+    // never deadlock. Submissions on disjoint stripes run this section
+    // concurrently; only those sharing a stripe serialize.
+    List<Lock> heldLocks = lockWriteStripes(writeKeys);
     CompletableFuture<Void> next;
-    synchronized (keyedWriteTails) {
+    try {
       CompletableFuture<?>[] previous =
           writeKeys.stream()
               .map(
@@ -260,20 +274,40 @@ public class RdfUpdater {
       for (UUID key : writeKeys) {
         keyedWriteTails.put(key, next);
       }
+    } finally {
+      unlockWriteStripes(heldLocks);
     }
 
+    // Cleanup needs no lock: remove(key, next) is a compare-and-remove on the
+    // ConcurrentHashMap, so it only clears the tail THIS write installed and is
+    // a no-op once a newer write has replaced it. It runs inside whenComplete,
+    // so any tail removed here is already complete — a concurrent submit that
+    // observes it still chains after a finished future, preserving ordering.
     next.whenComplete(
         (ignored, error) -> {
-          synchronized (keyedWriteTails) {
-            for (UUID key : writeKeys) {
-              keyedWriteTails.remove(key, next);
-            }
+          for (UUID key : writeKeys) {
+            keyedWriteTails.remove(key, next);
           }
           pendingWrites.decrementAndGet();
           if (error != null) {
             LOG.error("RDF {} failed while running in keyed async queue", description, error);
           }
         });
+  }
+
+  private static List<Lock> lockWriteStripes(Set<UUID> writeKeys) {
+    List<Lock> heldLocks = new ArrayList<>();
+    for (Lock lock : writeLocks.bulkGet(writeKeys)) {
+      lock.lock();
+      heldLocks.add(lock);
+    }
+    return heldLocks;
+  }
+
+  private static void unlockWriteStripes(List<Lock> heldLocks) {
+    for (int i = heldLocks.size() - 1; i >= 0; i--) {
+      heldLocks.get(i).unlock();
+    }
   }
 
   private static Set<UUID> writeKeys(UUID... keys) {
