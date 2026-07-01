@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.json.JsonData;
@@ -188,7 +189,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int size,
       int from,
       int k,
-      double threshold) {
+      double threshold,
+      String preference) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
@@ -207,8 +209,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         String queryJson =
             VectorSearchQueryBuilder.build(
                 queryVector, overFetchSize, rawOffset, k, filters, threshold);
-        String responseBody =
-            executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
+        String endpoint =
+            SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
+        String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
         JsonNode hitsNode = root.path("hits").path("hits");

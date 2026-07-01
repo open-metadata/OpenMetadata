@@ -15,21 +15,17 @@ import {
   Box,
   ButtonUtility,
   Card,
-  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy06, XClose } from '@untitledui/icons';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import CreateMemoryModal from '../CreateMemoryModal/CreateMemoryModal.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
+import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -37,140 +33,14 @@ import {
 
 const MetaRow: FC<MetaRowProps> = ({ label, value }) => (
   <Box align="center" className="tw:py-1.5" justify="between">
-    <Typography className="tw:text-gray-500" size="text-sm">
+    <Typography className="tw:text-quaternary" size="text-sm">
       {label}
     </Typography>
-    <Typography className="tw:text-gray-900" size="text-sm" weight="medium">
+    <Typography className="tw:text-primary" size="text-sm" weight="medium">
       {value}
     </Typography>
   </Box>
 );
-
-const ExtractedMemoriesCard: FC<{ fileId: string }> = ({ fileId }) => {
-  const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-  const [memories, setMemories] = useState<ContextMemory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
-
-  const fetchMemories = useCallback(
-    async (isCancelled?: () => boolean) => {
-      try {
-        setIsLoading(true);
-        const response = await getListContextMemories({
-          sourceFileId: fileId,
-          fields: 'owners,sourceFile',
-          limit: 50,
-        });
-        if (!isCancelled?.()) {
-          setMemories(response.data);
-        }
-      } catch {
-        if (!isCancelled?.()) {
-          setMemories([]);
-        }
-      } finally {
-        if (!isCancelled?.()) {
-          setIsLoading(false);
-        }
-      }
-    },
-    [fileId]
-  );
-
-  useEffect(() => {
-    let isStale = false;
-    fetchMemories(() => isStale);
-
-    return () => {
-      isStale = true;
-    };
-  }, [fetchMemories]);
-
-  const handleMemoryDeleted = useCallback(() => {
-    setMemoryToView(undefined);
-    fetchMemories();
-  }, [fetchMemories]);
-
-  const canDeleteMemory =
-    (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
-      false) ||
-    Boolean(currentUser?.isAdmin);
-
-  return (
-    // shrink-0: Card sets overflow-hidden, which lets flexbox shrink it to fit
-    // the scroll container and clip the list instead of letting the body scroll
-    <Card className="tw:p-4 tw:shrink-0" data-testid="extracted-memories-card">
-      <div className="tw:mb-3">
-        <Typography
-          className="tw:text-gray-500 tw:uppercase"
-          size="text-xs"
-          weight="semibold">
-          {t('label.memory-plural')}
-          {!isLoading && memories.length > 0 ? ` (${memories.length})` : ''}
-        </Typography>
-      </div>
-      {isLoading ? (
-        <Box direction="col" gap={2}>
-          <Skeleton height="14px" variant="rounded" width="80%" />
-          <Skeleton height="14px" variant="rounded" width="60%" />
-        </Box>
-      ) : memories.length === 0 ? (
-        <Typography className="tw:text-gray-400" size="text-sm">
-          {t('label.no-entity', { entity: t('label.memory-plural') })}
-        </Typography>
-      ) : (
-        <Box direction="col">
-          {memories.map((memory) => (
-            <Box
-              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-gray-50"
-              data-testid={`extracted-memory-${memory.id}`}
-              direction="col"
-              key={memory.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => setMemoryToView(memory)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  setMemoryToView(memory);
-                }
-              }}>
-              <Typography
-                ellipsis
-                className="tw:text-gray-900"
-                size="text-sm"
-                weight="medium">
-                {memory.title ?? getEntityName(memory)}
-              </Typography>
-              {memory.question && (
-                <Typography
-                  ellipsis
-                  className="tw:text-gray-500"
-                  size="text-xs">
-                  {memory.question}
-                </Typography>
-              )}
-            </Box>
-          ))}
-        </Box>
-      )}
-
-      {memoryToView && (
-        <CreateMemoryModal
-          viewOnly
-          canDelete={canDeleteMemory}
-          currentUserName={currentUser?.name}
-          isOpen={Boolean(memoryToView)}
-          memoryToEdit={memoryToView}
-          onClose={() => setMemoryToView(undefined)}
-          onCreated={() => setMemoryToView(undefined)}
-          onDeleted={handleMemoryDeleted}
-          onUpdated={handleMemoryDeleted}
-        />
-      )}
-    </Card>
-  );
-};
 
 const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   file,
@@ -200,7 +70,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
         <Card className="tw:p-4 tw:shrink-0">
           <Box align="center" className="tw:mb-3" justify="between">
             <Typography
-              className="tw:text-gray-500 tw:uppercase"
+              className="tw:text-quaternary tw:uppercase"
               size="text-xs"
               weight="semibold">
               {t('label.detail-plural')}
@@ -220,7 +90,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             </Box>
           </Box>
           <Box align="center" className="tw:py-1.5" justify="between">
-            <Typography className="tw:text-gray-500" size="text-sm">
+            <Typography className="tw:text-quaternary" size="text-sm">
               {t('label.status')}
             </Typography>
             <DocumentStatusBadge
@@ -244,11 +114,11 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           )}
           {file.processingError && (
             <Box className="tw:py-1.5" direction="col" gap={1}>
-              <Typography className="tw:text-gray-500" size="text-sm">
+              <Typography className="tw:text-quaternary" size="text-sm">
                 {t('label.error')}
               </Typography>
               <Typography
-                className="tw:text-error-600 tw:break-words"
+                className="tw:text-error-primary tw:break-words"
                 data-testid="processing-error"
                 size="text-sm">
                 {file.processingError}
@@ -257,7 +127,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           )}
         </Card>
 
-        <ExtractedMemoriesCard fileId={file.id} />
+        <ExtractedMemoriesCard sourceId={file.id} />
       </Box>
     </Card>
   );

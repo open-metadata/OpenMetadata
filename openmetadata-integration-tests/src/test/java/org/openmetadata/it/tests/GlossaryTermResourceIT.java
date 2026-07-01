@@ -1315,6 +1315,47 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void test_longFqnGlossaryTermAppliesAsTagWithoutOverflow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = getOrCreateGlossary(ns);
+
+    // entityName permits up to 256 chars; combined with the glossary prefix the resulting term FQN
+    // exceeds the legacy tag_usage.tagFQN VARCHAR(256) limit (but stays within the widened 512).
+    // Before the widening this applyTag INSERT failed with
+    // "value too long for type character varying(256)".
+    String longName = ("longterm_" + "x".repeat(256)).substring(0, 256);
+    CreateGlossaryTerm termRequest =
+        new CreateGlossaryTerm()
+            .withName(longName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Long-named term exercising the widened tag_usage.tagFQN column");
+    GlossaryTerm term = createEntity(termRequest);
+    assertTrue(
+        term.getFullyQualifiedName().length() > 256,
+        "Term FQN must exceed the legacy 256-char tag_usage limit to exercise the fix: "
+            + term.getFullyQualifiedName().length());
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName(ns.prefix("long_fqn_tag_table"));
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(
+        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    tableRequest.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+
+    Table table = client.tables().create(tableRequest);
+    assertNotNull(table.getTags());
+    assertEquals(1, table.getTags().size());
+    assertEquals(term.getFullyQualifiedName(), table.getTags().get(0).getTagFQN());
+  }
+
+  @Test
   void test_glossaryTermInheritsGlossaryOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

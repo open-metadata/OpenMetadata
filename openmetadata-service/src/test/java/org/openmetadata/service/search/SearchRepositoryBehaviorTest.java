@@ -122,6 +122,30 @@ class SearchRepositoryBehaviorTest {
           .indexMappingFile("/elasticsearch/%s/database_service_index_mapping.json")
           .build();
 
+  private static final IndexMapping DATABASE_MAPPING =
+      IndexMapping.builder()
+          .indexName("database_search_index")
+          .alias("database")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/database_index_mapping.json")
+          .build();
+
+  private static final IndexMapping DATABASE_SCHEMA_MAPPING =
+      IndexMapping.builder()
+          .indexName("database_schema_search_index")
+          .alias("databaseSchema")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/database_schema_index_mapping.json")
+          .build();
+
+  private static final IndexMapping COLUMN_MAPPING =
+      IndexMapping.builder()
+          .indexName("column_search_index")
+          .alias("tableColumn")
+          .childAliases(List.of())
+          .indexMappingFile("/elasticsearch/%s/column_index_mapping.json")
+          .build();
+
   private static final IndexMapping PAGE_MAPPING =
       IndexMapping.builder()
           .indexName("page_search_index")
@@ -162,6 +186,7 @@ class SearchRepositoryBehaviorTest {
           Entity.DATABASE_SERVICE,
           Entity.DATABASE,
           Entity.TEST_SUITE,
+          Entity.TEST_CASE,
           Entity.GLOSSARY,
           Entity.CLASSIFICATION,
           Entity.QUERY);
@@ -713,6 +738,120 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+    IndexMapping timeSeriesOnlyMapping =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        timeSeriesOnlyMapping,
+        testCase);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(testCase.getDomains())
+        .thenReturn(
+            List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange().withName(Entity.FIELD_OWNERS),
+                new FieldChange().withName(Entity.FIELD_DOMAINS)),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        TEST_CASE_MAPPING,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(targetsCaptor.capture(), any(Pair.class), updatesCaptor.capture());
+
+    assertEquals(List.of("cluster_tableColumn"), targetsCaptor.getValue());
+    String entityChildScript = updatesCaptor.getValue().getLeft();
+    assertTrue(entityChildScript.contains(Entity.FIELD_OWNERS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DOMAINS));
+    assertTrue(entityChildScript.contains(Entity.FIELD_DISPLAY_NAME));
+  }
+
+  @Test
+  void propagateInheritedFieldsToChildrenIncludesUnregisteredChildAliases() throws IOException {
+    IndexMapping mappingWithUnregisteredChild =
+        IndexMapping.builder()
+            .indexName("test_case_search_index")
+            .alias("testCase")
+            .childAliases(List.of("unregisteredChild", Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
+            .build();
+    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Name")
+                    .withNewValue("New Name")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE,
+        testCase.getId().toString(),
+        changeDescription,
+        mappingWithUnregisteredChild,
+        testCase);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<String>> targetsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).updateChildren(targetsCaptor.capture(), any(Pair.class), any(Pair.class));
+
+    assertEquals(
+        List.of("cluster_unregisteredChild", "cluster_tableColumn"), targetsCaptor.getValue());
+  }
+
+  @Test
   void deleteEntityByFqnPrefixUsesEntityIndex() throws IOException {
     EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
@@ -1087,6 +1226,52 @@ class SearchRepositoryBehaviorTest {
             List.of(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "table.id", table.getId().toString())));
+  }
+
+  /**
+   * Regression for the bulk-delete search gap: column docs live in a flat secondary index, and a
+   * recursive service/database/schema hard delete skips the per-table search dispatch
+   * ({@code descendantsCoveredByAncestorCascade}) while the ancestor's child cascade targets only
+   * the service childAliases (no {@code tableColumn}). Without an explicit prune the descendant
+   * column docs orphan in search. Each database-subtree ancestor must delete the column index by
+   * the parent id field its column docs carry.
+   */
+  @Test
+  void deleteEntityIndexRemovesDescendantColumnsForDatabaseSubtreeAncestors() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(
+                Entity.DATABASE_SERVICE, DATABASE_SERVICE_MAPPING,
+                Entity.DATABASE, DATABASE_MAPPING,
+                Entity.DATABASE_SCHEMA, DATABASE_SCHEMA_MAPPING,
+                Entity.TABLE_COLUMN, COLUMN_MAPPING),
+            "cluster");
+    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
+    EntityInterface schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
+
+    repo.deleteEntityIndex(service);
+    repo.deleteEntityIndex(database);
+    repo.deleteEntityIndex(schema);
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "service.id", service.getId().toString())));
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "database.id", database.getId().toString())));
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_column_search_index"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "databaseSchema.id", schema.getId().toString())));
   }
 
   @Test
@@ -2696,7 +2881,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchLineageByEntityCount(entityCountRequest)).thenReturn(lineageResult);
     when(searchClient.searchEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);
-    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false))
+    when(searchClient.searchDataQualityLineage("svc.db.orders", 1, "{}", false, null))
         .thenReturn(response);
     when(searchClient.searchSchemaEntityRelationship("svc.db.orders", 1, 2, "{}", false))
         .thenReturn(response);

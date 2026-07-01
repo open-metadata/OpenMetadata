@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -240,8 +242,8 @@ public class AlertsRuleEvaluator {
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)
         && !changeEvent.getEntityType().equals(TEST_SUITE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
+      // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     // we need to handle both fields updated and fields added
@@ -324,13 +326,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(TEST_CASE)) {
-      // in case the entity is not test case return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a test case result; non-test-case events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     // we need to handle both fields updated and fields added
@@ -361,12 +358,11 @@ public class AlertsRuleEvaluator {
       return false;
     }
     String entityUpdatedBy = changeEvent.getUserName();
-    for (String name : updatedByUserList) {
-      if (name.equals(entityUpdatedBy)) {
-        return true;
-      }
-    }
-    return false;
+    Set<String> updaterNames =
+        updatedByUserList.stream()
+            .map(EntityInterfaceUtil::unquoteName)
+            .collect(Collectors.toSet());
+    return updaterNames.contains(entityUpdatedBy);
   }
 
   @Function(
@@ -402,13 +398,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(INGESTION_PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
@@ -438,13 +429,8 @@ public class AlertsRuleEvaluator {
       return false;
     }
     if (!changeEvent.getEntityType().equals(PIPELINE)) {
-      // in case the entity is not ingestion pipeline return since the filter doesn't apply
-      return true;
-    }
-
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
+      // Trigger requires a pipeline status; non-pipeline events (incl. THREAD) cannot fire it.
+      return false;
     }
 
     for (FieldChange fieldChange : changeEvent.getChangeDescription().getFieldsUpdated()) {
@@ -626,16 +612,18 @@ public class AlertsRuleEvaluator {
 
   private boolean matchesMentionedUserOrTeam(
       List<MessageParser.EntityLink> mentions, List<String> usersOrTeamName) {
+    Set<String> names =
+        usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
       if (USER.equals(entityLink.getEntityType())) {
         User user = Entity.getCollectionDAO().userDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(user.getName())) {
+        if (names.contains(user.getName())) {
           return true;
         }
       } else if (TEAM.equals(entityLink.getEntityType())) {
         Team team = Entity.getCollectionDAO().teamDAO().findEntityByName(fqn);
-        if (usersOrTeamName.contains(team.getName())) {
+        if (names.contains(team.getName())) {
           return true;
         }
       }
@@ -703,24 +691,27 @@ public class AlertsRuleEvaluator {
   }
 
   private boolean matchOwners(List<EntityReference> ownerReferences, List<String> ownerNameList) {
+    Set<String> ownerNames =
+        ownerNameList.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
     for (EntityReference owner : ownerReferences) {
-      if (USER.equals(owner.getType())) {
-        User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (user.getName().equals(name)) {
-            return true;
-          }
-        }
-      } else if (TEAM.equals(owner.getType())) {
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (team.getName().equals(name)) {
-            return true;
-          }
-        }
+      String ownerName = resolveOwnerName(owner);
+      if (ownerName != null && ownerNames.contains(ownerName)) {
+        return true;
       }
     }
     return false;
+  }
+
+  private String resolveOwnerName(EntityReference owner) {
+    String ownerName = null;
+    if (USER.equals(owner.getType())) {
+      User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+      ownerName = user.getName();
+    } else if (TEAM.equals(owner.getType())) {
+      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+      ownerName = team.getName();
+    }
+    return ownerName;
   }
 
   @Function(

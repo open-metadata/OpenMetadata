@@ -1014,7 +1014,7 @@ const WithLoadingStateExample = () => {
       </div>
       <div className="tw:relative">
         {loading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60 tw:rounded">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60 tw:rounded">
             <div className="tw:size-6 tw:rounded-full tw:border-2 tw:border-brand-solid tw:border-t-transparent tw:animate-spin" />
           </div>
         )}

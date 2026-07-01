@@ -30,3 +30,11 @@ CREATE INDEX IF NOT EXISTS worksheet_entity_name_index ON worksheet_entity (name
 -- learning_resource_entity is intentionally omitted: its `name` is varchar(3072), too
 -- wide to fit a btree index row, and the table is small enough that the reindex cursor
 -- sort is not a concern.
+
+-- Additional pre-1.13.1 entity tables the block above missed. On Postgres only the api_*
+-- tables lacked a leading-`name` index (they had only a `(deleted, name, id)` composite); the
+-- other reindexed tables of this era already have `idx_name_*`. security_service_entity is
+-- omitted: it already has a `UNIQUE (name)` constraint that orders by name.
+CREATE INDEX IF NOT EXISTS api_collection_entity_name_index ON api_collection_entity (name);
+CREATE INDEX IF NOT EXISTS api_endpoint_entity_name_index ON api_endpoint_entity (name);
+CREATE INDEX IF NOT EXISTS api_service_entity_name_index ON api_service_entity (name);

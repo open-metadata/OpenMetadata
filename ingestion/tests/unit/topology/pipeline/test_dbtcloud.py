@@ -862,6 +862,68 @@ class DBTCloudUnitTest(TestCase):
                 # Note: Lineage edges may or may not be generated depending on entity resolution
                 self.assertIsInstance(lineage_details, list)
 
+    def test_yield_pipeline_status_uses_current_pipeline_fqn(self):
+        """
+        Pipeline status must be attached to the FQN of the pipeline currently
+        being processed, built from the per-pipeline context - not the stale
+        ctx.pipeline_fqn left over from the previous pipeline's lineage stage
+        (which would cause the server to reject the run id with "Invalid task
+        name").
+        """
+        current_run = DBTRun(
+            id=111,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["pipeline"] = "Current job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["pipeline_fqn"] = "dbtcloud_pipeline_test.Previous job"
+        ctx.__dict__["current_runs"] = [current_run]
+
+        statuses = list(self.dbtcloud.yield_pipeline_status(EXPECTED_JOB_DETAILS))
+
+        self.assertEqual(len(statuses), 1)
+        self.assertEqual(statuses[0].right.pipeline_fqn, "dbtcloud_pipeline_test.Current job")
+        self.assertEqual(statuses[0].right.pipeline_status.taskStatus[0].name, "111")
+
+    def test_yield_pipeline_status_skips_runs_without_timestamp(self):
+        """
+        A dbt run that has neither started nor finished has no usable timestamp,
+        and PipelineStatus.timestamp is a required integer - such runs must be
+        skipped instead of raising a pydantic ValidationError.
+        """
+        finished_run = DBTRun(
+            id=111,
+            status=1,
+            state="Success",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        queued_run = DBTRun(
+            id=222,
+            status=0,
+            state="Queued",
+            started_at=None,
+            finished_at=None,
+        )
+
+        ctx = self.dbtcloud.context.get()
+        ctx.__dict__["pipeline"] = "Current job"
+        ctx.__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        ctx.__dict__["current_runs"] = [finished_run, queued_run]
+
+        statuses = list(self.dbtcloud.yield_pipeline_status(EXPECTED_JOB_DETAILS))
+
+        self.assertEqual(len(statuses), 1)
+        pipeline_status = statuses[0].right.pipeline_status
+        self.assertEqual(pipeline_status.taskStatus[0].name, "111")
+        self.assertIsNotNone(pipeline_status.timestamp)
+        self.assertEqual(pipeline_status.timestamp.root, pipeline_status.taskStatus[0].endTime.root)
+
     def test_get_table_pipeline_observability_with_context(self):
         """
         Test pipeline observability extraction using context data (current job)

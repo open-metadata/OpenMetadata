@@ -294,6 +294,11 @@ export interface ExtractionStats {
      * Number of knowledge pills persisted by the run.
      */
     pillsCreated?: number;
+    /**
+     * Hash of the source content used for the most recent extraction. Lets the processing
+     * engine skip re-extraction when the content is unchanged.
+     */
+    sourceHash?: string;
 }
 
 /**

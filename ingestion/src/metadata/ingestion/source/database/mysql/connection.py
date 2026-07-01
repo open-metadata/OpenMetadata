@@ -31,6 +31,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
 )
@@ -123,7 +124,7 @@ MYSQL_ERRORS = ErrorPack(
 class MySQLChecks:
     """Test-connection checks for MySQL."""
 
-    errors = MYSQL_ERRORS
+    errors = MYSQL_ERRORS.including(NETWORK_ERRORS)
 
     # MySQL 8 system databases - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "mysql", "sys"})
@@ -200,11 +201,11 @@ class _CloudSqlStrategy(EngineStrategy[MySQLConnectionConfig]):
 
     def build(self) -> Engine:
         try:
-            from google.cloud.sql.connectors import Connector  # noqa: PLC0415
+            from google.cloud.sql.connector import Connector  # noqa: PLC0415
         except ImportError:
             raise ImportError(  # noqa: B904
-                "google-cloud-sql-connector is required for GCP CloudSQL connections. "
-                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0'"
+                "cloud-sql-python-connector is required for GCP CloudSQL connections. "
+                "Install it with: pip install 'cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0'"
             )
 
         connection = self._connection
