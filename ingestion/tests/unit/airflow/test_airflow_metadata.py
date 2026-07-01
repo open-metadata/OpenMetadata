@@ -314,15 +314,13 @@ class TestGetTablePipelineObservability:
             current_pipeline_entity=None,
         )
         source.observability_cache = {}
-        source.metadata = MagicMock()
-        source.metadata.get_by_name.side_effect = Exception("Should not be reached with empty context")
 
         mock_details = MagicMock()
         mock_details.dag_id = "test_dag"
 
         result = list(source.get_table_pipeline_observability(mock_details))
 
-        assert len(result) >= 1
+        assert result == [{}]
 
 
 class TestTaskDetailAccess:
