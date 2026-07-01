@@ -14,18 +14,40 @@
 import { Col, Row } from 'antd';
 import { compare } from 'fast-json-patch';
 import { kebabCase } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../../../generated/system/ui/page';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import '../../../../pages/MyDataPage/my-data.less';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { CustomizeTabWidget } from '../../../Customization/CustomizeTabWidget/CustomizeTabWidget';
-import { GlossaryHeaderWidget } from '../../../Glossary/GlossaryHeader/GlossaryHeaderWidget';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
-import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import { CustomizeMyDataProps } from '../CustomizeMyData/CustomizeMyData.interface';
+
+const CustomizablePageHeader = withSuspenseFallback(
+  lazy(() =>
+    import('../CustomizablePageHeader/CustomizablePageHeader').then(
+      (module) => ({ default: module.CustomizablePageHeader })
+    )
+  )
+);
+
+const CustomizeTabWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Customization/CustomizeTabWidget/CustomizeTabWidget').then(
+      (module) => ({ default: module.CustomizeTabWidget })
+    )
+  )
+);
+
+const GlossaryHeaderWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../../../Glossary/GlossaryHeader/GlossaryHeaderWidget').then(
+      (module) => ({ default: module.GlossaryHeaderWidget })
+    )
+  )
+);
 
 function CustomizeGlossaryTermDetailPage({
   personaDetails,

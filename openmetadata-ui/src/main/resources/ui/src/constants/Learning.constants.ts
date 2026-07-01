@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { BadgeColors } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import {
   ResourceCategory,
@@ -25,6 +26,23 @@ export const MAX_VISIBLE_CONTEXTS = 2;
 export const DEFAULT_PAGE_SIZE = 10;
 
 export const MAX_CHAIN_PAGES = 25;
+
+export const MAX_VISIBLE_CATEGORIES_IN_CARD = 2;
+export const DESCRIPTION_VIEW_MORE_THRESHOLD = 100;
+
+export const CATEGORY_BADGE_COLORS: Record<ResourceCategory, BadgeColors> = {
+  Discovery: 'blue',
+  Administration: 'blue-light',
+  DataGovernance: 'indigo',
+  DataQuality: 'orange',
+  Observability: 'orange',
+  AI: 'purple',
+};
+
+export const ICON_COLOR_CLASS: Record<string, string> = {
+  video: 'tw:text-utility-blue-600',
+  storylane: 'tw:text-utility-purple-600',
+};
 
 export const RESOURCE_TYPE_VALUES = [
   ResourceType.Video,

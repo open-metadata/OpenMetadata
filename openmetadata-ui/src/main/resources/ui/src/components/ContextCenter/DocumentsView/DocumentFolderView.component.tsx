@@ -12,8 +12,10 @@
  */
 
 import {
+  Button,
   ButtonUtility,
   Card,
+  Dot,
   FileIcon,
   Skeleton,
   Tree,
@@ -28,6 +30,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { deleteFolder, listFolders } from '../../../rest/assetAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
@@ -111,7 +114,7 @@ const DocumentFolderView = ({
   return (
     <>
       <Card className="tw:p-4 tw:h-full tw:flex tw:flex-col tw:min-w-70">
-        <div className="tw:flex tw:items-center tw:justify-between tw:mb-5">
+        <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
               <FolderIcon className="tw:text-tertiary" height={20} width={20} />
@@ -126,7 +129,7 @@ const DocumentFolderView = ({
                 <span>
                   {folders.length} {t('label.folder-plural')}
                 </span>
-                <span className="tw:select-none tw:text-lg">&middot;</span>
+                <Dot className="tw:text-quaternary" size="micro" />
                 <span>
                   {files.length} {t('label.file-plural')}
                 </span>
@@ -175,26 +178,18 @@ const DocumentFolderView = ({
                     textValue={folder.displayName ?? folder.name}>
                     <Tree.ItemContent>
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
-                        <button
-                          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0 tw:text-left tw:bg-transparent tw:border-none tw:cursor-pointer tw:p-0"
-                          onClick={(e) => {
+                        <Button
+                          ellipsis
+                          className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
+                          color="tertiary"
+                          iconLeading={FolderIcon}
+                          size="sm"
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             handleFolderItemSelect(folder.id);
                           }}>
-                          <FolderIcon
-                            className="tw:shrink-0 tw:text-quaternary"
-                            height={16}
-                            width={16}
-                          />
-                          <div className="tw:w-full">
-                            <Typography
-                              as="p"
-                              className="tw:truncate tw:flex-1"
-                              weight="medium">
-                              {folder.displayName ?? folder.name}
-                            </Typography>
-                          </div>
-                        </button>
+                          {getEntityName(folder)}
+                        </Button>
 
                         {canDelete && (
                           <ButtonUtility

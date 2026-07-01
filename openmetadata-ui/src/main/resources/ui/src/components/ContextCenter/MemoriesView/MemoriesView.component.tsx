@@ -27,7 +27,11 @@ import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
@@ -109,6 +113,8 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
 
+const MAX_VISIBLE_LINKED_ENTITIES = 4;
+
 const MemoryRowSkeleton: FC = () => (
   <Box
     align="start"
@@ -166,6 +172,31 @@ const MemoryRow: FC<MemoryRowProps> = ({
         : window.location.href,
     [memory.name]
   );
+
+  const { linkedEntities, hiddenLinkedEntitiesCount } = useMemo(() => {
+    const entities = [memory.primaryEntity, ...(memory.relatedEntities ?? [])];
+    const seenIds = new Set<string>();
+
+    const deduplicated = entities.filter(
+      (entity): entity is EntityReference => {
+        const key = entity?.id ?? entity?.fullyQualifiedName;
+        if (!entity || !key || seenIds.has(key)) {
+          return false;
+        }
+        seenIds.add(key);
+
+        return true;
+      }
+    );
+
+    return {
+      linkedEntities: deduplicated.slice(0, MAX_VISIBLE_LINKED_ENTITIES),
+      hiddenLinkedEntitiesCount: Math.max(
+        0,
+        deduplicated.length - MAX_VISIBLE_LINKED_ENTITIES
+      ),
+    };
+  }, [memory.primaryEntity, memory.relatedEntities]);
 
   return (
     <Box
@@ -244,30 +275,41 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          {memory.tags && memory.tags.length > 0 && (
+          {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {memory.tags.map((tag) => (
+              {linkedEntities.map((entity) => (
                 <Badge
-                  className="tw:max-w-90 tw:min-w-0"
-                  key={String(tag.tagFQN ?? '')}
+                  className="tw:max-w-60 tw:min-w-0"
+                  key={entity.id ?? entity.fullyQualifiedName}
                   size="md"
                   type="color">
-                  {tag.style?.color && (
-                    <div className="tw:shrink-0">
-                      <Dot
-                        size="sm"
-                        style={{ color: tag.style?.color, marginRight: '6px' }}
-                      />
-                    </div>
-                  )}
+                  <div className="tw:shrink-0">
+                    <Dot
+                      className={
+                        ENTITY_ICON_MAPPER?.[entity.type]?.iconClass ??
+                        'tw:text-quaternary'
+                      }
+                      size="sm"
+                      style={{ marginRight: '6px' }}
+                    />
+                  </div>
                   <Typography
                     ellipsis
                     className="tw:text-secondary"
                     size="text-xs">
-                    {getEntityName(tag)}
+                    {getEntityName(entity)}
                   </Typography>
                 </Badge>
               ))}
+              {hiddenLinkedEntitiesCount > 0 && (
+                <Badge size="md" type="color">
+                  <Typography className="tw:text-secondary" size="text-xs">
+                    {t('label.plus-count', {
+                      count: hiddenLinkedEntitiesCount,
+                    })}
+                  </Typography>
+                </Badge>
+              )}
             </Box>
           )}
 

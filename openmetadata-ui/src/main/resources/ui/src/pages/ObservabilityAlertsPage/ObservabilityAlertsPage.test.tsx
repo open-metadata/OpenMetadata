@@ -85,7 +85,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   };
 
-  return { Table: MockTable, TableCard: MockTableCard };
+  const Passthrough = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  return {
+    Table: MockTable,
+    TableCard: MockTableCard,
+    Box: Passthrough,
+    Button: Passthrough,
+    Popover: Passthrough,
+    PopoverTrigger: Passthrough,
+    Typography: Passthrough,
+  };
 });
 
 const MOCK_DATA = [
