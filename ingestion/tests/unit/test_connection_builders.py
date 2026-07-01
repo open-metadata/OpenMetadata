@@ -125,4 +125,5 @@ def test_create_generic_db_connection_respects_explicit_isolation_level():
         get_connection_args_fn=lambda _conn: {},
         isolation_level="SERIALIZABLE",
     )
-    assert engine.get_execution_options().get("isolation_level") != "AUTOCOMMIT"
+    with engine.connect() as conn:
+        assert conn.get_isolation_level() == "SERIALIZABLE"
