@@ -497,6 +497,10 @@ const TagsContainerV2 = ({
     setTags(getFilterTags(selectedTags));
   }, [selectedTags]);
 
+  if (newLook && !permission && isEmpty(tags?.[tagType]) && !isEditTags) {
+    return null;
+  }
+  
   if (newLook) {
     return (
       <ExpandableCard
