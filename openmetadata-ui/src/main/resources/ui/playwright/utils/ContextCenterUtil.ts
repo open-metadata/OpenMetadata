@@ -232,9 +232,10 @@ export const navigateToArchive = async (page: Page) => {
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
   page
-     .getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
-        name: folderName,
-      })
+    .getByRole('treegrid', { name: 'Folders' })
+    .getByRole('row', {
+      name: folderName,
+    })
     .first();
 
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>

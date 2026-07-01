@@ -105,9 +105,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('navigate to documents page and verify folder is in sidebar', async () => {
       await navigateToDocuments(page);
-      await expect(
-       getFolderTreeItem(page, folderName)
-      ).toBeVisible();
+      await expect(getFolderTreeItem(page, folderName)).toBeVisible();
     });
 
     // ── 2. Expand icon NOT visible on empty folder ───────────────────────────
@@ -153,8 +151,10 @@ test.describe('Context Center - Archive Page', () => {
       await expandBtn.click();
 
       await expect(
-        page.getByRole('treegrid')
-          .getByRole('row', { name: documentFileName }).first()
+        page
+          .getByRole('treegrid')
+          .getByRole('row', { name: documentFileName })
+          .first()
       ).toBeVisible();
     });
 
@@ -242,9 +242,7 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('restored document has no folder name (restored to root)', async () => {
       const docRow = page.getByTestId(`document-row-${documentId}`);
-      await expect(
-        docRow.getByTestId('document-folder-name')
-      ).toBeVisible();
+      await expect(docRow.getByTestId('document-folder-name')).toBeVisible();
     });
 
     // ── 14. Document visible in search after restore ──────────────────────────
