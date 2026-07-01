@@ -10,15 +10,23 @@
  */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps;
 
+import java.util.List;
+import java.util.Objects;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 
 /**
- * Emits {@code tagSources} and {@code tierSources} counts. The defensive null-guards against
- * malformed {@link org.openmetadata.schema.type.TagLabel}s (null {@code labelType} or null {@code
- * tagFQN}) live at the source in {@link SearchIndexUtils#processTagAndTierSources} — applies to
- * every caller of that helper, not just this step.
+ * Emits {@code tagSources} and {@code tierSources} counts plus the source-split tag projections
+ * {@code classificationTags} and {@code glossaryTags} (entity-level FQN lists), mirroring the live
+ * search index's {@link ParseTags}/{@code TaggableIndex.applyTagFields} semantics so Data Insights
+ * chart filters match Explore. The defensive null-guards against malformed {@link
+ * org.openmetadata.schema.type.TagLabel}s (null {@code labelType} or null {@code tagFQN}) live at
+ * the source in {@link SearchIndexUtils#processTagAndTierSources} — applies to every caller of that
+ * helper, not just this step.
  */
 public final class TagAndTierSourcesStep implements EnrichmentStep {
 
@@ -35,5 +43,15 @@ public final class TagAndTierSourcesStep implements EnrichmentStep {
         SearchIndexUtils.processTagAndTierSources(target.entity());
     target.entityMap().put("tagSources", sources.getTagSources());
     target.entityMap().put("tierSources", sources.getTierSources());
+
+    // Get nested tags for complex entities (e.g. tables, topics, etc.)
+    List<TagLabel> safeTags =
+        Entity.getEntityTags(target.context().entityType(), target.entity()).stream()
+            .filter(Objects::nonNull)
+            .filter(t -> t.getTagFQN() != null && t.getSource() != null)
+            .toList();
+    ParseTags parseTags = new ParseTags(safeTags);
+    target.entityMap().put("classificationTags", parseTags.getClassificationTags());
+    target.entityMap().put("glossaryTags", parseTags.getGlossaryTags());
   }
 }
