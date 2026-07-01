@@ -193,18 +193,20 @@ const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
       continue;
     }
     const entry = value as Record<string, unknown>;
-    normalized[field] = {
-      added: Array.isArray(entry.added)
-        ? (entry.added as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
-          )
-        : [],
-      removed: Array.isArray(entry.removed)
-        ? (entry.removed as unknown[]).filter(
-            (v): v is string => typeof v === 'string'
-          )
-        : [],
-    };
+    const added = Array.isArray(entry.added)
+      ? (entry.added as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : [];
+    const removed = Array.isArray(entry.removed)
+      ? (entry.removed as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : [];
+    if (added.length === 0 && removed.length === 0) {
+      continue;
+    }
+    normalized[field] = { added, removed };
   }
 
   return Object.keys(normalized).length > 0 ? normalized : null;

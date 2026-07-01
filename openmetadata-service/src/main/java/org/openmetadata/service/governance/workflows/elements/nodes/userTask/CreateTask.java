@@ -498,7 +498,10 @@ public class CreateTask implements TaskListener {
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
-          requestedPayload != null ? requestedPayload : updatedTask.getPayload());
+          requestedPayload != null
+              ? ChangePreviewUtils.preserveProposedChanges(
+                  requestedPayload, updatedTask.getPayload())
+              : updatedTask.getPayload());
       if (effectiveWorkflowDefinitionId != null) {
         updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }

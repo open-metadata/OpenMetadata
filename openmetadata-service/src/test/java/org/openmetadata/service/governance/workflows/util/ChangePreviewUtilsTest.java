@@ -388,6 +388,52 @@ class ChangePreviewUtilsTest {
     assertEquals(List.of("PII.None"), recovered.get("tags").removed());
   }
 
+  // ---------------------------------------------------------------------------
+  // preserveProposedChanges
+  // ---------------------------------------------------------------------------
+
+  @Test
+  void preserveProposedChanges_nullRequestedPayload_returnsInput() {
+    assertNull(ChangePreviewUtils.preserveProposedChanges(null, Map.of("k", "v")));
+  }
+
+  @Test
+  void preserveProposedChanges_requestedCarriesOwnKey_returnsRequestedUnchanged() {
+    Map<String, Object> requested =
+        Map.of(
+            "proposedChanges", Map.of("tags", Map.of("added", List.of("X"), "removed", List.of())));
+    Map<String, Object> prior =
+        Map.of(
+            "proposedChanges", Map.of("tags", Map.of("added", List.of("Y"), "removed", List.of())));
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertEquals(requested, result);
+  }
+
+  @Test
+  void preserveProposedChanges_requestedMissingKey_copiesFromPrior() {
+    Map<String, Object> requested = new LinkedHashMap<>();
+    requested.put("feedback", "keep");
+    Map<String, Object> prior = new LinkedHashMap<>();
+    prior.put(
+        "proposedChanges",
+        Map.of("tags", Map.of("added", List.of("PII.Sensitive"), "removed", List.of())));
+
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertTrue(result instanceof Map<?, ?>);
+    Map<?, ?> resultMap = (Map<?, ?>) result;
+    assertEquals("keep", resultMap.get("feedback"));
+    Map<String, FieldDiff> proposed = ChangePreviewUtils.extractProposedChanges(result);
+    assertEquals(List.of("PII.Sensitive"), proposed.get("tags").added());
+  }
+
+  @Test
+  void preserveProposedChanges_priorMissingKey_returnsRequestedUnchanged() {
+    Map<String, Object> requested = Map.of("feedback", "keep");
+    Map<String, Object> prior = Map.of("other", "irrelevant");
+    Object result = ChangePreviewUtils.preserveProposedChanges(requested, prior);
+    assertEquals(requested, result);
+  }
+
   @Test
   void extractProposedChanges_jsonRoundTripMissingRemovedKey_defaultsToEmpty() {
     Map<String, Object> persisted =

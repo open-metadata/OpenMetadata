@@ -269,6 +269,24 @@ public final class ChangePreviewUtils {
     return entity.getChangeDescription();
   }
 
+  /**
+   * When a workflow-driven update replaces the entire task payload via a {@code requestedPayload}
+   * variable, any accumulated {@code proposedChanges} on the prior payload would be lost. If the
+   * replacement payload does not carry its own {@code proposedChanges}, copy the key over from
+   * the prior payload so the running merge base is preserved. Returns {@code requestedPayload}
+   * unchanged when there is nothing to preserve.
+   */
+  public static Object preserveProposedChanges(Object requestedPayload, Object priorPayload) {
+    if (!(requestedPayload instanceof Map<?, ?> requestedMap)) return requestedPayload;
+    if (requestedMap.get(PROPOSED_CHANGES_KEY) != null) return requestedPayload;
+    if (!(priorPayload instanceof Map<?, ?> priorMap)) return requestedPayload;
+    Object priorProposed = priorMap.get(PROPOSED_CHANGES_KEY);
+    if (priorProposed == null) return requestedPayload;
+    Map<String, Object> merged = cloneAsMutableMap(requestedPayload);
+    merged.put(PROPOSED_CHANGES_KEY, priorProposed);
+    return merged;
+  }
+
   private static Map<String, Object> cloneAsMutableMap(Object payload) {
     if (!(payload instanceof Map<?, ?> source)) return new LinkedHashMap<>();
     Map<String, Object> copy = new LinkedHashMap<>();
