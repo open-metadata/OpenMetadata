@@ -82,8 +82,20 @@ function VersionTable<T extends Column | SearchIndexField>({
   useEffect(() => {
     if (!paginationProps) {
       internalHandlePagingChange({ total: data.length });
+
+      const maxPage = Math.max(1, Math.ceil(data.length / internalPageSize));
+      if (internalCurrentPage > maxPage) {
+        internalHandlePageChange(maxPage, { cursorType: null });
+      }
     }
-  }, [data.length, paginationProps]);
+  }, [
+    data.length,
+    paginationProps,
+    internalPageSize,
+    internalCurrentPage,
+    internalHandlePagingChange,
+    internalHandlePageChange,
+  ]);
 
   const displayData = useMemo(() => {
     if (paginationProps) {
@@ -102,7 +114,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     return {
       currentPage: internalCurrentPage,
       showPagination: internalShowPagination,
-      isLoading: false,
+      isLoading: Boolean(isLoading),
       isNumberBased: true,
       pageSize: internalPageSize,
       paging: internalPaging,
@@ -112,6 +124,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     };
   }, [
     paginationProps,
+    isLoading,
     internalCurrentPage,
     internalShowPagination,
     internalPageSize,

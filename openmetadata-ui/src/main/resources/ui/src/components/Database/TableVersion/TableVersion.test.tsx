@@ -161,12 +161,12 @@ describe('TableVersion tests', () => {
     const historicalColumns = mockTableData.columns ?? [];
 
     historicalColumns.forEach(({ name, description }) => {
-      expect(receivedColumns.some((col) => col.name === name)).toBe(true);
+      const receivedColumn = receivedColumns.find((col) => col.name === name);
+
+      expect(receivedColumn).toBeDefined();
 
       if (description) {
-        expect(
-          receivedColumns.some((col) => col.description === description)
-        ).toBe(true);
+        expect(receivedColumn?.description).toBe(description);
       }
     });
   });
