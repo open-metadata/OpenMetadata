@@ -339,11 +339,16 @@ public class UserApprovalTask implements NodeInterface {
     }
     String durationVariable = expiryTimer.getDurationVariable();
     String transitionId = expiryTimer.getTransitionId();
-    if (durationVariable == null
-        || durationVariable.isBlank()
-        || transitionId == null
-        || transitionId.isBlank()) {
-      return;
+    // Fail fast on a broken workflow definition: silently skipping the timer would strand
+    // instances in the parent user task forever with no visible cause. Force the workflow author
+    // to fix the JSON at deploy time instead of debugging a stuck task at runtime.
+    if (durationVariable == null || durationVariable.isBlank()) {
+      throw new IllegalArgumentException(
+          "expiryTimer.durationVariable is required on node '" + nodeDefinition.getName() + "'");
+    }
+    if (transitionId == null || transitionId.isBlank()) {
+      throw new IllegalArgumentException(
+          "expiryTimer.transitionId is required on node '" + nodeDefinition.getName() + "'");
     }
 
     TimerEventDefinition timerDef = new TimerEventDefinition();
