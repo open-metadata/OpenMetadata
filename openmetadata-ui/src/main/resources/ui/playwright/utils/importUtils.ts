@@ -1338,6 +1338,7 @@ export const pressKeyXTimes = async (
     } else if (key === 'ArrowRight') {
       await moveToNextColumnWithVerification(page);
     } else {
+      // Fallback for non-arrow keys (e.g. Backspace, Enter) — no column-change verification needed.
       await page.locator(RDG_ACTIVE_CELL_SELECTOR).press(key, { delay: 200 });
     }
   }
@@ -1521,6 +1522,11 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;
   }
+
+  await expect(
+    activeCell,
+    `ArrowRight did not advance column after ${MAX_COLUMN_NAVIGATION_RETRIES} retries (stuck at aria-colindex=${currentColIndex})`
+  ).not.toHaveAttribute('aria-colindex', currentColIndex ?? '');
 };
 
 const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
@@ -1541,6 +1547,11 @@ const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;
   }
+
+  await expect(
+    activeCell,
+    `ArrowLeft did not advance column after ${MAX_COLUMN_NAVIGATION_RETRIES} retries (stuck at aria-colindex=${currentColIndex})`
+  ).not.toHaveAttribute('aria-colindex', currentColIndex ?? '');
 };
 
 export const performDeleteOperationOnEntity = async (page: Page) => {
