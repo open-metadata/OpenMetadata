@@ -130,6 +130,7 @@ const ContextCenterDocumentsPage: FC = () => {
     async (after?: string) => {
       if (!after) {
         fetchGenerationRef.current += 1;
+        setIsLoadingMore(false);
       }
       const generation = fetchGenerationRef.current;
 
