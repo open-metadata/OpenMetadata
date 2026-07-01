@@ -17,6 +17,7 @@ import { EntityUtilClassBase } from './EntityUtilClassBase';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getLogsViewerPath,
   getServiceDetailsPath,
 } from './RouterUtils';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
@@ -43,6 +44,7 @@ jest.mock('./RouterUtils', () => ({
   getServiceDetailsPath: jest.fn(),
   getTagsDetailsPath: jest.fn(),
   getGlossaryTermDetailsPath: jest.fn(),
+  getLogsViewerPath: jest.fn(),
   getUserPath: jest.fn(),
 }));
 
@@ -239,6 +241,41 @@ describe('EntityUtilClassBase', () => {
     entityUtil.getEntityLink(EntityType.SECURITY_SERVICE, fqn);
 
     expect(getServiceDetailsPath).toHaveBeenCalledWith(fqn, 'securityServices');
+  });
+
+  it('should route ingestion pipeline to logs viewer when service category is provided', () => {
+    const fqn = 'bigquery-beta.bigquery-beta-1.7047fd1d';
+    entityUtil.getEntityLink(
+      EntityType.INGESTION_PIPELINE,
+      fqn,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'databaseServices',
+      'bigquery-beta'
+    );
+
+    expect(getLogsViewerPath).toHaveBeenCalledWith(
+      'databaseServices',
+      fqn,
+      fqn
+    );
+  });
+
+  it('should fall through to table path for ingestion pipeline without a service category', () => {
+    // prepareFeedLink and similar callers omit serviceCategory; they must keep the default
+    // behaviour so a `/logs` URL is not produced (which would 404 once `/activity_feed` is appended).
+    const fqn = 'test.ingestion';
+    entityUtil.getEntityLink(EntityType.INGESTION_PIPELINE, fqn);
+
+    expect(getLogsViewerPath).not.toHaveBeenCalled();
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   describe('getFqnParts', () => {

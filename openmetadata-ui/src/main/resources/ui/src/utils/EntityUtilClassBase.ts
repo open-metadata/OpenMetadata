@@ -87,6 +87,7 @@ import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
   getKpiPath,
+  getLogsViewerPath,
   getNotificationAlertDetailsPath,
   getObservabilityAlertDetailsPath,
   getPersonaDetailsPath,
@@ -199,7 +200,9 @@ class EntityUtilClassBase {
     tab?: string,
     subTab?: string,
     isExecutableTestSuite?: boolean,
-    isObservabilityAlert?: boolean
+    isObservabilityAlert?: boolean,
+    serviceCategory?: string,
+    _serviceFqn?: string
   ) {
     switch (indexType) {
       case SearchIndex.TOPIC:
@@ -434,6 +437,20 @@ class EntityUtilClassBase {
 
       case EntityType.KNOWLEDGE_PAGE:
         return getKnowledgePagePath(fullyQualifiedName, tab, subTab);
+
+      case EntityType.INGESTION_PIPELINE:
+        // Only route to the logs viewer when the caller supplies the service category (the
+        // entity-link markdown parser does). Callers like prepareFeedLink call getEntityLink
+        // without it; for them we must fall through to the default — otherwise the returned
+        // `/<category>/<fqn>/logs` URL gets `/activity_feed` appended and matches no route (404).
+        if (serviceCategory) {
+          return getLogsViewerPath(
+            serviceCategory,
+            fullyQualifiedName,
+            fullyQualifiedName
+          );
+        }
+      // falls through
 
       case SearchIndex.TABLE:
       case EntityType.TABLE:
