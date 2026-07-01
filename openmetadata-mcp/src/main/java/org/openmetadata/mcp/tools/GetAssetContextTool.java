@@ -37,10 +37,12 @@ public class GetAssetContextTool implements McpTool {
       result = Map.of("error", "'entityType' and 'fqn' parameters are required");
     } else {
       String format = (String) params.getOrDefault("format", "markdown");
+      // Authorize against the specific asset (by FQN), not just the type, so conditional
+      // per-entity policies (owner/domain/tag-based rules) are evaluated for this asset.
       authorizer.authorize(
           securityContext,
           new OperationContext(entityType, VIEW_ALL),
-          new ResourceContext<>(entityType));
+          new ResourceContext<>(entityType, null, fqn));
       LOG.info(
           "Assembling AI context for entity type: {}, FQN: {}, format: {}",
           entityType,

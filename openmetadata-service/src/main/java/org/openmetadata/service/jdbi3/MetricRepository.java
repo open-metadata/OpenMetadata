@@ -37,7 +37,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
@@ -540,11 +539,11 @@ public class MetricRepository extends EntityRepository<Metric> {
      * original and updated types.
      */
     private void updateAppliedToAssets(Metric original, Metric updated) {
-      Map<String, List<EntityReference>> originalByType =
-          groupByType(original.getAppliedToAssets());
-      Map<String, List<EntityReference>> updatedByType = groupByType(updated.getAppliedToAssets());
-      Set<String> assetTypes = new TreeSet<>(originalByType.keySet());
-      assetTypes.addAll(updatedByType.keySet());
+      List<EntityReference> originalAssets = typedAssets(original.getAppliedToAssets());
+      List<EntityReference> updatedAssets = typedAssets(updated.getAppliedToAssets());
+      Set<String> assetTypes = new TreeSet<>();
+      originalAssets.forEach(asset -> assetTypes.add(asset.getType()));
+      updatedAssets.forEach(asset -> assetTypes.add(asset.getType()));
       for (String assetType : assetTypes) {
         updateToRelationships(
             FIELD_APPLIED_TO_ASSETS,
@@ -552,18 +551,32 @@ public class MetricRepository extends EntityRepository<Metric> {
             original.getId(),
             Relationship.APPLIED_TO,
             assetType,
-            originalByType.getOrDefault(assetType, List.of()),
-            updatedByType.getOrDefault(assetType, List.of()),
+            ofType(originalAssets, assetType),
+            ofType(updatedAssets, assetType),
             false);
       }
     }
 
-    private Map<String, List<EntityReference>> groupByType(List<EntityReference> refs) {
-      // A null/blank type (bad or legacy data) would become a null groupingBy key and NPE the
-      // TreeSet union; such references cannot be diffed meaningfully, so skip them.
-      return listOrEmpty(refs).stream()
-          .filter(ref -> ref != null && !nullOrEmpty(ref.getType()))
-          .collect(Collectors.groupingBy(EntityReference::getType));
+    /** References with a null/blank type (bad or legacy data) cannot be diffed; skip them. */
+    private List<EntityReference> typedAssets(List<EntityReference> refs) {
+      List<EntityReference> valid = new ArrayList<>();
+      for (EntityReference ref : listOrEmpty(refs)) {
+        if (ref != null && !nullOrEmpty(ref.getType())) {
+          valid.add(ref);
+        }
+      }
+      return valid;
+    }
+
+    /** Mutable on purpose: updateToRelationships sorts the lists it receives. */
+    private List<EntityReference> ofType(List<EntityReference> refs, String assetType) {
+      List<EntityReference> matching = new ArrayList<>();
+      for (EntityReference ref : refs) {
+        if (assetType.equals(ref.getType())) {
+          matching.add(ref);
+        }
+      }
+      return matching;
     }
   }
 
