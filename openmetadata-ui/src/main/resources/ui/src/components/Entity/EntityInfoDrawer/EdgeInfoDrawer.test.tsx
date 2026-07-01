@@ -68,7 +68,7 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(({ value }: { value: string }) => (
+  return jest.fn().mockImplementation(({ value }: { value?: string }) => (
     <div data-testid="sql-editor" data-value={value}>
       SchemaEditor.component
     </div>
