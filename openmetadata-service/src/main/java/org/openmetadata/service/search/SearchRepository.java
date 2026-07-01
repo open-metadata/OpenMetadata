@@ -73,6 +73,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -102,6 +103,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -923,25 +925,74 @@ public class SearchRepository {
     }
   }
 
-  private String getIndexMapping(IndexMapping indexMapping) {
-    try (InputStream in =
-        getClass()
-            .getResourceAsStream(
-                String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
-      assert in != null;
-      return new String(in.readAllBytes());
-    } catch (Exception e) {
-      LOG.error("Failed to read index Mapping file due to ", e);
-    }
-    return null;
-  }
-
+  /**
+   * The effective index mapping for an entity. Prefers the admin-editable mapping persisted in the
+   * {@code searchIndexMappings} setting (already field-safety hardened at seed time); falls back to
+   * the hardened classpath resource when no stored slice exists (e.g. fresh-install first boot, or a
+   * newly added entity type not yet seeded).
+   */
   public String readIndexMapping(IndexMapping indexMapping) {
-    String mapping = getIndexMapping(indexMapping);
+    String mapping = getStoredMapping(indexMapping);
+    if (mapping == null) {
+      mapping = getHardenedResourceMapping(indexMapping);
+    }
     if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
       mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
     }
     return mapping;
+  }
+
+  private String getStoredMapping(IndexMapping indexMapping) {
+    String result = null;
+    String entityType = resolveEntityType(indexMapping);
+    if (entityType != null) {
+      Object mapping = lookupStoredMapping(language.toLowerCase(Locale.ROOT), entityType);
+      if (mapping != null) {
+        result = JsonUtils.pojoToJson(mapping);
+      }
+    }
+    return result;
+  }
+
+  private Object lookupStoredMapping(String mappingLanguage, String entityType) {
+    Object result = null;
+    SearchIndexMappings stored =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.SEARCH_INDEX_MAPPINGS, null, SearchIndexMappings.class);
+    if (stored != null && stored.getLanguages() != null) {
+      Map<String, Object> byEntity = stored.getLanguages().get(mappingLanguage);
+      if (byEntity != null) {
+        result = byEntity.get(entityType);
+      }
+    }
+    return result;
+  }
+
+  private String resolveEntityType(IndexMapping indexMapping) {
+    return entityIndexMap == null || indexMapping == null
+        ? null
+        : entityIndexMap.entrySet().stream()
+            .filter(entry -> entry.getValue().getIndexName().equals(indexMapping.getIndexName()))
+            .map(Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
+  }
+
+  private String getHardenedResourceMapping(IndexMapping indexMapping) {
+    String result = null;
+    try (InputStream in =
+        getClass()
+            .getResourceAsStream(
+                String.format(
+                    indexMapping.getIndexMappingFile(), language.toLowerCase(Locale.ROOT)))) {
+      if (in != null) {
+        result =
+            SearchIndexSettings.harden(new String(in.readAllBytes()), SearchFieldLimits.active());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to read index Mapping file due to ", e);
+    }
+    return result;
   }
 
   /**
