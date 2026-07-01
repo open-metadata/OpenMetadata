@@ -55,6 +55,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -116,10 +117,12 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityUtil;
@@ -200,42 +203,68 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn("Search unavailable for glossary term asset counts");
-      return new HashMap<>();
-    }
-
-    List<String> fqns;
-    if (parent != null && !parent.isEmpty()) {
-      fqns =
-          daoCollection.glossaryTermDAO().getNestedTerms(parent).stream()
-              .map(json -> JsonUtils.readTree(json).path("fullyQualifiedName").asText())
-              .collect(Collectors.toList());
-    } else {
-      fqns =
-          listAll(getFields("fullyQualifiedName"), new ListFilter(null)).stream()
-              .map(GlossaryTerm::getFullyQualifiedName)
-              .collect(Collectors.toList());
-    }
-
-    Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
-
-    for (String fqn : fqns) {
-      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
-
-      Integer count =
-          inheritedFieldEntitySearch.getCountForField(
-              query,
-              () -> {
-                LOG.warn("Search fallback for glossary term {} asset count. Returning 0.", fqn);
-                return 0;
-              });
-
-      glossaryTermAssetCounts.put(fqn, count);
-    }
-
-    return glossaryTermAssetCounts;
+    return getGlossaryTermsAssetsCount(parent, null, null).counts();
   }
+
+  public GlossaryTermAssetCountResult getGlossaryTermsAssetsCount(
+      String parent, Integer limit, Integer offset) {
+    String fqnHashPrefix = buildTermFqnHashPrefix(parent);
+    int total = daoCollection.glossaryTermDAO().countTermsByFqnHashPrefix(fqnHashPrefix);
+    List<String> pageFqns = listGlossaryTermFqns(fqnHashPrefix, limit, offset);
+    LinkedHashMap<String, Integer> pageCounts = new LinkedHashMap<>();
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search unavailable for glossary term asset counts; counts omitted");
+    } else if (!pageFqns.isEmpty()) {
+      Map<String, Integer> aggregatedCounts = fetchAssetCountsByGlossaryTermFqn(pageFqns);
+      for (String fqn : pageFqns) {
+        pageCounts.put(fqn, aggregatedCounts.getOrDefault(fqn, 0));
+      }
+    }
+    return new GlossaryTermAssetCountResult(pageCounts, total);
+  }
+
+  private static String buildTermFqnHashPrefix(String parent) {
+    String prefix = "%";
+    if (!nullOrEmpty(parent)) {
+      prefix = FullyQualifiedName.buildHash(parent) + ".%";
+    }
+    return prefix;
+  }
+
+  private List<String> listGlossaryTermFqns(String fqnHashPrefix, Integer limit, Integer offset) {
+    int pageLimit = limit == null ? Integer.MAX_VALUE : Math.max(0, limit);
+    int pageOffset = offset == null ? 0 : Math.max(0, offset);
+    return daoCollection
+        .glossaryTermDAO()
+        .listTermFqnsByFqnHashPrefix(fqnHashPrefix, pageLimit, pageOffset);
+  }
+
+  private Map<String, Integer> fetchAssetCountsByGlossaryTermFqn(List<String> includeFqns) {
+    String queryFilter = QueryFilterBuilder.buildGenericAssetsCountFilter(TAGS_FQN, false);
+    String include = buildExactTermsInclude(includeFqns);
+    int size = include != null ? includeFqns.size() : EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+    Map<String, Integer> counts =
+        inheritedFieldEntitySearch.getAggregatedCountsByField(TAGS_FQN, queryFilter, size, include);
+    if (include == null && counts.size() >= EntityBuilderConstant.MAX_AGGREGATE_SIZE) {
+      LOG.warn(
+          "Glossary asset-count aggregation hit the {}-bucket cap without term scoping; "
+              + "counts for low-frequency terms beyond the cap may be reported as 0",
+          EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+    }
+    return counts;
+  }
+
+  private static String buildExactTermsInclude(List<String> fqns) {
+    String include = null;
+    boolean withinCap = fqns.size() <= EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+    boolean commaFree = fqns.stream().noneMatch(fqn -> fqn.contains(","));
+    if (!fqns.isEmpty() && withinCap && commaFree) {
+      include = String.join(",", fqns);
+    }
+    return include;
+  }
+
+  public record GlossaryTermAssetCountResult(Map<String, Integer> counts, int total) {}
 
   public Map<String, Integer> getRelationTypeUsageCounts() {
     Map<String, Integer> usageCounts = new HashMap<>();
