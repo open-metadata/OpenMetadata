@@ -9,49 +9,133 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Test that a lineage edge's sqlQuery is preserved when patching an existing edge.
+Lineage sqlQuery patch tests (issue #29520).
 
-Regression for the CTAS lineage gap where the table edge is created but the SQL
-query is dropped on subsequent runs because the patch allowlist excluded sqlQuery.
+Patching an existing lineage edge must add or update the incoming run's sqlQuery,
+never drop an already-stored query, and never crash build_patch on an edge that
+already carries a query. Covered through both public entry points, add_lineage
+(by id) and add_lineage_by_name (by fqn).
 """
 
-from types import SimpleNamespace
-from unittest.mock import Mock
+import json
+from unittest.mock import MagicMock
 
-from metadata.generated.schema.type.entityLineage import LineageDetails
+import pytest
+
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 
-CTAS_QUERY = "CREATE TABLE t AS SELECT * FROM s"
+FROM_ID = "d311bdf2-c4a9-4be3-9937-3b26309759af"
+TO_ID = "abea43f7-ccc2-4daf-9dfb-115549461244"
+STORED_QUERY = "SELECT 1 FROM source_table"
+INCOMING_QUERY = "SELECT 2 FROM source_table"
 
 
-def _fake_ometa():
-    """Mixin instance stand-in with only the HTTP client (a boundary) stubbed."""
-    return SimpleNamespace(
-        client=Mock(),
-        _lineage_edge_path_by_name=OMetaLineageMixin._lineage_edge_path_by_name,
+class StubbedLineage(OMetaLineageMixin):
+    """OMetaLineageMixin with only the HTTP boundaries stubbed, so add_lineage /
+    add_lineage_by_name run the real reconstruction, patch_lineage_edge* and
+    build_patch. `existing_edge` is what the server returns for the edge lookup."""
+
+    def __init__(self, existing_edge):
+        self.client = MagicMock()
+        self._existing_edge = existing_edge
+
+    def _get_lineage_edge_for_references(self, from_entity, to_entity):
+        return self._existing_edge
+
+    def get_lineage_edge_by_name(self, *args, **kwargs):
+        return self._existing_edge
+
+    def get_suffix(self, entity):
+        return "/lineage"
+
+    def get_lineage_by_id(self, *args, **kwargs):
+        return {}
+
+    def get_lineage_by_name(self, *args, **kwargs):
+        return {}
+
+    def _update_cache(self, *args, **kwargs):
+        return None
+
+
+def edge_lookup(stored_query=None):
+    """Server edge-lookup payload, optionally carrying an already-stored sqlQuery."""
+    details = {"columnsLineage": []}
+    if stored_query is not None:
+        details["sqlQuery"] = stored_query
+    return {"edge": details}
+
+
+def incoming_details(sql_query):
+    return (
+        LineageDetails(source=LineageSource.QueryLineage, sqlQuery=sql_query)
+        if sql_query is not None
+        else LineageDetails(source=LineageSource.QueryLineage)
     )
 
 
-class TestLineageSqlQueryPatch:
-    """patch_lineage_edge_by_name must carry sqlQuery onto an existing edge."""
+def sql_query_ops(client):
+    """JSON-patch ops targeting /sqlQuery from the single client.patch call."""
+    if not client.patch.called:
+        return []
+    patch = json.loads(client.patch.call_args.kwargs["data"])
+    return [op for op in patch if op.get("path") == "/sqlQuery"]
 
-    def test_sql_query_is_patched_onto_existing_edge_without_query(self):
-        fake = _fake_ometa()
-        original = LineageDetails(source=LineageSource.QueryLineage)
-        updated = LineageDetails(sqlQuery=CTAS_QUERY, source=LineageSource.QueryLineage)
 
-        OMetaLineageMixin.patch_lineage_edge_by_name(
-            fake,
-            from_entity_fqn="svc.db.sch.s",
-            from_entity_type="table",
-            to_entity_fqn="svc.db.sch.t",
-            to_entity_type="table",
-            original=original,
-            updated=updated,
+# stored query on the edge, incoming query on the run, expected query after patch
+PATCH_CASES = [
+    pytest.param(None, INCOMING_QUERY, INCOMING_QUERY, id="backfill-onto-query-less-edge"),
+    pytest.param(STORED_QUERY, INCOMING_QUERY, INCOMING_QUERY, id="update-existing-query"),
+    pytest.param(STORED_QUERY, None, None, id="keep-stored-query-when-incoming-empty"),
+]
+
+
+def assert_patched(client, expected_query):
+    assert not client.put.called
+    if expected_query is None:
+        assert sql_query_ops(client) == []
+    else:
+        assert sql_query_ops(client) == [{"op": "add", "path": "/sqlQuery", "value": expected_query}]
+
+
+class TestAddLineageSqlQuery:
+    """add_lineage (by id) reconstruction adds/updates the incoming query, keeps a
+    stored one when the run has none, and never crashes on an edge with a query."""
+
+    @pytest.mark.parametrize("stored, incoming, expected", PATCH_CASES)
+    def test_patches_sql_query(self, stored, incoming, expected):
+        service = StubbedLineage(edge_lookup(stored))
+        request = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=FROM_ID, type="table"),
+                toEntity=EntityReference(id=TO_ID, type="table"),
+                lineageDetails=incoming_details(incoming),
+            )
         )
 
-        fake.client.patch.assert_called_once()
-        sent = str(fake.client.patch.call_args.kwargs.get("data"))
-        assert "sqlQuery" in sent
-        assert CTAS_QUERY in sent
+        service.add_lineage(request, check_patch=True)
+
+        assert_patched(service.client, expected)
+
+
+class TestAddLineageByNameSqlQuery:
+    """Same reconstruction through the add_lineage_by_name (by fqn) entry point."""
+
+    @pytest.mark.parametrize("stored, incoming, expected", PATCH_CASES)
+    def test_patches_sql_query(self, stored, incoming, expected):
+        service = StubbedLineage(edge_lookup(stored))
+
+        service.add_lineage_by_name(
+            from_entity_fqn="svc.db.sch.source",
+            from_entity_type="table",
+            to_entity_fqn="svc.db.sch.target",
+            to_entity_type="table",
+            lineage_details=incoming_details(incoming),
+            check_patch=True,
+        )
+
+        assert_patched(service.client, expected)
