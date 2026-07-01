@@ -361,7 +361,8 @@ test('an impossible filter combination shows the no-results placeholder and reco
     await waitForAllLoadersToDisappear(page);
 
     await expect(page.getByTestId('no-search-results')).not.toBeVisible();
-    await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
+    await expect(page.getByTestId('explore-query-filter-chips')).toHaveCount(0);
+    await expect(page.getByTestId('query-bar-empty-text')).toHaveCount(0);
   });
 });
 

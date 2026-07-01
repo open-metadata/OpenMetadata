@@ -548,6 +548,7 @@ export const PaginationCardWithControls = ({
               noTextPadding
               className={compactRowsPerPageButtonClassName}
               color="secondary"
+              data-testid="rows-per-page-dropdown"
               size="xs"
               type="button">
               <span className="tw:inline-flex tw:w-full tw:items-center tw:justify-center tw:gap-1">
@@ -563,6 +564,7 @@ export const PaginationCardWithControls = ({
                 {pageSizeOptions.map((option) => (
                   <Dropdown.Item
                     className={compactRowsPerPageItemClassName}
+                    data-testid={`rows-per-page-option-${option}`}
                     id={String(option)}
                     key={option}
                     label={String(option)}
