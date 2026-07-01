@@ -121,6 +121,12 @@ const ExploreTree = ({
   // update the tree in place so browsing never blanks it out (the "page
   // reload" the user saw on every selection).
   const hasLoadedOnceRef = useRef(false);
+  // A tree selection keeps the expanded subtree so browsing does not collapse
+  // it; an external filter change (Data Assets dropdown, chip removal) rebuilds
+  // from the static roots so deeper counts and entity-type leaves re-fetch
+  // fresh under the new filter. Set by onNodeSelect, consumed by the next
+  // count refresh.
+  const treeSelectRef = useRef(false);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
@@ -340,6 +346,8 @@ const ExploreTree = ({
       info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
     ) => {
       const node = info.node as ExploreTreeNode;
+      // This refresh comes from a browse click, so keep the expanded subtree.
+      treeSelectRef.current = true;
       const filterField = node.data?.filterField;
       if (filterField) {
         if (node.isLeaf) {
@@ -383,6 +391,10 @@ const ExploreTree = ({
   const fetchEntityCounts = useCallback(async () => {
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
+    // A browse click keeps the expanded subtree; anything else (dropdown filter,
+    // chip removal, initial load) rebuilds so deeper counts/leaves re-fetch.
+    const preserveExpandedTree = treeSelectRef.current;
+    treeSelectRef.current = false;
     try {
       if (!hasLoadedOnceRef.current) {
         setIsLoading(true);
@@ -445,23 +457,21 @@ const ExploreTree = ({
         buckets: presenceBuckets,
       };
 
-      // Refresh the category counts on the live tree instead of rebuilding it
-      // from the static structure: the children the user has expanded — and the
-      // node they have selected — survive a filter or browse change, so the
-      // tree no longer collapses on every selection. Only the root counts are
-      // re-scoped here; a deeper node keeps the count from when it was expanded
-      // (the browse path never changes those) until the next full reload. The
-      // root set is reseeded from the present static roots so a category that an
-      // earlier text query dropped can reappear, reusing the live root where it
-      // still exists so expanded children and the selection survive.
+      // Rebuild the root set from the present static roots so a category an
+      // earlier text query dropped can reappear and its counts re-scope to the
+      // current filter. On a browse click the live roots are reused so the
+      // expanded subtree and selection survive; on an external filter change no
+      // live roots are carried over, so the deeper counts and entity-type leaves
+      // re-fetch fresh under the new filter on the next expand.
       setTreeData((origin) => {
         const presentRoots = updateTreeDataWithCounts(
           searchClassBase.getExploreTree(),
           presenceBuckets
         ).filter((node) => (node.totalCount ?? 0) > 0);
+        const liveRoots = preserveExpandedTree ? origin : [];
 
         return refreshRootCounts(
-          reconcilePresentRoots(presentRoots, origin),
+          reconcilePresentRoots(presentRoots, liveRoots),
           countBuckets
         );
       });

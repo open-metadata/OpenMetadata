@@ -466,33 +466,26 @@ describe('ExploreTree', () => {
     expect(getByText('label.governance')).toBeInTheDocument();
   });
 
-  it('keeps expanded child levels mounted across a filter change', async () => {
-    const searchQuerySpy = jest
-      .spyOn(searchAPI, 'searchQuery')
-      .mockResolvedValue({
-        aggregations: {
-          entityType: {
-            buckets: [
-              { key: 'table', doc_count: 50 },
-              { key: 'dashboard', doc_count: 10 },
-            ],
-          },
-          serviceType: { buckets: [{ key: 'BigQuery', doc_count: 1687 }] },
-          'service.displayName.keyword': {
-            buckets: [{ key: 'bigquery_prod', doc_count: 900 }],
-          },
+  const treeWithServiceMock = () =>
+    ({
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'table', doc_count: 50 },
+            { key: 'dashboard', doc_count: 10 },
+          ],
         },
-        hits: { hits: [], total: { value: 0 } },
-      } as never);
+        serviceType: { buckets: [{ key: 'BigQuery', doc_count: 1687 }] },
+        'service.displayName.keyword': {
+          buckets: [{ key: 'bigquery_prod', doc_count: 900 }],
+        },
+      },
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
 
-    const { findByText, queryByTestId, rerender } = render(
-      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
-    );
-
-    await waitFor(() => {
-      expect(queryByTestId('loader')).not.toBeInTheDocument();
-    });
-
+  const drillToServiceNode = async (
+    findByText: (text: string) => Promise<HTMLElement>
+  ) => {
     // Databases is expanded by default and lazy-loads its service types; drill
     // one level deeper into the service so a nested level is mounted.
     const bigQueryNode = await findByText('BigQuery');
@@ -502,9 +495,64 @@ describe('ExploreTree', () => {
     fireEvent.click(switcher as Element);
 
     expect(await findByText('bigquery_prod')).toBeInTheDocument();
+  };
 
-    // A filter change used to rebuild the tree from the static structure,
-    // collapsing every expanded level. The nested level must now survive it.
+  it('keeps the expanded subtree mounted when a node is selected (browse)', async () => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, getByTestId, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // Selecting a node is a browse click — the subsequent count refresh must
+    // keep the expanded subtree instead of collapsing it.
+    fireEvent.click(getByTestId('explore-tree-title-bigquery_prod'));
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(
+        JSON.stringify([
+          {
+            key: 'serviceType',
+            label: 'serviceType',
+            value: [{ key: 'BigQuery', label: 'BigQuery' }],
+          },
+        ])
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+  });
+
+  it('rebuilds the tree on an external Data Assets filter change', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, queryByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // A dropdown filter change (no tree selection) rebuilds from the static
+    // roots so the deeper levels re-fetch fresh under the new filter — the
+    // stale expanded service must drop.
     window.history.pushState(
       {},
       '',
@@ -528,7 +576,9 @@ describe('ExploreTree', () => {
       ).toBe(true);
     });
 
-    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
+    });
   });
 
   it('does not blank the tree with a spinner on later count refreshes', async () => {
