@@ -3086,6 +3086,7 @@
     "entity-owned-by-name": "此实体归{{entityOwner}}所有",
     "entity-pattern-validation": "{{entity}}可以包含空格和以下特殊字符{{pattern}}",
     "entity-pipeline-information": "<0>每个{{entity}}都必须链接到管道！</0>这个{{type}}还没有管道。让我们创建一个，这样您的{{entity}}就可以被链接和调度了。",
+    "entity-removed-from-folder": "{{entity}}已从文件夹中移除",
     "entity-restored-error": "还原{{entity}}时出现错误",
     "entity-restored-success": "{{entity}}还原成功",
     "entity-saved-successfully": "{{entity}}保存成功",
