@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -46,6 +47,9 @@ class EntityShapeIT {
 
   @BeforeAll
   static void setupAll() {
+    assumeFalse(
+        OssTestServer.isExternalMode(),
+        "EntityShapeIT builds throwaway shadow indices via raw engine writes, unsupported in external mode");
     SdkClients.adminClient();
     final SearchRepository searchRepository = Entity.getSearchRepository();
     canary = new ShapeCanary(searchRepository, new SearchClient(OssTestServer.defaultHandle()));

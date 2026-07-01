@@ -92,10 +92,12 @@ public final class SearchClient {
   }
 
   public JsonNode get(final String path) {
+    requireEmbedded("GET " + path);
     return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
   }
 
   public JsonNode post(final String path, final String jsonBody) {
+    requireEmbedded("POST " + path);
     return execute(
         HttpRequest.newBuilder(base.resolve(path))
             .header("Content-Type", "application/json")
@@ -104,6 +106,7 @@ public final class SearchClient {
   }
 
   public JsonNode put(final String path, final String jsonBody) {
+    requireEmbedded("PUT " + path);
     return execute(
         HttpRequest.newBuilder(base.resolve(path))
             .header("Content-Type", "application/json")
@@ -112,6 +115,7 @@ public final class SearchClient {
   }
 
   public void delete(final String path) {
+    requireEmbedded("DELETE " + path);
     try {
       final HttpResponse<String> response =
           http.send(
@@ -223,6 +227,21 @@ public final class SearchClient {
       throw new SearchClientException("HEAD " + path + " interrupted", e);
     } catch (final IOException e) {
       throw new SearchClientException("HEAD " + path + " failed", e);
+    }
+  }
+
+  /**
+   * The raw {@link #get}/{@link #post}/{@link #put}/{@link #delete} helpers talk straight to the
+   * engine over {@code base}/{@code http}, which are null in external mode (there is no raw-path
+   * passthrough — only the typed read-only proxy). Fail fast with a clear message instead of a bare
+   * NPE so an external-mode run is self-explanatory.
+   */
+  private void requireEmbedded(final String operation) {
+    if (server.isExternal()) {
+      throw new SearchClientException(
+          operation
+              + " requires direct engine access, which is unavailable in external mode "
+              + "(the test-support proxy exposes only read-only introspection).");
     }
   }
 
