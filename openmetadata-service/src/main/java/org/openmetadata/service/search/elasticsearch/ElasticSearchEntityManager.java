@@ -46,6 +46,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -121,11 +122,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Execute the async bulk request
+    // Execute the bulk request. The write is awaited below so realtime column indexing is
+    // durable before the caller returns; failures are routed to the retry queue in the handler.
     CompletableFuture<BulkResponse> future =
         asyncClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
 
-    // Handle response asynchronously
     future.whenComplete(
         (response, error) -> {
           if (error != null) {
@@ -167,11 +168,30 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     });
           } else {
             LOG.info(
-                "Successfully indexed {} entities to ElasticSearch (async) for index: {}",
+                "Successfully indexed {} entities to ElasticSearch for index: {}",
                 docsAndIds.size(),
                 indexName);
           }
         });
+
+    // Block until the bulk completes (refresh=True makes the docs searchable) so a realtime
+    // column-index write is durable before the caller returns — matching the synchronous
+    // single-doc createEntity path. Without this the bulk was fire-and-forget: under concurrent
+    // load a search right after a table create could observe the table doc but not its column
+    // docs. Failures are routed to the retry queue in whenComplete above; join only re-surfaces
+    // them here, so they are swallowed.
+    awaitBulkCompletion(future, indexName);
+  }
+
+  private void awaitBulkCompletion(CompletableFuture<BulkResponse> future, String indexName) {
+    try {
+      future.join();
+    } catch (CompletionException failuresAlreadyRetried) {
+      LOG.debug(
+          "createEntities bulk for index {} completed exceptionally; retries were enqueued",
+          indexName,
+          failuresAlreadyRetried);
+    }
   }
 
   @Override
