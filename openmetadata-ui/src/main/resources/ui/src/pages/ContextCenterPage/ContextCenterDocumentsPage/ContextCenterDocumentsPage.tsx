@@ -276,6 +276,7 @@ const ContextCenterDocumentsPage: FC = () => {
         prev.filter((document) => document.id !== fileToDelete.id)
       );
       setTotalFileCount((prev) => prev - 1);
+      setGlobalFileCount((prev) => prev - 1);
       setLastFilesDeleted([fileToDelete]);
       showSuccessToast(
         t('server.entity-deleted-success', {
@@ -363,6 +364,7 @@ const ContextCenterDocumentsPage: FC = () => {
 
       setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
       setTotalFileCount((prev) => prev - deletedIds.size);
+      setGlobalFileCount((prev) => prev - deletedIds.size);
       if (deletedDocuments.length > 0) {
         setLastFilesDeleted(deletedDocuments);
       }
@@ -467,6 +469,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
     setAllDocuments((prev) => [...newFiles, ...prev]);
     setTotalFileCount((prev) => prev + newFiles.length);
+    setGlobalFileCount((prev) => prev + newFiles.length);
   }, []);
 
   return (
