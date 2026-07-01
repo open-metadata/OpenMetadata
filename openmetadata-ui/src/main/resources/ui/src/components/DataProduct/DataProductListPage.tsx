@@ -174,6 +174,7 @@ const DataProductListPage = () => {
     searchPlaceholder: t('label.search'),
     onSearchChange: dataProductListing.handleSearchChange,
     initialSearchQuery: dataProductListing.urlState.searchQuery,
+    testId: 'data-product-list-search-bar',
   });
 
   const { view, viewToggle } = useViewToggle();
