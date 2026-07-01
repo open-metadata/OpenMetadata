@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "เอนทิตีนี้เป็นของ {{entityOwner}}",
     "entity-pattern-validation": "{{entity}} สามารถรวมช่องว่างและตัวอักษรพิเศษต่อไปนี้ได้ {{pattern}}",
     "entity-pipeline-information": "<0>{{entity}} ทุกตัวต้องเชื่อมต่อกับไปป์ไลน์!</0> {{type}} นี้ยังไม่มีไปป์ไลน์ มาสร้างหนึ่งอันเพื่อให้ {{entity}} ของคุณสามารถเชื่อมต่อและจัดตารางเวลาได้",
+    "entity-removed-from-folder": "นำ {{entity}} ออกจากโฟลเดอร์แล้ว",
     "entity-restored-error": "เกิดข้อผิดพลาดขณะกู้คืน {{entity}}",
     "entity-restored-success": "กู้คืน {{entity}} สำเร็จ",
     "entity-saved-successfully": "{{entity}} ถูกบันทึกสำเร็จ",

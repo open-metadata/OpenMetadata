@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "این موجودیت متعلق به {{entityOwner}} است.",
     "entity-pattern-validation": "{{entity}} می‌تواند شامل فاصله‌ها و تنها کاراکترهای خاص {{pattern}} باشد.",
     "entity-pipeline-information": "<0>¡Cada {{entity}} debe estar vinculada a un pipeline!</0> Este {{type}} aún no tiene un pipeline. Vamos a crear uno para que su {{entity}} pueda estar vinculada y programada.",
+    "entity-removed-from-folder": "{{entity}} از پوشه حذف شد",
     "entity-restored-error": "خطا در هنگام بازیابی {{entity}}",
     "entity-restored-success": "{{entity}} با موفقیت بازیابی شد.",
     "entity-saved-successfully": "{{entity}} با موفقیت ذخیره شد.",

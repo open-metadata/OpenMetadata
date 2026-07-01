@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "Diese Entität gehört {{entityOwner}}.",
     "entity-pattern-validation": "{{entity}} kann Leerzeichen und nur die folgenden Sonderzeichen enthalten: {{pattern}}",
     "entity-pipeline-information": "<0>Jede {{entity}} muss mit einer Pipeline verknüpft sein!</0> Dieser {{type}} hat noch keine Pipeline. Lassen Sie uns eine erstellen, damit Ihre {{entity}} verknüpft und geplant werden kann.",
+    "entity-removed-from-folder": "{{entity}} aus Ordner entfernt",
     "entity-restored-error": "Fehler beim Wiederherstellen von {{entity}}.",
     "entity-restored-success": "{{entity}} erfolgreich wiederhergestellt.",
     "entity-saved-successfully": "{{entity}} erfolgreich gespeichert",

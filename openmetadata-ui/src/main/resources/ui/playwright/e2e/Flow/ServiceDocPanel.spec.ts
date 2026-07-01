@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { redirectToHomePage } from '../../utils/common';
 import {
   copyAndGetClipboardText,
@@ -44,7 +45,7 @@ const goToBigQueryConnectionStep = async (page: Page) => {
   await waitForServiceConnectionForm(page);
 };
 
-test.describe('ServiceDocPanel', () => {
+test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

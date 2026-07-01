@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "이 엔티티는 {{entityOwner}}이(가) 소유하고 있습니다",
     "entity-pattern-validation": "{{entity}}에는 공백과 다음 특수 문자만 포함될 수 있습니다: {{pattern}}",
     "entity-pipeline-information": "<0>모든 {{entity}}는 파이프라인에 연결되어야 합니다!</0> 이 {{type}}에는 아직 파이프라인이 없습니다. {{entity}}를 연결하고 예약할 수 있도록 하나를 만들어 보겠습니다.",
+    "entity-removed-from-folder": "{{entity}}이(가) 폴더에서 제거되었습니다",
     "entity-restored-error": "{{entity}} 복원 중 오류가 발생했습니다",
     "entity-restored-success": "{{entity}}이(가) 성공적으로 복원되었습니다",
     "entity-saved-successfully": "{{entity}}이(가) 성공적으로 저장되었습니다",

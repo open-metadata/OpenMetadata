@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "このエンティティは {{entityOwner}} が所有しています",
     "entity-pattern-validation": "{{entity}} にはスペースと、次の特殊文字 {{pattern}} のみを含めることができます",
     "entity-pipeline-information": "<0>すべての{{entity}}はパイプラインにリンクされる必要があります！</0> この{{type}}にはまだパイプラインがありません。{{entity}}をリンクしてスケジュールできるように作成しましょう。",
+    "entity-removed-from-folder": "{{entity}} をフォルダから削除しました",
     "entity-restored-error": "{{entity}} の復元中にエラーが発生しました",
     "entity-restored-success": "{{entity}} は正常に復元されました",
     "entity-saved-successfully": "{{entity}} は正常に保存されました",

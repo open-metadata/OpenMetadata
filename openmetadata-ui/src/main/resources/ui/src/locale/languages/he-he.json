@@ -3091,6 +3091,7 @@
     "entity-owned-by-name": "ישות זו שייכת ל-{{entityOwner}}",
     "entity-pattern-validation": "{{entity}} יכול לכלול רווחים ורק את התווים המיוחדים הבאים {{pattern}}",
     "entity-pipeline-information": "<0>כל {{entity}} חייב להיות מקושר לצינור!</0> ל{{type}} הזה אין עדיין צינור. בואו ניצור אחד כדי שה{{entity}} שלכם יוכל להיות מקושר ומתוכנן.",
+    "entity-removed-from-folder": "{{entity}} הוסר מהתיקייה",
     "entity-restored-error": "שגיאה בעת שחזור {{entity}}",
     "entity-restored-success": "{{entity}} שוחזרה בהצלחה",
     "entity-saved-successfully": "{{entity}} נשמרה בהצלחה",
