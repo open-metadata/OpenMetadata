@@ -39,11 +39,12 @@ type LevelFilter = 'all' | LogLevel;
 
 const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
   const { t } = useTranslation();
-  const { lines: all, isLoading, hasMore, loadMore } = useAgentLogs(
-    agent.id,
-    agent.pipelineType,
-    true
-  );
+  const {
+    lines: all,
+    isLoading,
+    hasMore,
+    loadMore,
+  } = useAgentLogs(agent.id, agent.pipelineType, true);
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState<LevelFilter>('all');
   const [wrap, setWrap] = useState(true);
@@ -339,7 +340,9 @@ const LogViewerDrawer: FC<LogViewerDrawerProps> = ({ agent, onClose }) => {
                 color: '#5D6B98',
                 font: '400 12.5px var(--font-mono)',
               }}>
-              {isLoading ? `${t('label.loading')}...` : t('message.no-lines-match')}
+              {isLoading
+                ? `${t('label.loading')}...`
+                : t('message.no-lines-match')}
             </div>
           ) : (
             rows.map((l, i) => (

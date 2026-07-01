@@ -356,92 +356,102 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
                   margin: '22px 0 14px',
                 }}>
                 <RunGlyph size={20} status={run.status} />
-            <div style={{ flex: 1 }}>
-              <div
-                style={{ font: '700 15px Inter', color: 'var(--fg-primary)' }}>
-                {runLabel}
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      font: '700 15px Inter',
+                      color: 'var(--fg-primary)',
+                    }}>
+                    {runLabel}
+                  </div>
+                  <div
+                    style={{
+                      font: '400 12px Inter',
+                      color: 'var(--fg-tertiary)',
+                    }}>
+                    {run.startedAt} (UTC−07:00) &middot; ran for {run.duration}{' '}
+                    min
+                  </div>
+                </div>
+                <span
+                  style={{
+                    font: '600 11.5px Inter',
+                    color: m.fg,
+                    background: m.bg,
+                    border: `1px solid ${m.bd}`,
+                    borderRadius: 9999,
+                    padding: '4px 11px',
+                  }}>
+                  {runLabel}
+                </span>
               </div>
+
+              {/* stat strip */}
+              <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
+                <StatTile
+                  label={t('label.records-processed')}
+                  value={fmtNum(tot.records)}
+                />
+                <StatTile
+                  label={t('label.filtered')}
+                  value={fmtNum(tot.filtered)}
+                />
+                <StatTile
+                  label={t('label.updated')}
+                  value={fmtNum(tot.updated)}
+                />
+                <StatTile
+                  label={t('label.warning-plural-lowercase')}
+                  tone={tot.warnings ? 'warn' : undefined}
+                  value={fmtNum(tot.warnings)}
+                />
+                <StatTile
+                  label={t('label.error-plural-lowercase')}
+                  tone={tot.errors ? 'error' : undefined}
+                  value={fmtNum(tot.errors)}
+                />
+              </div>
+
+              {/* steps card */}
               <div
                 style={{
-                  font: '400 12px Inter',
-                  color: 'var(--fg-tertiary)',
+                  background: '#fff',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 14,
+                  padding: '4px 18px',
+                  boxShadow: 'var(--shadow-xs)',
                 }}>
-                {run.startedAt} (UTC−07:00) &middot; ran for {run.duration} min
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '14px 0 10px',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}>
+                  <span
+                    style={{
+                      font: '600 13px Inter',
+                      color: 'var(--fg-secondary)',
+                    }}>
+                    {t('label.steps')}
+                  </span>
+                  <span
+                    style={{
+                      font: '400 12px Inter',
+                      color: 'var(--fg-muted)',
+                    }}>
+                    {run.steps.length} {t('label.steps').toLowerCase()}
+                  </span>
+                </div>
+                {run.steps.map((s, idx) => (
+                  <RunStepRow
+                    isLast={idx === run.steps.length - 1}
+                    key={idx}
+                    step={s}
+                  />
+                ))}
               </div>
-            </div>
-            <span
-              style={{
-                font: '600 11.5px Inter',
-                color: m.fg,
-                background: m.bg,
-                border: `1px solid ${m.bd}`,
-                borderRadius: 9999,
-                padding: '4px 11px',
-              }}>
-              {runLabel}
-            </span>
-          </div>
-
-          {/* stat strip */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
-            <StatTile
-              label={t('label.records-processed')}
-              value={fmtNum(tot.records)}
-            />
-            <StatTile
-              label={t('label.filtered')}
-              value={fmtNum(tot.filtered)}
-            />
-            <StatTile label={t('label.updated')} value={fmtNum(tot.updated)} />
-            <StatTile
-              label={t('label.warning-plural-lowercase')}
-              tone={tot.warnings ? 'warn' : undefined}
-              value={fmtNum(tot.warnings)}
-            />
-            <StatTile
-              label={t('label.error-plural-lowercase')}
-              tone={tot.errors ? 'error' : undefined}
-              value={fmtNum(tot.errors)}
-            />
-          </div>
-
-          {/* steps card */}
-          <div
-            style={{
-              background: '#fff',
-              border: '1px solid var(--border-default)',
-              borderRadius: 14,
-              padding: '4px 18px',
-              boxShadow: 'var(--shadow-xs)',
-            }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '14px 0 10px',
-                borderBottom: '1px solid var(--border-subtle)',
-              }}>
-              <span
-                style={{
-                  font: '600 13px Inter',
-                  color: 'var(--fg-secondary)',
-                }}>
-                {t('label.steps')}
-              </span>
-              <span
-                style={{ font: '400 12px Inter', color: 'var(--fg-muted)' }}>
-                {run.steps.length} {t('label.steps').toLowerCase()}
-              </span>
-            </div>
-            {run.steps.map((s, idx) => (
-              <RunStepRow
-                isLast={idx === run.steps.length - 1}
-                key={idx}
-                step={s}
-              />
-            ))}
-          </div>
             </>
           ) : (
             <div

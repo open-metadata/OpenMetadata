@@ -159,60 +159,60 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         )}
         {stackLines.length > 0 && (
           <>
-        <button
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            marginTop: 10,
-            border: 0,
-            background: 'none',
-            cursor: 'pointer',
-            color: 'var(--fg-link)',
-            font: '600 12px Inter',
-            padding: 0,
-          }}
-          onClick={toggleLog}>
-          <svg
-            fill="none"
-            height="13"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            style={{
-              transform: showLog ? 'rotate(90deg)' : 'none',
-              transition: 'transform .15s',
-            }}
-            viewBox="0 0 24 24"
-            width="13">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-          {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
-        </button>
-        {showLog && (
-          <div
-            style={{
-              marginTop: 8,
-              background: 'var(--gray-950)',
-              borderRadius: 8,
-              padding: '10px 12px',
-              maxHeight: 160,
-              overflowY: 'auto',
-            }}>
-            {stackLines.map((line, idx) => (
-              <div
-                key={idx}
+            <button
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                marginTop: 10,
+                border: 0,
+                background: 'none',
+                cursor: 'pointer',
+                color: 'var(--fg-link)',
+                font: '600 12px Inter',
+                padding: 0,
+              }}
+              onClick={toggleLog}>
+              <svg
+                fill="none"
+                height="13"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
                 style={{
-                  font: '400 11.5px/1.7 var(--font-mono)',
-                  color: line.includes('ERROR') ? '#FDA29B' : '#A6F4C5',
-                  whiteSpace: 'pre-wrap',
+                  transform: showLog ? 'rotate(90deg)' : 'none',
+                  transition: 'transform .15s',
+                }}
+                viewBox="0 0 24 24"
+                width="13">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
+            </button>
+            {showLog && (
+              <div
+                style={{
+                  marginTop: 8,
+                  background: 'var(--gray-950)',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  maxHeight: 160,
+                  overflowY: 'auto',
                 }}>
-                {line}
+                {stackLines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      font: '400 11.5px/1.7 var(--font-mono)',
+                      color: line.includes('ERROR') ? '#FDA29B' : '#A6F4C5',
+                      whiteSpace: 'pre-wrap',
+                    }}>
+                    {line}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
           </>
         )}
       </div>

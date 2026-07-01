@@ -85,8 +85,9 @@ const Ingestion: React.FC<IngestionProps> = ({
   // The community widget registry types every entry as the metadata widget;
   // the Collate edition overrides it with the real Collate AI widget. Treat it
   // as a props-bag component so the Collate sub-tab can render either.
-  const CollateAgentsWidget =
-    CollateAIAgentsWidget as unknown as ComponentType<Record<string, unknown>>;
+  const CollateAgentsWidget = CollateAIAgentsWidget as unknown as ComponentType<
+    Record<string, unknown>
+  >;
 
   const isCollateAIWidgetSupported = useMemo(
     () => !isUndefined(CollateAIAgentsWidget) && isDBService,
@@ -102,7 +103,8 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const showAddAgent = useMemo(
     () =>
-      Boolean(permissions['ingestionPipeline']?.Create) && platform !== DISABLED,
+      Boolean(permissions['ingestionPipeline']?.Create) &&
+      platform !== DISABLED,
     [permissions, platform]
   );
 
@@ -131,7 +133,9 @@ const Ingestion: React.FC<IngestionProps> = ({
   const subTabOptions = useMemo(() => {
     return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
-        tabName === ServiceAgentSubTabs.COLLATE_AI ? CollateAI : MetadataAgentIcon;
+        tabName === ServiceAgentSubTabs.COLLATE_AI
+          ? CollateAI
+          : MetadataAgentIcon;
       const label =
         tabName === ServiceAgentSubTabs.COLLATE_AI
           ? t('label.collate-ai')

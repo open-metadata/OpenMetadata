@@ -87,15 +87,19 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       switch (action) {
         case 'run':
           void runAgent(agent);
+
           break;
         case 'redeploy':
           void redeployAgent(agent);
+
           break;
         case 'kill':
           void killAgent(agent);
+
           break;
         case 'pause':
           void toggleAgent(agent);
+
           break;
         case 'edit':
           navigate(
@@ -106,9 +110,11 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
               agent.pipelineType
             )
           );
+
           break;
         case 'delete':
           void deleteAgent(agent);
+
           break;
         default:
           break;
