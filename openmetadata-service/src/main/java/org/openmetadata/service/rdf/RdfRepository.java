@@ -4070,11 +4070,47 @@ public class RdfRepository {
       Model model, Resource prop, Property predicate, List<String> values) {
     if (values != null) {
       for (String value : values) {
-        if (value != null && value.contains("://")) {
-          prop.addProperty(predicate, model.createResource(value));
+        Resource resource = classConstraintResource(model, value);
+        if (resource != null) {
+          prop.addProperty(predicate, resource);
         }
       }
     }
+  }
+
+  /**
+   * A domain/range value is either an external class IRI or a stored GlossaryTerm FQN (per the
+   * relation-type schema). External IRIs map directly; an FQN resolves to the same term URI the
+   * SKOS export emits so the constraint references the actual term instead of being dropped.
+   */
+  private Resource classConstraintResource(Model model, String value) {
+    Resource resource = null;
+    if (!nullOrEmpty(value)) {
+      if (value.contains("://")) {
+        resource = model.createResource(value);
+      } else {
+        String termUri = glossaryTermUri(value);
+        if (termUri != null) {
+          resource = model.createResource(termUri);
+        }
+      }
+    }
+    return resource;
+  }
+
+  private String glossaryTermUri(String fqn) {
+    String termUri = null;
+    try {
+      GlossaryTerm term =
+          Entity.getEntityByName(Entity.GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
+      termUri =
+          term.getIri() != null
+              ? term.getIri().toString()
+              : config.getBaseUri().toString() + "glossaryTerm/" + term.getId();
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("Skipping domain/range constraint for unknown glossary term FQN {}", fqn);
+    }
+    return termUri;
   }
 
   private void addRelationCardinalityShapes(Model model) {
