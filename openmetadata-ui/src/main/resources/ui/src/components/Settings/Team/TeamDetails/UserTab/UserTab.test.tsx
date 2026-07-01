@@ -166,7 +166,7 @@ describe('UserTab', () => {
       expect(screen.getByTestId('import-button')).toBeInTheDocument();
     });
 
-    it('should hide the import option for a non-admin user without EditAll permission', async () => {
+    it('should hide the import option when EditAll permission is missing', async () => {
       render(
         <BrowserRouter>
           <UserTab

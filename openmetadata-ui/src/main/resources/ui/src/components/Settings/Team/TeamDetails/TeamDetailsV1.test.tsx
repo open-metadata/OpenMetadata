@@ -178,7 +178,7 @@ describe('TeamDetailsV1 Import/Export permission gating', () => {
     expect(screen.getByTestId('import-button')).toBeInTheDocument();
   });
 
-  it('should hide the import option for a non-admin user without Create permission', async () => {
+  it('should hide the import option when Create permission is missing', async () => {
     renderComponent({
       entityPermissions: { Create: false } as OperationPermission,
     });
