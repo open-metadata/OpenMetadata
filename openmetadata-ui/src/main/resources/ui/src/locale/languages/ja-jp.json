@@ -3349,7 +3349,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} が正常にアップロードおよび解析されました",
     "metric-configuration-description": "メトリクスの動作を制御するためにフィールドをカスタマイズできます。必要に応じてフィールドを追加、削除、非表示、または無効化できます。",
     "metric-description": "組織全体で標準化された指標を定義し、カタログ化します。",
-    "metric-list-truncated": "最初の {{count}} 件のメトリクスを表示しています。残りを表示するには検索を絞り込んでください。",
+    "metric-list-truncated": "最初の {{count}} 件のメトリクスを表示しています。このビューではそれ以上のメトリクスは表示できません。",
     "metric-relations-require-glossary-term": "関係を追加するには、用語集の用語を選択してください。",
     "metric-tags-info": "メトリクスはタグを通じて用語集の用語にリンクされます。",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

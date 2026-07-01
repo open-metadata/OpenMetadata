@@ -3349,7 +3349,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} 已成功上傳並解析",
     "metric-configuration-description": "自訂欄位以控制指標行為。您可以根據需要新增、移除、隱藏或停用欄位。",
     "metric-description": "在整個組織中定義並編目標準化指標。",
-    "metric-list-truncated": "正在顯示前 {{count}} 個指標。請縮小搜尋範圍以查看其餘內容。",
+    "metric-list-truncated": "正在顯示前 {{count}} 個指標。此檢視中無法顯示更多指標。",
     "metric-relations-require-glossary-term": "選擇詞彙表術語以新增關係。",
     "metric-tags-info": "指標透過標籤連結到詞彙表術語。",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

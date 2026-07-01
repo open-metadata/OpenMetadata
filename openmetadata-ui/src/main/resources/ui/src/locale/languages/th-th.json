@@ -3349,7 +3349,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} ถูกอัปโหลดและแยกวิเคราะห์สำเร็จแล้ว",
     "metric-configuration-description": "ปรับแต่งฟิลด์เพื่อควบคุมพฤติกรรมของเมทริก คุณสามารถเพิ่ม ลบ ซ่อน หรือปิดใช้งานฟิลด์ตามความต้องการ",
     "metric-description": "กำหนดและจัดทำรายการเมตริกมาตรฐานทั่วทั้งองค์กรของคุณ",
-    "metric-list-truncated": "กำลังแสดง {{count}} เมตริกแรก ปรับการค้นหาเพื่อดูรายการที่เหลือ",
+    "metric-list-truncated": "กำลังแสดง {{count}} เมตริกแรก เมตริกเพิ่มเติมไม่พร้อมใช้งานในมุมมองนี้",
     "metric-relations-require-glossary-term": "เลือกคำศัพท์เพื่อเพิ่มความสัมพันธ์",
     "metric-tags-info": "เมตริกเชื่อมต่อกับคำศัพท์ผ่านแท็ก",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

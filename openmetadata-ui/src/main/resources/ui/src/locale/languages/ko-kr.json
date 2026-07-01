@@ -3349,7 +3349,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}}이(가) 성공적으로 업로드 및 파싱되었습니다",
     "metric-configuration-description": "메트릭 동작을 제어하기 위해 필드를 사용자 지정하세요. 필요에 따라 필드를 추가, 제거, 숨기기 또는 비활성화할 수 있습니다.",
     "metric-description": "조직 전반에 걸쳐 표준화된 지표를 정의하고 카탈로그화하세요.",
-    "metric-list-truncated": "처음 {{count}}개의 지표를 표시하고 있습니다. 나머지를 보려면 검색을 구체화하세요.",
+    "metric-list-truncated": "처음 {{count}}개의 지표를 표시하고 있습니다. 이 보기에서는 추가 지표를 확인할 수 없습니다.",
     "metric-relations-require-glossary-term": "관계를 추가하려면 용어집 용어를 선택하세요.",
     "metric-tags-info": "메트릭은 태그를 통해 용어집 용어에 연결됩니다.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",

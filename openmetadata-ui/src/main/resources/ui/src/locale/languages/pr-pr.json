@@ -3349,7 +3349,7 @@
     "metadata-xml-file-parsed-success": "{{fileName}} با موفقیت بارگذاری و تجزیه شد",
     "metric-configuration-description": "فیلدها را برای کنترل رفتار معیارها شخصی‌سازی کنید. می‌توانید فیلدها را بر اساس نیاز اضافه، حذف، پنهان یا غیرفعال کنید.",
     "metric-description": "در سراسر سازمان خود معیارهای استاندارد شده را تعریف و فهرست کنید.",
-    "metric-list-truncated": "نمایش {{count}} متریک نخست. برای دیدن بقیه، جستجوی خود را محدودتر کنید.",
+    "metric-list-truncated": "نمایش {{count}} متریک نخست. متریک‌های بیشتر در این نما در دسترس نیستند.",
     "metric-relations-require-glossary-term": "یک اصطلاح واژه‌نامه برای افزودن روابط انتخاب کنید.",
     "metric-tags-info": "معیارها از طریق برچسب‌ها به اصطلاحات واژه‌نامه متصل می‌شوند.",
     "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
