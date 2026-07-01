@@ -452,7 +452,9 @@ test.describe('Context Center Articles', () => {
     await navigateToArticles(page);
     const node = await scrollHierarchyToNode(page, apiQuickLink.displayName);
     await node.click();
-    await expect(page.getByRole('textbox', { name: 'Display Name' })).toHaveValue(apiQuickLink.displayName);
+    await expect(
+      page.getByRole('textbox', { name: 'Display Name' })
+    ).toHaveValue(apiQuickLink.displayName);
     await page.keyboard.press('Escape');
     await node.hover();
     await page
@@ -861,7 +863,8 @@ test.describe('Context Center Articles', () => {
     await deletePage(page, false, article.fullyQualifiedName);
     await expect(page).toHaveURL(/\/context-center\/articles$/);
 
-    const { apiContext: recreateContext, afterAction: recreateAfterAction } = await createNewPage(browser);
+    const { apiContext: recreateContext, afterAction: recreateAfterAction } =
+      await createNewPage(browser);
     const recreated = await createArticleViaApi(recreateContext, {
       name: reusableName,
       displayName: reusableTitle,
@@ -1092,9 +1095,9 @@ test.describe('Context Center Articles', () => {
     await updateBody(dataConsumerPage, `Edited by data consumer ${uuid()}`);
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(
-      page.locator(`[data-testid="owner-name"]`)
-    ).toContainText(/data consumer/i);
+    await expect(page.locator(`[data-testid="owner-name"]`)).toContainText(
+      /data consumer/i
+    );
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
     await afterAction();
