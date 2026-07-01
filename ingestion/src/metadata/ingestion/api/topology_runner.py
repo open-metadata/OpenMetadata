@@ -46,7 +46,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.utils.progress_tracking import ProgressTrackingMixin
 from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
@@ -61,7 +61,7 @@ class MissingExpectedEntityAckException(Exception):  # noqa: N818
     """
 
 
-class TopologyRunnerMixin(Generic[C]):
+class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
     """
     Prepares the _run function
     dynamically based on the source topology
@@ -118,16 +118,6 @@ class TopologyRunnerMixin(Generic[C]):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    @property
-    def progress(self) -> ProgressRegistry:
-        """Per-Source progress registry. First access is single-threaded
-        (in _iter, before worker threads spawn), so lazy init is safe."""
-        registry = self.__dict__.get("_progress_registry")
-        if registry is None:
-            registry = ProgressRegistry()
-            self.__dict__["_progress_registry"] = registry
-        return registry
 
     def _root_context_keys(self) -> set[str]:
         """Context keys owned by root topology nodes (the service level). Root
