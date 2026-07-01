@@ -154,8 +154,18 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 const mockFolders = [
-  { id: 'folder-1', name: 'folder-1', displayName: 'Folder One', childrenCount: 3 },
-  { id: 'folder-2', name: 'folder-2', displayName: 'Folder Two', childrenCount: 1 },
+  {
+    id: 'folder-1',
+    name: 'folder-1',
+    displayName: 'Folder One',
+    childrenCount: 3,
+  },
+  {
+    id: 'folder-2',
+    name: 'folder-2',
+    displayName: 'Folder Two',
+    childrenCount: 1,
+  },
 ];
 
 describe('DocumentFolderView', () => {
@@ -196,7 +206,9 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows totalFileCount in the subtitle', async () => {
-    render(<DocumentFolderView totalFileCount={42} onSelectFolder={jest.fn()} />);
+    render(
+      <DocumentFolderView totalFileCount={42} onSelectFolder={jest.fn()} />
+    );
 
     await waitFor(() =>
       expect(screen.getByText('Folder One')).toBeInTheDocument()
@@ -238,11 +250,7 @@ describe('DocumentFolderView', () => {
 
   it('opens the create folder modal when the add button is clicked', async () => {
     render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        onSelectFolder={jest.fn()}
-      />
+      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
     );
 
     await waitFor(() =>
@@ -285,11 +293,7 @@ describe('DocumentFolderView', () => {
 
   it('shows delete modal when delete button is clicked', async () => {
     render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        onSelectFolder={jest.fn()}
-      />
+      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
     );
 
     await waitFor(() =>
@@ -359,11 +363,7 @@ describe('DocumentFolderView', () => {
 
   it('closes delete modal on cancel without deleting', async () => {
     render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        onSelectFolder={jest.fn()}
-      />
+      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
     );
 
     await waitFor(() =>

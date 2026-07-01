@@ -20,7 +20,7 @@ import {
   MEMORIES_API,
   navigateToArticles,
   navigateToDashboard,
-  navigateToMemories
+  navigateToMemories,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';

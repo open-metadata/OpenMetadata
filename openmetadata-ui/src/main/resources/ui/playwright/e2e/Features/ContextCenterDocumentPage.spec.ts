@@ -379,8 +379,7 @@ test.describe('Context Center - Documents Page', () => {
     await modal.getByRole('button', { name: /attach/i }).click();
     const uploadRes = await uploadResPromise;
     expect(uploadRes.status()).toBe(201);
-    const uploadedDocument =
-      (await uploadRes.json()) as ContextCenterDocument;
+    const uploadedDocument = (await uploadRes.json()) as ContextCenterDocument;
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
@@ -484,7 +483,10 @@ test.describe('Context Center - Documents Page', () => {
     await navigateToDocuments(page);
 
     await page.getByTestId('add-folder-btn').click();
-    await page.getByTestId('folder-name-input').getByRole('textbox').fill(folderName);
+    await page
+      .getByTestId('folder-name-input')
+      .getByRole('textbox')
+      .fill(folderName);
 
     const createResPromise = page.waitForResponse(
       (res) =>
@@ -518,9 +520,7 @@ test.describe('Context Center - Documents Page', () => {
     expect(folderDeleteRes.status()).toBe(200);
     contextFolderIdsToCleanup.delete(folder.id);
 
-    await expect(
-      page.getByText(folderName, { exact: true })
-    ).not.toBeVisible();
+    await expect(page.getByText(folderName, { exact: true })).not.toBeVisible();
   });
 
   // ─── Req 4: Move single document to folder via card menu ──────────────────
@@ -631,9 +631,7 @@ test.describe('Context Center - Documents Page', () => {
 
     const currentFolderItem = page.getByTestId(`move-to-folder-${folder.id}`);
     await expect(currentFolderItem).toBeVisible();
-    await expect(
-      currentFolderItem.locator('svg').last()
-    ).toBeVisible();
+    await expect(currentFolderItem.locator('svg').last()).toBeVisible();
 
     const removeResPromise = page.waitForResponse(
       (res) =>
@@ -997,9 +995,7 @@ test.describe('Context Center - Documents Page', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
-    await expect(
-      getDocumentRowByName(page, docOutsideName)
-    ).not.toBeVisible();
+    await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     await expect(
       page.getByTestId('documents-view').getByText(/^1\s+file/i)
@@ -1062,7 +1058,7 @@ test.describe('Context Center - Documents Page', () => {
     await navigateToDocuments(page);
 
     // Select folderA in the sidebar so the upload modal targets that folder
-     const tree = page.getByRole('treegrid', { name: 'Folders' });
+    const tree = page.getByRole('treegrid', { name: 'Folders' });
 
     const folderButton = tree.getByRole('row', {
       name: folderAName,
@@ -1092,17 +1088,16 @@ test.describe('Context Center - Documents Page', () => {
     expect(dupRes.status()).toBe(400);
 
     await expect(modal.getByText(/try again|failed/i).first()).toBeVisible();
-    await expect(
-      modal.getByRole('button', { name: /attach/i })
-    ).toBeDisabled();
+    await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
     let uploadedDocId: string;
     {
-      const { apiContext: api2, afterAction: after2 } =
-        await createNewPage(browser);
+      const { apiContext: api2, afterAction: after2 } = await createNewPage(
+        browser
+      );
       const uploadedDoc = await uploadDocument(
         api2,
         sharedFileName,
@@ -1119,9 +1114,9 @@ test.describe('Context Center - Documents Page', () => {
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
-    await expect(
-      uploadedRow.getByTestId('document-folder-name')
-    ).toHaveText(folderBName);
+    await expect(uploadedRow.getByTestId('document-folder-name')).toHaveText(
+      folderBName
+    );
 
     await uploadedRow.locator('button[aria-label="Open menu"]').click();
     await expect(page.getByTestId('delete-btn')).toBeVisible();
@@ -1208,9 +1203,7 @@ test.describe('Context Center - Documents Page', () => {
     expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
     expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
     await expect(modal.getByText(/failed/i).first()).toBeVisible();
-    await expect(
-      modal.getByRole('button', { name: /attach/i })
-    ).toBeDisabled();
+    await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 
   test('oversized file appears in list with failed state and Attach button stays disabled', async ({
@@ -1235,8 +1228,6 @@ test.describe('Context Center - Documents Page', () => {
       timeout: 5000,
     });
 
-    await expect(
-      modal.getByRole('button', { name: /attach/i })
-    ).toBeDisabled();
+    await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 });
