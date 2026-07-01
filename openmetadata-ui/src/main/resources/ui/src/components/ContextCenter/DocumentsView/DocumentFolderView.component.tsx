@@ -19,7 +19,7 @@ import {
   FileIcon,
   Skeleton,
   Tree,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -35,6 +35,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
 export interface DocumentFolderViewProps {
+  totalFileCount?: number;
   files?: ContextFile[];
   selectedFolderId?: string;
   canCreate?: boolean;
@@ -44,6 +45,7 @@ export interface DocumentFolderViewProps {
 }
 
 const DocumentFolderView = ({
+  totalFileCount = 0,
   files = [],
   selectedFolderId,
   canCreate = false,
@@ -131,7 +133,7 @@ const DocumentFolderView = ({
                 </span>
                 <Dot className="tw:text-quaternary" size="micro" />
                 <span>
-                  {files.length} {t('label.file-plural')}
+                  {totalFileCount} {t('label.file-plural')}
                 </span>
               </Typography>
             </div>
