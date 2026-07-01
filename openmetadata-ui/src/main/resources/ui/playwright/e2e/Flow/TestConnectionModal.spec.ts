@@ -103,6 +103,7 @@ async function navigateToMysqlConnectionForm(page: Page) {
   await selectServiceConnector(page, 'Mysql');
   await page.fill('#service-name', `pw-tc-modal-test`);
   await advanceToServiceConnectionStep(page);
+  await page.fill('[id="root\\/username"]', 'test-user');
   await page.fill('[id="root\\/hostPort"]', 'localhost:3306');
 }
 

@@ -241,16 +241,15 @@ test.describe('ServiceDocPanel', () => {
       });
       await waitForAllLoadersToDisappear(page);
       await selectServiceConnector(page, 'Snowflake');
-      await page.locator('#service-name').fill('pw-snowflake-test');
       await waitForServiceConnectionForm(page);
-      await page.locator('#service-name').blur();
 
       const docPanel = page.getByTestId('service-requirements');
 
-      const fieldLocator = page.locator(String.raw`#root\/accountUsageSchema`);
+      await page
+        .getByRole('button', { name: '3 Scope & Options Optional' })
+        .click();
 
-      await expect(fieldLocator).toBeVisible({ timeout: 10000 });
-      await fieldLocator.focus();
+      await page.locator(String.raw`#root\/accountUsageSchema`).focus();
 
       await expect(
         docPanel.getByRole('heading', {
