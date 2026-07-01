@@ -45,8 +45,14 @@ export const exploreShouldShowEntity = async (
   await exploreRes;
   await waitForAllLoadersToDisappear(page);
 
-  const searchRes = page.waitForResponse('/api/v1/search/query?*');
   await page.getByTestId('searchBox').fill(fqn);
+  // Register the results-page listener AFTER fill() and BEFORE press('Enter').
+  // fill() itself can fire an autocomplete query whose URL matches
+  // /api/v1/search/query?*, which would resolve a pre-registered listener on
+  // that early response — leaving the actual results-page query never awaited
+  // and the assertions below running against stale autocomplete UI. This
+  // mirrors the ordering fix already applied in searchForEntityShouldWork.
+  const searchRes = page.waitForResponse('/api/v1/search/query?*');
   await page.getByTestId('searchBox').press('Enter');
   await searchRes;
   await waitForAllLoadersToDisappear(page);
