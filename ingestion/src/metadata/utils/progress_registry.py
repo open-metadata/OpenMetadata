@@ -92,8 +92,7 @@ class ProgressRegistry:
 
     def open(self, path: List[str], child_type: str, expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
         with self._lock:
-            if self._started_at is None:
-                self._started_at = time.monotonic()
+            self._mark_started()
             node = self._navigate(path)
             if node.child_type is None:
                 node.child_type = child_type
@@ -114,18 +113,26 @@ class ProgressRegistry:
             return self._total_ingested
 
     def elapsed_seconds(self) -> Optional[float]:  # noqa: UP045
-        """Monotonic seconds since the first ``open()`` — i.e. since the topology
-        walk began processing a scope. ``None`` before the first ``open()``.
-        Uses ``time.monotonic()`` so it can never go negative on a clock change."""
+        """Monotonic seconds since the first counter activity (``open()``,
+        ``set_total()``, ``seed_scope_total()``, or ``track()``). ``None`` before
+        the first activity. Uses ``time.monotonic()`` so it can never go negative
+        on a clock change."""
         with self._lock:
             if self._started_at is None:
                 return None
             return time.monotonic() - self._started_at
 
+    def _mark_started(self) -> None:
+        """Mark the clock start time if not already set. Called on first counter
+        activity to enable ETA calculation without an explicit topology tree."""
+        if self._started_at is None:
+            self._started_at = time.monotonic()
+
     def set_total(self, type_: str, total: Optional[int]) -> None:  # noqa: UP045
         """Declare a flat global total for ``type_`` (e.g. ``Database`` = 4).
         Header-level and independent of the tree — survives pruning."""
         with self._lock:
+            self._mark_started()
             self._global.setdefault(type_, GlobalCounter()).total = total
 
     def set_reconcilable(self, type_: str) -> None:
@@ -138,6 +145,7 @@ class ProgressRegistry:
         """Seed one scope's contribution to ``type_``'s total upfront (and mark
         it reconcilable). The total is the running sum of all seeded scopes."""
         with self._lock:
+            self._mark_started()
             self._apply_scope_total(type_, scope, n)
 
     def reconcile_scope_total(self, type_: str, scope: str, observed: int) -> None:
@@ -155,13 +163,14 @@ class ProgressRegistry:
         counter.scope_estimates[scope] = n
         counter.total = max(counter.total, counter.done)
 
-    def track(self, type_: str) -> None:
-        """Record one completed scope of ``type_``. No-op for an undeclared
-        type, so the framework may call it unconditionally at scope close."""
+    def track(self, type_: str, n: int = 1) -> None:
+        """Record ``n`` completed units of ``type_`` (default 1). No-op for an
+        undeclared type, so callers may invoke it unconditionally."""
         with self._lock:
+            self._mark_started()
             counter = self._global.get(type_)
             if counter is not None:
-                counter.done += 1
+                counter.done += n
                 if counter.total is not None and counter.total < counter.done:
                     counter.total = counter.done
 

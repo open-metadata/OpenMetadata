@@ -368,3 +368,31 @@ class TestElapsedSeconds:
             reg.open(["db"], "DatabaseSchema", None)
             clock.return_value = 250.0
             assert reg.elapsed_seconds() == 150.0
+
+
+class TestGlobalCounterClockAndBulk:
+    def test_track_accepts_bulk_count(self):
+        registry = ProgressRegistry()
+        registry.set_total("Queries", 100)
+        registry.track("Queries", 40)
+        registry.track("Queries", 2)
+        assert registry.global_counters() == [("Queries", 42, 100)]
+
+    def test_track_defaults_to_one(self):
+        registry = ProgressRegistry()
+        registry.set_total("Workspace", None)
+        registry.track("Workspace")
+        assert registry.global_counters() == [("Workspace", 1, None)]
+
+    def test_clock_starts_on_counter_activity_without_open(self):
+        registry = ProgressRegistry()
+        assert registry.elapsed_seconds() is None
+        registry.seed_scope_total("Queries", "run", 50)
+        assert registry.elapsed_seconds() is not None
+
+    def test_seed_then_reconcile_settles_total_to_done(self):
+        registry = ProgressRegistry()
+        registry.seed_scope_total("Queries", "run", 100)
+        registry.track("Queries", 40)
+        registry.reconcile_scope_total("Queries", "run", 40)
+        assert registry.global_counters() == [("Queries", 40, 40)]
