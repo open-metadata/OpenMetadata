@@ -55,6 +55,7 @@ jest.mock('../../../utils/KnowledgePageUtils', () => ({
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
   default: {
+    isEmbeddedMode: jest.fn(() => false),
     isBreadcrumbInsideCard: jest.fn(() => false),
     getCardStyle: jest.fn(() => ({})),
     getBreadcrumbClassName: jest.fn(() => ''),
