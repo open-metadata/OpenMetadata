@@ -49,6 +49,7 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
+    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",
@@ -112,6 +113,11 @@ export enum SettingType {
  *
  * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
  * system prompts.
+ *
+ * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
+ * by language and entity type. The stored mapping is the effective mapping used when an
+ * index is (re)created; it already carries the field-safety guards (ignore_above,
+ * ignore_malformed, mapping limits) baked in at seed time.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -377,7 +383,13 @@ export interface PipelineServiceClientConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage?:  SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:       SearchIndexingLimits;
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -639,6 +651,11 @@ export interface PipelineServiceClientConfiguration {
     memoryAgent?:      MemoryAgent;
     memoryExtraction?: MemoryExtraction;
     prompts?:          Prompts;
+    /**
+     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
+     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
+     */
+    languages?: { [key: string]: any };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -2656,6 +2673,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**
