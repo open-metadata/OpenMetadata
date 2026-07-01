@@ -342,19 +342,12 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should render full requirements for service name focused docs', async () => {
+    it('should show the dedicated service-name guidance for the service name focused field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Snowflake',
           '## Requirements',
           'Grant metadata privileges.',
-          '$$note',
-          'Use Snowflake 8.0.0 and up.',
-          '$$',
-          '### Usage & Lineage',
-          'Grant lineage privileges.',
-          '### Profiler & Data Quality',
-          'Grant profiler privileges.',
           '## Connection Details',
           '$$section',
           '### Database $(id="database")',
@@ -372,31 +365,58 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
+        expect(screen.getByText('label.name-this-service')).toBeInTheDocument();
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('### label.metadata')
+          expect.stringContaining('label.service-name')
         );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
         );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
-        );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('### label.lineage')
-        );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant lineage privileges.')
-        );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('### label.profiler')
-        );
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant profiler privileges.')
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
         );
       });
     });
 
-    it('should show setup requirements when a focused field has no matching docs section', async () => {
+    it('should show a generic fallback card when a focused field has no matching docs section or schema metadata', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Salesforce',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Username $(id="username")',
+          'Username guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/account"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('Account');
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('message.openmetadata-docs-description');
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Username guidance.')
+        );
+      });
+    });
+
+    it('should show schema field metadata when a focused field has no matching docs section but schema metadata is available', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Salesforce',
@@ -415,16 +435,20 @@ describe('ServiceDocPanel Component', () => {
           {...defaultProps}
           focusedMode
           activeField="root/account"
+          activeFieldMeta={{
+            title: 'Account Name',
+            description: 'The Snowflake account identifier.',
+          }}
         />
       );
 
       await waitFor(() => {
-        expect(screen.getByText('label.setup-guide')).toBeInTheDocument();
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
-        );
+        expect(screen.getByText('Account Name')).toBeInTheDocument();
+        expect(
+          screen.getByText('The Snowflake account identifier.')
+        ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Username guidance.')
+          expect.stringContaining('Grant metadata privileges.')
         );
       });
     });
