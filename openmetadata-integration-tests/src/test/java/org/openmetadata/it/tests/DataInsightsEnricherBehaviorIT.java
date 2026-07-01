@@ -308,44 +308,38 @@ class DataInsightsEnricherBehaviorIT {
     Type stringType = getTypeByName(client, "string");
     addCustomPropertyToEntityType(client, "table", propName, stringType);
 
-    try {
-      DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
-      Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
-      DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
+    DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
+    Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
 
-      Table table =
-          Tables.create()
-              .name(ns.shortPrefix("tbl_cp"))
-              .inSchema(schema.getFullyQualifiedName())
-              .withDescription("custom-property projection")
-              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
-              .execute();
+    Table table =
+        Tables.create()
+            .name(ns.shortPrefix("tbl_cp"))
+            .inSchema(schema.getFullyQualifiedName())
+            .withDescription("custom-property projection")
+            .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+            .execute();
 
-      CustomProperties.update(Tables.class, table.getId())
-          .withProperty(propName, "purpose")
-          .execute();
+    CustomProperties.update(Tables.class, table.getId())
+        .withProperty(propName, "purpose")
+        .execute();
 
-      Map<String, Object> snapshot = enrichOneDay(table);
+    Map<String, Object> snapshot = enrichOneDay(table);
 
-      assertInstanceOf(
-          Map.class, snapshot.get("tableCustomProperty"), "per-type twin projected for Group By");
-      Map<?, ?> twin = (Map<?, ?>) snapshot.get("tableCustomProperty");
-      assertEquals("purpose", twin.get(propName), "twin carries the raw custom-property value");
+    assertInstanceOf(
+        Map.class, snapshot.get("tableCustomProperty"), "per-type twin projected for Group By");
+    Map<?, ?> twin = (Map<?, ?>) snapshot.get("tableCustomProperty");
+    assertEquals("purpose", twin.get(propName), "twin carries the raw custom-property value");
 
-      assertInstanceOf(
-          Collection.class,
-          snapshot.get("customPropertiesTyped"),
-          "typed nested structure projected for advanced-search filters");
-      Collection<?> typed = (Collection<?>) snapshot.get("customPropertiesTyped");
-      Map<?, ?> entry = findTypedEntry(typed, propName);
-      assertNotNull(entry, "customPropertiesTyped has an entry keyed by the property name");
-      assertEquals(
-          "purpose",
-          entry.get("stringValue"),
-          "value carried as a keyword stringValue for filters");
-    } finally {
-      deleteCustomPropertyFromEntityType(client, "table", propName);
-    }
+    assertInstanceOf(
+        Collection.class,
+        snapshot.get("customPropertiesTyped"),
+        "typed nested structure projected for advanced-search filters");
+    Collection<?> typed = (Collection<?>) snapshot.get("customPropertiesTyped");
+    Map<?, ?> entry = findTypedEntry(typed, propName);
+    assertNotNull(entry, "customPropertiesTyped has an entry keyed by the property name");
+    assertEquals(
+        "purpose", entry.get("stringValue"), "value carried as a keyword stringValue for filters");
   }
 
   // ────────────────────────────── Test 2: missing owner ──────────────────────────────
@@ -563,22 +557,6 @@ class DataInsightsEnricherBehaviorIT {
             "/v1/metadata/types/" + entityType.getId().toString(),
             customProperty,
             Type.class);
-  }
-
-  private static void deleteCustomPropertyFromEntityType(
-      OpenMetadataClient client, String entityTypeName, String propertyName) {
-    try {
-      Type entityType = getTypeByName(client, entityTypeName);
-      client
-          .getHttpClient()
-          .execute(
-              HttpMethod.DELETE,
-              "/v1/metadata/types/" + entityType.getId().toString() + "/" + propertyName,
-              null,
-              Void.class);
-    } catch (Exception e) {
-      // Best-effort cleanup; a leaked test property does not affect other assertions.
-    }
   }
 
   private static EnrichmentStep lambdaStep(String name, Consumer<EnrichmentTarget> body) {
