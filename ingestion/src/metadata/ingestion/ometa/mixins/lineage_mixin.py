@@ -250,7 +250,7 @@ class OMetaLineageMixin(Generic[T]):
                     )
                     # `original` mirrors `data`, so build_patch would see no sqlQuery diff. Null it so
                     # the incoming query is added/updated, while a missing one keeps the stored value.
-                    original.edge.lineageDetails.sqlQuery = None
+                    original.edge.lineageDetails.sqlQuery = None  # pyright: ignore[reportOptionalMemberAccess]
                     # merge the original and new column level lineage
                     data.edge.lineageDetails.columnsLineage = self._merge_column_lineage(
                         original.edge.lineageDetails.columnsLineage,
