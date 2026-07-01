@@ -18,10 +18,13 @@ import {
   OldJsonTree,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
+import '@react-awesome-query-builder/antd/css/styles.css';
 import { isEmpty, isEqual, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
+  lazy,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -42,13 +45,19 @@ import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFor
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
-import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
 import {
   AdvanceSearchContext,
   AdvanceSearchProviderProps,
   SearchOutputType,
 } from './AdvanceSearchProvider.interface';
+
+const AdvancedSearchModal = lazy(() =>
+  import('../AdvanceSearchModal.component').then((m) => ({
+    default: m.AdvancedSearchModal,
+  }))
+);
+
 const AdvancedSearchContext = createContext<AdvanceSearchContext>(
   {} as AdvanceSearchContext
 );
@@ -362,11 +371,15 @@ export const AdvanceSearchProvider = ({
   return (
     <AdvancedSearchContext.Provider value={contextValues}>
       {loading ? <Loader /> : children}
-      <AdvancedSearchModal
-        visible={showModal}
-        onCancel={() => setShowModal(false)}
-        onSubmit={handleSubmit}
-      />
+      {showModal && (
+        <Suspense fallback={null}>
+          <AdvancedSearchModal
+            visible={showModal}
+            onCancel={() => setShowModal(false)}
+            onSubmit={handleSubmit}
+          />
+        </Suspense>
+      )}
     </AdvancedSearchContext.Provider>
   );
 };

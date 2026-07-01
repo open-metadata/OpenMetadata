@@ -250,9 +250,7 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
-    /deleted successfully!/
-  );
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {

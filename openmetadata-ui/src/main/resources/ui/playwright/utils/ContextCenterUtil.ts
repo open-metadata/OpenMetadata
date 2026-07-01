@@ -10,11 +10,174 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Browser, Page } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+
+// ─── Document types ───────────────────────────────────────────────────────────
+
+export interface ContextCenterDocument {
+  id: string;
+  name: string;
+  displayName?: string;
+}
+
+export interface ContextCenterFolder {
+  id: string;
+  name: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+}
+
+export interface BulkOperationResult {
+  numberOfRowsPassed?: number;
+  numberOfRowsFailed?: number;
+}
+
+export interface BulkIdsRequest {
+  ids?: string[];
+}
+
+interface UploadMultipart {
+  file: {
+    name: string;
+    mimeType: string;
+    buffer: Buffer;
+  };
+  folder?: string;
+}
+
+interface CapturedDownload {
+  download: string;
+  href: string;
+}
+
+interface DownloadCaptureWindow extends Window {
+  __contextCenterCapturedDownloads?: CapturedDownload[];
+  __contextCenterOriginalAnchorClick?: HTMLAnchorElement['click'];
+}
+
+// ─── Document helpers ─────────────────────────────────────────────────────────
+
+export const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
+
+export const uploadDocument = async (
+  apiContext: APIRequestContext,
+  name: string,
+  buffer: Buffer,
+  folderFqn?: string
+): Promise<ContextCenterDocument> => {
+  const multipart: UploadMultipart = {
+    file: {
+      name,
+      mimeType: 'text/plain',
+      buffer,
+    },
+  };
+
+  if (folderFqn) {
+    multipart.folder = folderFqn;
+  }
+
+  const response = await apiContext.post(
+    '/api/v1/contextCenter/drive/files/upload',
+    { multipart }
+  );
+  const body = await response.text();
+  expect(response.status(), body).toBe(201);
+
+  return parseResponseJson<ContextCenterDocument>(body);
+};
+
+export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
+  page
+    .getByTestId('documents-view')
+    .locator('[data-testid^="document-row-"]')
+    .filter({ hasText: fileName });
+
+export const selectDocumentByName = async (page: Page, fileName: string) => {
+  const row = getDocumentRowByName(page, fileName);
+  await expect(row).toBeVisible();
+  await row.scrollIntoViewIfNeeded();
+  await row.getByTestId('document-checkbox').click();
+};
+
+export const expectSelectedCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByText(`${count} selected`, { exact: true })
+  ).toBeVisible();
+};
+
+export const expectBulkIdsRequest = (
+  postData: string | null,
+  expectedIds: string[]
+) => {
+  expect(postData).toBeTruthy();
+
+  const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
+
+  expect(new Set(request.ids)).toEqual(new Set(expectedIds));
+};
+
+export const responseMatchesRequestPath = (
+  response: Response,
+  expectedPath: string
+): boolean => {
+  let request = response.request();
+
+  while (request) {
+    if (request.url().includes(expectedPath)) {
+      return true;
+    }
+
+    request = request.redirectedFrom();
+  }
+
+  return false;
+};
+
+export const installDownloadCapture = async (page: Page) => {
+  await page.evaluate(() => {
+    const captureWindow = window as DownloadCaptureWindow;
+    captureWindow.__contextCenterCapturedDownloads = [];
+
+    if (captureWindow.__contextCenterOriginalAnchorClick) {
+      return;
+    }
+
+    captureWindow.__contextCenterOriginalAnchorClick =
+      HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      captureWindow.__contextCenterCapturedDownloads?.push({
+        download: this.download,
+        href: this.href,
+      });
+      captureWindow.__contextCenterOriginalAnchorClick?.call(this);
+    };
+  });
+};
+
+export const expectCapturedDownload = async (page: Page, fileName: string) => {
+  const capturedDownload = await page.waitForFunction((expectedFileName) => {
+    const captureWindow = window as DownloadCaptureWindow;
+
+    return captureWindow.__contextCenterCapturedDownloads?.find(
+      (download) => download.download === expectedFileName
+    );
+  }, fileName);
+  const download = (await capturedDownload.jsonValue()) as CapturedDownload;
+
+  expect(download.href.startsWith('blob:')).toBe(true);
+};
 
 export const DASHBOARD_URL = '/context-center/dashboard';
 export const ARTICLES_URL = '/context-center/articles';
@@ -53,6 +216,14 @@ export const navigateToMemories = async (page: Page) => {
   await page.goto(MEMORIES_URL);
   await page
     .getByTestId('context-center-memories-page')
+    .waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const navigateToArchive = async (page: Page) => {
+  await page.goto('/context-center/archive');
+  await page
+    .getByTestId('context-center-archive-page')
     .waitFor({ state: 'visible' });
   await waitForAllLoadersToDisappear(page);
 };
@@ -113,3 +284,37 @@ export const createDisposableArchivedDocument = async (
 
   return { id, name };
 };
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+    );
+
+    expect(response.ok()).toBeTruthy();
+
+    const files = await response.json();
+
+    const found = (files?.data ?? []).some(
+      (file: { id: string; deleted: boolean }) =>
+        file.id === documentId && file.deleted === true
+    );
+
+    if (found) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in archive API within ${timeout}ms`
+  );
+}
