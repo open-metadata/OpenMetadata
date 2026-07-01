@@ -155,16 +155,8 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
         />
       </Button>
       <AriaPopover
-        className={({ isEntering, isExiting }) =>
-          classNames(
-            'tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:will-change-transform',
-            isEntering &&
-              'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-bottom:slide-in-from-top-1 tw:placement-top:slide-in-from-bottom-1',
-            isExiting &&
-              'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-bottom:slide-out-to-top-1 tw:placement-top:slide-out-to-bottom-1'
-          )
-        }
-        offset={6}
+        className="tw:z-50 tw:w-72 tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt tw:outline-hidden tw:pt-1.5"
+        offset={0}
         placement="bottom start"
         onMouseEnter={handlePopoverEnter}
         onMouseLeave={handlePopoverLeave}>
