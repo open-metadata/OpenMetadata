@@ -38,6 +38,12 @@ Set the Include Lineage toggle to control whether to include lineage between pip
 $$
 
 $$section
+### Include Pipeline Observability $(id="includePipelineObservability")
+
+Set the Include Pipeline Observability toggle to control whether to extract pipeline observability data (e.g., table-level freshness, volume, quality signals) from pipeline runs as part of metadata ingestion.
+$$
+
+$$section
 ### Enable Debug Logs $(id="enableDebugLog")
 
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.

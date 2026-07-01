@@ -1292,6 +1292,38 @@ class DBTCloudUnitTest(TestCase):
         self.assertIn("Successful", statuses)
         self.assertIn("Skipped", statuses)  # status 2 maps to Skipped
 
+    def test_include_pipeline_observability_disabled(self):
+        """
+        Test that setting includePipelineObservability to False disables extraction.
+        """
+        self.dbtcloud.context.get().__dict__["current_job_id"] = 70403103936332
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["current_pipeline_entity"] = MOCK_PIPELINE
+        self.dbtcloud.context.get().__dict__["current_table_fqns"] = [
+            "local_redshift.dev.dbt_test_new.model_15",
+            "local_redshift.dev.dbt_test_new.model_32",
+        ]
+
+        mock_run = DBTRun(
+            id=70403110257794,
+            status=1,
+            state="Success",
+            href="https://abc12.us1.dbt.com/deploy/70403103922125/projects/70403103926818/runs/70403110257794/",
+            started_at="2024-05-27 10:42:20.621788+00:00",
+            finished_at="2024-05-28 10:42:52.622408+00:00",
+        )
+        self.dbtcloud.context.get().__dict__["latest_run"] = mock_run
+        self.dbtcloud.context.get().__dict__["current_runs"] = [mock_run]
+
+        original_value = self.dbtcloud.source_config.includePipelineObservability
+        self.dbtcloud.source_config.includePipelineObservability = False
+
+        try:
+            result = list(self.dbtcloud.get_table_pipeline_observability(EXPECTED_JOB_DETAILS))
+            self.assertEqual(len(result), 0)
+        finally:
+            self.dbtcloud.source_config.includePipelineObservability = original_value
+
     def test_get_models_with_lineage(self):
         """
         Test the combined GraphQL call for models and seeds with lineage info
