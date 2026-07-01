@@ -97,7 +97,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                     aria-hidden="true"
                     className="tw:size-4 tw:shrink-0"
                   />
-                  <div className='tw:max-w-40'>
+                  <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
                       {folder.name}
                     </Typography>
