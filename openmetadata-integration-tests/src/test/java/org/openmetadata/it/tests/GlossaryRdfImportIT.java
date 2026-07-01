@@ -227,6 +227,55 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void importSkipsLocalNameCollisionAndCountsOnlyPersistedMappings(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    // Two concepts from different vocabularies share the local name "Drug"; both would collapse to
+    // the FQN <glossary>.Drug. The second must be skipped (not silently overwrite the first), and
+    // only the persisted term's concept mapping may be counted.
+    String collisionOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix sct:  <http://snomed.info/id/> .
+        @prefix ex1:  <http://example.com/vocab1#> .
+        @prefix ex2:  <http://example.com/vocab2#> .
+
+        ex1:Drug a skos:Concept ;
+            skos:prefLabel "Drug One" ;
+            skos:closeMatch sct:11111 .
+        ex2:Drug a skos:Concept ;
+            skos:prefLabel "Drug Two" ;
+            skos:closeMatch sct:22222 .
+        """;
+
+    JsonNode result = importRdfBody(glossary.getName(), collisionOntology);
+    String detail = " | result=" + result;
+
+    assertEquals(
+        1,
+        result.get("termsCreated").asInt(),
+        "two concepts sharing a local name must yield one term, not a silent overwrite" + detail);
+    assertEquals(
+        0,
+        result.get("termsUpdated").asInt(),
+        "the collision is skipped, not applied as an overwriting update" + detail);
+    assertTrue(
+        result.get("messages").toString().contains("collides"),
+        "the local-name collision must be surfaced in the import messages" + detail);
+    assertEquals(
+        1,
+        result.get("conceptMappingsAdded").asInt(),
+        "only the persisted term's mapping is counted; the skipped term's is not" + detail);
+
+    GlossaryTerm survivor = getTerm(glossary.getName() + ".Drug");
+    String iri = survivor.getIri().toString();
+    assertTrue(
+        "http://example.com/vocab1#Drug".equals(iri)
+            || "http://example.com/vocab2#Drug".equals(iri),
+        "the surviving term keeps exactly one concept's canonical IRI" + detail);
+  }
+
+  @Test
   void rejectsMalformedRdfWithBadRequest(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
 

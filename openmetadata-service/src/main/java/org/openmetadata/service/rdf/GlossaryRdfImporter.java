@@ -123,6 +123,7 @@ public class GlossaryRdfImporter {
   private final OntologyImportResult result = new OntologyImportResult();
   private final Map<String, EntityReference> termRefByIri = new HashMap<>();
   private final Map<String, String> termFqnByIri = new HashMap<>();
+  private final Map<String, String> iriByFqn = new HashMap<>();
   private EntityReference targetGlossaryRef;
 
   /**
@@ -403,7 +404,6 @@ public class GlossaryRdfImporter {
   }
 
   private ConceptMapping toConceptMapping(String predicate, String targetIri) {
-    result.setConceptMappingsAdded(result.getConceptMappingsAdded() + 1);
     return new ConceptMapping()
         .withConceptIri(toUri(targetIri))
         .withMappingType(mappingTypeFor(predicate));
@@ -599,6 +599,35 @@ public class GlossaryRdfImporter {
       boolean dryRun,
       Map<String, GlossaryTerm> batch) {
     GlossaryTerm term = buildTerm(intent, glossaryRef);
+    if (!collidesWithExistingConcept(intent, term.getFullyQualifiedName())) {
+      persistNonCollidingTerm(repository, intent, term, dryRun, batch);
+    }
+  }
+
+  /**
+   * Distinct concept IRIs that share a local name (e.g. {@code ex1:Drug} and {@code ex2:Drug} from
+   * blended vocabularies) collapse to the same term FQN. Without this guard the second concept's
+   * {@code createOrUpdate} would silently overwrite the first term — including its canonical IRI —
+   * so skip the collision and surface it in the import result instead.
+   */
+  private boolean collidesWithExistingConcept(TermIntent intent, String fqn) {
+    String owner = iriByFqn.putIfAbsent(fqn, intent.iri);
+    boolean collides = owner != null && !owner.equals(intent.iri);
+    if (collides) {
+      result.addMessage(
+          String.format(
+              "Skipped %s: local name '%s' collides with %s; both map to '%s'",
+              intent.iri, intent.name, owner, fqn));
+    }
+    return collides;
+  }
+
+  private void persistNonCollidingTerm(
+      GlossaryTermRepository repository,
+      TermIntent intent,
+      GlossaryTerm term,
+      boolean dryRun,
+      Map<String, GlossaryTerm> batch) {
     try {
       if (dryRun) {
         validateTermForDryRun(repository, term, batch);
@@ -610,6 +639,8 @@ public class GlossaryRdfImporter {
       } else {
         commitTerm(repository, term, intent);
       }
+      result.setConceptMappingsAdded(
+          result.getConceptMappingsAdded() + intent.conceptMappings.size());
     } catch (Exception ex) {
       result.addMessage(String.format("Failed %s: %s", intent.iri, ex.getMessage()));
     }
