@@ -13,7 +13,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -103,6 +103,9 @@ export const useTestSuitesListPage = () => {
   } = usePaging();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  // Guards against out-of-order responses when the tab/filters change mid-fetch
+  // (main #29561): only the latest request is allowed to update state.
+  const latestRequestId = useRef(0);
 
   const ownerFilterValue = useMemo(() => {
     return selectedOwner
@@ -146,6 +149,9 @@ export const useTestSuitesListPage = () => {
     page = INITIAL_PAGING_VALUE,
     fetchParams?: ListTestSuitePramsBySearch
   ) => {
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
+
     setIsLoading(true);
     try {
       const result = await getListTestSuitesBySearch({
@@ -162,12 +168,19 @@ export const useTestSuitesListPage = () => {
         sortField: 'lastResultTimestamp',
         sortType: SORT_ORDER.DESC,
       });
+      if (requestId !== latestRequestId.current) {
+        return;
+      }
       setTestSuites(result.data);
       handlePagingChange(result.paging);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestId === latestRequestId.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestId.current) {
+        setIsLoading(false);
+      }
     }
   };
 

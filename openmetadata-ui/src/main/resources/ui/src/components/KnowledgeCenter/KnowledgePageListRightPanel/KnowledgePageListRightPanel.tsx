@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Card } from '@openmetadata/ui-core-components';
 import { Skeleton, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
@@ -189,66 +190,68 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
   );
 
   return (
-    <div
-      className="d-flex flex-column gap-6 knowledge-center-list-right-panel"
-      data-testid="knowledge-center-right-panel">
-      <BookMarkWidget
-        handleRefreshBookMarkWidget={onRefreshBookMarkWidget}
-        refresh={refreshBookMarkWidget}
-      />
+    <Card className="tw:h-full tw:p-5 tw:overflow-auto">
+      <Card.Content
+        className="tw:p-0 tw:flex tw:flex-col tw:gap-6 knowledge-center-list-right-panel"
+        data-testid="knowledge-center-right-panel">
+        <BookMarkWidget
+          handleRefreshBookMarkWidget={onRefreshBookMarkWidget}
+          refresh={refreshBookMarkWidget}
+        />
 
-      <ExpandableCard
-        cardProps={{
-          title: (
-            <div className="flex items-center gap-2">
-              <EyeIcon height={16} width={16} />
-              <Typography className="text-sm font-medium">
-                {t('label.recently-viewed')}
-              </Typography>
-            </div>
-          ),
-        }}>
-        {isEmpty(recentlyViewed) ? (
-          t('message.no-recently-viewed-date')
+        <ExpandableCard
+          cardProps={{
+            title: (
+              <div className="flex items-center gap-2">
+                <EyeIcon height={16} width={16} />
+                <Typography className="text-sm font-medium">
+                  {t('label.recently-viewed')}
+                </Typography>
+              </div>
+            ),
+          }}>
+          {isEmpty(recentlyViewed) ? (
+            t('message.no-recently-viewed-date')
+          ) : (
+            <Space direction="vertical" size={8}>
+              {recentViewsElement}
+            </Space>
+          )}
+        </ExpandableCard>
+
+        {refreshTagsCategory ? (
+          <Loader />
         ) : (
-          <Space direction="vertical" size={8}>
-            {recentViewsElement}
-          </Space>
+          <>
+            {map(quickLinksByTag, ([tagFqn, uniqueLinks]) => {
+              if (isEmpty(uniqueLinks)) {
+                return null;
+              }
+
+              return (
+                <ExpandableCard
+                  cardProps={{
+                    title: (
+                      <div className="flex items-center gap-2">
+                        <IconArticle height={16} width={16} />
+                        <Typography className="text-sm font-medium">
+                          {startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
+                        </Typography>
+                      </div>
+                    ),
+                  }}>
+                  <Space direction="vertical" size={8}>
+                    {map(uniqueLinks, (matchedQuickLink) =>
+                      getLink(matchedQuickLink, `tag-category-${tagFqn}`)
+                    )}
+                  </Space>
+                </ExpandableCard>
+              );
+            })}
+          </>
         )}
-      </ExpandableCard>
-
-      {refreshTagsCategory ? (
-        <Loader />
-      ) : (
-        <>
-          {map(quickLinksByTag, ([tagFqn, uniqueLinks]) => {
-            if (isEmpty(uniqueLinks)) {
-              return null;
-            }
-
-            return (
-              <ExpandableCard
-                cardProps={{
-                  title: (
-                    <div className="flex items-center gap-2">
-                      <IconArticle height={16} width={16} />
-                      <Typography className="text-sm font-medium">
-                        {startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
-                      </Typography>
-                    </div>
-                  ),
-                }}>
-                <Space direction="vertical" size={8}>
-                  {map(uniqueLinks, (matchedQuickLink) =>
-                    getLink(matchedQuickLink, `tag-category-${tagFqn}`)
-                  )}
-                </Space>
-              </ExpandableCard>
-            );
-          })}
-        </>
-      )}
-    </div>
+      </Card.Content>
+    </Card>
   );
 };
 
