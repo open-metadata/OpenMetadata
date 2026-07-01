@@ -386,11 +386,12 @@ describe('EntityExportModalProvider component', () => {
     dispatchSpy.mockRestore();
   });
 
-  it('should expose csvExportError when a bulk-edit export job fails', async () => {
+  it('should notify onError and show a generic error when a bulk-edit export job fails', async () => {
     (useLocation as jest.Mock).mockReturnValue({
       pathname: '/bulk/edit',
     });
     const onExport = jest.fn().mockResolvedValue(mockExportJob);
+    const onError = jest.fn();
 
     const ErrorConsumer = () => {
       const { triggerExportForBulkEdit, onUpdateCSVExportJob, csvExportError } =
@@ -404,6 +405,7 @@ describe('EntityExportModalProvider component', () => {
                 name: 'g1',
                 onExport,
                 exportTypes: [ExportTypes.CSV],
+                onError,
               })
             }>
             Trigger
@@ -413,7 +415,7 @@ describe('EntityExportModalProvider component', () => {
               onUpdateCSVExportJob({
                 jobId: mockExportJob.jobId,
                 status: 'FAILED',
-                error: 'Export failed: boom',
+                error: 'sensitive backend detail',
               })
             }>
             Fail
@@ -437,8 +439,13 @@ describe('EntityExportModalProvider component', () => {
       fireEvent.click(screen.getByText('Fail'));
     });
 
+    expect(onError).toHaveBeenCalledTimes(1);
+    // The raw backend error must not leak into the UI; a generic message shows.
     expect(screen.getByTestId('export-error')).toHaveTextContent(
-      'Export failed: boom'
+      'message.unexpected-error'
+    );
+    expect(screen.getByTestId('export-error')).not.toHaveTextContent(
+      'sensitive backend detail'
     );
   });
 });

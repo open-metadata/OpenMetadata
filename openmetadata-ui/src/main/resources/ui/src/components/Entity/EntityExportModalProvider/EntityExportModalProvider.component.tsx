@@ -64,6 +64,10 @@ export const EntityExportModalProvider = ({
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
 
+  // Holds the in-flight export's onError so the async (websocket) failure
+  // branches can notify the caller without a stale closure over exportData.
+  const exportOnErrorRef = useRef<(() => void) | undefined>();
+
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
   const [csvExportData, setCSVExportData] = useState<string>();
@@ -121,6 +125,7 @@ export const EntityExportModalProvider = ({
       return;
     }
     setCSVExportError(undefined);
+    exportOnErrorRef.current = exportData.onError;
     try {
       if (exportType !== ExportTypes.CSV) {
         // Force React to flush the loading state to the DOM before the heavy
@@ -184,6 +189,8 @@ export const EntityExportModalProvider = ({
         setCSVExportError(t('message.unexpected-error'));
       }
       exportData.onError?.();
+      exportOnErrorRef.current = undefined;
+      csvExportJobRef.current = undefined;
     }
   };
 
@@ -200,6 +207,7 @@ export const EntityExportModalProvider = ({
       handleCancel();
       setCSVExportJob(undefined);
       csvExportJobRef.current = undefined;
+      exportOnErrorRef.current = undefined;
     },
     [isBulkEdit]
   );
@@ -210,6 +218,7 @@ export const EntityExportModalProvider = ({
     setCSVExportJob(undefined);
     setExportData(null);
     csvExportJobRef.current = undefined;
+    exportOnErrorRef.current = undefined;
   }, []);
 
   const handleCSVExportJobUpdate = useCallback(
@@ -244,6 +253,9 @@ export const EntityExportModalProvider = ({
             .catch((error) => {
               showErrorToast(error as AxiosError);
               setDownloading(false);
+              exportOnErrorRef.current?.();
+              exportOnErrorRef.current = undefined;
+              csvExportJobRef.current = undefined;
               if (isBulkEdit) {
                 setCSVExportError(t('message.unexpected-error'));
               }
@@ -255,11 +267,17 @@ export const EntityExportModalProvider = ({
         // Keep downloading state true during progress
         setDownloading(true);
       } else {
-        // FAILED / CANCELLED — surface it to the bulk-edit grid so it stops
-        // waiting on an export that will never arrive.
+        // FAILED / CANCELLED — notify the caller (mirrors the synchronous
+        // catch), drop the job ref so a late message can't re-merge, and show a
+        // generic error to the bulk-edit grid so it stops waiting on an export
+        // that will never arrive. The raw backend error is not surfaced — it can
+        // leak internal details (stack traces, SQL, entity internals).
         setDownloading(false);
+        exportOnErrorRef.current?.();
+        exportOnErrorRef.current = undefined;
+        csvExportJobRef.current = undefined;
         if (isBulkEdit) {
-          setCSVExportError(response.error ?? t('message.unexpected-error'));
+          setCSVExportError(t('message.unexpected-error'));
         }
       }
     },
