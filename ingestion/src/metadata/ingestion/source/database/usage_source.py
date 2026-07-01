@@ -163,6 +163,13 @@ class UsageSource(QueryParserSource, ABC):
                 logger.error(f"Source usage processing error: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
+        days = max(1, (self.end - self.start).days)
+        self.progress.seed_scope_total("Queries", "run", self.source_config.resultLimit * days)
+        processed = 0
         for table_queries in self.get_table_query():
             if table_queries:
+                count = len(table_queries.queries)
+                self.progress.track("Queries", count)
+                processed += count
                 yield Either(right=table_queries)
+        self.progress.reconcile_scope_total("Queries", "run", processed)
