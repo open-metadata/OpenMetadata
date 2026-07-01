@@ -11,10 +11,10 @@
 """
 Lineage sqlQuery patch tests (issue #29520).
 
-Patching an existing lineage edge must add or update the incoming run's sqlQuery,
-never drop an already-stored query, and never crash build_patch on an edge that
-already carries a query. Covered through both public entry points, add_lineage
-(by id) and add_lineage_by_name (by fqn).
+Patching an existing lineage edge must add or update the incoming sqlQuery, never
+drop an already-stored query, and never crash build_patch on an edge that already
+carries a query. Covered through both public entry points, add_lineage (by id) and
+add_lineage_by_name (by fqn).
 """
 
 import json
@@ -35,9 +35,9 @@ INCOMING_QUERY = "SELECT 2 FROM source_table"
 
 
 class StubbedLineage(OMetaLineageMixin):
-    """OMetaLineageMixin with only the HTTP boundaries stubbed, so add_lineage /
-    add_lineage_by_name run the real reconstruction, patch_lineage_edge* and
-    build_patch. `existing_edge` is what the server returns for the edge lookup."""
+    """OMetaLineageMixin with only the HTTP calls stubbed, so add_lineage and
+    add_lineage_by_name exercise the real patch reconstruction and build_patch.
+    `existing_edge` is what the edge lookup returns."""
 
     def __init__(self, existing_edge):
         self.client = MagicMock()
@@ -86,7 +86,7 @@ def sql_query_ops(client):
     return [op for op in patch if op.get("path") == "/sqlQuery"]
 
 
-# stored query on the edge, incoming query on the run, expected query after patch
+# (stored query on the existing edge, incoming query, expected query after patch)
 PATCH_CASES = [
     pytest.param(None, INCOMING_QUERY, INCOMING_QUERY, id="backfill-onto-query-less-edge"),
     pytest.param(STORED_QUERY, INCOMING_QUERY, INCOMING_QUERY, id="update-existing-query"),
