@@ -89,7 +89,7 @@ jobs:
 
       - name: Create a comment in the PR with the instructions
         if: ${{ steps.git.outcome != 'success' && github.event_name == 'pull_request_target' }}
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
