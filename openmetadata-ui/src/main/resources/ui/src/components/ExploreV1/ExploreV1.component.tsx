@@ -568,6 +568,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
     () => hasQuickFilterValues || !isEmpty(browseFields),
     [hasQuickFilterValues, browseFields]
   );
+  const shouldShowQueryFilterChips = useMemo(
+    () => hasActiveFilterQuery || (!searchQueryParam && !sqlQuery),
+    [hasActiveFilterQuery, searchQueryParam, sqlQuery]
+  );
 
   const selectedEntityTypes = useMemo(() => {
     const entityTypeField = selectedQuickFilters.find(
@@ -819,10 +823,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
               </Dropdown.Popover>
             </Dropdown.Root>
           </Col>
-          {hasActiveFilterQuery && (
+          {shouldShowQueryFilterChips && (
             <Col span={24}>
               <ExploreQueryFilterChips
                 browseFields={browseFields}
+                emptyText={
+                  searchQueryParam
+                    ? undefined
+                    : t('message.browse-estate-query-placeholder')
+                }
                 fields={selectedQuickFilters}
                 hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}

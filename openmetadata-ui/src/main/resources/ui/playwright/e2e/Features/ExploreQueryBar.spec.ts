@@ -44,9 +44,11 @@ test.beforeEach(async ({ page }) => {
   await waitForAllLoadersToDisappear(page);
 });
 
-test('query bar is hidden when no filters are applied', async ({ page }) => {
-  await expect(page.getByTestId('explore-query-filter-chips')).toHaveCount(0);
-  await expect(page.getByTestId('query-bar-empty-text')).toHaveCount(0);
+test('query bar is persistent and shows the browse placeholder when empty', async ({
+  page,
+}) => {
+  await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
+  await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
 });
 
 test('filter survives a tree click and both stack as removable chips', async ({
@@ -107,8 +109,8 @@ test('filter survives a tree click and both stack as removable chips', async ({
     expect(url.searchParams.get('browsePath')).toBeNull();
     expect(url.searchParams.get('quickFilter')).toBeNull();
 
-    await expect(page.getByTestId('explore-query-filter-chips')).toHaveCount(0);
-    await expect(page.getByTestId('query-bar-empty-text')).toHaveCount(0);
+    await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
+    await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
     await expect(
       page.getByTestId('query-chip-entityType.keyword-table')
     ).not.toBeVisible();
