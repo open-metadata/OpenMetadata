@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { TEST_SUITE_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -33,7 +34,6 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
-import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 
 // Fixed widths for the compact columns so the name column flexes to fill the
 // remaining (and largest) share of the table width.

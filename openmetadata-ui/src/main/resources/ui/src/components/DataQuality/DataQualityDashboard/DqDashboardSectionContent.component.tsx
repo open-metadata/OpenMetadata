@@ -56,7 +56,8 @@ export const DQ_DASHBOARD_SECTIONS = [
   },
 ] as const;
 
-export type DqDashboardSectionKey = (typeof DQ_DASHBOARD_SECTIONS)[number]['key'];
+export type DqDashboardSectionKey =
+  (typeof DQ_DASHBOARD_SECTIONS)[number]['key'];
 
 export interface DqDashboardSectionContentProps {
   sectionKey: DqDashboardSectionKey;
@@ -172,7 +173,8 @@ export const DqDashboardSectionContent = ({
               redirectPath={{
                 pathname: incidentPath,
                 search: QueryString.stringify({
-                  testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
+                  testCaseResolutionStatusType:
+                    TestCaseResolutionStatusTypes.New,
                   startTs: defaultFilters.startTs,
                   endTs: defaultFilters.endTs,
                 }),

@@ -12,8 +12,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import { GREY_200 } from '../../../constants/Color.constants';
-import { ChartData } from './SummaryPanel.interface';
 import { SummaryDonut } from './SummaryDonut.component';
+import { ChartData } from './SummaryPanel.interface';
 
 jest.mock('recharts', () => {
   const PieChart = ({
