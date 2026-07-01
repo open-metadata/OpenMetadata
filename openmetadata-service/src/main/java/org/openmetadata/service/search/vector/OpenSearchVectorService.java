@@ -207,6 +207,70 @@ public class OpenSearchVectorService implements VectorIndexService {
     updateEntityEmbeddingChunks(entity, getChunkIndexName());
   }
 
+  /**
+   * Single-embed dual-target write: builds the chunk documents once (one embedding call per
+   * chunk) and reuses chunk 0's embedding fields for the legacy entity-doc partial update, so a
+   * content change costs N embedding calls instead of N+1. Each target keeps its own
+   * fingerprint-based staleness check.
+   */
+  @Override
+  public void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+    try {
+      String parentId = entity.getId().toString();
+      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      ensureChunkIndex();
+      String chunkIndexName = getChunkIndexName();
+      boolean entityDocStale =
+          !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
+      boolean chunksStale =
+          !currentFingerprint.equals(getExistingChunkFingerprint(chunkIndexName, parentId));
+      if (entityDocStale || chunksStale) {
+        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+        if (chunksStale) {
+          deleteChunksByParent(chunkIndexName, parentId);
+          bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+        }
+        if (entityDocStale && !chunkDocs.isEmpty()) {
+          partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Write the given prebuilt chunk documents for an entity (delete-stale then bulk index). Used by
+   * the reindex sink, which builds the chunk docs itself so chunk 0 can also be spliced into the
+   * staged entity doc without a second embedding pass.
+   */
+  public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
+    try {
+      ensureChunkIndex();
+      String chunkIndexName = getChunkIndexName();
+      deleteChunksByParent(chunkIndexName, parentId);
+      bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+    } catch (Exception e) {
+      LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
+    }
+  }
+
+  /**
+   * The legacy entity-doc embedding payload extracted from a chunk document: only the embedding
+   * fields, never the chunk doc's trimmed filter fields (tags/domains/tier), which would clobber
+   * the entity doc's rich versions of those fields on partial update.
+   */
+  public static Map<String, Object> legacyEmbeddingFields(Map<String, Object> chunkDoc) {
+    Map<String, Object> fields = new HashMap<>();
+    for (String key : EMBEDDING_SOURCE_FIELDS) {
+      Object value = chunkDoc.get(key);
+      if (value != null) {
+        fields.put(key, value);
+      }
+    }
+    return fields;
+  }
+
   @Override
   public void deleteEntityChunks(String parentId) {
     try {

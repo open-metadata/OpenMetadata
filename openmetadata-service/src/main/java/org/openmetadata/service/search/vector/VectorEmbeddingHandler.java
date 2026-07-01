@@ -94,11 +94,11 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
         LOG.warn("No index mapping found for entity type: {}", extractEntityType(entity));
         return;
       }
-      // Dual write: the legacy chunk-0 partial update keeps hybrid search (which reads the
-      // embedding on the entity doc) working, while the chunk index carries every chunk for
-      // the semantic vector path (issue #4789).
-      vectorService.updateEntityEmbedding(entity, entityIndexName);
-      vectorService.updateEntityEmbeddingChunks(entity);
+      // Dual-target write: the legacy chunk-0 partial update keeps hybrid search (which reads
+      // the embedding on the entity doc) working, while the chunk index carries every chunk for
+      // the semantic vector path (issue #4789). The combined call embeds each chunk once and
+      // reuses chunk 0 for the entity doc.
+      vectorService.updateEntityEmbeddings(entity, entityIndexName);
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }

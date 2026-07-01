@@ -23,6 +23,16 @@ public interface VectorIndexService {
   /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
   default void deleteEntityChunks(String parentId) {}
 
+  /**
+   * Combined write: refresh both the legacy entity-doc embedding (read by hybrid search) and the
+   * chunk documents (read by the semantic vector path). Implementations should embed each chunk
+   * once and reuse chunk 0 for the entity doc; this default simply chains the two writes.
+   */
+  default void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+    updateEntityEmbedding(entity, entityIndexName);
+    updateEntityEmbeddingChunks(entity);
+  }
+
   default VectorSearchResponse search(
       String query,
       Map<String, List<String>> filters,

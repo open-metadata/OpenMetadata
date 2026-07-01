@@ -32,6 +32,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
@@ -52,6 +53,21 @@ public class AIContextFinder {
   private static final int SEARCH_K = 100;
   private static final int MAX_ASSETS_PER_ITEM = 10;
   private static final int MAX_CONTENT_CHARS = 2000;
+
+  private final SubjectContext subjectContext;
+
+  public AIContextFinder() {
+    this(null);
+  }
+
+  /**
+   * @param subjectContext the caller's subject, threaded into the candidate-asset search so
+   *     glossary-routed candidates are RBAC-filtered to assets the caller can see. Null means
+   *     server-internal use with no caller to scope to.
+   */
+  public AIContextFinder(SubjectContext subjectContext) {
+    this.subjectContext = subjectContext;
+  }
 
   public record CandidateAsset(String fullyQualifiedName, String entityType, String via) {}
 
@@ -193,7 +209,7 @@ public class AIContextFinder {
               .withDeleted(false)
               .withSortOrder("desc")
               .withIncludeSourceFields(new ArrayList<>());
-      Response response = Entity.getSearchRepository().search(request, null);
+      Response response = Entity.getSearchRepository().search(request, subjectContext);
       parseTagHits((String) response.getEntity(), refs);
     } catch (Exception e) {
       LOG.warn("AIContext find: tag search failed for {}: {}", tagFqn, e.getMessage());

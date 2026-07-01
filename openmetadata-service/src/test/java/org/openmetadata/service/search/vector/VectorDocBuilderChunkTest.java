@@ -74,6 +74,32 @@ class VectorDocBuilderChunkTest {
   }
 
   @Test
+  void legacyEmbeddingFields_fromChunkZeroMatchBuildEmbeddingFields() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("revenue ".repeat(900));
+    MockEmbeddingClient client = new MockEmbeddingClient();
+
+    Map<String, Object> legacy = VectorDocBuilder.buildEmbeddingFields(table, client);
+    Map<String, Object> fromChunkZero =
+        OpenSearchVectorService.legacyEmbeddingFields(
+            VectorDocBuilder.fromEntity(table, client).get(0));
+
+    assertEquals(legacy.keySet(), fromChunkZero.keySet(), "legacy payload keys must match");
+    for (String key : legacy.keySet()) {
+      if (!"embedding".equals(key)) {
+        assertEquals(legacy.get(key), fromChunkZero.get(key), "mismatch on " + key);
+      }
+    }
+    assertTrue(
+        !fromChunkZero.containsKey("tags") && !fromChunkZero.containsKey("entityType"),
+        "chunk filter fields must not leak into the legacy entity-doc payload");
+  }
+
+  @Test
   void fromEntity_shortBodyProducesSingleChunk() {
     Table table = new Table().withId(UUID.randomUUID()).withName("t").withDescription("short body");
     List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
