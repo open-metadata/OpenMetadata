@@ -169,6 +169,11 @@ public class GlossaryRdfImportIT {
         "a re-import dry-run must count existing nested terms (e.g. the child Physician) "
             + "as updates, which requires the correct nested FQN: "
             + result);
+    assertEquals(
+        0,
+        result.get("conceptMappingsAdded").asInt(),
+        "a re-import must not re-count concept mappings already present on updated terms: "
+            + result);
   }
 
   @Test

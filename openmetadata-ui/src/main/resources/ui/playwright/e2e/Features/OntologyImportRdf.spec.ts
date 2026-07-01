@@ -71,7 +71,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     await glossary.visitPage(page);
 
     await page.getByTestId('manage-button').click();
-    await page.getByText('Import Ontology').click();
+    await page.getByTestId('import-ontology-button').click();
 
     await expect(page.getByTestId('upload-ontology-dragger')).toBeVisible();
 
@@ -113,7 +113,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
     await glossary.visitPage(page);
 
     await page.getByTestId('manage-button').click();
-    await page.getByText('Import Ontology').click();
+    await page.getByTestId('import-ontology-button').click();
 
     await expect(page.getByTestId('upload-ontology-dragger')).toBeVisible();
 
@@ -151,7 +151,7 @@ test.describe('Ontology RDF Import', { tag: ['@ontology-rdf'] }, () => {
       await manageButton.click();
     }
 
-    await expect(userPage.getByText('Import Ontology')).toBeHidden();
+    await expect(userPage.getByTestId('import-ontology-button')).toBeHidden();
 
     await userPage.close();
   });

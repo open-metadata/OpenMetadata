@@ -639,8 +639,6 @@ public class GlossaryRdfImporter {
       } else {
         commitTerm(repository, term, intent);
       }
-      result.setConceptMappingsAdded(
-          result.getConceptMappingsAdded() + intent.conceptMappings.size());
     } catch (Exception ex) {
       result.addMessage(String.format("Failed %s: %s", intent.iri, ex.getMessage()));
     }
@@ -655,6 +653,8 @@ public class GlossaryRdfImporter {
       result.setTermsUpdated(result.getTermsUpdated() + 1);
     } else {
       result.setTermsCreated(result.getTermsCreated() + 1);
+      result.setConceptMappingsAdded(
+          result.getConceptMappingsAdded() + term.getConceptMappings().size());
     }
   }
 
@@ -677,6 +677,8 @@ public class GlossaryRdfImporter {
     termFqnByIri.put(intent.iri, saved.getFullyQualifiedName());
     if (Response.Status.CREATED.equals(response.getStatus())) {
       result.setTermsCreated(result.getTermsCreated() + 1);
+      result.setConceptMappingsAdded(
+          result.getConceptMappingsAdded() + term.getConceptMappings().size());
     } else {
       result.setTermsUpdated(result.getTermsUpdated() + 1);
     }
