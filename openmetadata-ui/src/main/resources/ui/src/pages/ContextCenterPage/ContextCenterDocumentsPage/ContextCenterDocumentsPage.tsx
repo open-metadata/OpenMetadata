@@ -79,6 +79,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [folders, setFolders] = useState<Folder[]>([]);
   const [totalFileCount, setTotalFileCount] = useState(0);
+  const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -121,14 +122,6 @@ const ContextCenterDocumentsPage: FC = () => {
     [folders]
   );
 
-  const documents = useMemo(() => {
-    if (!selectedFolderId) {
-      return allDocuments;
-    }
-
-    return allDocuments.filter((d) => d.folder?.id === selectedFolderId);
-  }, [allDocuments, selectedFolderId]);
-
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (after) {
@@ -150,7 +143,11 @@ const ContextCenterDocumentsPage: FC = () => {
             )
           );
         } else {
-          const response = await listContextFiles({ after, limit: pageSize });
+          const response = await listContextFiles({
+            after,
+            limit: pageSize,
+            folderId: selectedFolderId,
+          });
           if (after) {
             setAllDocuments((prev) => [...prev, ...response.data]);
           } else {
@@ -158,6 +155,9 @@ const ContextCenterDocumentsPage: FC = () => {
           }
           handlePagingChange(response.paging);
           setTotalFileCount(response.paging.total);
+          if (!after && !selectedFolderId) {
+            setGlobalFileCount(response.paging.total);
+          }
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -169,7 +169,7 @@ const ContextCenterDocumentsPage: FC = () => {
         }
       }
     },
-    [documentSearchQuery, pageSize, handlePagingChange]
+    [documentSearchQuery, pageSize, handlePagingChange, selectedFolderId]
   );
 
   const handleLoadMore = useCallback(() => {
@@ -471,9 +471,8 @@ const ContextCenterDocumentsPage: FC = () => {
           <DocumentFolderView
             canCreate={hasCreatePermission}
             canDelete={hasDeletePermission}
-            files={allDocuments}
             selectedFolderId={selectedFolderId}
-            totalFileCount={totalFileCount}
+            totalFileCount={globalFileCount}
             onFoldersLoaded={setFolders}
             onSelectFolder={setSelectedFolderId}
           />
@@ -492,7 +491,7 @@ const ContextCenterDocumentsPage: FC = () => {
             <DocumentsView
               canDelete={hasDeletePermission}
               canEdit={hasEditPermission}
-              data={documents}
+              data={allDocuments}
               folders={folderOptions}
               isLoading={isDocumentsLoading}
               isLoadingMore={isLoadingMore}

@@ -133,6 +133,19 @@ test.describe('Context Center - Documents Page', () => {
       `seed-document-${uuid()}.txt`,
       Buffer.from('Playwright seed document for documents page spec')
     );
+
+    await Promise.all(
+      Array.from({ length: 16 }, (_, i) =>
+        uploadDocument(
+          apiContext,
+          `pagination-doc-${uuid()}-${i}.txt`,
+          Buffer.from(`pagination test document ${i}`)
+        ).then((doc) => {
+          contextFileIdsToCleanup.add(doc.id);
+        })
+      )
+    );
+
     await afterAction();
   });
 
@@ -162,26 +175,12 @@ test.describe('Context Center - Documents Page', () => {
   // ─── Pagination ───────────────────────────────────────────────────────────
 
   test('scrolling to the bottom of the list loads the next page of documents', async ({
-    browser,
     page,
   }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    await Promise.all(
-      Array.from({ length: 16 }, (_, i) =>
-        uploadDocument(
-          apiContext,
-          `pagination-doc-${uuid()}-${i}.txt`,
-          Buffer.from(`pagination test document ${i}`)
-        ).then((doc) => {
-          contextFileIdsToCleanup.add(doc.id);
-        })
-      )
-    );
-    await afterAction();
-
     await navigateToDocuments(page);
-
+    await page.getByTestId('document-row-skeleton').first().waitFor({
+      state: 'detached'
+    })
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -938,6 +937,8 @@ test.describe('Context Center - Documents Page', () => {
     const moveRes = await moveResPromise;
     expect(moveRes.status()).toBe(200);
 
+    await page.getByTestId('move-btn').waitFor({ state: 'detached' });
+
     const tree = page.getByRole('treegrid', { name: 'Folders' });
 
     const folderRow = tree.getByRole('row', {
@@ -985,6 +986,26 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
+    // Before selecting a folder: both documents should be visible and counts
+    // reflect the global total (≥2 files; DocumentsView and DocumentFolderView
+    // show the same number).
+    await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
+    await expect(getDocumentRowByName(page, docOutsideName)).toBeVisible();
+
+    const documentsViewCount = page.getByTestId('documents-view-file-count');
+    const folderViewCount = page.getByTestId('folder-view-file-count');
+
+    await expect(documentsViewCount).toBeVisible();
+    await expect(folderViewCount).toBeVisible();
+
+    const globalCountText = await documentsViewCount.textContent();
+    const globalCount = parseInt(globalCountText ?? '0', 10);
+    expect(globalCount).toBeGreaterThanOrEqual(2);
+
+    // The folder-view header should show the same global total.
+    await expect(folderViewCount).toContainText(String(globalCount));
+
+    // Click the folder — triggers a server-side refetch scoped to that folder.
     const tree = page.getByRole('treegrid', { name: 'Folders' });
 
     const folderButton = tree.getByRole('row', {
@@ -994,12 +1015,15 @@ test.describe('Context Center - Documents Page', () => {
     await folderButton.click();
     await waitForAllLoadersToDisappear(page);
 
+    // After selecting folder: only in-folder document visible.
     await expect(getDocumentRowByName(page, docInFolderName)).toBeVisible();
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
-    await expect(
-      page.getByTestId('documents-view').getByText(/^1\s+file/i)
-    ).toBeVisible();
+    // DocumentsView header count updates to reflect the folder-scoped total.
+    await expect(documentsViewCount).toContainText('1');
+
+    // DocumentFolderView header still shows the global total (unchanged).
+    await expect(folderViewCount).toContainText(String(globalCount));
 
     const inFolderRow = getDocumentRowByName(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();

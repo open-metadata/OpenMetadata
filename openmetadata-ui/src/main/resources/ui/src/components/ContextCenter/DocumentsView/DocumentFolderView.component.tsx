@@ -23,20 +23,23 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
-import { deleteFolder, listFolders } from '../../../rest/assetAPI';
+import {
+  deleteFolder,
+  listContextFiles,
+  listFolders,
+} from '../../../rest/assetAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 
 export interface DocumentFolderViewProps {
   totalFileCount?: number;
-  files?: ContextFile[];
   selectedFolderId?: string;
   canCreate?: boolean;
   canDelete?: boolean;
@@ -46,7 +49,6 @@ export interface DocumentFolderViewProps {
 
 const DocumentFolderView = ({
   totalFileCount = 0,
-  files = [],
   selectedFolderId,
   canCreate = false,
   canDelete = false,
@@ -59,6 +61,10 @@ const DocumentFolderView = ({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<Folder>();
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+  const [folderFilesCache, setFolderFilesCache] = useState<
+    Map<string, ContextFile[]>
+  >(new Map());
 
   const fetchFolders = useCallback(async () => {
     setIsLoading(true);
@@ -76,6 +82,23 @@ const DocumentFolderView = ({
   useEffect(() => {
     fetchFolders();
   }, [fetchFolders]);
+
+  const fetchFolderFilesIfNeeded = useCallback(
+    async (folderId: string) => {
+      if (folderFilesCache.has(folderId)) {
+        return;
+      }
+      try {
+        const response = await listContextFiles({ folderId });
+        setFolderFilesCache((prev) =>
+          new Map(prev).set(folderId, response.data)
+        );
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [folderFilesCache]
+  );
 
   const handleFolderCreated = (folder: Folder) => {
     const updated = [...folders, folder];
@@ -110,7 +133,17 @@ const DocumentFolderView = ({
   };
 
   const handleFolderItemSelect = (folderId: string) => {
-    onSelectFolder(selectedFolderId === folderId ? undefined : folderId);
+    const next = selectedFolderId === folderId ? undefined : folderId;
+    onSelectFolder(next);
+  };
+
+  const handleExpandedChange = (keys: Set<string | number>) => {
+    const next = new Set(Array.from(keys).map(String));
+    const added = Array.from(next).find((k) => !expandedKeys.has(k));
+    setExpandedKeys(next);
+    if (added) {
+      fetchFolderFilesIfNeeded(added);
+    }
   };
 
   return (
@@ -132,7 +165,7 @@ const DocumentFolderView = ({
                   {folders.length} {t('label.folder-plural')}
                 </span>
                 <Dot className="tw:text-quaternary" size="micro" />
-                <span>
+                <span data-testid="folder-view-file-count">
                   {totalFileCount} {t('label.file-plural')}
                 </span>
               </Typography>
@@ -163,12 +196,17 @@ const DocumentFolderView = ({
               ))}
             </div>
           ) : (
-            <Tree aria-label={t('label.folder-plural')} className="tw:w-full">
+            <Tree
+              aria-label={t('label.folder-plural')}
+              className="tw:w-full"
+              expandedKeys={expandedKeys}
+              onExpandedChange={handleExpandedChange}>
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
-                const folderFiles = files.filter(
-                  (file) => file.folder?.id === folder.id
-                );
+                const isExpanded = expandedKeys.has(folder.id);
+                const folderFiles = isExpanded
+                  ? folderFilesCache.get(folder.id) ?? []
+                  : [];
 
                 return (
                   <Tree.Item
@@ -178,7 +216,8 @@ const DocumentFolderView = ({
                     id={folder.id}
                     key={folder.id}
                     textValue={folder.displayName ?? folder.name}>
-                    <Tree.ItemContent>
+                    <Tree.ItemContent
+                      hasChildItems={(folder.childrenCount ?? 0) > 0}>
                       <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <Button
                           ellipsis
@@ -186,7 +225,7 @@ const DocumentFolderView = ({
                           color="tertiary"
                           iconLeading={FolderIcon}
                           size="sm"
-                          onClick={(e: React.MouseEvent) => {
+                          onClick={(e: MouseEvent) => {
                             e.stopPropagation();
                             handleFolderItemSelect(folder.id);
                           }}>
@@ -201,7 +240,7 @@ const DocumentFolderView = ({
                             icon={Trash01}
                             size="xs"
                             tooltip={t('label.delete')}
-                            onClick={(e: React.MouseEvent) => {
+                            onClick={(e: MouseEvent) => {
                               e.stopPropagation();
                               setFolderToDelete(folder);
                             }}

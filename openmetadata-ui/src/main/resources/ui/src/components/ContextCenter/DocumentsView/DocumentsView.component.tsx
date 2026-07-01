@@ -97,9 +97,11 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                     aria-hidden="true"
                     className="tw:size-4 tw:shrink-0"
                   />
-                  <Typography ellipsis size="text-sm">
-                    {folder.name}
-                  </Typography>
+                  <div className='tw:max-w-40'>
+                    <Typography ellipsis size="text-sm">
+                      {folder.name}
+                    </Typography>
+                  </div>
                 </Box>
                 {isCurrent && (
                   <Check
@@ -362,6 +364,7 @@ const ListHeader: FC<ListHeaderProps> = ({
       className="tw:px-4 tw:h-12 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-primary">
       <Typography
         className="tw:text-quaternary"
+        data-testid="documents-view-file-count"
         size="text-xs"
         weight="semibold">
         {totalFileCount} {t('label.file-plural').toLowerCase()}

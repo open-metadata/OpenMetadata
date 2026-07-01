@@ -39,12 +39,18 @@ public class FolderRepository extends EntityRepository<Folder> {
     folder.setParent(fields.contains("parent") ? getParentFolder(folder) : folder.getParent());
     folder.setChildren(
         fields.contains("children") ? getChildFolders(folder) : folder.getChildren());
+    if (fields.contains("childrenCount")) {
+      folder.setChildrenCount(countChildren(folder.getId()));
+    }
   }
 
   @Override
   public void clearFields(Folder folder, EntityUtil.Fields fields) {
     folder.setParent(fields.contains("parent") ? folder.getParent() : null);
     folder.setChildren(fields.contains("children") ? folder.getChildren() : null);
+    if (!fields.contains("childrenCount")) {
+      folder.setChildrenCount(null);
+    }
   }
 
   @Override
@@ -64,9 +70,19 @@ public class FolderRepository extends EntityRepository<Folder> {
           folder -> folder.setChildren(childrenMap.getOrDefault(folder.getId(), List.of())));
     }
 
+    if (fields.contains("childrenCount")) {
+      entities.forEach(folder -> folder.setChildrenCount(countChildren(folder.getId())));
+    }
+
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
+  }
+
+  private int countChildren(UUID folderId) {
+    return daoCollection
+        .relationshipDAO()
+        .countFindTo(folderId, FOLDER_ENTITY, List.of(Relationship.CONTAINS.ordinal()));
   }
 
   @Override
