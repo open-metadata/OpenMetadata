@@ -201,20 +201,7 @@ test.describe('Context Center - Archive Page', () => {
         .toBe(false);
     });
 
-    // ── 10. Upload same-name file to same folder — must succeed ──────────────
-
-    await test.step.skip('uploading a document with the same name in the same folder succeeds', async () => {
-      await navigateToDocuments(page);
-      await selectFolderInSidebar(page, folderName);
-      await openUploadModal(page);
-      documentId2 = await uploadFileViaModal(
-        page,
-        documentFileName,
-        'archive lifecycle test content - second upload'
-      );
-    });
-
-    // ── 11. Archive page — poll until first document appears ─────────────────
+    // ── 10. Archive page — poll until first document appears ─────────────────
 
     await test.step('archive API returns the soft-deleted document', async () => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -225,7 +212,7 @@ test.describe('Context Center - Archive Page', () => {
       await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
     });
 
-    // ── 12. Restore document ─────────────────────────────────────────────────
+    // ── 11. Restore document ─────────────────────────────────────────────────
 
     await test.step('restore the archived document', async () => {
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
@@ -242,7 +229,7 @@ test.describe('Context Center - Archive Page', () => {
       await expect(archiveRow).not.toBeVisible();
     });
 
-    // ── 13. Restored document visible on documents page ──────────────────────
+    // ── 12. Restored document visible on documents page ──────────────────────
 
     await test.step('restored document is visible on the documents page', async () => {
       await navigateToDocuments(page);
@@ -251,7 +238,7 @@ test.describe('Context Center - Archive Page', () => {
       ).toBeVisible();
     });
 
-    // ── 14. No folder name on restored document ───────────────────────────────
+    // ── 13. No folder name on restored document ───────────────────────────────
 
     await test.step('restored document has no folder name (restored to root)', async () => {
       const docRow = page.getByTestId(`document-row-${documentId}`);
@@ -260,7 +247,7 @@ test.describe('Context Center - Archive Page', () => {
       ).toBeVisible();
     });
 
-    // ── 15. Document visible in search after restore ──────────────────────────
+    // ── 14. Document visible in search after restore ──────────────────────────
 
     await test.step('restored document appears in search results', async () => {
       const restoredId = documentId;
@@ -292,14 +279,14 @@ test.describe('Context Center - Archive Page', () => {
         .toBe(true);
     });
 
-    // ── 16. Soft delete restored document again ───────────────────────────────
+    // ── 15. Soft delete restored document again ───────────────────────────────
 
     await test.step('soft delete the restored document', async () => {
       await navigateToDocuments(page);
       await softDeleteDocument(page, `document-row-${documentId}`);
     });
 
-    // ── 17. Archive page — poll until second delete appears ───────────────────
+    // ── 16. Archive page — poll until second delete appears ───────────────────
 
     await test.step('archive API returns the re-deleted document', async () => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -310,7 +297,7 @@ test.describe('Context Center - Archive Page', () => {
       await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
     });
 
-    // ── 18. Permanently delete ────────────────────────────────────────────────
+    // ── 17. Permanently delete ────────────────────────────────────────────────
 
     await test.step('permanently delete the document from the archive', async () => {
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
@@ -333,7 +320,7 @@ test.describe('Context Center - Archive Page', () => {
       ).not.toBeVisible();
     });
 
-    // ── 19. Verify NOT in archive (API) ──────────────────────────────────────
+    // ── 18. Verify NOT in archive (API) ──────────────────────────────────────
 
     await test.step('permanently deleted document is absent from the archive API', async () => {
       const { apiContext, afterAction } = await createNewPage(browser);
@@ -341,7 +328,7 @@ test.describe('Context Center - Archive Page', () => {
       await afterAction();
     });
 
-    // ── 20. Verify NOT on documents page ─────────────────────────────────────
+    // ── 19. Verify NOT on documents page ─────────────────────────────────────
 
     await test.step('permanently deleted document is absent from the documents page', async () => {
       await navigateToDocuments(page);
@@ -350,7 +337,7 @@ test.describe('Context Center - Archive Page', () => {
       ).not.toBeVisible();
     });
 
-    // ── 21. Verify NOT in documents search ───────────────────────────────────
+    // ── 20. Verify NOT in documents search ───────────────────────────────────
 
     await test.step('permanently deleted document is absent from documents search', async () => {
       const searchInput = getDocumentSearchInput(page);
