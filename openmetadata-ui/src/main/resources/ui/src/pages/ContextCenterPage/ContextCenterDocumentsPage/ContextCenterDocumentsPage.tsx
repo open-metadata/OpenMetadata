@@ -85,6 +85,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastFileMoved, setLastFileMoved] = useState<FileMovedEvent>();
+  const [lastFilesDeleted, setLastFilesDeleted] = useState<ContextFile[]>([]);
   const fetchGenerationRef = useRef(0);
 
   const previewFileUrl = useMemo(() => {
@@ -275,6 +276,7 @@ const ContextCenterDocumentsPage: FC = () => {
         prev.filter((document) => document.id !== fileToDelete.id)
       );
       setTotalFileCount((prev) => prev - 1);
+      setLastFilesDeleted([fileToDelete]);
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.document'),
@@ -294,26 +296,25 @@ const ContextCenterDocumentsPage: FC = () => {
         setAllDocuments((prev) =>
           prev.map((d) => (d.id === file.id ? { ...d, folder: undefined } : d))
         );
-
-        return;
+      } else {
+        const targetFolder = folders.find((f) => f.id === targetFolderId);
+        setAllDocuments((prev) =>
+          prev.map((d) =>
+            d.id === file.id
+              ? {
+                  ...d,
+                  folder: {
+                    ...d.folder,
+                    id: targetFolderId,
+                    name: targetFolder?.name ?? targetFolderId,
+                    displayName: targetFolder?.displayName,
+                    type: d.folder?.type ?? 'folder',
+                  },
+                }
+              : d
+          )
+        );
       }
-      const targetFolder = folders.find((f) => f.id === targetFolderId);
-      setAllDocuments((prev) =>
-        prev.map((d) =>
-          d.id === file.id
-            ? {
-                ...d,
-                folder: {
-                  ...d.folder,
-                  id: targetFolderId,
-                  name: targetFolder?.name ?? targetFolderId,
-                  displayName: targetFolder?.displayName,
-                  type: d.folder?.type ?? 'folder',
-                },
-              }
-            : d
-        )
-      );
       setLastFileMoved({ file, targetFolderId });
     },
     [folders]
@@ -358,9 +359,13 @@ const ContextCenterDocumentsPage: FC = () => {
       const result = await bulkDeleteDriveFiles(Array.from(selectedIds), false);
       const deletedIds = getSuccessfulIds(result);
       const failedCount = result.numberOfRowsFailed ?? 0;
+      const deletedDocuments = allDocuments.filter((d) => deletedIds.has(d.id));
 
       setAllDocuments((prev) => prev.filter((d) => !deletedIds.has(d.id)));
       setTotalFileCount((prev) => prev - deletedIds.size);
+      if (deletedDocuments.length > 0) {
+        setLastFilesDeleted(deletedDocuments);
+      }
       setSelectedIds((prev) => {
         const next = new Set(prev);
         deletedIds.forEach((id) => next.delete(id));
@@ -390,7 +395,7 @@ const ContextCenterDocumentsPage: FC = () => {
     }
 
     setIsBulkDeleting(false);
-  }, [selectedIds, t]);
+  }, [allDocuments, selectedIds, t]);
 
   const handleBulkDownload = useCallback(async () => {
     try {
@@ -498,6 +503,7 @@ const ContextCenterDocumentsPage: FC = () => {
             canCreate={hasCreatePermission}
             canDelete={hasDeletePermission}
             lastFileMoved={lastFileMoved}
+            lastFilesDeleted={lastFilesDeleted}
             selectedFolderId={selectedFolderId}
             totalFileCount={globalFileCount}
             onFoldersLoaded={setFolders}

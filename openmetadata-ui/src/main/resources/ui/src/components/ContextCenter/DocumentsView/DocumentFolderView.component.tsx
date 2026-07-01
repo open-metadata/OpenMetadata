@@ -40,7 +40,7 @@ import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component'
 
 export interface FileMovedEvent {
   file: ContextFile;
-  targetFolderId: string;
+  targetFolderId: string | null;
 }
 
 export interface DocumentFolderViewProps {
@@ -49,6 +49,7 @@ export interface DocumentFolderViewProps {
   canCreate?: boolean;
   canDelete?: boolean;
   lastFileMoved?: FileMovedEvent;
+  lastFilesDeleted?: ContextFile[];
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersLoaded?: (folders: Folder[]) => void;
 }
@@ -59,6 +60,7 @@ const DocumentFolderView = ({
   canCreate = false,
   canDelete = false,
   lastFileMoved,
+  lastFilesDeleted,
   onSelectFolder,
   onFoldersLoaded,
 }: DocumentFolderViewProps) => {
@@ -112,28 +114,67 @@ const DocumentFolderView = ({
       return;
     }
     const { file, targetFolderId } = lastFileMoved;
+    const sourceFolderId = file.folder?.id;
 
     setFolders((prev) =>
-      prev.map((f) =>
-        f.id === targetFolderId
-          ? { ...f, childrenCount: (f.childrenCount ?? 0) + 1 }
-          : f
-      )
+      prev.map((f) => {
+        if (f.id === targetFolderId) {
+          return { ...f, childrenCount: (f.childrenCount ?? 0) + 1 };
+        }
+        if (sourceFolderId && f.id === sourceFolderId) {
+          return {
+            ...f,
+            childrenCount: Math.max(0, (f.childrenCount ?? 0) - 1),
+          };
+        }
+
+        return f;
+      })
     );
 
     setFolderFilesCache((prev) => {
-      if (!prev.has(targetFolderId)) {
-        return prev;
-      }
-      const existing = prev.get(targetFolderId) ?? [];
-      const alreadyInCache = existing.some((f) => f.id === file.id);
-      if (alreadyInCache) {
-        return prev;
+      const next = new Map(prev);
+
+      if (sourceFolderId && next.has(sourceFolderId)) {
+        next.set(
+          sourceFolderId,
+          (next.get(sourceFolderId) ?? []).filter((f) => f.id !== file.id)
+        );
       }
 
-      return new Map(prev).set(targetFolderId, [file, ...existing]);
+      if (targetFolderId && next.has(targetFolderId)) {
+        const existing = next.get(targetFolderId) ?? [];
+        if (!existing.some((f) => f.id === file.id)) {
+          next.set(targetFolderId, [file, ...existing]);
+        }
+      }
+
+      return next;
     });
   }, [lastFileMoved]);
+
+  useEffect(() => {
+    if (!lastFilesDeleted?.length) {
+      return;
+    }
+
+    fetchFolders();
+
+    setFolderFilesCache((prev) => {
+      const next = new Map(prev);
+      lastFilesDeleted.forEach((file) => {
+        const folderId = file.folder?.id;
+        if (folderId && next.has(folderId)) {
+          next.set(
+            folderId,
+            (next.get(folderId) ?? []).filter((f) => f.id !== file.id)
+          );
+        }
+      });
+
+      return next;
+    });
+  }, [lastFilesDeleted, fetchFolders]);
 
   const handleFolderCreated = (folder: Folder) => {
     const updated = [...folders, folder];
@@ -288,7 +329,7 @@ const DocumentFolderView = ({
                       <Tree.Item
                         id={file.id}
                         key={file.id}
-                        textValue={file.name}>
+                        textValue={getEntityName(file)}>
                         <Tree.ItemContent
                           className="tw:ml-7!"
                           showExpandIcon={false}>
@@ -303,7 +344,7 @@ const DocumentFolderView = ({
                             className="tw:truncate tw:text-secondary tw:max-w-[70%]"
                             size="text-sm"
                             weight="medium">
-                            {file.name}
+                            {getEntityName(file)}
                           </Typography>
                         </Tree.ItemContent>
                       </Tree.Item>
