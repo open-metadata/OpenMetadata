@@ -226,6 +226,28 @@ describe('useIncidentManagerListPage', () => {
     });
   });
 
+  it('should drop the picker ref from selectedOwners once it no longer matches the assignee filter', () => {
+    const { result } = renderHook(() => useIncidentManagerListPage({}));
+
+    const assigneeDescriptor = result.current.filterDescriptors.find(
+      (descriptor) => descriptor.key === 'assignee'
+    );
+
+    act(() => {
+      assigneeDescriptor?.onOwnerChange?.([
+        { id: 'user-1', type: 'user', name: 'user1' },
+      ]);
+    });
+
+    // The URL assignee is still empty (navigate is mocked), so the cached ref
+    // must not surface as a selected owner.
+    const updated = result.current.filterDescriptors.find(
+      (descriptor) => descriptor.key === 'assignee'
+    );
+
+    expect(updated?.selectedOwners).toEqual([]);
+  });
+
   it('should navigate when the status descriptor onChange is called', () => {
     const { result } = renderHook(() => useIncidentManagerListPage({}));
 

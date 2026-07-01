@@ -587,11 +587,14 @@ export const useIncidentManagerListPage = ({
   // their full EntityReference — derive the selected owner from it so the picker
   // pre-selects and the chip shows the display name, without an extra lookup.
   const assigneeOwners = useMemo<EntityReference[]>(() => {
-    if (assigneeOwnerRefs.length > 0) {
-      return assigneeOwnerRefs;
-    }
     if (!filters.assignee) {
       return [];
+    }
+    // Use the picker-selected refs only when they still match the active filter,
+    // so a stale ref doesn't survive clear-all / browser nav / a URL change to a
+    // different ?assignee=.
+    if (assigneeOwnerRefs.some((owner) => owner?.name === filters.assignee)) {
+      return assigneeOwnerRefs;
     }
     const match = testCaseListData.data
       .map((record) => record.testCaseResolutionStatusDetails?.assignee)
