@@ -63,10 +63,17 @@ class EntityShapeIT {
         AcceptedLimits.find(
             plannedCase.entityType(), plannedCase.dimension(), plannedCase.rung().label());
     final boolean tolerated = accepted.map(a -> a.outcome() == observed).orElse(false);
-    if (observed != Outcome.OK && tolerated) {
+    if (observed == Outcome.OK) {
+      if (accepted.isPresent()) {
+        LOG.warn(
+            "STALE AcceptedLimits: {} now indexes OK — remove its exemption ({})",
+            plannedCase.label(),
+            accepted.orElseThrow().reason());
+      }
+    } else if (tolerated) {
       LOG.info(
           "ACCEPTED {} -> {} — {}", plannedCase.label(), observed, accepted.orElseThrow().reason());
-    } else if (observed != Outcome.OK) {
+    } else {
       fail(
           plannedCase.label()
               + " must index + be queryable but got "
