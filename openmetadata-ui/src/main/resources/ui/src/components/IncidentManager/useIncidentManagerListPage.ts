@@ -252,7 +252,13 @@ export const useIncidentManagerListPage = ({
         setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
       }
     },
-    [pageSize, setTestCaseListData, activeDomain]
+    [
+      pageSize,
+      setTestCaseListData,
+      activeDomain,
+      tableDetails?.deleted,
+      tableDetails?.fullyQualifiedName,
+    ]
   );
 
   const fetchTestCasePermissions = async () => {
@@ -289,13 +295,16 @@ export const useIncidentManagerListPage = ({
     }
   };
 
-  const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCaseIncidents({
-      ...filters,
-      offset: (currentPage - 1) * pageSize,
-    });
-    handlePageChange(currentPage);
-  };
+  const handlePagingClick = useCallback(
+    ({ currentPage }: PagingHandlerParams) => {
+      fetchTestCaseIncidents({
+        ...filters,
+        offset: (currentPage - 1) * pageSize,
+      });
+      handlePageChange(currentPage);
+    },
+    [fetchTestCaseIncidents, filters, pageSize, handlePageChange]
+  );
 
   const pagingData = useMemo(
     () => ({
@@ -544,7 +553,14 @@ export const useIncidentManagerListPage = ({
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
-  }, [commonTestCasePermission, pageSize, filters, activeDomain]);
+  }, [
+    commonTestCasePermission,
+    pageSize,
+    filters,
+    activeDomain,
+    tableDetails?.deleted,
+    tableDetails?.fullyQualifiedName,
+  ]);
 
   useEffect(() => {
     if (testCaseListData.data.length > 0) {
