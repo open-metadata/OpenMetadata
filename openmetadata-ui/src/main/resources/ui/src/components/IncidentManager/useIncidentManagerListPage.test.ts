@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import QueryString from 'qs';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
+import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -195,6 +196,34 @@ describe('useIncidentManagerListPage', () => {
     const [firstCallArg] = mockNavigate.mock.calls[0];
 
     expect(firstCallArg.search).not.toContain('assignee=user1');
+  });
+
+  it('should derive the selected assignee owner from loaded incidents on a shared link', async () => {
+    mockLocation.search = QueryString.stringify({ assignee: 'user1' });
+    const owner = {
+      id: 'id-1',
+      name: 'user1',
+      type: 'user',
+      displayName: 'User One',
+    };
+    (
+      getListTestCaseIncidentStatusFromSearch as jest.Mock
+    ).mockResolvedValueOnce({
+      data: [
+        { id: 'inc-1', testCaseResolutionStatusDetails: { assignee: owner } },
+      ],
+      paging: {},
+    });
+
+    const { result } = renderHook(() => useIncidentManagerListPage({}));
+
+    await waitFor(() => {
+      const assigneeDescriptor = result.current.filterDescriptors.find(
+        (descriptor) => descriptor.key === 'assignee'
+      );
+
+      expect(assigneeDescriptor?.selectedOwners).toEqual([owner]);
+    });
   });
 
   it('should navigate when the status descriptor onChange is called', () => {

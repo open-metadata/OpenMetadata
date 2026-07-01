@@ -582,6 +582,24 @@ export const useIncidentManagerListPage = ({
     updateFilters({ assignee: owners[0]?.name });
   };
 
+  // On a shared/refreshed link (?assignee=foo) the picker state starts empty.
+  // Since the list is filtered by that assignee, each loaded incident carries
+  // their full EntityReference — derive the selected owner from it so the picker
+  // pre-selects and the chip shows the display name, without an extra lookup.
+  const assigneeOwners = useMemo<EntityReference[]>(() => {
+    if (assigneeOwnerRefs.length > 0) {
+      return assigneeOwnerRefs;
+    }
+    if (!filters.assignee) {
+      return [];
+    }
+    const match = testCaseListData.data
+      .map((record) => record.testCaseResolutionStatusDetails?.assignee)
+      .find((assignee) => assignee?.name === filters.assignee);
+
+    return match ? [match] : [];
+  }, [assigneeOwnerRefs, filters.assignee, testCaseListData.data]);
+
   const fetchTestCaseFilterOptions = async (query = WILD_CARD_CHAR) => {
     setIsTestCaseOptionsLoading(true);
     try {
@@ -631,7 +649,7 @@ export const useIncidentManagerListPage = ({
       isLoading: false,
       onGetInitialOptions: noop,
       onChange: noop,
-      selectedOwners: assigneeOwnerRefs,
+      selectedOwners: assigneeOwners,
       onOwnerChange: handleAssigneeOwnerChange,
     },
     {
