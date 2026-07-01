@@ -140,10 +140,15 @@ the clock would never start and ETA would always be `None`. Fix: also set
 `_started_at` (if unset) at the start of the first **counter** mutation —
 `set_total`, `seed_scope_total`, and `track`. `time.monotonic()` as today.
 
-No other registry change: `set_total` / `set_reconcilable` /
-`reconcile_scope_total` / `track` / `global_counters` / `elapsed_seconds` /
-`eta_seconds` (driver = last-declared counter with a known total) all already do
-what these paths need.
+One additive registry change: `track(type_, n: int = 1)` — a bulk increment
+(`done += n`, keeping the existing `total < done` clamp) so usage can advance by
+a whole page in one call. Backward-compatible; the topology runner's
+`track(entity_type_name)` keeps the default `n=1`.
+
+Otherwise unchanged: `set_total` / `set_reconcilable` / `seed_scope_total` /
+`reconcile_scope_total` / `global_counters` / `elapsed_seconds` / `eta_seconds`
+(driver = last-declared counter with a known total) all already do what these
+paths need.
 
 ### (3) `ProgressReporter` — suppress the empty `Ingested:` line
 
@@ -163,28 +168,38 @@ would compute `total = ceiling + done` (it adds `n - previous` with
 `total = ceiling + actual − ceiling = actual` — exactly `N/N`. All seeding below
 uses per-scope `seed_scope_total` + `reconcile_scope_total`.
 
-**`UsageSource` (`usage_source.py`)** — declare + drive `Queries`, one scope
-per day (so multi-day backfills reconcile progressively; daily runs are a single
-scope):
+**`UsageSource._iter` (`usage_source.py:165`)** — the shared seam. `_iter`
+drains `get_table_query()` as `TableQueries` batches (Snowflake yields one batch
+**per pagination page**, `snowflake/usage.py:120`, so `_iter` sees per-page
+granularity — Snowflake does **not** override `_iter`). Single `"run"` scope:
 
-- Before the day loop: for each day `d` in `range(max(1, (self.end -
-  self.start).days))`, `self.progress.seed_scope_total("Queries", f"day-{d}",
-  self.source_config.resultLimit)` — total starts at `resultLimit × days`.
-- Per processed query in day `d` (as each `TableQuery` is built in
-  `yield_table_queries` / drained in `_iter`): `self.progress.track("Queries")`
-  — `done += 1`, drives a smooth ETA.
-- When day `d`'s fetch is exhausted: `self.progress.reconcile_scope_total(
-  "Queries", f"day-{d}", <rows_fetched_that_day>)` — tightens the denominator to
-  that day's real count. After the last day the counter reads `N/N`.
+- Before the loop: `days = max(1, (self.end - self.start).days)`;
+  `self.progress.seed_scope_total("Queries", "run",
+  self.source_config.resultLimit * days)` — total starts at `resultLimit × days`.
+- Per yielded batch: `n = len(table_queries.queries)`;
+  `self.progress.track("Queries", n)`; accumulate `processed += n`. `done` climbs
+  per page, driving the ETA.
+- After the loop: `self.progress.reconcile_scope_total("Queries", "run",
+  processed)` → settles the denominator to the real count (`N/N`).
 
-**`LineageSource` (`lineage_source.py`)** — legacy QUERY_HISTORY path only,
-single `"run"` scope:
+**`LineageSource.yield_query_lineage` (`lineage_source.py:357`)** — legacy
+QUERY_HISTORY path only, single `"run"` scope. This method builds
+`producer_fn = self.query_lineage_producer` and hands it to
+`generate_lineage_with_processes`. Wrap the producer so each produced
+`TableQuery` is counted:
 
-- In `yield_query_lineage` (base/legacy): `seed_scope_total("Queries", "run",
-  self.source_config.resultLimit)`, `track("Queries")` per consumed
-  `TableQuery`, then `reconcile_scope_total("Queries", "run", <done>)` once the
-  producer is exhausted. Placed so it runs on the base path and is **skipped**
-  when a subclass routes to an ACCESS_HISTORY override.
+- `seed_scope_total("Queries", "run", self.source_config.resultLimit)` before the
+  `yield from`.
+- Replace `producer_fn` with a local generator that wraps
+  `self.query_lineage_producer()` and calls `self.progress.track("Queries")` per
+  yielded `TableQuery` (the producer is drained lazily in the main thread as
+  chunks form, so `done` climbs during processing).
+- `reconcile_scope_total("Queries", "run", <produced>)` after the `yield from`
+  completes.
+
+Snowflake overrides `yield_query_lineage` to route to the ACCESS_HISTORY path
+and only calls `super().yield_query_lineage()` when `useAccessHistory=False`, so
+this counter appears **only** on the legacy path — exactly as intended.
 
 ### (5) Snowflake specifics (thin — mostly inheritance)
 
