@@ -177,7 +177,7 @@ const IncidentManagerTable = ({
             </Link>
           </Table.Cell>
         )}
-        <Table.Cell>
+        <Table.Cell className="tw:whitespace-nowrap">
           <DateTimeDisplay
             size="compact"
             timestamp={record.timestamp as number}
