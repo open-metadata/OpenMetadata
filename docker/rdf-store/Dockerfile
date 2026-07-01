@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install Fuseki
-RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz \
+RUN wget -q https://repo1.maven.org/maven2/org/apache/jena/apache-jena-fuseki/${FUSEKI_VERSION}/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz \
     && tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz \
     && mv apache-jena-fuseki-${FUSEKI_VERSION} ${FUSEKI_HOME} \
     && rm apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz

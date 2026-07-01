@@ -188,6 +188,7 @@ update_dockerfile_version:  ## To update the dockerfiles version
 	@file_paths="docker/docker-compose-ingestion/docker-compose-ingestion.yml \
 		     docker/docker-compose-openmetadata/docker-compose-openmetadata.yml \
 		     docker/docker-compose-quickstart/docker-compose-postgres.yml \
+		     docker/docker-compose-quickstart/docker-compose-rdf.yml \
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
 	echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \

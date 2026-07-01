@@ -6,7 +6,7 @@ RUN apk add --no-cache wget tar
 ENV FUSEKI_VERSION=5.6.0
 WORKDIR /tmp
 
-RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
+RUN wget -q https://repo1.maven.org/maven2/org/apache/jena/apache-jena-fuseki/${FUSEKI_VERSION}/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     mv apache-jena-fuseki-${FUSEKI_VERSION} /fuseki-dist
 

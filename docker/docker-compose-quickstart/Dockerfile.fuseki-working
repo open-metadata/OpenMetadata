@@ -13,7 +13,7 @@ RUN mkdir -p ${FUSEKI_HOME}
 WORKDIR ${FUSEKI_HOME}
 
 # Download Fuseki using ADD (doesn't require wget)
-ADD https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz /tmp/fuseki.tar.gz
+ADD https://repo1.maven.org/maven2/org/apache/jena/apache-jena-fuseki/${FUSEKI_VERSION}/apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz /tmp/fuseki.tar.gz
 
 # Extract Fuseki
 RUN tar -xzf /tmp/fuseki.tar.gz --strip-components=1 -C ${FUSEKI_HOME} && \
