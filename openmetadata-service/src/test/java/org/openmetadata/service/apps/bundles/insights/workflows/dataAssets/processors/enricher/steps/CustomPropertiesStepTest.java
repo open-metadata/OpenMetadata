@@ -57,6 +57,23 @@ class CustomPropertiesStepTest {
   }
 
   @Test
+  void writesTwinButSkipsEmptyTypedWhenExtensionYieldsNoEntries() {
+    Map<String, Object> extension = new HashMap<>();
+    extension.put("datapolicy", null);
+    EnrichmentTarget target = targetWith("table", extension);
+
+    step.apply(target);
+
+    assertSame(
+        extension,
+        target.entityMap().get("tableCustomProperty"),
+        "the twin still carries the raw extension even when it holds no typed values");
+    assertFalse(
+        target.entityMap().containsKey("customPropertiesTyped"),
+        "no empty nested array is written when the builder yields no entries");
+  }
+
+  @Test
   void leavesSnapshotUntouchedWhenExtensionAbsent() {
     EnrichmentTarget target = targetWith("table", null);
 

@@ -21,6 +21,7 @@ import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtil
 import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.ENTITY_TYPE_FIELDS_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,17 +39,22 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.CustomProperties;
 import org.openmetadata.sdk.fluent.Tables;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
@@ -83,6 +89,7 @@ import org.openmetadata.service.util.EntityUtil;
 class DataInsightsEnricherBehaviorIT {
 
   private static DataInsightsEntityEnricherProcessor enricher;
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /** Common+table fields from {@code dataInsights/config.json}. Mirrors what the real workflow
    *  passes via {@code ENTITY_TYPE_FIELDS_KEY}; mismatching this list would mean the IT tests an
@@ -284,6 +291,63 @@ class DataInsightsEnricherBehaviorIT {
         "no tags → no glossary FQNs");
   }
 
+  // ──────────── Test 1c: custom-property projection (issue CLT-4661) ────────────
+
+  /**
+   * Reproduction of CLT-4661: a DI chart grouping/filtering on a custom property returned 0 because
+   * the enricher only emitted the per-entity-type twin ({@code tableCustomProperty}) and never the
+   * {@code customPropertiesTyped} nested structure the advanced-search builder queries. Register a
+   * string custom property on the table type, set it on a table, enrich, and assert the snapshot
+   * carries <em>both</em> DI-queryable shapes — the twin (Group By) and the typed nested entry
+   * (advanced-search filters) — with the value intact in each.
+   */
+  @Test
+  void tableEntity_customProperty_projectedToTwinAndTypedNested(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propName = ns.shortPrefix() + "policy";
+    Type stringType = getTypeByName(client, "string");
+    addCustomPropertyToEntityType(client, "table", propName, stringType);
+
+    try {
+      DatabaseService svc = DatabaseServiceTestFactory.create(ns, "Postgres");
+      Database db = DatabaseTestFactory.create(ns, svc.getFullyQualifiedName());
+      DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, db.getFullyQualifiedName());
+
+      Table table =
+          Tables.create()
+              .name(ns.shortPrefix("tbl_cp"))
+              .inSchema(schema.getFullyQualifiedName())
+              .withDescription("custom-property projection")
+              .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)))
+              .execute();
+
+      CustomProperties.update(Tables.class, table.getId())
+          .withProperty(propName, "purpose")
+          .execute();
+
+      Map<String, Object> snapshot = enrichOneDay(table);
+
+      assertInstanceOf(
+          Map.class, snapshot.get("tableCustomProperty"), "per-type twin projected for Group By");
+      Map<?, ?> twin = (Map<?, ?>) snapshot.get("tableCustomProperty");
+      assertEquals("purpose", twin.get(propName), "twin carries the raw custom-property value");
+
+      assertInstanceOf(
+          Collection.class,
+          snapshot.get("customPropertiesTyped"),
+          "typed nested structure projected for advanced-search filters");
+      Collection<?> typed = (Collection<?>) snapshot.get("customPropertiesTyped");
+      Map<?, ?> entry = findTypedEntry(typed, propName);
+      assertNotNull(entry, "customPropertiesTyped has an entry keyed by the property name");
+      assertEquals(
+          "purpose",
+          entry.get("stringValue"),
+          "value carried as a keyword stringValue for filters");
+    } finally {
+      deleteCustomPropertyFromEntityType(client, "table", propName);
+    }
+  }
+
   // ────────────────────────────── Test 2: missing owner ──────────────────────────────
 
   /**
@@ -461,6 +525,59 @@ class DataInsightsEnricherBehaviorIT {
     } catch (Exception e) {
       throw new AssertionError(
           "enricher.enrichSingle threw — this is the failure mode the redesign prevents", e);
+    }
+  }
+
+  private static Map<?, ?> findTypedEntry(Collection<?> typed, String propertyName) {
+    Map<?, ?> match = null;
+    for (Object element : typed) {
+      Map<?, ?> entry = (Map<?, ?>) element;
+      if (propertyName.equals(entry.get("name"))) {
+        match = entry;
+      }
+    }
+    return match;
+  }
+
+  private static Type getTypeByName(OpenMetadataClient client, String name) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/metadata/types/name/" + name, null);
+    return OBJECT_MAPPER.readValue(response, Type.class);
+  }
+
+  private static void addCustomPropertyToEntityType(
+      OpenMetadataClient client, String entityTypeName, String propertyName, Type propertyType)
+      throws Exception {
+    Type entityType = getTypeByName(client, entityTypeName);
+    CustomProperty customProperty =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDescription("DI enricher test custom property: " + propertyName)
+            .withPropertyType(propertyType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + entityType.getId().toString(),
+            customProperty,
+            Type.class);
+  }
+
+  private static void deleteCustomPropertyFromEntityType(
+      OpenMetadataClient client, String entityTypeName, String propertyName) {
+    try {
+      Type entityType = getTypeByName(client, entityTypeName);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.DELETE,
+              "/v1/metadata/types/" + entityType.getId().toString() + "/" + propertyName,
+              null,
+              Void.class);
+    } catch (Exception e) {
+      // Best-effort cleanup; a leaked test property does not affect other assertions.
     }
   }
 

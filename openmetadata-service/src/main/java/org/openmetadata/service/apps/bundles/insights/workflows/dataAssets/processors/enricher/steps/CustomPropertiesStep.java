@@ -10,6 +10,8 @@
  */
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps;
 
+import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
 import org.openmetadata.service.search.SearchIndexUtils;
@@ -24,7 +26,9 @@ import org.openmetadata.service.search.SearchIndexUtils;
  *   <li>{@code customPropertiesTyped}, the typed {@code nested} structure produced by {@link
  *       SearchIndexUtils#buildTypedCustomProperties}. The advanced-search builder emits custom-property
  *       filters as {@code nested} queries against this path, so without it those saved filters match
- *       nothing in the DI snapshot and the whole chart collapses to 0.
+ *       nothing in the DI snapshot and the whole chart collapses to 0. Only written when the builder
+ *       yields at least one entry — mirroring the live index, an extension that produces no typed
+ *       entries adds no empty {@code nested} array.
  * </ul>
  *
  * <p>The raw {@code extension} key is intentionally left on the document — custom-property search
@@ -49,11 +53,11 @@ public final class CustomPropertiesStep implements EnrichmentStep {
     if (customProperties != null) {
       String entityType = target.context().entityType();
       target.entityMap().put(entityType + CUSTOM_PROPERTY_TWIN_SUFFIX, customProperties);
-      target
-          .entityMap()
-          .put(
-              CUSTOM_PROPERTIES_TYPED_KEY,
-              SearchIndexUtils.buildTypedCustomProperties(customProperties, entityType));
+      List<Map<String, Object>> typedProperties =
+          SearchIndexUtils.buildTypedCustomProperties(customProperties, entityType);
+      if (!typedProperties.isEmpty()) {
+        target.entityMap().put(CUSTOM_PROPERTIES_TYPED_KEY, typedProperties);
+      }
     }
   }
 }
