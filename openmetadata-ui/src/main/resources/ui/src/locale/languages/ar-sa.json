@@ -3086,6 +3086,7 @@
     "entity-owned-by-name": "هذا الكيان مملوك لـ {{entityOwner}}",
     "entity-pattern-validation": "يمكن أن يتضمن {{entity}} مسافات والأحرف الخاصة التالية فقط {{pattern}}",
     "entity-pipeline-information": "<0>يجب ربط كل {{entity}} بسير عمل!</0> لا يحتوي {{type}} هذا على سير عمل بعد. لنقم بإنشاء واحد حتى يمكن ربط {{entity}} وجدولته.",
+    "entity-removed-from-folder": "تم إزالة {{entity}} من المجلد",
     "entity-restored-error": "خطأ أثناء استعادة {{entity}}",
     "entity-restored-success": "تمت استعادة {{entity}} بنجاح",
     "entity-saved-successfully": "تم حفظ {{entity}} بنجاح",
