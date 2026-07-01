@@ -266,6 +266,42 @@ describe('EdgeInfoDrawer Component', () => {
     expect(props?.componentType).toBe('');
   });
 
+  it('should resolve sqlQuery from target node lineageSqlQueries when edge only has sqlQueryKey', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = {
+      '1': 'CREATE TABLE customers AS SELECT * FROM stg_orders',
+    };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: null,
+                sqlQueryKey: '1',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(
+      await screen.findByText('SchemaEditor.component')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('server.no-query-available')
+    ).not.toBeInTheDocument();
+  });
+
   it('should format edge audit values from non-empty user and time parts', async () => {
     render(
       <EdgeInfoDrawer
