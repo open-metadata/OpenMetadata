@@ -25,6 +25,7 @@ import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
   getFilteredSchema,
+  getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
   getUISchemaWithAuthFieldsAsSelect,
   loadConnectionSchema,
@@ -131,6 +132,8 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getConnectionFieldSection: jest.fn(),
+  getFieldSchemaForId: jest.fn().mockReturnValue({}),
   getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
   getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
@@ -267,6 +270,7 @@ describe('EmbeddedConnectionConfigForm', () => {
       isAirflowAvailable: true,
       platform: 'Argo',
     });
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -503,6 +507,62 @@ describe('EmbeddedConnectionConfigForm', () => {
         onValidateFormRequiredFields: expect.any(Function),
       })
     );
+  });
+
+  it('adds additionalMissingFieldsCount to the count passed to TestConnection', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          additionalMissingFieldsCount={1}
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
+  });
+
+  it('calls onValidateAdditionalRequiredFields when validating for test connection', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+    testConnectionProps.onValidateFormRequiredFields();
+
+    expect(onValidateAdditionalRequiredFields).toHaveBeenCalled();
+  });
+
+  it('returns false from form validation when onValidateAdditionalRequiredFields returns false', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <EmbeddedConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
   });
 
   it('tracks ingestion runner changes from the form data', async () => {

@@ -114,6 +114,7 @@ const EmbeddedAddServicePage = () => {
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
+  const blurTimerRef = useRef<number>();
   const {
     isServiceNameChecking,
     nameError,
@@ -225,6 +226,7 @@ const EmbeddedAddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
+      document.getElementById('service-name')?.focus();
 
       return;
     }
@@ -311,6 +313,15 @@ const EmbeddedAddServicePage = () => {
     }
   };
 
+  const handleFieldBlur = useCallback(() => {
+    blurTimerRef.current = Number(
+      setTimeout(() => {
+        setActiveField('');
+        setActiveFieldMeta(undefined);
+      }, 100)
+    );
+  }, []);
+
   const handleFieldFocus = (
     fieldName: string,
     schemaMeta?: {
@@ -322,14 +333,21 @@ const EmbeddedAddServicePage = () => {
     if (isEmpty(fieldName)) {
       return;
     }
-    setTimeout(() => {
-      setActiveField(fieldName);
-      setActiveFieldMeta(schemaMeta);
-    }, 50);
+    clearTimeout(blurTimerRef.current);
+    blurTimerRef.current = Number(
+      setTimeout(() => {
+        setActiveField(fieldName);
+        setActiveFieldMeta(schemaMeta);
+      }, 50)
+    );
   };
 
   useEffect(() => {
-    setActiveField('');
+    return () => clearTimeout(blurTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    setActiveField(activeServiceStep === 2 ? 'serviceName' : '');
     setActiveFieldMeta(undefined);
   }, [activeServiceStep]);
 
@@ -452,6 +470,7 @@ const EmbeddedAddServicePage = () => {
                       name={serviceConfig.name}
                       nameError={nameError}
                       serviceType={serviceConfig.serviceType}
+                      onBlur={handleFieldBlur}
                       onDescriptionChange={(description) =>
                         setServiceConfig((prev) => ({ ...prev, description }))
                       }
@@ -463,17 +482,45 @@ const EmbeddedAddServicePage = () => {
                     />
                     <ConnectionConfigForm
                       hideFooter
+                      additionalMissingFieldsCount={
+                        !serviceConfig.name.trim() ||
+                        Boolean(nameError) ||
+                        isServiceNameChecking
+                          ? 1
+                          : 0
+                      }
                       data={serviceConfig as ServicesType}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}
                       serviceType={serviceConfig.serviceType}
                       status={saveServiceState}
+                      onBlur={handleFieldBlur}
                       onFocus={handleFieldFocus}
                       onSave={async (e) => {
                         e.formData && (await handleConfigUpdate(e.formData));
                       }}
                       onTestConnectionStatusChange={setIsConnectionVerified}
+                      onValidateAdditionalRequiredFields={() => {
+                        if (!serviceConfig.name.trim()) {
+                          setNameError(
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.service-name'),
+                            })
+                          );
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        if (nameError || isServiceNameChecking) {
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        return true;
+                      }}
                     />
                   </div>
                 )}
