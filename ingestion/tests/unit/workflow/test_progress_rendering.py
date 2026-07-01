@@ -244,11 +244,15 @@ class TestEtaSeconds:
             reg.track("DatabaseSchema")
         assert ProgressReporter(reg).eta_seconds() is None
 
-    def test_none_before_first_open(self):
+    def test_computable_without_open_when_counter_active(self):
         reg = ProgressRegistry()
-        reg.set_total("DatabaseSchema", 45)
-        reg.track("DatabaseSchema")
-        assert ProgressReporter(reg).eta_seconds() is None
+        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+            clock.return_value = 0.0
+            reg.set_total("DatabaseSchema", 10)
+            for _ in range(2):
+                reg.track("DatabaseSchema")
+            clock.return_value = 60.0
+            assert ProgressReporter(reg).eta_seconds() == 240
 
     def test_normal_case_uses_cumulative_rate(self):
         reg = ProgressRegistry()
