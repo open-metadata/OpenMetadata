@@ -88,13 +88,15 @@ function VersionTable<T extends Column | SearchIndexField>({
         internalHandlePageChange(maxPage, { cursorType: null });
       }
     }
+    // internalHandlePageChange is excluded intentionally: usePaging() rebuilds
+    // it on every render (it wraps useTableFilters' unmemoized setFilters), so
+    // including it here would re-fire this effect on every render and loop.
   }, [
     data.length,
     paginationProps,
     internalPageSize,
     internalCurrentPage,
     internalHandlePagingChange,
-    internalHandlePageChange,
   ]);
 
   const displayData = useMemo(() => {
