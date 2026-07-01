@@ -14,55 +14,54 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
-import sun.misc.Unsafe;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Regression guard for the app runtime-secret exposure fix. {@code openMetadataServerConnection}
  * (app bot JWT) and {@code privateConfiguration} (external tokens/passwords) are runtime-only
  * fields re-injected by ApplicationHandler.setAppRuntimeProperties. They must never be written to
- * storage, so AppRepository declares them in getFieldsStrippedFromStorageJson and the base
- * serializer drops them.
+ * current-entity storage or to version-history snapshots.
  */
 class AppRepositoryStorageStrippingTest {
 
-  private static AppRepository allocateRepository() throws Exception {
-    Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-    unsafeField.setAccessible(true);
-    Unsafe unsafe = (Unsafe) unsafeField.get(null);
-    return (AppRepository) unsafe.allocateInstance(AppRepository.class);
+  private static AppRepository testRepository() {
+    return mock(AppRepository.class, CALLS_REAL_METHODS);
+  }
+
+  private static App appWithRuntimeSecrets() {
+    return new App()
+        .withId(UUID.randomUUID())
+        .withName("SecretMaskingTestApp")
+        .withPrivateConfiguration(Map.of("token", "waii-secret-token"))
+        .withOpenMetadataServerConnection(
+            new OpenMetadataConnection()
+                .withSecurityConfig(
+                    new OpenMetadataJWTClientConfig().withJwtToken("app-bot-jwt-secret")));
   }
 
   @Test
-  void getFieldsStrippedFromStorageJson_declaresRuntimeSecretFields() throws Exception {
-    AppRepository repository = allocateRepository();
+  void getFieldsStrippedFromStorageJson_declaresRuntimeSecretFields() {
+    AppRepository repository = testRepository();
     assertTrue(
         repository.getFieldsStrippedFromStorageJson().contains("openMetadataServerConnection"));
     assertTrue(repository.getFieldsStrippedFromStorageJson().contains("privateConfiguration"));
   }
 
   @Test
-  void storageJson_dropsRuntimeSecretFields() throws Exception {
-    AppRepository repository = allocateRepository();
-    App app =
-        new App()
-            .withId(UUID.randomUUID())
-            .withName("SecretMaskingTestApp")
-            .withPrivateConfiguration(Map.of("token", "waii-secret-token"))
-            .withOpenMetadataServerConnection(
-                new OpenMetadataConnection()
-                    .withSecurityConfig(
-                        new OpenMetadataJWTClientConfig().withJwtToken("app-bot-jwt-secret")));
+  void storageJson_dropsRuntimeSecretFields() {
+    AppRepository repository = testRepository();
 
-    ObjectNode stored = repository.storageJsonNode(app);
+    ObjectNode stored = repository.storageJsonNode(appWithRuntimeSecrets());
 
     assertFalse(
         stored.has("privateConfiguration"),
@@ -70,5 +69,22 @@ class AppRepositoryStorageStrippingTest {
     assertFalse(
         stored.has("openMetadataServerConnection"),
         "openMetadataServerConnection must not be persisted to storage");
+  }
+
+  @Test
+  void versionHistoryJson_dropsRuntimeSecretFields() {
+    AppRepository repository = testRepository();
+
+    ObjectNode snapshot =
+        (ObjectNode)
+            JsonUtils.readTree(repository.serializeForVersionHistory(appWithRuntimeSecrets()));
+
+    assertFalse(
+        snapshot.has("privateConfiguration"),
+        "privateConfiguration must not appear in version-history snapshots");
+    assertFalse(
+        snapshot.has("openMetadataServerConnection"),
+        "openMetadataServerConnection must not appear in version-history snapshots");
+    assertTrue(snapshot.has("name"), "non-secret fields must remain in version-history snapshots");
   }
 }
