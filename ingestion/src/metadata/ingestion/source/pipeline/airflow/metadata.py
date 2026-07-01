@@ -949,7 +949,7 @@ class AirflowSource(PipelineServiceSource):
 
         # Check if pipeline observability is disabled
         if not self.source_config.includePipelineObservability:
-            logger.info("Pipeline observability extraction is disabled via configuration")
+            logger.debug("Pipeline observability extraction is disabled via configuration")
             return
 
         try:
