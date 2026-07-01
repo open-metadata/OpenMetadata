@@ -1,0 +1,195 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.service.search;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Resolves the field-safety-hardened search index mappings used at index-creation time. The {@code
+ * searchIndexMappings} setting stores <em>only admin overrides</em> — entities the operator has
+ * explicitly edited — so an un-edited entity always resolves from the current bundled resource
+ * (hardened on the fly by {@link SearchIndexSettings#harden}). That means shipped mapping changes
+ * take effect automatically on the next reindex, while admin edits are preserved. Shared by the
+ * per-entity reset endpoint and the runtime resource fallback. {@link #buildDefaultBlob} remains for
+ * building a full hardened snapshot on demand (e.g. tooling/tests).
+ */
+public final class SearchIndexMappingsSeeder {
+
+  private static final Logger LOG = LoggerFactory.getLogger(SearchIndexMappingsSeeder.class);
+
+  private SearchIndexMappingsSeeder() {}
+
+  /**
+   * Initializes an empty override store for search index mappings if the setting is absent.
+   * Defaults are intentionally not pre-seeded — each (language, entityType) resolves from the
+   * bundled hardened resource unless an admin saved an override — so a later upgrade's mapping
+   * changes apply without a manual reset. Insert-if-absent, never clobbers existing overrides.
+   * Failures are logged, not propagated, so a hiccup never aborts startup or a migration.
+   */
+  public static void seedIfAbsent() {
+    try {
+      if (Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.SEARCH_INDEX_MAPPINGS.toString())
+          == null) {
+        Settings setting =
+            new Settings()
+                .withConfigType(SettingsType.SEARCH_INDEX_MAPPINGS)
+                .withConfigValue(new SearchIndexMappings().withLanguages(new LinkedHashMap<>()));
+        Entity.getSystemRepository().createNewSetting(setting);
+        LOG.info("Initialized empty search index mappings override store");
+      }
+    } catch (Exception seedFailed) {
+      LOG.error("Failed to initialize search index mappings setting", seedFailed);
+    }
+  }
+
+  public static List<String> supportedLanguages() {
+    return Arrays.stream(IndexMappingLanguage.values())
+        .map(language -> language.value().toLowerCase(Locale.ROOT))
+        .toList();
+  }
+
+  /** Entity types that have a bundled index mapping and are therefore editable. */
+  public static List<String> supportedEntityTypes() {
+    ensureLoaderInitialized();
+    return IndexMappingLoader.getInstance().getIndexMapping().keySet().stream().sorted().toList();
+  }
+
+  /**
+   * The editable (language → entity type) matrix, sourced from the bundled mappings rather than the
+   * stored overrides, so every editable entity is listed even before any override is saved.
+   */
+  public static Map<String, List<String>> availableMappings() {
+    List<String> entityTypes = supportedEntityTypes();
+    Map<String, List<String>> result = new LinkedHashMap<>();
+    for (String language : supportedLanguages()) {
+      result.put(language, entityTypes);
+    }
+    return result;
+  }
+
+  public static SearchIndexMappings buildDefaultBlob() {
+    return buildDefaultBlob(supportedLanguages());
+  }
+
+  public static SearchIndexMappings buildDefaultBlob(List<String> languages) {
+    ensureLoaderInitialized();
+    SearchFieldLimits limits = SearchFieldLimits.active();
+    Map<String, IndexMapping> registry = IndexMappingLoader.getInstance().getIndexMapping();
+    Map<String, Map<String, Object>> byLanguage = new LinkedHashMap<>();
+    for (String language : languages) {
+      byLanguage.put(language, buildLanguageMappings(registry, language, limits));
+    }
+    return new SearchIndexMappings().withLanguages(byLanguage);
+  }
+
+  /** Hardened default mapping for one (language, entityType), or {@code null} when none exists. */
+  public static Map<String, Object> buildEntityMapping(String language, String entityType) {
+    Map<String, Object> result = null;
+    // Resolve to the enum's own value so the request-supplied language never composes the classpath
+    // resource path directly (path-injection barrier); an unknown language yields no mapping.
+    String safeLanguage = canonicalLanguage(language);
+    if (safeLanguage != null) {
+      ensureLoaderInitialized();
+      IndexMapping indexMapping =
+          IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
+      if (indexMapping != null) {
+        result = hardenedResourceMapping(indexMapping, safeLanguage, SearchFieldLimits.active());
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Maps a request-supplied language to the matching {@link IndexMappingLanguage} constant's own
+   * value, or {@code null} when unrecognized. The returned string originates from the enum, not the
+   * request, so callers can use it to build resource paths without carrying user-controlled taint.
+   */
+  private static String canonicalLanguage(String language) {
+    String result = null;
+    for (IndexMappingLanguage candidate : IndexMappingLanguage.values()) {
+      if (candidate.value().equalsIgnoreCase(language)) {
+        result = candidate.value().toLowerCase(Locale.ROOT);
+        break;
+      }
+    }
+    return result;
+  }
+
+  private static Map<String, Object> buildLanguageMappings(
+      Map<String, IndexMapping> registry, String language, SearchFieldLimits limits) {
+    Map<String, Object> entityMappings = new LinkedHashMap<>();
+    for (Map.Entry<String, IndexMapping> entry : registry.entrySet()) {
+      Map<String, Object> mapping = hardenedResourceMapping(entry.getValue(), language, limits);
+      if (mapping != null) {
+        entityMappings.put(entry.getKey(), mapping);
+      }
+    }
+    return entityMappings;
+  }
+
+  private static Map<String, Object> hardenedResourceMapping(
+      IndexMapping indexMapping, String language, SearchFieldLimits limits) {
+    Map<String, Object> result = null;
+    String content = readResource(indexMapping.getIndexMappingFile(language));
+    if (content != null) {
+      result = JsonUtils.getMapFromJson(SearchIndexSettings.harden(content, limits));
+    }
+    return result;
+  }
+
+  private static String readResource(String resourcePath) {
+    String result = null;
+    try (InputStream in =
+        SearchIndexMappingsSeeder.class.getClassLoader().getResourceAsStream(resourcePath)) {
+      if (in == null) {
+        LOG.debug("No index mapping resource at {}", resourcePath);
+      } else {
+        result = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+      }
+    } catch (IOException readFailed) {
+      LOG.warn("Failed reading index mapping resource {}", resourcePath, readFailed);
+    }
+    return result;
+  }
+
+  private static void ensureLoaderInitialized() {
+    try {
+      IndexMappingLoader.getInstance();
+    } catch (IllegalStateException notInitialized) {
+      try {
+        IndexMappingLoader.init();
+      } catch (IOException initFailed) {
+        throw new IllegalStateException(
+            "Failed to initialize IndexMappingLoader for search index mapping seeding", initFailed);
+      }
+    }
+  }
+}
