@@ -636,7 +636,7 @@ const IncidentManager = ({
       <Table.Row id={record.id ?? ''} key={record.id}>
         <Table.Cell>
           <Link
-            className="m-0 break-all text-primary"
+            className="tw:m-0 tw:break-all tw:text-primary"
             data-testid={`test-case-${ref?.name}`}
             to={observabilityRouterClassBase.getTestCaseDetailPagePath(
               ref?.fullyQualifiedName ?? ''

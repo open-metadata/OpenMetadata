@@ -444,7 +444,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title={result.result}>
         <TooltipTrigger>
           <Typography
-            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden"
+            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden tw:whitespace-normal"
             data-testid={`reason-text-${record.name}`}
             size="text-sm">
             {result.result}
@@ -666,7 +666,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('column', 1)}>
           {columnName ? (
-            <p className="tw:m-0 tw:max-w-30" data-testid={columnName}>
+            <p
+              className="tw:m-0 tw:max-w-30 tw:text-primary"
+              data-testid={columnName}>
               {columnName}
             </p>
           ) : (
