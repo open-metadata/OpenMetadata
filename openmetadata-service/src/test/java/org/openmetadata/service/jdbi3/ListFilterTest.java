@@ -131,6 +131,7 @@ class ListFilterTest {
     String condition = filter.getCondition("cm");
     assertTrue(condition.contains("SELECT entity_relationship.toId"));
     assertTrue(condition.contains("entity_relationship.fromId = :primaryEntityIdParam"));
+    assertTrue(condition.contains("entity_relationship.toEntity = 'contextMemory'"));
     assertTrue(
         condition.contains(
             "entity_relationship.relation = "

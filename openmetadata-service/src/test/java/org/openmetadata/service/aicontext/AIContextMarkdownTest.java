@@ -80,10 +80,23 @@ class AIContextMarkdownTest {
   void render_emitsFrontmatterWithTypeTitleAndTags() {
     String markdown = render();
     assertTrue(markdown.startsWith("---\n"), "missing opening frontmatter");
-    assertTrue(markdown.contains("type: table"), "missing type");
-    assertTrue(markdown.contains("title: Orders"), "missing title");
-    assertTrue(markdown.contains("tags: [Tier.Tier1, PII.None]"), "missing tags");
-    assertTrue(markdown.contains("generatedAt: 2026-07-01T"), "missing ISO timestamp");
+    assertTrue(markdown.contains("type: \"table\""), "missing type");
+    assertTrue(markdown.contains("title: \"Orders\""), "missing title");
+    assertTrue(markdown.contains("tags: [\"Tier.Tier1\", \"PII.None\"]"), "missing tags");
+    assertTrue(markdown.contains("generatedAt: \"2026-07-01T"), "missing ISO timestamp");
+  }
+
+  @Test
+  void render_quotesYamlSignificantCharactersInFrontmatter() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withDisplayName("Orders: \"gold\" tier\nrevenue")
+            .withFullyQualifiedName("svc.db.sch.orders");
+    String markdown = AIContextMarkdown.render(context);
+    assertTrue(
+        markdown.contains("title: \"Orders: \\\"gold\\\" tier revenue\""),
+        "frontmatter must quote and escape YAML-significant characters");
   }
 
   @Test

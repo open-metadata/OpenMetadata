@@ -54,6 +54,12 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
     // fetches the declared fields — without this it's dropped from _source on reindex,
     // breaking Explore's "Sort by Weekly Usage" (reads usageSummary.weeklyStats.count).
     fields.add("usageSummary");
+    // The AIContextIndex mixin materializes aiContext/aiContextForeignKeyTargets from these
+    // fields-gated relationships; without them reindex-built docs would carry an empty context.
+    fields.add("tableConstraints");
+    fields.add("joins");
+    fields.add("tablePartition");
+    fields.add("schemaDefinition");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

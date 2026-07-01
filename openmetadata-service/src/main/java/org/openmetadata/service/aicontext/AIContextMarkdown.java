@@ -179,13 +179,30 @@ public final class AIContextMarkdown {
     appendYaml(markdown, "title", titleOf(context));
     appendYaml(markdown, "fullyQualifiedName", context.getFullyQualifiedName());
     if (!nullOrEmpty(context.getTags())) {
-      markdown.append("tags: [").append(String.join(", ", context.getTags())).append("]\n");
+      markdown.append("tags: [");
+      for (int i = 0; i < context.getTags().size(); i++) {
+        if (i > 0) {
+          markdown.append(", ");
+        }
+        markdown.append(yamlQuote(context.getTags().get(i)));
+      }
+      markdown.append("]\n");
     }
     if (context.getGeneratedAt() != null) {
       appendYaml(
           markdown, "generatedAt", Instant.ofEpochMilli(context.getGeneratedAt()).toString());
     }
     markdown.append("---\n");
+  }
+
+  /**
+   * Double-quotes a frontmatter scalar so YAML-significant characters in display names or FQNs
+   * (quotes, colons, newlines) cannot break the document for downstream parsers.
+   */
+  private static String yamlQuote(String value) {
+    return '"'
+        + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ")
+        + '"';
   }
 
   private static String titleOf(AIContext context) {
@@ -196,7 +213,7 @@ public final class AIContextMarkdown {
 
   private static void appendYaml(StringBuilder markdown, String key, String value) {
     if (!nullOrEmpty(value)) {
-      markdown.append(key).append(": ").append(value).append('\n');
+      markdown.append(key).append(": ").append(yamlQuote(value)).append('\n');
     }
   }
 

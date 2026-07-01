@@ -66,6 +66,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -317,9 +318,18 @@ public class AIContextBuilder {
             securityContext,
             new OperationContext(knowledgeType, MetadataOperation.VIEW_BASIC),
             new ResourceContext<>(knowledgeType, null, knowledgeFqn));
-      } catch (Exception e) {
+      } catch (AuthorizationException e) {
         LOG.debug(
             "AIContext: dropping {} {} not viewable by caller: {}",
+            knowledgeType,
+            knowledgeFqn,
+            e.getMessage());
+        visible = false;
+      } catch (Exception e) {
+        // Not an authorization decision (policy-store hiccup, resolution error). Still fail
+        // closed, but at WARN so an incomplete context is distinguishable from a denial.
+        LOG.warn(
+            "AIContext: failed to check access to {} {}; dropping (fail-closed): {}",
             knowledgeType,
             knowledgeFqn,
             e.getMessage());

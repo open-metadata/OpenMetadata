@@ -176,6 +176,7 @@ public class ListFilter extends Filter<ListFilter> {
           String.format(
               "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
                   + "WHERE entity_relationship.fromId = :primaryEntityIdParam "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
                   + "AND entity_relationship.relation = %d))",
               Relationship.APPLIED_TO.ordinal());
     }

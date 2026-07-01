@@ -222,13 +222,12 @@ public class OpenSearchVectorService implements VectorIndexService {
       String chunkIndexName = getChunkIndexName();
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
-      boolean chunksStale =
-          !currentFingerprint.equals(getExistingChunkFingerprint(chunkIndexName, parentId));
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      boolean chunksStale = header == null || !currentFingerprint.equals(header.fingerprint());
       if (entityDocStale || chunksStale) {
         List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
         if (chunksStale) {
-          deleteChunksByParent(chunkIndexName, parentId);
-          bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+          replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
         }
         if (entityDocStale && !chunkDocs.isEmpty()) {
           partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
@@ -240,16 +239,16 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Write the given prebuilt chunk documents for an entity (delete-stale then bulk index). Used by
-   * the reindex sink, which builds the chunk docs itself so chunk 0 can also be spliced into the
-   * staged entity doc without a second embedding pass.
+   * Write the given prebuilt chunk documents for an entity. Used by the reindex sink, which builds
+   * the chunk docs itself so chunk 0 can also be spliced into the staged entity doc without a
+   * second embedding pass.
    */
   public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
     try {
       ensureChunkIndex();
       String chunkIndexName = getChunkIndexName();
-      deleteChunksByParent(chunkIndexName, parentId);
-      bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
@@ -274,7 +273,9 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Override
   public void deleteEntityChunks(String parentId) {
     try {
-      deleteChunksByParent(getChunkIndexName(), parentId);
+      String chunkIndexName = getChunkIndexName();
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      replaceChunks(chunkIndexName, parentId, List.of(), previousCount(header));
     } catch (Exception e) {
       LOG.debug("Failed to delete chunks for {}: {}", parentId, e.getMessage());
     }
@@ -305,6 +306,11 @@ public class OpenSearchVectorService implements VectorIndexService {
       if (!exists) {
         executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
         LOG.info("Created dedicated vector chunk index {}", indexName);
+      } else {
+        // The alias is normally attached at creation, but an index left over from a partial or
+        // manual setup may miss it — and reads via the alias would then silently skip all chunk
+        // docs. The alias PUT is idempotent.
+        executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
       }
       ensured = true;
     } catch (Exception e) {
@@ -369,63 +375,91 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   /**
    * Multi-chunk write path (issue #4789): index one standalone document per body chunk into the
-   * dedicated chunk index, keyed {@code <parentId>_<chunkIndex>}, after deleting the entity's stale
-   * chunks so a shrinking body never leaves orphans. Skips work when the whole-body fingerprint is
-   * unchanged. Unlike the legacy {@link #updateEntityEmbedding} partial-update, each chunk doc is a
-   * complete, independently filterable/rankable document.
+   * dedicated chunk index, keyed {@code <parentId>_<chunkIndex>}. Skips work when the whole-body
+   * fingerprint is unchanged. Chunk ids are deterministic, so a shrinking body is handled by
+   * bulk-deleting the trailing stale ids in the same request — no delete-by-query and no forced
+   * refresh on this hot path; visibility follows the index refresh interval.
    */
   public void updateEntityEmbeddingChunks(EntityInterface entity, String chunkIndexName) {
     try {
       String parentId = entity.getId().toString();
-      if (chunkFingerprintUnchanged(chunkIndexName, parentId, entity)) {
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      if (header != null && currentFingerprint.equals(header.fingerprint())) {
         LOG.debug("Skipping chunk embedding for {} - fingerprint unchanged", parentId);
         return;
       }
       List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
-      deleteChunksByParent(chunkIndexName, parentId);
-      bulkIndexChunks(chunkIndexName, parentId, chunkDocs);
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
       LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 
-  private boolean chunkFingerprintUnchanged(
-      String indexName, String parentId, EntityInterface entity) {
-    String existing = getExistingChunkFingerprint(indexName, parentId);
-    String current = VectorDocBuilder.computeFingerprintForEntity(entity);
-    return current.equals(existing);
+  /** Header of an entity's chunk set, read from chunk 0. */
+  private record ChunkHeader(String fingerprint, int chunkCount) {}
+
+  private static int previousCount(ChunkHeader header) {
+    return header == null ? 0 : header.chunkCount();
   }
 
-  private String getExistingChunkFingerprint(String indexName, String parentId) {
-    String fingerprint = null;
+  /**
+   * Real-time by-id GET of chunk 0's fingerprint and chunkCount. A GET by id sees un-refreshed
+   * writes, so staleness checks and stale-id deletes never race the refresh interval, and it is
+   * far cheaper than the {@code _search} it replaces on the per-entity write path.
+   */
+  private ChunkHeader getChunkHeader(String indexName, String parentId) {
+    ChunkHeader header = null;
     try {
-      String query =
-          "{\"size\":1,\"_source\":[\"fingerprint\"],\"query\":{\"term\":{\"parentId\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
-      if (hits.isArray() && !hits.isEmpty()) {
-        fingerprint = hits.get(0).path("_source").path("fingerprint").asText(null);
+      OpenSearchGenericClient genericClient = client.generic();
+      var request =
+          Requests.builder()
+              .endpoint(
+                  "/"
+                      + indexName
+                      + "/_doc/"
+                      + parentId
+                      + "_0?_source_includes=fingerprint,chunkCount")
+              .method("GET")
+              .build();
+      try (var response = genericClient.execute(request)) {
+        if (response.getStatus() < 400) {
+          String body =
+              response
+                  .getBody()
+                  .map(
+                      b -> {
+                        try {
+                          return new String(b.bodyAsBytes(), StandardCharsets.UTF_8);
+                        } catch (Exception ignored) {
+                          return "{}";
+                        }
+                      })
+                  .orElse("{}");
+          JsonNode root = MAPPER.readTree(body);
+          if (root.path("found").asBoolean(false)) {
+            JsonNode source = root.path("_source");
+            header =
+                new ChunkHeader(
+                    source.path("fingerprint").asText(null), source.path("chunkCount").asInt(0));
+          }
+        }
       }
     } catch (Exception e) {
-      LOG.debug(
-          "No existing chunk fingerprint for {} in {}: {}", parentId, indexName, e.getMessage());
+      LOG.debug("No chunk header for {} in {}: {}", parentId, indexName, e.getMessage());
     }
-    return fingerprint;
+    return header;
   }
 
-  private void deleteChunksByParent(String indexName, String parentId) {
-    String body =
-        "{\"query\":{\"term\":{\"parentId\":\""
-            + VectorSearchQueryBuilder.escape(parentId)
-            + "\"}}}";
-    executeGenericRequest("POST", "/" + indexName + "/_delete_by_query?refresh=true", body);
-  }
-
-  private void bulkIndexChunks(
-      String indexName, String parentId, List<Map<String, Object>> chunkDocs) throws IOException {
-    if (chunkDocs.isEmpty()) {
+  /**
+   * One bulk request that overwrites chunk ids {@code 0..N-1} and deletes the trailing stale ids
+   * {@code N..previousCount-1} left behind by a shrinking body. Deletes are by id, so they do not
+   * depend on search visibility of prior writes.
+   */
+  private void replaceChunks(
+      String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
+      throws IOException {
+    if (chunkDocs.isEmpty() && previousCount == 0) {
       return;
     }
     StringBuilder bulk = new StringBuilder();
@@ -440,7 +474,21 @@ public class OpenSearchVectorService implements VectorIndexService {
           .append(MAPPER.writeValueAsString(chunkDocs.get(i)))
           .append('\n');
     }
-    executeGenericRequest("POST", "/_bulk?refresh=true", bulk.toString());
+    appendChunkDeletes(bulk, indexName, parentId, chunkDocs.size(), previousCount);
+    executeGenericRequest("POST", "/_bulk", bulk.toString());
+  }
+
+  private static void appendChunkDeletes(
+      StringBuilder bulk, String indexName, String parentId, int fromIndex, int toExclusive) {
+    for (int i = fromIndex; i < toExclusive; i++) {
+      bulk.append("{\"delete\":{\"_index\":\"")
+          .append(indexName)
+          .append("\",\"_id\":\"")
+          .append(parentId)
+          .append('_')
+          .append(i)
+          .append("\"}}\n");
+    }
   }
 
   @Override
