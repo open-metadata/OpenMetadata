@@ -117,9 +117,10 @@ const ExploreTree = ({
   // overlapping fetches; only the newest may commit so a slow earlier response
   // can't overwrite the tree with stale counts.
   const countFetchSeqRef = useRef(0);
-  // The full-screen spinner is for the first load only; later count refreshes
-  // update the tree in place so browsing never blanks it out (the "page
-  // reload" the user saw on every selection).
+  // Tracks whether the first load has completed. The full-screen spinner shows
+  // on that first load and on later rebuilds (external filter changes, which
+  // drop the loaded children), but not on a browse selection — that refreshes in
+  // place so browsing never blanks the tree out (the "page reload" the user saw).
   const hasLoadedOnceRef = useRef(false);
   // A tree selection keeps the expanded subtree so browsing does not collapse
   // it; an external filter change (Data Assets dropdown, chip removal) rebuilds
