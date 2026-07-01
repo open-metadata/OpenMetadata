@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v200.MigrationUtil;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
@@ -38,6 +39,7 @@ public class Migration extends MigrationProcessImpl {
     backfillAnnouncementRelationships(handle);
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    SearchIndexMappingsSeeder.seedIfAbsent();
 
     // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues
     // instead of aborting the rest of the v200 data migration. Matches v190/v171/v170/v1105.
