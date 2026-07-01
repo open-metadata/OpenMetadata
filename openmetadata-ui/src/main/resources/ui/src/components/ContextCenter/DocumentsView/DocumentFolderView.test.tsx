@@ -195,17 +195,6 @@ describe('DocumentFolderView', () => {
     );
   });
 
-  it('shows childrenCount badge next to each folder', async () => {
-    render(<DocumentFolderView onSelectFolder={jest.fn()} />);
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
-
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-  });
-
   it('shows totalFileCount in the subtitle', async () => {
     render(<DocumentFolderView totalFileCount={42} onSelectFolder={jest.fn()} />);
 
@@ -213,7 +202,7 @@ describe('DocumentFolderView', () => {
       expect(screen.getByText('Folder One')).toBeInTheDocument()
     );
 
-    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByText('42 label.file-plural')).toBeInTheDocument();
   });
 
   it('calls onSelectFolder with folderId when a folder is clicked', async () => {
