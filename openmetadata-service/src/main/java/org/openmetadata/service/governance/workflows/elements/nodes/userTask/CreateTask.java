@@ -568,9 +568,11 @@ public class CreateTask implements TaskListener {
             .withDescription(
                 taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
             .withPayload(
-                requestedPayload != null
-                    ? requestedPayload
-                    : (payload != null ? payload : priorApprovalPayload))
+                ChangePreviewUtils.preserveProposedChanges(
+                    requestedPayload != null
+                        ? requestedPayload
+                        : (payload != null ? payload : priorApprovalPayload),
+                    priorApprovalPayload))
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy);
