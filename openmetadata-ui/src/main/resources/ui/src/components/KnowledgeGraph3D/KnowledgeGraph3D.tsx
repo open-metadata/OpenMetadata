@@ -375,6 +375,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
                 gaps={gaps}
                 getLinkTooltip={getLinkTooltip}
                 getNodeTooltip={getNodeTooltip}
+                isFullscreen={isFullscreen}
                 level={level}
                 registerExportImage={registerExportImage}
                 registerResetView={registerResetView}

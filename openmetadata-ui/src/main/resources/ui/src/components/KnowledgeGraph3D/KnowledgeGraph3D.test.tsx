@@ -375,5 +375,16 @@ describe('KnowledgeGraph3D', () => {
     );
 
     expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('exit-full-screen'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('knowledge-graph-3d')).not.toHaveClass(
+        'full-screen-knowledge-graph-3d'
+      )
+    );
+
+    expect(screen.getByTestId('full-screen')).toBeInTheDocument();
+    expect(screen.queryByTestId('exit-full-screen')).not.toBeInTheDocument();
   });
 });

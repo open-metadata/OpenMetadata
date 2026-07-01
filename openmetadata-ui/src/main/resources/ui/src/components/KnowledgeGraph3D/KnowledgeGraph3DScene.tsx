@@ -57,7 +57,7 @@ type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
 const FRAME_DELAY_MS = 500;
-const RESIZE_REFIT_DELAY_MS = 250;
+const FULLSCREEN_REFIT_DELAY_MS = 300;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 
 const nodeOpacityFor = (
@@ -125,12 +125,13 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   onSelectLink,
   getNodeTooltip,
   getLinkTooltip,
+  isFullscreen,
   registerResetView,
   registerExportImage,
 }) => {
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
-  const initialFitDoneRef = useRef(false);
+  const didMountRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -239,22 +240,20 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  // Re-fit the camera whenever the stage is resized (e.g. entering or leaving
-  // fullscreen) so the graph keeps filling the available space. The first
-  // real measurement is skipped because the data-load effect already fits.
+  // Re-fit the camera only when fullscreen is toggled, once the stage has
+  // resized, so the graph fills the new space. Plain window resizes keep the
+  // same mode and are intentionally left alone, preserving any manual zoom/pan.
   useEffect(() => {
     let cleanup: (() => void) | undefined;
-    if (size.width > 0 && size.height > 0) {
-      if (initialFitDoneRef.current) {
-        const frame = window.setTimeout(resetView, RESIZE_REFIT_DELAY_MS);
-        cleanup = () => window.clearTimeout(frame);
-      } else {
-        initialFitDoneRef.current = true;
-      }
+    if (didMountRef.current) {
+      const frame = window.setTimeout(resetView, FULLSCREEN_REFIT_DELAY_MS);
+      cleanup = () => window.clearTimeout(frame);
+    } else {
+      didMountRef.current = true;
     }
 
     return cleanup;
-  }, [size.width, size.height, resetView]);
+  }, [isFullscreen, resetView]);
 
   useEffect(() => {
     const charge = fgRef.current?.d3Force('charge');
