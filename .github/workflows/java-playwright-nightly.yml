@@ -193,7 +193,7 @@ jobs:
           ls -lh /tmp/jpw-server-image.tar
 
       - name: Upload server image artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: jpw-server-image-${{ github.run_id }}
           path: /tmp/jpw-server-image.tar
@@ -320,7 +320,7 @@ jobs:
 
       - name: Upload Playwright traces
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-traces
@@ -329,7 +329,7 @@ jobs:
 
       - name: Upload Playwright videos
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-videos-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/playwright-videos
@@ -338,7 +338,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-${{ matrix.searchEngine }}-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports
@@ -428,7 +428,7 @@ jobs:
 
       - name: Upload Failsafe Reports
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: failsafe-reports-search-it-${{ github.run_id }}
           path: openmetadata-integration-tests/target/failsafe-reports

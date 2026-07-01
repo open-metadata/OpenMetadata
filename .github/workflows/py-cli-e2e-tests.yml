@@ -192,7 +192,7 @@ jobs:
 
     - name: Upload coverage artifact for Python unit tests
       if: matrix.e2e-test == 'python-unittests' && steps.python-unittest.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-unittests
@@ -204,7 +204,7 @@ jobs:
 
     - name: Upload coverage artifact for Python integration tests
       if: matrix.e2e-test == 'python-integration' && steps.python-integration-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.python-integration
@@ -212,7 +212,7 @@ jobs:
 
     - name: Upload coverage artifact for CLI E2E tests
       if: matrix.e2e-test != 'python-unittests' && matrix.e2e-test != 'python-integration' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
@@ -220,7 +220,7 @@ jobs:
 
     - name: Upload tests artifact
       if: (steps.e2e-test.outcome == 'success' || steps.python-unittest.outcome == 'success' || steps.python-integration-test.outcome == 'success') && env.DEBUG == 'false'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: tests-${{ matrix.e2e-test }}
         path: ingestion/junit/test-results-*.xml

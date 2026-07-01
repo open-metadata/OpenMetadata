@@ -123,7 +123,7 @@ jobs:
         run: mvn -DskipTests clean package
 
       - name: Upload Maven build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-build
           path: openmetadata-dist/target/openmetadata-*.tar.gz
@@ -360,7 +360,7 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report-${{ matrix.shardIndex }}
@@ -368,7 +368,7 @@ jobs:
           retention-days: 5
 
       - name: Upload test results (screenshots, traces)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-test-results-${{ matrix.shardIndex }}
@@ -376,7 +376,7 @@ jobs:
           retention-days: 5
 
       - name: Upload results JSON for summary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-results-json-${{ matrix.shardIndex }}

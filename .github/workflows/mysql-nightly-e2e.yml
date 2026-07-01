@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload blob report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: blob-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/blob-report
@@ -165,7 +165,7 @@ jobs:
 
       - name: Upload HTML report to GitHub Actions Artifacts
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-HTML-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
