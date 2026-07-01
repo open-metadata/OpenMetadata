@@ -22,9 +22,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HttpMethod;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -42,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -89,6 +92,7 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
+import org.openmetadata.service.search.SearchClient.RawSearchResponse;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -110,6 +114,10 @@ import org.openmetadata.service.util.email.EmailUtil;
 @LatencyPhase
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
+
+  /** Index/alias names are interpolated into the engine path, so restrict to a safe charset. */
+  private static final Pattern SAFE_SEARCH_NAME = Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9._-]*");
+
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -683,6 +691,107 @@ public class SystemResource {
       responses = {@ApiResponse(responseCode = "200", description = "Service is healthy")})
   public Response healthCheck() {
     return Response.ok("OK").build();
+  }
+
+  @GET
+  @Path("/search/mapping")
+  @Operation(
+      operationId = "getSearchIndexMapping",
+      summary = "Get the live search-engine mapping for an index or alias",
+      description =
+          "Admin-only diagnostic endpoint that returns the raw Elasticsearch/OpenSearch mapping "
+              + "JSON for the given index or alias. Used for operational debugging and for "
+              + "integration tests that assert on field mappings (e.g. detecting mapping field "
+              + "explosions). The name is interpolated into the engine path, so it is restricted "
+              + "to a safe charset; only this single read-only mapping read is reachable.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Raw engine mapping JSON"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response getSearchIndexMapping(
+      @Context SecurityContext securityContext, @QueryParam("index") String index)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return forwardEngineRequest(HttpMethod.GET, "/" + safeSearchName(index) + "/_mapping", null);
+  }
+
+  @GET
+  @Path("/search/count")
+  @Operation(
+      operationId = "getSearchIndexCount",
+      summary = "Document count for a search index or alias",
+      description =
+          "Admin-only diagnostic endpoint returning the raw engine document count for the given "
+              + "index or alias. The name is interpolated into the engine path, so it is "
+              + "restricted to a safe charset.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Raw engine count response"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response getSearchIndexCount(
+      @Context SecurityContext securityContext, @QueryParam("index") String index)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return forwardEngineRequest(HttpMethod.GET, "/" + safeSearchName(index) + "/_count", null);
+  }
+
+  @POST
+  @Path("/search/count")
+  @Operation(
+      operationId = "getSearchIndexCountWithQuery",
+      summary = "Document count for a search index or alias matching a query",
+      description =
+          "Admin-only diagnostic endpoint returning the raw engine document count for the given "
+              + "index or alias filtered by the supplied Elasticsearch/OpenSearch query body.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Raw engine count response"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response getSearchIndexCountWithQuery(
+      @Context SecurityContext securityContext, @QueryParam("index") String index, String query)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return forwardEngineRequest(HttpMethod.POST, "/" + safeSearchName(index) + "/_count", query);
+  }
+
+  @POST
+  @Path("/search/query")
+  @Operation(
+      operationId = "searchIndexRaw",
+      summary = "Run a raw search/aggregation against an index or alias",
+      description =
+          "Admin-only diagnostic endpoint that forwards the supplied Elasticsearch/OpenSearch "
+              + "query body to the engine's read-only _search for the given index or alias and "
+              + "returns the raw response. Supports arbitrary queries and aggregations for "
+              + "operational debugging and integration-test assertions. The name is interpolated "
+              + "into the engine path, so it is restricted to a safe charset; the request method "
+              + "is fixed to the read-only _search, so no mutating engine operation is reachable.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Raw engine search response"),
+        @ApiResponse(responseCode = "403", description = "Admin only")
+      })
+  public Response searchIndexRaw(
+      @Context SecurityContext securityContext, @QueryParam("index") String index, String query)
+      throws IOException {
+    authorizer.authorizeAdmin(securityContext);
+    return forwardEngineRequest(HttpMethod.POST, "/" + safeSearchName(index) + "/_search", query);
+  }
+
+  private Response forwardEngineRequest(String method, String enginePath, String body)
+      throws IOException {
+    RawSearchResponse response =
+        Entity.getSearchRepository().getSearchClient().rawSearchRequest(method, enginePath, body);
+    return Response.status(response.statusCode())
+        .type(MediaType.APPLICATION_JSON)
+        .entity(response.body())
+        .build();
+  }
+
+  private static String safeSearchName(String name) {
+    if (nullOrEmpty(name) || !SAFE_SEARCH_NAME.matcher(name).matches()) {
+      throw new BadRequestException("invalid index/alias name: " + name);
+    }
+    return name;
   }
 
   @GET

@@ -10,6 +10,10 @@
       "description": "Health status of the search cluster (GREEN, YELLOW, RED).",
       "type": "string"
     },
+    "clusterAlias": {
+      "description": "The configured search cluster alias used as the index-name prefix. Empty when no cluster alias is set.",
+      "type": "string"
+    },
     "totalIndexes": {
       "description": "Total number of indexes in the cluster.",
       "type": "integer"

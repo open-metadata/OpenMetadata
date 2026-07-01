@@ -1190,6 +1190,8 @@ public class SearchResource {
 
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
+    String clusterAlias = searchRepository.getClusterAlias();
+    response.setClusterAlias(clusterAlias == null ? "" : clusterAlias);
     response.setTotalIndexes(allIndexStats.size());
     response.setTotalDocuments((int) totalDocs);
     response.setTotalSizeInBytes((int) totalSize);
