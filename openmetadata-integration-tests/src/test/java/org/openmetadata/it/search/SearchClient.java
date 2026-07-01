@@ -91,6 +91,18 @@ public final class SearchClient {
     return result;
   }
 
+  public JsonNode get(final String path) {
+    return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
+  }
+
+  public JsonNode post(final String path, final String jsonBody) {
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
   public JsonNode put(final String path, final String jsonBody) {
     return execute(
         HttpRequest.newBuilder(base.resolve(path))
