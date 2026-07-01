@@ -2635,6 +2635,7 @@
     "view-all": "Посмотреть все",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "Посмотреть все задачи",
+    "view-archived-document-plural": "Просмотр архивных документов",
     "view-definition": "Формирование",
     "view-detail-plural": "Просмотр деталей",
     "view-entity": "Посмотреть объект «{{entity}}»",

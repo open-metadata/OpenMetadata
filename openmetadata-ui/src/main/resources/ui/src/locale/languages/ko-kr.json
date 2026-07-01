@@ -2635,6 +2635,7 @@
     "view-all": "모두 보기",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "모든 작업 보기",
+    "view-archived-document-plural": "보관된 문서 보기",
     "view-definition": "정의 보기",
     "view-detail-plural": "세부 정보 보기",
     "view-entity": "{{entity}} 보기",

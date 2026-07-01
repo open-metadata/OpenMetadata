@@ -2635,6 +2635,7 @@
     "view-all": "Tümünü Görüntüle",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "Tüm Görevleri Görüntüle",
+    "view-archived-document-plural": "Arşivlenen Belgeleri Görüntüle",
     "view-definition": "Tanımı Görüntüle",
     "view-detail-plural": "Detayları Görüntüle",
     "view-entity": "{{entity}} Görüntüle",

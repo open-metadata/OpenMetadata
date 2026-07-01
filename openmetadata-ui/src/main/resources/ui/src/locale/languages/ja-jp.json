@@ -2635,6 +2635,7 @@
     "view-all": "すべて表示",
     "view-all-entity": "View All {{entity}}",
     "view-all-task-plural": "すべてのタスクを表示",
+    "view-archived-document-plural": "アーカイブされたドキュメントを表示",
     "view-definition": "ビュー定義",
     "view-detail-plural": "詳細を表示",
     "view-entity": "{{entity}} を表示",
