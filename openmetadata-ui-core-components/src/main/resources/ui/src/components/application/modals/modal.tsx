@@ -157,8 +157,8 @@ const DialogBase = ({
           <CloseButton
             className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
             size="lg"
-            // If a caller doesn’t pass onClose, fall back to React Aria’s built-in close(),
-            // which triggers ModalOverlay.onOpenChange(false) → onStay() → modal closes
+            // If a caller doesn’t pass onClose, fall back to React Aria’s built-in
+            // close() to dismiss the dialog.
             onPress={onClose ?? close}
           />
         )}

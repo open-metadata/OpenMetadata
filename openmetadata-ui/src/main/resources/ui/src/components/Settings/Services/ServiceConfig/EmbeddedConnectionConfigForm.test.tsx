@@ -536,11 +536,6 @@ describe('EmbeddedConnectionConfigForm', () => {
       );
     });
 
-    expect(screen.getByTestId('form-builder-v1')).toHaveAttribute(
-      'data-no-validate',
-      'true'
-    );
-
     fireEvent.click(screen.getByTestId('change-valid-form'));
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 

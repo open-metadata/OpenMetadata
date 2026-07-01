@@ -318,11 +318,17 @@ const AddServicePage = () => {
       return;
     }
     clearTimeout(blurTimerRef.current);
-    setTimeout(() => {
-      setActiveField(fieldName);
-      setActiveFieldMeta(schemaMeta);
-    }, 50);
+    blurTimerRef.current = Number(
+      setTimeout(() => {
+        setActiveField(fieldName);
+        setActiveFieldMeta(schemaMeta);
+      }, 50)
+    );
   };
+
+  useEffect(() => {
+    return () => clearTimeout(blurTimerRef.current);
+  }, []);
 
   useEffect(() => {
     setActiveField(activeServiceStep === 2 ? 'serviceName' : '');

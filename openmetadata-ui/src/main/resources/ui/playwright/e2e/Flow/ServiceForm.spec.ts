@@ -122,13 +122,7 @@ test.describe(
           testConnection1.request.connection.config.connection.provider
         ).toEqual(supersetFormDetails1.connection.provider);
 
-        const endTestConnection1 = page.waitForResponse(
-          '/api/v1/automations/workflows/*?hardDelete=true'
-        );
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
-
-        await endTestConnection1;
+        await page.getByTestId('test-connection-close').click();
 
         // Fill superset form details - 2
         await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -152,13 +146,7 @@ test.describe(
           testConnection2.request.connection.config.connection.provider
         ).toEqual(supersetFormDetails2.connection.provider);
 
-        const endTestConnection2 = page.waitForResponse(
-          '/api/v1/automations/workflows/*?hardDelete=true'
-        );
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
-
-        await endTestConnection2;
+        await page.getByTestId('test-connection-close').click();
 
         // Fill superset form details - 3
         await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -188,13 +176,7 @@ test.describe(
           testConnection3.request.connection.config.connection.scheme
         ).toEqual(supersetFormDetails3.connection.scheme);
 
-        const endTestConnection3 = page.waitForResponse(
-          '/api/v1/automations/workflows/*?hardDelete=true'
-        );
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
-
-        await endTestConnection3;
+        await page.getByTestId('test-connection-close').click();
 
         // Fill superset form details - 4
         await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -264,13 +246,7 @@ test.describe(
             .caCertificate
         ).toEqual(CERT_FILE);
 
-        const endTestConnection1 = page.waitForResponse(
-          '/api/v1/automations/workflows/*?hardDelete=true'
-        );
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
-
-        await endTestConnection1;
+        await page.getByTestId('test-connection-close').click();
       });
     });
 

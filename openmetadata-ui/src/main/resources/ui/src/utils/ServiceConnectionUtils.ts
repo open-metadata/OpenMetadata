@@ -635,7 +635,7 @@ export const wrapFlatCredentialsIntoAuthType = (
   return result;
 };
 
-/** Flattens a synthesized `authType` object back to top-level flat secrets. */
+/** Resolves the `{title, description}` schema metadata for an RJSF field id. */
 export const getFieldSchemaForId = (
   schema: Record<string, unknown>,
   fieldId: string

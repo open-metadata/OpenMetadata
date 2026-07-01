@@ -286,9 +286,13 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   );
 }
 
-function renderColoredLines(text: string, colorClass: string): JSX.Element[] {
-  return text.split('\n').map((line) => (
-    <span className={`tw:block ${colorClass}`} key={line}>
+function renderColoredLines(
+  text: string,
+  colorClass: string,
+  keyPrefix = ''
+): JSX.Element[] {
+  return text.split('\n').map((line, index) => (
+    <span className={`tw:block ${colorClass}`} key={`${keyPrefix}${index}`}>
       {line || ' '}
     </span>
   ));
@@ -652,7 +656,7 @@ export function ConnectionCapabilitySection(
             connectionFailed,
             gateStepName
           );
-          const canExpand =
+          const isExpandableState =
             !!result &&
             (state === 'passed' || state === 'failed' || state === 'warning');
           const isExpanded = expandedStepName === step.name;
@@ -680,7 +684,9 @@ export function ConnectionCapabilitySection(
             !isEmpty(result?.message) ||
             !isEmpty(result?.errorLog);
 
-          const showContent = canExpand && isExpanded && result && containsLogs;
+          const canExpand = isExpandableState && containsLogs;
+
+          const showContent = canExpand && isExpanded && result;
 
           return (
             <AccordionItem
@@ -750,19 +756,22 @@ export function ConnectionCapabilitySection(
                     {result.executedCommand &&
                       renderColoredLines(
                         `> ${result.executedCommand}`,
-                        'tw:text-brand-300'
+                        'tw:text-brand-300',
+                        'cmd-'
                       )}
                     {(result.resultSummary || result.message) &&
                       renderColoredLines(
                         `  ${result.resultSummary || result.message}${
                           result.durationMs ? ` (${result.durationMs} ms)` : ''
                         }`,
-                        'tw:text-utility-success-300'
+                        'tw:text-utility-success-300',
+                        'sum-'
                       )}
                     {result.errorLog &&
                       renderColoredLines(
                         result.errorLog,
-                        'tw:text-utility-error-300'
+                        'tw:text-utility-error-300',
+                        'err-'
                       )}
                   </pre>
                 </div>
@@ -834,24 +843,27 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   `> ${result.executedCommand}`,
-                  'tw:text-brand-300'
-                ).map((el, i) => ({ ...el, key: `${stepIdx}-cmd-${i}` }))
+                  'tw:text-brand-300',
+                  `${stepIdx}-cmd-`
+                )
               );
             }
             if (summary) {
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-utility-success-300'
-                ).map((el, i) => ({ ...el, key: `${stepIdx}-sum-${i}` }))
+                  'tw:text-utility-success-300',
+                  `${stepIdx}-sum-`
+                )
               );
             }
             if (result.errorLog) {
               parts.push(
                 ...renderColoredLines(
                   result.errorLog,
-                  'tw:text-utility-error-300'
-                ).map((el, i) => ({ ...el, key: `${stepIdx}-err-${i}` }))
+                  'tw:text-utility-error-300',
+                  `${stepIdx}-err-`
+                )
               );
             }
 

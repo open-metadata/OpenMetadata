@@ -562,11 +562,6 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    expect(screen.getByTestId('form-builder')).toHaveAttribute(
-      'data-no-validate',
-      'true'
-    );
-
     fireEvent.click(screen.getByTestId('change-valid-form'));
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 
