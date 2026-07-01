@@ -232,6 +232,78 @@ export const removeCertificationFromWidget = async (
   await expect(page.getByTestId('add-certification')).toBeVisible();
 };
 
+export const assignDomainWidget = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  const addBtn = page.getByTestId('add-domain');
+  const editBtn = page.getByTestId('edit-domain');
+  const isAdd = await addBtn.isVisible();
+  await (isAdd ? addBtn : editBtn).click();
+  await waitForAllLoadersToDisappear(page);
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await domainTag.waitFor({ state: 'visible' });
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+  await domainTag.click();
+  await patchReq;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('domain-link')).toContainText(
+    domain.displayName
+  );
+};
+
+export const removeDomainWidget = async (
+  page: Page,
+  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+) => {
+  const addBtn = page.getByTestId('add-domain');
+  const editBtn = page.getByTestId('edit-domain');
+  const isAdd = await addBtn.isVisible();
+  await (isAdd ? addBtn : editBtn).click();
+  await waitForAllLoadersToDisappear(page);
+
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .clear();
+
+  const searchDomain = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.name))
+  );
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await searchDomain;
+
+  const patchReq = page.waitForResponse(
+    (req) => req.request().method() === 'PATCH'
+  );
+  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  await patchReq;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('domain-link')).not.toBeVisible();
+};
+
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await waitForAllLoadersToDisappear(page);
