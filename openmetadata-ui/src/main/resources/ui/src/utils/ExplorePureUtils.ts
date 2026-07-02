@@ -13,7 +13,7 @@
 import type { AxiosError } from 'axios';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import type { Bucket } from 'Models';
-import Qs from 'qs';
+import Qs, { ParsedQs } from 'qs';
 import type { Key } from 'react';
 import type {
   ExploreQuickFilterField,
@@ -723,7 +723,6 @@ export const findTreeNodeKeyByBrowsePath = (
 
 export const parseSearchParams = (
   search: string,
-  globalPageSize: number,
   queryFilter?: Record<string, unknown>
 ) => {
   const parsedSearch = Qs.parse(
@@ -744,16 +743,6 @@ export const parseSearchParams = (
     ? parsedSearch.sortOrder
     : SORT_ORDER.DESC;
 
-  const page =
-    isString(parsedSearch.page) && !isNaN(Number.parseInt(parsedSearch.page))
-      ? Number.parseInt(parsedSearch.page)
-      : 1;
-
-  const size =
-    isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
-      ? Number.parseInt(parsedSearch.size)
-      : globalPageSize;
-
   const stringifiedQueryFilter = isEmpty(queryFilter)
     ? ''
     : JSON.stringify(queryFilter);
@@ -770,8 +759,26 @@ export const parseSearchParams = (
     browseFields,
     sortValue,
     sortOrder,
-    page,
-    size,
     showDeleted,
   };
 };
+
+export const getExploreResetFiltersSearchParams = (parsedSearch: ParsedQs) =>
+  Qs.stringify({
+    ...parsedSearch,
+    browsePath: undefined,
+    currentPage: '1',
+    quickFilter: undefined,
+    queryFilter: undefined,
+    showDeleted: undefined,
+  });
+
+export const getExploreClearQueryFilterSearchParams = (
+  parsedSearch: ParsedQs,
+  tree?: unknown
+) =>
+  Qs.stringify({
+    ...parsedSearch,
+    currentPage: '1',
+    queryFilter: tree ? JSON.stringify(tree) : undefined,
+  });

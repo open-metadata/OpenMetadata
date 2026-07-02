@@ -14,6 +14,7 @@ import {
   Dispatch,
   SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -82,6 +83,20 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
   const [pageSize, setPageSize] = useState<number>(initialPageSize);
 
+  // Keep pagination in sync when filters or other controls update paging params directly in the URL.
+  useEffect(() => {
+    const nextCurrentPage =
+      Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
+    const nextPageSize = Number(urlParams.pageSize) || processedPageSize;
+
+    setCurrentPage((currentPage) =>
+      currentPage === nextCurrentPage ? currentPage : nextCurrentPage
+    );
+    setPageSize((pageSize) =>
+      pageSize === nextPageSize ? pageSize : nextPageSize
+    );
+  }, [processedPageSize, urlParams.currentPage, urlParams.pageSize]);
+
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({
       cursorType: urlParams.cursorType,
@@ -112,7 +127,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
         cursorValue: null,
       });
     },
-    [setPageSize, setCurrentPage, updateUrlParams]
+    [setPageSize, setPreference, setCurrentPage, updateUrlParams]
   );
 
   const paginationVisible = useMemo(() => {
@@ -131,10 +146,12 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
       cursorData?: CursorState,
       pageSize?: number
     ) => {
-      setCurrentPage(page);
+      const nextPage = typeof page === 'function' ? page(currentPage) : page;
+
+      setCurrentPage(nextPage);
 
       const urlUpdate: Partial<PagingUrlParams> = {
-        currentPage: String(page),
+        currentPage: String(nextPage),
       };
 
       if (cursorData) {
@@ -149,7 +166,7 @@ export const usePaging = (defaultPageSize?: number): UsePagingInterface => {
 
       updateUrlParams(urlUpdate as FilterState);
     },
-    [setCurrentPage, updateUrlParams, currentPage]
+    [currentPage, setCurrentPage, setPreference, updateUrlParams]
   );
 
   return {

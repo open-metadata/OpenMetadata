@@ -38,11 +38,12 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByText('25 / page')).toBeVisible();
+    await expect(page.getByTestId('rows-per-page-dropdown')).toHaveText('25');
 
     // Change page size to 50
-    await page.locator('.ant-pagination-options-size-changer').click();
-    await page.getByTitle('50 / Page').click();
+    await page.getByTestId('rows-per-page-dropdown').click();
+    await page.getByTestId('rows-per-page-option-50').click();
+    await waitForAllLoadersToDisappear(page);
 
     // Go to Users Page
     await settingClick(page, GlobalSettingOptions.USERS);
