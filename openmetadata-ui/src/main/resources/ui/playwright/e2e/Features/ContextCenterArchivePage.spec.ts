@@ -12,7 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { createNewPage, redirectToHomePage, uuid, getDefaultAdminAPIContext } from '../../utils/common';
 import {
   ContextCenterFolder,
   getDocumentRowByName,
@@ -29,6 +29,7 @@ import {
   waitForDocumentPermanentlyDeleted,
 } from '../../utils/ContextCenterUtil';
 import { test as base } from '../fixtures/pages';
+
 
 const test = base;
 
@@ -356,6 +357,160 @@ test.describe('Context Center - Archive Page', () => {
           }
         )
         .toBe(false);
+    });
+  });
+});
+
+// ─── Suite: Folder delete — file absent from search and archive ────────────────
+
+test.describe('Context Center - Folder Delete: file absent from search and archive', () => {
+  let folder: ContextCenterFolder;
+  let documentId = '';
+  const folderName = `folder-delete-test-${uuid()}`;
+  const documentFileName = `folder-delete-doc-${uuid()}.txt`;
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    const folderRes = await apiContext.post(
+      '/api/v1/contextCenter/drive/folders',
+      {
+        data: {
+          displayName: folderName,
+          name: folderName,
+        },
+      }
+    );
+    expect(folderRes.status()).toBe(201);
+    folder = (await folderRes.json()) as ContextCenterFolder;
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    if (documentId) {
+      await apiContext
+        .delete(
+          `/api/v1/contextCenter/drive/files/${documentId}?hardDelete=true`
+        )
+        .catch(() => undefined);
+    }
+    if (folder?.id) {
+      await apiContext
+        .delete(
+          `/api/v1/contextCenter/drive/folders/${folder.id}?recursive=true&hardDelete=true`
+        )
+        .catch(() => undefined);
+    }
+
+    await afterAction();
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('file in deleted folder is absent from search and not added to archive', async ({
+    browser,
+    page,
+  }) => {
+    test.slow();
+
+    // ── 1. Navigate to documents page ───────────────────────────────────────
+
+    await test.step('navigate to documents page and verify folder in sidebar', async () => {
+      await navigateToDocuments(page);
+      await expect(getFolderTreeItem(page, folderName)).toBeVisible();
+    });
+
+    // ── 2. Upload document to folder via UI ──────────────────────────────────
+
+    await test.step('upload document into folder via UI', async () => {
+      await selectFolderInSidebar(page, folderName);
+      await openUploadModal(page);
+      documentId = await uploadFileViaModal(
+        page,
+        documentFileName,
+        'folder delete archive test content'
+      );
+    });
+
+    // ── 3. File is visible in the documents list ─────────────────────────────
+
+    await test.step('uploaded file is visible with correct folder label', async () => {
+      const docRow = getDocumentRowByName(page, documentFileName);
+      await expect(docRow).toBeVisible();
+      await expect(docRow.getByTestId('document-folder-name')).toContainText(
+        folderName
+      );
+    });
+
+    // ── 4. Soft-delete the folder via API ────────────────────────────────────
+
+    await test.step('soft-delete the folder via API', async () => {
+      const folderId =  folder.id
+       await getFolderTreeItem(page, folder.displayName).hover();   // reveals the hidden delete button
+
+  const deleteFolderBtn = page.getByTestId(`delete-folder-btn-${folderId}`);
+  await deleteFolderBtn.scrollIntoViewIfNeeded();
+  await expect(deleteFolderBtn).toBeVisible();
+  await deleteFolderBtn.click();
+
+  await expect(page.getByTestId('modal-header')).toBeVisible();
+
+  const folderDeleteResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes(`/api/v1/contextCenter/drive/folders/${folderId}`) &&
+      res.request().method() === 'DELETE'
+  );
+  await page.getByTestId('confirm-button').click();
+  const folderDeleteRes = await folderDeleteResPromise;
+  expect(folderDeleteRes.status()).toBe(200);
+      
+      
+    });
+
+    // ── 5. File is absent from documents search ──────────────────────────────
+
+    await test.step('file is no longer visible in documents search after folder delete', async () => {
+      const searchInput = getDocumentSearchInput(page);
+
+      await expect
+        .poll(
+          async () => {
+            const searchResPromise = page.waitForResponse(
+              (res) =>
+                res.url().includes('/api/v1/search/query') &&
+                res.url().includes('index=contextFile')
+            );
+            await searchInput.fill('');
+            await searchInput.fill(documentFileName);
+            await searchResPromise;
+
+            return getDocumentRowByName(page, documentFileName)
+              .isVisible()
+              .catch(() => false);
+          },
+          {
+            intervals: [3000, 5000, 10000],
+            message: `File ${documentFileName} still visible in search after its folder was deleted`,
+            timeout: 60000,
+          }
+        )
+        .toBe(false);
+    });
+
+    // ── 6. Archive page UI — file row is absent ───────────────────────────────
+
+    await test.step('file should be visibile in the archive page', async () => {
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      await waitForDocumentInArchive(apiContext, documentId);
+      await navigateToArchive(page);
+      await expect(
+        page.getByTestId(`archive-row-${documentId}`)
+      ).toBeVisible();
     });
   });
 });
