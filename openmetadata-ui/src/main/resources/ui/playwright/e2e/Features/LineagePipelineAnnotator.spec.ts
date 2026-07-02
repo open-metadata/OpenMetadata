@@ -53,77 +53,79 @@ test.describe('Lineage Pipeline Annotator', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    table = new TableClass();
-    await table.create(apiContext);
-    dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
+    try {
+      table = new TableClass();
+      await table.create(apiContext);
+      dbServiceFqn = table.serviceResponseData.fullyQualifiedName ?? '';
 
-    const msName = `pw-kafka-${uuid()}`;
-    const msResp = await apiContext
-      .post('/api/v1/services/messagingServices', {
-        data: {
-          name: msName,
-          serviceType: 'Kafka',
-          connection: {
-            config: { type: 'Kafka', bootstrapServers: 'localhost:9092' },
+      const msName = `pw-kafka-${uuid()}`;
+      const msResp = await apiContext
+        .post('/api/v1/services/messagingServices', {
+          data: {
+            name: msName,
+            serviceType: 'Kafka',
+            connection: {
+              config: { type: 'Kafka', bootstrapServers: 'localhost:9092' },
+            },
           },
-        },
-      })
-      .then((r) => r.json());
-    messagingServiceFqn = msResp.fullyQualifiedName;
+        })
+        .then((r) => r.json());
+      messagingServiceFqn = msResp.fullyQualifiedName;
 
-    const topicResp = await apiContext
-      .post('/api/v1/topics', {
-        data: {
-          name: `pw-topic-${uuid()}`,
-          service: messagingServiceFqn,
-          partitions: 1,
-        },
-      })
-      .then((r) => r.json());
-    topicFqn = topicResp.fullyQualifiedName;
+      const topicResp = await apiContext
+        .post('/api/v1/topics', {
+          data: {
+            name: `pw-topic-${uuid()}`,
+            service: messagingServiceFqn,
+            partitions: 1,
+          },
+        })
+        .then((r) => r.json());
+      topicFqn = topicResp.fullyQualifiedName;
 
-    const psName = `pw-airflow-${uuid()}`;
-    const psResp = await apiContext
-      .post('/api/v1/services/pipelineServices', {
+      const psName = `pw-airflow-${uuid()}`;
+      const psResp = await apiContext
+        .post('/api/v1/services/pipelineServices', {
+          data: {
+            name: psName,
+            serviceType: 'Airflow',
+            connection: {
+              config: {
+                type: 'Airflow',
+                hostPort: 'http://localhost:8080',
+              },
+            },
+          },
+        })
+        .then((r) => r.json());
+      pipelineServiceFqn = psResp.fullyQualifiedName;
+
+      const pipelineResp = await apiContext
+        .post('/api/v1/pipelines', {
+          data: {
+            name: `pw-pipeline-${uuid()}`,
+            service: pipelineServiceFqn,
+          },
+        })
+        .then((r) => r.json());
+      pipelineFqn = pipelineResp.fullyQualifiedName;
+
+      await apiContext.put('/api/v1/lineage', {
         data: {
-          name: psName,
-          serviceType: 'Airflow',
-          connection: {
-            config: {
-              type: 'Airflow',
-              hostPort: 'http://localhost:8080',
+          edge: {
+            fromEntity: { id: table.entityResponseData.id, type: 'table' },
+            toEntity: { id: topicResp.id, type: 'topic' },
+            lineageDetails: {
+              source: 'PipelineLineage',
+              pipeline: { id: pipelineResp.id, type: 'pipeline' },
             },
           },
         },
-      })
-      .then((r) => r.json());
-    pipelineServiceFqn = psResp.fullyQualifiedName;
-
-    const pipelineResp = await apiContext
-      .post('/api/v1/pipelines', {
-        data: {
-          name: `pw-pipeline-${uuid()}`,
-          service: pipelineServiceFqn,
-        },
-      })
-      .then((r) => r.json());
-    pipelineFqn = pipelineResp.fullyQualifiedName;
-
-    await apiContext.put('/api/v1/lineage', {
-      data: {
-        edge: {
-          fromEntity: { id: table.entityResponseData.id, type: 'table' },
-          toEntity: { id: topicResp.id, type: 'topic' },
-          lineageDetails: {
-            source: 'PipelineLineage',
-            pipeline: { id: pipelineResp.id, type: 'pipeline' },
-          },
-        },
-      },
-    });
-
-    await apiContext.dispose();
-    await page.close();
+      });
+    } finally {
+      await apiContext.dispose();
+      await page.close();
+    }
   });
 
   test.afterAll(async ({ browser }) => {
@@ -134,20 +136,22 @@ test.describe('Lineage Pipeline Annotator', () => {
     const token = await getToken(page);
     const apiContext = await getAuthContext(token);
 
-    await table.delete(apiContext);
-    await apiContext.delete(
-      `/api/v1/services/messagingServices/name/${encodeURIComponent(
-        messagingServiceFqn
-      )}?recursive=true&hardDelete=true`
-    );
-    await apiContext.delete(
-      `/api/v1/services/pipelineServices/name/${encodeURIComponent(
-        pipelineServiceFqn
-      )}?recursive=true&hardDelete=true`
-    );
-
-    await apiContext.dispose();
-    await page.close();
+    try {
+      await table.delete(apiContext);
+      await apiContext.delete(
+        `/api/v1/services/messagingServices/name/${encodeURIComponent(
+          messagingServiceFqn
+        )}?recursive=true&hardDelete=true`
+      );
+      await apiContext.delete(
+        `/api/v1/services/pipelineServices/name/${encodeURIComponent(
+          pipelineServiceFqn
+        )}?recursive=true&hardDelete=true`
+      );
+    } finally {
+      await apiContext.dispose();
+      await page.close();
+    }
   });
 
   test('entity lineage does not include service nodes', async ({ page }) => {
