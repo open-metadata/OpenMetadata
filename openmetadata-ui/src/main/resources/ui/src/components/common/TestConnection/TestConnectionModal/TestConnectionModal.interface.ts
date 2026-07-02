@@ -38,6 +38,7 @@ export type ConnectionStepState =
   | 'failed'
   | 'passed'
   | 'queued'
+  | 'running'
   | 'skipped'
   | 'warning';
 
@@ -45,14 +46,3 @@ export type TranslateFn = (
   key: string,
   options?: Record<string, unknown>
 ) => string;
-
-export interface ConnectionStepRowProps {
-  details: string;
-  isExpanded: boolean;
-  label: string;
-  requiredLabel: string;
-  onToggleExpand: () => void;
-  state: ConnectionStepState;
-  step: TestConnectionStep;
-  statusLabel: string;
-}

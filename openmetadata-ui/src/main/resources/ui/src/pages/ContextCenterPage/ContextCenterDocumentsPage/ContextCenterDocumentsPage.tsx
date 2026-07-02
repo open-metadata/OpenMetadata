@@ -480,10 +480,6 @@ const ContextCenterDocumentsPage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
             label: t('label.document-plural'),
           },
         ]}
