@@ -13,7 +13,10 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { getDefaultAdminAPIContext, redirectToHomePage } from '../../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 // Regression coverage for the Sentry N+1 on the Relations Graph tab.
@@ -34,7 +37,9 @@ const termInB = new GlossaryTerm(glossaryB);
 test.beforeAll(
   'Seed two glossaries with a cross-glossary relation',
   async ({ browser }) => {
-    const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await glossaryA.create(apiContext);
     await glossaryB.create(apiContext);
