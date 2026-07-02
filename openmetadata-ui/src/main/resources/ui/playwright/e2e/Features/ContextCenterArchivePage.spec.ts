@@ -39,7 +39,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe('Context Center - Archive Page', () => {
   let folder: ContextCenterFolder;
   let documentId = '';
-  let documentId2 = '';
   const folderName = `archive-test-folder-${uuid()}`;
   const documentFileName = `archive-test-${uuid()}.txt`;
 
@@ -68,13 +67,6 @@ test.describe('Context Center - Archive Page', () => {
       await apiContext
         .delete(
           `/api/v1/contextCenter/drive/files/${documentId}?hardDelete=true`
-        )
-        .catch(() => undefined);
-    }
-    if (documentId2) {
-      await apiContext
-        .delete(
-          `/api/v1/contextCenter/drive/files/${documentId2}?hardDelete=true`
         )
         .catch(() => undefined);
     }
@@ -240,7 +232,7 @@ test.describe('Context Center - Archive Page', () => {
 
     // ── 13. No folder name on restored document ───────────────────────────────
 
-    await test.step('restored document has no folder name (restored to root)', async () => {
+    await test.step('restored document has folder name (restored to root)', async () => {
       const docRow = page.getByTestId(`document-row-${documentId}`);
       await expect(docRow.getByTestId('document-folder-name')).toBeVisible();
     });
