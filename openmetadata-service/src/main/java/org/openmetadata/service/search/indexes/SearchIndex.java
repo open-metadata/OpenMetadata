@@ -6,6 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
@@ -22,12 +23,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -100,7 +104,7 @@ public interface SearchIndex {
       ti.applyTagFields(esDoc);
     }
     if (this instanceof ServiceBackedIndex sbi) {
-      sbi.applyServiceFields(esDoc);
+      sbi.applyServiceFields(esDoc, ctx);
     }
     if (this instanceof LineageIndex li) {
       li.applyLineageFields(esDoc, ctx);
@@ -306,6 +310,18 @@ public interface SearchIndex {
     return result;
   }
 
+  static Map<UUID, Optional<Style>> prefetchServiceStylesIfSupported(
+      String entityType, List<? extends EntityInterface> entities) {
+    Map<UUID, Optional<Style>> result = null;
+    if (!nullOrEmpty(entities) && supportsServiceStylePrefetch(entityType)) {
+      Map<UUID, Optional<Style>> prefetched = prefetchServiceStyles(entities);
+      if (!prefetched.isEmpty()) {
+        result = prefetched;
+      }
+    }
+    return result;
+  }
+
   /**
    * Per-JVM cache of "does {@code entityType}'s index implement {@link LineageIndex}?" so the
    * type-level marker probe runs at most once per type. Bounded per the project's caching policy
@@ -313,6 +329,9 @@ public interface SearchIndex {
    * still satisfies "no unbounded caches".
    */
   com.google.common.cache.Cache<String, Boolean> LINEAGE_PREFETCH_SUPPORT_CACHE =
+      com.google.common.cache.CacheBuilder.newBuilder().maximumSize(256).build();
+
+  com.google.common.cache.Cache<String, Boolean> SERVICE_STYLE_PREFETCH_SUPPORT_CACHE =
       com.google.common.cache.CacheBuilder.newBuilder().maximumSize(256).build();
 
   /**
@@ -350,6 +369,31 @@ public interface SearchIndex {
     return supported;
   }
 
+  private static boolean supportsServiceStylePrefetch(String entityType) {
+    Boolean cached = SERVICE_STYLE_PREFETCH_SUPPORT_CACHE.getIfPresent(entityType);
+    if (cached == null) {
+      cached = probeServiceStylePrefetchSupport(entityType);
+      if (cached != null) {
+        SERVICE_STYLE_PREFETCH_SUPPORT_CACHE.put(entityType, cached);
+      }
+    }
+    return Boolean.TRUE.equals(cached);
+  }
+
+  private static Boolean probeServiceStylePrefetchSupport(String entityType) {
+    Boolean supported = null;
+    try {
+      SearchIndex probe = Entity.buildSearchIndex(entityType, null);
+      supported = probe instanceof ServiceBackedIndex;
+    } catch (Exception | LinkageError e) {
+      LOG.warn(
+          "Could not determine ServiceBackedIndex support for type '{}'; will retry on next call",
+          entityType,
+          e);
+    }
+    return supported;
+  }
+
   /**
    * Batch-prefetch upstream lineage for every entity in {@code entities} using one
    * {@code findFromBatch} call and one {@code getEntityReferencesByIds} call per upstream entity
@@ -366,6 +410,74 @@ public interface SearchIndex {
     Map<UUID, List<EsLineageData>> result = new HashMap<>();
     if (!nullOrEmpty(entities)) {
       populatePrefetchedUpstreamLineage(entities, result);
+    }
+    return result;
+  }
+
+  static Map<UUID, Optional<Style>> prefetchServiceStyles(
+      List<? extends EntityInterface> entities) {
+    Map<UUID, Optional<Style>> result = new HashMap<>();
+    if (!nullOrEmpty(entities)) {
+      populatePrefetchedServiceStyles(entities, result);
+    }
+    return result;
+  }
+
+  private static void populatePrefetchedServiceStyles(
+      List<? extends EntityInterface> entities, Map<UUID, Optional<Style>> result) {
+    Map<UUID, UUID> serviceIdByEntityId = new HashMap<>();
+    Map<String, Set<UUID>> serviceIdsByType = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      UUID entityId = entity.getId();
+      if (entityId == null) {
+        continue;
+      }
+      EntityReference service = entity.getService();
+      if (service != null
+          && service.getId() != null
+          && !nullOrEmpty(service.getType())
+          && Entity.entityHasField(service.getType(), FIELD_STYLE)) {
+        serviceIdByEntityId.put(entityId, service.getId());
+        serviceIdsByType
+            .computeIfAbsent(service.getType(), ignored -> new HashSet<>())
+            .add(service.getId());
+      } else {
+        result.put(entityId, Optional.empty());
+      }
+    }
+    if (serviceIdsByType.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, Optional<Style>> styleByServiceId = fetchServiceStyles(serviceIdsByType);
+    for (Map.Entry<UUID, UUID> entry : serviceIdByEntityId.entrySet()) {
+      if (styleByServiceId.containsKey(entry.getValue())) {
+        result.put(entry.getKey(), styleByServiceId.get(entry.getValue()));
+      }
+    }
+  }
+
+  private static Map<UUID, Optional<Style>> fetchServiceStyles(
+      Map<String, Set<UUID>> serviceIdsByType) {
+    Map<UUID, Optional<Style>> result = new HashMap<>();
+    for (Map.Entry<String, Set<UUID>> entry : serviceIdsByType.entrySet()) {
+      try {
+        List<EntityReference> refs =
+            entry.getValue().stream()
+                .map(id -> new EntityReference().withId(id).withType(entry.getKey()))
+                .toList();
+        entry.getValue().forEach(id -> result.put(id, Optional.empty()));
+        List<ServiceEntityInterface> services = Entity.getEntities(refs, FIELD_STYLE, Include.ALL);
+        for (ServiceEntityInterface service : services) {
+          result.put(service.getId(), Optional.ofNullable(service.getStyle()));
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to batch-fetch service styles for type '{}' during search doc prefetch",
+            entry.getKey(),
+            e);
+        entry.getValue().forEach(result::remove);
+      }
     }
     return result;
   }

@@ -83,11 +83,22 @@ import { File } from '../../generated/entity/data/file';
 import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
-import { DashboardConnection } from '../../generated/entity/services/dashboardService';
+import {
+  DashboardConnection,
+  DashboardServiceType,
+} from '../../generated/entity/services/dashboardService';
+import { DatabaseServiceType } from '../../generated/entity/services/databaseService';
+import { DriveServiceType } from '../../generated/entity/services/driveService';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { MessagingServiceType } from '../../generated/entity/services/messagingService';
+import { MlModelServiceType } from '../../generated/entity/services/mlmodelService';
+import { PipelineServiceType } from '../../generated/entity/services/pipelineService';
+import { SearchServiceType } from '../../generated/entity/services/searchService';
+import { StorageServiceType } from '../../generated/entity/services/storageService';
 import { WorkflowStatus } from '../../generated/governance/workflows/workflowInstance';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { Style } from '../../generated/type/schema';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -168,6 +179,17 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';
 import { ServicePageData } from './ServiceDetailsPage.interface';
 import ServiceMainTabContent from './ServiceMainTabContent';
+
+const CUSTOM_SERVICE_TYPES = new Set<string>([
+  DashboardServiceType.CustomDashboard,
+  DatabaseServiceType.CustomDatabase,
+  DriveServiceType.CustomDrive,
+  MessagingServiceType.CustomMessaging,
+  MlModelServiceType.CustomMlModel,
+  PipelineServiceType.CustomPipeline,
+  SearchServiceType.CustomSearch,
+  StorageServiceType.CustomStorage,
+]);
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -1068,6 +1090,32 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, serviceCategory]
   );
 
+  const handleUpdateServiceStyle = useCallback(
+    async (style: Style | null) => {
+      if (isEmpty(serviceDetails)) {
+        return;
+      }
+
+      const updatedData: Record<string, unknown> = {
+        ...serviceDetails,
+        style,
+      };
+      const jsonPatch = compare(serviceDetails, updatedData);
+
+      try {
+        const response = await patchService(
+          serviceCategory,
+          serviceDetails.id,
+          jsonPatch
+        );
+        setServiceDetails(response);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [serviceDetails, serviceCategory]
+  );
+
   const handleDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
       if (
@@ -1943,6 +1991,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceUtilClassBase.getExtraInfo();
   }, []);
 
+  const isCustomService = useMemo(
+    () => CUSTOM_SERVICE_TYPES.has(toString(serviceDetails.serviceType)),
+    [serviceDetails.serviceType]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -1987,6 +2040,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
               onFollowClick={handleFollowClick}
               onOwnerUpdate={handleUpdateOwner}
               onRestoreDataAsset={handleRestoreService}
+              onStyleUpdate={
+                isCustomService ? handleUpdateServiceStyle : undefined
+              }
               onTierUpdate={handleUpdateTier}
               onVersionClick={versionHandler}
             />

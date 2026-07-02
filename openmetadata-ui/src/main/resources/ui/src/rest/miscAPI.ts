@@ -21,6 +21,7 @@ import { AsyncDeleteJob } from '../context/AsyncDeleteProvider/AsyncDeleteProvid
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { AggregationRequest } from '../generated/search/aggregationRequest';
 import { SearchRequest } from '../generated/search/searchRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
@@ -30,6 +31,9 @@ import {
   getEncodedFqn,
 } from '../utils/StringUtils';
 import APIClient from './index';
+
+type AggregateFieldOptionsRequest = SearchRequest &
+  Pick<AggregationRequest, 'sourceFields' | 'topHits'>;
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -253,11 +257,11 @@ export const getAggregateFieldOptions = (
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: SearchRequest) => {
+}: AggregateFieldOptionsRequest) => {
   const withWildCardValue = fieldValue
     ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
-  const body: SearchRequest = {
+  const body: AggregateFieldOptionsRequest = {
     fieldValue: withWildCardValue,
     ...rest,
   };

@@ -12,6 +12,7 @@ import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -19,6 +20,7 @@ import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DA
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.CASCADE_CERTIFICATION_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.CASCADE_SERVICE_STYLE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -110,6 +112,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -1554,6 +1557,7 @@ public class SearchRepository {
             entityType, entityId, changeDescription, indexMapping, entity);
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
         propagateCertificationTags(entityType, entity, changeDescription);
+        propagateServiceStyle(entityType, entity, changeDescription);
         propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
         propagateTime = System.currentTimeMillis() - startTime;
 
@@ -2171,6 +2175,44 @@ public class SearchRepository {
     cascadeCertificationToChildren(entity, certification);
   }
 
+  private void propagateServiceStyle(
+      String entityType, EntityInterface entity, ChangeDescription change) {
+    if (!SERVICE_ENTITY_SET.contains(entityType)
+        || !Entity.entityHasField(entityType, FIELD_STYLE)
+        || !isStyleUpdated(change)) {
+      return;
+    }
+    cascadeServiceStyleToChildren(entity, entity.getStyle());
+  }
+
+  private void cascadeServiceStyleToChildren(EntityInterface service, Style style) {
+    String type = service.getEntityReference().getType();
+    IndexMapping indexMapping = entityIndexMap.get(type);
+    if (indexMapping == null) {
+      return;
+    }
+    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+    if (nullOrEmpty(childAliases)) {
+      return;
+    }
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("style", style);
+
+    Pair<String, String> parentMatch = new ImmutablePair<>(SERVICE_ID, service.getId().toString());
+
+    try {
+      searchClient.updateChildren(
+          childAliases, parentMatch, new ImmutablePair<>(CASCADE_SERVICE_STYLE_SCRIPT, params));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to cascade style for service [{}]: {}",
+          service.getFullyQualifiedName(),
+          e.getMessage(),
+          e);
+    }
+  }
+
   // Pushes the cert change onto every child search doc denormalized from this
   // entity. Without this the cert filter on the DQ dashboard (which queries
   // children like test_case/test_case_result/test_case_resolution_status by
@@ -2216,6 +2258,13 @@ public class SearchRepository {
             Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
             change.getFieldsDeleted().stream())
         .anyMatch(fieldChange -> CERTIFICATION_FIELD.equals(fieldChange.getName()));
+  }
+
+  private boolean isStyleUpdated(ChangeDescription change) {
+    return Stream.concat(
+            Stream.concat(change.getFieldsUpdated().stream(), change.getFieldsAdded().stream()),
+            change.getFieldsDeleted().stream())
+        .anyMatch(fieldChange -> FIELD_STYLE.equals(fieldChange.getName()));
   }
 
   private AssetCertification getCertificationFromEntity(EntityInterface entity) {

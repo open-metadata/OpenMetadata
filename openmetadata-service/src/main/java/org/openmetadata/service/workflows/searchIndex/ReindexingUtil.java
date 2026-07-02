@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
@@ -33,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
@@ -61,20 +63,22 @@ public class ReindexingUtil {
   public static final String RECREATE_CONTEXT = "recreateContext";
 
   /**
-   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} (today: upstream
-   * lineage for {@code LineageIndex} types) and stuffs the resulting {@code Map<UUID,
-   * DocBuildContext>} into {@code contextData} under {@link BulkSink#DOC_BUILD_CONTEXT_KEY}. The
-   * sink reads that map, hands the per-entity entry to {@code buildSearchIndexDoc(ctx)}, and
-   * stays ignorant of what the context carries — keeping the sink transport-only. No-op when the
-   * batch is empty or the entity type does not benefit from prefetch.
+   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} and stuffs the
+   * resulting {@code Map<UUID, DocBuildContext>} into {@code contextData} under {@link
+   * BulkSink#DOC_BUILD_CONTEXT_KEY}. The sink reads that map, hands the per-entity entry to {@code
+   * buildSearchIndexDoc(ctx)}, and stays ignorant of what the context carries — keeping the sink
+   * transport-only. No-op when the batch is empty or the entity type does not benefit from
+   * prefetch.
    */
   public static void populateDocBuildContext(
       Map<String, Object> contextData,
       String entityType,
       List<? extends EntityInterface> entities) {
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
+    Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
     try {
       prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
+      prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
     } catch (Exception | LinkageError t) {
       // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
       // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
@@ -86,10 +90,25 @@ public class ReindexingUtil {
           entityType,
           t);
     }
-    if (prefetchedLineage != null) {
-      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(prefetchedLineage.size());
-      for (Map.Entry<UUID, List<EsLineageData>> entry : prefetchedLineage.entrySet()) {
-        docBuildContexts.put(entry.getKey(), DocBuildContext.withUpstreamLineage(entry.getValue()));
+    if (prefetchedLineage != null || prefetchedServiceStyles != null) {
+      int contextSize =
+          Math.max(
+              prefetchedLineage != null ? prefetchedLineage.size() : 0,
+              prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0);
+      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
+      for (EntityInterface entity : entities) {
+        UUID entityId = entity.getId();
+        if (entityId == null) {
+          continue;
+        }
+        List<EsLineageData> lineage =
+            prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
+            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId)
+                ? DocBuildContext.ServiceStylePrefetch.prefetched(
+                    prefetchedServiceStyles.get(entityId))
+                : DocBuildContext.ServiceStylePrefetch.notPrefetched();
+        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStylePrefetch));
       }
       contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
     }

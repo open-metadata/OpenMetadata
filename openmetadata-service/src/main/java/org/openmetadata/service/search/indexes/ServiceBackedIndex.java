@@ -1,8 +1,18 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_STYLE;
+
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 /**
  * Mixin interface for search indexes of entities backed by a service. Centralizes the service and
@@ -27,16 +37,48 @@ public interface ServiceBackedIndex extends SearchIndex {
    * non-null).
    */
   default void applyServiceFields(Map<String, Object> doc) {
+    applyServiceFields(doc, DocBuildContext.empty());
+  }
+
+  default void applyServiceFields(Map<String, Object> doc, DocBuildContext ctx) {
     Object entity = getEntity();
     if (entity instanceof EntityInterface ei) {
       EntityReference service = ei.getService();
       if (service != null) {
-        doc.put("service", getEntityWithDisplayName(service));
+        EntityReference serviceWithDisplayName = getEntityWithDisplayName(service);
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch = ctx.serviceStylePrefetch();
+        Optional<Style> serviceStyle =
+            serviceStylePrefetch.prefetched()
+                ? serviceStylePrefetch.style()
+                : getServiceStyle(service);
+        if (serviceStyle.isPresent()) {
+          Map<String, Object> serviceDoc = new HashMap<>(JsonUtils.getMap(serviceWithDisplayName));
+          serviceDoc.put(FIELD_STYLE, serviceStyle.get());
+          doc.put("service", serviceDoc);
+        } else {
+          doc.put("service", serviceWithDisplayName);
+        }
       }
     }
     Object serviceType = getIndexServiceType();
     if (serviceType != null) {
       doc.put("serviceType", serviceType);
+    }
+  }
+
+  default Optional<Style> getServiceStyle(EntityReference service) {
+    if (service == null
+        || service.getId() == null
+        || nullOrEmpty(service.getType())
+        || !Entity.entityHasField(service.getType(), FIELD_STYLE)) {
+      return Optional.empty();
+    }
+    try {
+      ServiceEntityInterface serviceEntity = Entity.getEntity(service, FIELD_STYLE, Include.ALL);
+      return Optional.ofNullable(serviceEntity.getStyle());
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch service style for service [{}]", service.getId(), e);
+      return Optional.empty();
     }
   }
 }
