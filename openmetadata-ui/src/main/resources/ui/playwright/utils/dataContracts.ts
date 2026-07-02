@@ -151,6 +151,18 @@ export const waitForContractExecutionWithFallback = async (
     // Verify execution status directly from the DataQuality Bundle Suites page.
     await validateDataContractInsideBundleTestSuites(page);
 
+    // Search by the contract name so the suite row is guaranteed on the first
+    // page regardless of how many bundle suites exist (avoids pagination misses).
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
     const suiteNameCell = page
       .getByTestId('test-suite-table')
       .locator('[role="gridcell"]')
