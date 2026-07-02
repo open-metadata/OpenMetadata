@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
@@ -182,6 +183,39 @@ def test_count_summary_marks_empty_count_and_cap():
     assert _count_summary([object()] * 1, "stream") == "1 streams enumerated"
     capped = _count_summary([object()] * DEFAULT_SAMPLE_ROWS, "table")
     assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
+
+
+def _fake_run_sql(returned_rows):
+    def fake(client, statement, summarize, *args, **kwargs):
+        return Evidence(summary=summarize(returned_rows), command="cmd")
+
+    return fake
+
+
+def test_get_tables_warns_when_no_user_tables():
+    # Empty probe (INFORMATION_SCHEMA filtered out) -> passing step with a caveat,
+    # which the runner records as a Warning.
+    checks = SnowflakeChecks(client=MagicMock(), service_connection=_config(database="MYDB"))
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        side_effect=_fake_run_sql([]),
+    ):
+        evidence = checks.get_tables()
+    assert evidence.summary == "no tables enumerated"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible in database 'MYDB'"
+    assert "privileges" in evidence.caveat.remediation.lower()
+
+
+def test_get_tables_has_no_caveat_when_tables_exist():
+    checks = SnowflakeChecks(client=MagicMock(), service_connection=_config(database="MYDB"))
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        side_effect=_fake_run_sql([object(), object()]),
+    ):
+        evidence = checks.get_tables()
+    assert evidence.summary == "2 tables enumerated"
+    assert evidence.caveat is None
 
 
 def test_table_and_view_probes_exclude_information_schema():

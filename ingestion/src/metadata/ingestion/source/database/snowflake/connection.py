@@ -15,6 +15,7 @@ Source connection handler
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import quote_plus
 
@@ -26,6 +27,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
 from metadata.core.connections.test_connection import (
+    Diagnosis,
     ErrorPack,
     Evidence,
     Matchers,
@@ -297,6 +299,21 @@ def _count_summary(rows: Sequence[Row], noun: str) -> str:
     return f"{len(rows)}{suffix} {noun}s enumerated"
 
 
+def _no_tables_caveat(database: str | None) -> Diagnosis:
+    """Non-blocking advisory when GetTables saw no user tables.
+
+    The probe filters out INFORMATION_SCHEMA, so an empty result is a real signal:
+    the connection works but there is nothing to ingest. The step still passes;
+    this surfaces it as a Warning. Mirrors the shared ``list_tables`` convention -
+    tables (and schemas) warn when empty, an empty view/stream list stays silent."""
+    scope = f"database '{database}'" if database else "the database"
+    return Diagnosis(
+        title=f"No tables visible in {scope}",
+        remediation=f"Verify the role can see the tables (USAGE on the schema and object "
+        f"privileges), or confirm {scope} actually contains tables.",
+    )
+
+
 def _snowflake_host(account: str) -> str:
     """The host the driver dials: the account with the Snowflake domain appended
     unless it is already a fully-qualified host."""
@@ -368,8 +385,18 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        statement = SNOWFLAKE_TEST_GET_TABLES.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "table"))
+        database = self._database()
+        statement = SNOWFLAKE_TEST_GET_TABLES.format(database_name=database)
+        counts: list[int] = []
+
+        def summarize(rows: Sequence[Row]) -> str:
+            counts.append(len(rows))
+            return _count_summary(rows, "table")
+
+        evidence = run_sql(self.client, statement, summarize)
+        if not counts[0]:
+            evidence = replace(evidence, caveat=_no_tables_caveat(database))
+        return evidence
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
