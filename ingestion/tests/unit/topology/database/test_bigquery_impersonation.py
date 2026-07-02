@@ -118,16 +118,32 @@ def test_no_impersonation_returns_empty_kwargs(base_config):
     assert get_impersonate_client_kwargs(connection) == {}
 
 
-def test_empty_target_email_is_ignored():
-    """A blank impersonate email must not trigger impersonation."""
+@pytest.mark.parametrize("blank_email", ["", "   ", "\t", "\n  "])
+def test_blank_target_email_is_ignored(blank_email):
+    """An empty or whitespace-only impersonate email must not trigger impersonation."""
     config = deepcopy(ADC_CONFIG)
     config["credentials"]["gcpImpersonateServiceAccount"] = {
-        "impersonateServiceAccount": "",
+        "impersonateServiceAccount": blank_email,
         "lifetime": 3600,
     }
     connection = BigQueryConnection.model_validate(config)
 
     assert get_impersonate_client_kwargs(connection) == {}
+
+
+def test_target_email_is_stripped():
+    """Surrounding whitespace on the target email is trimmed before use."""
+    config = deepcopy(ADC_CONFIG)
+    config["credentials"]["gcpImpersonateServiceAccount"] = {
+        "impersonateServiceAccount": f"  {TARGET_SA}  ",
+        "lifetime": 3600,
+    }
+    connection = BigQueryConnection.model_validate(config)
+
+    assert get_impersonate_client_kwargs(connection) == {
+        "impersonate_service_account": TARGET_SA,
+        "lifetime": 3600,
+    }
 
 
 @pytest.mark.parametrize(
@@ -176,6 +192,69 @@ def test_billing_project_id_scopes_impersonated_client(mock_common, mock_get_cli
 
     mock_get_client.assert_called_once_with(
         project_id="billing-proj",
+        impersonate_service_account=TARGET_SA,
+        lifetime=3600,
+    )
+
+
+@patch("metadata.ingestion.source.database.bigquery.connection.get_bigquery_client")
+@patch("metadata.ingestion.source.database.bigquery.connection.get_connection_args_common")
+def test_credentials_path_scopes_impersonated_client(mock_common, mock_get_client):
+    """
+    A credentials-path config exposes a projectId, so the impersonated client is
+    scoped to it (guards the docstring's cross-type support claim).
+    """
+    mock_common.return_value = {}
+    mock_get_client.return_value = MagicMock()
+
+    config = {
+        "type": "BigQuery",
+        "credentials": {
+            "gcpConfig": {
+                "type": "gcp_credential_path",
+                "path": "/tmp/creds.json",
+                "projectId": "proj-path",
+            },
+            "gcpImpersonateServiceAccount": {"impersonateServiceAccount": TARGET_SA, "lifetime": 3600},
+        },
+    }
+    connection = BigQueryConnection.model_validate(config)
+
+    get_connection_args(connection)
+
+    mock_get_client.assert_called_once_with(
+        project_id="proj-path",
+        impersonate_service_account=TARGET_SA,
+        lifetime=3600,
+    )
+
+
+@patch("metadata.ingestion.source.database.bigquery.connection.logger")
+@patch("metadata.ingestion.source.database.bigquery.connection.get_bigquery_client")
+@patch("metadata.ingestion.source.database.bigquery.connection.get_connection_args_common")
+def test_unresolved_project_id_logs_warning(mock_common, mock_get_client, mock_logger):
+    """
+    When neither billingProjectId nor a credentials projectId is available, the
+    impersonated client is still built (project resolved from the environment)
+    but a warning is logged to aid diagnosis.
+    """
+    mock_common.return_value = {}
+    mock_get_client.return_value = MagicMock()
+
+    config = {
+        "type": "BigQuery",
+        "credentials": {
+            "gcpConfig": {"type": "gcp_adc"},
+            "gcpImpersonateServiceAccount": {"impersonateServiceAccount": TARGET_SA, "lifetime": 3600},
+        },
+    }
+    connection = BigQueryConnection.model_validate(config)
+
+    get_connection_args(connection)
+
+    mock_logger.warning.assert_called_once()
+    mock_get_client.assert_called_once_with(
+        project_id=None,
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
     )

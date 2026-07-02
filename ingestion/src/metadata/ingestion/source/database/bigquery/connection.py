@@ -158,6 +158,13 @@ def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
     impersonate_kwargs = get_impersonate_client_kwargs(connection)
     if impersonate_kwargs:
         billing_or_project_id = connection.billingProjectId or _get_first_project_id(connection)
+        if billing_or_project_id is None:
+            logger.warning(
+                "Could not resolve a project id for the impersonated BigQuery client from "
+                "billingProjectId or the credentials config. The project will be resolved from the "
+                "environment (e.g. GOOGLE_CLOUD_PROJECT) at query time; set billingProjectId or a "
+                "projectId to make this explicit."
+            )
         connect_args = {
             **connect_args,
             "client": get_bigquery_client(project_id=billing_or_project_id, **impersonate_kwargs),

@@ -77,16 +77,18 @@ def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dic
     service account is configured.
 
     ``gcpImpersonateServiceAccount`` lives on the parent credentials object and
-    is valid regardless of the selected ``gcpConfig`` type (ADC, JSON key,
-    path or external account), so it must not be gated on a specific type.
-    Returns an empty dict when impersonation is not configured, leaving the
-    default (non-impersonated) behaviour untouched.
+    is valid regardless of the selected ``gcpConfig`` type, so it must not be
+    gated on a specific type. A blank or whitespace-only target email is treated
+    as "not configured" and returns an empty dict, leaving the default
+    (non-impersonated) behaviour untouched.
     """
     kwargs = {}
     impersonate = service_connection.credentials.gcpImpersonateServiceAccount
     if impersonate and impersonate.impersonateServiceAccount:
-        kwargs["impersonate_service_account"] = impersonate.impersonateServiceAccount
-        kwargs["lifetime"] = impersonate.lifetime
+        target_service_account = impersonate.impersonateServiceAccount.strip()
+        if target_service_account:
+            kwargs["impersonate_service_account"] = target_service_account
+            kwargs["lifetime"] = impersonate.lifetime
     return kwargs
 
 
