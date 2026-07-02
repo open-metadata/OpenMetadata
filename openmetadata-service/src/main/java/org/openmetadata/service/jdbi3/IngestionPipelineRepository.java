@@ -79,6 +79,7 @@ import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
 import org.openmetadata.service.monitoring.IngestionProgressTracker;
 import org.openmetadata.service.monitoring.IngestionProgressTracker.ProgressState;
+import org.openmetadata.service.monitoring.ServiceProgressStreamer;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -1287,6 +1288,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       onClose.run();
       eventSink.close();
     }
+  }
+
+  public void streamServiceProgress(String serviceFqn, SseEventSink eventSink, Sse sse) {
+    ServiceProgressStreamer.stream(serviceFqn, eventSink, sse, progressTracker);
   }
 
   private ProgressUpdate getLatestProgressUpdate(String pipelineFQN, UUID runId) {
