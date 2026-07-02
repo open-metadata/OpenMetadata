@@ -1260,33 +1260,24 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   public void streamProgress(String pipelineFQN, UUID runId, SseEventSink eventSink, Sse sse) {
-    ProgressUpdate initialUpdate = getLatestProgressUpdate(pipelineFQN, runId);
-    if (initialUpdate != null) {
-      CompletionStage<?> initialEvent = sendProgressEvent(eventSink, sse, initialUpdate);
-      if (isTerminalProgressUpdate(initialUpdate)) {
-        initialEvent.whenComplete(
-            (result, error) -> {
-              if (!eventSink.isClosed()) {
-                eventSink.close();
-              }
-            });
-        return;
-      }
-    }
-    Consumer<ProgressUpdate> listener =
-        update -> {
-          CompletionStage<?> event = sendProgressEvent(eventSink, sse, update);
-          if (isTerminalProgressUpdate(update)) {
-            event.whenComplete(
-                (result, error) -> ProgressSseManager.getInstance().close(eventSink));
-          }
-        };
+    Consumer<ProgressUpdate> listener = update -> emitProgressUpdate(eventSink, sse, update);
     Runnable onClose =
         () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
     if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
       progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+      ProgressUpdate snapshot = getLatestProgressUpdate(pipelineFQN, runId);
+      if (snapshot != null) {
+        emitProgressUpdate(eventSink, sse, snapshot);
+      }
     } else {
       eventSink.close();
+    }
+  }
+
+  private void emitProgressUpdate(SseEventSink eventSink, Sse sse, ProgressUpdate update) {
+    CompletionStage<?> event = sendProgressEvent(eventSink, sse, update);
+    if (isTerminalProgressUpdate(update)) {
+      event.whenComplete((result, error) -> ProgressSseManager.getInstance().close(eventSink));
     }
   }
 
