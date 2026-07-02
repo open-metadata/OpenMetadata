@@ -71,6 +71,25 @@ def clone_connection_for_project(database_name: str, service_connection: BigQuer
     return new_service_connection
 
 
+def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dict:
+    """
+    Build the impersonation kwargs for ``get_bigquery_client`` when a target
+    service account is configured.
+
+    ``gcpImpersonateServiceAccount`` lives on the parent credentials object and
+    is valid regardless of the selected ``gcpConfig`` type (ADC, JSON key,
+    path or external account), so it must not be gated on a specific type.
+    Returns an empty dict when impersonation is not configured, leaving the
+    default (non-impersonated) behaviour untouched.
+    """
+    kwargs = {}
+    impersonate = service_connection.credentials.gcpImpersonateServiceAccount
+    if impersonate and impersonate.impersonateServiceAccount:
+        kwargs["impersonate_service_account"] = impersonate.impersonateServiceAccount
+        kwargs["lifetime"] = impersonate.lifetime
+    return kwargs
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
@@ -78,20 +97,10 @@ def get_inspector_details(database_name: str, service_connection: BigQueryConnec
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
     new_service_connection = clone_connection_for_project(database_name, service_connection)
-    kwargs = {}
+    kwargs = get_impersonate_client_kwargs(new_service_connection)
 
     if new_service_connection.usageLocation:
         kwargs["location"] = new_service_connection.usageLocation
-
-    if (
-        isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues)
-        and new_service_connection.credentials.gcpImpersonateServiceAccount
-    ):
-        kwargs["impersonate_service_account"] = (
-            new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-        )
-
-        kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
 
     client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
     engine = get_connection(new_service_connection)

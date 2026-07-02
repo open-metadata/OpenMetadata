@@ -53,7 +53,11 @@ from metadata.ingestion.connections.test_connections import (
     test_query,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.bigquery.helper import (
+    get_impersonate_client_kwargs,
+)
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ingestion_logger
@@ -140,6 +144,43 @@ def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C9
     return _add_location(url, connection)
 
 
+def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
+    """
+    Build the SQLAlchemy connect args for BigQuery.
+
+    When service account impersonation is configured, inject a pre-built
+    impersonated ``bigquery.Client`` so that every query issued through the
+    engine (Test Connection and information_schema reads) runs under the
+    target identity. Without impersonation this is identical to the common
+    connection args, preserving the previous behaviour.
+    """
+    connect_args = get_connection_args_common(connection)
+    impersonate_kwargs = get_impersonate_client_kwargs(connection)
+    if impersonate_kwargs:
+        billing_or_project_id = connection.billingProjectId or _get_first_project_id(connection)
+        connect_args = {
+            **connect_args,
+            "client": get_bigquery_client(project_id=billing_or_project_id, **impersonate_kwargs),
+        }
+    return connect_args
+
+
+def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]:  # noqa: UP045
+    """
+    Return a single project id from the connection config to scope the
+    impersonated client. Falls back to None when it cannot be determined.
+    """
+    project_id = None
+    gcp_config = connection.credentials.gcpConfig
+    config_project_id = getattr(gcp_config, "projectId", None)
+    if config_project_id is not None:
+        if isinstance(config_project_id, SingleProjectId):
+            project_id = config_project_id.root
+        elif isinstance(config_project_id, MultipleProjectId) and config_project_id.root:
+            project_id = config_project_id.root[0]
+    return project_id
+
+
 class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         connection = self.service_connection
@@ -151,7 +192,7 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+            get_connection_args_fn=get_connection_args,
             **kwargs,
         )
         self._on_close(engine.dispose)
