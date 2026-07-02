@@ -286,6 +286,20 @@ def _summarize_databases(rows: Sequence[Row]) -> str:
     return f"{len(rows)}{suffix} databases enumerated"
 
 
+def _summarize_tables(rows: Sequence[Row]) -> str:
+    """``N tables enumerated`` (``N+`` at the row cap), or ``no tables enumerated``
+    when the database exposes none to the role.
+
+    The probe excludes INFORMATION_SCHEMA (its views are always present regardless
+    of grants), so an empty result is a real signal - the connection works but
+    there is nothing to ingest. Surfacing that as a Warning caveat depends on the
+    shared ``Evidence`` caveat support; until then it is reported in the summary."""
+    if not rows:
+        return "no tables enumerated"
+    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
+    return f"{len(rows)}{suffix} tables enumerated"
+
+
 def _snowflake_host(account: str) -> str:
     """The host the driver dials: the account with the Snowflake domain appended
     unless it is already a fully-qualified host."""
@@ -358,7 +372,7 @@ class SnowflakeChecks:
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_TABLES.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda _: "tables accessible")
+        return run_sql(self.client, statement, _summarize_tables)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:

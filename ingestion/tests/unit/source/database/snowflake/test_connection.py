@@ -34,6 +34,7 @@ from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_PORT,
     SnowflakeChecks,
     _summarize_databases,
+    _summarize_tables,
 )
 
 
@@ -179,6 +180,21 @@ def test_get_databases_summary_marks_the_row_cap():
     assert _summarize_databases([object()] * 3) == "3 databases enumerated"
     capped = _summarize_databases([object()] * DEFAULT_SAMPLE_ROWS)
     assert capped == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+
+
+def test_get_tables_summary_counts_and_marks_empty_and_cap():
+    # The probe now excludes INFORMATION_SCHEMA, so an empty result is meaningful.
+    assert _summarize_tables([]) == "no tables enumerated"
+    assert _summarize_tables([object()] * 3) == "3 tables enumerated"
+    capped = _summarize_tables([object()] * DEFAULT_SAMPLE_ROWS)
+    assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
+
+
+def test_get_tables_query_excludes_information_schema():
+    from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_TEST_GET_TABLES
+
+    assert "INFORMATION_SCHEMA" in SNOWFLAKE_TEST_GET_TABLES
+    assert "LIMIT 100" in SNOWFLAKE_TEST_GET_TABLES
 
 
 def test_checks_cover_exactly_the_wired_steps():
