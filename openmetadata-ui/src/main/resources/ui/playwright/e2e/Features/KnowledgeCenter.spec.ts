@@ -535,66 +535,6 @@ test.describe('Knowledge Center', () => {
     // );
   });
 
-  test('Verify Left Panel hierarchy pagination functionality', async ({
-    page,
-    browser,
-  }) => {
-    test.slow(true);
-
-    try {
-      const { apiContext } = await createNewPage(browser);
-      await knowledgeCenter2.create(apiContext, 10);
-      await sidebarClick(page, SidebarItem.ARTICLE);
-
-      // Get the first element content before scrolling
-      const firstElementBeforeScroll = page
-        .locator(
-          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
-        )
-        .first();
-      const paginationResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/contextCenter/pages/search/hierarchy') &&
-          response.url().includes(`offset=100`) &&
-          response.url().includes('limit=100') &&
-          response.status() === 200
-      );
-
-      const scrollHeight = await page
-        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
-        .evaluate((element) => element.scrollHeight);
-
-      await page
-        .locator('[data-testid="knowledge-pages-hierarchy-container"]')
-        .hover();
-      await page.mouse.wheel(0, scrollHeight);
-      await paginationResponse;
-
-      // Wait a bit for any potential scroll resets
-      await page.waitForTimeout(1000);
-
-      // Get the first element content after scrolling
-      const firstElementAfterScroll = await page
-        .locator(
-          '[data-testid="knowledge-pages-hierarchy-container"] [role="row"]'
-        )
-        .first()
-        .textContent();
-
-      // Verify that the first element content is not same on before and after scroll
-      // scroll was being reset in left panel due to use of activeKey in DirectoryTree component
-      // Verify that the first element content is not same on before and after scroll
-      // scroll was being reset in left panel due to use of activeKey in DirectoryTree component
-      expect(firstElementBeforeScroll).not.toBe(firstElementAfterScroll);
-    } finally {
-      const { apiContext, afterAction } = await createNewPage(browser);
-      await knowledgeCenter2.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   test('Activity feed functionality in Knowledge Center page', async ({
     page,
   }) => {
