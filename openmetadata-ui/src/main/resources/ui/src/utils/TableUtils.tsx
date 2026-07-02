@@ -60,6 +60,7 @@ import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg'
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
+import { ReactComponent as GovernanceIcon } from '../assets/svg/ic-governance.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
@@ -345,6 +346,7 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.SEARCH_INDEX]: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
   [EntityType.SEARCH_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
+  Governance: GovernanceIcon,
 };
 
 export const getEntityIcon = (

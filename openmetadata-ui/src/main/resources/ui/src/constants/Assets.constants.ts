@@ -14,6 +14,7 @@ import {
   ClipboardMinus,
   CodeSquare01,
   File02,
+  File05,
   File06,
   FileCheck02,
   Folder,
@@ -22,6 +23,7 @@ import {
   Sun,
 } from '@untitledui/icons';
 import React from 'react';
+import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as APICollection } from '../assets/svg/entity/api-collection.svg';
 import { ReactComponent as APIEndpoint } from '../assets/svg/entity/api-endpoint.svg';
@@ -66,7 +68,6 @@ import { ReactComponent as TestCase } from '../assets/svg/entity/test-case.svg';
 import { ReactComponent as TestDefinition } from '../assets/svg/entity/test-definition.svg';
 import { ReactComponent as TestSuite } from '../assets/svg/entity/test-suite.svg';
 import { ReactComponent as Topic } from '../assets/svg/entity/topic.svg';
-import { ReactComponent as KnowledgeCenter } from '../assets/svg/ic-knowledge-center.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -425,7 +426,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-utility-blue-700',
     bgClass: 'tw:bg-utility-blue-50',
     borderClass: 'tw:border-utility-blue-200',
-    icon: Folder,
+    icon: File05,
   },
   [EntityType.MLMODEL_SERVICE]: {
     iconClass: 'tw:text-utility-fuchsia-600',
