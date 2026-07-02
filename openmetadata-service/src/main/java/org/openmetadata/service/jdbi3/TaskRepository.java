@@ -468,6 +468,11 @@ public class TaskRepository extends EntityRepository<Task> {
         if (!nullOrEmpty(team.getUsers())) {
           result.addAll(team.getUsers());
         }
+        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+        // (e.g. Data Access Requests) an empty assignee list triggers the node's
+        // emptyAssigneeStrategy
+        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
+        // being pinned to a member-less team.
       } catch (Exception e) {
         LOG.debug(
             "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());

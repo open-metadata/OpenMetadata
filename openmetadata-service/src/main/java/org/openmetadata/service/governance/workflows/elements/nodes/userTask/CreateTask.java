@@ -941,6 +941,8 @@ public class CreateTask implements TaskListener {
               .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
       return reason instanceof String s ? s : null;
     } catch (Exception e) {
+      // Missing variable already returns null above; only a real lookup error reaches here.
+      LOG.debug("[CreateTask] Could not resolve manualGrantReason: {}", e.getMessage());
       return null;
     }
   }
@@ -967,7 +969,8 @@ public class CreateTask implements TaskListener {
       } catch (Exception e) {
         LOG.warn(
             "[CreateTask] Could not merge manualGrantReason into payload of type {}",
-            payload.getClass().getSimpleName());
+            payload.getClass().getSimpleName(),
+            e);
         return payload;
       }
     }

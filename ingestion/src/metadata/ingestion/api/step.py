@@ -43,6 +43,10 @@ class Step(ABC, Closeable):
     """All Workflow steps must inherit this base class."""
 
     status: Status
+    # Opt out of the 10-failure display cap in Summary.from_step: set True on a subclass when
+    # downstream logic needs the complete failure list (e.g. the Policy Agent coordinator, which
+    # decides per-policy grant vs manual from exactly which policy ids failed).
+    report_all_failures: bool = False
 
     def __init__(self):
         self.status = Status()
@@ -123,7 +127,11 @@ class Summary(StepSummary):
             # Policy Agent, where the coordinator decides per-policy grant vs manual from exactly
             # which policy ids failed; a truncated list would silently (and unsafely) grant the rest.
             failures=(
-                (step.status.failures if getattr(step, "report_all_failures", False) else step.status.failures[0:10])
+                (
+                    step.status.failures
+                    if step.report_all_failures
+                    else step.status.failures[0:10]
+                )
                 if step.status.failures
                 else None
             ),
