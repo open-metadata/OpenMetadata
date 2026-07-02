@@ -125,7 +125,7 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> cleaned, List<?> columns, int columnOffset, int columnLimit) {
     int total = columns.size();
     int start = Math.min(columnOffset, total);
-    int requestedEnd = columnLimit > 0 ? Math.min(start + columnLimit, total) : total;
+    int requestedEnd = columnLimit >= 0 ? Math.min(start + columnLimit, total) : total;
     int end = fitToBudget(overheadChars(cleaned), columns, start, requestedEnd);
     cleaned.put(COLUMNS_KEY, new ArrayList<>(columns.subList(start, end)));
     annotateWindow(cleaned, total, start, end);
@@ -142,9 +142,11 @@ public class GetEntityTool implements McpTool {
 
   /**
    * Returns the exclusive end index of the largest column window starting at {@code start} whose
-   * serialized size stays within the column budget. Always fits at least zero columns; when even the
-   * entity-level overhead exceeds the budget the caller still gets full metadata (a far better
-   * outcome than the empty oversized stub).
+   * serialized size stays within the column budget. When the entity-level overhead alone already
+   * exceeds the budget nothing is added and the caller still gets full metadata (better than the
+   * empty oversized stub). When the overhead leaves room but a single column at {@code start} is
+   * itself larger than the budget, that one column is emitted anyway so a paging client always
+   * advances by at least one column instead of re-requesting the same offset forever.
    */
   private static int fitToBudget(int overhead, List<?> columns, int start, int end) {
     long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
@@ -156,24 +158,41 @@ public class GetEntityTool implements McpTool {
         fitEnd = i + 1;
       }
     }
+    boolean singleColumnOverflowsBudget = fitEnd == start && start < end && available > 0;
+    if (singleColumnOverflowsBudget) {
+      fitEnd = start + 1;
+    }
     return fitEnd;
   }
 
   private static void annotateWindow(Map<String, Object> cleaned, int total, int start, int end) {
     boolean windowed = start > 0 || end < total;
     if (windowed) {
+      int returned = end - start;
+      boolean hasMore = end < total && returned > 0;
       cleaned.put(TOTAL_COLUMNS_KEY, total);
-      cleaned.put(RETURNED_COLUMNS_KEY, end - start);
+      cleaned.put(RETURNED_COLUMNS_KEY, returned);
       cleaned.put(COLUMN_OFFSET_KEY, start);
       cleaned.put(COLUMNS_TRUNCATED_KEY, Boolean.TRUE);
-      cleaned.put(HAS_MORE_COLUMNS_KEY, end < total);
-      cleaned.put(
-          COLUMNS_MESSAGE_KEY,
-          String.format(
-              "Showing columns %d-%d of %d. Fetch the next page with columnOffset=%d"
-                  + " (optionally set columnLimit).",
-              start, end, total, end));
+      cleaned.put(HAS_MORE_COLUMNS_KEY, hasMore);
+      cleaned.put(COLUMNS_MESSAGE_KEY, columnsMessage(total, start, returned, end, hasMore));
     }
+  }
+
+  /**
+   * Human/LLM-readable window summary. Uses the {@code returnedColumns}/{@code columnOffset} counts
+   * rather than an inclusive-vs-exclusive index range so it cannot be misread, and only advertises a
+   * next page when one is actually reachable.
+   */
+  private static String columnsMessage(
+      int total, int start, int returned, int end, boolean hasMore) {
+    String message =
+        String.format(
+            "Returning %d of %d columns starting at columnOffset %d.", returned, total, start);
+    if (hasMore) {
+      message += String.format(" Fetch the next page with columnOffset=%d.", end);
+    }
+    return message;
   }
 
   /**

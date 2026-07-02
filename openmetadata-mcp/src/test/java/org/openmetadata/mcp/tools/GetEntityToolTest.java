@@ -250,6 +250,50 @@ class GetEntityToolTest {
   }
 
   @Test
+  void explicitZeroColumnLimitReturnsNoColumnsAndStopsPaging() {
+    Map<String, Object> entity = wideEntity(20, 10);
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 0, 0);
+
+    assertThat(columnsOf(windowed)).isEmpty();
+    assertThat(windowed.get("returnedColumns")).isEqualTo(0);
+    assertThat(windowed.get("hasMoreColumns")).isEqualTo(Boolean.FALSE);
+  }
+
+  @Test
+  void entityOverheadExceedingBudgetReturnsNoColumnsAndStopsPaging() {
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("name", "huge_meta_table");
+    entity.put("description", "z".repeat((int) (McpResponseTrim.MAX_RESPONSE_CHARS * 0.85)));
+    entity.put("columns", new ArrayList<>(List.of(column("a", "x"), column("b", "y"))));
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 0, -1);
+
+    assertThat(columnsOf(windowed)).isEmpty();
+    assertThat(windowed.get("returnedColumns")).isEqualTo(0);
+    assertThat(windowed.get("hasMoreColumns")).isEqualTo(Boolean.FALSE);
+  }
+
+  @Test
+  void singleColumnLargerThanBudgetStillAdvancesPaging() {
+    Map<String, Object> bigColumn = column("big_struct", "x");
+    bigColumn.put("blob", "z".repeat((int) (McpResponseTrim.MAX_RESPONSE_CHARS * 0.85)));
+    List<Map<String, Object>> columns = new ArrayList<>();
+    columns.add(bigColumn);
+    columns.add(column("normal", "y"));
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("name", "wide_table");
+    entity.put("columns", columns);
+
+    Map<String, Object> firstPage = GetEntityTool.applyColumnWindow(entity, 0, -1);
+
+    assertThat(columnsOf(firstPage)).hasSize(1);
+    assertThat(castMap(columnsOf(firstPage).get(0)).get("name")).isEqualTo("big_struct");
+    assertThat(firstPage.get("returnedColumns")).isEqualTo(1);
+    assertThat(firstPage.get("hasMoreColumns")).isEqualTo(Boolean.TRUE);
+  }
+
+  @Test
   void nonTableEntityWithoutColumnsPassesThrough() {
     Map<String, Object> entity = new HashMap<>();
     entity.put("name", "my_dashboard");
