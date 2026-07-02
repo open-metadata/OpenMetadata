@@ -106,7 +106,9 @@ export class MetricClass extends EntityClass {
     await visitEntityPageByFqn({
       page,
       endpoint: this.endpoint,
-      fqn: this.entityResponseData?.fullyQualifiedName ?? '',
+      // A metric is a top-level entity, so its FQN is just its name. Fall back
+      // to the created name when entityResponseData has not been populated yet.
+      fqn: this.entityResponseData?.fullyQualifiedName ?? this.entity.name,
     });
   }
 
