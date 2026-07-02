@@ -716,6 +716,7 @@
     "details": "Detalles",
     "developed-by-developer": "Desarrollado por {{developer}}",
     "diagnostic-info": "Información de diagnóstico",
+    "did-not-run": "No se ejecutó",
     "dimension": "Dimensión",
     "dimension-entity": "Dimensión ({{entity}})",
     "dimension-plural": "Dimensiones",

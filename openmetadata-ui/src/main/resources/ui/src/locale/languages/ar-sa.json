@@ -716,6 +716,7 @@
     "details": "التفاصيل",
     "developed-by-developer": "تم تطويره بواسطة {{developer}}",
     "diagnostic-info": "معلومات التشخيص",
+    "did-not-run": "لم يتم التشغيل",
     "dimension": "البعد",
     "dimension-entity": "البعد ({{entity}})",
     "dimension-plural": "الأبعاد",

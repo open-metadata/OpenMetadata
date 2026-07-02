@@ -500,7 +500,7 @@ test.describe(
 
         // Test connection modal must NOT have opened
         await expect(
-          page.locator('.test-connection-status-modal')
+          page.getByTestId('test-connection-status-modal')
         ).not.toBeVisible();
       });
 

@@ -716,6 +716,7 @@
     "details": "詳細資料",
     "developed-by-developer": "由 {{developer}} 開發",
     "diagnostic-info": "診斷資訊",
+    "did-not-run": "未執行",
     "dimension": "維度",
     "dimension-entity": "維度 ({{entity}})",
     "dimension-plural": "維度",

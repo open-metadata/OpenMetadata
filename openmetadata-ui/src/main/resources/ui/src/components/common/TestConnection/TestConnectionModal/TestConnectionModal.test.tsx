@@ -258,7 +258,7 @@ describe('TestConnectionModal', () => {
     );
 
     expect(
-      screen.getAllByText('message.connection-not-established', {
+      screen.getAllByText('label.did-not-run', {
         exact: false,
       }).length
     ).toBeGreaterThanOrEqual(1);
@@ -714,5 +714,153 @@ describe('TestConnectionModal', () => {
     expect(
       screen.getByTestId('connection-remediation-card')
     ).toBeInTheDocument();
+  });
+
+  it('should show pass icon in gate step pills when gate step passes', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          { name: 'GetSchemas', passed: true, mandatory: true },
+        ]}
+      />
+    );
+
+    fireEvent.click(
+      screen
+        .getByTestId('connection-gate-phase')
+        .querySelector('button') as HTMLButtonElement
+    );
+
+    const pills = screen.getAllByTestId('gate-step-pill');
+
+    expect(pills).toHaveLength(4);
+
+    pills.forEach((pill) => {
+      expect(
+        pill.querySelector('[data-testid="pill-icon-pass"]')
+      ).toBeInTheDocument();
+      expect(
+        pill.querySelector('[data-testid="pill-icon-queued"]')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('should allow multiple capability steps to be expanded simultaneously', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+          { name: 'GetTables', description: 'Tables', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: true,
+            mandatory: true,
+            message: 'Schemas success',
+          },
+          {
+            name: 'GetTables',
+            passed: false,
+            mandatory: true,
+            errorLog: 'Tables error log',
+          },
+        ]}
+      />
+    );
+
+    const step1 = screen.getByTestId('test-connection-step-GetSchemas');
+    const step2 = screen.getByTestId('test-connection-step-GetTables');
+
+    fireEvent.click(step1.querySelector('button') as HTMLButtonElement);
+
+    expect(screen.getByText('Schemas success')).toBeInTheDocument();
+
+    fireEvent.click(step2.querySelector('button') as HTMLButtonElement);
+
+    expect(screen.getByText('Schemas success')).toBeInTheDocument();
+    expect(screen.getByText('Tables error log')).toBeInTheDocument();
+  });
+
+  it('should render diagnosis without a leading blank line in expanded step view', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: false,
+            mandatory: true,
+            diagnosis: {
+              title: 'Diagnosis title',
+              remediation: 'Fix this issue',
+            },
+          },
+        ]}
+      />
+    );
+
+    const step = screen.getByTestId('test-connection-step-GetSchemas');
+
+    fireEvent.click(step.querySelector('button') as HTMLButtonElement);
+
+    const diagSpans = Array.from(
+      step.querySelectorAll('.tw\\:text-utility-warning-300')
+    );
+
+    expect(diagSpans.length).toBeGreaterThan(0);
+    expect(diagSpans[0].textContent).not.toBe(' ');
+    expect(diagSpans[0].textContent?.trim()).not.toBe('');
+  });
+
+  it('should show "Establishing connection" banner while gate step is running', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[]}
+      />
+    );
+
+    expect(
+      screen.getByText('message.establishing-connection-ellipsis')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.test-connection-running-checks')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should switch banner to "Running checks" after gate step passes', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        isTestingConnection
+        testConnectionStepResult={[
+          { name: 'Step 1', passed: true, mandatory: true },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByText('message.test-connection-running-checks')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.establishing-connection-ellipsis')
+    ).not.toBeInTheDocument();
   });
 });

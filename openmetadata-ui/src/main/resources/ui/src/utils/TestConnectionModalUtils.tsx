@@ -12,7 +12,9 @@
  */
 import {
   Accordion,
+  AccordionHeader,
   AccordionItem,
+  AccordionPanel,
   Badge,
   Box,
   Button,
@@ -27,7 +29,7 @@ import {
 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
-import { type Dispatch, type SetStateAction } from 'react';
+import { useMemo, type Dispatch, type SetStateAction } from 'react';
 import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
 import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
 import { ReactComponent as IcTcQueued } from '../assets/svg/ic-tc-queued.svg';
@@ -102,7 +104,7 @@ export function getStepStatusLabel(t: TranslateFn, state: ConnectionStepState) {
   } else if (state === 'warning') {
     label = t('label.warning');
   } else if (state === 'skipped') {
-    label = t('message.connection-not-established');
+    label = t('label.did-not-run');
   }
 
   return label;
@@ -338,7 +340,7 @@ export function ConnectionStatusBanner(
 
   if (isSuccessful) {
     return (
-      <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-4 tw:py-3.5">
+      <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-3 tw:py-2">
         <IcCheckCircle
           className="tw:shrink-0 tw:text-fg-success-secondary"
           height={18}
@@ -353,7 +355,7 @@ export function ConnectionStatusBanner(
 
   if (isWarning) {
     return (
-      <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-4 tw:py-3.5">
+      <div className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:px-3 tw:py-2">
         <IcTcWarn
           className="tw:shrink-0 tw:text-fg-warning-secondary"
           height={18}
@@ -371,7 +373,7 @@ export function ConnectionStatusBanner(
     : 'tw:text-utility-error-700';
 
   const bannerClass = classNames(
-    'tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:px-4 tw:py-3.5',
+    'tw:flex tw:items-center tw:gap-2.5 tw:rounded-xl tw:border tw:px-3 tw:py-2',
     {
       'tw:border-utility-brand-200 tw:bg-utility-brand-50': isTestingConnection,
       'tw:border-utility-error-200 tw:bg-utility-error-50':
@@ -486,7 +488,7 @@ export function ConnectionGateCard(
     );
   }
 
-  const descriptionClass = classNames('tw:mt-0.5 tw:text-secondary', {
+  const descriptionClass = classNames('tw:text-tertiary tw:text-xs', {
     'tw:text-utility-error-700': gateFailed,
   });
 
@@ -521,6 +523,7 @@ export function ConnectionGateCard(
     pillIcon = (
       <IcCheckCircle
         className="tw:shrink-0 tw:text-fg-success-secondary"
+        data-testid="pill-icon-pass"
         height={12}
         width={12}
       />
@@ -529,6 +532,7 @@ export function ConnectionGateCard(
     pillIcon = (
       <IcTcFail
         className="tw:shrink-0 tw:text-fg-error-primary"
+        data-testid="pill-icon-fail"
         height={12}
         width={12}
       />
@@ -565,13 +569,12 @@ export function ConnectionGateCard(
       </button>
       {isGateExpanded && (
         <div className="tw:flex tw:flex-wrap tw:gap-2 tw:px-4 tw:pb-3.5">
-          {GATE_STEPS.map((key, i) => (
+          {GATE_STEPS.map((key) => (
             <span className={pillClass} data-testid="gate-step-pill" key={key}>
-              {i === 0 && !gateResult && isTestingConnection ? (
-                pillIcon
-              ) : (
+              {pillIcon ?? (
                 <IcTcQueued
                   className="tw:shrink-0 tw:text-utility-gray-300"
+                  data-testid="pill-icon-queued"
                   height={12}
                   width={12}
                 />
@@ -589,28 +592,53 @@ export function ConnectionCapabilitySection(
   props: Readonly<{
     capabilitySteps: TestConnectionStep[];
     connectionFailed: boolean;
-    expandedStepName: string | undefined;
+    expandedStepNames: string[];
     gateResult: TestConnectionStepResult | undefined;
     gateStepName?: string;
     getConnectionStepResult: (
       step: TestConnectionStep
     ) => TestConnectionStepResult | undefined;
     isTestingConnection: boolean;
-    setExpandedStepName: Dispatch<SetStateAction<string | undefined>>;
+    setExpandedStepNames: Dispatch<SetStateAction<string[]>>;
     t: TranslateFn;
   }>
 ) {
   const {
     capabilitySteps,
     connectionFailed,
-    expandedStepName,
+    expandedStepNames,
     gateResult,
     gateStepName,
     getConnectionStepResult,
     isTestingConnection,
-    setExpandedStepName,
+    setExpandedStepNames,
     t,
   } = props;
+
+  const expandableSteps = useMemo(
+    () =>
+      new Set(
+        capabilitySteps
+          .filter((s) => {
+            const r = getConnectionStepResult(s);
+            const state = getStepState(s, r, connectionFailed, gateStepName);
+            const isExpandableState =
+              !!r &&
+              (state === 'passed' || state === 'failed' || state === 'warning');
+
+            return (
+              isExpandableState &&
+              (!isEmpty(r?.executedCommand) ||
+                !isEmpty(r?.resultSummary) ||
+                !isEmpty(r?.message) ||
+                !isEmpty(r?.errorLog) ||
+                !isEmpty(r?.diagnosis))
+            );
+          })
+          .map((s) => s.name)
+      ),
+    [capabilitySteps, connectionFailed, gateStepName, getConnectionStepResult]
+  );
 
   if (!capabilitySteps.length) {
     return null;
@@ -650,7 +678,14 @@ export function ConnectionCapabilitySection(
           </Typography>
         )}
       </Box>
-      <Accordion>
+      <Accordion
+        allowsMultipleExpanded
+        expandedKeys={expandedStepNames}
+        onExpandedChange={(keys) =>
+          setExpandedStepNames(
+            ([...keys] as string[]).filter((k) => expandableSteps.has(k))
+          )
+        }>
         {capabilitySteps.map((step) => {
           const result = getConnectionStepResult(step);
           const state = getStepState(
@@ -659,17 +694,10 @@ export function ConnectionCapabilitySection(
             connectionFailed,
             gateStepName
           );
-          const isExpandableState =
-            !!result &&
-            (state === 'passed' || state === 'failed' || state === 'warning');
-          const isExpanded = expandedStepName === step.name;
           const label = getStepLabel(t, step);
           const statusLabel = getStepStatusLabel(t, state);
           const requiredLabel = t('label.required');
-
-          const toggle = () => {
-            setExpandedStepName(isExpanded ? undefined : step.name);
-          };
+          const canExpand = expandableSteps.has(step.name);
 
           const resultTextClass = classNames(
             'tw:min-w-12 tw:text-right tw:text-xs tw:font-medium tw:text-quaternary',
@@ -681,20 +709,9 @@ export function ConnectionCapabilitySection(
             }
           );
 
-          const containsLogs =
-            !isEmpty(result?.executedCommand) ||
-            !isEmpty(result?.resultSummary) ||
-            !isEmpty(result?.message) ||
-            !isEmpty(result?.errorLog) ||
-            !isEmpty(result?.diagnosis);
-
-          const canExpand = isExpandableState && containsLogs;
-
-          const showContent = canExpand && isExpanded && result;
-
           return (
             <AccordionItem
-              className={classNames('tw:group/item tw:w-full', {
+              className={classNames('tw:w-full', {
                 'tw:!bg-utility-error-50': state === 'failed',
                 'tw:bg-primary': state !== 'failed',
                 'tw:opacity-60': state === 'skipped',
@@ -702,22 +719,19 @@ export function ConnectionCapabilitySection(
               data-testid={`test-connection-step-${step.name}`}
               id={step.name}
               key={step.name}>
-              <h3 className="tw:m-0">
-                <button
-                  aria-expanded={canExpand ? isExpanded : undefined}
-                  className={classNames(
-                    'tw:grid tw:w-full tw:grid-cols-[28px_minmax(0,1fr)_auto] tw:items-center tw:gap-3',
-                    'tw:border-0 tw:bg-transparent tw:px-4 tw:py-3 tw:text-left tw:outline-hidden',
-                    {
-                      'tw:cursor-pointer': canExpand,
-                      'tw:cursor-default': !canExpand,
-                    }
-                  )}
-                  type="button"
-                  onClick={canExpand ? toggle : undefined}>
-                  <div className="tw:flex tw:items-center tw:justify-center">
+              <AccordionHeader
+                className={classNames(
+                  'tw:w-full tw:grid-cols-[28px_minmax(0,1fr)_auto] tw:items-center tw:gap-3',
+                  'tw:border-0 tw:bg-transparent tw:px-4 tw:py-2.5 tw:text-left tw:outline-hidden',
+                  canExpand
+                    ? 'tw:cursor-pointer'
+                    : 'tw:cursor-default hover:tw:bg-primary'
+                )}
+                showChevron={false}>
+                <Box gap={4}>
+                  <Box align="center" justify="center">
                     {getConnectionStepIcon(state)}
-                  </div>
+                  </Box>
                   <div className="tw:min-w-0">
                     <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5">
                       <span className="tw:overflow-hidden tw:text-sm tw:font-semibold tw:leading-5 tw:text-primary tw:text-ellipsis tw:whitespace-nowrap">
@@ -740,58 +754,59 @@ export function ConnectionCapabilitySection(
                       )}
                     </div>
                   </div>
-                  <div className="tw:flex tw:items-center tw:gap-2">
-                    <span className={resultTextClass}>{statusLabel}</span>
-                    {canExpand && (
-                      <ChevronRight
-                        className={classNames(
-                          'tw:text-utility-gray-400 tw:transition-transform tw:duration-200',
-                          { 'tw:rotate-90': isExpanded }
-                        )}
-                        size={18}
-                      />
-                    )}
-                  </div>
-                </button>
-              </h3>
-              {showContent && (
-                <div className="tw:border-t tw:border-border-secondary">
-                  <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:mx-3.5 tw:mb-3.5 tw:ml-[46px] tw:mt-3">
-                    {result.executedCommand &&
-                      renderColoredLines(
-                        `> ${result.executedCommand}`,
-                        'tw:text-brand-300',
-                        'cmd-'
-                      )}
-                    {(result.resultSummary || result.message) &&
-                      renderColoredLines(
-                        `  ${result.resultSummary || result.message}${
-                          result.durationMs ? ` (${result.durationMs} ms)` : ''
-                        }`,
-                        'tw:text-utility-success-300',
-                        'sum-'
-                      )}
-                    {result.errorLog &&
-                      renderColoredLines(
-                        result.errorLog,
-                        'tw:text-utility-error-300',
-                        'err-'
-                      )}
-                    {result.diagnosis &&
-                      renderColoredLines(
-                        `\n${[
-                          result.diagnosis.title,
-                          result.diagnosis.remediation,
-                          result.diagnosis.docUrl,
-                        ]
-                          .filter(Boolean)
-                          .join('\n')}`,
-                        'tw:text-utility-warning-300',
-                        'diag-'
-                      )}
-                  </pre>
+                </Box>
+                <div className="tw:flex tw:items-center tw:gap-2">
+                  <span className={resultTextClass}>{statusLabel}</span>
+                  {canExpand && (
+                    <ChevronRight
+                      className="tw:text-utility-gray-400 tw:transition-transform tw:duration-200 tw:group-data-expanded/item:rotate-90"
+                      size={18}
+                    />
+                  )}
                 </div>
-              )}
+              </AccordionHeader>
+              <AccordionPanel className="tw:p-0">
+                {result && (
+                  <div className="tw:border-t tw:border-border-secondary">
+                    <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+                      {result.executedCommand &&
+                        renderColoredLines(
+                          `> ${result.executedCommand}`,
+                          'tw:text-brand-300',
+                          'cmd-'
+                        )}
+                      {(result.resultSummary || result.message) &&
+                        renderColoredLines(
+                          `  ${result.resultSummary || result.message}${
+                            result.durationMs
+                              ? ` (${result.durationMs} ms)`
+                              : ''
+                          }`,
+                          'tw:text-utility-success-300',
+                          'sum-'
+                        )}
+                      {result.errorLog &&
+                        renderColoredLines(
+                          result.errorLog,
+                          'tw:text-utility-error-300',
+                          'err-'
+                        )}
+                      {result.diagnosis &&
+                        renderColoredLines(
+                          [
+                            result.diagnosis.title,
+                            result.diagnosis.remediation,
+                            result.diagnosis.docUrl,
+                          ]
+                            .filter(Boolean)
+                            .join('\n'),
+                          'tw:text-utility-warning-300',
+                          'diag-'
+                        )}
+                    </pre>
+                  </div>
+                )}
+              </AccordionPanel>
             </AccordionItem>
           );
         })}
@@ -836,7 +851,7 @@ export function ConnectionRawLogSection(
       <button
         className={classNames(
           'tw:inline-flex tw:max-w-full tw:w-max tw:cursor-pointer tw:items-center tw:gap-1',
-          'tw:border-0 tw:bg-transparent tw:p-0 tw:font-medium ',
+          'tw:border-0 tw:bg-transparent tw:p-0 tw:font-semibold tw:text-xs',
           'tw:text-utility-brand-600 tw:text-left tw:whitespace-nowrap'
         )}
         type="button"
@@ -846,7 +861,7 @@ export function ConnectionRawLogSection(
       </button>
       {showRawLog && (
         <pre
-          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0"
+          className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:font-mono tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:w-full tw:max-h-[360px] tw:m-0 tw:font-semibold"
           data-testid="raw-connection-log">
           {testConnectionStepResult.flatMap((result, stepIdx) => {
             const summary = result.resultSummary || result.message;
@@ -885,13 +900,13 @@ export function ConnectionRawLogSection(
             if (result.diagnosis) {
               parts.push(
                 ...renderColoredLines(
-                  `\n${[
+                  [
                     result.diagnosis.title,
                     result.diagnosis.remediation,
                     result.diagnosis.docUrl,
                   ]
                     .filter(Boolean)
-                    .join('\n')}`,
+                    .join('\n'),
                   'tw:text-utility-warning-300',
                   `${stepIdx}-diag-`
                 )
@@ -1038,7 +1053,7 @@ export function ConnectionRemediationCard(
   }
 
   const cardClass = classNames(
-    'tw:rounded-xl tw:border tw:p-4',
+    'tw:rounded-xl tw:border tw:p-4 tw:flex tw:flex-col tw:gap-1',
     connectionFailed
       ? 'tw:border-utility-error-200 tw:bg-utility-error-50'
       : 'tw:border-utility-warning-200 tw:bg-utility-warning-50'
@@ -1054,16 +1069,16 @@ export function ConnectionRemediationCard(
 
   return (
     <div className={cardClass} data-testid="connection-remediation-card">
-      <div className="tw:mb-2.5 tw:flex tw:items-center tw:gap-2">
+      <div className="tw:flex tw:items-center tw:gap-2">
         <Lightbulb03 className="tw:shrink-0 tw:text-primary" size={17} />
         <span className="tw:text-sm tw:font-bold tw:text-primary">
           {titleText}
         </span>
       </div>
       {diagnosis && (
-        <div className="tw:mt-3 tw:flex tw:flex-col tw:gap-1 tw:text-xs">
+        <div className="tw:flex tw:flex-col tw:gap-1 tw:text-xs">
           {diagnosis.remediation && (
-            <Typography className="tw:text-secondary">
+            <Typography className="tw:text-secondary" size="text-xs">
               {diagnosis.remediation}
             </Typography>
           )}

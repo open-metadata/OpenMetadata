@@ -160,7 +160,13 @@ interface BadgeProps<T extends BadgeTypes> {
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
-  const { type = 'pill-color', size = 'md', color = 'gray', children } = props;
+  const {
+    type = 'pill-color',
+    size = 'md',
+    color = 'gray',
+    bordered = true,
+    children,
+  } = props;
   const colors = withPillTypes[type];
 
   const pillSizes = {
@@ -188,7 +194,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         colors.common,
         sizes[type][size],
         colors.styles[color].root,
-        props.bordered && 'tw:ring-1 tw:ring-inset',
+        bordered && 'tw:ring-1 tw:ring-inset',
         props.className
       )}>
       {children}

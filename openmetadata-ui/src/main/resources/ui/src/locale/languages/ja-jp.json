@@ -716,6 +716,7 @@
     "details": "詳細",
     "developed-by-developer": "{{developer}} によって開発",
     "diagnostic-info": "診断情報",
+    "did-not-run": "未実行",
     "dimension": "ディメンション",
     "dimension-entity": "ディメンション ({{entity}})",
     "dimension-plural": "ディメンション",

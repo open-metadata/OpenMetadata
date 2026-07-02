@@ -716,6 +716,7 @@
     "details": "세부",
     "developed-by-developer": "{{developer}}에 의해 개발됨",
     "diagnostic-info": "진단 정보",
+    "did-not-run": "실행되지 않음",
     "dimension": "차원",
     "dimension-entity": "차원 ({{entity}})",
     "dimension-plural": "차원",

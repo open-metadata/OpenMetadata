@@ -716,6 +716,7 @@
     "details": "جزئیات",
     "developed-by-developer": "توسعه یافته توسط {{developer}}",
     "diagnostic-info": "اطلاعات تشخیصی",
+    "did-not-run": "اجرا نشد",
     "dimension": "بُعد",
     "dimension-entity": "بُعد ({{entity}})",
     "dimension-plural": "ابعاد",

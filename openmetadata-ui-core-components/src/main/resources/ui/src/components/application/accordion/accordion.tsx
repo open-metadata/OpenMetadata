@@ -43,6 +43,12 @@ export interface AccordionHeaderProps extends AriaButtonProps {
    * The content to display in the accordion header trigger.
    */
   children: ReactNode;
+  /**
+   * When false, renders children directly without the grow-span wrapper or
+   * built-in chevron — gives children full layout control (e.g. custom grids).
+   * Defaults to true.
+   */
+  showChevron?: boolean;
 }
 
 export interface AccordionPanelProps extends AriaDisclosurePanelProps {
@@ -120,6 +126,7 @@ export const AccordionItem = ({
 export const AccordionHeader = ({
   children,
   className,
+  showChevron = true,
   ...props
 }: AccordionHeaderProps) => {
   return (
@@ -137,11 +144,17 @@ export const AccordionHeader = ({
             typeof className === 'function' ? className(state) : className
           )
         }>
-        <span className="tw:grow">{children}</span>
-        <ChevronDown
-          aria-hidden="true"
-          className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200 tw:ease-in-out tw:group-data-expanded/item:rotate-180"
-        />
+        {showChevron ? (
+          <>
+            <span className="tw:grow">{children}</span>
+            <ChevronDown
+              aria-hidden="true"
+              className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary tw:transition-transform tw:duration-200 tw:ease-in-out tw:group-data-expanded/item:rotate-180"
+            />
+          </>
+        ) : (
+          children
+        )}
       </AriaButton>
     </AriaHeading>
   );
@@ -165,7 +178,7 @@ export const AccordionPanel = ({
         !state?.isExpanded && 'tw:hidden',
         className
       )}>
-      {children}
+      {state?.isExpanded ? children : null}
     </AriaDisclosurePanel>
   );
 };

@@ -716,6 +716,7 @@
     "details": "Подробности",
     "developed-by-developer": "Разработано {{developer}}",
     "diagnostic-info": "Диагностическая информация",
+    "did-not-run": "Не выполнено",
     "dimension": "Измерение",
     "dimension-entity": "Измерение ({{entity}})",
     "dimension-plural": "Измерения",

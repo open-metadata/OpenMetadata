@@ -716,6 +716,7 @@
     "details": "รายละเอียด",
     "developed-by-developer": "พัฒนาโดย {{developer}}",
     "diagnostic-info": "ข้อมูลการวินิจฉัย",
+    "did-not-run": "ไม่ได้รัน",
     "dimension": "มิติ",
     "dimension-entity": "มิติ ({{entity}})",
     "dimension-plural": "มิติ",

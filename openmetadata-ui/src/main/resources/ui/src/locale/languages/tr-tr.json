@@ -716,6 +716,7 @@
     "details": "Ayrıntılar",
     "developed-by-developer": "{{developer}} tarafından geliştirildi",
     "diagnostic-info": "Tanı Bilgisi",
+    "did-not-run": "Çalıştırılmadı",
     "dimension": "Boyut",
     "dimension-entity": "Boyut ({{entity}})",
     "dimension-plural": "Boyutlar",

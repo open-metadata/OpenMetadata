@@ -257,7 +257,9 @@ type MockConnectionConfigFormHandle = {
 
 type MockFiltersConfigFormProps = {
   onCancel?: () => void;
-  onSave: (event: { formData: { filterPattern: Record<string, never> } }) => void;
+  onSave: (event: {
+    formData: { filterPattern: Record<string, never> };
+  }) => void;
 };
 
 type MockFiltersConfigFormHandle = {

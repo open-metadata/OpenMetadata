@@ -13,6 +13,7 @@
 import {
   Button,
   Dialog,
+  Divider,
   Modal,
   ModalOverlay,
   ProgressBarBase,
@@ -61,7 +62,7 @@ const TestConnectionModal = ({
   const { t } = useTranslation();
 
   const [showRawLog, setShowRawLog] = useState(false);
-  const [expandedStepName, setExpandedStepName] = useState<string>();
+  const [expandedStepNames, setExpandedStepNames] = useState<string[]>([]);
   const [isGateExpanded, setIsGateExpanded] = useState(false);
 
   const resultByName = useMemo(
@@ -85,11 +86,6 @@ const TestConnectionModal = ({
 
   const gateResult = gateStep ? getConnectionStepResult(gateStep) : undefined;
 
-  const passedCount = useMemo(
-    () => testConnectionStepResult.filter((result) => result.passed).length,
-    [testConnectionStepResult]
-  );
-
   const completedCount = useMemo(
     () =>
       testConnectionStepResult.filter(
@@ -100,6 +96,15 @@ const TestConnectionModal = ({
   );
 
   const totalCount = testConnectionStep.length;
+
+  const capabilityPassedCount = useMemo(
+    () =>
+      capabilitySteps.filter((step) => getConnectionStepResult(step)?.passed)
+        .length,
+    [capabilitySteps, getConnectionStepResult]
+  );
+
+  const capabilityTotalCount = capabilitySteps.length;
   const requiredSteps = useMemo(
     () => testConnectionStep.filter((step) => step.mandatory),
     [testConnectionStep]
@@ -218,42 +223,44 @@ const TestConnectionModal = ({
       <Modal>
         <Dialog
           aria-label={t('label.connection-status')}
-          className="test-connection-status-modal"
+          data-testid="test-connection-status-modal"
           width={680}>
-          <div className="tw:flex tw:items-center tw:gap-3 tw:border-b tw:border-primary tw:px-5 tw:py-[18px]">
+          <div className="tw:flex tw:items-center tw:gap-3 tw:border-b tw:border-primary tw:px-5 tw:py-4">
             <div className="tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-primary tw:bg-primary tw:shadow-xs">
               {serviceLogo}
             </div>
             <div className="tw:min-w-0 tw:flex-1">
-              <div className="tw:text-md tw:font-bold tw:text-primary">
+              <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-5">
                 {t('label.connection-status')}
               </div>
-              <div className="tw:overflow-hidden tw:text-xs tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap">
+              <div className="tw:overflow-hidden tw:text-xs tw:text-quaternary tw:text-ellipsis tw:whitespace-nowrap tw:leading-4">
                 {connectionDisplayName}
               </div>
             </div>
             <Button
-              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-quaternary"
+              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-fg-quaternary"
               color="tertiary"
               data-testid="test-connection-close"
-              iconLeading={<XClose size={18} />}
-              size="sm"
+              iconLeading={<XClose size={20} />}
+              size="xs"
               onClick={handleModalClose}
             />
           </div>
-          <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-6 tw:py-5">
+          <div className="tw:flex tw:flex-col tw:bg-primary">
             {errorMessage && (
-              <InlineAlert
-                description={errorMessage.description}
-                heading={t(TEST_CONNECTION_FAILURE_MESSAGE)}
-                type="error"
-                onClose={handleCloseErrorMessage}
-              />
+              <div className="tw:px-5 tw:py-4">
+                <InlineAlert
+                  description={errorMessage.description}
+                  heading={t(TEST_CONNECTION_FAILURE_MESSAGE)}
+                  type="error"
+                  onClose={handleCloseErrorMessage}
+                />
+              </div>
             )}
 
             {isConnectionTimeout ? (
               <div
-                className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:border tw:border-primary tw:bg-primary tw:p-12 tw:text-center"
+                className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:bg-primary tw:p-5 tw:text-center"
                 data-testid="test-connection-timeout-widget">
                 <IconTimeOut height={100} width={100} />
                 <div className="tw:text-base tw:font-medium tw:leading-6 tw:text-primary">
@@ -274,66 +281,71 @@ const TestConnectionModal = ({
               </div>
             ) : (
               <>
-                <ConnectionStatusBanner
-                  gateResult={gateResult}
-                  isFailed={isFailed}
-                  isSuccessful={isSuccessful}
-                  isTestingConnection={isTestingConnection}
-                  isWarning={isWarning}
-                  passedCount={passedCount}
-                  progressPercent={progressPercent}
-                  t={t}
-                  totalCount={totalCount}
-                />
-
-                {isTestingConnection && (
-                  <ProgressBarBase value={progressPercent} />
-                )}
-
-                {gateStep && !isFailed && (
-                  <ConnectionGateCard
-                    gateDescription={gateDescription}
+                <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
+                  <ConnectionStatusBanner
                     gateResult={gateResult}
                     isFailed={isFailed}
-                    isGateExpanded={isGateExpanded}
+                    isSuccessful={isSuccessful}
                     isTestingConnection={isTestingConnection}
+                    isWarning={isWarning}
+                    passedCount={capabilityPassedCount}
+                    progressPercent={progressPercent}
                     t={t}
-                    onToggleGate={() =>
-                      setIsGateExpanded((current) => !current)
-                    }
+                    totalCount={capabilityTotalCount}
                   />
-                )}
 
-                {isComplete && isFailed && (
-                  <ConnectionRemediationCard
+                  {isTestingConnection && (
+                    <ProgressBarBase value={progressPercent} />
+                  )}
+                </div>
+
+                <Divider />
+                <div className="tw:flex tw:flex-col tw:gap-4 tw:bg-primary tw:px-5 tw:py-4">
+                  {gateStep && !isFailed && (
+                    <ConnectionGateCard
+                      gateDescription={gateDescription}
+                      gateResult={gateResult}
+                      isFailed={isFailed}
+                      isGateExpanded={isGateExpanded}
+                      isTestingConnection={isTestingConnection}
+                      t={t}
+                      onToggleGate={() =>
+                        setIsGateExpanded((current) => !current)
+                      }
+                    />
+                  )}
+
+                  {isComplete && isFailed && (
+                    <ConnectionRemediationCard
+                      capabilitySteps={capabilitySteps}
+                      connectionFailed={connectionFailed}
+                      gateResult={gateResult}
+                      getConnectionStepResult={getConnectionStepResult}
+                      t={t}
+                    />
+                  )}
+
+                  <ConnectionCapabilitySection
                     capabilitySteps={capabilitySteps}
                     connectionFailed={connectionFailed}
+                    expandedStepNames={expandedStepNames}
                     gateResult={gateResult}
+                    gateStepName={gateStep?.name}
                     getConnectionStepResult={getConnectionStepResult}
+                    isTestingConnection={isTestingConnection}
+                    setExpandedStepNames={setExpandedStepNames}
                     t={t}
                   />
-                )}
 
-                <ConnectionCapabilitySection
-                  capabilitySteps={capabilitySteps}
-                  connectionFailed={connectionFailed}
-                  expandedStepName={expandedStepName}
-                  gateResult={gateResult}
-                  gateStepName={gateStep?.name}
-                  getConnectionStepResult={getConnectionStepResult}
-                  isTestingConnection={isTestingConnection}
-                  setExpandedStepName={setExpandedStepName}
-                  t={t}
-                />
-
-                <ConnectionRawLogSection
-                  rawLog={rawLog}
-                  rawLogLineCount={rawLogLineCount}
-                  setShowRawLog={setShowRawLog}
-                  showRawLog={showRawLog}
-                  t={t}
-                  testConnectionStepResult={testConnectionStepResult}
-                />
+                  <ConnectionRawLogSection
+                    rawLog={rawLog}
+                    rawLogLineCount={rawLogLineCount}
+                    setShowRawLog={setShowRawLog}
+                    showRawLog={showRawLog}
+                    t={t}
+                    testConnectionStepResult={testConnectionStepResult}
+                  />
+                </div>
               </>
             )}
           </div>
