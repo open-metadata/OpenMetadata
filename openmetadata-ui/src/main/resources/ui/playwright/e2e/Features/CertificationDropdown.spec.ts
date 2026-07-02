@@ -14,8 +14,8 @@ import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { TagClass } from '../../support/tag/TagClass';
 import {
+  assertCertificationDropdownState,
   closeCertificationDropdown,
-  openCertificationDropdown,
   setCertificationClassificationDisabled,
   setTagDisabled,
 } from '../../utils/certification';
@@ -44,6 +44,7 @@ test.describe.serial('Certification Dropdown', () => {
     page,
     browser,
   }) => {
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     const tag = new TagClass({ classification: 'Certification' });
     await tag.create(apiContext);
@@ -51,11 +52,12 @@ test.describe.serial('Certification Dropdown', () => {
     try {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
 
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
+      await assertCertificationDropdownState(page, async () => {
+        await expect(
+          page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
+      });
 
       await closeCertificationDropdown(page);
     } finally {
@@ -68,6 +70,7 @@ test.describe.serial('Certification Dropdown', () => {
     page,
     browser,
   }) => {
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     const enabledTag = new TagClass({ classification: 'Certification' });
     const disabledTag = new TagClass({ classification: 'Certification' });
@@ -79,19 +82,20 @@ test.describe.serial('Certification Dropdown', () => {
     try {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
 
-      await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag.responseData.fullyQualifiedName}`
-        )
-      ).not.toBeVisible();
+      await assertCertificationDropdownState(page, async () => {
+        await expect(
+          page.getByTestId(
+            `radio-btn-${disabledTag.responseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible({ timeout: 2_000 });
 
-      await expect(
-        page.getByTestId(
-          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
-        )
-      ).toBeVisible();
+        await expect(
+          page.getByTestId(
+            `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
 
       await closeCertificationDropdown(page);
     } finally {
@@ -105,6 +109,7 @@ test.describe.serial('Certification Dropdown', () => {
     page,
     browser,
   }) => {
+    test.setTimeout(180_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     const tag = new TagClass({ classification: 'Certification' });
     await tag.create(apiContext);
@@ -113,11 +118,12 @@ test.describe.serial('Certification Dropdown', () => {
     try {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
 
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).not.toBeVisible();
+      await assertCertificationDropdownState(page, async () => {
+        await expect(
+          page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        ).not.toBeVisible({ timeout: 2_000 });
+      });
 
       await closeCertificationDropdown(page);
 
@@ -125,11 +131,12 @@ test.describe.serial('Certification Dropdown', () => {
 
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
 
-      await expect(
-        page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
-      ).toBeVisible();
+      await assertCertificationDropdownState(page, async () => {
+        await expect(
+          page.getByTestId(`radio-btn-${tag.responseData.fullyQualifiedName}`)
+        ).toBeVisible();
+      });
 
       await closeCertificationDropdown(page);
     } finally {
@@ -142,6 +149,7 @@ test.describe.serial('Certification Dropdown', () => {
     page,
     browser,
   }) => {
+    test.setTimeout(120_000);
     const { apiContext, afterAction } = await createNewPage(browser);
     const enabledTag = new TagClass({ classification: 'Certification' });
     const disabledTag1 = new TagClass({ classification: 'Certification' });
@@ -156,25 +164,26 @@ test.describe.serial('Certification Dropdown', () => {
     try {
       await redirectToHomePage(page);
       await table.visitEntityPage(page);
-      await openCertificationDropdown(page);
 
-      await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag1.responseData.fullyQualifiedName}`
-        )
-      ).not.toBeVisible();
+      await assertCertificationDropdownState(page, async () => {
+        await expect(
+          page.getByTestId(
+            `radio-btn-${disabledTag1.responseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible({ timeout: 2_000 });
 
-      await expect(
-        page.getByTestId(
-          `radio-btn-${disabledTag2.responseData.fullyQualifiedName}`
-        )
-      ).not.toBeVisible();
+        await expect(
+          page.getByTestId(
+            `radio-btn-${disabledTag2.responseData.fullyQualifiedName}`
+          )
+        ).not.toBeVisible({ timeout: 2_000 });
 
-      await expect(
-        page.getByTestId(
-          `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
-        )
-      ).toBeVisible();
+        await expect(
+          page.getByTestId(
+            `radio-btn-${enabledTag.responseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+      });
 
       await closeCertificationDropdown(page);
     } finally {

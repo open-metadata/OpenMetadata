@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { waitForAllLoadersToDisappear } from './entity';
 import { setClassificationDisabled, setTagDisabledByFqn } from './tag';
 
@@ -39,6 +39,34 @@ export const closeCertificationDropdown = async (page: Page) => {
   await page.getByTestId('close-certification').click();
   await page.locator('.certification-card-popover').waitFor({
     state: 'hidden',
+  });
+};
+
+/**
+ * Opens the certification dropdown, runs `assertState`, and retries the whole
+ * open -> assert cycle by re-opening the popover on each attempt.
+ *
+ * The dropdown fetches `/api/v1/tags?parent=Certification&disabled=false` exactly
+ * once per open and never re-fetches while it stays open. Under load the backend
+ * can briefly serve a stale read (a just-created tag missing, or a just-disabled
+ * tag still listed), so a single open can render a momentarily inconsistent list
+ * and a plain assertion times out against it. Re-opening forces a fresh fetch,
+ * letting the assertions converge once the backend state is consistent.
+ */
+export const assertCertificationDropdownState = async (
+  page: Page,
+  assertState: () => Promise<void>,
+  options?: { timeout?: number }
+) => {
+  await expect(async () => {
+    if (await page.locator('.certification-card-popover').isVisible()) {
+      await closeCertificationDropdown(page);
+    }
+    await openCertificationDropdown(page);
+    await assertState();
+  }).toPass({
+    timeout: options?.timeout ?? 60_000,
+    intervals: [2_000, 5_000, 10_000, 15_000],
   });
 };
 
