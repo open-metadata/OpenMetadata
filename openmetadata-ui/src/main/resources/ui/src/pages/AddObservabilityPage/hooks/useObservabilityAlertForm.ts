@@ -30,7 +30,20 @@ import {
 } from '../../../generated/entity/events/notificationTemplate';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  Effect,
+  EventFilterRule,
+  EventSubscription,
+  InputType,
+  PrefixCondition,
+} from '../../../generated/events/eventSubscription';
+import {
+  Effect as ResourceEffect,
+  EventFilterRule as ResourceEventFilterRule,
+  FilterResourceDescriptor,
+  InputType as ResourceInputType,
+  PrefixCondition as ResourcePrefixCondition,
+} from '../../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
@@ -54,6 +67,65 @@ import {
   ObservabilityFilterResourceDescriptor,
   UseObservabilityAlertFormReturn,
 } from '../AddObservabilityPage.interface';
+
+const getEventFilterRuleEffect = (
+  effect: ResourceEventFilterRule['effect']
+): EventFilterRule['effect'] =>
+  effect === ResourceEffect.Include ? Effect.Include : Effect.Exclude;
+
+const getEventFilterRuleInputType = (
+  inputType?: ResourceEventFilterRule['inputType']
+): EventFilterRule['inputType'] | undefined => {
+  switch (inputType) {
+    case ResourceInputType.None:
+      return InputType.None;
+    case ResourceInputType.Runtime:
+      return InputType.Runtime;
+    case ResourceInputType.Static:
+      return InputType.Static;
+    default:
+      return undefined;
+  }
+};
+
+const getEventFilterRulePrefixCondition = (
+  prefixCondition?: ResourceEventFilterRule['prefixCondition']
+): EventFilterRule['prefixCondition'] | undefined => {
+  switch (prefixCondition) {
+    case ResourcePrefixCondition.And:
+      return PrefixCondition.And;
+    case ResourcePrefixCondition.Or:
+      return PrefixCondition.Or;
+    default:
+      return undefined;
+  }
+};
+
+const toEventFilterRule = (rule: ResourceEventFilterRule): EventFilterRule => ({
+  arguments: rule.arguments,
+  condition: rule.condition,
+  description: rule.description,
+  displayName: rule.displayName,
+  effect: getEventFilterRuleEffect(rule.effect),
+  fullyQualifiedName: rule.fullyQualifiedName,
+  inputType: getEventFilterRuleInputType(rule.inputType),
+  name: rule.name,
+  prefixCondition: getEventFilterRulePrefixCondition(rule.prefixCondition),
+});
+
+const toEventFilterRules = (rules?: ResourceEventFilterRule[]) =>
+  rules?.map(toEventFilterRule);
+
+const toObservabilityFilterResourceDescriptor = (
+  resource: FilterResourceDescriptor
+): ObservabilityFilterResourceDescriptor => {
+  return {
+    containerEntities: resource.containerEntities,
+    name: resource.name,
+    supportedActions: toEventFilterRules(resource.supportedActions),
+    supportedFilters: toEventFilterRules(resource.supportedFilters),
+  };
+};
 
 export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
   const navigate = useNavigate();
@@ -105,7 +177,7 @@ export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
       const filterResources = await getResourceFunctions();
 
       setFilterResources(
-        filterResources.data as unknown as ObservabilityFilterResourceDescriptor[]
+        filterResources.data.map(toObservabilityFilterResourceDescriptor)
       );
     } catch {
       showErrorToast(

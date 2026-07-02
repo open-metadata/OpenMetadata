@@ -290,7 +290,7 @@ export function useAlertDetailsPage({
         children: <AlertDiagnosticInfoTab />,
       },
     ],
-    [alertDetails, isNotificationAlert, t, viewPermission]
+    [alertDetails, isNotificationAlert, t]
   );
 
   const handleTabChange = useCallback(
