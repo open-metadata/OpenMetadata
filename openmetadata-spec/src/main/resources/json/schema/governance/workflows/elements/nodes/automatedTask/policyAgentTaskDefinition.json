@@ -24,6 +24,11 @@
           "type": "integer",
           "default": 600,
           "minimum": 1
+        },
+        "accessType": {
+          "title": "Access Type Override",
+          "description": "When set, forces the accessType sent to the Policy Agent for every asset, overriding the value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted access (the connector emits REVOKE instead of GRANT); on revoke the connector strips whatever the principal holds on the scope (a revoke takes back everything, not a specific level) — requestedAccess on the payload is preserved for audit/UI display but is not used to decide what to tear down. When unset, the agent uses the accessType from the request payload.",
+          "$ref": "../../../../../metadataIngestion/policyagentconfig/databasePolicyConfig.json#/definitions/accessType"
         }
       },
       "additionalProperties": false,
@@ -77,12 +82,12 @@
       "required": ["relatedEntity"]
     },
     "branches": {
+      "description": "Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual', 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node authors declare only the branches their delegate actually emits, and each declared branch must have a matching outgoing edge in the workflow.",
       "type": "array",
       "items": { "type": "string" },
       "default": ["granted", "manual", "denied"],
       "additionalItems": false,
-      "minItems": 3,
-      "maxItems": 3
+      "minItems": 1
     }
   }
 }
