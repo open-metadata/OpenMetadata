@@ -13,8 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import { getDefaultAdminAPIContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addTermRelation,
@@ -42,7 +41,7 @@ const termFromC = new GlossaryTerm(glossaryC);
 const termC2 = new GlossaryTerm(glossaryC);
 
 test.beforeAll('Seed test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await glossaryA.create(apiContext);
   await termA1.create(apiContext);
@@ -69,7 +68,7 @@ test.beforeAll('Seed test data', async ({ browser }) => {
 });
 
 test.afterAll('Cleanup test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await termA1Grandchild.delete(apiContext);
   await termA1Child.delete(apiContext);
