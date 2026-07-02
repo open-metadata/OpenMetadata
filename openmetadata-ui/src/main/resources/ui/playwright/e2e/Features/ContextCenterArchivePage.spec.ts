@@ -12,7 +12,12 @@
  */
 
 import { expect } from '@playwright/test';
-import { createNewPage, redirectToHomePage, uuid, getDefaultAdminAPIContext } from '../../utils/common';
+import {
+  createNewPage,
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   ContextCenterFolder,
   getDocumentRowByName,
@@ -29,7 +34,6 @@ import {
   waitForDocumentPermanentlyDeleted,
 } from '../../utils/ContextCenterUtil';
 import { test as base } from '../fixtures/pages';
-
 
 const test = base;
 
@@ -450,26 +454,26 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     // ── 4. Soft-delete the folder via API ────────────────────────────────────
 
     await test.step('soft-delete the folder via API', async () => {
-      const folderId =  folder.id
-       await getFolderTreeItem(page, folder.displayName).hover();   // reveals the hidden delete button
+      const folderId = folder.id;
+      await getFolderTreeItem(page, folder?.displayName || folder.name).hover(); // reveals the hidden delete button
 
-  const deleteFolderBtn = page.getByTestId(`delete-folder-btn-${folderId}`);
-  await deleteFolderBtn.scrollIntoViewIfNeeded();
-  await expect(deleteFolderBtn).toBeVisible();
-  await deleteFolderBtn.click();
+      const deleteFolderBtn = page.getByTestId(`delete-folder-btn-${folderId}`);
+      await deleteFolderBtn.scrollIntoViewIfNeeded();
+      await expect(deleteFolderBtn).toBeVisible();
+      await deleteFolderBtn.click();
 
-  await expect(page.getByTestId('modal-header')).toBeVisible();
+      await expect(page.getByTestId('modal-header')).toBeVisible();
 
-  const folderDeleteResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes(`/api/v1/contextCenter/drive/folders/${folderId}`) &&
-      res.request().method() === 'DELETE'
-  );
-  await page.getByTestId('confirm-button').click();
-  const folderDeleteRes = await folderDeleteResPromise;
-  expect(folderDeleteRes.status()).toBe(200);
-      
-      
+      const folderDeleteResPromise = page.waitForResponse(
+        (res) =>
+          res
+            .url()
+            .includes(`/api/v1/contextCenter/drive/folders/${folderId}`) &&
+          res.request().method() === 'DELETE'
+      );
+      await page.getByTestId('confirm-button').click();
+      const folderDeleteRes = await folderDeleteResPromise;
+      expect(folderDeleteRes.status()).toBe(200);
     });
 
     // ── 5. File is absent from documents search ──────────────────────────────
@@ -505,12 +509,12 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
     // ── 6. Archive page UI — file row is absent ───────────────────────────────
 
     await test.step('file should be visibile in the archive page', async () => {
-      const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+      const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+        browser
+      );
       await waitForDocumentInArchive(apiContext, documentId);
       await navigateToArchive(page);
-      await expect(
-        page.getByTestId(`archive-row-${documentId}`)
-      ).toBeVisible();
+      await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
     });
   });
 });
