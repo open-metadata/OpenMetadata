@@ -26,8 +26,7 @@ GREENPLUM_GET_TABLE_NAMES = """
         and n.nspname = :schema
 """
 
-GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
-    """
+GREENPLUM_PARTITION_DETAILS = textwrap.dedent("""
     select
         ns.nspname as schema,
         par.relname as table_name,
@@ -57,8 +56,7 @@ GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
     where par.relname='{table_name}' and  ns.nspname='{schema_name}'
-    """
-)
+    """)
 
 GREENPLUM_TABLE_COMMENTS = """
     SELECT n.nspname as schema,
@@ -135,6 +133,58 @@ GREENPLUM_SQL_COLUMNS = """
         AND a.attnum > 0 AND NOT a.attisdropped
         ORDER BY a.attnum
     """
+# Generates CREATE TABLE DDL for a given schema using a single bulk query.
+# Replaces MetaData.reflect() which issues ~8 catalog queries per table.
+# Uses pg_get_expr instead of the deprecated adsrc column (removed in PG 12).
+# Includes Greenplum-specific storage options and distribution policy.
+GREENPLUM_TABLE_DDLS = """
+    SELECT
+        n.nspname AS schema_name,
+        c.relname AS table_name,
+        'CREATE TABLE ' || n.nspname || '.' || c.relname || ' (' || chr(10) ||
+        string_agg(
+            '    ' || a.attname || ' ' ||
+            pg_catalog.format_type(a.atttypid, a.atttypmod) ||
+            CASE WHEN a.attnotnull THEN ' NOT NULL' ELSE '' END ||
+            CASE
+                WHEN d.adbin IS NOT NULL
+                THEN ' DEFAULT ' || pg_catalog.pg_get_expr(d.adbin, d.adrelid)
+                ELSE ''
+            END,
+            ',' || chr(10) ORDER BY a.attnum
+        ) || chr(10) || ')' ||
+        CASE
+            WHEN c.reloptions IS NOT NULL
+            THEN chr(10) || 'WITH (' || array_to_string(c.reloptions, ', ') || ')'
+            ELSE ''
+        END ||
+        CASE
+            WHEN (
+                SELECT array_length(dp.distkey, 1)
+                FROM gp_distribution_policy dp
+                WHERE dp.localoid = c.oid
+            ) > 0
+            THEN chr(10) || 'DISTRIBUTED BY (' || (
+                SELECT string_agg(att.attname, ', ' ORDER BY att.attnum)
+                FROM gp_distribution_policy dp
+                JOIN pg_attribute att ON att.attrelid = c.oid
+                    AND att.attnum = ANY(dp.distkey)
+                    AND NOT att.attisdropped
+                WHERE dp.localoid = c.oid
+            ) || ')'
+            ELSE chr(10) || 'DISTRIBUTED RANDOMLY'
+        END AS ddl
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    JOIN pg_attribute a ON a.attrelid = c.oid
+        AND a.attnum > 0
+        AND NOT a.attisdropped
+    LEFT JOIN pg_attrdef d ON d.adrelid = c.oid AND d.adnum = a.attnum
+    WHERE n.nspname = :schema_name
+      AND c.relkind = 'r'
+    GROUP BY n.nspname, c.relname, c.reloptions, c.oid
+"""
+
 
 GREENPLUM_GET_SERVER_VERSION = """
 show server_version
