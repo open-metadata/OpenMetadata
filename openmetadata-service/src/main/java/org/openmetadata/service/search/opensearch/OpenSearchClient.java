@@ -10,6 +10,7 @@ import static org.openmetadata.service.util.AwsCredentialsUtil.isAwsIamAuthEnabl
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URI;
 import java.security.KeyStoreException;
 import java.util.HashMap;
 import java.util.List;
@@ -106,6 +107,7 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
   private final OpenSearchSearchManager searchManager;
 
+  private final boolean isAoss;
   private final NLQService nlqService;
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
@@ -113,8 +115,16 @@ public class OpenSearchClient implements SearchClient {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
+    this.isAoss = checkIsAoss(config);
     AwsConfiguration awsConfig = config != null ? config.getAws() : null;
     boolean useIamAuth = isAwsIamAuthEnabled(awsConfig);
+
+    boolean isAoss = false;
+    if (config != null && config.getHost() != null && config.getHost().endsWith(".aoss.amazonaws.com")) {
+      isAoss = true;
+    } else if (awsConfig != null && "aoss".equals(awsConfig.getServiceName())) {
+      isAoss = true;
+    }
 
     if (useIamAuth) {
       this.awsHttpClient = AwsCrtHttpClient.builder().build();
@@ -134,7 +144,7 @@ public class OpenSearchClient implements SearchClient {
     this.nlqService = nlqService;
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
-    genericManager = new OpenSearchGenericManager(newClient, transport);
+    genericManager = new OpenSearchGenericManager(newClient, transport, isAoss);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
     searchManager =
@@ -1132,6 +1142,51 @@ public class OpenSearchClient implements SearchClient {
       throws IOException {
     return entityManager.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  @Override
+  public boolean isAoss() {
+    return isAoss;
+  }
+
+  private static boolean checkIsAoss(ElasticSearchConfiguration config) {
+    if (config == null) {
+      return false;
+    }
+
+    // Secondary signal: Check AWS service name configuration
+    if (config.getAws() != null && "aoss".equalsIgnoreCase(config.getAws().getServiceName())) {
+      return true;
+    }
+
+    String hostConfig = config.getHost();
+    if (StringUtils.isBlank(hostConfig)) {
+      return false;
+    }
+    for (String host : hostConfig.split(",")) {
+      String trimmedHost = host.trim().toLowerCase();
+      if (trimmedHost.isEmpty()) {
+        continue;
+      }
+
+      String hostname = trimmedHost;
+      try {
+        // Add protocol if missing to make URI parsing easier
+        String uriString = trimmedHost.contains("://") ? trimmedHost : "https://" + trimmedHost;
+        URI uri = URI.create(uriString);
+        hostname = uri.getHost();
+      } catch (Exception e) {
+        // If URI parsing fails, strip port manually as fallback
+        if (hostname.contains(":")) {
+          hostname = hostname.split(":")[0];
+        }
+      }
+
+      if (hostname != null && hostname.endsWith(".aoss.amazonaws.com")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @Override

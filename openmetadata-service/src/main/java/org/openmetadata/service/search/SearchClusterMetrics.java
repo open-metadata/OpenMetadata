@@ -67,19 +67,21 @@ public class SearchClusterMetrics {
       OpenSearchClient osClient,
       long totalEntities,
       int maxDbConnections) {
+    if (osClient.isAoss()) {
+      LOG.debug("AWS OpenSearch Serverless detected, using conservative metrics");
+      return getConservativeDefaults(searchRepository, totalEntities, maxDbConnections);
+    }
     try {
       var clusterStats = osClient.clusterStats();
       var nodesStats = osClient.nodesStats();
       var clusterSettings = osClient.clusterSettings();
 
-      LOG.debug("ClusterStats response: {}", clusterStats);
-      LOG.debug("NodesStats response: {}", nodesStats);
-
-      int totalNodes = clusterStats.nodes().count().total();
-      int totalShards =
-          clusterStats.indices().shards().total() != null
-              ? clusterStats.indices().shards().total().intValue()
-              : 0;
+      int totalNodes = clusterStats != null && clusterStats.nodes() != null && clusterStats.nodes().count() != null
+          ? clusterStats.nodes().count().total()
+          : 1;
+      int totalShards = clusterStats != null && clusterStats.indices() != null && clusterStats.indices().shards() != null && clusterStats.indices().shards().total() != null
+          ? clusterStats.indices().shards().total().intValue()
+          : 0;
 
       double cpuUsagePercent = osClient.averageCpuPercentFromNodesStats(nodesStats);
       var jvmStats = osClient.extractJvmMemoryStats(nodesStats);
