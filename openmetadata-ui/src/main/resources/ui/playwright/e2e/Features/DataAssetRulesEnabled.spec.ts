@@ -51,8 +51,8 @@ import {
   clickOutside,
   redirectToHomePage,
 } from '../../utils/common';
-import { assignDomainWidget } from '../../utils/domain';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,

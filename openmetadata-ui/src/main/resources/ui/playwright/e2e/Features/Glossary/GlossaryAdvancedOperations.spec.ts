@@ -24,14 +24,11 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
-import {
-  assignDomainWidget,
-  removeDomainWidget,
-} from '../../../utils/domain';
 import {
   addMultiOwnerInDialog,
   openAddGlossaryTermModal,
