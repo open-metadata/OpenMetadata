@@ -45,8 +45,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +86,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchAsyncClient asyncClient;
   private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
+
+  // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
+  // stalled search backend can't hold the thread indefinitely; the async result is still handled.
+  private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
@@ -174,21 +181,29 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
           }
         });
 
-    // Block until the bulk completes (refresh=True makes the docs searchable) so a realtime
-    // column-index write is durable before the caller returns — matching the synchronous
-    // single-doc createEntity path. Without this the bulk was fire-and-forget: under concurrent
-    // load a search right after a table create could observe the table doc but not its column
-    // docs. Failures are routed to the retry queue in whenComplete above; join only re-surfaces
-    // them here, so they are swallowed.
+    // Await the bulk so realtime indexing is read-your-write consistent: createEntities runs on
+    // the request thread post-commit (SearchIndexHandler.isAsync() is false), like the synchronous
+    // single-doc createEntity path, so a create-then-search in the same flow must see the docs
+    // (refresh=True above makes them searchable the moment the write lands). The wait is bounded so
+    // a stalled backend cannot hold the request thread; the whenComplete handler routes any failure
+    // to the retry queue independently of this wait.
     awaitBulkCompletion(future, indexName);
   }
 
   private void awaitBulkCompletion(CompletableFuture<BulkResponse> future, String indexName) {
     try {
-      future.join();
-    } catch (CompletionException failuresAlreadyRetried) {
+      future.get(BULK_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+    } catch (TimeoutException timedOut) {
+      LOG.warn(
+          "createEntities bulk for index {} did not complete within {}s; its result will be "
+              + "handled asynchronously and any failure retried",
+          indexName,
+          BULK_AWAIT_TIMEOUT_SECONDS);
+    } catch (ExecutionException | CancellationException failuresAlreadyRetried) {
       LOG.debug(
-          "createEntities bulk for index {} completed exceptionally; retries were enqueued",
+          "createEntities bulk for index {} finished exceptionally; retries were enqueued",
           indexName,
           failuresAlreadyRetried);
     }
