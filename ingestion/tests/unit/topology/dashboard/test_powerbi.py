@@ -41,6 +41,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Tile,
     UpstreaDataflow,
     UpstreamDatamart,
+    Workspaces,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
@@ -2416,6 +2417,116 @@ class PowerBIUnitTest(TestCase):
 
         successful = [r for r in lineage_requests if r.right is not None]
         assert len(successful) == 1
+
+    @pytest.mark.order(55)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_yield_dashboard_advances_workspace_progress(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        for dash in (
+            PowerBIDashboard(id="dash-1", displayName="One", tiles=[]),
+            PowerBIDashboard(id="dash-2", displayName="Two", tiles=[]),
+        ):
+            self.powerbi.state.add_filtered_dashboard(dash)
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Sales")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        self.powerbi._open_group_progress(
+            "Sales",
+            {"Dashboard": None, "Chart": None, "DashboardDataModel": None},
+        )
+        list(self.powerbi.yield_dashboard(Group(id="ws-1", name="Sales")))
+
+        assert self.powerbi.progress.assets_ingested() == 2
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "Sales.Dashboard" in out
+        assert "Dashboard 2" in out
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_tracks_workspace_group(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_a = Group(id="wa", name="Alpha")
+        ws_b = Group(id="wb", name="Beta")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_a, ws_b]))
+        self.powerbi.get_dashboards_list = MagicMock(return_value=[])
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["wa", "wb"]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, None)]
+        assert self.powerbi.progress.snapshot() is None
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_does_not_count_workspace_failing_before_open(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_ok = Group(id="ok", name="Ok")
+        ws_bad = Group(id="bad", name="Bad")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_bad, ws_ok]))
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+        self.powerbi.get_dashboards_list = MagicMock(side_effect=[RuntimeError("boom"), []])
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["ok"]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 1, None)]
+
+    @pytest.mark.order(57)
+    def test_admin_workspace_progress_total_reconciles_to_active_scan_results(self):
+        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.pagination_entity_per_page = 100
+
+        candidate_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)]
+        active_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}", state="Active") for index in range(40)]
+        skipped_workspaces = [
+            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Deleted") for index in range(40, 44)
+        ]
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = MagicMock()
+        self.powerbi.client.api_client.fetch_all_workspaces = MagicMock(return_value=candidate_workspaces)
+        self.powerbi.client.api_client.initiate_workspace_scan = MagicMock(return_value=MagicMock(id="scan-1"))
+        self.powerbi.client.api_client.wait_for_scan_complete = MagicMock(return_value=True)
+        self.powerbi.client.api_client.fetch_workspace_scan_result = MagicMock(
+            return_value=Workspaces(workspaces=active_workspaces + skipped_workspaces)
+        )
+
+        produced = list(self.powerbi.get_admin_workspace_data())
+
+        assert [workspace.id for workspace in produced] == [f"ws-{index}" for index in range(40)]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 0, 40)]
+
+    @pytest.mark.order(58)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_unnamed_workspace_keys_progress_on_id(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        self.powerbi.state.add_filtered_dashboard(PowerBIDashboard(id="dash-1", displayName="One", tiles=[]))
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-x", name=None)
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        assert self.powerbi._progress_group_name() == "ws-x"
+
+        self.powerbi._open_group_progress("ws-x", {"Dashboard": None})
+        list(self.powerbi.yield_dashboard(Group(id="ws-x", name=None)))
+
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "ws-x.Dashboard" in out
+        assert "None.Dashboard" not in out
 
     @pytest.mark.order(54)
     def test_yield_datamodel_for_datamart(self):

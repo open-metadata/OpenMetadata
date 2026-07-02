@@ -416,6 +416,7 @@ public final class TaskWorkflowLifecycleResolver {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
