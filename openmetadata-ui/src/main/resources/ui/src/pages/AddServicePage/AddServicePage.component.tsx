@@ -337,6 +337,7 @@ const AddServicePage = () => {
   }, []);
 
   useEffect(() => {
+    clearTimeout(blurTimerRef.current);
     setActiveField(activeServiceStep === 2 ? 'serviceName' : '');
     setActiveFieldMeta(undefined);
   }, [activeServiceStep]);
