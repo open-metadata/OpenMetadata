@@ -8,10 +8,9 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Validate the logic and status handling of the base workflow
-"""
+"""Validate the logic and status handling of the base workflow."""
 
+import json
 from typing import Iterable, Tuple  # noqa: UP035
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
@@ -107,6 +106,20 @@ class SimpleSink(Sink):
         """Nothing to do"""
 
 
+class OkSink(Sink):
+    """Sink that never produces failures — every element succeeds."""
+
+    def _run(self, element: int) -> Either:
+        return Either(right=element)
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "OkSink":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+
 class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
@@ -116,6 +129,14 @@ class SimpleWorkflow(IngestionWorkflow):
         self.source = SimpleSource()
 
         self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+
+
+class OkWorkflow(IngestionWorkflow):
+    """Workflow wired to OkSink — produces zero failures."""
+
+    def set_steps(self):
+        self.source = SimpleSource()
+        self.steps: tuple[Step] = (OkSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -129,7 +150,6 @@ class BrokenWorkflow(IngestionWorkflow):
         self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
 
 
-# Pass only the required details so that the workflow can be initialized
 config = OpenMetadataWorkflowConfig(
     source=Source(
         type="simple",
@@ -337,3 +357,60 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
             mock_step_close.assert_called_once()
+
+
+def test_write_status_file_writes_expected_shape(tmp_path):
+    workflow = OkWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    assert status_file.exists()
+    payload = json.loads(status_file.read_text())
+
+    assert payload["pipeline_type"] == "simple"
+    assert payload["ingestion_pipeline_fqn"] is None
+    assert payload["success"] is True
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+
+
+def test_write_status_file_reports_failure_shape_with_sink_errors(tmp_path):
+    workflow = SimpleWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+    sink_steps_with_failures = [s for s in payload["steps"] if s.get("failures")]
+    assert len(sink_steps_with_failures) >= 1
+    assert payload["success"] is False
+
+
+def test_write_status_file_reports_failure_when_source_fails(tmp_path):
+    workflow = BrokenWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+    assert payload["success"] is False
+
+
+def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
+    fqn_config = config.model_copy(update={"ingestionPipelineFQN": "test_service.test_pipeline"})
+    workflow = SimpleWorkflow(config=fqn_config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert payload["ingestion_pipeline_fqn"] == "test_service.test_pipeline"

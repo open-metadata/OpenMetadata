@@ -222,6 +222,12 @@ ignore = [
 # lands in a later stage tests don't immediately error out.
 "tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
 "ingestion/tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
+# v2 CLI E2E framework uses relative imports by design (connector-centric
+# layout — connectors live in subdirs and import from `..core.*` / `.connector`).
+# `T201` (print) is allowed in the top-level conftest for the session-start
+# posture banner. Path listed twice for the dual-cwd pattern above.
+"tests/cli_e2e_v2/**/*.py" = ["S101", "PLR2004", "PLC0415", "TID252", "T201"]
+"ingestion/tests/cli_e2e_v2/**/*.py" = ["S101", "PLR2004", "PLC0415", "TID252", "T201"]
 # Auto-generated from JSON Schema — never edit, never lint.
 "src/metadata/generated/**" = ["ALL"]
 "ingestion/src/metadata/generated/**" = ["ALL"]
