@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { parseInt } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as HealthCheckIcon } from '../../../../assets/svg/ic-green-heart-border.svg';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
+import {
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+} from '../../../../constants/Color.constants';
 import { INITIAL_ENTITY_HEALTH_MATRIX } from '../../../../constants/profiler.constant';
 import { fetchEntityCoveredWithDQ } from '../../../../rest/dataQualityDashboardAPI';
 import { getTestCaseTabPath } from '../../../../utils/DataQuality/DataQualityPureUtils';
@@ -54,12 +58,12 @@ const EntityHealthStatusPieChartWidget = ({
         {
           name: t('label.healthy'),
           value: entityHealthStates.healthy,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.unhealthy'),
           value: entityHealthStates.unhealthy,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -101,19 +105,24 @@ const EntityHealthStatusPieChartWidget = ({
     fetchEntityHealthSummary();
   }, [chartFilter]);
 
+  if (isLoading) {
+    return (
+      <Card className={className}>
+        <Skeleton height={200} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card
-      className={className}
-      data-testid="entity-health-pie-chart-widget"
-      loading={isLoading}>
+    <Card className={className} data-testid="entity-health-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background health-check-icon icon-container">
             <HealthCheckIcon />
           </div>
-          <Typography.Text className="font-medium text-md">
+          <Typography as="span" className="font-semibold text-sm">
             {t('label.healthy-data-asset-plural')}
-          </Typography.Text>
+          </Typography>
         </div>
         <CustomPieChart
           showLegends

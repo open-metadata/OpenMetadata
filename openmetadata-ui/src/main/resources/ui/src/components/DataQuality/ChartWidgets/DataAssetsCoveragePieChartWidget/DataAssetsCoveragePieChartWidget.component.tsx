@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { parseInt } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
+import {
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -65,12 +68,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -118,16 +121,24 @@ const DataAssetsCoveragePieChartWidget = ({
     fetchDataAssetsCoverage();
   }, [chartFilter]);
 
+  if (isLoading) {
+    return (
+      <Card className={className}>
+        <Skeleton height={200} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card className={className} loading={isLoading}>
+    <Card className={className}>
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
             <DataAssetsCoverageIcon />
           </div>
-          <Typography.Text className="font-medium text-md">
+          <Typography as="span" className="font-semibold text-sm">
             {t('label.data-asset-plural-coverage')}
-          </Typography.Text>
+          </Typography>
         </div>
         <CustomPieChart
           showLegends

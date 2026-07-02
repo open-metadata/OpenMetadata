@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { isNull, isUndefined } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -40,13 +40,15 @@ const IncidentTimeChartWidget = ({
     const avgTime = totalTime > 0 ? totalTime / chartData.length : 0;
 
     return (
-      <Typography.Paragraph
-        className="font-semibold display-xs m-b-0"
-        data-testid="average-time">
+      <Typography
+        as="p"
+        data-testid="average-time"
+        size="text-xl"
+        weight="semibold">
         {chartData.length > 0
           ? convertMillisecondsToHumanReadableFormat(avgTime)
           : '--'}
-      </Typography.Paragraph>
+      </Typography>
     );
   }, [chartData]);
 
@@ -83,14 +85,23 @@ const IncidentTimeChartWidget = ({
     getRespondTimeMetrics();
   }, [chartFilter, incidentMetricType]);
 
+  if (isChartLoading) {
+    return (
+      <Card className="custom-chart-background">
+        <Skeleton height={120} width="100%" />
+      </Card>
+    );
+  }
+
   return (
     <Card
       className="custom-chart-background"
-      data-testid={`incident-${incidentMetricType}-time-chart-widget`}
-      loading={isChartLoading}>
-      <Typography.Paragraph className="text-md font-semibold">
-        {title}
-      </Typography.Paragraph>
+      data-testid={`incident-${incidentMetricType}-time-chart-widget`}>
+      <div className="tw:mb-4">
+        <Typography as="p" className="text-sm font-semibold">
+          {title}
+        </Typography>
+      </div>
 
       {isUndefined(redirectPath) ? (
         avgTimeValue
