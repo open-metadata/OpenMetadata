@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   lazy,
@@ -49,6 +48,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
@@ -58,7 +58,6 @@ import { getEntityFeedLink } from '../../utils/EntityPureUtils';
 import { handleEntityCreationError } from '../../utils/formUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getSettingPath } from '../../utils/RouterUtils';
-import { ConnectionFieldSection } from '../../utils/ServiceConnectionUtils';
 import {
   getEntityTypeFromServiceCategory,
   getServiceRouteFromServiceType,
@@ -108,16 +107,17 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
-  const [activeField, setActiveField] = useState<string>('');
-  const [activeFieldMeta, setActiveFieldMeta] = useState<
-    | { title?: string; description?: string; section?: ConnectionFieldSection }
-    | undefined
-  >();
+  const {
+    activeField,
+    activeFieldMeta,
+    handleFieldBlur,
+    handleFieldFocus,
+    resetActiveField,
+  } = useFieldFocusManagement();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
   const filtersFormRef = useRef<FiltersConfigFormHandle>(null);
-  const blurTimerRef = useRef<number>();
   const {
     isServiceNameChecking,
     nameError,
@@ -132,7 +132,7 @@ const AddServicePage = () => {
 
   const handleConnectorChangeClick = useCallback(() => {
     resetNameValidation();
-    setActiveField('');
+    resetActiveField();
     setActiveServiceStep(1);
     setIsConnectionVerified(false);
     setServiceConfig({
@@ -303,43 +303,8 @@ const AddServicePage = () => {
     }
   };
 
-  const handleFieldBlur = useCallback(() => {
-    blurTimerRef.current = Number(
-      setTimeout(() => {
-        setActiveField('');
-        setActiveFieldMeta(undefined);
-      }, 100)
-    );
-  }, []);
-
-  const handleFieldFocus = (
-    fieldName: string,
-    schemaMeta?: {
-      title?: string;
-      description?: string;
-      section?: ConnectionFieldSection;
-    }
-  ) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    clearTimeout(blurTimerRef.current);
-    blurTimerRef.current = Number(
-      setTimeout(() => {
-        setActiveField(fieldName);
-        setActiveFieldMeta(schemaMeta);
-      }, 50)
-    );
-  };
-
   useEffect(() => {
-    return () => clearTimeout(blurTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    clearTimeout(blurTimerRef.current);
-    setActiveField(activeServiceStep === 2 ? 'serviceName' : '');
-    setActiveFieldMeta(undefined);
+    resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(

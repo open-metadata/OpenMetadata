@@ -47,6 +47,7 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
@@ -56,7 +57,6 @@ import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
-import { ConnectionFieldSection } from '../../utils/ServiceConnectionUtils';
 import {
   getServiceRouteFromServiceType,
   getServiceType,
@@ -104,11 +104,8 @@ function EditConnectionFormPage() {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<BreadcrumbItem[]>(
     []
   );
-  const [activeField, setActiveField] = useState<string>('');
-  const [activeFieldMeta, setActiveFieldMeta] = useState<
-    | { title?: string; description?: string; section?: ConnectionFieldSection }
-    | undefined
-  >();
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
 
@@ -221,23 +218,6 @@ function EditConnectionFormPage() {
   const handleConfirmedStepBack = () => {
     setShowBackStepConfirm(false);
     handleFiltersInputBackClick();
-  };
-
-  const handleFieldFocus = (
-    fieldName: string,
-    schemaMeta?: {
-      title?: string;
-      description?: string;
-      section?: ConnectionFieldSection;
-    }
-  ) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-      setActiveFieldMeta(schemaMeta);
-    }, 50);
   };
 
   const handleBreadcrumbAction = useCallback(
