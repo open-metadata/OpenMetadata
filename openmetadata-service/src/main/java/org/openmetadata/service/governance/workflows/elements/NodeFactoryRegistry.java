@@ -49,7 +49,8 @@ public class NodeFactoryRegistry {
     extensions.remove(subType);
   }
 
-  public Optional<NodeFactoryExtension> getExtension(NodeSubType subType) {
+  // Package-private: only tests read the registry (production uses register/create).
+  Optional<NodeFactoryExtension> getExtension(NodeSubType subType) {
     return Optional.ofNullable(extensions.get(subType));
   }
 
