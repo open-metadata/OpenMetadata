@@ -1,5 +1,6 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
@@ -13,6 +14,7 @@ import java.io.StringWriter;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
@@ -37,6 +39,26 @@ public class OpenMetadataAssetServletTest {
 
     // Initialize servlet with /assets as resource path
     servlet = new OpenMetadataAssetServlet("/", "/assets", "/", "index.html", webConfiguration);
+  }
+
+  private void assertFinalCacheControlHeader(String expectedValue) {
+    ArgumentCaptor<String> cacheControlValues = ArgumentCaptor.forClass(String.class);
+    verify(response, atLeastOnce()).setHeader(eq("Cache-Control"), cacheControlValues.capture());
+
+    List<String> capturedValues = cacheControlValues.getAllValues();
+    assertEquals(expectedValue, capturedValues.get(capturedValues.size() - 1));
+  }
+
+  private void mockStaticAssetRequest(String path) {
+    when(request.getRequestURI()).thenReturn(path);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getPathInfo()).thenReturn(path);
+    when(request.getServletPath()).thenReturn("");
+    when(request.getHeader("Accept-Encoding")).thenReturn(null);
+    when(request.getMethod()).thenReturn("GET");
+    when(request.getDateHeader(anyString())).thenReturn(-1L);
+    when(request.getHeader("If-None-Match")).thenReturn(null);
+    when(request.getHeader("If-Modified-Since")).thenReturn(null);
   }
 
   @Test
@@ -275,20 +297,41 @@ public class OpenMetadataAssetServletTest {
   @Test
   public void testHashedAssetGetsImmutableCacheControl() throws Exception {
     String path = "/assets/index-Z3O_FBkA.js";
-    when(request.getRequestURI()).thenReturn(path);
-    when(request.getContextPath()).thenReturn("");
-    when(request.getPathInfo()).thenReturn(path);
-    when(request.getServletPath()).thenReturn("");
-    when(request.getHeader("Accept-Encoding")).thenReturn(null);
-    when(request.getMethod()).thenReturn("GET");
-    when(request.getDateHeader(anyString())).thenReturn(-1L);
-    when(request.getHeader("If-None-Match")).thenReturn(null);
-    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(webConfiguration.getCacheControl()).thenReturn("no-cache, no-store, must-revalidate");
+    mockStaticAssetRequest(path);
 
     servlet.doGet(request, response);
 
-    // Hashed filenames are content-addressed, so they're safe to cache forever.
-    verify(response).setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    assertFinalCacheControlHeader("public, max-age=31536000, immutable");
+  }
+
+  @Test
+  public void testHashedImageAssetsGetImmutableCacheControl() throws Exception {
+    when(webConfiguration.getCacheControl()).thenReturn("no-cache, no-store, must-revalidate");
+
+    for (String path :
+        List.of(
+            "/images/logo-DcT5-tmD.png",
+            "/images/service-icon-kafka-Z3O_FBkA.webp",
+            "/images/landing-page-header-bg-DcT5-tmD.svg")) {
+      mockStaticAssetRequest(path);
+
+      servlet.doGet(request, response);
+
+      assertFinalCacheControlHeader("public, max-age=31536000, immutable");
+      clearInvocations(response);
+    }
+  }
+
+  @Test
+  public void testUnhashedImageDoesNotGetImmutableCacheControl() throws Exception {
+    String path = "/images/logo.png";
+    when(webConfiguration.getCacheControl()).thenReturn("no-cache, no-store, must-revalidate");
+    mockStaticAssetRequest(path);
+
+    servlet.doGet(request, response);
+
+    assertFinalCacheControlHeader("no-cache, no-store, must-revalidate");
   }
 
   @Test
@@ -297,20 +340,12 @@ public class OpenMetadataAssetServletTest {
     // so the immutable header would be wrong (a future deploy could change the file
     // body while the URL stays the same).
     String path = "/assets/manifest.json";
-    when(request.getRequestURI()).thenReturn(path);
-    when(request.getContextPath()).thenReturn("");
-    when(request.getPathInfo()).thenReturn(path);
-    when(request.getServletPath()).thenReturn("");
-    when(request.getHeader("Accept-Encoding")).thenReturn(null);
-    when(request.getMethod()).thenReturn("GET");
-    when(request.getDateHeader(anyString())).thenReturn(-1L);
-    when(request.getHeader("If-None-Match")).thenReturn(null);
-    when(request.getHeader("If-Modified-Since")).thenReturn(null);
+    when(webConfiguration.getCacheControl()).thenReturn("no-cache, no-store, must-revalidate");
+    mockStaticAssetRequest(path);
 
     servlet.doGet(request, response);
 
-    verify(response, never())
-        .setHeader(eq("Cache-Control"), eq("public, max-age=31536000, immutable"));
+    assertFinalCacheControlHeader("no-cache, no-store, must-revalidate");
   }
 
   @Test

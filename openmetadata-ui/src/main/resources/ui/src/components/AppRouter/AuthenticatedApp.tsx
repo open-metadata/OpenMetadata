@@ -12,11 +12,7 @@
  */
 
 import { GlobalStyles, ThemeProvider } from '@mui/material';
-import {
-  createMuiTheme,
-  SnackbarContent,
-} from '@openmetadata/ui-core-components';
-import { SnackbarProvider } from 'notistack';
+import { createMuiTheme } from '@openmetadata/ui-core-components';
 import { FC, ReactNode, useMemo } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { DndProvider } from 'react-dnd';
@@ -63,44 +59,29 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
       <ThemeProvider theme={muiTheme}>
         <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
 
-        <SnackbarProvider
-          Components={{
-            default: SnackbarContent,
-            error: SnackbarContent,
-            success: SnackbarContent,
-            warning: SnackbarContent,
-            info: SnackbarContent,
-          }}
-          anchorOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          autoHideDuration={6000}
-          maxSnack={3}>
-          <ReactAriaRouterBridge>
-            <TourProvider>
-              <WebAnalyticsProvider>
-                <PermissionProvider>
-                  <WebSocketProvider>
-                    <ApplicationsProvider>
-                      <AsyncDeleteProvider>
-                        <EntityExportModalProvider>
-                          <AirflowStatusProvider>
-                            <RuleEnforcementProvider>
-                              <DndProvider backend={HTML5Backend}>
-                                {children}
-                              </DndProvider>
-                            </RuleEnforcementProvider>
-                          </AirflowStatusProvider>
-                        </EntityExportModalProvider>
-                      </AsyncDeleteProvider>
-                    </ApplicationsProvider>
-                  </WebSocketProvider>
-                </PermissionProvider>
-              </WebAnalyticsProvider>
-            </TourProvider>
-          </ReactAriaRouterBridge>
-        </SnackbarProvider>
+        <ReactAriaRouterBridge>
+          <TourProvider>
+            <WebAnalyticsProvider>
+              <PermissionProvider>
+                <WebSocketProvider>
+                  <ApplicationsProvider>
+                    <AsyncDeleteProvider>
+                      <EntityExportModalProvider>
+                        <AirflowStatusProvider>
+                          <RuleEnforcementProvider>
+                            <DndProvider backend={HTML5Backend}>
+                              {children}
+                            </DndProvider>
+                          </RuleEnforcementProvider>
+                        </AirflowStatusProvider>
+                      </EntityExportModalProvider>
+                    </AsyncDeleteProvider>
+                  </ApplicationsProvider>
+                </WebSocketProvider>
+              </PermissionProvider>
+            </WebAnalyticsProvider>
+          </TourProvider>
+        </ReactAriaRouterBridge>
       </ThemeProvider>
     </UntitledUIThemeProvider>
   );

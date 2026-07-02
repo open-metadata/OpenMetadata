@@ -19,13 +19,17 @@ import jakarta.ws.rs.container.ContainerResponseFilter;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
+import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.util.EntityETag;
 
 /**
- * JAX-RS filter that adds an {@code ETag} header to entity GET responses and short-circuits to
- * {@code 304 Not Modified} when the client's {@code If-None-Match} matches the computed ETag.
+ * JAX-RS filter that adds an {@code ETag} header to entity GET responses and to successful
+ * mutation responses (PUT/POST/PATCH), and short-circuits GETs to {@code 304 Not Modified} when
+ * the client's {@code If-None-Match} matches the computed ETag. Emitting the ETag on mutation
+ * responses lets a client issue a follow-up conditional write ({@code If-Match}) without an
+ * intervening GET, which is the basis for optimistic-concurrency-safe edit chains.
  *
  * <p>The 304 path saves the response body bytes on the wire and the client-side render cost on
  * revisits — the server still computes the entity body (we'd need a cheap version-stamp lookup
@@ -46,34 +50,63 @@ import org.openmetadata.service.util.EntityETag;
 public class ETagResponseFilter implements ContainerResponseFilter {
 
   private static final String CACHE_CONTROL_VALUE = "no-store";
+  private static final String GET = "GET";
+  private static final Set<String> MUTATION_METHODS = Set.of("PUT", "POST", "PATCH");
 
   @Override
   public void filter(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
     try (var ignored = RequestLatencyContext.phase("etagGeneration")) {
-      if (!"GET".equals(requestContext.getMethod())
-          || responseContext.getStatus() != Response.Status.OK.getStatusCode()
-          || !(responseContext.getEntity() instanceof EntityInterface entity)) {
-        return;
+      if (shouldEmitETag(requestContext, responseContext)) {
+        applyETag(requestContext, responseContext);
       }
+    }
+  }
 
-      String etag = EntityETag.generateETag(entity);
-      if (etag == null) {
-        return;
-      }
+  /**
+   * Emit an ETag on successful entity reads (GET 200) and on successful mutations (PUT/POST/PATCH
+   * 200/201). Emitting it on mutation responses lets a client chain a follow-up conditional write
+   * ({@code If-Match}) without an intervening GET.
+   */
+  private static boolean shouldEmitETag(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    boolean result = false;
+    if (responseContext.getEntity() instanceof EntityInterface) {
+      String method = requestContext.getMethod();
+      int status = responseContext.getStatus();
+      boolean successfulRead = GET.equals(method) && status == Response.Status.OK.getStatusCode();
+      boolean successfulMutation =
+          MUTATION_METHODS.contains(method)
+              && (status == Response.Status.OK.getStatusCode()
+                  || status == Response.Status.CREATED.getStatusCode());
+      result = successfulRead || successfulMutation;
+    }
+    return result;
+  }
+
+  private static void applyETag(
+      ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
+    String etag = EntityETag.generateETag((EntityInterface) responseContext.getEntity());
+    if (etag != null) {
       responseContext.getHeaders().putSingle(HttpHeaders.ETAG, etag);
       responseContext.getHeaders().putSingle(HttpHeaders.CACHE_CONTROL, CACHE_CONTROL_VALUE);
+      shortCircuitNotModified(requestContext, responseContext, etag);
+    }
+  }
 
-      String ifNoneMatch = requestContext.getHeaderString(HttpHeaders.IF_NONE_MATCH);
-      if (ifNoneMatch == null) {
-        return;
-      }
-      if (matchesAny(ifNoneMatch, etag)) {
-        // RFC 7232: 304 must NOT include a message body. Drop the entity so the
-        // serializer emits an empty body. Headers (including ETag) are preserved.
-        responseContext.setStatus(Response.Status.NOT_MODIFIED.getStatusCode());
-        responseContext.setEntity(null);
-      }
+  /** Conditional 304 short-circuit applies only to GET — mutations always run. */
+  private static void shortCircuitNotModified(
+      ContainerRequestContext requestContext,
+      ContainerResponseContext responseContext,
+      String etag) {
+    String ifNoneMatch = requestContext.getHeaderString(HttpHeaders.IF_NONE_MATCH);
+    if (GET.equals(requestContext.getMethod())
+        && ifNoneMatch != null
+        && matchesAny(ifNoneMatch, etag)) {
+      // RFC 7232: 304 must NOT include a message body. Drop the entity so the
+      // serializer emits an empty body. Headers (including ETag) are preserved.
+      responseContext.setStatus(Response.Status.NOT_MODIFIED.getStatusCode());
+      responseContext.setEntity(null);
     }
   }
 

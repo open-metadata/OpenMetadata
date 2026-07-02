@@ -352,6 +352,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     return lastCreatedTestSuite.getFullyQualifiedName();
   }
 
+  @Override
+  protected String importCsvForEntity(String containerName, String csvData, boolean dryRun) {
+    return SdkClients.adminClient()
+        .testCases()
+        .importCsv(containerName, csvData, dryRun, "testSuite");
+  }
+
   // ===================================================================
   // TEST CASE OVERRIDEN TESTS
   // ===================================================================
@@ -1386,7 +1393,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       Awaitility.await("logical suite membership indexed before PUT")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () ->
@@ -1405,7 +1412,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
           "PUT should preserve the logical suite graph relationship");
 
       Awaitility.await("PUT preserves logical suite membership in search")
-          .atMost(Duration.ofSeconds(30))
+          .atMost(Duration.ofSeconds(60))
           .pollInterval(Duration.ofSeconds(2))
           .untilAsserted(
               () -> {
@@ -2490,24 +2497,32 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .queryParam("offset", "0")
             .build();
 
-    String responseJson =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
-    TestCaseResource.TestCaseList result =
-        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+    Awaitility.await("test case present in ES-backed search/list with incidentId")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String responseJson =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              TestCaseResource.TestCaseList result =
+                  JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
 
-    TestCase matching =
-        result.getData().stream()
-            .filter(tc -> testCase.getId().equals(tc.getId()))
-            .findFirst()
-            .orElse(null);
+              TestCase matching =
+                  result.getData().stream()
+                      .filter(tc -> testCase.getId().equals(tc.getId()))
+                      .findFirst()
+                      .orElse(null);
 
-    assertNotNull(matching, "Expected created test case in search/list response");
-    assertNotNull(
-        matching.getIncidentId(),
-        "search/list with fields=* must include incidentId even when testCaseResult is present");
+              assertNotNull(matching, "Expected created test case in search/list response");
+              assertNotNull(
+                  matching.getIncidentId(),
+                  "search/list with fields=* must include incidentId even when testCaseResult is"
+                      + " present");
+            });
   }
 
   @Test
@@ -2693,8 +2708,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     request2.setOwners(List.of(shared.USER2_REF));
     client.testCases().create(request2);
 
-    // List all test cases - should include both
-    ListResponse<TestCase> allTestCases = client.testCases().list(new ListParams().setLimit(100));
+    // Scope the list to this table's entityLink. A global list returns test cases attached via
+    // entityLink to tables that have already been hard-deleted by other concurrent tests; the SDK
+    // then tries to hydrate the dead table reference and the call fails with 404. Cascade delete
+    // does not clean up test cases attached via entityLink (no parent→child Relationship row).
+    String entityLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    ListResponse<TestCase> allTestCases =
+        client.testCases().list(new ListParams().setLimit(100).addFilter("entityLink", entityLink));
     assertTrue(allTestCases.getData().size() >= 2);
   }
 

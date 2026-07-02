@@ -37,6 +37,8 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_G
 import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_TAGS_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_ID;
+import static org.openmetadata.service.search.SearchConstants.DATABASE_SCHEMA_ID;
 import static org.openmetadata.service.search.SearchConstants.DOMAINS_ID;
 import static org.openmetadata.service.search.SearchConstants.ENTITY_TYPE;
 import static org.openmetadata.service.search.SearchConstants.FAILED_TO_CREATE_INDEX_MESSAGE;
@@ -71,6 +73,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -79,6 +82,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.Getter;
@@ -97,6 +101,9 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -124,16 +131,20 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.handlers.SearchIndexHandler;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -155,6 +166,129 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class SearchRepository {
 
   private volatile SearchClient searchClient;
+
+  /**
+   * When a search-write deferral scope is open on the calling thread, the rename/move/domain-change
+   * cascade ES mutations ({@link #updateEntityIndex}, {@link #updateEntity(EntityReference)}, the
+   * {@code update*ByFqnPrefix} / {@code updateAssetDomains*} bulk rewrites, plus the direct {@code
+   * getSearchClient().*} cascade calls routed through {@link #deferIfFlushScopeActive}) capture their
+   * blocking Elasticsearch round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so NO Elasticsearch call runs while a pooled DB
+   * connection is held, then drains the captured closures after commit. A deadlock replay re-runs the
+   * flush body, so the scope is reset per attempt and the closures are drained exactly once after the
+   * final successful commit. {@code null} means "no scope active" and the mutation executes inline —
+   * every non-flush caller (reindex apps, the post-commit search-index handler, lineage jobs) is
+   * unaffected.
+   */
+  private static final ThreadLocal<List<DeferredSearchWrite>> DEFERRED_SEARCH_WRITES =
+      new ThreadLocal<>();
+
+  /**
+   * A captured search-index mutation plus the locator of the entity whose document it rewrites. When
+   * a post-commit drain fails the round trip, {@code entityId}/{@code entityFqn}/{@code entityType}
+   * are enqueued to the durable, entity-keyed {@link SearchIndexRetryQueue} so the document is
+   * rebuilt from the committed source-of-truth DB rows on retry instead of silently losing the
+   * cascade rewrite. A {@code null} locator means the mutation already self-enqueues on failure (the
+   * {@code SearchRepository.update*} methods wrap their own try/catch), so the drain only logs.
+   */
+  public record DeferredSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
+  /**
+   * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call —
+   * the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that calls
+   * {@link #drainSearchWriteDeferred()} after commit and {@link #clearSearchWriteDeferred()} on
+   * failure.
+   */
+  public static boolean beginSearchWriteDeferral() {
+    boolean opened = DEFERRED_SEARCH_WRITES.get() == null;
+    if (opened) {
+      DEFERRED_SEARCH_WRITES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackSearchWriteToCheckpoint(int)} its own contributions on a deadlock replay without
+   * disturbing closures the outer owner captured.
+   */
+  public static int searchWriteCheckpoint() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackSearchWriteToCheckpoint(int checkpoint) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginSearchWriteDeferral} and close the scope. */
+  public static List<DeferredSearchWrite> drainSearchWriteDeferred() {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    DEFERRED_SEARCH_WRITES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearSearchWriteDeferred() {
+    DEFERRED_SEARCH_WRITES.remove();
+  }
+
+  /** {@code true} while a flush has opened a search-write deferral scope on the current thread. */
+  public static boolean isSearchWriteDeferralActive() {
+    return DEFERRED_SEARCH_WRITES.get() != null;
+  }
+
+  private static boolean deferSearchWrite(DeferredSearchWrite write) {
+    List<DeferredSearchWrite> deferred = DEFERRED_SEARCH_WRITES.get();
+    boolean captured = deferred != null;
+    if (captured) {
+      deferred.add(write);
+    }
+    return captured;
+  }
+
+  /**
+   * Capture {@code esWrite} for post-commit execution when a flush deferral scope is open on this
+   * thread; otherwise run it inline. The locator is used to enqueue the entity to the durable
+   * search-index retry outbox if the deferred round trip later fails. Use this for the direct {@code
+   * getSearchClient().*} cascade rewrites that bypass the {@code SearchRepository.update*} methods
+   * (glossary-term / classification / container FQN-prefix updates) so they too never run inside the
+   * transaction handle.
+   */
+  public void deferIfFlushScopeActive(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    deferOrRunSearchWrite(esWrite, operation, entityId, entityFqn, entityType);
+  }
+
+  /**
+   * Static variant of {@link #deferIfFlushScopeActive} for call sites that have no {@code
+   * SearchRepository} instance in scope (e.g. the static {@code
+   * EntityRepository.invalidateCacheForTaggedEntities} ES-search loop). The {@code entityId}/{@code
+   * entityFqn} locator drives durable retry on a failed post-commit drain.
+   */
+  public static void deferOrRunSearchWrite(
+      Runnable esWrite, String operation, String entityId, String entityFqn, String entityType) {
+    if (!deferSearchWrite(
+        new DeferredSearchWrite(esWrite, operation, entityId, entityFqn, entityType))) {
+      // No flush deferral scope is open (a non-flush cascade rewrite): run it synchronously inline
+      // on the request thread so the rewrite is read-your-write visible when the request returns.
+      esWrite.run();
+    }
+  }
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
 
@@ -331,7 +465,6 @@ public class SearchRepository {
                   .parentAliases(parentAliases)
                   .build();
           recreateIndexHandler.finalizeReindex(entityReindexContext, true);
-
         } catch (Exception ex) {
           LOG.error("Failed to recreate index for entity {}", entityType, ex);
         }
@@ -430,8 +563,9 @@ public class SearchRepository {
       return;
     }
 
+    LLMConfiguration llmConfig = LlmConfigHolder.get();
     try {
-      this.embeddingClient = createEmbeddingClient(cfg);
+      this.embeddingClient = createEmbeddingClient(llmConfig);
 
       if (cfg.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
         os.org.opensearch.client.opensearch.OpenSearchClient osClient =
@@ -453,7 +587,7 @@ public class SearchRepository {
 
       LOG.info(
           "Vector search service initialized with provider={}, dimension={}",
-          cfg.getNaturalLanguageSearch().getEmbeddingProvider(),
+          resolveEmbeddingProvider(llmConfig),
           embeddingClient.getDimension());
     } catch (Exception e) {
       this.vectorServiceInitError = e.toString();
@@ -791,25 +925,74 @@ public class SearchRepository {
     }
   }
 
-  private String getIndexMapping(IndexMapping indexMapping) {
-    try (InputStream in =
-        getClass()
-            .getResourceAsStream(
-                String.format(indexMapping.getIndexMappingFile(), language.toLowerCase()))) {
-      assert in != null;
-      return new String(in.readAllBytes());
-    } catch (Exception e) {
-      LOG.error("Failed to read index Mapping file due to ", e);
-    }
-    return null;
-  }
-
+  /**
+   * The effective index mapping for an entity. Prefers the admin-editable mapping persisted in the
+   * {@code searchIndexMappings} setting (already field-safety hardened at seed time); falls back to
+   * the hardened classpath resource when no stored slice exists (e.g. fresh-install first boot, or a
+   * newly added entity type not yet seeded).
+   */
   public String readIndexMapping(IndexMapping indexMapping) {
-    String mapping = getIndexMapping(indexMapping);
+    String mapping = getStoredMapping(indexMapping);
+    if (mapping == null) {
+      mapping = getHardenedResourceMapping(indexMapping);
+    }
     if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
       mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
     }
     return mapping;
+  }
+
+  private String getStoredMapping(IndexMapping indexMapping) {
+    String result = null;
+    String entityType = resolveEntityType(indexMapping);
+    if (entityType != null) {
+      Object mapping = lookupStoredMapping(language.toLowerCase(Locale.ROOT), entityType);
+      if (mapping != null) {
+        result = JsonUtils.pojoToJson(mapping);
+      }
+    }
+    return result;
+  }
+
+  private Object lookupStoredMapping(String mappingLanguage, String entityType) {
+    Object result = null;
+    SearchIndexMappings stored =
+        SettingsCache.getSettingOrDefault(
+            SettingsType.SEARCH_INDEX_MAPPINGS, null, SearchIndexMappings.class);
+    if (stored != null && stored.getLanguages() != null) {
+      Map<String, Object> byEntity = stored.getLanguages().get(mappingLanguage);
+      if (byEntity != null) {
+        result = byEntity.get(entityType);
+      }
+    }
+    return result;
+  }
+
+  private String resolveEntityType(IndexMapping indexMapping) {
+    return entityIndexMap == null || indexMapping == null
+        ? null
+        : entityIndexMap.entrySet().stream()
+            .filter(entry -> entry.getValue().getIndexName().equals(indexMapping.getIndexName()))
+            .map(Map.Entry::getKey)
+            .findFirst()
+            .orElse(null);
+  }
+
+  private String getHardenedResourceMapping(IndexMapping indexMapping) {
+    String result = null;
+    try (InputStream in =
+        getClass()
+            .getResourceAsStream(
+                String.format(
+                    indexMapping.getIndexMappingFile(), language.toLowerCase(Locale.ROOT)))) {
+      if (in != null) {
+        result =
+            SearchIndexSettings.harden(new String(in.readAllBytes()), SearchFieldLimits.active());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to read index Mapping file due to ", e);
+    }
+    return result;
   }
 
   /**
@@ -923,6 +1106,49 @@ public class SearchRepository {
         throw re;
       }
       throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * Remove descendant column docs when a table's ancestor (databaseService / database /
+   * databaseSchema) is hard-deleted recursively.
+   *
+   * <p>Column docs live in a flat secondary index ({@code column_search_index}). A table's own
+   * delete prunes them via {@link #deleteTableColumns} (by {@code table.id}), but a recursive
+   * service/database/schema hard delete skips the per-table search dispatch
+   * ({@code descendantsCoveredByAncestorCascade}) and the ancestor's {@link #deleteOrUpdateChildren}
+   * cascade only targets the service childAliases, which do not include {@code tableColumn} — so
+   * without this prune the descendant column docs linger in search. Column docs carry
+   * {@code service.id} / {@code database.id} / {@code databaseSchema.id}, so delete by whichever
+   * ancestor the deleted entity is.
+   */
+  private void deleteDescendantColumns(EntityInterface entity, String entityType) {
+    String columnParentField =
+        switch (entityType) {
+          case Entity.DATABASE_SERVICE -> SERVICE_ID;
+          case Entity.DATABASE -> DATABASE_ID;
+          case Entity.DATABASE_SCHEMA -> DATABASE_SCHEMA_ID;
+          default -> null;
+        };
+    if (columnParentField != null) {
+      IndexMapping columnIndexMapping = entityIndexMap.get(Entity.TABLE_COLUMN);
+      if (columnIndexMapping != null) {
+        try {
+          searchClient.deleteEntityByFields(
+              List.of(getWriteIndexName(columnIndexMapping)),
+              List.of(new ImmutablePair<>(columnParentField, entity.getId().toString())));
+        } catch (Exception e) {
+          LOG.error(
+              "Issue deleting descendant columns for {} [{}]: {}",
+              entityType,
+              entity.getFullyQualifiedName(),
+              e.getMessage());
+          if (e instanceof RuntimeException re) {
+            throw re;
+          }
+          throw new RuntimeException(e);
+        }
+      }
     }
   }
 
@@ -1221,12 +1447,33 @@ public class SearchRepository {
   }
 
   /**
+   * Capture this entity-index rewrite for post-commit drain when a flush deferral scope is open on
+   * the current thread (it is reached from a rename/move/domain cascade inside the wrapped DB
+   * transaction). The entity locator is retained so a failed post-commit drain re-enqueues this
+   * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
+   * caller — the post-commit search-index handler, reindex apps, lineage jobs.
+   */
+  private boolean deferEntityIndex(EntityInterface entity) {
+    EntityReference ref = entity.getEntityReference();
+    return deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntityIndex(entity),
+            "updateEntityIndex",
+            entity.getId() != null ? entity.getId().toString() : null,
+            entity.getFullyQualifiedName(),
+            ref != null ? ref.getType() : null));
+  }
+
+  /**
    * Update search index for an entity only (no lifecycle events).
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot update index.");
+      return;
+    }
+    if (deferEntityIndex(entity)) {
       return;
     }
 
@@ -1384,6 +1631,15 @@ public class SearchRepository {
   }
 
   public void updateEntity(EntityReference entityReference) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateEntity(entityReference),
+            "updateEntity",
+            entityReference.getId() != null ? entityReference.getId().toString() : null,
+            entityReference.getFullyQualifiedName(),
+            entityReference.getType()))) {
+      return;
+    }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
     // Fetch only the fields this entity's search index needs, never "*". For container
     // entities (database/schema) "*" hydrates every child — tens of thousands of tables on
@@ -1397,6 +1653,49 @@ public class SearchRepository {
             null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
     entity.setChangeDescription(null);
     updateEntityIndex(entity);
+  }
+
+  /**
+   * Re-read each referenced entity with the same bounded field set {@link
+   * #updateEntity(EntityReference)} uses, then push one bulk index update. Use this in place of a
+   * per-entity {@code updateEntity} loop when a cascade (e.g. a glossary rename) must re-index many
+   * siblings: it keeps the rebuilt-from-DB correctness but collapses N individual ES round-trips
+   * into a single bulk request. Duplicate references are resolved only once; chunking of the
+   * resulting docs is left to {@link #updateEntitiesIndex}. Callers inside a transaction should wrap
+   * the call in {@link #deferIfFlushScopeActive} so the re-reads see committed rows.
+   */
+  public void updateEntitiesByReference(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return;
+    }
+    Set<String> seen = new HashSet<>();
+    List<EntityInterface> entities = new ArrayList<>(references.size());
+    for (EntityReference reference : references) {
+      // Resolve each (type, id) once — a duplicate ref would otherwise re-read from the DB and
+      // re-index needlessly. Skip malformed refs too.
+      if (reference == null
+          || reference.getId() == null
+          || reference.getType() == null
+          || !seen.add(reference.getType() + ":" + reference.getId())) {
+        continue;
+      }
+      try {
+        EntityRepository<?> entityRepository = Entity.getEntityRepository(reference.getType());
+        String fields =
+            String.join(",", searchIndexFactory.getReindexFieldsFor(reference.getType()));
+        EntityInterface entity =
+            entityRepository.get(
+                null, reference.getId(), entityRepository.getOnlySupportedFields(fields));
+        entity.setChangeDescription(null);
+        entities.add(entity);
+      } catch (EntityNotFoundException e) {
+        // A reference concurrently deleted (e.g. a child term removed mid glossary-rename) must
+        // not abort the whole bulk: skip it so the surviving siblings still re-index. The deleted
+        // entity's own delete cascade removes its document.
+        LOG.debug("Skipping concurrently-deleted entity {} during bulk reindex", reference.getId());
+      }
+    }
+    updateEntitiesIndex(entities);
   }
 
   /**
@@ -1563,6 +1862,15 @@ public class SearchRepository {
    */
   public void updateAssetDomainsForDataProduct(
       String dataProductFqn, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsForDataProduct(dataProductFqn, oldDomainFqns, newDomains),
+            "updateAssetDomainsForDataProduct",
+            null,
+            dataProductFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1583,6 +1891,15 @@ public class SearchRepository {
 
   public void updateAssetDomainsByIds(
       List<UUID> assetIds, List<String> oldDomainFqns, List<EntityReference> newDomains) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains),
+            "updateAssetDomainsByIds",
+            null,
+            null,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -1609,6 +1926,15 @@ public class SearchRepository {
   }
 
   public void updateDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateDomainFqnByPrefix(oldFqn, newFqn),
+            "updateDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
     if (!getSearchClient().isClientAvailable()) {
       SearchIndexRetryQueue.enqueue(
@@ -1626,6 +1952,15 @@ public class SearchRepository {
   }
 
   public void updateAssetDomainFqnByPrefix(String oldFqn, String newFqn) {
+    if (deferSearchWrite(
+        new DeferredSearchWrite(
+            () -> updateAssetDomainFqnByPrefix(oldFqn, newFqn),
+            "updateAssetDomainFqnByPrefix",
+            null,
+            newFqn,
+            null))) {
+      return;
+    }
     Timer.Sample s = RequestLatencyContext.startSearchOperation();
 
     if (!getSearchClient().isClientAvailable()) {
@@ -1681,31 +2016,37 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity)
       throws IOException {
-    if (changeDescription == null) {
-      return;
+    if (changeDescription != null && !nullOrEmpty(indexMapping.getChildAliases())) {
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity, entityType);
+      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
+        if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
+          propagateToDomainChildren(entityId, indexMapping, updates);
+        } else {
+          String parentFieldName = resolveParentFieldName(entityType, updates);
+          Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
+          List<String> entityChildren =
+              filterChildAliasesByCapability(
+                  indexMapping, capability -> capability == null || !capability.isTimeSeries());
+          if (!nullOrEmpty(entityChildren)) {
+            searchClient.updateChildren(entityChildren, parentMatch, updates);
+          }
+        }
+      }
     }
+  }
 
-    Pair<String, Map<String, Object>> updates =
-        getInheritedFieldChanges(changeDescription, entity, entityType);
-    if (updates.getKey() == null || updates.getKey().isEmpty()) {
-      return;
-    }
-
-    List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+  private List<String> filterChildAliasesByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = indexMapping.getChildAliases();
     if (nullOrEmpty(childAliases)) {
-      return;
+      return List.of();
     }
-
-    // Domain has subdomains (parent.id) and data products (domains.id) - handle separately
-    if (entityType.equalsIgnoreCase(Entity.DOMAIN)) {
-      propagateToDomainChildren(entityId, indexMapping, updates);
-      return;
-    }
-
-    // Other entities: resolve parent field name and propagate to children
-    String parentFieldName = resolveParentFieldName(entityType, updates);
-    Pair<String, String> parentMatch = new ImmutablePair<>(parentFieldName, entityId);
-    searchClient.updateChildren(childAliases, parentMatch, updates);
+    boolean hasClusterAlias = !nullOrEmpty(clusterAlias);
+    return childAliases.stream()
+        .filter(alias -> includeCapability.test(EntityIndexCapabilityRegistry.get(alias)))
+        .map(alias -> hasClusterAlias ? clusterAlias + INDEX_NAME_SEPARATOR + alias : alias)
+        .toList();
   }
 
   private String resolveParentFieldName(
@@ -2073,6 +2414,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -2127,6 +2469,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -2194,6 +2537,7 @@ public class SearchRepository {
             String.format("ctx._source.%s = params.%s;", field.getName(), field.getName()));
       }
       case EXTERNAL_HANDLER -> {
+        // No-op: a dedicated handler (e.g. propagateCertificationTags) drives the cascade.
         return;
       }
     }
@@ -2358,6 +2702,8 @@ public class SearchRepository {
       deleteOrUpdateChildren(entity, indexMapping);
       if (Entity.TABLE.equals(entityType)) {
         deleteTableColumns((Table) entity);
+      } else {
+        deleteDescendantColumns(entity, entityType);
       }
     } catch (Exception ie) {
       SearchIndexRetryQueue.enqueue(
@@ -2548,7 +2894,8 @@ public class SearchRepository {
                   Collections.singletonMap("suiteId", testSuite.getId().toString())));
         }
       }
-      case Entity.DASHBOARD_SERVICE,
+      case Entity.API_SERVICE,
+          Entity.DASHBOARD_SERVICE,
           Entity.DATABASE_SERVICE,
           Entity.MESSAGING_SERVICE,
           Entity.PIPELINE_SERVICE,
@@ -2581,12 +2928,7 @@ public class SearchRepository {
     // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
     // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
     SoftDeleteScript script = new SoftDeleteScript(delete);
-    boolean hasClusterAlias = clusterAlias != null && !clusterAlias.isEmpty();
-    List<String> targets =
-        indexMapping.getChildAliases().stream()
-            .filter(a -> script.compatibleWith(EntityIndexCapabilityRegistry.get(a)))
-            .map(a -> hasClusterAlias ? clusterAlias + IndexMapping.INDEX_NAME_SEPARATOR + a : a)
-            .toList();
+    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
     if (targets.isEmpty()) {
       return;
     }
@@ -2976,17 +3318,36 @@ public class SearchRepository {
   }
 
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    return searchClient.searchLineage(lineageRequest);
+    return searchLineage(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineage(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineage(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public SearchLineageResult searchPlatformLineage(
       String alias, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return searchPlatformLineage(alias, queryFilter, deleted, null);
+  }
+
+  public SearchLineageResult searchPlatformLineage(
+      String alias, String queryFilter, boolean deleted, SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result = searchClient.searchPlatformLineage(alias, queryFilter, deleted);
+    return LineageDomainFilter.prune(result, subjectContext, null);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    return searchClient.searchLineageWithDirection(lineageRequest);
+    return searchLineageWithDirection(lineageRequest, null);
+  }
+
+  public SearchLineageResult searchLineageWithDirection(
+      SearchLineageRequest lineageRequest, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageWithDirection(lineageRequest);
+    return LineageDomainFilter.prune(result, subjectContext, lineageRequest.getFqn());
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -2997,13 +3358,40 @@ public class SearchRepository {
       boolean includeDeleted,
       String entityType)
       throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
+      throws IOException {
     return searchClient.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException {
-    return searchClient.searchLineageByEntityCount(request);
+    return searchLineageByEntityCount(request, null);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(
+      EntityCountLineageRequest request, SubjectContext subjectContext) throws IOException {
+    SearchLineageResult result = searchClient.searchLineageByEntityCount(request);
+    return LineageDomainFilter.prune(result, subjectContext, request.getFqn());
   }
 
   public Response searchEntityRelationship(
@@ -3015,7 +3403,18 @@ public class SearchRepository {
 
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+    return searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted, null);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   public Response searchSchemaEntityRelationship(
@@ -3033,14 +3432,29 @@ public class SearchRepository {
       boolean deleted,
       String entityType)
       throws IOException {
-    return searchClient.searchLineage(
-        new SearchLineageRequest()
-            .withFqn(fqn)
-            .withUpstreamDepth(upstreamDepth)
-            .withDownstreamDepth(downstreamDepth)
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withIsConnectedVia(isConnectedVia(entityType)));
+    return searchLineageForExport(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType, null);
+  }
+
+  public SearchLineageResult searchLineageForExport(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType,
+      SubjectContext subjectContext)
+      throws IOException {
+    SearchLineageResult result =
+        searchClient.searchLineage(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withUpstreamDepth(upstreamDepth)
+                .withDownstreamDepth(downstreamDepth)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withIsConnectedVia(isConnectedVia(entityType)));
+    return LineageDomainFilter.prune(result, subjectContext, fqn);
   }
 
   public Response searchByField(
@@ -3277,41 +3691,53 @@ public class SearchRepository {
     }
   }
 
-  protected EmbeddingClient createEmbeddingClient(ElasticSearchConfiguration esConfig) {
-    NaturalLanguageSearchConfiguration config = esConfig.getNaturalLanguageSearch();
+  protected EmbeddingClient createEmbeddingClient(LLMConfiguration llmConfig) {
+    LLMEmbeddingsConfig embeddings = llmConfig != null ? llmConfig.getEmbeddings() : null;
     String provider =
-        config.getEmbeddingProvider() != null ? config.getEmbeddingProvider() : "bedrock";
+        embeddings != null && embeddings.getProvider() != null
+            ? embeddings.getProvider().value()
+            : "bedrock";
 
     return switch (provider.toLowerCase()) {
       case "bedrock" -> {
-        if (config.getBedrock() == null) {
+        if (embeddings == null || embeddings.getBedrock() == null) {
           throw new IllegalStateException(
               "Bedrock configuration is required when using bedrock provider");
         }
-        yield new BedrockEmbeddingClient(esConfig);
+        yield new BedrockEmbeddingClient(llmConfig);
       }
       case "openai" -> {
-        if (config.getOpenai() == null) {
+        if (llmConfig.getOpenai() == null || embeddings.getOpenai() == null) {
           throw new IllegalStateException(
               "OpenAI configuration is required when using openai provider");
         }
-        yield new OpenAIEmbeddingClient(esConfig);
+        yield new OpenAIEmbeddingClient(llmConfig);
       }
       case "google" -> {
-        if (config.getGoogle() == null) {
+        if (llmConfig.getGoogle() == null || embeddings.getGoogle() == null) {
           throw new IllegalStateException(
               "Google configuration is required when using google provider");
         }
-        yield new GoogleEmbeddingClient(esConfig);
+        yield new GoogleEmbeddingClient(llmConfig);
       }
       case "djl" -> {
-        if (config.getDjl() == null) {
+        if (embeddings.getDjl() == null) {
           throw new IllegalStateException("DJL configuration is required when using djl provider");
         }
-        yield new DjlEmbeddingClient(esConfig);
+        yield new DjlEmbeddingClient(llmConfig);
       }
       default -> throw new IllegalArgumentException("Unknown embedding provider: " + provider);
     };
+  }
+
+  private static String resolveEmbeddingProvider(LLMConfiguration llmConfig) {
+    String provider = "unknown";
+    if (llmConfig != null
+        && llmConfig.getEmbeddings() != null
+        && llmConfig.getEmbeddings().getProvider() != null) {
+      provider = llmConfig.getEmbeddings().getProvider().value();
+    }
+    return provider;
   }
 
   public String getModelIdentifier() {

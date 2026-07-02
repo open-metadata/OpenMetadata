@@ -11,20 +11,69 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../../components/DataContract/ContractTab/ContractTab';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import APIEndpointsTab from '../../pages/APICollectionPage/APIEndpointsTab';
-import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from '../i18next/LocalUtil';
-import { APICollectionDetailPageTabProps } from './APICollectionClassBase';
+import type { APICollectionDetailPageTabProps } from './APICollectionClassBase';
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../components/common/TabsLabel/TabsLabel.component'))
+);
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
+  )
+);
+
+const APIEndpointsTab = withSuspenseFallback(
+  lazy(() => import('../../pages/APICollectionPage/APIEndpointsTab'))
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/DataContract/ContractTab/ContractTab').then(
+      (m) => ({ default: m.ContractTab })
+    )
+  )
+);
 
 export const getApiCollectionDetailsPageTabs = ({
   activeTab,

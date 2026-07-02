@@ -175,7 +175,7 @@ base_requirements = {
     "requests>=2.32.4",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=2.0.0,<3",
-    "collate-sqllineage>=2.1.3",
+    "collate-sqllineage>=2.1.4",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -211,8 +211,6 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "atlas": {},
     "azuresql": {VERSIONS["pyodbc"]},
     "azure-sso": {VERSIONS["msal"]},
-    "microsoftfabric": {VERSIONS["pyodbc"], VERSIONS["msal"]},
-    "microsoftfabricpipeline": {VERSIONS["msal"]},
     "backup": {VERSIONS["boto3"], VERSIONS["azure-identity"], "azure-storage-blob"},
     "googledrive": {
         "google-api-python-client>=2.0.0",
@@ -301,8 +299,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
-        "sqlalchemy_exasol>=6,<7",
-        "exasol-integration-test-docker-environment>=6.0.0,<7",
+        "sqlalchemy_exasol>=7.1.1,<8",
     },
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
@@ -461,6 +458,11 @@ test_unit = {
     *plugins["teradata"],
 }
 
+exasol_test = {
+    "exasol-integration-test-docker-environment>=6.0.0,<7",
+    "luigi>=2.8.4,<=3.6.0",
+}
+
 test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.37.0",
@@ -500,6 +502,7 @@ test = {
     VERSIONS["cockroach"],
     # pydoris-custom pre-installed with --no-deps in Dockerfiles (SA<2 metadata constraint).
     VERSIONS["starrocks"],
+    *plugins["vertica"],
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
@@ -522,12 +525,12 @@ test = {
     VERSIONS["google-cloud-bigtable"],
     *plugins["bigquery"],
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
-    *plugins["exasol"],
     VERSIONS["opensearch"],
     VERSIONS["kafka-connect"],
     VERSIONS["factory-boy"],
     "locust~=2.32.0",
     *plugins["exasol"],
+    *exasol_test,
     *plugins["teradata"],
 }
 
@@ -539,6 +542,8 @@ e2e_test = {
     # playwright dependencies
     "pytest-playwright",
     "pytest-base-url",
+    *plugins["exasol"],
+    *exasol_test,
 }
 
 # Define playwright_dependencies as a set of packages required for Playwright tests
@@ -575,6 +580,7 @@ setup(
         "test": list(test),
         "test-unit": list(test_unit),
         "e2e_test": list(e2e_test),
+        "exasol-test": list(exasol_test),
         "data-insight": list(plugins["elasticsearch"]),
         **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         # FIXME: all-dev-env is a temporary solution to install all dependencies except

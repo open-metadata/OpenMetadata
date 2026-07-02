@@ -1,5 +1,6 @@
 package org.openmetadata.it.util;
 
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
@@ -9,8 +10,13 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 /**
  * JUnit 5 extension that provides a unique TestNamespace per test method.
  * This ensures proper isolation when tests run in parallel.
+ *
+ * <p>After each test it recursively hard-deletes the root entities the test created (tracked via
+ * {@link TestNamespace#trackRoot}) so they never accumulate — critical on a shared/external cluster
+ * where leftovers would pile up across tests and bloat every subsequent reindex.
  */
-public class TestNamespaceExtension implements BeforeEachCallback, ParameterResolver {
+public class TestNamespaceExtension
+    implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
   private static final Namespace NAMESPACE = Namespace.create(TestNamespaceExtension.class);
   private static final String NS_KEY = "testNamespace";
@@ -26,6 +32,14 @@ public class TestNamespaceExtension implements BeforeEachCallback, ParameterReso
 
     // Store in the context so it's unique per test method
     context.getStore(NAMESPACE).put(NS_KEY, ns);
+  }
+
+  @Override
+  public void afterEach(ExtensionContext context) {
+    TestNamespace ns = context.getStore(NAMESPACE).get(NS_KEY, TestNamespace.class);
+    if (ns != null) {
+      NamespaceCleanup.deleteRoots(ns.trackedRoots());
+    }
   }
 
   @Override

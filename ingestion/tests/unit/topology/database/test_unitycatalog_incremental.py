@@ -14,7 +14,7 @@ Unit tests for Unity Catalog incremental metadata extraction.
 """
 
 from threading import RLock
-from types import SimpleNamespace
+from types import MethodType, SimpleNamespace
 from unittest.mock import Mock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
@@ -128,6 +128,8 @@ class TestUnityCatalogIncrementalSource:
         """
         source = Mock()
         source._state_lock = RLock()
+        # Listing methods iterate through the real failure-isolation wrapper
+        source._iterate_listing = MethodType(UnitycatalogSource._iterate_listing, source)
         return source
 
     def test_init_configures_threads_from_source_config(self):
@@ -141,6 +143,7 @@ class TestUnityCatalogIncrementalSource:
         try:
             with (
                 patch(f"{UC_METADATA_MODULE}.get_connection", return_value=Mock()),
+                patch(f"{UC_METADATA_MODULE}.DatabricksClient", return_value=Mock()),
                 patch(f"{UC_METADATA_MODULE}.get_sqlalchemy_connection", return_value=Mock()),
                 patch.object(UnitycatalogSource, "test_connection", return_value=None),
             ):
@@ -343,7 +346,7 @@ class TestUnityCatalogIncrementalSource:
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
-        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1")
+        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1", max_results=0)
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):
@@ -408,27 +411,19 @@ class TestUnityCatalogIncrementalSource:
         assert metadata in init_args
         assert sentinel in init_args
 
-    def test_get_owner_ref_preserves_cached_miss(self):
+    def test_get_owner_ref_delegates_to_owner_resolver(self):
         source = self._make_source()
-        source.source_config.includeOwners = True
-        source._owner_cache = {"missing@example.com": None}
-
-        result = UnitycatalogSource.get_owner_ref(source, "missing@example.com")
-
-        assert result is None
-        source.metadata.get_reference_by_email.assert_not_called()
-        source.metadata.get_reference_by_name.assert_not_called()
-
-    def test_get_owner_ref_caches_lookup_result(self):
-        source = self._make_source()
-        source.source_config.includeOwners = True
-        source._owner_cache = {}
-        source.metadata.get_reference_by_email.return_value = None
-        source.metadata.get_reference_by_name.return_value = "owner-ref"
+        source.owner_resolver.get_owner_ref.return_value = "owner-ref"
 
         result = UnitycatalogSource.get_owner_ref(source, "owner@example.com")
 
         assert result == "owner-ref"
-        assert source._owner_cache["owner@example.com"] == "owner-ref"
-        source.metadata.get_reference_by_email.assert_called_once_with(email="owner@example.com")
-        source.metadata.get_reference_by_name.assert_called_once_with(name="owner")
+        source.owner_resolver.get_owner_ref.assert_called_once_with("owner@example.com")
+
+    def test_get_owner_ref_returns_none_when_resolver_fails(self):
+        source = self._make_source()
+        source.owner_resolver.get_owner_ref.side_effect = Exception("lookup failed")
+
+        result = UnitycatalogSource.get_owner_ref(source, "owner@example.com")
+
+        assert result is None

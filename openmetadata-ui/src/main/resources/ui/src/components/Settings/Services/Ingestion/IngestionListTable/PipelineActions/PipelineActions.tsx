@@ -20,7 +20,7 @@ import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resum
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { getLoadingStatus } from '../../../../../../utils/EntityDisplayUtils';
+import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
@@ -54,14 +54,12 @@ function PipelineActions({
 
   const { editPermission, deletePermission, editStatusPermission } =
     useMemo(() => {
-      const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
-
       return {
-        editPermission: pipelinePermission?.[Operation.EditAll],
-        deletePermission: pipelinePermission?.[Operation.Delete],
+        editPermission: ingestionPipelinePermissions?.[Operation.EditAll],
+        deletePermission: ingestionPipelinePermissions?.[Operation.Delete],
         editStatusPermission:
-          pipelinePermission?.[Operation.EditAll] ||
-          pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+          ingestionPipelinePermissions?.[Operation.EditAll] ||
+          ingestionPipelinePermissions?.[Operation.EditIngestionPipelineStatus],
       };
     }, [ingestionPipelinePermissions, pipelineName]);
 

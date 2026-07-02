@@ -6,9 +6,11 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.Relationship.EDITED_BY;
 import static org.openmetadata.schema.type.Relationship.HAS;
 import static org.openmetadata.schema.type.Relationship.RELATED_TO;
+import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.getEntityReferencesByIds;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
@@ -21,13 +23,16 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -36,6 +41,7 @@ import org.openmetadata.schema.attachments.AssetType;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageHierarchy;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.QuickLink;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -54,13 +60,16 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -79,6 +88,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   private static final String KNOWLEDGE_PATCH_FIELDS = "page,relatedEntities,parent,children";
   private static final String KNOWLEDGE_UPDATE_FIELDS = "page,relatedEntities,parent,children";
   public static final String RELATED_ENTITIES = "relatedEntities";
+  public static final String EDITORS = "editors";
+  public static final String MEMORY_COUNT = "memoryCount";
   public static final String KNOWLEDGE_PAGE_TERM_SEARCH_INDEX = "page";
   private final CollectionDAO.KnowledgePageDAO daoExtension;
   private final CollectionDAO.AssetDAO assetDAO;
@@ -120,11 +131,20 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             ? getRelatedEntities(knowledgePage)
             : knowledgePage.getRelatedEntities());
     knowledgePage.setEditors(
-        fields.contains("editors") ? getEditors(knowledgePage) : knowledgePage.getEditors());
+        fields.contains(EDITORS) ? getEditors(knowledgePage) : knowledgePage.getEditors());
     knowledgePage.setParent(
-        fields.contains("parent") ? getParent(knowledgePage) : knowledgePage.getParent());
+        fields.contains(FIELD_PARENT) ? getParent(knowledgePage) : knowledgePage.getParent());
     knowledgePage.setChildren(
         fields.contains("children") ? getChildren(knowledgePage) : knowledgePage.getChildren());
+    if (fields.contains(MEMORY_COUNT)) {
+      knowledgePage.setMemoryCount(
+          findTo(
+                  knowledgePage.getId(),
+                  KNOWLEDGE_PAGE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (knowledgePage.getPage() != null) {
@@ -140,6 +160,161 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
               ? getAttachments(knowledgePage)
               : knowledgePage.getAttachments());
     }
+  }
+
+  @Override
+  public void setFieldsInBulk(EntityUtil.Fields fields, List<Page> entities) {
+    if (nullOrEmpty(entities)) {
+      return;
+    }
+    fetchAndSetParents(entities, fields);
+    fetchAndSetRelatedEntities(entities, fields);
+    fetchAndSetEditors(entities, fields);
+    fetchAndSetFields(entities, fields);
+    setInheritedFields(entities, fields);
+    for (Page entity : entities) {
+      setArticleFields(entity, fields);
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(FIELD_PARENT)) {
+      return;
+    }
+    Map<UUID, EntityReference> parentByPageId = batchFetchParents(entities);
+    entities.forEach(page -> page.setParent(parentByPageId.get(page.getId())));
+  }
+
+  private Map<UUID, EntityReference> batchFetchParents(List<Page> entities) {
+    Map<UUID, EntityReference> parentByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.CONTAINS.ordinal(),
+                KNOWLEDGE_PAGE_ENTITY,
+                Include.NON_DELETED);
+    Map<UUID, EntityReference> refById = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      UUID pageId = UUID.fromString(record.getToId());
+      UUID parentId = UUID.fromString(record.getFromId());
+      EntityReference ref =
+          refById.computeIfAbsent(
+              parentId,
+              id -> Entity.getEntityReferenceById(KNOWLEDGE_PAGE_ENTITY, id, Include.NON_DELETED));
+      parentByPageId.put(pageId, ref);
+    }
+    return parentByPageId;
+  }
+
+  private void fetchAndSetRelatedEntities(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(RELATED_ENTITIES)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> relatedByPageId = batchFetchRelatedEntities(entities);
+    entities.forEach(
+        page ->
+            page.setRelatedEntities(
+                relatedByPageId.getOrDefault(page.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchRelatedEntities(List<Page> entities) {
+    Map<UUID, List<EntityReference>> relatedByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(entities), HAS.ordinal(), Include.NON_DELETED);
+    Map<String, EntityReference> refById = resolveReferencesByType(records);
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getFromId());
+      if (ref == null || isDomainOrDataProduct(ref)) {
+        continue;
+      }
+      relatedByPageId
+          .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+          .add(ref);
+    }
+    relatedByPageId.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    return relatedByPageId;
+  }
+
+  private Map<String, EntityReference> resolveReferencesByType(
+      List<CollectionDAO.EntityRelationshipObject> records) {
+    Map<String, Set<UUID>> idsByType = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      idsByType
+          .computeIfAbsent(record.getFromEntity(), type -> new HashSet<>())
+          .add(UUID.fromString(record.getFromId()));
+    }
+    Map<String, EntityReference> refById = new HashMap<>();
+    idsByType.forEach(
+        (type, ids) ->
+            getEntityReferencesByIds(type, new ArrayList<>(ids), Include.NON_DELETED)
+                .forEach(ref -> refById.put(ref.getId().toString(), ref)));
+    return refById;
+  }
+
+  private boolean isDomainOrDataProduct(EntityReference ref) {
+    return Entity.DOMAIN.equals(ref.getType()) || Entity.DATA_PRODUCT.equals(ref.getType());
+  }
+
+  private void fetchAndSetEditors(List<Page> entities, EntityUtil.Fields fields) {
+    if (!fields.contains(EDITORS)) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> editorsByPageId = batchFetchEditors(entities);
+    entities.forEach(
+        page ->
+            page.setEditors(editorsByPageId.getOrDefault(page.getId(), Collections.emptyList())));
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchEditors(List<Page> entities) {
+    Map<UUID, List<EntityReference>> editorsByPageId = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                entityListToStrings(entities),
+                KNOWLEDGE_PAGE_ENTITY,
+                USER,
+                EDITED_BY.ordinal(),
+                Include.NON_DELETED);
+    Map<String, EntityReference> refById = new HashMap<>();
+    getEntityReferencesByIds(
+            USER,
+            records.stream().map(r -> UUID.fromString(r.getToId())).distinct().toList(),
+            Include.NON_DELETED)
+        .forEach(ref -> refById.put(ref.getId().toString(), ref));
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference ref = refById.get(record.getToId());
+      if (ref != null) {
+        editorsByPageId
+            .computeIfAbsent(UUID.fromString(record.getFromId()), id -> new ArrayList<>())
+            .add(ref);
+      }
+    }
+    return editorsByPageId;
+  }
+
+  private void setArticleFields(Page knowledgePage, EntityUtil.Fields fields) {
+    if (!PageType.ARTICLE.equals(knowledgePage.getPageType())) {
+      return;
+    }
+    Article article = new Article();
+    if (knowledgePage.getPage() != null) {
+      article = JsonUtils.convertValue(knowledgePage.getPage(), Article.class);
+    }
+    article.setRelatedArticles(
+        fields.contains(RELATED_ENTITIES)
+            ? getRelatedArticles(knowledgePage)
+            : article.getRelatedArticles());
+    knowledgePage.setPage(article);
+    knowledgePage.setAttachments(
+        fields.contains("attachments")
+            ? getAttachments(knowledgePage)
+            : knowledgePage.getAttachments());
   }
 
   @Override
@@ -212,8 +387,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public void clearFields(Page entity, EntityUtil.Fields fields) {
     entity.withRelatedEntities(
         fields.contains(RELATED_ENTITIES) ? entity.getRelatedEntities() : null);
-    entity.withEditors(fields.contains("editors") ? entity.getEditors() : null);
-    entity.setParent(fields.contains("parent") ? entity.getParent() : null);
+    entity.withEditors(fields.contains(EDITORS) ? entity.getEditors() : null);
+    entity.setParent(fields.contains(FIELD_PARENT) ? entity.getParent() : null);
     entity.setChildren(fields.contains("children") ? entity.getChildren() : null);
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
@@ -227,7 +402,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   }
 
   @Override
-  public void prepare(Page knowledgePage, boolean b) {
+  public void prepare(Page knowledgePage, boolean update) {
     // Validate Related Entities
     List<EntityReference> relatedEntities = knowledgePage.getRelatedEntities();
     if (!nullOrEmpty(relatedEntities)) {
@@ -243,6 +418,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       EntityUtil.populateEntityReferences(article.getRelatedArticles());
 
       knowledgePage.setPage(article);
+
+      // A new article with a body queues extraction in postCreate; stamp Queued in this same create
+      // so the status is persisted atomically rather than through a racing out-of-band write.
+      if (!update && !nullOrEmpty(knowledgePage.getDescription()) && isExtractionEnabled()) {
+        knowledgePage.setProcessingStatus(PageProcessingStatus.Queued);
+      }
     }
   }
 
@@ -463,6 +644,10 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       // Update Related Terms
       updateRelatedEntities(original, updated);
 
+      recordExtractionStats(original, updated);
+
+      recordProcessingStatus(original, updated);
+
       // Updated Quick Link
       if (original.getPageType().equals(PageType.QUICK_LINK)) {
         QuickLink originalLink = JsonUtils.convertValue(original.getPage(), QuickLink.class);
@@ -482,6 +667,65 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       }
 
       updateParent(original, updated);
+    }
+
+    /**
+     * extractionStats is engine-managed: the extraction throttle stamps it, and it is absent from
+     * CreatePage. Preserve the stored value when an update omits it so a body edit through PUT never
+     * wipes it, and persist a fresh stamp with updateVersion=false (the same treatment lifeCycle
+     * gets) so machine extraction does not churn the article's version history on every run.
+     */
+    private void recordExtractionStats(Page original, Page updated) {
+      if (updated.getExtractionStats() == null) {
+        updated.setExtractionStats(original.getExtractionStats());
+      }
+      recordChange(
+          "extractionStats",
+          original.getExtractionStats(),
+          updated.getExtractionStats(),
+          true,
+          EntityUtil.objectMatch,
+          false);
+    }
+
+    /**
+     * processingStatus / processingError are machine-managed like extractionStats. An edit that
+     * changes an article's body (re)queues extraction, so stamp Queued here — in the user's own
+     * transaction — because a later out-of-band write would race the body change and could clobber
+     * it. Any other update preserves the stored values when the request omits them (so a body edit
+     * through PUT never wipes them), and both fields record with updateVersion=false so machine
+     * status transitions never churn the article's version history.
+     */
+    private void recordProcessingStatus(Page original, Page updated) {
+      boolean bodyRequeued =
+          PageType.ARTICLE.equals(updated.getPageType())
+              && !Objects.equals(original.getDescription(), updated.getDescription())
+              && isExtractionEnabled();
+      if (bodyRequeued) {
+        updated.setProcessingStatus(PageProcessingStatus.Queued);
+        updated.setProcessingError(null);
+      } else {
+        if (updated.getProcessingStatus() == null) {
+          updated.setProcessingStatus(original.getProcessingStatus());
+        }
+        if (updated.getProcessingError() == null) {
+          updated.setProcessingError(original.getProcessingError());
+        }
+      }
+      recordChange(
+          "processingStatus",
+          original.getProcessingStatus(),
+          updated.getProcessingStatus(),
+          false,
+          EntityUtil.objectMatch,
+          false);
+      recordChange(
+          "processingError",
+          original.getProcessingError(),
+          updated.getProcessingError(),
+          false,
+          EntityUtil.objectMatch,
+          false);
     }
 
     private void updateParent(Page original, Page updated) {
@@ -657,6 +901,75 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
     }
+
+    if (isArticleBodyChanged(original, updated)) {
+      schedulePillExtraction(updated.getId());
+    }
+  }
+
+  @Override
+  protected void postCreate(Page entity) {
+    super.postCreate(entity);
+    if (PageType.ARTICLE.equals(entity.getPageType()) && !nullOrEmpty(entity.getDescription())) {
+      schedulePillExtraction(entity.getId());
+    }
+  }
+
+  @Override
+  protected void postDelete(Page entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
+    if (LLMClientHolder.isEnabled()) {
+      PageContextProcessingEngineHolder.get().cancel(entity.getId());
+    }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the page -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. The pills track the page's lifecycle: soft-deleted with it,
+  // hard-deleted with it, restored with it. Mirrors DashboardRepository's chart cascade.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, false);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY, true);
+  }
+
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID pageId, String updatedBy) {
+    contextMemoryRepository().restoreExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  }
+
+  /** True when an article's markdown body changed — the only edit that warrants re-extraction. */
+  private boolean isArticleBodyChanged(Page original, Page updated) {
+    return PageType.ARTICLE.equals(updated.getPageType())
+        && !Objects.equals(original.getDescription(), updated.getDescription());
+  }
+
+  /**
+   * Hands the page to the in-memory throttle, which coalesces autosaves and runs extraction once the
+   * body settles. A no-op when the LLM is disabled, mirroring the file pipeline.
+   */
+  private void schedulePillExtraction(UUID pageId) {
+    if (isExtractionEnabled()) {
+      PageContextProcessingEngineHolder.get().schedule(pageId);
+    }
+  }
+
+  /** True when the LLM is configured and article (page) memory extraction is toggled on. */
+  private boolean isExtractionEnabled() {
+    return LLMClientHolder.isEnabled()
+        && AISettingsUtil.isPageExtractionEnabled(AISettingsUtil.get());
   }
 
   private void closeApprovalTask(Page entity, String comment) {

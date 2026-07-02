@@ -46,6 +46,9 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMOpenAIConfig;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
@@ -150,6 +153,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
   private static Jdbi jdbi;
+  private static LlmStubServer LLM_STUB_SERVER;
 
   private static String searchHost;
   private static int searchPort;
@@ -180,6 +184,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     rdfEnabled = Boolean.parseBoolean(System.getProperty("enableRdf", "false"));
     cacheProvider = System.getProperty("cacheProvider", "none");
 
+    // The test-support search resource is disabled by default (it must never ship enabled in
+    // production); the embedded test server opts in so the resource is available to tests.
+    System.setProperty("OM_TEST_SUPPORT_SEARCH_ENABLED", "true");
+
     LOG.info("=== TestSuiteBootstrap: Starting test infrastructure ===");
     LOG.info("Database type: {}", databaseType);
     LOG.info("Search type: {}", searchType);
@@ -201,6 +209,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       if (k8sEnabled) {
         startK3s();
       }
+      startLlmStub();
       startApplication();
 
       long duration = System.currentTimeMillis() - startTime;
@@ -300,6 +309,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       postgres.withPassword("test");
       postgres.withStartupTimeoutSeconds(240);
       postgres.withConnectTimeoutSeconds(240);
+      String durability =
+          Boolean.parseBoolean(System.getProperty("dbDurable", "false")) ? "on" : "off";
+      LOG.info("PostgreSQL durability (fsync/synchronous_commit/full_page_writes)={}", durability);
       postgres.withCommand(
           "postgres",
           "-c",
@@ -317,11 +329,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           "-c",
           "shared_buffers=128MB",
           "-c",
-          "fsync=off",
+          "fsync=" + durability,
           "-c",
-          "synchronous_commit=off",
+          "synchronous_commit=" + durability,
           "-c",
-          "full_page_writes=off",
+          "full_page_writes=" + durability,
           // Bump work_mem for the same reason MySQL gets a larger sort_buffer above:
           // TagDAO.listAfter joins three tables and sorts; default 4MB spills to temp files
           // under load.
@@ -538,6 +550,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
         || "true".equalsIgnoreCase(System.getenv("ENABLE_K8S_TESTS"));
   }
 
+  private void startLlmStub() {
+    LLM_STUB_SERVER = LlmStubServer.start();
+  }
+
   private void startApplication() throws Exception {
     LOG.info("Starting OpenMetadata application...");
     OpenMetadataApplicationConfig config = buildRuntimeApplicationConfig();
@@ -598,16 +614,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   private void registerMcpServerIfAvailable() {
     try {
-      // ApplicationContext was initialized before seed data loaded, so it missed McpApplication.
-      // Reinitialize to pick up apps created by seed data loading.
+      // Pick up entities (bots, settings) created during seed data loading.
       ApplicationContext.reinitialize();
 
-      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") == null) {
-        LOG.info("McpApplication not found, skipping MCP server registration");
-        return;
-      }
-
-      // registerMCPServer is protected, so we use reflection from the test bootstrap
+      // registerMCPServer self-gates on mcpConfiguration.enabled (seeded enabled by default).
+      // It is protected, so we use reflection from the test bootstrap
       OpenMetadataApplication application = (OpenMetadataApplication) APP.getApplication();
       java.lang.reflect.Method method =
           OpenMetadataApplication.class.getDeclaredMethod(
@@ -715,13 +726,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
                 .NaturalLanguageSearchConfiguration();
     nlSearch.setSemanticSearchEnabled(true);
     nlSearch.setEnabled(true);
-    nlSearch.setEmbeddingProvider("djl");
-
-    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-    djlConfig.setEmbeddingModel(
-        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-    nlSearch.setDjl(djlConfig);
     config.setNaturalLanguageSearch(nlSearch);
     return config;
   }
@@ -774,6 +778,33 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("RDF configuration complete");
   }
 
+  /**
+   * Points the embedded server at the in-JVM {@link LlmStubServer} via an OpenAI-compatible
+   * provider, so the Company Context pill-extraction pipeline runs deterministically end to end.
+   */
+  private static void configureLlm(OpenMetadataApplicationConfig config) {
+    LLMConfiguration llm =
+        new LLMConfiguration()
+            .withEmbeddings(
+                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
+                    .withProvider(
+                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
+                    .withDjl(
+                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
+                            .withEmbeddingModel(
+                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
+    if (LLM_STUB_SERVER != null) {
+      LLMOpenAIConfig openai =
+          new LLMOpenAIConfig()
+              .withApiKey("integration-test")
+              .withModelId("stub-model")
+              .withEndpoint(LLM_STUB_SERVER.baseUrl());
+      llm.withEnabled(true).withProvider(LLMProvider.OPENAI).withOpenai(openai);
+      LOG.info("LLM completion configured against stub endpoint {}", LLM_STUB_SERVER.baseUrl());
+    }
+    config.setLlmConfiguration(llm);
+  }
+
   private void cleanup() {
     try {
       if (SharedEntities.isInitialized()) {
@@ -781,6 +812,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       }
     } catch (Exception e) {
       LOG.warn("Error cleaning up shared entities", e);
+    }
+
+    if (LLM_STUB_SERVER != null) {
+      LLM_STUB_SERVER.stop();
+      LLM_STUB_SERVER = null;
     }
 
     try {
@@ -1201,6 +1237,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     configurePipelineServiceClient(config);
     configureCache(config);
     configureRdf(config);
+    configureLlm(config);
     return config;
   }
 
@@ -1236,6 +1273,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
    */
   public static boolean isFusekiEnabled() {
     return fusekiEndpoint != null;
+  }
+
+  /** True when the embedded suite booted the in-JVM LLM stub (deterministic pill extraction). */
+  public static boolean isLlmStubEnabled() {
+    return LLM_STUB_SERVER != null;
   }
 
   /**

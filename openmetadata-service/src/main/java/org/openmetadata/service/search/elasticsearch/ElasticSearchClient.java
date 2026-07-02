@@ -213,6 +213,42 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    int queryStart = endpoint.indexOf('?');
+    String path = queryStart >= 0 ? endpoint.substring(0, queryStart) : endpoint;
+    es.co.elastic.clients.transport.rest5_client.low_level.Request request =
+        new es.co.elastic.clients.transport.rest5_client.low_level.Request(method, path);
+    if (queryStart >= 0) {
+      for (String pair : endpoint.substring(queryStart + 1).split("&")) {
+        int eq = pair.indexOf('=');
+        String name = eq < 0 ? pair : pair.substring(0, eq);
+        String value = eq < 0 ? "" : pair.substring(eq + 1);
+        if (!name.isEmpty()) {
+          request.addParameter(name, value);
+        }
+      }
+    }
+    if (jsonBody != null && !jsonBody.isBlank()) {
+      request.setJsonEntity(jsonBody);
+    }
+    es.co.elastic.clients.transport.rest5_client.low_level.Response response;
+    try {
+      response = lowLevelClient.performRequest(request);
+    } catch (es.co.elastic.clients.transport.rest5_client.low_level.ResponseException e) {
+      response = e.getResponse();
+    }
+    String body = "";
+    var entity = response.getEntity();
+    if (entity != null) {
+      try (var is = entity.getContent()) {
+        body = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+      }
+    }
+    return new RawSearchResponse(response.getStatusCode(), body);
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
     return indexManager.indexExists(indexName);
   }
@@ -406,14 +442,23 @@ public class ElasticSearchClient implements SearchClient {
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
-      String entityType)
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException {
     if (lineageGraphBuilder == null) {
       throw new UnsupportedOperationException(
           "Lineage features are not available in this deployment");
     }
     return lineageGraphBuilder.getLineagePaginationInfo(
-        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn,
+        upstreamDepth,
+        downstreamDepth,
+        queryFilter,
+        includeDeleted,
+        entityType,
+        startTime,
+        endTime);
   }
 
   @Override
@@ -454,8 +499,14 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response searchDataQualityLineage(
-      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
-    return searchManager.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+      String fqn,
+      int upstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      SubjectContext subjectContext)
+      throws IOException {
+    return searchManager.searchDataQualityLineage(
+        fqn, upstreamDepth, queryFilter, deleted, subjectContext);
   }
 
   @Override

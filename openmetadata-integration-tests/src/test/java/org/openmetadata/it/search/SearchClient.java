@@ -4,38 +4,100 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.openmetadata.it.server.ServerHandle;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
- * Thin JSON-over-HTTP client for the search engine (works against ES and OpenSearch).
+ * Thin JSON client for the search engine's read-only introspection surface (works against ES and
+ * OpenSearch). Exposes only the typed operations assertions need: {@code count}, {@code search},
+ * {@code alias}, {@code mapping}, {@code indices}, {@code exists}.
  *
- * <p>Uses {@link java.net.http.HttpClient} so the harness has no dependency on a specific
- * ES/OpenSearch client version. Only covers the inspection surface used by assertions:
- * {@code _count}, {@code _alias}, {@code _cat/indices}.
+ * <p><b>Embedded mode</b> talks directly to {@code searchHost:searchPort} via {@link
+ * java.net.http.HttpClient}, so the harness has no dependency on a specific ES/OpenSearch client
+ * version. <b>External mode</b> (a remote cluster where {@code :9200} isn't reachable) routes the
+ * same operations through the server's authenticated, typed {@code /v1/test-support/search}
+ * endpoints — there is no raw-path passthrough, so the server only ever runs these read-only ops.
  */
 public final class SearchClient {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final Duration TIMEOUT = Duration.ofSeconds(30);
+  private static final String TEST_SUPPORT = "/v1/test-support/search";
 
+  private final ServerHandle server;
   private final HttpClient http;
   private final URI base;
 
   public SearchClient(final ServerHandle server) {
-    this.http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
-    this.base =
-        URI.create(server.searchScheme() + "://" + server.searchHost() + ":" + server.searchPort());
+    this.server = server;
+    if (server.isExternal()) {
+      this.http = null;
+      this.base = null;
+    } else {
+      this.http = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
+      this.base =
+          URI.create(
+              server.searchScheme() + "://" + server.searchHost() + ":" + server.searchPort());
+    }
+  }
+
+  /** Doc count for an index/alias. */
+  public JsonNode count(final String index) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyGet(TEST_SUPPORT + "/count?index=" + encode(index)));
+    } else {
+      result = engineGet("/" + index + "/_count");
+    }
+    return result;
+  }
+
+  /** Doc count for an index/alias matching the given query body. */
+  public JsonNode count(final String index, final String query) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyPost(TEST_SUPPORT + "/count?index=" + encode(index), query));
+    } else {
+      result = enginePost("/" + index + "/_count", query);
+    }
+    return result;
+  }
+
+  /** Search an index/alias with the given query body. */
+  public JsonNode search(final String index, final String query) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyPost(TEST_SUPPORT + "/search?index=" + encode(index), query));
+    } else {
+      result = enginePost("/" + index + "/_search", query);
+    }
+    return result;
+  }
+
+  /** Backing-index map for an alias (each top-level key is a backing index). */
+  public JsonNode alias(final String name) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyGet(TEST_SUPPORT + "/alias?name=" + encode(name)));
+    } else {
+      result = engineGet("/_alias/" + name);
+    }
+    return result;
   }
 
   public JsonNode get(final String path) {
+    requireEmbedded("GET " + path);
     return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
   }
 
   public JsonNode post(final String path, final String jsonBody) {
+    requireEmbedded("POST " + path);
     return execute(
         HttpRequest.newBuilder(base.resolve(path))
             .header("Content-Type", "application/json")
@@ -43,7 +105,115 @@ public final class SearchClient {
             .build());
   }
 
-  public boolean exists(final String path) {
+  public JsonNode put(final String path, final String jsonBody) {
+    requireEmbedded("PUT " + path);
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
+  public void delete(final String path) {
+    requireEmbedded("DELETE " + path);
+    try {
+      final HttpResponse<String> response =
+          http.send(
+              HttpRequest.newBuilder(base.resolve(path)).DELETE().build(),
+              HttpResponse.BodyHandlers.ofString());
+      final int status = response.statusCode();
+      final boolean success = (status >= 200 && status < 300) || status == 404;
+      if (!success) {
+        throw new SearchClientException(
+            "HTTP " + status + " from DELETE " + path + ": " + response.body());
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SearchClientException("DELETE " + path + " interrupted", e);
+    } catch (final IOException e) {
+      throw new SearchClientException("DELETE " + path + " failed", e);
+    }
+  }
+
+  /** Mapping JSON for an index/alias. */
+  public JsonNode mapping(final String index) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyGet(TEST_SUPPORT + "/mapping?index=" + encode(index)));
+    } else {
+      result = engineGet("/" + index + "/_mapping");
+    }
+    return result;
+  }
+
+  /** Index names matching the pattern (a JSON array from {@code _cat/indices}). */
+  public JsonNode indices(final String pattern) {
+    final JsonNode result;
+    if (server.isExternal()) {
+      result = parse(proxyGet(TEST_SUPPORT + "/indices?pattern=" + encode(pattern)));
+    } else {
+      result = engineGet("/_cat/indices/" + pattern + "?format=json&h=index");
+    }
+    return result;
+  }
+
+  /** Whether an index (or alias) with the given name exists. */
+  public boolean indexExists(final String name) {
+    return server.isExternal() ? existsViaServer("index", name) : headExists("/" + name);
+  }
+
+  /** Whether an alias with the given name exists. */
+  public boolean aliasExists(final String name) {
+    return server.isExternal() ? existsViaServer("alias", name) : headExists("/_alias/" + name);
+  }
+
+  private boolean existsViaServer(final String kind, final String name) {
+    return parse(proxyGet(TEST_SUPPORT + "/exists?" + kind + "=" + encode(name)))
+        .path("exists")
+        .asBoolean();
+  }
+
+  private String proxyGet(final String path) {
+    return proxy(HttpMethod.GET, path, null);
+  }
+
+  private String proxyPost(final String path, final String body) {
+    return proxy(HttpMethod.POST, path, body);
+  }
+
+  private String proxy(final HttpMethod method, final String path, final String body) {
+    try {
+      return server.sdk().getHttpClient().executeForString(method, path, body);
+    } catch (final RuntimeException e) {
+      throw new SearchClientException(method + " " + path + " via test-support endpoint failed", e);
+    }
+  }
+
+  private static String encode(final String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
+  }
+
+  private static JsonNode parse(final String body) {
+    try {
+      return MAPPER.readTree(body);
+    } catch (final IOException e) {
+      throw new SearchClientException("Failed to parse search response: " + body, e);
+    }
+  }
+
+  private JsonNode engineGet(final String path) {
+    return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
+  }
+
+  private JsonNode enginePost(final String path, final String jsonBody) {
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
+  private boolean headExists(final String path) {
     try {
       final HttpResponse<Void> response =
           http.send(
@@ -57,6 +227,21 @@ public final class SearchClient {
       throw new SearchClientException("HEAD " + path + " interrupted", e);
     } catch (final IOException e) {
       throw new SearchClientException("HEAD " + path + " failed", e);
+    }
+  }
+
+  /**
+   * The raw {@link #get}/{@link #post}/{@link #put}/{@link #delete} helpers talk straight to the
+   * engine over {@code base}/{@code http}, which are null in external mode (there is no raw-path
+   * passthrough — only the typed read-only proxy). Fail fast with a clear message instead of a bare
+   * NPE so an external-mode run is self-explanatory.
+   */
+  private void requireEmbedded(final String operation) {
+    if (server.isExternal()) {
+      throw new SearchClientException(
+          operation
+              + " requires direct engine access, which is unavailable in external mode "
+              + "(the test-support proxy exposes only read-only introspection).");
     }
   }
 

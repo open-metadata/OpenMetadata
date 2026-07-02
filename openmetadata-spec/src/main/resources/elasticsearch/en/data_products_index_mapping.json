@@ -209,6 +209,22 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "dataProductType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "portfolioPriority": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "lifecycleStage": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
       "version": {
         "type": "float"
       },
@@ -512,7 +528,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "certification": {
         "type": "object",

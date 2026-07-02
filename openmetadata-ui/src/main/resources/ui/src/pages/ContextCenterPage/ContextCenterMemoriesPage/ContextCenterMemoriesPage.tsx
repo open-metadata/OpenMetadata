@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Badge,
+  Box,
   Button,
   Card,
   Dropdown,
@@ -19,13 +19,21 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FilterLines, Home02, Plus } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  Database01,
+  FilterFunnel02,
+  Pin01,
+  Plus,
+  User03,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -35,27 +43,33 @@ import {
   MemoryFilterTab,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
+import DataAssetFilterPopover from '../../../components/DataAssets/DataAssetSelectList/DataAssetFilterPopover';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   ContextMemory,
   MemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deleteContextMemory,
   getListContextMemories,
 } from '../../../rest/contextMemoryAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import searchClassBase from '../../../utils/SearchClassBase';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,primaryEntity,relatedEntities';
+const MEMORY_FIELDS =
+  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
 
 const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
-  // { id: 'pinned', label: 'label.pinned' },
+  { id: 'pinned', label: 'label.pinned', icon: Pin01 },
   // { id: 'needs-review', label: 'label.needs-review' },
 ] as const;
 
@@ -66,15 +80,18 @@ const FILTER_BUTTON_BASE_CLS =
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { alert } = useAlertStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
@@ -98,6 +115,31 @@ const ContextCenterMemoriesPage: FC = () => {
     [t]
   );
 
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
+
+  const canDeleteMemory = useMemo(() => {
+    const memory = memoryToEdit ?? memoryToView;
+
+    const isOwner =
+      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
+
+    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
+  }, [
+    hasDeletePermission,
+    memoryToEdit,
+    memoryToView,
+    currentUser?.name,
+    currentUser?.isAdmin,
+  ]);
+
   const fetchMemories = useCallback(async () => {
     setIsMemoriesLoading(true);
     try {
@@ -113,9 +155,21 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, []);
 
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.CONTEXT_MEMORY
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
   useEffect(() => {
     fetchMemories();
-  }, [fetchMemories]);
+    fetchPermission();
+  }, [fetchMemories, fetchPermission]);
 
   const assetOptions = useMemo(() => {
     const seen = new Map<
@@ -147,23 +201,15 @@ const ContextCenterMemoriesPage: FC = () => {
       m.relatedEntities?.forEach(addRef);
     });
 
-    return [
-      {
-        id: '',
-        label: t('label.all-entity', { entity: t('label.asset-plural') }),
-        displayName: '',
-        type: '',
-      },
-      ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
-        .map(([fqn, meta]) => ({
-          id: fqn,
-          label: meta.displayName,
-          displayName: meta.displayName,
-          type: meta.type,
-        })),
-    ];
-  }, [memories, t]);
+    return Array.from(seen.entries())
+      .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
+      .map(([fqn, meta]) => ({
+        id: fqn,
+        label: meta.displayName,
+        displayName: meta.displayName,
+        type: meta.type,
+      }));
+  }, [memories]);
 
   const authorOptions = useMemo(() => {
     const seen = new Map<string, string>();
@@ -175,7 +221,6 @@ const ContextCenterMemoriesPage: FC = () => {
     });
 
     return [
-      { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
       ...Array.from(seen.entries())
         .sort(([, a], [, b]) => a.localeCompare(b))
         .map(([name, displayName]) => ({ id: name, label: displayName })),
@@ -386,12 +431,35 @@ const ContextCenterMemoriesPage: FC = () => {
     fetchMemories();
   }, [handleModalClose, fetchMemories]);
 
-  const sharedCount = memories.filter(
-    (m) => m.status === MemoryStatus.Active
-  ).length;
   const createdByMeCount = memories.filter((m) =>
     m.owners?.some((o) => o.name === currentUser?.name)
   ).length;
+
+  const statsCards = useMemo(
+    () => [
+      {
+        filterKey: 'all' as const,
+        label: t('label.total-memory-plural'),
+        value: memories.length,
+        icon: null,
+      },
+      {
+        filterKey: 'pinned' as const,
+        label: t('label.pinned'),
+        value: memories.filter(
+          (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
+        ).length,
+        icon: <Pin01 className="tw:text-brand-600" size={12} strokeWidth={2} />,
+      },
+      {
+        filterKey: 'created-by-me' as const,
+        label: t('label.created-by-me'),
+        value: createdByMeCount,
+        icon: null,
+      },
+    ],
+    [memories, createdByMeCount, t]
+  );
   const totalUsageCount = memories.reduce(
     (sum, m) => sum + (m.usageCount ?? 0),
     0
@@ -409,30 +477,22 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   return (
-    <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
-      data-testid="context-center-memories-page">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
+    <Box
+      className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      data-testid="context-center-memories-page"
+      direction="col">
       <ContextCenterHeader
         actionsSlot={headerActions}
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
+            label: t('label.context-center'),
+            href: contextCenterClassBase.getContextCenterPath(),
           },
           {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.memory-plural'),
-            url: '',
+            label: t('label.memory-plural'),
           },
         ]}
-        className="tw:mb-3"
+        hasPermission={hasCreatePermission}
         searchPlaceholder={t('label.search-memories')}
         searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
@@ -440,38 +500,48 @@ const ContextCenterMemoriesPage: FC = () => {
         onSearch={handleSearchChange}
       />
 
-      {/* Stats cards */}
-      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-3">
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.total-memory-plural')}
-          </Typography>
-          <Typography size="display-xs" weight="semibold">
-            {memories.length}
-          </Typography>
-        </Card>
+      {/* Stats cards — clickable filters */}
+      <div className="tw:grid tw:grid-cols-4 tw:gap-6">
+        {statsCards.map(({ filterKey, label, value, icon }) => {
+          const isActive = activeFilter === filterKey;
 
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.created-by-me')}
-          </Typography>
-          <Typography size="display-xs" weight="semibold">
-            {createdByMeCount}
-          </Typography>
-        </Card>
+          return (
+            <Card
+              className={classNames(
+                'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
+                'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
+                { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
+              )}
+              key={filterKey}
+              onClick={() => handleFilterChange(filterKey)}>
+              <ChevronRight
+                className={classNames(
+                  'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:transition-opacity tw:duration-150',
+                  {
+                    'tw:opacity-100': isActive,
+                    'tw:opacity-0 tw:group-hover:opacity-100': !isActive,
+                  }
+                )}
+                size={14}
+                strokeWidth={2}
+              />
+              <Box align="center" className="tw:mb-1" gap={2}>
+                {icon}
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {label}
+                </Typography>
+              </Box>
+              <Typography size="display-xs" weight="semibold">
+                {value}
+              </Typography>
+            </Card>
+          );
+        })}
 
+        {/* Non-interactive usage card */}
         <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
           <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.shared-with-workspace')}
-          </Typography>
-          <Typography size="display-xs" weight="semibold">
-            {sharedCount}
-          </Typography>
-        </Card>
-
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('label.times-used-in-chats')}
+            {t('label.cited-in-chats')}
           </Typography>
           <Typography size="display-xs" weight="semibold">
             {totalUsageCount}
@@ -479,201 +549,216 @@ const ContextCenterMemoriesPage: FC = () => {
         </Card>
       </div>
 
+      <Box align="center" className="tw:py-5" gap={3} wrap="wrap">
+        <Tabs
+          className="tw:w-max"
+          selectedKey={activeFilter}
+          onSelectionChange={(key) =>
+            handleFilterChange(key as MemoryFilterTab)
+          }>
+          <Tabs.List
+            className="tw:gap-2"
+            items={FILTER_TABS.map((tab) => ({
+              id: tab.id,
+              label:
+                'icon' in tab ? (
+                  <Box align="center" className="tw:gap-1.5 tw:leading-4.5">
+                    <tab.icon size={12} strokeWidth={2} />
+                    {t(tab.label)}
+                  </Box>
+                ) : (
+                  <div className="tw:leading-4.5">{t(tab.label)}</div>
+                ),
+            }))}
+            type="button-brand">
+            {(tab) => (
+              <Tabs.Item
+                {...tab}
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                    {
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                        isSelected,
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
+                        !isSelected,
+                    }
+                  )
+                }
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
+
+        <Box align="center" gap={2}>
+          <DataAssetFilterPopover
+            allowAllOption
+            options={assetOptions}
+            renderTrigger={({ open }) => (
+              <AriaButton
+                className={classNames(
+                  selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+                )}
+                onPress={open}>
+                <Database01
+                  className={classNames('tw:shrink-0', {
+                    'tw:text-brand-secondary': selectedAsset,
+                    'tw:text-secondary': !selectedAsset,
+                  })}
+                  size={14}
+                />
+                <div className="tw:max-w-50">
+                  <Typography
+                    ellipsis
+                    className={
+                      selectedAsset
+                        ? 'tw:text-utility-brand-700'
+                        : 'tw:text-secondary'
+                    }
+                    weight="medium">
+                    {assetOptions.find((o) => o.id === selectedAsset)?.label ??
+                      t('label.all-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                  </Typography>
+                </div>
+                <ChevronDown
+                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                  size={16}
+                  strokeWidth={2.5}
+                />
+              </AriaButton>
+            )}
+            selectedId={selectedAsset}
+            onChange={(value) => {
+              setSelectedAsset(value);
+              if (activeFilter === 'all') {
+                setActiveFilter('');
+              }
+              setCurrentPage(1);
+            }}
+          />
+
+          <Dropdown.Root>
+            <AriaButton
+              className={
+                selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+              }>
+              <User03
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAuthor,
+                  'tw:text-secondary': !selectedAuthor,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAuthor
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+                    t('label.all-entity', { entity: t('label.author') })}
+                </Typography>
+              </div>
+              <ChevronDown
+                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                size={16}
+                strokeWidth={2.5}
+              />
+            </AriaButton>
+            <Dropdown.Popover>
+              <Dropdown.Menu
+                className="tw:p-1.5"
+                selectedKeys={selectedAuthor ? [selectedAuthor] : []}
+                selectionMode="single"
+                onAction={(key) => {
+                  const next = String(key);
+                  const value =
+                    next === 'all-author' || next === selectedAuthor
+                      ? ''
+                      : next;
+                  setSelectedAuthor(value);
+                  if (activeFilter === 'all') {
+                    setActiveFilter('');
+                  }
+                  setCurrentPage(1);
+                }}>
+                <Dropdown.Item
+                  id="all-author"
+                  key="all-author"
+                  textValue={t('label.all-entity', {
+                    entity: t('label.author'),
+                  })}>
+                  {t('label.all-entity', { entity: t('label.author') })}
+                </Dropdown.Item>
+                <Dropdown.Separator />
+                {authorOptions.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
+                    <Box align="center" gap={2}>
+                      {opt.id && <ProfilePicture name={opt.id} size={20} />}
+                      <span>{opt.label}</span>
+                    </Box>
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+              {authorOptions.length === 0 && (
+                <Box
+                  align="center"
+                  className="tw:pb-4 tw:pt-1.5"
+                  justify="center">
+                  <Typography className="tw:text-quaternary" size="text-xs">
+                    {t('label.no-data-found')}
+                  </Typography>
+                </Box>
+              )}
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
+
+        <Box align="center" className="tw:ml-auto" gap={4}>
+          {hasActiveFilters && (
+            <Button color="link-color" size="sm" onClick={handleClearFilters}>
+              {t('label.clear-entity', { entity: t('label.all') })}
+            </Button>
+          )}
+          <Dropdown.Root>
+            <AriaButton className={FILTER_BUTTON_CLS}>
+              <FilterFunnel02 size={16} />
+              <Typography className="tw:text-secondary" weight="medium">
+                {t('label.sort')}:
+              </Typography>
+              <Typography className="tw:text-secondary" weight="medium">
+                {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
+              </Typography>
+            </AriaButton>
+            <Dropdown.Popover className="tw:w-56">
+              <Dropdown.Menu
+                selectedKeys={[sortBy]}
+                selectionMode="single"
+                onAction={(key) => {
+                  setSortBy((key as MemorySortBy) ?? 'updated');
+                  setCurrentPage(1);
+                }}>
+                {SORT_OPTIONS.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
+      </Box>
       {/* Memories card with tabs */}
       <Card
         className="tw:flex tw:flex-col tw:h-auto"
         style={{ overflow: 'unset' }}>
-        <div className="tw:px-5 tw:py-3 tw:border-b tw:border-gray-blue-100 tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:sticky tw:top-0 tw:z-10 tw:bg-white tw:rounded-tl-xl tw:rounded-tr-xl">
-          <Tabs
-            className="tw:w-max"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) =>
-              handleFilterChange(key as MemoryFilterTab)
-            }>
-            <Tabs.List
-              className="tw:gap-2"
-              items={FILTER_TABS.map((tab) => ({
-                id: tab.id,
-                label: t(tab.label),
-              }))}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    isSelected
-                      ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-quaternary tw:cursor-pointer'
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Dropdown.Root>
-              <AriaButton
-                className={
-                  selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                    t('label.all-entity', { entity: t('label.asset-plural') })}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover className="tw:w-100">
-                <Dropdown.Menu
-                  selectedKeys={selectedAsset ? [selectedAsset] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAsset ? '' : next;
-                    setSelectedAsset(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
-                    }
-                    setCurrentPage(1);
-                  }}>
-                  {assetOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      {opt.type ? (
-                        <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
-                          <div className="tw:shrink-0">
-                            {searchClassBase.getEntityIcon(
-                              opt.type,
-                              'tw:w-6 tw:h-6 tw:text-gray-500'
-                            )}
-                          </div>
-                          <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
-                            <div className="tw:max-w-55">
-                              <Typography
-                                ellipsis
-                                className="tw:truncate tw:text-gray-800"
-                                size="text-sm"
-                                weight="medium">
-                                {opt.displayName}
-                              </Typography>
-                              <Typography
-                                ellipsis
-                                className="tw:text-gray-400 tw:truncate"
-                                size="text-xs">
-                                {opt.id}
-                              </Typography>
-                            </div>
-                            <Badge
-                              className="tw:shrink-0 tw:uppercase"
-                              color="gray"
-                              size="sm"
-                              type="color">
-                              {opt.type}
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : (
-                        <span>{opt.label}</span>
-                      )}
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-
-            <Dropdown.Root>
-              <AriaButton
-                className={
-                  selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
-                    t('label.all-entity', { entity: t('label.author') })}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  selectedKeys={selectedAuthor ? [selectedAuthor] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAuthor ? '' : next;
-                    setSelectedAuthor(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
-                    }
-                    setCurrentPage(1);
-                  }}>
-                  {authorOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      <div className="tw:flex tw:items-center tw:gap-2">
-                        {opt.id && <ProfilePicture name={opt.id} size={20} />}
-                        <span>{opt.label}</span>
-                      </div>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </div>
-
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-4">
-            {hasActiveFilters && (
-              <Button color="link-color" size="sm" onClick={handleClearFilters}>
-                {t('label.clear-entity', { entity: t('label.all') })}
-              </Button>
-            )}
-            <Dropdown.Root>
-              <AriaButton className={FILTER_BUTTON_CLS}>
-                <FilterLines size={18} />
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {t('label.sort')}:
-                </Typography>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover className="tw:w-56">
-                <Dropdown.Menu
-                  selectedKeys={[sortBy]}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    setSortBy((key as MemorySortBy) ?? 'updated');
-                    setCurrentPage(1);
-                  }}>
-                  {SORT_OPTIONS.map((opt) => (
-                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </div>
-        </div>
-
         <div>
           <MemoriesView
+            canDelete={hasDeletePermission}
+            canEdit={hasEditPermission}
             currentUserName={currentUser?.name}
             data={pagedMemories}
             isAdminUser={currentUser?.isAdmin}
@@ -693,12 +778,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
-        canDelete={
-          (memoryToEdit?.owners?.some((o) => o.name === currentUser?.name) ??
-            false) ||
-          Boolean(currentUser?.isAdmin)
-        }
+        canCreate={hasCreatePermission}
+        canDelete={canDeleteMemory}
+        canEdit={hasEditPermission}
         currentUserName={currentUser?.name}
+        isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -711,12 +795,10 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
-          canDelete={
-            (memoryToView?.owners?.some((o) => o.name === currentUser?.name) ??
-              false) ||
-            Boolean(currentUser?.isAdmin)
-          }
+          canDelete={canDeleteMemory}
+          canEdit={hasEditPermission}
           currentUserName={currentUser?.name}
+          isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
@@ -731,15 +813,15 @@ const ContextCenterMemoriesPage: FC = () => {
         <DeleteModal
           entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
-          message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question ?? '',
+          message={t('message.delete-entity-permanently', {
+            entityType: t('label.memory-lowercase'),
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}
           onDelete={handleConfirmDelete}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

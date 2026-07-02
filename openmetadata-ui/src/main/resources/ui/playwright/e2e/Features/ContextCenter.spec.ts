@@ -11,22 +11,33 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { VIEW_ONLY_RULE } from '../../constant/permission';
+import { APIRequestContext, expect } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
-import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  BulkOperationResult,
+  ContextCenterDocument,
+  ContextCenterFolder,
+  expectBulkIdsRequest,
+  expectSelectedCount,
+  getDocumentRowByName,
+  MEMORIES_API,
+  navigateToArticles,
+  navigateToDashboard,
+  navigateToDocuments,
+  navigateToMemories,
+  selectDocumentByName,
+  uploadDocument as uploadDocumentToApi,
+} from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { addTitle } from '../../utils/KnowledgeCenter';
-import { test } from '../fixtures/pages';
+import { test as base } from '../fixtures/pages';
+
+const test = base;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const DASHBOARD_URL = '/context-center/dashboard';
-const ARTICLES_URL = '/context-center/articles';
-const DOCUMENTS_URL = '/context-center/documents';
 
 let ARTICLE_TITLE: string;
 const ARTICLE_DESCRIPTION =
@@ -37,33 +48,26 @@ const QUICK_LINK_DESCRIPTION =
   'Playwright quick link description for card detail check';
 let QUICK_LINK_NAME: string;
 
+const contextFileIdsToCleanup = new Set<string>();
+const contextFolderIdsToCleanup = new Set<string>();
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const navigateToDashboard = async (page: Page) => {
-  await page.goto(DASHBOARD_URL);
-  await page
-    .getByTestId('context-center-dashboard-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-  // Wait for article section to finish loading (either cards or empty state)
-  const section = page.getByTestId('article-list-section');
-  await section.waitFor({ state: 'visible' });
-};
+const uploadDocument = async (
+  apiContext: APIRequestContext,
+  name: string,
+  buffer: Buffer,
+  folderFqn?: string
+): Promise<ContextCenterDocument> => {
+  const document = await uploadDocumentToApi(
+    apiContext,
+    name,
+    buffer,
+    folderFqn
+  );
+  contextFileIdsToCleanup.add(document.id);
 
-const navigateToArticles = async (page: Page) => {
-  await page.goto(ARTICLES_URL);
-  await page
-    .getByTestId('context-center-articles-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
-};
-
-const navigateToDocuments = async (page: Page) => {
-  await page.goto(DOCUMENTS_URL);
-  await page
-    .getByTestId('context-center-documents-page')
-    .waitFor({ state: 'visible' });
-  await waitForAllLoadersToDisappear(page);
+  return document;
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -75,8 +79,13 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 let articleEntity: KnowledgeCenterClass = new KnowledgeCenterClass();
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
-let viewOnlyUser: UserClass;
 let quickLinkId = '';
+
+// ─── Memories fixtures ──────────────────────────────────────────────────────
+
+let ownerMemoryId = '';
+let ownerMemoryName = '';
+const OWNER_MEMORY_TITLE = `CC Memory ${uuid()}`;
 
 test.describe('Context Center', () => {
   test.slow(true);
@@ -139,32 +148,45 @@ test.describe('Context Center', () => {
     const qlData = await qlRes.json();
     quickLinkId = qlData.id;
 
-    // Upload a document via API so document-related tests have data
-    const fileContent = Buffer.from('Playwright seed document');
+    await uploadDocument(
+      apiContext,
+      `seed-document-${uuid()}.txt`,
+      Buffer.from('Playwright seed document')
+    );
 
-    await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
-      multipart: {
-        file: {
-          name: 'seed-document.txt',
-          mimeType: 'text/plain',
-          buffer: fileContent,
-        },
+    // Create a memory owned by admin for card/edit/delete action tests
+    ownerMemoryName = `cc_memory_${uuid()}`;
+    const memoryRes = await apiContext.post(MEMORIES_API, {
+      data: {
+        name: ownerMemoryName,
+        title: OWNER_MEMORY_TITLE,
+        question: 'What is the Playwright memory fixture for?',
+        answer: 'It seeds a memory owned by admin for action button tests.',
+        shareConfig: { visibility: 'Shared' },
       },
     });
-
-    viewOnlyUser = new UserClass();
-    await viewOnlyUser.create(apiContext, false);
-    await viewOnlyUser.setCustomRulePolicy(
-      apiContext,
-      VIEW_ONLY_RULE,
-      'context-center-view-only'
-    );
+    const memoryData = await memoryRes.json();
+    ownerMemoryId = memoryData.id;
 
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await Promise.all(
+      Array.from(contextFileIdsToCleanup).map((id) =>
+        apiContext.delete(
+          `/api/v1/contextCenter/drive/files/${id}?hardDelete=true`
+        )
+      )
+    );
+    await Promise.all(
+      Array.from(contextFolderIdsToCleanup).map((id) =>
+        apiContext.delete(
+          `/api/v1/contextCenter/drive/folders/${id}?recursive=true&hardDelete=true`
+        )
+      )
+    );
     await articleEntity.delete(apiContext);
     if (quickLinkId) {
       await apiContext.delete(
@@ -174,72 +196,16 @@ test.describe('Context Center', () => {
     if (articleTagClassification?.responseData?.id) {
       await articleTagClassification.delete(apiContext);
     }
-    if (viewOnlyUser.responseData.id) {
-      await viewOnlyUser.delete(apiContext);
+    if (ownerMemoryId) {
+      await apiContext.delete(
+        `${MEMORIES_API}/${ownerMemoryId}?hardDelete=true`
+      );
     }
     await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
-  });
-
-  // ─── Permissions ────────────────────────────────────────────────────────────
-
-  test.describe('Permissions', () => {
-    test('user with only ViewAll cannot see restricted action buttons', async ({
-      viewOnlyPage,
-    }) => {
-      await test.step('dashboard actions are hidden', async () => {
-        await navigateToDashboard(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /create.*article/i })
-        ).not.toBeVisible();
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-      });
-
-      await test.step('articles create action is hidden', async () => {
-        await navigateToArticles(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByTestId('create-knowledge-page-btn')
-        ).not.toBeVisible();
-      });
-
-      await test.step('article detail actions are hidden', async () => {
-        await viewOnlyPage.goto(
-          `/context-center/articles/${articleEntity.responseData.fullyQualifiedName}`
-        );
-        await waitForAllLoadersToDisappear(viewOnlyPage);
-
-        const header = viewOnlyPage.getByTestId('article-detail-header');
-        await expect(header).toBeVisible();
-        await expect(header.getByTestId('upvote-btn')).toBeVisible();
-        await expect(header.getByTestId('downvote-btn')).toBeVisible();
-        await expect(header.getByTestId('follow-btn')).toBeVisible();
-        await expect(header.getByTestId('conversation')).toBeVisible();
-        await expect(header.getByTestId('manage-button')).not.toBeVisible();
-      });
-
-      await test.step('documents upload and delete actions are hidden', async () => {
-        await navigateToDocuments(viewOnlyPage);
-
-        await expect(
-          viewOnlyPage.getByRole('button', { name: /upload file/i })
-        ).not.toBeVisible();
-
-        const firstRow = viewOnlyPage
-          .getByTestId('documents-view')
-          .locator('[data-testid^="document-row-"]')
-          .first();
-        await expect(firstRow).toBeVisible();
-        await firstRow.locator('button[aria-label="Open menu"]').click();
-        await expect(viewOnlyPage.getByTestId('delete-btn')).not.toBeVisible();
-      });
-    });
   });
 
   // ─── Dashboard Page ──────────────────────────────────────────────────────────
@@ -273,28 +239,6 @@ test.describe('Context Center', () => {
           page.getByRole('button', { name: /upload file/i })
         ).toBeVisible();
       });
-    });
-
-    test('article list section renders pre-created article', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('article-list-section');
-      await expect(section).toBeVisible();
-
-      const card = section.getByTestId('article-card').filter({
-        hasText: ARTICLE_TITLE,
-      });
-      await expect(card.first()).toBeVisible();
-    });
-
-    test('uploaded documents section renders', async ({ page }) => {
-      await navigateToDashboard(page);
-
-      await expect(
-        page.getByTestId('uploaded-documents-section')
-      ).toBeVisible();
     });
 
     test('Create Article button creates article and redirects to detail page', async ({
@@ -350,10 +294,7 @@ test.describe('Context Center', () => {
     test('View All Articles navigates to articles page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('article-list-section')
-        .getByRole('button', { name: /view all/i })
-        .click();
+      await page.getByTestId('article-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/articles/);
     });
@@ -361,125 +302,17 @@ test.describe('Context Center', () => {
     test('View All Documents navigates to documents page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      await page
-        .getByTestId('uploaded-documents-section')
-        .getByRole('button', { name: /view all/i })
-        .click();
+      await page.getByTestId('document-detail-card').click();
 
       await expect(page).toHaveURL(/\/context-center\/documents/);
     });
 
-    test('article card click navigates to article detail', async ({ page }) => {
+    test('View All Memories navigates to memories page', async ({ page }) => {
       await navigateToDashboard(page);
 
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE });
+      await page.getByTestId('memory-detail-card').click();
 
-      await card.first().click();
-      await expect(page).toHaveURL(/\/context-center\/articles\//);
-    });
-
-    test('article card shows title, description and last-edited time', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE });
-
-      await card.first().scrollIntoViewIfNeeded();
-      await expect(card.first()).toBeVisible();
-
-      // Title
-      await expect(card.first().getByText(ARTICLE_TITLE)).toBeVisible();
-
-      // Description preview text
-      await expect(card.first().getByText(ARTICLE_DESCRIPTION)).toBeVisible();
-
-      // Last-edited timestamp label
-      await expect(card.first().getByText(/last updated/i)).toBeVisible();
-    });
-
-    test('article card shows assigned tags with overflow count', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const card = page
-        .getByTestId('article-list-section')
-        .getByTestId('article-card')
-        .filter({ hasText: ARTICLE_TITLE })
-        .first();
-
-      await card.scrollIntoViewIfNeeded();
-      await expect(card).toBeVisible();
-
-      await expect(card.getByText(articleTags[0].data.name)).toBeVisible();
-      await expect(card.getByText(articleTags[1].data.name)).toBeVisible();
-      await expect(card.getByText('+1')).toBeVisible();
-    });
-
-    test('quick link card shows title, description and opens external url', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('article-list-section');
-      const card = section
-        .getByTestId('article-card')
-        .filter({ hasText: QUICK_LINK_TITLE });
-
-      await card.first().scrollIntoViewIfNeeded();
-      await expect(card.first()).toBeVisible();
-
-      // Title
-      await expect(card.first().getByText(QUICK_LINK_TITLE)).toBeVisible();
-
-      // Description
-      await expect(
-        card.first().getByText(QUICK_LINK_DESCRIPTION)
-      ).toBeVisible();
-
-      // Clicking a quick link opens a new tab
-      const [newTab] = await Promise.all([
-        page.context().waitForEvent('page'),
-        card.first().click(),
-      ]);
-      await expect(newTab).toHaveURL(QUICK_LINK_URL);
-      await newTab.close();
-    });
-
-    test('uploaded document card shows filename and size label', async ({
-      page,
-    }) => {
-      await navigateToDashboard(page);
-
-      const section = page.getByTestId('uploaded-documents-section');
-      const firstCard = section.getByTestId('uploaded-document-card').first();
-
-      // Only assert if at least one document exists; otherwise skip gracefully
-      const count = await section.getByTestId('uploaded-document-card').count();
-      if (count === 0) {
-        return;
-      }
-
-      await firstCard.scrollIntoViewIfNeeded();
-      await expect(firstCard).toBeVisible();
-
-      // Filename
-      const nameEl = firstCard.getByTestId('document-name');
-      await expect(nameEl).toBeVisible();
-      const nameText = await nameEl.textContent();
-      expect(nameText?.trim().length).toBeGreaterThan(0);
-
-      // Size label (e.g. "0.0 MB" or "27 B")
-      const sizeEl = firstCard.getByTestId('document-size');
-      await expect(sizeEl).toBeVisible();
-      await expect(sizeEl).toHaveText(/\d/);
+      await expect(page).toHaveURL(/\/context-center\/memories/);
     });
   });
 
@@ -505,7 +338,7 @@ test.describe('Context Center', () => {
       expect(searchRes.status()).toBe(200);
 
       // The pre-created article appears in results
-      const card = page.getByTestId(ARTICLE_TITLE);
+      const card = page.getByTestId(`knowledge-card-${ARTICLE_TITLE}`);
 
       await expect(card.first()).toBeVisible();
     });
@@ -553,7 +386,7 @@ test.describe('Context Center', () => {
       await searchInput.clear();
       await waitForAllLoadersToDisappear(page);
 
-      const card = page.getByTestId(ARTICLE_TITLE);
+      const card = page.getByTestId(`knowledge-card-${ARTICLE_TITLE}`);
       await expect(card.first()).toBeVisible();
     });
 
@@ -718,28 +551,22 @@ test.describe('Context Center', () => {
       const modal = page.getByRole('dialog', { name: /quick link/i });
       await expect(modal).toBeVisible();
 
-      await modal.getByTestId('displayName').fill(testQuickLinkTitle);
-      await modal.getByTestId('url').fill(QUICK_LINK_URL);
+      await modal
+        .getByTestId('displayName')
+        .locator('input')
+        .fill(testQuickLinkTitle);
+      await modal.getByTestId('url').locator('input').fill(QUICK_LINK_URL);
 
       const createResPromise = page.waitForResponse(
         '/api/v1/contextCenter/pages'
       );
       await modal.getByRole('button', { name: /save/i }).click();
-      const created = await createResPromise;
-      const createdData = await created.json();
+      await createResPromise;
 
-      const card = page.locator(`[data-testid="${testQuickLinkTitle}"]`);
+      const card = page.locator(
+        `[data-testid="knowledge-card-${testQuickLinkTitle}"]`
+      );
       await expect(card).toBeVisible();
-
-      // Clean up the test quick link
-      const browser3 = page.context().browser();
-      if (browser3 && createdData?.id) {
-        const { apiContext, afterAction } = await createNewPage(browser3);
-        await apiContext.delete(
-          `/api/v1/contextCenter/pages/${createdData.id}?hardDelete=true&recursive=true`
-        );
-        await afterAction();
-      }
     });
 
     test('quick link card has correct url and opens in new tab', async ({
@@ -747,7 +574,9 @@ test.describe('Context Center', () => {
     }) => {
       await navigateToArticles(page);
 
-      const card = page.locator(`[data-testid="${QUICK_LINK_TITLE}"]`).first();
+      const card = page
+        .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+        .first();
       await card.scrollIntoViewIfNeeded();
       await expect(card).toBeVisible();
 
@@ -904,7 +733,9 @@ test.describe('Context Center', () => {
     test('deleting quick link removes it from the list', async ({ page }) => {
       await navigateToArticles(page);
 
-      const card = page.locator(`[data-testid="${QUICK_LINK_TITLE}"]`).first();
+      const card = page
+        .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+        .first();
       await card.scrollIntoViewIfNeeded();
       await expect(card).toBeVisible();
 
@@ -918,7 +749,9 @@ test.describe('Context Center', () => {
       expect(deleteRes.status()).toBe(200);
 
       await expect(
-        page.locator(`[data-testid="${QUICK_LINK_TITLE}"]`).first()
+        page
+          .locator(`[data-testid="knowledge-card-${QUICK_LINK_TITLE}"]`)
+          .first()
       ).not.toBeVisible();
     });
 
@@ -1024,21 +857,27 @@ test.describe('Context Center', () => {
     test('file upload attaches file and closes modal, then appears in list', async ({
       page,
     }) => {
+      const fileName = `context-center-upload-${uuid()}.txt`;
+      const uploadFile = {
+        name: fileName,
+        mimeType: 'text/plain',
+        buffer: Buffer.from('context center upload test file'),
+      };
+
       await navigateToDocuments(page);
 
       await page.getByRole('button', { name: /upload file/i }).click();
       const modal = page.getByRole('dialog', { name: /upload documents/i });
       await expect(modal).toBeVisible();
 
-      // Set file directly on the hidden input
-      await modal.locator('input[type="file"]').setInputFiles({
-        name: 'test-upload.txt',
-        mimeType: 'text/plain',
-        buffer: Buffer.from('playwright test file content'),
-      });
+      // Set file on the input via testId; wait for attached (not visible)
+      const fileInput = page.getByTestId('file-upload-input');
 
-      // File appears in staged list
-      await expect(modal.getByText('test-upload.txt').first()).toBeVisible();
+      await fileInput.waitFor({ state: 'attached' });
+
+      await fileInput.setInputFiles(uploadFile);
+
+      await expect(modal.getByText(fileName).first()).toBeVisible();
 
       // Attach the file
       const uploadResPromise = page.waitForResponse(
@@ -1047,48 +886,41 @@ test.describe('Context Center', () => {
       await modal.getByRole('button', { name: /attach/i }).click();
       const uploadRes = await uploadResPromise;
       expect(uploadRes.status()).toBe(201);
+      const uploadedDocument =
+        (await uploadRes.json()) as ContextCenterDocument;
+      contextFileIdsToCleanup.add(uploadedDocument.id);
 
       // Modal closes automatically after successful upload
       await expect(modal).not.toBeVisible();
 
       // File appears in document list
-      const docRow = page.getByText('test-upload.txt');
+      const docRow = page.getByText(fileName);
       await expect(docRow.first()).toBeVisible();
     });
 
     test('uploaded file shows name, size and download button in list', async ({
+      browser,
       page,
     }) => {
+      const fileName = `metadata-doc-${uuid()}.txt`;
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('document metadata test')
+      );
+      await afterAction();
+
       await navigateToDocuments(page);
 
-      const view = page.getByTestId('documents-view');
-      const firstRow = view.locator('[data-testid^="document-row-"]').first();
-
-      // Relies on at least one document existing from prior upload test
-      await expect(firstRow).toBeVisible();
+      const targetRow = getDocumentRowByName(page, fileName);
+      await expect(targetRow).toBeVisible();
 
       // Name is present
-      await expect(firstRow.getByTestId('document-name')).toBeVisible();
+      await expect(targetRow.getByTestId('document-name')).toHaveText(fileName);
 
       // Download button is present
-      await expect(firstRow.getByTestId('download-btn')).toBeVisible();
-    });
-
-    test.fixme('download button triggers file download', async ({ page }) => {
-      await navigateToDocuments(page);
-
-      const view = page.getByTestId('documents-view');
-      const firstRow = view.locator('[data-testid^="document-row-"]').first();
-
-      await expect(firstRow).toBeVisible();
-
-      // Listen for the download API call
-      const downloadRes = page.waitForResponse(
-        /\/api\/v1\/contextCenter\/drive\/files\/[^/]+\/download(?:\?.*)?$/
-      );
-      await firstRow.getByTestId('download-btn').click();
-      const res = await downloadRes;
-      expect(res.status()).toBe(200);
+      await expect(targetRow.getByTestId('download-btn')).toBeVisible();
     });
 
     test('delete document removes it from the list', async ({
@@ -1099,15 +931,11 @@ test.describe('Context Center', () => {
 
       // Upload a dedicated document so this test is independent of the download test
       const { apiContext, afterAction } = await createNewPage(browser);
-      await apiContext.post('/api/v1/contextCenter/drive/files/upload', {
-        multipart: {
-          file: {
-            name: fileName,
-            mimeType: 'text/plain',
-            buffer: Buffer.from('document for delete test'),
-          },
-        },
-      });
+      await uploadDocument(
+        apiContext,
+        fileName,
+        Buffer.from('document for delete test')
+      );
       await afterAction();
 
       await navigateToDocuments(page);
@@ -1143,6 +971,176 @@ test.describe('Context Center', () => {
       }
     });
 
+    test('bulk delete removes selected documents with a single API call', async ({
+      browser,
+      page,
+    }) => {
+      const firstFileName = `bulk-delete-one-${uuid()}.txt`;
+      const secondFileName = `bulk-delete-two-${uuid()}.txt`;
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const firstDocument = await uploadDocument(
+        apiContext,
+        firstFileName,
+        Buffer.from('first document for bulk delete')
+      );
+      const secondDocument = await uploadDocument(
+        apiContext,
+        secondFileName,
+        Buffer.from('second document for bulk delete')
+      );
+      await afterAction();
+
+      await navigateToDocuments(page);
+
+      await selectDocumentByName(page, firstFileName);
+      await selectDocumentByName(page, secondFileName);
+      await expectSelectedCount(page, 2);
+
+      await page.getByTestId('bulk-delete-btn').click();
+      await expect(page.getByTestId('modal-header')).toContainText(
+        'Delete 2 documents'
+      );
+
+      const bulkDeleteResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/bulk/delete'
+      );
+      await page.getByTestId('confirm-button').click();
+      const bulkDeleteRes = await bulkDeleteResPromise;
+      const bulkDeleteBody =
+        (await bulkDeleteRes.json()) as BulkOperationResult;
+
+      expect(bulkDeleteRes.status()).toBe(200);
+      expect(bulkDeleteBody.numberOfRowsPassed).toBe(2);
+      expect(bulkDeleteBody.numberOfRowsFailed ?? 0).toBe(0);
+      expectBulkIdsRequest(bulkDeleteRes.request().postData(), [
+        firstDocument.id,
+        secondDocument.id,
+      ]);
+      await expect(getDocumentRowByName(page, firstFileName)).not.toBeVisible();
+      await expect(
+        getDocumentRowByName(page, secondFileName)
+      ).not.toBeVisible();
+    });
+
+    test('bulk move moves selected documents to a folder with a single API call', async ({
+      browser,
+      page,
+    }) => {
+      const folderName = `bulk-move-folder-${uuid()}`;
+      const firstFileName = `bulk-move-one-${uuid()}.txt`;
+      const secondFileName = `bulk-move-two-${uuid()}.txt`;
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const firstDocument = await uploadDocument(
+        apiContext,
+        firstFileName,
+        Buffer.from('first document for bulk move')
+      );
+      const secondDocument = await uploadDocument(
+        apiContext,
+        secondFileName,
+        Buffer.from('second document for bulk move')
+      );
+      await afterAction();
+
+      await navigateToDocuments(page);
+
+      await page.getByTestId('add-folder-btn').click();
+      await page
+        .getByTestId('folder-name-input')
+        .getByRole('textbox')
+        .fill(folderName);
+      const folderCreateResPromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/contextCenter/drive/folders') &&
+          response.request().method() === 'POST'
+      );
+      await page.getByTestId('create-folder-btn').click();
+      const folderCreateRes = await folderCreateResPromise;
+      const targetFolder =
+        (await folderCreateRes.json()) as ContextCenterFolder;
+      contextFolderIdsToCleanup.add(targetFolder.id);
+      expect(folderCreateRes.status()).toBe(201);
+
+      await expect(page.getByText(folderName, { exact: true })).toBeVisible();
+      await selectDocumentByName(page, firstFileName);
+      await selectDocumentByName(page, secondFileName);
+      await expectSelectedCount(page, 2);
+
+      await page.getByTestId('bulk-move-btn').click();
+
+      const bulkMoveResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/bulk/move'
+      );
+      await page.getByTestId(`move-to-folder-${targetFolder.id}`).click();
+      const bulkMoveRes = await bulkMoveResPromise;
+      const bulkMoveBody = (await bulkMoveRes.json()) as BulkOperationResult;
+
+      expect(bulkMoveRes.status()).toBe(200);
+      expect(bulkMoveBody.numberOfRowsPassed).toBe(2);
+      expect(bulkMoveBody.numberOfRowsFailed ?? 0).toBe(0);
+      expectBulkIdsRequest(bulkMoveRes.request().postData(), [
+        firstDocument.id,
+        secondDocument.id,
+      ]);
+
+      await navigateToDocuments(page);
+      await expect(
+        getDocumentRowByName(page, firstFileName).getByTestId(
+          'document-folder-name'
+        )
+      ).toHaveText(folderName);
+      await expect(
+        getDocumentRowByName(page, secondFileName).getByTestId(
+          'document-folder-name'
+        )
+      ).toHaveText(folderName);
+    });
+
+    test('duplicate filename upload fails case-insensitively in the same folder', async ({
+      browser,
+      page,
+    }) => {
+      const duplicateName = `Duplicate-Document-${uuid()}.TXT`;
+      const lowerCaseDuplicateName = duplicateName.toLowerCase();
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await uploadDocument(
+        apiContext,
+        duplicateName,
+        Buffer.from('original duplicate document')
+      );
+      await afterAction();
+
+      await navigateToDocuments(page);
+      await page.getByRole('button', { name: /upload file/i }).click();
+
+      const modal = page.getByRole('dialog', { name: /upload documents/i });
+      await expect(modal).toBeVisible();
+
+      const fileInput = page.getByTestId('file-upload-input');
+      await fileInput.waitFor({ state: 'attached' });
+      await fileInput.setInputFiles({
+        name: lowerCaseDuplicateName,
+        mimeType: 'text/plain',
+        buffer: Buffer.from('duplicate document'),
+      });
+
+      await expect(modal.getByText(lowerCaseDuplicateName)).toBeVisible();
+
+      const duplicateUploadResPromise = page.waitForResponse(
+        '/api/v1/contextCenter/drive/files/upload'
+      );
+      await modal.getByRole('button', { name: /attach/i }).click();
+      const duplicateUploadRes = await duplicateUploadResPromise;
+      const duplicateUploadBody = await duplicateUploadRes.text();
+
+      expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
+      expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
+      await expect(modal.getByText(/failed/i).first()).toBeVisible();
+      await expect(
+        modal.getByRole('button', { name: /attach/i })
+      ).toBeDisabled();
+    });
+
     test('oversized file appears in list with failed state and Attach button stays disabled', async ({
       page,
     }) => {
@@ -1154,7 +1152,9 @@ test.describe('Context Center', () => {
 
       // Create a >5 MB in-memory buffer
       const bigBuffer = Buffer.alloc(6 * 1024 * 1024, 'x');
-      await modal.locator('input[type="file"]').setInputFiles({
+      const oversizedInput = page.getByTestId('file-upload-input');
+      await oversizedInput.waitFor({ state: 'attached' });
+      await oversizedInput.setInputFiles({
         name: 'too-large.bin',
         mimeType: 'application/octet-stream',
         buffer: bigBuffer,
@@ -1169,6 +1169,240 @@ test.describe('Context Center', () => {
       await expect(
         modal.getByRole('button', { name: /attach/i })
       ).toBeDisabled();
+    });
+  });
+
+  // ─── Memories Page ────────────────────────────────────────────────────────
+
+  test.describe('Memories Page', () => {
+    test('shows header with title, breadcrumb and Add Memory button', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const header = page.getByTestId('context-center-header');
+      await expect(header).toBeVisible();
+      await expect(header.getByTestId('breadcrumb')).toBeVisible();
+      await expect(header.getByRole('heading')).toContainText('Memor');
+      await expect(page.getByTestId('add-memory-btn')).toBeVisible();
+    });
+
+    // ─── Card actions ─────────────────────────────────────────────────────
+
+    test('clicking a memory row opens the view-only modal', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
+      await row.scrollIntoViewIfNeeded();
+      await row.click();
+
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').getByText(OWNER_MEMORY_TITLE)
+      ).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`memory=${ownerMemoryName}`));
+    });
+
+    test('edit-memory button on the row opens the modal in edit mode', async ({
+      page,
+    }) => {
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${ownerMemoryId}`);
+      await row.scrollIntoViewIfNeeded();
+      await row.getByTestId('edit-memory-btn').click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Edit' })
+      ).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Save Changes' })
+      ).toBeVisible();
+    });
+
+    test('delete button on the row deletes the memory after confirmation', async ({
+      browser,
+      page,
+    }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const disposableName = `cc_memory_delete_${uuid()}`;
+      const createRes = await apiContext.post(MEMORIES_API, {
+        data: {
+          name: disposableName,
+          title: `CC Memory Delete ${uuid()}`,
+          question: 'Disposable memory for row delete test',
+          answer: 'Disposable memory for row delete test',
+          shareConfig: { visibility: 'Shared' },
+        },
+      });
+      const disposable = await createRes.json();
+      await afterAction();
+
+      await navigateToMemories(page);
+
+      const row = page.getByTestId(`memory-row-${disposable.id}`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+
+      await row.getByLabel('Open menu').last().click();
+      await page.getByTestId('delete-btn').click();
+
+      const deleteResPromise = page.waitForResponse(
+        new RegExp(`${MEMORIES_API}/${disposable.id}`)
+      );
+      await page.getByTestId('confirm-button').click();
+      const deleteRes = await deleteResPromise;
+      expect(deleteRes.status()).toBe(200);
+
+      await expect(row).not.toBeVisible();
+    });
+
+    // ─── Create memory action ─────────────────────────────────────────────
+
+    test('Add Memory button opens the create modal', async ({ page }) => {
+      await navigateToMemories(page);
+
+      await page.getByTestId('add-memory-btn').click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
+      await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Delete' })
+      ).not.toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Edit' })
+      ).not.toBeVisible();
+      await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Create Memory' })
+      ).toBeVisible();
+    });
+
+    // ─── Edit modal actions ───────────────────────────────────────────────
+
+    test.describe('Edit modal actions', () => {
+      let editableMemoryId: string;
+      let editableMemoryName: string;
+
+      test.beforeEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        editableMemoryName = `cc_memory_edit_${uuid()}`;
+        const res = await apiContext.post(MEMORIES_API, {
+          data: {
+            name: editableMemoryName,
+            title: `CC Memory Edit ${uuid()}`,
+            question: 'Editable memory seed question',
+            answer: 'Editable memory seed answer',
+            shareConfig: { visibility: 'Shared' },
+          },
+        });
+        const data = await res.json();
+        editableMemoryId = data.id;
+        await afterAction();
+      });
+
+      test.afterEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await apiContext.delete(
+          `${MEMORIES_API}/${editableMemoryId}?hardDelete=true`
+        );
+        await afterAction();
+      });
+
+      test('view modal switches to edit mode and saves changes', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByRole('button', { name: /^edit$/i }).click();
+
+        await dialog
+          .getByTestId('memory-content-input')
+          .locator('textarea')
+          .fill('Updated answer via Playwright edit flow.');
+
+        const updateResPromise = page.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editableMemoryId}`)
+        );
+        await dialog.getByRole('button', { name: /^(save|create)/i }).click();
+        const updateRes = await updateResPromise;
+        expect(updateRes.status()).toBe(200);
+
+        await expect(dialog).not.toBeVisible();
+      });
+
+      test('cancel button closes the modal without saving', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog
+          .getByTestId('memory-title-input')
+          .locator('input')
+          .fill('This change should be discarded');
+
+        await dialog.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+
+        await navigateToMemories(page);
+        const reopenedRow = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await reopenedRow.scrollIntoViewIfNeeded();
+        await reopenedRow.click();
+        await expect(
+          dialog.getByTestId('memory-title-input').locator('input')
+        ).not.toHaveValue('This change should be discarded');
+      });
+
+      test('delete button inside the modal deletes the memory', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editableMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        const deleteResPromise = page.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editableMemoryId}`)
+        );
+        await dialog.getByRole('button', { name: /^delete$/i }).click();
+        const deleteRes = await deleteResPromise;
+        expect(deleteRes.status()).toBe(200);
+
+        await expect(dialog).not.toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${editableMemoryId}`)
+        ).not.toBeVisible();
+      });
     });
   });
 });

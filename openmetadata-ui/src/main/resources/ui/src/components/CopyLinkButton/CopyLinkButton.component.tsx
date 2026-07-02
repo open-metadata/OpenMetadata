@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { Check } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../hooks/useClipBoard';
@@ -24,12 +25,18 @@ interface CopyLinkButtonProps {
   children: ReactNode;
   url: string;
   tooltip?: string;
+  className?: string;
+  color?: 'secondary' | 'tertiary';
+  testId?: string;
 }
 
 const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   children,
+  className,
   url,
   tooltip,
+  color = 'tertiary',
+  testId = 'copy-link-btn',
 }) => {
   const { t } = useTranslation();
   const { onCopyToClipBoard, hasCopied } = useClipboard(url, 1200);
@@ -40,19 +47,20 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
     <Tooltip isDisabled={hasCopied} title={resolvedTooltip}>
       <TooltipTrigger>
         <ButtonUtility
-          className={
-            hasCopied
-              ? 'tw:rounded-full tw:bg-success-600 tw:text-white tw:hover:bg-success-600 tw:hover:text-white'
-              : 'tw:rounded-full'
-          }
-          color="tertiary"
-          data-testid="copy-link-btn"
+          className={classNames(
+            hasCopied ? 'tw:rounded-full' : 'tw:rounded-md',
+            hasCopied &&
+              'tw:bg-success-solid tw:text-fg-white tw:ring-0 tw:shadow-none tw:hover:bg-success-solid tw:hover:text-fg-white',
+            className
+          )}
+          color={color}
+          data-testid={testId}
           icon={
             hasCopied ? (
               <>
                 <span
                   aria-hidden="true"
-                  className="copy-link-ring-pulse tw:absolute tw:-inset-0.5 tw:rounded-full tw:border-2 tw:border-success-500 tw:pointer-events-none"
+                  className="copy-link-ring-pulse tw:absolute tw:-inset-0.5 tw:rounded-full tw:border-2 tw:border-utility-success-500 tw:pointer-events-none"
                 />
                 <Check
                   aria-hidden="true"

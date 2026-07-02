@@ -26,6 +26,7 @@ import { TERM_ADMIN, TERM_USER } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import navbarUtilClassBase from '../../../../utils/NavbarUtilClassBase';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
@@ -34,11 +35,10 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../../utils/RouterUtils';
-import { getEmptyTextFromUserProfileItem } from '../../../../utils/Users.util';
+import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtils';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
-
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
@@ -343,9 +343,6 @@ export const UserProfileIcon = () => {
         type: 'divider',
       },
       {
-        type: 'divider',
-      },
-      {
         key: 'teams',
         icon: '',
         children: renderLimitedListMenuItem({
@@ -365,6 +362,7 @@ export const UserProfileIcon = () => {
         ),
         type: 'group',
       },
+      ...navbarUtilClassBase.getUserProfileExtraItems(),
       {
         type: 'divider',
       },

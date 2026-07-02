@@ -15,7 +15,7 @@ import { Button, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { diffWordsWithSpace } from 'diff';
 import { isEmpty, map, toString } from 'lodash';
-import { FC, useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
@@ -25,23 +25,24 @@ import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContain
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import type { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
+} from '../../../utils/EntityDiffPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import {
+  getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
-import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+} from '../../../utils/EntityVersionUtilsPure';
+import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { stringToHTML } from '../../../utils/StringUtils';
-
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
   loading: boolean;
@@ -139,48 +140,51 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
 
   return (
     <Row className="knowledge-version-page-container" gutter={[0, 32]}>
-      <Col span={18}>
-        <Space direction="vertical" size={32}>
-          <Typography.Text
-            className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {stringToHTML(displayName || knowledgePage.name)}
-          </Typography.Text>
-          <Row align="middle" gutter={[16, 16]}>
-            <Col>
-              <Space size={4}>
-                <Space direction="vertical" size={0}>
-                  <OwnerLabel
-                    ownerDisplayName={ownerDisplayName}
-                    owners={knowledgePage?.owners ?? ownerRef}
-                  />
-                  <span
-                    className="self-center text-grey-muted"
-                    data-testid="updated-at">
-                    {formatDate(knowledgePage.updatedAt)}
-                  </span>
-                </Space>
-              </Space>
-            </Col>
-          </Row>
-        </Space>
-      </Col>
-      <Col offset={2} span={2}>
-        <Button
-          className={classNames('', {
-            'text-primary border-primary': version,
-          })}
-          data-testid="version-button"
-          icon={<Icon component={VersionIcon} />}
-          onClick={handleVersionClick}>
-          <Typography.Text
-            className={classNames('', {
-              'text-primary': version,
-            })}>
-            {toString(version)}
-          </Typography.Text>
-        </Button>
+      <Col span={24}>
+        <Row gutter={[16, 16]} justify="space-between" wrap={false}>
+          <Col className="m-r-md knowledge-version-title-col" flex="auto">
+            <Space className="w-full" direction="vertical" size={32}>
+              <Typography.Text
+                className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                data-testid="entity-header-display-name">
+                {stringToHTML(displayName || knowledgePage.name)}
+              </Typography.Text>
+              <Row align="middle" gutter={[16, 16]}>
+                <Col>
+                  <Space size={4}>
+                    <Space direction="vertical" size={0}>
+                      <OwnerLabel
+                        ownerDisplayName={ownerDisplayName}
+                        owners={knowledgePage?.owners ?? ownerRef}
+                      />
+                      <span
+                        className="self-center text-grey-muted"
+                        data-testid="updated-at">
+                        {formatDate(knowledgePage.updatedAt)}
+                      </span>
+                    </Space>
+                  </Space>
+                </Col>
+              </Row>
+            </Space>
+          </Col>
+          <Col flex="none">
+            <Button
+              className={classNames('', {
+                'text-primary border-primary': version,
+              })}
+              data-testid="version-button"
+              icon={<Icon component={VersionIcon} />}
+              onClick={handleVersionClick}>
+              <Typography.Text
+                className={classNames('', {
+                  'text-primary': version,
+                })}>
+                {toString(version)}
+              </Typography.Text>
+            </Button>
+          </Col>
+        </Row>
       </Col>
       <Col span={24}>
         <Row gutter={[0, 16]}>

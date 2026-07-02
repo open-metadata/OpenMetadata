@@ -33,15 +33,14 @@ import {
   getRelativeTime,
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
-import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { getTaskDetailPath } from '../../../utils/TaskNavigationUtils';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 import './task-feed-card.less';
-
 interface TaskFeedCardProps {
   post: Post;
   feed: Thread;

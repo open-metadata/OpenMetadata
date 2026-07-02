@@ -13,10 +13,11 @@ Test Mssql using the topology
 """
 
 import types
+from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy.types import INTEGER, VARCHAR
+from sqlalchemy.types import INTEGER, VARCHAR, BigInteger, Integer, Numeric
 
 import metadata.ingestion.source.database.mssql.utils as mssql_dialet
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -362,16 +363,14 @@ class TestUpdateMssqlIschemaNames:
 
     @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
     def test_test_connection_uses_current_db_query_when_not_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import test_connection
+        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
 
         mock_service_connection = MagicMock()
         mock_service_connection.ingestAllDatabases = False
 
-        test_connection(
-            metadata=MagicMock(),
-            engine=MagicMock(),
-            service_connection=mock_service_connection,
-        )
+        handler = MssqlConnection(mock_service_connection)
+        handler._client = MagicMock()
+        handler.test_connection(metadata=MagicMock())
 
         call_kwargs = mock_test_connection_db_common.call_args
         queries = call_kwargs.kwargs["queries"]
@@ -380,16 +379,14 @@ class TestUpdateMssqlIschemaNames:
 
     @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
     def test_test_connection_uses_all_dbs_query_when_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import test_connection
+        from metadata.ingestion.source.database.mssql.connection import MssqlConnection
 
         mock_service_connection = MagicMock()
         mock_service_connection.ingestAllDatabases = True
 
-        test_connection(
-            metadata=MagicMock(),
-            engine=MagicMock(),
-            service_connection=mock_service_connection,
-        )
+        handler = MssqlConnection(mock_service_connection)
+        handler._client = MagicMock()
+        handler.test_connection(metadata=MagicMock())
 
         call_kwargs = mock_test_connection_db_common.call_args
         queries = call_kwargs.kwargs["queries"]
@@ -495,3 +492,36 @@ class TestUpdateMssqlIschemaNames:
         result = self.mssql._get_encrypted_procedures("test_db", "dbo")
 
         assert result == set()
+
+
+class MssqlIdentityColumnTest(TestCase):
+    """Regression tests for identity column reflection.
+
+    BigInteger identity columns previously crashed with
+    ``module 'sqlalchemy.util.compat' has no attribute 'long_type'`` on
+    SQLAlchemy 2.0, dropping every column of the affected table.
+    """
+
+    def test_bigint_identity_returns_int_values(self):
+        result = mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), Decimal("1"))
+
+        assert result == {"start": 1, "increment": 1}
+        assert isinstance(result["start"], int)
+        assert isinstance(result["increment"], int)
+
+    def test_int_identity_returns_int_values(self):
+        result = mssql_dialet.get_identity_values(Integer(), Decimal("5"), Decimal("2"))
+
+        assert result == {"start": 5, "increment": 2}
+        assert isinstance(result["start"], int)
+        assert isinstance(result["increment"], int)
+
+    def test_non_integer_identity_keeps_original_values(self):
+        start, increment = Decimal("1.0"), Decimal("1.0")
+        result = mssql_dialet.get_identity_values(Numeric(), start, increment)
+
+        assert result == {"start": start, "increment": increment}
+
+    def test_missing_seed_returns_empty_dict(self):
+        assert mssql_dialet.get_identity_values(BigInteger(), None, Decimal("1")) == {}
+        assert mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), None) == {}
