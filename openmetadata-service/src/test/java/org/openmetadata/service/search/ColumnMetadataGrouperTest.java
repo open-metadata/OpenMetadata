@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -340,9 +341,11 @@ class ColumnMetadataGrouperTest {
 
   @Test
   void testGroupColumns_resultsAreSortedAscendingByColumnName() {
-    // Source is a HashMap (undefined iteration order); the grid must come out ascending by name.
-    // Mirrors the reported case where "c_ab*" wrongly appeared below "c_adm*".
-    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName = new HashMap<>();
+    // LinkedHashMap preserves the deliberately non-sorted insertion order, so the input is
+    // guaranteed unsorted (not reliant on HashMap's JVM-dependent iteration order). Mirrors the
+    // reported case where "c_ab*" wrongly appeared below "c_adm*".
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
     List<String> scrambled =
         List.of(
             "c_admpkg",
@@ -370,7 +373,9 @@ class ColumnMetadataGrouperTest {
 
   @Test
   void testGroupColumns_sortIsCaseInsensitive() {
-    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName = new HashMap<>();
+    // Insertion order (Zebra, apple, Mango) is non-alphabetical and preserved by LinkedHashMap.
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
     for (String name : List.of("Zebra", "apple", "Mango")) {
       columnsByName.put(name, singleOccurrence(name));
     }
@@ -379,6 +384,24 @@ class ColumnMetadataGrouperTest {
 
     List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
     assertEquals(List.of("apple", "Mango", "Zebra"), actual);
+  }
+
+  @Test
+  void testGroupColumns_caseOnlyCollisionsAreDeterministic() {
+    // Names differing only in case compare equal under CASE_INSENSITIVE_ORDER; the case-sensitive
+    // tie-breaker must give them a stable order regardless of input order. Insert in reverse of the
+    // expected result to prove the sort — not the map — decides the order.
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    for (String name : List.of("name", "Name")) {
+      columnsByName.put(name, singleOccurrence(name));
+    }
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    // Natural String order: 'N' (0x4E) precedes 'n' (0x6E).
+    assertEquals(List.of("Name", "name"), actual);
   }
 
   private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {

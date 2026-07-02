@@ -104,9 +104,12 @@ public class ColumnMetadataGrouper {
 
     // The source map is a HashMap, so entrySet iteration order is undefined. Sort by column name
     // for a deterministic, ascending alphabetical order in the grid (case-insensitive to match the
-    // pattern-search dedup ordering). Applies to every query path since all route through here.
+    // pattern-search dedup ordering). The case-sensitive tie-breaker keeps names that differ only
+    // in case (e.g. "Name" vs "name") in a stable order instead of falling back to map order.
+    // Applies to every query path since all route through here.
     gridItems.sort(
-        Comparator.comparing(ColumnGridItem::getColumnName, String.CASE_INSENSITIVE_ORDER));
+        Comparator.comparing(ColumnGridItem::getColumnName, String.CASE_INSENSITIVE_ORDER)
+            .thenComparing(ColumnGridItem::getColumnName));
 
     return gridItems;
   }
