@@ -65,6 +65,10 @@ export interface AIContext {
      */
     observability?: Observability;
     /**
+     * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
+     */
+    resource?: string;
+    /**
      * Classification tags and tier applied to the asset (tag fully qualified names).
      */
     tags?: string[];
