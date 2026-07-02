@@ -145,7 +145,7 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
     );
   });
 
-  await page.getByTestId('bundle-suite-radio-btn').click();
+  await page.getByText('Bundle Suites', { exact: true }).click();
   await bundleSuiteListResponse;
 
   const bundleSuiteSearchResponse = page.waitForResponse((response) => {
