@@ -248,7 +248,7 @@ const TestConnectionModal = ({
           </div>
           <div className="tw:flex tw:flex-col tw:bg-primary">
             {errorMessage && (
-              <div className="tw:px-5 tw:py-4">
+              <div className="tw:px-5 tw:pt-4">
                 <InlineAlert
                   description={errorMessage.description}
                   heading={t(TEST_CONNECTION_FAILURE_MESSAGE)}
