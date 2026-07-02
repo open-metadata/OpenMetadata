@@ -223,11 +223,11 @@ test.describe('Search Settings', () => {
       // Cancelling the confirmation must leave the customized value intact.
       await page.getByTestId('reset-search-settings-btn').click();
 
-      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+      await expect(page.getByTestId('save-button')).toBeVisible();
 
       await page.getByTestId('cancel').click();
 
-      await expect(page.getByTestId('confirmation-modal')).toBeHidden();
+      await expect(page.getByTestId('body-text')).not.toBeAttached();
       await expect(
         page.getByTestId('global-setting-value-Max Aggregate Size')
       ).toHaveText('2000');
@@ -235,7 +235,7 @@ test.describe('Search Settings', () => {
       // Confirming the reset must restore the default value.
       await page.getByTestId('reset-search-settings-btn').click();
 
-      await expect(page.getByTestId('confirmation-modal')).toBeVisible();
+      await expect(page.getByTestId('save-button')).toBeVisible();
 
       const resetResponse = page.waitForResponse(
         (response) =>
