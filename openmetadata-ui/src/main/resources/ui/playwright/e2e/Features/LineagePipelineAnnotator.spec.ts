@@ -123,8 +123,11 @@ test.describe('Lineage Pipeline Annotator', () => {
         },
       });
     } finally {
-      await apiContext.dispose();
-      await page.close();
+      try {
+        await apiContext.dispose();
+      } finally {
+        await page.close();
+      }
     }
   });
 
@@ -149,8 +152,11 @@ test.describe('Lineage Pipeline Annotator', () => {
         )}?recursive=true&hardDelete=true`
       );
     } finally {
-      await apiContext.dispose();
-      await page.close();
+      try {
+        await apiContext.dispose();
+      } finally {
+        await page.close();
+      }
     }
   });
 

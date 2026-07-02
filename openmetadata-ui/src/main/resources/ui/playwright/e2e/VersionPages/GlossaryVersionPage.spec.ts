@@ -123,8 +123,11 @@ test('Glossary', async ({ page }) => {
       });
 
       await page.reload();
+      const versionPageResponse2 = page.waitForResponse(
+        `/api/v1/glossaries/${glossary.responseData.id}/versions/0.2`
+      );
       await page.click('[data-testid="version-button"]');
-      await versionPageResponse;
+      await versionPageResponse2;
 
       await expect(
         page.locator(
@@ -133,8 +136,11 @@ test('Glossary', async ({ page }) => {
       ).toBeVisible();
     });
   } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
 });
 
@@ -233,8 +239,11 @@ test('GlossaryTerm', async ({ page }) => {
         .getByTestId(reviewer.getUserDisplayName())
     ).toBeVisible();
 
+    const versionPageResponse2 = page.waitForResponse(
+      `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`
+    );
     await page.click('[data-testid="version-button"]');
-    await versionPageResponse;
+    await versionPageResponse2;
 
     // Wait for the version dialog to be fully loaded
     await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
@@ -308,8 +317,11 @@ test('Navigate between versions', async ({ page }) => {
     // Verify the version dialog is still visible
     await expect(page.locator('[role="dialog"]')).toBeVisible();
   } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
 });
 
@@ -343,8 +355,11 @@ test('Return to current version from history', async ({ page }) => {
     // Verify version button shows current version
     await expect(page.getByTestId('version-button')).toBeVisible();
   } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
+    try {
+      await glossary.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   }
 });
 
