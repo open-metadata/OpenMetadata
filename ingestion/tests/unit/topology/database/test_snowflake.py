@@ -973,27 +973,32 @@ class SnowflakeBadNameIsolationTest(TestCase):
             self.sources = get_snowflake_sources()
 
 
-def test_test_connection_validates_access_history_and_query_history():
+def test_test_connection_wires_access_history_and_query_history():
     """
-    ACCESS_HISTORY is the default lineage source, so the test connection must
-    register a GetAccessHistory step that actually probes ACCESS_HISTORY, while
-    keeping GetQueries for the usage workflow / legacy lineage fallback.
+    ACCESS_HISTORY is the default lineage source, so the test connection registers a
+    GetAccessHistory check that probes ACCESS_HISTORY, while GetQueries keeps probing
+    query_history for the usage workflow / legacy lineage fallback.
     """
+    from metadata.core.connections.test_connection.check import collect_checks
+    from metadata.core.connections.test_connection.checks.database import DatabaseStep
     from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
         SnowflakeConnection as SnowflakeConnectionConfig,
     )
     from metadata.ingestion.source.database.snowflake.connection import (
-        SnowflakeConnection,
+        SnowflakeChecks,
+    )
+    from metadata.ingestion.source.database.snowflake.queries import (
+        SNOWFLAKE_ACCESS_HISTORY_PROBE,
+        SNOWFLAKE_TEST_GET_QUERIES,
     )
 
-    connection = SnowflakeConnection(SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"))
-    connection._client = MagicMock()
+    checks = SnowflakeChecks(
+        client=MagicMock(),
+        service_connection=SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"),
+    )
+    collected = collect_checks(checks)
 
-    with patch("metadata.ingestion.source.database.snowflake.connection.test_connection_steps") as mocked_steps:
-        connection.test_connection(metadata=MagicMock())
-
-    test_fn = mocked_steps.call_args.kwargs["test_fn"]
-    assert "GetAccessHistory" in test_fn
-    assert "GetQueries" in test_fn
-    assert "ACCESS_HISTORY" in test_fn["GetAccessHistory"].keywords["statement"]
-    assert "query_history" in test_fn["GetQueries"].keywords["statement"].lower()
+    assert DatabaseStep.GetAccessHistory in collected
+    assert DatabaseStep.GetQueries in collected
+    assert "ACCESS_HISTORY" in SNOWFLAKE_ACCESS_HISTORY_PROBE
+    assert "query_history" in SNOWFLAKE_TEST_GET_QUERIES.lower()
