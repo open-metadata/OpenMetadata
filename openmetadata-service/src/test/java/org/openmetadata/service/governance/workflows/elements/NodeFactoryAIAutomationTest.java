@@ -16,12 +16,35 @@ package org.openmetadata.service.governance.workflows.elements;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Optional;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunAIAutomationTaskDefinition;
+import org.openmetadata.service.governance.workflows.elements.NodeFactoryRegistry.NodeFactoryExtension;
 
 class NodeFactoryAIAutomationTest {
+
+  // NodeFactoryRegistry is a process-wide singleton. Snapshot any existing handler and restore it
+  // after each test so mutating it here cannot leak into other tests in the same JVM.
+  private Optional<NodeFactoryExtension> savedExtension = Optional.empty();
+
+  @BeforeEach
+  void snapshotRegistry() {
+    savedExtension =
+        NodeFactoryRegistry.getInstance()
+            .getExtension(NodeSubType.CREATE_AND_RUN_AI_AUTOMATION_TASK);
+  }
+
+  @AfterEach
+  void restoreRegistry() {
+    NodeFactoryRegistry registry = NodeFactoryRegistry.getInstance();
+    savedExtension.ifPresentOrElse(
+        ext -> registry.register(NodeSubType.CREATE_AND_RUN_AI_AUTOMATION_TASK, ext),
+        () -> registry.deregister(NodeSubType.CREATE_AND_RUN_AI_AUTOMATION_TASK));
+  }
 
   @Test
   void createNode_aiAutomation_withoutCollateHandler_throwsClearError() {
