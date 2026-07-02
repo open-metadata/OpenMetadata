@@ -194,26 +194,30 @@ class DbtcloudSource(PipelineServiceSource):
             # Build parent lookup dict for O(1) access instead of O(n) list search
             parent_by_unique_id = {p.uniqueId: p for p in dbt_parents if p.uniqueId}
 
-            # Cache observability details - store in context for current job
-            self.context.get().current_pipeline_entity = pipeline_entity
-            self.context.get().current_table_fqns = []
             # Store pipeline FQN from entity to ensure exact match for status updates
             self.context.get().pipeline_fqn = str(pipeline_entity.fullyQualifiedName.root)
 
-            # Create cache_key once at the start
-            cache_key = (
-                (pipeline_details.id, str(self.context.get().latest_run_id))
-                if self.context.get().latest_run_id
-                else None
-            )
+            if self.source_config.includePipelineObservability:
+                # Cache observability details - store in context for current job
+                self.context.get().current_pipeline_entity = pipeline_entity
+                self.context.get().current_table_fqns = []
 
-            if cache_key:
-                self.observability_cache[cache_key] = {
-                    "pipeline_entity": pipeline_entity,
-                    "job_details": pipeline_details,
-                    "table_fqns": set(),  # Use set for O(1) lookup
-                    "runs": self.context.get().current_runs,
-                }
+                # Create cache_key once at the start
+                cache_key = (
+                    (pipeline_details.id, str(self.context.get().latest_run_id))
+                    if self.context.get().latest_run_id
+                    else None
+                )
+
+                if cache_key:
+                    self.observability_cache[cache_key] = {
+                        "pipeline_entity": pipeline_entity,
+                        "job_details": pipeline_details,
+                        "table_fqns": set(),  # Use set for O(1) lookup
+                        "runs": self.context.get().current_runs,
+                    }
+            else:
+                cache_key = None
 
             for model in dbt_models or []:
                 if not model.runGeneratedAt:
@@ -243,13 +247,14 @@ class DbtcloudSource(PipelineServiceSource):
                     if to_entity is None:
                         continue
 
-                    # Add to context table FQNs
-                    if to_entity_fqn not in self.context.get().current_table_fqns:
-                        self.context.get().current_table_fqns.append(to_entity_fqn)
+                    if self.source_config.includePipelineObservability:
+                        # Add to context table FQNs for observability
+                        if to_entity_fqn not in self.context.get().current_table_fqns:
+                            self.context.get().current_table_fqns.append(to_entity_fqn)
 
-                    # Add to observability cache using set.add() for O(1)
-                    if cache_key and cache_key in self.observability_cache:
-                        self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
+                        # Add to observability cache using set.add() for O(1)
+                        if cache_key and cache_key in self.observability_cache:
+                            self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
 
                     for unique_id in model.dependsOn or []:
                         # Use dict lookup instead of list comprehension
@@ -286,13 +291,14 @@ class DbtcloudSource(PipelineServiceSource):
                         if from_entity is None:
                             continue
 
-                        # Add to context table FQNs
-                        if from_entity_fqn not in self.context.get().current_table_fqns:
-                            self.context.get().current_table_fqns.append(from_entity_fqn)
+                        if self.source_config.includePipelineObservability:
+                            # Add to context table FQNs for observability
+                            if from_entity_fqn not in self.context.get().current_table_fqns:
+                                self.context.get().current_table_fqns.append(from_entity_fqn)
 
-                        # Add to observability cache using set.add() for O(1)
-                        if cache_key and cache_key in self.observability_cache:
-                            self.observability_cache[cache_key]["table_fqns"].add(from_entity_fqn)
+                            # Add to observability cache using set.add() for O(1)
+                            if cache_key and cache_key in self.observability_cache:
+                                self.observability_cache[cache_key]["table_fqns"].add(from_entity_fqn)
 
                         lineage_details = LineageDetails(
                             pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
@@ -406,6 +412,12 @@ class DbtcloudSource(PipelineServiceSource):
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current job), falls back to cache for historical data.
         """
+
+        # Check if pipeline observability is disabled
+        if not self.source_config.includePipelineObservability:
+            logger.debug("Pipeline observability extraction is disabled via configuration")
+            return
+
         try:
             table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
 

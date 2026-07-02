@@ -839,17 +839,6 @@ class AirflowSource(PipelineServiceSource):
             source=LineageSource.PipelineLineage,
         )
 
-        # Initialize context for observability tracking
-        self.context.get().current_pipeline_entity = pipeline_entity
-        self.context.get().current_table_fqns = []
-
-        # Get dag runs for caching observability data
-        dag_runs = self.get_pipeline_status(pipeline_details.dag_id)
-
-        # Cache dag runs in context
-        self.context.get().current_dag_runs = dag_runs
-        self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
-
         xlets: List[XLets] = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []  # noqa: UP006
 
         table_fqns = []
@@ -857,14 +846,12 @@ class AirflowSource(PipelineServiceSource):
             for from_xlet in xlet.inlets or []:
                 from_entity = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)
                 if from_entity:
-                    # Track table FQNs for observability
                     if from_xlet.entity == Table and from_xlet.fqn not in table_fqns:
                         table_fqns.append(from_xlet.fqn)
 
                     for to_xlet in xlet.outlets or []:
                         to_entity = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
                         if to_entity:
-                            # Track table FQNs for observability
                             if to_xlet.entity == Table and to_xlet.fqn not in table_fqns:
                                 table_fqns.append(to_xlet.fqn)
 
@@ -899,19 +886,31 @@ class AirflowSource(PipelineServiceSource):
                         f"Ensure the entity exists in OpenMetadata before running lineage ingestion."
                     )
 
-        # Cache observability data for later use
-        self.context.get().current_table_fqns = table_fqns
+        if self.source_config.includePipelineObservability:
+            # Initialize context for observability tracking
+            self.context.get().current_pipeline_entity = pipeline_entity
+            self.context.get().current_table_fqns = []
 
-        # Cache for historical dag runs
-        for dag_run in dag_runs:
-            if dag_run.run_id:
-                cache_key = (pipeline_details.dag_id, dag_run.run_id)
-                self.observability_cache[cache_key] = {
-                    "pipeline_entity": pipeline_entity,
-                    "pipeline_details": pipeline_details,
-                    "table_fqns": table_fqns,
-                    "dag_run": dag_run,
-                }
+            # Get dag runs for caching observability data
+            dag_runs = self.get_pipeline_status(pipeline_details.dag_id)
+
+            # Cache dag runs in context
+            self.context.get().current_dag_runs = dag_runs
+            self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
+
+            # Track table FQNs for observability
+            self.context.get().current_table_fqns = table_fqns
+
+            # Cache for historical dag runs
+            for dag_run in dag_runs:
+                if dag_run.run_id:
+                    cache_key = (pipeline_details.dag_id, dag_run.run_id)
+                    self.observability_cache[cache_key] = {
+                        "pipeline_entity": pipeline_entity,
+                        "pipeline_details": pipeline_details,
+                        "table_fqns": table_fqns,
+                        "dag_run": dag_run,
+                    }
 
     def _build_observability_from_dag_run(
         self,
@@ -947,6 +946,12 @@ class AirflowSource(PipelineServiceSource):
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current dag), falls back to cache for historical data.
         """
+
+        # Check if pipeline observability is disabled
+        if not self.source_config.includePipelineObservability:
+            logger.debug("Pipeline observability extraction is disabled via configuration")
+            return
+
         try:
             table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
 
