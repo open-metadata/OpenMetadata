@@ -93,7 +93,7 @@ export const DomainTypeWidget = () => {
       forceExpand={editDomainType}
       headerExtra={headerExtra}
       helperText={domainTypeTooltipDataRender()}
-      isExpandDisabled={!domain.domainType}
+      isExpandDisabled={!domain.domainType && !editDomainType}
       title={t('label.domain-type')}>
       {content}
     </WidgetCard>

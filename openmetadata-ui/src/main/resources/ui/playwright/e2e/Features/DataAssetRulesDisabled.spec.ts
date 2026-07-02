@@ -55,6 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -799,10 +800,10 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomain(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomain(page, testDomain2.responseData, false);
+        await assignDomainWidget(page, testDomain2.responseData);
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
