@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "Programado para ejecutarse cada",
     "schedule-type": "Tipo de programación",
     "scheduled": "Programado",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Esquema",
     "schema-definition": "Definición Esquema",
     "schema-field": "Campo del Esquema",

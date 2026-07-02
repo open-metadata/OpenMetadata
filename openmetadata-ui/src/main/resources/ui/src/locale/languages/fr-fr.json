@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "Planifier l'exécution toutes les",
     "schedule-type": "Type de Planification",
     "scheduled": "Planifié",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Schéma",
     "schema-definition": "Définition du Schéma",
     "schema-field": "Champ de Schéma",

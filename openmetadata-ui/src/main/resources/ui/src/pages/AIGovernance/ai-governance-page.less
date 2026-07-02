@@ -1,0 +1,357 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+.ai-gov-page-shell {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background: var(--gray-25, #fcfcfd);
+}
+
+.ai-gov-page-content {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-gov-secondary-nav {
+  width: clamp(204px, 18vw, 224px);
+  flex: 0 0 clamp(204px, 18vw, 224px);
+  align-self: stretch;
+  min-height: 100%;
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: #fff;
+  border-right: 1px solid var(--border-subtle, #eaecf5);
+  transition: width 0.18s ease, flex-basis 0.18s ease;
+}
+
+.ai-gov-secondary-nav--collapsed {
+  width: 56px;
+  flex-basis: 56px;
+  padding: 14px 6px;
+}
+
+.ai-gov-secondary-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 12px;
+}
+
+.ai-gov-secondary-nav--collapsed .ai-gov-secondary-nav-header {
+  justify-content: center;
+  padding: 4px 4px 10px;
+}
+
+.ai-gov-secondary-nav-new,
+.ai-gov-secondary-nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.ai-gov-secondary-nav-toggle.ai-gov-secondary-nav-toggle {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0;
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500, #717680);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.ai-gov-secondary-nav-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ai-gov-secondary-nav-ai-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ai-gov-secondary-nav-ai-section {
+  margin-top: 2px;
+}
+
+.ai-gov-secondary-nav-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--blue-700, #175cd3);
+  font: 700 12px/1 Inter;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-gov-secondary-nav-section-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ai-gov-secondary-nav-section-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.ai-gov-secondary-nav-new {
+  padding: 1px 6px;
+  background: var(--blue-50, #eff8ff);
+  color: var(--blue-700, #175cd3);
+  font: 700 9.5px/1.4 Inter;
+  text-transform: uppercase;
+}
+
+.ai-gov-secondary-nav--collapsed .ai-gov-secondary-nav-ai-section {
+  margin-top: 2px;
+}
+
+.ai-gov-secondary-nav-item.ai-gov-secondary-nav-item {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 32px;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-600, #535862);
+  box-shadow: none;
+  cursor: pointer;
+  font-family: Inter, sans-serif;
+  font: 500 13px/1.35 Inter;
+  text-align: left;
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+}
+
+.ai-gov-secondary-nav-item.ai-gov-secondary-nav-item:hover {
+  background: var(--gray-50, #f5f5f5);
+  color: var(--gray-700, #414651);
+  text-decoration: none;
+}
+
+.ai-gov-secondary-nav-item.is-muted {
+  color: var(--gray-500, #717680);
+}
+
+.ai-gov-secondary-nav-item.is-ai-child {
+  margin-left: 0;
+  padding-left: 12px;
+  color: var(--gray-700, #414651);
+}
+
+.ai-gov-secondary-nav-item.is-ai-child::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  border-radius: 1px;
+  background: transparent;
+}
+
+.ai-gov-secondary-nav-item.is-active {
+  background: var(--blue-50, #eff8ff);
+  color: var(--blue-700, #175cd3);
+  font-weight: 600;
+}
+
+.ai-gov-secondary-nav-item.is-active::before {
+  background: var(--blue-600, #1570ef);
+}
+
+.ai-gov-secondary-nav-item-icon-slot {
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-gov-secondary-nav-item-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--gray-500, #717680);
+}
+
+.ai-gov-secondary-nav-item.is-active .ai-gov-secondary-nav-item-icon {
+  color: var(--blue-600, #1570ef);
+}
+
+.ai-gov-secondary-nav-item-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-gov-secondary-nav-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-gov-secondary-nav-badge {
+  min-width: 20px;
+  padding: 1px 6px;
+  background: var(--gray-100, #f5f5f5);
+  color: var(--gray-700, #414651);
+  font: 700 10px/1.4 Inter;
+}
+
+.ai-gov-secondary-nav-badge--error {
+  background: var(--error-50, #fef3f2);
+  color: var(--error-700, #b42318);
+}
+
+.ai-gov-secondary-nav-badge--warning {
+  background: var(--warning-50, #fffaeb);
+  color: var(--warning-700, #b54708);
+}
+
+.ai-gov-secondary-nav--collapsed
+  .ai-gov-secondary-nav-item.ai-gov-secondary-nav-item {
+  justify-content: center;
+  min-height: 36px;
+  margin: 1px 0;
+  padding: 9px 0;
+}
+
+.ai-gov-secondary-nav--collapsed .ai-gov-secondary-nav-item.is-ai-child {
+  margin-left: 0;
+}
+
+.ai-gov-secondary-nav--collapsed
+  .ai-gov-secondary-nav-item.is-ai-child::before {
+  display: none;
+}
+
+.ai-gov-secondary-nav-dot {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--blue-500, #2e90fa);
+}
+
+.ai-gov-secondary-nav-dot--error {
+  background: var(--error-500, #f04438);
+}
+
+.ai-gov-secondary-nav-dot--warning {
+  background: var(--warning-500, #f79009);
+}
+
+.ai-gov-secondary-nav-spacer {
+  flex: 1;
+}
+
+.ai-gov-secondary-nav-register.ai-gov-secondary-nav-register {
+  box-sizing: border-box;
+  width: calc(100% - 8px);
+  min-height: 36px;
+  margin: 8px 4px 4px;
+  padding: 0 12px;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--blue-600, #1570ef);
+  border-radius: 6px;
+  background: var(--blue-600, #1570ef);
+  color: #fff;
+  font: 600 12.5px/1.2 Inter;
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+  cursor: pointer;
+}
+
+.ai-gov-secondary-nav-register.ai-gov-secondary-nav-register:hover {
+  border-color: var(--blue-700, #175cd3);
+  background: var(--blue-700, #175cd3);
+  color: #fff;
+}
+
+.ai-gov-secondary-nav-register-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.ai-gov-secondary-nav--collapsed
+  .ai-gov-secondary-nav-register.ai-gov-secondary-nav-register {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+@media (max-width: 900px) {
+  .ai-gov-page-shell {
+    flex-direction: column;
+  }
+
+  .ai-gov-secondary-nav,
+  .ai-gov-secondary-nav--collapsed {
+    position: static;
+    width: 100%;
+    height: auto;
+    flex: 0 0 auto;
+    padding: 10px 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border-subtle, #eaecf5);
+  }
+
+  .ai-gov-secondary-nav--collapsed {
+    width: 100%;
+  }
+
+  .ai-gov-page-content {
+    padding: 20px;
+  }
+}

@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "प्रत्येकवेळी चालवण्यासाठी वेळापत्रक",
     "schedule-type": "वेळापत्रक प्रकार",
     "scheduled": "वेळापत्रक",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "योजना",
     "schema-definition": "योजना परिभाषा",
     "schema-field": "योजना फील्ड",

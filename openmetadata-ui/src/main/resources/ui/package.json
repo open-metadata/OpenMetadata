@@ -65,6 +65,7 @@
     "@deuex-solutions/react-tour": "^1.2.6",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",

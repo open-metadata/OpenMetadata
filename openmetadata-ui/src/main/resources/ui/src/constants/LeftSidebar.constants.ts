@@ -17,6 +17,7 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as AIGovernanceIcon } from '../assets/svg/ic-ai-suggestion.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
 import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
@@ -52,6 +53,7 @@ const DataProductIcon = createIconWithStroke(Cube01 as UntitledIconType, 1.2);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
+  [ROUTES.AI_GOVERNANCE]: ROUTES.AI_GOVERNANCE,
   [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
   [ROUTES.CONTEXT_CENTER_DASHBOARD]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
@@ -206,6 +208,17 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.WORKFLOWS,
         icon: WorkflowsNavIcon,
         dataTestId: `app-bar-item-${SidebarItem.WORKFLOWS}`,
+      },
+      {
+        key: ROUTES.AI_GOVERNANCE,
+        title: 'label.ai-governance',
+        redirect_url: ROUTES.AI_GOVERNANCE_WITH_TAB.replace(
+          PLACEHOLDER_ROUTE_TAB,
+          'overview'
+        ),
+        icon: AIGovernanceIcon,
+        dataTestId: `app-bar-item-${SidebarItem.AI_GOVERNANCE}`,
+        isBeta: true,
       },
     ],
   },

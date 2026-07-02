@@ -77,6 +77,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     if (mcpServer.getService() != null) {
       populateService(mcpServer);
     }
+    AIAssetStatusSync.sync(mcpServer);
   }
 
   @Override

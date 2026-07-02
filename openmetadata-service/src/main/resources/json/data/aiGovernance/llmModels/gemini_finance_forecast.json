@@ -1,0 +1,50 @@
+{
+  "id": "11111111-1111-4111-8111-111111111103",
+  "name": "gemini_finance_forecast",
+  "displayName": "Gemini Finance Forecast",
+  "description": "Rejected finance planning model used for forecast narrative generation and variance explanations. The review requires stronger validation evidence before production approval.",
+  "modelType": "BaseModel",
+  "baseModel": "gemini-1.5-pro",
+  "modelProvider": "Google",
+  "modelVersion": "2025-04-08",
+  "providerModelId": "gemini-1.5-pro-20250408",
+  "capabilities": ["Chat", "FunctionCalling"],
+  "governanceStatus": "Rejected",
+  "deploymentInfo": {
+    "deploymentType": "API",
+    "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro",
+    "region": "us-central1"
+  },
+  "costMetrics": {
+    "inputCostPer1kTokens": 0.0025,
+    "outputCostPer1kTokens": 0.01,
+    "currency": "USD",
+    "estimatedMonthlyUsage": 74000000,
+    "estimatedMonthlyCost": 8050
+  },
+  "modelEvaluation": {
+    "evaluatedAt": 1774915200000,
+    "accuracyMetrics": {
+      "accuracy": 0.89,
+      "precision": 0.87,
+      "recall": 0.86,
+      "f1Score": 0.86
+    },
+    "safetyMetrics": {
+      "toxicityScore": 0.01,
+      "harmfulContentRate": 0.01,
+      "piiLeakageRisk": 0.02
+    }
+  },
+  "regulatoryCompliance": ["NIST_AI_RMF", "ISO_IEC_42001"],
+  "tags": [
+    {
+      "tagFQN": "Tier.Tier1",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1774915200000
+}

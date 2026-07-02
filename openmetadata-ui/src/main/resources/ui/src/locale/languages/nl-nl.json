@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "Gepland voor uitvoering elke",
     "schedule-type": "Schematype",
     "scheduled": "Gepland",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Schema",
     "schema-definition": "Schemadefinitie",
     "schema-field": "Schemaveld",

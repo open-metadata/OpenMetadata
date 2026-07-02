@@ -539,10 +539,10 @@
     ],
     "childAliases": ["mcpServer"]
   },
-  "aiAgent": {
-    "indexName": "ai_agent_search_index",
-    "indexMappingFile": "/elasticsearch/%s/ai_agent_index_mapping.json",
-    "alias": "aiAgent",
+  "aiApplication": {
+    "indexName": "ai_application_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_application_index_mapping.json",
+    "alias": "aiApplication",
     "parentAliases": ["all"],
     "childAliases": []
   },
@@ -564,6 +564,34 @@
     "indexName": "ai_governance_policy_search_index",
     "indexMappingFile": "/elasticsearch/%s/ai_governance_policy_index_mapping.json",
     "alias": "aiGovernancePolicy",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": []
+  },
+  "aiGovernanceFramework": {
+    "indexName": "ai_governance_framework_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_governance_framework_index_mapping.json",
+    "alias": "aiGovernanceFramework",
+    "parentAliases": [
+      "all"
+    ],
+    "childAliases": ["aiFrameworkControl"]
+  },
+  "aiFrameworkControl": {
+    "indexName": "ai_framework_control_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ai_framework_control_index_mapping.json",
+    "alias": "aiFrameworkControl",
+    "parentAliases": [
+      "aiGovernanceFramework",
+      "all"
+    ],
+    "childAliases": []
+  },
+  "auditReport": {
+    "indexName": "audit_report_search_index",
+    "indexMappingFile": "/elasticsearch/%s/audit_report_index_mapping.json",
+    "alias": "auditReport",
     "parentAliases": [
       "all"
     ],

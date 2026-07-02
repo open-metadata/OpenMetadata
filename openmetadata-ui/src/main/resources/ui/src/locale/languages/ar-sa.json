@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "مجدول للتشغيل كل",
     "schedule-type": "نوع الجدول",
     "scheduled": "مجدول",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "مخطط",
     "schema-definition": "تعريف المخطط",
     "schema-field": "حقل المخطط",

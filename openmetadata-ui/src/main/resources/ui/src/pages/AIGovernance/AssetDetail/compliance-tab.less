@@ -1,0 +1,635 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ */
+
+@import (reference) '../styles/ai-gov-pills.less';
+
+.ai-gov-comp {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+// ─── Framework switcher ────────────────────────────────────────────────────
+.ai-gov-comp-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-gov-comp-switcher-label {
+  font: 600 12px Inter;
+  color: var(--gray-500, #717680);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+.ai-gov-comp-fw-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border-default, #E9EAEB);
+  background: #fff;
+  color: var(--gray-700, #414651);
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 13px Inter;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+
+  &.is-active {
+    border-color: #84CAFF;
+    background: #EFF8FF;
+    color: var(--blue-700, #175CD3);
+  }
+
+  svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .ai-gov-comp-fw-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--gray-400, #A4A7AE);
+  }
+
+  &.is-status-success .ai-gov-comp-fw-dot {
+    background: #17B26A;
+  }
+
+  &.is-status-warning .ai-gov-comp-fw-dot {
+    background: #F79009;
+  }
+
+  &.is-status-error .ai-gov-comp-fw-dot {
+    background: #F04438;
+  }
+
+  &.is-status-info .ai-gov-comp-fw-dot {
+    background: #2E90FA;
+  }
+}
+
+.ai-gov-comp-spacer {
+  flex: 1;
+}
+
+// ─── Status band ───────────────────────────────────────────────────────────
+.ai-gov-comp-band {
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  &.is-success {
+    background: #ECFDF3;
+    border-color: #ABEFC6;
+  }
+
+  &.is-warning {
+    background: #FFFAEB;
+    border-color: #FEDF89;
+  }
+
+  &.is-info {
+    background: #EFF8FF;
+    border-color: #B2DDFF;
+  }
+
+  &.is-error {
+    background: #FEF3F2;
+    border-color: #FECDCA;
+  }
+
+  .ai-gov-comp-band-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--border-default, #E9EAEB);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  &.is-success .ai-gov-comp-band-icon {
+    color: #067647;
+  }
+
+  &.is-warning .ai-gov-comp-band-icon {
+    color: #B54708;
+  }
+
+  &.is-info .ai-gov-comp-band-icon {
+    color: #175CD3;
+  }
+
+  &.is-error .ai-gov-comp-band-icon {
+    color: #B42318;
+  }
+
+  .ai-gov-comp-band-title {
+    font: 700 16px Inter;
+    color: var(--gray-900, #181D27);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ai-gov-comp-band-detail {
+    font: 500 12.5px Inter;
+    color: var(--gray-700, #414651);
+    margin-top: 4px;
+  }
+
+  .ai-gov-comp-band-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font: 500 12px Inter;
+    color: var(--gray-600, #535862);
+
+    b {
+      color: var(--gray-700, #414651);
+      font-weight: 600;
+    }
+
+    svg {
+      width: 12px;
+      height: 12px;
+      vertical-align: -2px;
+      margin-right: 4px;
+    }
+  }
+}
+
+// ─── Card primitive ────────────────────────────────────────────────────────
+.ai-gov-comp-card {
+  background: #fff;
+  border: 1px solid var(--border-subtle, #EAECF5);
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+}
+
+.ai-gov-comp-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-gov-comp-card-title {
+  font: 700 14px Inter;
+  color: var(--gray-900, #181D27);
+  letter-spacing: -0.005em;
+}
+
+.ai-gov-comp-card-sub {
+  font: 500 12.5px Inter;
+  color: var(--gray-600, #535862);
+  margin-top: 2px;
+}
+
+// ─── Risk classification 4-card grid ───────────────────────────────────────
+.ai-gov-comp-risk-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.ai-gov-comp-risk-tile {
+  padding: 14px 16px;
+  border: 1.5px solid var(--border-default, #E9EAEB);
+  border-radius: 10px;
+  background: #fff;
+  position: relative;
+
+  .ai-gov-comp-risk-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .ai-gov-comp-risk-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ai-gov-comp-risk-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+  }
+
+  .ai-gov-comp-risk-name {
+    font: 700 13.5px Inter;
+    color: var(--gray-900, #181D27);
+  }
+
+  .ai-gov-comp-risk-sub {
+    font: 500 11.5px/1.5 Inter;
+    color: var(--gray-600, #535862);
+    margin-top: 6px;
+  }
+
+  &.is-selected-unacceptable {
+    background: #FDF2FA;
+    border-color: #DD2590;
+
+    .ai-gov-comp-risk-dot,
+    .ai-gov-comp-risk-check svg {
+      background: #DD2590;
+      color: #DD2590;
+    }
+
+    .ai-gov-comp-risk-name {
+      color: #C11574;
+    }
+  }
+
+  &.is-selected-high {
+    background: #FEF3F2;
+    border-color: #F04438;
+
+    .ai-gov-comp-risk-dot,
+    .ai-gov-comp-risk-check svg {
+      background: #F04438;
+      color: #F04438;
+    }
+
+    .ai-gov-comp-risk-name {
+      color: #B42318;
+    }
+  }
+
+  &.is-selected-limited {
+    background: #FFFAEB;
+    border-color: #F79009;
+
+    .ai-gov-comp-risk-dot,
+    .ai-gov-comp-risk-check svg {
+      background: #F79009;
+      color: #F79009;
+    }
+
+    .ai-gov-comp-risk-name {
+      color: #B54708;
+    }
+  }
+
+  &.is-selected-minimal {
+    background: #ECFDF3;
+    border-color: #17B26A;
+
+    .ai-gov-comp-risk-dot,
+    .ai-gov-comp-risk-check svg {
+      background: #17B26A;
+      color: #17B26A;
+    }
+
+    .ai-gov-comp-risk-name {
+      color: #067647;
+    }
+  }
+
+  &:not([class*='is-selected']) .ai-gov-comp-risk-dot {
+    background: var(--gray-300, #D5D7DA);
+  }
+}
+
+.ai-gov-comp-rationale {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--gray-25, #FAFAFA);
+  border: 1px solid var(--border-subtle, #EAECF5);
+  border-radius: 8px;
+  font: 500 12.5px/1.6 Inter;
+  color: var(--gray-700, #414651);
+
+  b {
+    color: var(--gray-900, #181D27);
+    font-weight: 700;
+  }
+}
+
+// ─── Article 5 + Article 6 checklist split ─────────────────────────────────
+.ai-gov-comp-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.ai-gov-comp-conformity-split {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 14px;
+}
+
+.ai-gov-comp-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.ai-gov-comp-checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+
+  .ai-gov-comp-checklist-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    svg {
+      width: 10px;
+      height: 10px;
+    }
+  }
+
+  &.is-pass .ai-gov-comp-checklist-icon {
+    background: #ECFDF3;
+    color: #067647;
+  }
+
+  &.is-fail .ai-gov-comp-checklist-icon {
+    background: #FEF3F2;
+    color: #B42318;
+  }
+
+  &.is-neutral .ai-gov-comp-checklist-icon {
+    background: var(--gray-100, #F8F9FC);
+    color: var(--gray-500, #717680);
+  }
+
+  .ai-gov-comp-checklist-label {
+    font: 500 12.5px Inter;
+    color: var(--gray-700, #414651);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ai-gov-comp-checklist-ref {
+    font: 500 11px 'Geist Mono', 'SF Mono', Menlo, monospace;
+    color: var(--gray-500, #717680);
+  }
+}
+
+// ─── Conformity / Transparency fields ──────────────────────────────────────
+.ai-gov-comp-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ai-gov-comp-field-label {
+  font: 600 11px Inter;
+  color: var(--gray-500, #717680);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-gov-comp-field-value {
+  font: 600 13.5px Inter;
+  color: var(--gray-900, #181D27);
+  margin-top: 4px;
+  word-break: break-word;
+
+  &.is-mono {
+    font-family: 'Geist Mono', 'SF Mono', Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--gray-700, #414651);
+  }
+
+  &.is-muted {
+    color: var(--gray-500, #717680);
+    font-weight: 500;
+  }
+
+  a {
+    color: var(--blue-700, #175CD3);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+// ─── Ethical AI 6-axis grid ────────────────────────────────────────────────
+.ai-gov-comp-ethical-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ai-gov-comp-ethical-card {
+  padding: 12px 12px;
+  border: 1px solid var(--border-subtle, #EAECF5);
+  border-radius: 10px;
+  background: #fff;
+
+  .ai-gov-comp-ethical-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    background: var(--gray-50, #F5F5F5);
+    color: var(--gray-700, #414651);
+    display: grid;
+    place-items: center;
+    margin-bottom: 8px;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  .ai-gov-comp-ethical-label {
+    font: 600 11.5px Inter;
+    color: var(--gray-600, #535862);
+  }
+
+  .ai-gov-comp-ethical-value {
+    font: 700 14px Inter;
+    margin-top: 4px;
+  }
+
+  .ai-gov-comp-ethical-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--gray-100, #F8F9FC);
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .ai-gov-comp-ethical-fill {
+    height: 100%;
+  }
+
+  &.is-good {
+    .ai-gov-comp-ethical-value {
+      color: #067647;
+    }
+
+    .ai-gov-comp-ethical-icon {
+      background: #ECFDF3;
+      color: #067647;
+    }
+
+    .ai-gov-comp-ethical-fill {
+      background: #17B26A;
+      width: 92%;
+    }
+  }
+
+  &.is-warn {
+    .ai-gov-comp-ethical-value {
+      color: #B54708;
+    }
+
+    .ai-gov-comp-ethical-icon {
+      background: #FFFAEB;
+      color: #B54708;
+    }
+
+    .ai-gov-comp-ethical-fill {
+      background: #F79009;
+      width: 60%;
+    }
+  }
+
+  &.is-bad {
+    .ai-gov-comp-ethical-value {
+      color: #B42318;
+    }
+
+    .ai-gov-comp-ethical-icon {
+      background: #FEF3F2;
+      color: #B42318;
+    }
+
+    .ai-gov-comp-ethical-fill {
+      background: #F04438;
+      width: 30%;
+    }
+  }
+
+  &.is-neutral {
+    .ai-gov-comp-ethical-value {
+      color: var(--gray-700, #414651);
+    }
+
+    .ai-gov-comp-ethical-fill {
+      background: var(--gray-300, #D5D7DA);
+      width: 50%;
+    }
+  }
+}
+
+// ─── Remediation list ──────────────────────────────────────────────────────
+.ai-gov-comp-remediation {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+}
+
+.ai-gov-comp-remediation-row {
+  padding: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle, #EAECF5);
+
+  &:first-of-type {
+    border-top: none;
+  }
+
+  .ai-gov-comp-remediation-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    flex-shrink: 0;
+  }
+
+  &.is-high .ai-gov-comp-remediation-dot {
+    background: #F04438;
+  }
+
+  &.is-medium .ai-gov-comp-remediation-dot {
+    background: #F79009;
+  }
+
+  &.is-low .ai-gov-comp-remediation-dot {
+    background: var(--gray-400, #A4A7AE);
+  }
+
+  .ai-gov-comp-remediation-label {
+    font: 600 13.5px Inter;
+    color: var(--gray-900, #181D27);
+  }
+
+  .ai-gov-comp-remediation-meta {
+    font: 500 11.5px Inter;
+    color: var(--gray-600, #535862);
+    margin-top: 2px;
+  }
+}
+
+// ─── Empty state ───────────────────────────────────────────────────────────
+.ai-gov-comp-empty {
+  padding: 60px 16px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--border-subtle, #EAECF5);
+  border-radius: 12px;
+
+  .ai-gov-comp-empty-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--gray-400, #A4A7AE);
+    margin-bottom: 12px;
+  }
+
+  .ai-gov-comp-empty-text {
+    font: 500 13.5px Inter;
+    color: var(--gray-600, #535862);
+  }
+}

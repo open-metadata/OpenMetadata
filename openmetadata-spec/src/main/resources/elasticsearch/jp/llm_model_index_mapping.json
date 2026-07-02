@@ -712,6 +712,69 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiGovernance": {
+        "type": "object",
+        "properties": {
+          "assetSubtype": {
+            "type": "keyword"
+          },
+          "registrationStatus": {
+            "type": "keyword"
+          },
+          "riskLevel": {
+            "type": "keyword"
+          },
+          "accessesPii": {
+            "type": "boolean"
+          },
+          "accessesSensitiveData": {
+            "type": "boolean"
+          },
+          "dataCategories": {
+            "type": "keyword"
+          },
+          "detection": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "suspectedTeam": {
+                "type": "keyword"
+              },
+              "detectedAt": {
+                "type": "date",
+                "format": "strict_date_optional_time||epoch_millis"
+              },
+              "flags": {
+                "type": "keyword"
+              }
+            }
+          },
+          "complianceStatus": {
+            "type": "flattened"
+          },
+          "frameworks": {
+            "type": "keyword"
+          },
+          "euRiskClassification": {
+            "type": "keyword"
+          },
+          "regions": {
+            "type": "keyword"
+          },
+          "lastAssessedAt": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "affectedUserCount": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

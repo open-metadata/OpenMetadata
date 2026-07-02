@@ -358,6 +358,21 @@
       "type": "string",
       "enum": ["Approved", "PendingReview", "Rejected", "Unauthorized"]
     },
+    "detection": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiDetection",
+      "description": "Origin of Shadow AI detection — auto-discovered from outbound API traffic, SSO logs, connector audits, etc. Populated for models that were not registered through the intake wizard."
+    },
+    "evidence": {
+      "$ref": "../../type/aiCompliance.json#/definitions/aiEvidence",
+      "description": "Supporting documentation URLs (DPIA, model card, fairness analysis, technical docs)"
+    },
+    "remediationActions": {
+      "type": "array",
+      "description": "Structured remediation actions with assignee, due date, priority, and status",
+      "items": {
+        "$ref": "../../type/aiCompliance.json#/definitions/remediationAction"
+      }
+    },
     "certifications": {
       "description": "Certifications this model has received",
       "type": "array",
@@ -445,6 +460,14 @@
     "votes": {
       "description": "Votes on the entity",
       "$ref": "../../type/votes.json"
+    },
+    "reviewers": {
+      "description": "Risk Council reviewers responsible for approving this LLM Model.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "entityStatus": {
+      "description": "Governance approval status of the LLM Model.",
+      "$ref": "../../type/status.json"
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",

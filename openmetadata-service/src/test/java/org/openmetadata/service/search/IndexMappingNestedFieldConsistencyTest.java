@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -122,6 +123,59 @@ class IndexMappingNestedFieldConsistencyTest {
             + "Missing in: "
             + violations
             + ". RBAC nested queries will fail on these indices.");
+  }
+
+  @Test
+  void aiGovernanceProjectionFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String entity : List.of("aiApplication", "llmModel", "mcpServer")) {
+      for (String language : LANGUAGES) {
+        JsonNode mapping = allMappings.get(entity + "[" + language + "]");
+        JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+        JsonNode aiGovernance = properties == null ? null : properties.get("aiGovernance");
+        if (aiGovernance == null) {
+          violations.add(entity + "[" + language + "] missing aiGovernance");
+          continue;
+        }
+        assertEquals("object", aiGovernance.path("type").asText(), entity + "[" + language + "]");
+        JsonNode projection = aiGovernance.path("properties");
+        for (String field :
+            List.of(
+                "assetSubtype",
+                "registrationStatus",
+                "riskLevel",
+                "accessesPii",
+                "accessesSensitiveData",
+                "dataCategories",
+                "detection",
+                "complianceStatus",
+                "frameworks",
+                "euRiskClassification",
+                "regions",
+                "lastAssessedAt",
+                "affectedUserCount")) {
+          if (!projection.has(field)) {
+            violations.add(entity + "[" + language + "] missing aiGovernance." + field);
+          }
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "AI governance projection mapping gaps: " + violations);
+  }
+
+  @Test
+  void auditReportIndexFieldsMustBeMappedExplicitly() {
+    List<String> violations = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      JsonNode mapping = allMappings.get("auditReport[" + language + "]");
+      JsonNode properties = mapping == null ? null : getTopLevelProperties(mapping);
+      for (String field : List.of("status", "scope", "format", "requestedAt", "completedAt")) {
+        if (properties == null || !properties.has(field)) {
+          violations.add("auditReport[" + language + "] missing " + field);
+        }
+      }
+    }
+    assertTrue(violations.isEmpty(), "Audit report mapping gaps: " + violations);
   }
 
   private static void findExtensionTypeViolations(

@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "Планируется запуск каждые",
     "schedule-type": "Тип расписания",
     "scheduled": "Запланировано",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "Схема",
     "schema-definition": "Определение схемы",
     "schema-field": "Поле схемы",

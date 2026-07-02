@@ -2098,6 +2098,7 @@
     "schedule-to-run-every": "실행 주기",
     "schedule-type": "일정 유형",
     "scheduled": "예약됨",
+    "scheduled-for": "Scheduled for {{date}}",
     "schema": "스키마",
     "schema-definition": "스키마 정의",
     "schema-field": "스키마 필드",
