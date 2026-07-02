@@ -1,0 +1,34 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OpenMetadataOperations" type="Application" factoryName="Application" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="org.openmetadata.service.util.OpenMetadataOperations" />
+    <module name="openmetadata-dist" />
+    <option name="PROGRAM_PARAMETERS" value="-c=./conf/openmetadata.yaml migrate --force=true" />
+    <option name="VM_PARAMETERS" value="-Xmx2g" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="org.openmetadata.service.micrometer.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <extension name="net.ashald.envfile">
+      <option name="IS_ENABLED" value="true" />
+      <option name="IS_SUBST" value="true" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+      <option name="IS_IGNORE_MISSING_FILES" value="false" />
+      <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+      <ENTRIES>
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
+        <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH=".claude/worktrees/cranky-dijkstra-4693d0/.idea/env/postgres-opensearch.env" />
+      </ENTRIES>
+    </extension>
+    <extension name="software.aws.toolkits.jetbrains.core.execution.JavaAwsConnectionExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+      <option name="com.soywiz.korge.intellij.UpdateResourceBeforeRunTask" enabled="false" />
+    </method>
+  </configuration>
+</component>

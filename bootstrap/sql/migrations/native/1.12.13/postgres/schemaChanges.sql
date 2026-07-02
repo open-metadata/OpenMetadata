@@ -1,0 +1,3 @@
+-- Data-only migration: retarget the stale owner terms aggregation field
+-- (owners.displayName.keyword -> ownerDisplayName) in stored searchSettings.
+-- Handled in org.openmetadata.service.migration.postgres.v11213.Migration. No schema changes.

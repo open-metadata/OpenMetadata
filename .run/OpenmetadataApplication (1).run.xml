@@ -1,0 +1,33 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OpenmetadataApplication (1)" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="ms-21" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="OM_EMAIL_ENTITY" value="Collate" />
+      <env name="SAML_SP_PRIVATE_KEY" value="-----BEGIN PRIVATE KEY----- MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDoP6inpSx3G20C S2cm2dR0LB+KRV1PDGaQRyIS5z5uY+dbvi0f6T8SiWA9wdD8FrgYLhy+P2u5fA6o LAYK+zX9jhj51XO1gy5sHrLp6NfPWba3jlQryp/0pa2yqRD3qQ4QixHCzcUH4wbD EQwvLzATS1jPG5y7ICKBjbDqAsZxTbKPcMsgW4l2HDtKYkCcAx3kY74aWvfKfWiK bVZ30BjLppbw+Tlzs1Yw+ifg1+0umwyve6chek07GLylHb2bPjgCS+rCDvfV5oFA Ww2etO91W3L41vgd+7HzKwnp7afp7/IyJYCfVpuaBLoirgD2MNp7mbOSig4dLKIy y7da5Ca7AgMBAAECggEACwrbzfzAfHlFWZKUOPiqbUubxEtAAH4qcjmvmQ59nWoK mgYUxyuj4BHADa+lbBb4cc3fd/wz9wG7AKv3LZZ8Hq4e6eIIOl0eW+2pvA1iFW3C jj+qKNrdeBhYheIb+GqFTKwQEB8QeyuEKsootiWcN46hjldVwF/qxBYkjzvKi6B6 5tmRMjcrDaaW55imlfT/I/7Jtf7zpbL0FlydOt6YSGnIfHYzvNwkTfrmI1cYhWta OiMg2LRHrn6337+hexmqTHzpVinkwHlDnNoHqjsJTWB8HmLtlaA0RMEbIbOSXxDL XBBRjQoN1jqEEM59HEXgxi+M/FdTftF7QZ9MM7R/wQKBgQD6l8WDOnzeYjjhGxk/ RTllcfSwI0uHZNFubmt7RV2c0BZ3sqDgafyOZsHRdTZXk+k/0iczOrI/lh6Pgyea 0KbZrB7bXsIK4rvRsE3ZdyJwNSj5LL8sopzizjckdIe+7WGksWLqAuV2NusY8u5d l1YWNlzmQ9aAVWFwkjaEjO4eAwKBgQDtQo6vwwFl/7T4ZzAt0WZimBFBfrqEt/F/ wJdqMSWnxX+d6K5ueckWfGaqCUVAcpzMFb4Ge46DEJHOnTywiJuGlK4PdsCw8gPm mR4/9ravMj9/egPAQ1teBKJoBXFn8sP/jEnZihJD7Rgga61n/aoLP5/JX2+KpYlM UdTNV0Ty6QKBgQCyRYyGqfIxRpEOW3ffkgCeEa6wK7vMq0VumXEvNg69wy9oohRe 8idwqtuRhiBNt3UFKR0oDcbHA6XkFLr1ISDB0/fzufqzQc+6AgGwBlfimX73nQS3 3Utc8rU54wi7JCcFwggLUForejBQBGrc/A+LJ8t5KKONkrAKJIpSS+wOPwKBgHCY y5qCEyHS7pGMdwLng4162YWZnO7rVMLqJXGSDWrHgb7w9Acd6N6w/w/nAmSJf/wi vWHaNVHiBTBm0qx8yEJgQRK5qszOric7t21nql8Om6/lue3+iVffHyv6mU1Zmsam T03cBrsRxAdu0oatjYt1EGHC1u6XjMcZdsJUjjYxAoGAP8Z/lO4mj7ErqAIFSJYq cG8aD2NFndyS5qu3bzMpAdsaSvfWVfAse3EzoN+2TCKsy6p/jdH0peCwHNgN7h/4 W/h4D6QiLvPu7qsYdPppaUI/iYfD8E/liGDPmK2p2RRWz+4wVysaXRs1H9/KCzuT Hhl1gJlF7l5Rycis1m9lPuE= -----END PRIVATE KEY----- " />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="org.openmetadata.service.OpenMetadataApplication" />
+    <module name="openmetadata-dist" />
+    <option name="PROGRAM_PARAMETERS" value="server ./docker/development/distributed-test/local/server2.yaml" />
+    <option name="VM_PARAMETERS" value="-Xmx4g -Xms4g -XX:ActiveProcessorCount=2 -Dreader.failure.rate=0.1 -Dsink.failure.rate=0.2" />
+    <extension name="net.ashald.envfile">
+      <option name="IS_ENABLED" value="true" />
+      <option name="IS_SUBST" value="true" />
+      <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+      <option name="IS_IGNORE_MISSING_FILES" value="false" />
+      <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+      <ENTRIES>
+        <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
+        <ENTRY IS_ENABLED="false" PARSER="env" IS_EXECUTABLE="true" PATH=".claude/worktrees/cranky-dijkstra-4693d0/.idea/env/postgres-opensearch.env" />
+      </ENTRIES>
+    </extension>
+    <extension name="software.aws.toolkits.jetbrains.core.execution.JavaAwsConnectionExtension">
+      <option name="credential" />
+      <option name="region" />
+      <option name="useCurrentConnection" value="false" />
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
