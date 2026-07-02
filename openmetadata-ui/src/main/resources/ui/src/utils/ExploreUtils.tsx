@@ -62,7 +62,7 @@ export {
   truncateBrowsePath,
   updateCountsInTreeData,
   updateTreeData,
-  updateTreeDataWithCounts
+  updateTreeDataWithCounts,
 } from './ExplorePureUtils';
 
 export const getAggregationOptions = async (
@@ -116,9 +116,13 @@ export const generateTabItems = (
           <div className="explore-tab-label">
             <span className="d-flex m-r-xs">
               <Icon
-                className={classNames('tw:h-4 tw:w-4', tabDetail.iconClassName, {
-                  'text-primary': tabSearchIndex === searchIndex,
-                })}
+                className={classNames(
+                  'tw:h-4 tw:w-4',
+                  tabDetail.iconClassName,
+                  {
+                    'text-primary': tabSearchIndex === searchIndex,
+                  }
+                )}
               />
             </span>
             <Typography.Text

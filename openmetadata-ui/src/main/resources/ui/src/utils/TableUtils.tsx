@@ -297,6 +297,8 @@ const entityIconMapping: Record<string, ElementType> = {
   [SearchIndex.CHART]: ENTITY_ICON_MAPPER[EntityType.CHART].icon,
   [SearchIndex.TABLE]: ENTITY_ICON_MAPPER[EntityType.TABLE].icon,
   [SearchIndex.COLUMN]: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
+  [SearchIndex.ML_MODEL_SERVICE]:
+    ENTITY_ICON_MAPPER[EntityType.MLMODEL_SERVICE].icon,
   [EntityType.METADATA_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.METADATA_SERVICE].icon,
   [SearchIndex.DATA_PRODUCT]: ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon,
@@ -340,8 +342,7 @@ const entityIconMapping: Record<string, ElementType> = {
     ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
   [EntityType.knowledgePanels]:
     ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
-  [EntityType.SEARCH_INDEX]:
-    ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
+  [EntityType.SEARCH_INDEX]: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
   [EntityType.SEARCH_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
 };
