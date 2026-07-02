@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "Yalnızca İnceleyiciler Onaylayabilir veya Reddedebilir",
     "only-show-columns-with-lineage": "Yalnızca Lineage olan sütunları göster",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "Bu işlemi gerçekleştirme izniniz yok. Lütfen yöneticinizle iletişime geçin.",
     "optional-configuration-update-description-dbt": "Açıklamayı dbt'den güncellemek veya güncellememek için isteğe bağlı yapılandırma",
     "optional-custom-error": "Doğrulama başarısız olduğunda gösterilen isteğe bağlı özel hata mesajı",
     "optional-markdown-content": "İsteğe bağlı: Doğrudan kaynağa gömülecek markdown içeriği ekleyin",
