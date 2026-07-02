@@ -51,7 +51,9 @@ const shouldRenderSegmentedOptions = (
   id: string,
   options: RJSFSchema[]
 ): boolean => {
-  const optionLabels = options.map(getOptionTitle);
+  const optionLabels = options.map((element, index) =>
+    getOptionTitle(element, index)
+  );
 
   return (
     options.length > 1 &&
@@ -134,7 +136,7 @@ const CoreOneOfField = (props: FieldProps) => {
       );
 
       return getSafeOptionIndex(
-        matchingOption !== currentOption ? matchingOption : currentOption,
+        matchingOption === currentOption ? currentOption : matchingOption,
         resolvedOptions.length
       );
     });
@@ -197,7 +199,7 @@ const CoreOneOfField = (props: FieldProps) => {
   );
 
   const selectedFieldUiSchema = useMemo(() => {
-    const childUiSchema = { ...(uiSchema ?? {}) };
+    const childUiSchema = { ...uiSchema };
 
     delete childUiSchema['ui:field'];
     delete childUiSchema['ui:fieldReplacesAnyOrOneOf'];
@@ -296,7 +298,15 @@ const CoreOneOfField = (props: FieldProps) => {
                   key={item.id}
                   role="tab"
                   type="button"
-                  onClick={() => handleOptionChange(Number(item.id))}>
+                  onClick={() => handleOptionChange(Number(item.id))}
+                  onFocus={() =>
+                    onFocus(
+                      `${idSchema.$id}${
+                        schema.oneOf ? '__oneof_select' : '__anyof_select'
+                      }`,
+                      formData
+                    )
+                  }>
                   {item.label}
                   {item.isRecommended && isSelected && (
                     <span
@@ -330,6 +340,14 @@ const CoreOneOfField = (props: FieldProps) => {
             popoverClassName="core-one-of-field-select-popover"
             selectedKey={selectedKey}
             size="sm"
+            onFocus={() =>
+              onFocus(
+                `${idSchema.$id}${
+                  schema.oneOf ? '__oneof_select' : '__anyof_select'
+                }`,
+                formData
+              )
+            }
             onSelectionChange={(key: Key | null) => {
               if (key !== null) {
                 handleOptionChange(Number(key));

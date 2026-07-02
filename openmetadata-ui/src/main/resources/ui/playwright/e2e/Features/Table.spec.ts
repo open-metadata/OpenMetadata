@@ -58,17 +58,29 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.click('[data-testid="test-cases"]');
     await waitForAllLoadersToDisappear(page);
 
+    // Capture the paginated list responses so we wait for the *new* data
+    // before counting rows. Without this, the loader can finish for the
+    // current page while the page-2 fetch is still in flight, and the
+    // row count assertion runs against an empty table mid-transition.
+    const sortedResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByText('Name', { exact: true }).click();
+    await sortedResponse;
 
+    const nextPageResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
     await page.getByTestId('next').click();
+    await nextPageResponse;
 
     await waitForAllLoadersToDisappear(page);
 
-    expect(
-      await page
-        .locator('[data-testid="test-case-table"] tbody tr[data-key]')
-        .count()
-    ).toBe(15);
+    // Use toHaveCount instead of .count() === 15 so Playwright auto-retries
+    // the assertion until the table re-renders with the page-2 rows.
+    await expect(
+      page.locator('[data-testid="test-case-table"] tbody tr[data-key]')
+    ).toHaveCount(15);
   });
 
   test('Table search with sorting should work', async ({
