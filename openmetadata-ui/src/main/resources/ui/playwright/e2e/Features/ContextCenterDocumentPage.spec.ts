@@ -15,9 +15,7 @@ import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { navigateToDocuments } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { test as base } from '../fixtures/pages';
-
-const test = base;
+import { test } from '../fixtures/pages';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
