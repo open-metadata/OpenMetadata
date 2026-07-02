@@ -12,11 +12,17 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { Column } from '../../../generated/entity/data/table';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
-import { tableVersionMockProps } from '../../../mocks/TableVersion.mock';
+import {
+  mockTableData,
+  tableVersionMockProps,
+} from '../../../mocks/TableVersion.mock';
+import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TableVersion from './TableVersion.component';
 
 const mockNavigate = jest.fn();
+
 jest.mock(
   '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader',
   () => jest.fn().mockImplementation(() => <div>DataAssetsVersionHeader</div>)
@@ -72,6 +78,10 @@ jest.mock(
 );
 
 describe('TableVersion tests', () => {
+  beforeEach(() => {
+    (VersionTable as jest.Mock).mockClear();
+  });
+
   it('Should render component properly if not loading', async () => {
     await act(async () => {
       render(<TableVersion {...tableVersionMockProps} />);
@@ -136,6 +146,74 @@ describe('TableVersion tests', () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       '/table/sample_data.ecommerce_db.shopify.raw_product_catalog/versions/0.3/custom_properties'
     );
+  });
+
+  it('Should use historical columns from currentVersionData, not live API columns', async () => {
+    await act(async () => {
+      render(<TableVersion {...tableVersionMockProps} />);
+    });
+
+    expect(VersionTable as jest.Mock).toHaveBeenCalled();
+
+    const receivedColumns: Column[] = (VersionTable as jest.Mock).mock
+      .calls[0][0].columns;
+
+    const historicalColumns = mockTableData.columns ?? [];
+
+    historicalColumns.forEach(({ name, description }) => {
+      const receivedColumn = receivedColumns.find((col) => col.name === name);
+
+      expect(receivedColumn).toBeDefined();
+
+      if (description) {
+        expect(receivedColumn?.description).toBe(description);
+      }
+    });
+  });
+
+  it('Should reflect updated currentVersionData columns when version changes', async () => {
+    const updatedColumns: Column[] = [
+      {
+        name: 'updated_col',
+        dataType: 'VARCHAR' as Column['dataType'],
+        description: 'Historical description for updated_col',
+        fullyQualifiedName:
+          'sample_data.ecommerce_db.shopify.raw_product_catalog.updated_col',
+        tags: [],
+        ordinalPosition: 1,
+      },
+    ];
+
+    const updatedProps = {
+      ...tableVersionMockProps,
+      currentVersionData: {
+        ...mockTableData,
+        columns: updatedColumns,
+      },
+    };
+
+    let rerender: ReturnType<typeof render>['rerender'] = () => {
+      throw new Error('rerender not initialized');
+    };
+
+    await act(async () => {
+      ({ rerender } = render(<TableVersion {...tableVersionMockProps} />));
+    });
+
+    await act(async () => {
+      rerender(<TableVersion {...updatedProps} />);
+    });
+
+    expect(VersionTable as jest.Mock).toHaveBeenCalled();
+
+    const mockCalls = (VersionTable as jest.Mock).mock.calls;
+    const receivedColumns: Column[] =
+      mockCalls[mockCalls.length - 1][0].columns;
+
+    expect(receivedColumns.some((col) => col.name === 'updated_col')).toBe(
+      true
+    );
+    expect(receivedColumns.some((col) => col.name === 'shop_id')).toBe(false);
   });
 
   describe('ViewCustomFields Permission Tests', () => {

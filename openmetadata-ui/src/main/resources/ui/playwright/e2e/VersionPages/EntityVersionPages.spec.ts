@@ -399,4 +399,87 @@ test.describe('Entity Version pages', () => {
       });
     });
   });
+
+  test.describe('Table historical column descriptions', () => {
+    let freshTable: TableClass;
+    let col0Name: string;
+    let col0OriginalDesc: string;
+    const col0UpdatedDesc =
+      'Updated description to verify historical version view';
+
+    test.beforeAll(
+      'Create table with historical description',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        freshTable = new TableClass();
+        await freshTable.create(apiContext);
+
+        col0Name = freshTable.entity.columns[0].name;
+        col0OriginalDesc = freshTable.children[0].description ?? '';
+
+        expect(
+          col0OriginalDesc,
+          'seed column must have a description for this regression check'
+        ).not.toBe('');
+
+        await freshTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/columns/0/description',
+              value: col0UpdatedDesc,
+            },
+          ],
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await freshTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - should show historical column descriptions in version view', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await freshTable.visitEntityPage(page);
+
+      const versionListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page
+        .locator('[data-testid="version-selector-v0.1"]')
+        .waitFor({ state: 'visible' });
+
+      const versionDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/versions/0.1') && response.status() === 200
+      );
+      await page.locator('[data-testid="version-selector-v0.1"]').click();
+      await versionDetailResponse;
+
+      await expect(
+        page.locator(
+          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+        )
+      ).toContainText(col0OriginalDesc);
+
+      await expect(
+        page.locator(
+          `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+        )
+      ).not.toContainText(col0UpdatedDesc);
+    });
+  });
 });
