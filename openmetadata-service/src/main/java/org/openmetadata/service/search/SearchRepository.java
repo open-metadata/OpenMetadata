@@ -1011,6 +1011,14 @@ public class SearchRepository {
       return;
     }
 
+    if (!Entity.isSearchIndexable(entity)) {
+      LOG.debug(
+          "Skipping search index create for non-indexable {} [{}]",
+          entity.getEntityReference().getType(),
+          entity.getId());
+      return;
+    }
+
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -1294,6 +1302,9 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
+          if (!Entity.isSearchIndexable(entity)) {
+            continue;
+          }
           try {
             SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
@@ -1480,6 +1491,11 @@ public class SearchRepository {
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!Entity.isSearchIndexable(entity)) {
+      deleteEntityIndex(entity);
       return;
     }
 
@@ -1752,7 +1768,19 @@ public class SearchRepository {
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> typeEntities = entry.getValue();
+      List<EntityInterface> typeEntities = new ArrayList<>();
+      for (EntityInterface entity : entry.getValue()) {
+        if (Entity.isSearchIndexable(entity)) {
+          typeEntities.add(entity);
+        } else {
+          // Mirror updateEntityIndex: a now-non-indexable entity (e.g. a memory flipped to
+          // PRIVATE/SHARED) must have its stale document removed from the index.
+          deleteEntityIndex(entity);
+        }
+      }
+      if (typeEntities.isEmpty()) {
+        continue;
+      }
 
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
