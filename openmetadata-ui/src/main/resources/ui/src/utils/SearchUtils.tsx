@@ -14,28 +14,12 @@
 import { SearchOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import { Link } from 'react-router-dom';
-import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
-import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
-import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
-import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
-import { ReactComponent as IconDatabase } from '../assets/svg/ic-database.svg';
-import { ReactComponent as IconDatabaseSchema } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
-import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
-import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
+import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
   Option,
   SearchSuggestions,
 } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { FqnPart } from '../enums/entity.enum';
+import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
@@ -49,59 +33,59 @@ export const getGroupLabel = (index: string) => {
   switch (index) {
     case SearchIndex.TOPIC:
       label = i18n.t('label.topic-plural');
-      GroupIcon = IconTopic;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TOPIC].icon;
 
       break;
     case SearchIndex.DATABASE:
       label = i18n.t('label.database-plural');
-      GroupIcon = IconDatabase;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATABASE].icon;
 
       break;
     case SearchIndex.DATABASE_SCHEMA:
       label = i18n.t('label.database-schema-plural');
-      GroupIcon = IconDatabaseSchema;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATABASE_SCHEMA].icon;
 
       break;
     case SearchIndex.DASHBOARD:
       label = i18n.t('label.dashboard-plural');
-      GroupIcon = IconDashboard;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DASHBOARD].icon;
 
       break;
     case SearchIndex.PIPELINE:
       label = i18n.t('label.pipeline-plural');
-      GroupIcon = IconPipeline;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.PIPELINE].icon;
 
       break;
     case SearchIndex.MLMODEL:
       label = i18n.t('label.ml-model-plural');
-      GroupIcon = IconMlModal;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.MLMODEL].icon;
 
       break;
     case SearchIndex.GLOSSARY_TERM:
       label = i18n.t('label.glossary-term-plural');
-      GroupIcon = GlossaryTermIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.GLOSSARY_TERM].icon;
 
       break;
     case SearchIndex.TAG:
       label = i18n.t('label.tag-plural');
-      GroupIcon = IconTag;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TAG].icon;
 
       break;
     case SearchIndex.CONTAINER:
       label = i18n.t('label.container-plural');
-      GroupIcon = IconContainer;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.CONTAINER].icon;
 
       break;
 
     case SearchIndex.STORED_PROCEDURE:
       label = i18n.t('label.stored-procedure-plural');
-      GroupIcon = IconStoredProcedure;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.STORED_PROCEDURE].icon;
 
       break;
 
     case SearchIndex.DASHBOARD_DATA_MODEL:
       label = i18n.t('label.data-model-plural');
-      GroupIcon = IconDashboard;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DASHBOARD_DATA_MODEL].icon;
 
       break;
 
@@ -113,61 +97,61 @@ export const getGroupLabel = (index: string) => {
 
     case SearchIndex.DATA_PRODUCT:
       label = i18n.t('label.data-product-plural');
-      GroupIcon = DataProductIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon;
 
       break;
 
     case SearchIndex.CHART:
       label = i18n.t('label.chart-plural');
-      GroupIcon = IconChart;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.CHART].icon;
 
       break;
     case SearchIndex.API_COLLECTION:
       label = i18n.t('label.api-collection-plural');
-      GroupIcon = IconApiCollection;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon;
 
       break;
 
     case SearchIndex.API_ENDPOINT:
       label = i18n.t('label.api-endpoint-plural');
-      GroupIcon = IconApiEndpoint;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon;
 
       break;
     case SearchIndex.METRIC:
       label = i18n.t('label.metric-plural');
-      GroupIcon = MetricIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.METRIC].icon;
 
       break;
     case SearchIndex.DIRECTORY:
       label = i18n.t('label.directory-plural');
-      GroupIcon = MetricIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon;
 
       break;
     case SearchIndex.FILE:
       label = i18n.t('label.file-plural');
-      GroupIcon = MetricIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.FILE].icon;
 
       break;
     case SearchIndex.SPREADSHEET:
       label = i18n.t('label.spreadsheet-plural');
-      GroupIcon = MetricIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.SPREADSHEET].icon;
 
       break;
     case SearchIndex.WORKSHEET:
       label = i18n.t('label.worksheet-plural');
-      GroupIcon = MetricIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.WORKSHEET].icon;
 
       break;
 
     case SearchIndex.COLUMN:
       label = i18n.t('label.column-plural');
-      GroupIcon = ColumnIcon;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon;
 
       break;
 
     case SearchIndex.KNOWLEDGE_PAGE_INDEX:
       label = i18n.t('label.knowledge-center');
-      GroupIcon = KnowledgeCenterIconComponent;
+      GroupIcon = ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon;
 
       break;
 

@@ -50,6 +50,7 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+import { getTypeBadge, TYPE_BADGE_KEY } from './ExploreSearchCard.utils';
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -126,11 +127,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         if (columnSource.dataType) {
           columnDetails.push({
-            key: t('label.type'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.dataTypeDisplay ?? columnSource.dataType}
-              </Typography.Text>
+            key: TYPE_BADGE_KEY,
+            value: getTypeBadge(
+              columnSource.dataTypeDisplay ?? columnSource.dataType,
+              true
             ),
           });
         }
@@ -208,6 +208,15 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           : emptyDomainInfo;
 
       const _otherDetails: ExtraInfo[] = [
+        ...(source?.entityType
+          ? [
+              {
+                key: TYPE_BADGE_KEY,
+                value: getTypeBadge(source.entityType),
+              },
+            ]
+          : []),
+
         ...domainInfo,
 
         {
@@ -260,23 +269,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
-        if (source.entityType === 'glossaryTerm') {
-          if (source.style?.iconURL) {
-            return (
-              <img
-                alt={source.entityType}
-                className="align-middle m-r-xs object-contain"
-                data-testid="icon"
-                height={24}
-                src={source.style.iconURL}
-                width={24}
-              />
-            );
-          }
-
-          return null;
-        }
-
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
@@ -290,9 +282,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return null;
     }, [source, showEntityIcon]);
 
-    const serviceIcon = useMemo(() => {
-      return searchClassBase.getServiceIcon(source);
-    }, [source]);
+    const breadcrumbItems = useMemo(
+      () => searchClassBase.getEntityBreadcrumbItems(source),
+      [source]
+    );
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
@@ -305,7 +298,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[8, 8]}>
+        <Row gutter={[4, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
               <Checkbox
@@ -321,26 +314,19 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div
-                className={classNames(
-                  'd-flex gap-2 items-center tw:min-w-0',
-                  classNameForBreadcrumb
-                )}>
-                {breadcrumbs.length > 0 && serviceIcon}
-                {/* Always collapse the middle crumbs into a clickable "…" menu
+              {/* Always collapse the middle crumbs into a clickable "…" menu
                     (first / … / last) so a deep path stays compact and the
                     summary side-panel keeps its room; the hidden crumbs expand
                     on click. autoCollapse only collapses on overflow, so a wide
                     card would otherwise show the whole trail. */}
-                <Breadcrumbs
-                  items={breadcrumbs.map((b) => ({
-                    id: b.name,
-                    label: getEntityName(b),
-                    href: typeof b.url === 'string' ? b.url : b.url.pathname,
-                  }))}
-                  maxItems={2}
-                />
-              </div>
+              <Breadcrumbs
+                className={classNames(
+                  'explore-search-card-breadcrumbs tw:min-w-0',
+                  classNameForBreadcrumb
+                )}
+                items={breadcrumbItems}
+                maxItems={2}
+              />
               {score && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />
@@ -420,6 +406,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       );
     }, [
       breadcrumbs,
+      breadcrumbItems,
       source,
       hideBreadcrumbs,
       showCheckboxes,
