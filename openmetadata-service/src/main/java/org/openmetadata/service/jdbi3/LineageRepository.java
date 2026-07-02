@@ -686,22 +686,24 @@ public class LineageRepository {
     if (nullOrEmpty(pipelineRef)) {
       lineageData.setPipeline(null);
     } else {
-      Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
-          getPipelineOrStoredProcedure(
-              pipelineRef, List.of("changeDescription", "incrementalChangeDescription"));
-      lineageData.setPipelineEntityType(pipelineOrStoredProcedure.getLeft());
-      lineageData.setPipeline(pipelineOrStoredProcedure.getRight());
+        try {
+          Pair<String, Map<String, Object>> pipelineOrStoredProcedure =
+              getPipelineOrStoredProcedure(
+                  pipelineRef, List.of("changeDescription", "incrementalChangeDescription"));
+          lineageData.setPipelineEntityType(pipelineOrStoredProcedure.getLeft());
+          lineageData.setPipeline(pipelineOrStoredProcedure.getRight());
+        } catch (Exception ex) {
+          LOG.warn("Failed to get pipeline details for elastic search mapping", ex);
+          lineageData.setPipelineEntityType(pipelineRef.getType());
+          lineageData.setPipeline(JsonUtils.getMap(pipelineRef));
+        }
+      }
     }
-  }
 
-  public static Pair<String, Map<String, Object>> getPipelineOrStoredProcedure(
-      EntityReference pipelineRef, List<String> fieldsToRemove) {
-    Map<String, Object> pipelineMap;
-    if (pipelineRef.getType().equals(PIPELINE)) {
-      pipelineMap =
-          JsonUtils.getMap(
-              Entity.getEntity(pipelineRef, "pipelineStatus,tags,owners", Include.ALL));
-    } else {
+    public static Pair<String, Map<String, Object>> getPipelineOrStoredProcedure(
+        EntityReference pipelineRef, List<String> fieldsToRemove) {
+      Map<String, Object> pipelineMap;
+      if (pipelineRef.getType().equalsIgnoreCase(Entity.PIPELINE)) {
       pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
     }
 
