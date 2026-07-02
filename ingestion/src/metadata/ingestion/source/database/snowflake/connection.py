@@ -201,12 +201,31 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
     """Build the Snowflake error pack, baking the configured ACCOUNT_USAGE schema
     into the account_usage-denial rule.
 
-    Connect-phase failures (auth) surface a driver errno and a stable message
-    token; query-phase failures (missing object, denied privilege) carry a
-    Snowflake errno and SQLSTATE. Bad host / port raise before the driver and are
-    caught by the explicit TCP preflight in CheckAccess via NETWORK_ERRORS. All
-    matchers are best-effort hypotheses until validated against a live account."""
+    Rule order matters (first match wins). The connect-phase errno 250001 is
+    overloaded - a bad password, a missing role, and an MFA requirement all raise
+    it - so the specific message-token rules (MFA, role) are placed BEFORE the
+    250001 catch-all. Errnos and tokens below were confirmed against a live
+    Snowflake account. Bad host / port on a custom endpoint raise before the
+    driver and are caught by the TCP preflight in CheckAccess via NETWORK_ERRORS;
+    a wrong *account* is not - Snowflake's wildcard DNS resolves any
+    ``<account>.snowflakecomputing.com`` and accepts TCP on 443, so it is only
+    rejected at the HTTP login layer (errno 290404), handled here."""
     return ErrorPack(
+        when(_sf_errno(290404)).diagnose(
+            "Snowflake account not found",
+            fix="Check the account identifier - the login endpoint returned 404. Use the account "
+            "from your Snowflake URL (e.g. <org>-<account> or <locator>.<region>.<cloud>).",
+        ),
+        when(Matchers.contains("multi-factor authentication")).diagnose(
+            "Multi-factor authentication required",
+            fix="This user requires MFA, which blocks password login for ingestion. Use key-pair "
+            "authentication or a Programmatic Access Token instead of a password.",
+        ),
+        when(Matchers.contains("is not granted to this user")).diagnose(
+            "Role not granted",
+            fix="Grant the configured role to the user, or set a role the user already has "
+            "(e.g. PUBLIC), so the connection can assume it.",
+        ),
         when(_sf_errno(250001)).diagnose(
             "Authentication failed",
             fix="Check the username and password (or private key) and that the user is allowed to connect.",
@@ -231,7 +250,12 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
             "and SELECT on its objects).",
         ),
-        when(_sf_errno(2003)).diagnose(
+        when(_sf_errno(2003, 2043)).diagnose(
+            "Object not found",
+            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
+            "authorized to use them.",
+        ),
+        when(Matchers.contains("object does not exist")).diagnose(
             "Object not found",
             fix="Verify the configured database, schema, warehouse, and role exist and the role is "
             "authorized to use them.",
@@ -243,8 +267,9 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
         ),
         when(Matchers.contains("no active warehouse")).diagnose(
             "No active warehouse",
-            fix="Set a warehouse on the connection (or grant the role a default warehouse) so queries "
-            "have compute to run on.",
+            fix="Set a valid warehouse on the connection - verify the name, since a missing, "
+            "misspelled, or inaccessible warehouse all fail here - and ensure the role has USAGE "
+            "on it, so queries have compute to run on.",
         ),
     ).including(NETWORK_ERRORS)
 
