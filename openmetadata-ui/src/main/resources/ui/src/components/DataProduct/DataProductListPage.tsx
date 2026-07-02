@@ -61,7 +61,18 @@ import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+interface DataProductListPageProps {
+  pageTitle: string;
+  renderPageHeader?: (props: {
+    onAddClick: () => void;
+    createPermission: boolean;
+    count: number;
+  }) => ReactNode;
+}
+
+const DataProductListPage = ({
+  renderPageHeader,
+}: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
@@ -356,8 +367,14 @@ const DataProductListPage = () => {
 
   return (
     <>
-      {breadcrumbs}
-      {pageHeader}
+      {!renderPageHeader && breadcrumbs}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.dataProduct?.Create || false,
+            count: dataProductListing.totalEntities,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
