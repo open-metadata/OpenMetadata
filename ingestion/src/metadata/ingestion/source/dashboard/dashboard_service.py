@@ -218,7 +218,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
         """Declare the grouping axis (e.g. workspaces) as a global counter and
         remember its label so completion can target it at scope close."""
-        self.__dict__["_progress_counter_label"] = label
+        self.__dict__["_progress_counter_label"] = label  # pyright: ignore[reportIndexIssue]
         self.progress.set_total(label, total)
 
     def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045

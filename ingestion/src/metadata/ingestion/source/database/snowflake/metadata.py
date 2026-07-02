@@ -420,7 +420,7 @@ class SnowflakeSource(
             database_fqn = fqn.build(
                 self.metadata,
                 entity_type=Database,
-                service_name=self.context.get().database_service,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                 database_name=new_database,
             )
             filter_name: str = database_fqn if self.source_config.useFqnForFiltering and database_fqn else new_database
@@ -432,7 +432,7 @@ class SnowflakeSource(
                     filter_name,
                     self.source_config.useFqnForFiltering,
                 )
-                self.status.filter(database_fqn, "Database Filtered Out")
+                self.status.filter(database_fqn, "Database Filtered Out")  # pyright: ignore[reportArgumentType]
                 continue
             names.append(new_database)
         return names
@@ -442,7 +442,9 @@ class SnowflakeSource(
         status side effects, so it must not run twice)."""
         cached = self.__dict__.get("_filtered_database_names_cache")
         if cached is None:
-            cached = self.__dict__["_filtered_database_names_cache"] = self._compute_filtered_database_names()
+            cached = self.__dict__["_filtered_database_names_cache"] = (  # pyright: ignore[reportIndexIssue]
+                self._compute_filtered_database_names()
+            )
         return cached
 
     def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
@@ -473,11 +475,11 @@ class SnowflakeSource(
         schema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
             database_name=database_name,
             schema_name=schema_name,
         )
-        filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
+        filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
         return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
     def _declare_progress_totals(self) -> None:

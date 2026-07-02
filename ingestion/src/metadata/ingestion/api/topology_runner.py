@@ -471,8 +471,8 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
         :return: Iterable of the Entities yielded by all nodes in the topology
         """
         root_nodes = get_topology_root(self.topology)
-        self.__dict__["_root_node_ids"] = {id(node) for node in root_nodes}
-        yield from self.process_nodes(root_nodes)
+        self.__dict__["_root_node_ids"] = {id(node) for node in root_nodes}  # pyright: ignore[reportIndexIssue]
+        yield from self.process_nodes(root_nodes)  # pyright: ignore[reportReturnType]
 
     def create_patch_request(self, original_entity: Entity, create_request: C) -> PatchRequest:
         """

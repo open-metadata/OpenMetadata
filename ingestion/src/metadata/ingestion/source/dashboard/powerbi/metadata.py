@@ -337,7 +337,7 @@ class PowerbiSource(DashboardServiceSource):
             yield workspace
 
     def _progress_group_name(self) -> str:
-        workspace = self.context.get().workspace
+        workspace = self.context.get().workspace  # pyright: ignore[reportAttributeAccessIssue]
         return str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
 
     def get_dashboard(self) -> Any:
