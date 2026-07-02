@@ -398,7 +398,7 @@ const Suggestions = ({
     } else {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria, isTourOpen]);
+  }, [fetchSearchData, searchText, isTourOpen]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {
