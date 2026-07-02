@@ -225,7 +225,7 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
 
         track_progress = self._should_track_progress(node, entity_type_name)
         parent_path = self.current_progress_path(entity_type_name) if track_progress else None
-        if track_progress:
+        if track_progress and parent_path is not None:
             self.progress.open(parent_path, entity_type_name, node_entities_length)
             if self.progress.is_reconcilable(entity_type_name) and parent_path:
                 self.progress.reconcile_scope_total(entity_type_name, parent_path[-1], node_entities_length)

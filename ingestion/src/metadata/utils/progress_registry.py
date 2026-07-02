@@ -90,7 +90,9 @@ class ProgressRegistry:
         self._active_leaf_cap = active_leaf_cap
         self._started_at: Optional[float] = None  # noqa: UP045
 
-    def open(self, path: List[str], child_type: str, expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
+    def open(self, path: List[str], child_type: Optional[str], expected: Optional[int] = None) -> None:  # noqa: UP006,UP045
+        if child_type is None:
+            return
         with self._lock:
             self._mark_started()
             node = self._navigate(path)
@@ -148,11 +150,11 @@ class ProgressRegistry:
             self._mark_started()
             self._apply_scope_total(type_, scope, n)
 
-    def reconcile_scope_total(self, type_: str, scope: str, observed: int) -> None:
+    def reconcile_scope_total(self, type_: Optional[str], scope: str, observed: int) -> None:  # noqa: UP045
         """Nudge ``type_``'s total toward the real ``observed`` count for
-        ``scope``. No-op when ``type_`` was never declared."""
+        ``scope``. No-op when ``type_`` is ``None`` or was never declared."""
         with self._lock:
-            if type_ in self._global:
+            if type_ is not None and type_ in self._global:
                 self._apply_scope_total(type_, scope, observed)
 
     def _apply_scope_total(self, type_: str, scope: str, n: int) -> None:
@@ -163,20 +165,20 @@ class ProgressRegistry:
         counter.scope_estimates[scope] = n
         counter.total = max(counter.total, counter.done)
 
-    def track(self, type_: str, n: int = 1) -> None:
-        """Record ``n`` completed units of ``type_`` (default 1). No-op for an
-        undeclared type, so callers may invoke it unconditionally."""
+    def track(self, type_: Optional[str], n: int = 1) -> None:  # noqa: UP045
+        """Record ``n`` completed units of ``type_`` (default 1). No-op for a
+        ``None`` or undeclared type, so callers may invoke it unconditionally."""
         with self._lock:
             self._mark_started()
-            counter = self._global.get(type_)
+            counter = self._global.get(type_) if type_ is not None else None
             if counter is not None:
                 counter.done += n
                 if counter.total is not None and counter.total < counter.done:
                     counter.total = counter.done
 
-    def is_reconcilable(self, type_: str) -> bool:
+    def is_reconcilable(self, type_: Optional[str]) -> bool:  # noqa: UP045
         with self._lock:
-            counter = self._global.get(type_)
+            counter = self._global.get(type_) if type_ is not None else None
             return counter is not None and counter.reconcilable
 
     def global_counters(self) -> "List[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
