@@ -36,6 +36,13 @@
       "type": "integer",
       "default": 90,
       "minimum": 1
+    },
+    "lineageRetentionPeriod": {
+      "title": "Lineage Retention Period (days)",
+      "description": "Enter the retention period in days for auto-generated lineage edges (e.g., 365 for one year). Edges whose updatedAt timestamp is older than this threshold will be deleted. Set to 0 to disable lineage cleanup. MANUAL lineage is never deleted.",
+      "type": "integer",
+      "default": 0,
+      "minimum": 0
     }
   },
   "required": [

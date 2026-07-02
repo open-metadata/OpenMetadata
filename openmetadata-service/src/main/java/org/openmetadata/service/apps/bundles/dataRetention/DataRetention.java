@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.applications.configuration.internal.DataRe
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
@@ -132,6 +133,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
     entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("stale_lineage", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -195,6 +197,14 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    int lineageRetentionPeriod = config.getLineageRetentionPeriod();
+    if (lineageRetentionPeriod > 0) {
+      LOG.info(
+          "Starting cleanup for stale lineage with retention period: {} days.",
+          lineageRetentionPeriod);
+      cleanStaleLineage(lineageRetentionPeriod);
+    }
   }
 
   @Transaction
@@ -417,6 +427,33 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
+  private static final List<String> AUTO_GENERATED_LINEAGE_SOURCES =
+      List.of(
+          "ViewLineage",
+          "QueryLineage",
+          "PipelineLineage",
+          "DashboardLineage",
+          "DbtLineage",
+          "SparkLineage",
+          "OpenLineage",
+          "ExternalTableLineage",
+          "CrossDatabaseLineage");
+
+  @Transaction
+  private void cleanStaleLineage(int retentionPeriod) {
+    LOG.info("Initiating stale lineage cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+    int relation = Relationship.UPSTREAM.ordinal();
+
+    executeWithStatsTracking(
+        "stale_lineage",
+        () ->
+            collectionDAO
+                .relationshipDAO()
+                .deleteStaleLineage(
+                    relation, cutoffMillis, AUTO_GENERATED_LINEAGE_SOURCES, BATCH_SIZE));
+
+    LOG.info("Stale lineage cleanup complete.");
   // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
   // rows per entity per run — well above any healthy catalog's orphan count. A buggy
   // delete query that always returns a non-zero count (e.g., rows it can't actually
