@@ -1,0 +1,83 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/influxdbConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InfluxdbConnection",
+  "description": "InfluxDB 3 Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.InfluxdbConnection",
+  "definitions": {
+    "influxdbType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["InfluxDB"],
+      "default": "InfluxDB"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/influxdbType",
+      "default": "InfluxDB"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "InfluxDB 3 HTTP API URL (e.g. https://cluster.influxdata.com or http://localhost:8086).",
+      "type": "string"
+    },
+    "token": {
+      "title": "API Token",
+      "description": "InfluxDB 3 API token for authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional default database to limit metadata ingestion to a single InfluxDB database.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsDBTExtraction": {
+      "title": "Supports DBT Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "token"]
+}
