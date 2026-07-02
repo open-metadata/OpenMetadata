@@ -12,19 +12,22 @@
 Databricks Unity Catalog Lineage Source Module
 """
 
+import json
 import traceback
-from collections import defaultdict
-from typing import Iterable, Optional  # noqa: UP035
+from datetime import datetime, timedelta
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
+from cachetools import LRUCache
 from sqlalchemy import text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import ContainerDataModel
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -46,21 +49,33 @@ from metadata.ingestion.source.database.unitycatalog.connection import (
     get_sqlalchemy_connection,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
-    UNITY_CATALOG_COLUMN_LINEAGE,
     UNITY_CATALOG_EXTERNAL_TABLES,
-    UNITY_CATALOG_TABLE_LINEAGE,
+    UNITY_CATALOG_LINEAGE,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.helpers import retry_with_docker_host
+from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+TABLE_RESOLUTION_CACHE_SIZE = 1000
+
+EDGE_DEDUP_CACHE_SIZE = 1000
+
+DEFAULT_LINEAGE_CHUNK_DAYS = 7
+
 
 class UnitycatalogLineageSource(Source):
     """
-    Lineage Unity Catalog Source
+    Lineage Unity Catalog Source.
+
+    Lineage edges are streamed one day-window at a time from
+    `system.access.table_lineage` / `column_lineage` (the Databricks analogue
+    of Snowflake's ACCESS_HISTORY). Column pairs are aggregated server-side per
+    edge, and each endpoint is resolved to an OpenMetadata table through a
+    bounded LRU cache, so client memory stays O(window) regardless of how large
+    the metastore lineage graph is.
     """
 
     @retry_with_docker_host()
@@ -76,10 +91,21 @@ class UnitycatalogLineageSource(Source):
         self.source_config = self.config.sourceConfig.config
         self.connection_obj = get_connection(self.service_connection)
         self.engine = get_sqlalchemy_connection(self.service_connection)
-        self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
-        self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
-        self.external_location_map: dict[str, str] = {}
+        self._table_cache: LRUCache = LRUCache(maxsize=TABLE_RESOLUTION_CACHE_SIZE)
+        self._seen_edges: LRUCache = LRUCache(maxsize=EDGE_DEDUP_CACHE_SIZE)
+        self._chunk_days = self._resolve_chunk_days()
         self.test_connection()
+
+    def _resolve_chunk_days(self) -> int:
+        """
+        Days of lineage scanned per system-table query, read from the
+        `lineageQueryChunkSize` connection field. Clamp to >= 1 so the
+        date-window iterator always makes forward progress.
+        """
+        configured = getattr(self.service_connection, "lineageQueryChunkSize", None)
+        if configured is None:
+            return DEFAULT_LINEAGE_CHUNK_DAYS
+        return max(1, int(configured))
 
     def close(self):
         """
@@ -100,58 +126,234 @@ class UnitycatalogLineageSource(Source):
             raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _cache_lineage(self):
+    def _iter_date_windows(self) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
         """
-        Bulk-fetch all table and column lineage from system tables into memory.
+        Split the configured `queryLogDuration` lookback into
+        `lineageQueryChunkSize` day windows. Streaming one window at a time keeps
+        each system-table scan and its result set bounded instead of pulling the
+        whole lookback at once.
         """
-        query_log_duration = self.source_config.queryLogDuration or 1  # pyright: ignore[reportAttributeAccessIssue]
-        logger.info(f"Caching lineage from system tables (lookback: {query_log_duration} days)")
+        start, end = get_start_and_end(self.source_config.queryLogDuration or 1)  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+        window_start = start
+        while window_start < end:
+            window_end = min(window_start + timedelta(days=self._chunk_days), end)
+            yield window_start, window_end
+            window_start = window_end
 
-        try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(text(UNITY_CATALOG_TABLE_LINEAGE.format(query_log_duration=query_log_duration)))
-                for row in rows:
-                    self.table_lineage_map[row.target_table_full_name].add(row.source_table_full_name)
-            logger.info(
-                f"Cached table lineage: {sum(len(v) for v in self.table_lineage_map.values())} edges "
-                f"for {len(self.table_lineage_map)} target tables"
+    def _resolve_table(self, databricks_table_fqn: str) -> Optional[Table]:  # noqa: UP045
+        """
+        Resolve a `catalog.schema.table` Unity Catalog name to an OpenMetadata
+        Table entity. Both hits and misses are cached in a bounded LRU so a busy
+        upstream table referenced by many edges is fetched once, and repeated
+        unresolvable lookups stay cheap.
+        """
+        cache_key = databricks_table_fqn.lower()
+        if cache_key in self._table_cache:
+            return self._table_cache[cache_key]
+        entity = self._fetch_table_entity(cache_key)
+        self._table_cache[cache_key] = entity
+        return entity
+
+    def _fetch_table_entity(self, databricks_table_fqn: str) -> Optional[Table]:  # noqa: UP045
+        entity = None
+        parts = databricks_table_fqn.split(".")
+        if len(parts) != 3:
+            logger.debug(f"Skipping malformed table name: {databricks_table_fqn}")
+        else:
+            catalog_name, schema_name, table_name = parts
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=self.config.serviceName,
+                database_name=catalog_name,
+                schema_name=schema_name,
+                table_name=table_name,
             )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache table lineage: {exc}")
+            entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)  # pyright: ignore[reportArgumentType]
+        return entity
 
+    def _is_filtered_table(self, databricks_table_fqn: str) -> bool:
+        is_filtered = False
+        parts = databricks_table_fqn.lower().split(".")
+        if len(parts) == 3:
+            catalog_name, schema_name, table_name = parts
+            is_filtered = (
+                filter_by_database(
+                    self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    catalog_name,
+                )
+                or filter_by_schema(
+                    self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    schema_name,
+                )
+                or filter_by_table(
+                    self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                    table_name,
+                )
+            )
+        return is_filtered
+
+    @staticmethod
+    def _parse_column_pairs(raw: object) -> List[Tuple[str, str]]:  # noqa: UP006
+        """
+        Decode the server-aggregated `column_pairs` JSON into a list of
+        (source_column, target_column) tuples. The driver can hand back either a
+        JSON string or an already-parsed list, so handle both.
+        """
+        pairs: List[Tuple[str, str]] = []  # noqa: UP006
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except (ValueError, TypeError):
+                raw = None
+        if isinstance(raw, list):
+            for item in raw:
+                if isinstance(item, dict):
+                    source_col = item.get("u") or item.get("U")
+                    target_col = item.get("d") or item.get("D")
+                    if source_col and target_col:
+                        pairs.append((source_col, target_col))
+        return pairs
+
+    def _build_column_lineage(
+        self, from_table: Table, to_table: Table, raw_column_pairs: object
+    ) -> List[ColumnLineage]:  # noqa: UP006
+        col_lineage = []
+        for source_col, target_col in self._parse_column_pairs(raw_column_pairs):
+            from_col_fqn = get_column_fqn(from_table, source_col)
+            to_col_fqn = get_column_fqn(to_table, target_col)
+            if from_col_fqn and to_col_fqn and from_col_fqn != to_col_fqn:
+                col_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))  # pyright: ignore[reportCallIssue]
+        return col_lineage
+
+    def _build_table_edge(self, row: Any) -> Optional[AddLineageRequest]:  # noqa: UP045
+        """
+        Resolve both endpoints of a streamed lineage row to OpenMetadata tables
+        and build the lineage request with column lineage attached. Callers drop
+        filtered rows first, so a None return means one of the endpoints is not
+        present in OpenMetadata.
+        """
+        edge = None
+        source_fqn = row.source_table_full_name
+        target_fqn = row.target_table_full_name
+        from_entity = self._resolve_table(source_fqn)
+        to_entity = self._resolve_table(target_fqn)
+        if from_entity and to_entity:
+            column_lineage = self._build_column_lineage(from_entity, to_entity, row.column_pairs)
+            edge = AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=from_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
+                    toEntity=EntityReference(id=to_entity.id, type="table"),  # pyright: ignore[reportCallIssue]
+                    lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
+                        columnsLineage=column_lineage or None,
+                        source=LineageSource.QueryLineage,
+                    ),
+                )
+            )
+        else:
+            logger.debug(
+                f"Skipping edge, table not found in OpenMetadata: "
+                f"{source_fqn} (found={from_entity is not None}) -> "
+                f"{target_fqn} (found={to_entity is not None})"
+            )
+        return edge
+
+    def _fetch_lineage_rows(self, window_start: datetime, window_end: datetime) -> Iterable:
+        """
+        Run the combined lineage query for one [start, end) window, streaming
+        rows so the driver does not buffer the whole result set. Exceptions
+        propagate to the caller, which surfaces them in workflow status.
+        """
+        sql_statement = UNITY_CATALOG_LINEAGE.format(
+            start_time=window_start,
+            end_time=window_end,
+        )
+        with self.engine.connect() as conn:
+            rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
+            yield from rows
+
+    def _yield_table_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Stream table/column lineage one day-window at a time, emitting one
+        request per resolved edge. Per-row and per-window failures both surface
+        as Either(left) instead of being swallowed. Edges dropped by the
+        database/schema/table filter patterns and edges whose tables are absent
+        from OpenMetadata are counted separately so the summary distinguishes
+        intentional filtering from missing metadata.
+        """
+        stats = {"emitted": 0, "duplicate": 0, "filtered": 0, "unresolved": 0, "failed": 0}
+        for window_start, window_end in self._iter_date_windows():
+            yield from self._yield_window_lineage(window_start, window_end, stats)
+        logger.info(
+            f"Table lineage: emitted {stats['emitted']} edges, deduplicated {stats['duplicate']} "
+            f"cross-window duplicates, filtered {stats['filtered']} (database/schema/table filter "
+            f"patterns), unresolved {stats['unresolved']} (tables not in OpenMetadata), "
+            f"failed {stats['failed']} (row/window errors)"
+        )
+
+    def _yield_window_lineage(
+        self, window_start: datetime, window_end: datetime, stats: dict
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process one [start, end) window. A failure fetching the window (e.g. a
+        permissions error on the system tables that would recur for every
+        window) is surfaced as an Either(left) so it appears in workflow status
+        rather than silently producing zero edges.
+        """
         try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(text(UNITY_CATALOG_COLUMN_LINEAGE.format(query_log_duration=query_log_duration)))
-                for row in rows:
-                    table_key = (
-                        row.source_table_full_name,
-                        row.target_table_full_name,
+            for row in self._fetch_lineage_rows(window_start, window_end):
+                yield from self._yield_row_lineage(row, stats)
+        except Exception as exc:
+            stats["failed"] += 1
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=f"table-lineage-window:{window_start}/{window_end}",
+                    error=f"Failed to fetch lineage for window {window_start} - {window_end}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _yield_row_lineage(self, row: Any, stats: dict) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Skip edges already streamed in an earlier window so an edge whose events
+        span multiple windows is emitted once instead of once per window. The
+        dedup set is a bounded LRU, so only recently-seen edges are suppressed;
+        edges past the cache window may re-emit (lineage adds are idempotent).
+        """
+        edge_key = (
+            row.source_table_full_name.lower(),
+            row.target_table_full_name.lower(),
+        )
+        if edge_key in self._seen_edges:
+            stats["duplicate"] += 1
+        else:
+            self._seen_edges[edge_key] = True
+            yield from self._process_unseen_row(row, stats)
+
+    def _process_unseen_row(self, row: Any, stats: dict) -> Iterable[Either[AddLineageRequest]]:
+        if self._is_filtered_table(row.source_table_full_name) or self._is_filtered_table(row.target_table_full_name):
+            stats["filtered"] += 1
+        else:
+            try:
+                edge = self._build_table_edge(row)
+            except Exception as exc:
+                stats["failed"] += 1
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    left=StackTraceError(
+                        name=row.target_table_full_name,
+                        error=(
+                            f"Error processing lineage {row.source_table_full_name} -> "
+                            f"{row.target_table_full_name}: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
                     )
-                    self.column_lineage_map[table_key].append((row.source_column_name, row.target_column_name))
-            logger.info(
-                f"Cached column lineage: {sum(len(v) for v in self.column_lineage_map.values())} "
-                f"column mappings for {len(self.column_lineage_map)} table pairs"
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache column lineage: {exc}")
-
-    def _cache_external_locations(self):
-        """
-        Bulk-fetch all external table storage locations from system.information_schema.tables.
-        """
-        logger.info("Caching external table locations from system tables")
-        try:
-            with self.engine.connect() as conn:
-                rows = conn.execute(text(UNITY_CATALOG_EXTERNAL_TABLES))
-                for row in rows:
-                    table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}"
-                    self.external_location_map[table_fqn] = row.storage_path
-            logger.info(f"Cached {len(self.external_location_map)} external table locations")
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to cache external table locations: {exc}")
+                )
+            else:
+                if edge is None:
+                    stats["unresolved"] += 1
+                else:
+                    stats["emitted"] += 1
+                    yield Either(right=edge)  # pyright: ignore[reportCallIssue]
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> Optional[str]:  # noqa: UP045
         if not data_model_entity:
@@ -182,51 +384,26 @@ class UnitycatalogLineageSource(Source):
                 )
             return None  # noqa: TRY300
         except Exception as exc:
-            logger.debug(f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}")
-            logger.debug(traceback.format_exc())
-            return None
-
-    def _get_column_lineage_details(
-        self,
-        from_table: Table,
-        to_table: Table,
-        source_table_fqn: str,
-        target_table_fqn: str,
-    ) -> Optional[LineageDetails]:  # noqa: UP045
-        try:
-            table_key = (source_table_fqn, target_table_fqn)
-            column_pairs = self.column_lineage_map.get(table_key, [])
-            if not column_pairs:
-                return None
-
-            col_lineage = []
-            for source_col, target_col in column_pairs:
-                from_col_fqn = get_column_fqn(from_table, source_col)
-                to_col_fqn = get_column_fqn(to_table, target_col)
-                if from_col_fqn and to_col_fqn and from_col_fqn != to_col_fqn:
-                    col_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))
-
-            if col_lineage:
-                return LineageDetails(columnsLineage=col_lineage, source=LineageSource.QueryLineage)
-            return None  # noqa: TRY300
-        except Exception as exc:
-            logger.debug(f"Error computing column lineage: {exc}")
+            logger.warning(
+                f"Error computing container column lineage for {table_entity.fullyQualifiedName.root}: {exc}"  # pyright: ignore[reportOptionalMemberAccess]
+            )
             logger.debug(traceback.format_exc())
             return None
 
     def _process_external_location_lineage(
-        self, table: Table, databricks_table_fqn: str
+        self,
+        table: Table,
+        storage_path: Optional[str],  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Look up external table storage location from cache and create
-        container lineage if a matching container is found.
+        Create container lineage for an external table from its storage path,
+        if a matching container has been ingested.
         """
-        storage_location = self.external_location_map.get(databricks_table_fqn)
-        if not storage_location:
+        if not storage_path:
             return
 
         try:
-            storage_location = storage_location.rstrip("/")
+            storage_location = storage_path.rstrip("/")
             location_entity = self.metadata.es_search_container_by_path(full_path=storage_location, fields="dataModel")
 
             if location_entity and location_entity[0]:
@@ -250,95 +427,53 @@ class UnitycatalogLineageSource(Source):
                     ),
                 )
         except Exception as exc:
-            logger.debug(f"Error processing external location lineage for {databricks_table_fqn}: {exc}")
-            logger.debug(traceback.format_exc())
-
-    def _process_table_lineage(self, table: Table, databricks_table_fqn: str) -> Iterable[Either[AddLineageRequest]]:
-        upstream_tables = self.table_lineage_map.get(databricks_table_fqn, set())
-
-        for source_table_full_name in upstream_tables:
-            try:
-                parts = source_table_full_name.split(".")
-                if len(parts) != 3:
-                    logger.debug(f"Skipping malformed source table name: {source_table_full_name}")
-                    continue
-                catalog_name, schema_name, table_name = parts
-
-                from_entity_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    database_name=catalog_name,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    service_name=self.config.serviceName,
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=table.fullyQualifiedName.root,  # pyright: ignore[reportOptionalMemberAccess]
+                    error=f"Error processing external location lineage for {storage_path}: {exc}",
+                    stackTrace=traceback.format_exc(),
                 )
+            )
 
-                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_entity_fqn)
-                if not from_entity:
-                    logger.debug(f"Unable to find upstream entity: {source_table_full_name} -> {databricks_table_fqn}")
-                    continue
-
-                lineage_details = self._get_column_lineage_details(
-                    from_table=from_entity,
-                    to_table=table,
-                    source_table_fqn=source_table_full_name,
-                    target_table_fqn=databricks_table_fqn,
+    def _yield_external_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Stream external tables and create container lineage for each, resolving
+        the table through the shared bounded LRU. External-table storage paths
+        are a current snapshot, not an event stream, so this is a single scan
+        rather than a windowed one. Catalogs excluded by the database filter are
+        dropped per row via `_is_filtered_table`.
+        """
+        try:
+            with self.engine.connect() as conn:
+                rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(
+                    text(UNITY_CATALOG_EXTERNAL_TABLES)
                 )
-
-                yield Either(
-                    right=AddLineageRequest(
-                        edge=EntitiesEdge(
-                            toEntity=EntityReference(id=table.id, type="table"),
-                            fromEntity=EntityReference(id=from_entity.id, type="table"),
-                            lineageDetails=lineage_details,
-                        )
-                    ),
+                for row in rows:
+                    databricks_table_fqn = f"{row.table_catalog}.{row.table_schema}.{row.table_name}".lower()
+                    if self._is_filtered_table(databricks_table_fqn):
+                        continue
+                    table_entity = self._resolve_table(databricks_table_fqn)
+                    if table_entity:
+                        yield from self._process_external_location_lineage(table_entity, row.storage_path)
+        except Exception as exc:
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name="external-table-lineage",
+                    error=f"Failed to fetch external table locations: {exc}",
+                    stackTrace=traceback.format_exc(),
                 )
-            except Exception as exc:
-                logger.debug(f"Error processing lineage {source_table_full_name} -> {databricks_table_fqn}: {exc}")
-                logger.debug(traceback.format_exc())
+            )
 
     def _iter(self, *_, **__) -> Iterable[Either[AddLineageRequest]]:
         """
-        Fetch lineage from system tables for both table-to-table
-        and external location lineage.
+        Stream table/column and external-location lineage across the whole
+        metastore. The system-table scans are no longer scoped per catalog;
+        catalogs excluded by `databaseFilterPattern` are dropped per edge during
+        resolution, and resolved edges share a single bounded table-resolution
+        cache across the whole run.
         """
-        self._cache_lineage()
-        self._cache_external_locations()
-
-        for database in self.metadata.list_all_entities(entity=Database, params={"service": self.config.serviceName}):
-            if filter_by_database(self.source_config.databaseFilterPattern, database.name.root):  # pyright: ignore[reportAttributeAccessIssue]
-                self.status.filter(
-                    database.fullyQualifiedName.root,
-                    "Catalog Filtered Out",
-                )
-                continue
-            for schema in self.metadata.list_all_entities(
-                entity=DatabaseSchema,
-                params={"database": database.fullyQualifiedName.root},
-            ):
-                if filter_by_schema(self.source_config.schemaFilterPattern, schema.name.root):  # pyright: ignore[reportAttributeAccessIssue]
-                    self.status.filter(
-                        schema.fullyQualifiedName.root,
-                        "Schema Filtered Out",
-                    )
-                    continue
-                for table in self.metadata.list_all_entities(
-                    entity=Table,
-                    params={"databaseSchema": schema.fullyQualifiedName.root},
-                ):
-                    if filter_by_table(self.source_config.tableFilterPattern, table.name.root):  # pyright: ignore[reportAttributeAccessIssue]
-                        self.status.filter(
-                            table.fullyQualifiedName.root,
-                            "Table Filtered Out",
-                        )
-                        continue
-
-                    databricks_table_fqn = f"{table.database.name}.{table.databaseSchema.name}.{table.name.root}"
-
-                    yield from self._process_table_lineage(table, databricks_table_fqn)
-
-                    yield from self._process_external_location_lineage(table, databricks_table_fqn)
+        yield from self._yield_table_lineage()
+        yield from self._yield_external_lineage()
 
     def test_connection(self) -> None:
         test_connection_common(self.metadata, self.connection_obj, self.service_connection)
