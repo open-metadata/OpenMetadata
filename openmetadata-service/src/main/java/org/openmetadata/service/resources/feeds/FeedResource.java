@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.FeedFilter;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -199,10 +200,25 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus) {
+          TaskStatus taskStatus,
+      @Parameter(
+              description =
+                  "Filter threads created on or after this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description =
+                  "Filter threads created on or before this timestamp (epoch millis, on threadTs)",
+              schema = @Schema(type = "integer", format = "int64"))
+          @QueryParam("endTs")
+          Long endTs) {
     rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
+    if (startTs != null && endTs != null && startTs > endTs) {
+      throw BadRequestException.of("startTs must be less than or equal to endTs");
+    }
     FeedFilter filter =
         FeedFilter.builder()
             .threadType(threadType)
@@ -212,6 +228,8 @@ public class FeedResource {
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
             .before(before)
             .after(after)
+            .startTs(startTs)
+            .endTs(endTs)
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .domains(
