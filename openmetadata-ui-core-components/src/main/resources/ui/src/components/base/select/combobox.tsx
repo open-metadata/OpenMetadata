@@ -1,22 +1,20 @@
-import type {
-  FocusEventHandler,
-  PointerEventHandler,
-  RefAttributes,
-} from 'react';
-import { useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { SearchLg as SearchIcon } from '@untitledui/icons';
+import type { ReactNode, RefObject, RefAttributes } from 'react';
+import { isValidElement, useContext, useMemo, useRef } from 'react';
+import { ChevronDown, SearchLg as SearchIcon } from '@untitledui/icons';
 import type {
   ComboBoxProps as AriaComboBoxProps,
   GroupProps as AriaGroupProps,
   ListBoxProps as AriaListBoxProps,
 } from 'react-aria-components';
 import {
+  Button as AriaButton,
   ComboBox as AriaComboBox,
   Group as AriaGroup,
   Input as AriaInput,
   ListBox as AriaListBox,
   ComboBoxStateContext,
 } from 'react-aria-components';
+import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { Popover } from '@/components/base/select/popover';
@@ -26,8 +24,9 @@ import {
   type SelectItemType,
   sizes,
 } from '@/components/base/select/select';
-import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
+import { fontSizeClass } from '@/utils/tailwindClasses';
 
 interface ComboBoxProps
   extends Omit<AriaComboBoxProps<SelectItemType>, 'children' | 'items'>,
@@ -37,25 +36,31 @@ interface ComboBoxProps
   items?: SelectItemType[];
   popoverClassName?: string;
   shortcutClassName?: string;
+  showSearchIcon?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
 }
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  inputRef: RefObject<HTMLInputElement>;
+  triggerRef: RefObject<HTMLDivElement>;
+  showSearchIcon: boolean;
   shortcut: boolean;
   placeholder?: string;
   shortcutClassName?: string;
-  onFocus?: FocusEventHandler;
-  onPointerEnter?: PointerEventHandler;
 }
 
 const ComboBoxValue = ({
   size,
+  fontSize,
+  inputRef,
+  triggerRef,
+  showSearchIcon,
   shortcut,
   placeholder,
   shortcutClassName,
+  onPointerDown,
   ...otherProps
 }: ComboBoxValueProps) => {
   const state = useContext(ComboBoxStateContext);
@@ -65,56 +70,101 @@ const ComboBoxValue = ({
 
   const first = inputValue?.split(value?.supportingText)?.[0] || '';
   const last = inputValue?.split(first)[1];
+  const Icon = value?.icon;
+  const inputPadding = cx(
+    showSearchIcon ? 'tw:pl-10' : size === 'sm' ? 'tw:pl-3' : 'tw:pl-3.5',
+    shortcut ? 'tw:pr-16' : size === 'sm' ? 'tw:pr-9' : 'tw:pr-10'
+  );
+
+  const handlePointerDown: AriaGroupProps['onPointerDown'] = (event) => {
+    onPointerDown?.(event);
+
+    if (event.defaultPrevented) {
+      return;
+    }
+
+    if (event.target instanceof HTMLElement && event.target.closest('button')) {
+      return;
+    }
+
+    inputRef.current?.focus();
+    state?.open(null, 'input');
+  };
 
   return (
     <AriaGroup
       {...otherProps}
       className={({ isFocusWithin, isDisabled }) =>
         cx(
-          'tw:relative tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition-shadow tw:duration-100 tw:ease-linear tw:ring-inset',
+          'tw:relative tw:flex tw:w-full tw:cursor-text tw:items-center tw:gap-2 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition-shadow tw:duration-100 tw:ease-linear tw:ring-inset',
           isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
           isFocusWithin && 'tw:ring-2 tw:ring-brand',
+          size === 'sm' ? 'tw:min-h-9' : 'tw:min-h-10',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}
+      onPointerDown={handlePointerDown}>
       {({ isDisabled }) => (
         <>
-          <SearchIcon className="tw:pointer-events-none tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
-
-          <div className="tw:relative tw:flex tw:w-full tw:items-center tw:gap-2">
+          <div
+            aria-hidden="true"
+            className={cx(
+              'tw:pointer-events-none tw:z-0 tw:flex tw:w-full tw:items-center tw:gap-2 tw:truncate',
+              shortcut ? 'tw:pr-12' : 'tw:pr-5'
+            )}>
+            {showSearchIcon && (
+              <SearchIcon className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
+            )}
             {inputValue && (
-              <span
-                aria-hidden="true"
-                className="tw:absolute tw:top-1/2 tw:z-0 tw:inline-flex tw:w-full tw:-translate-y-1/2 tw:gap-2 tw:truncate">
-                <p
-                  className={cx(
-                    'tw:text-md tw:font-medium tw:text-primary',
-                    isDisabled && 'tw:text-disabled'
-                  )}>
-                  {first}
-                </p>
-                {last && (
+              <span className="tw:flex tw:w-full tw:items-center tw:gap-2 tw:truncate">
+                {/* Match Select value rendering: avatar wins, then component icons, then rendered React nodes. */}
+                {value?.avatarUrl ? (
+                  <Avatar alt={value.label} size="xs" src={value.avatarUrl} />
+                ) : isReactComponent(Icon) ? (
+                  <Icon data-icon aria-hidden="true" />
+                ) : isValidElement(Icon) ? (
+                  (Icon as ReactNode)
+                ) : null}
+
+                <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
                   <p
                     className={cx(
-                      'tw:-ml-0.75 tw:text-md tw:text-tertiary',
+                      'tw:truncate tw:text-primary',
+                      fontSizeClass[fontSize],
                       isDisabled && 'tw:text-disabled'
                     )}>
-                    {last}
+                    {first}
                   </p>
-                )}
+                  {last && (
+                    <p
+                      className={cx(
+                        'tw:text-tertiary',
+                        fontSizeClass[fontSize],
+                        isDisabled && 'tw:text-disabled'
+                      )}>
+                      {last}
+                    </p>
+                  )}
+                </section>
               </span>
             )}
-
-            <AriaInput
-              className="tw:z-10 tw:w-full tw:appearance-none tw:bg-transparent tw:text-md tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
-              placeholder={placeholder}
-            />
           </div>
 
-          {shortcut && (
+          <AriaInput
+            className={cx(
+              'tw:absolute tw:inset-0 tw:z-10 tw:size-full tw:appearance-none tw:rounded-[inherit] tw:bg-transparent tw:text-transparent tw:caret-alpha-black/90 tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled',
+              inputPadding,
+              fontSizeClass[fontSize]
+            )}
+            placeholder={placeholder}
+            ref={inputRef}
+          />
+
+          {shortcut ? (
             <div
               className={cx(
-                'tw:absolute tw:inset-y-0.5 tw:right-0.5 tw:z-10 tw:flex tw:items-center tw:rounded-r-[inherit] tw:bg-linear-to-r tw:from-transparent tw:to-bg-primary tw:to-40% tw:pl-8',
+                'tw:pointer-events-none tw:absolute tw:inset-y-0.5 tw:right-0.5 tw:z-20 tw:flex tw:items-center tw:rounded-r-[inherit] tw:bg-linear-to-r tw:from-transparent tw:to-bg-primary tw:to-40% tw:pl-8',
                 isDisabled && 'tw:to-bg-disabled_subtle',
                 sizes[size].shortcut,
                 shortcutClassName
@@ -128,6 +178,21 @@ const ComboBoxValue = ({
                 ⌘K
               </span>
             </div>
+          ) : (
+            <AriaButton
+              aria-label="Show options"
+              className={cx(
+                'tw:absolute tw:inset-y-0 tw:right-0 tw:z-20 tw:flex tw:items-center tw:justify-center tw:rounded-r-[inherit] tw:text-fg-quaternary tw:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+                size === 'sm' ? 'tw:w-9' : 'tw:w-10'
+              )}>
+              <ChevronDown
+                aria-hidden="true"
+                className={cx(
+                  'tw:shrink-0',
+                  size === 'sm' ? 'tw:size-4 tw:stroke-[2.5px]' : 'tw:size-5'
+                )}
+              />
+            </AriaButton>
           )}
         </>
       )}
@@ -140,30 +205,14 @@ export const ComboBox = ({
   shortcut = true,
   size = 'sm',
   fontSize = 'md',
+  showSearchIcon = true,
   children,
   items,
   shortcutClassName,
   ...otherProps
 }: ComboBoxProps) => {
-  const placeholderRef = useRef<HTMLDivElement>(null);
-  const [popoverWidth, setPopoverWidth] = useState('');
-
-  // Resize observer for popover width
-  const onResize = useCallback(() => {
-    if (!placeholderRef.current) {
-      return;
-    }
-
-    const divRect = placeholderRef.current?.getBoundingClientRect();
-
-    setPopoverWidth(divRect.width + 'px');
-  }, [placeholderRef, setPopoverWidth]);
-
-  useResizeObserver({
-    ref: placeholderRef,
-    box: 'border-box',
-    onResize,
-  });
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const selectContextValue = useMemo(
     () => ({ fontSize, size }),
@@ -182,21 +231,20 @@ export const ComboBox = ({
             )}
 
             <ComboBoxValue
+              fontSize={fontSize}
+              inputRef={inputRef}
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               shortcutClassName={shortcutClassName}
+              showSearchIcon={showSearchIcon}
               size={size}
-              // This is a workaround to correctly calculating the trigger width
-              // while using ResizeObserver wasn't 100% reliable.
-              onFocus={onResize}
-              onPointerEnter={onResize}
+              triggerRef={triggerRef}
             />
 
             <Popover
               className={otherProps.popoverClassName}
               size={size}
-              style={{ width: popoverWidth }}>
+              triggerRef={triggerRef}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
                 items={items}>
