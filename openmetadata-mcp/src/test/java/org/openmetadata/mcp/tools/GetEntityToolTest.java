@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Pins {@link GetEntityTool#cleanEntityResponse}. The entity-level description must always be
@@ -167,6 +169,95 @@ class GetEntityToolTest {
   @Test
   void nullEntityYieldsEmptyResponse() {
     assertThat(GetEntityTool.cleanEntityResponse(null)).isEmpty();
+  }
+
+  private static Map<String, Object> wideEntity(int columnCount, int descriptionChars) {
+    List<Map<String, Object>> columns = new ArrayList<>();
+    for (int i = 0; i < columnCount; i++) {
+      columns.add(column("col_" + i, "d".repeat(descriptionChars)));
+    }
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("name", "wide_table");
+    entity.put("fullyQualifiedName", "svc.db.schema.wide_table");
+    entity.put("description", "table level description");
+    entity.put("columns", columns);
+    return entity;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static List<Object> columnsOf(Map<String, Object> entity) {
+    return (List<Object>) entity.get("columns");
+  }
+
+  @Test
+  void smallEntityGetsNoWindowMarkers() {
+    Map<String, Object> entity = wideEntity(3, 10);
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 0, -1);
+
+    assertThat(columnsOf(windowed)).hasSize(3);
+    assertThat(windowed)
+        .doesNotContainKeys(
+            "columnsTruncated",
+            "totalColumns",
+            "returnedColumns",
+            "hasMoreColumns",
+            "columnOffset");
+  }
+
+  @Test
+  void explicitLimitAndOffsetPageColumnsWithMarkers() {
+    Map<String, Object> entity = wideEntity(20, 10);
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 5, 4);
+
+    List<Object> cols = columnsOf(windowed);
+    assertThat(cols).hasSize(4);
+    assertThat(castMap(cols.get(0)).get("name")).isEqualTo("col_5");
+    assertThat(windowed.get("totalColumns")).isEqualTo(20);
+    assertThat(windowed.get("returnedColumns")).isEqualTo(4);
+    assertThat(windowed.get("columnOffset")).isEqualTo(5);
+    assertThat(windowed.get("columnsTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(windowed.get("hasMoreColumns")).isEqualTo(Boolean.TRUE);
+  }
+
+  @Test
+  void lastPageReportsNoMoreColumns() {
+    Map<String, Object> entity = wideEntity(10, 10);
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 8, 5);
+
+    assertThat(columnsOf(windowed)).hasSize(2);
+    assertThat(windowed.get("hasMoreColumns")).isEqualTo(Boolean.FALSE);
+    assertThat(windowed.get("returnedColumns")).isEqualTo(2);
+  }
+
+  @Test
+  void oversizedColumnsAreAutoCappedUnderBudgetKeepingMetadata() {
+    Map<String, Object> entity = wideEntity(2_000, 400);
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 0, -1);
+
+    List<Object> cols = columnsOf(windowed);
+    assertThat(cols).isNotEmpty().hasSizeLessThan(2_000);
+    assertThat(windowed.get("columnsTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(windowed.get("totalColumns")).isEqualTo(2_000);
+    assertThat(windowed.get("hasMoreColumns")).isEqualTo(Boolean.TRUE);
+    assertThat(windowed.get("name")).isEqualTo("wide_table");
+    assertThat(windowed.get("description")).isEqualTo("table level description");
+    assertThat(JsonUtils.pojoToJson(windowed).length())
+        .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
+
+  @Test
+  void nonTableEntityWithoutColumnsPassesThrough() {
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("name", "my_dashboard");
+    entity.put("description", "dash");
+
+    Map<String, Object> windowed = GetEntityTool.applyColumnWindow(entity, 0, 50);
+
+    assertThat(windowed).isEqualTo(entity).doesNotContainKey("columnsTruncated");
   }
 
   @SuppressWarnings("unchecked")

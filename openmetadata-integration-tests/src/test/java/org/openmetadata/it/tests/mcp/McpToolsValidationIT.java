@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -38,9 +39,13 @@ import org.openmetadata.service.Entity;
 public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
+  private static Table wideTable;
   private static DatabaseSchema testSchema;
   private static String testGlossaryName;
   private static String createdTestCaseName;
+
+  private static final int WIDE_TABLE_COLUMN_COUNT = 400;
+  private static final int WIDE_COLUMN_DESCRIPTION_CHARS = 400;
 
   @BeforeAll
   static void setUp() throws Exception {
@@ -108,12 +113,32 @@ public class McpToolsValidationIT extends McpTestBase {
 
     testTable = post("tables", createTable, Table.class);
 
+    wideTable = post("tables", createWideTable(), Table.class);
+
     testGlossaryName = "McpValidationGlossary" + System.currentTimeMillis();
     CreateGlossary createGlossary =
         new CreateGlossary()
             .withName(testGlossaryName)
             .withDescription("Test glossary for MCP validation");
     post("glossaries", createGlossary, Glossary.class);
+  }
+
+  private static CreateTable createWideTable() {
+    List<Column> columns = new ArrayList<>();
+    String description = "w".repeat(WIDE_COLUMN_DESCRIPTION_CHARS);
+    for (int i = 0; i < WIDE_TABLE_COLUMN_COUNT; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(64)
+              .withDescription(description));
+    }
+    return new CreateTable()
+        .withName("mcp_val_wide_table")
+        .withDescription("Wide table for MCP column pagination validation")
+        .withDatabaseSchema(testSchema.getFullyQualifiedName())
+        .withColumns(columns);
   }
 
   private JsonNode executeToolCall(Map<String, Object> toolCallRequest) throws Exception {
@@ -138,6 +163,34 @@ public class McpToolsValidationIT extends McpTestBase {
         McpTestUtils.createGetEntityToolCall("table", testTable.getFullyQualifiedName());
     JsonNode result = executeToolCall(toolCall);
     validateGetEntityDetailsResponse(result, testTable.getFullyQualifiedName());
+  }
+
+  @Test
+  @Order(21)
+  void testGetEntityDetailsWideTableIsPaginatedNotDiscarded() throws Exception {
+    String fqn = wideTable.getFullyQualifiedName();
+
+    Map<String, Object> firstPageCall = McpTestUtils.createGetEntityToolCall("table", fqn);
+    JsonNode firstPage = readEntityText(executeToolCall(firstPageCall));
+
+    assertThat(firstPage.has("id")).isTrue();
+    assertThat(firstPage.get("fullyQualifiedName").asText()).isEqualTo(fqn);
+    assertThat(firstPage.get("columnsTruncated").asBoolean()).isTrue();
+    assertThat(firstPage.get("totalColumns").asInt()).isEqualTo(WIDE_TABLE_COLUMN_COUNT);
+    assertThat(firstPage.get("hasMoreColumns").asBoolean()).isTrue();
+    assertThat(firstPage.get("columns").isArray()).isTrue();
+    int firstReturned = firstPage.get("returnedColumns").asInt();
+    assertThat(firstReturned).isGreaterThan(0).isLessThan(WIDE_TABLE_COLUMN_COUNT);
+    assertThat(firstPage.get("columns").size()).isEqualTo(firstReturned);
+
+    Map<String, Object> explicitPageCall =
+        McpTestUtils.createGetEntityToolCall("table", fqn, firstReturned, 25);
+    JsonNode explicitPage = readEntityText(executeToolCall(explicitPageCall));
+
+    assertThat(explicitPage.get("columnOffset").asInt()).isEqualTo(firstReturned);
+    assertThat(explicitPage.get("returnedColumns").asInt()).isEqualTo(25);
+    assertThat(explicitPage.get("columns").get(0).get("name").asText())
+        .isEqualTo("col_" + firstReturned);
   }
 
   @Test
@@ -550,6 +603,17 @@ public class McpToolsValidationIT extends McpTestBase {
               expectedQuery, matchingEntities)
           .isTrue();
     }
+  }
+
+  private JsonNode readEntityText(JsonNode result) throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    return OBJECT_MAPPER.readTree(firstResult.get("text").asText());
   }
 
   private void validateGetEntityDetailsResponse(JsonNode result, String expectedFqn)
