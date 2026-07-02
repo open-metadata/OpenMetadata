@@ -125,6 +125,23 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("cm");
+    assertTrue(condition.contains("SELECT entity_relationship.toId"));
+    assertTrue(condition.contains("entity_relationship.fromId = :primaryEntityIdParam"));
+    assertTrue(condition.contains("entity_relationship.toEntity = 'contextMemory'"));
+    assertTrue(
+        condition.contains(
+            "entity_relationship.relation = "
+                + org.openmetadata.schema.type.Relationship.APPLIED_TO.ordinal()));
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111",
+        filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
   void test_getAgentTypeCondition_singleAgentType() {
     ListFilter filter = new ListFilter();
 

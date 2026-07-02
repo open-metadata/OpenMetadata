@@ -105,6 +105,9 @@ public interface SearchIndex {
     if (this instanceof LineageIndex li) {
       li.applyLineageFields(esDoc, ctx);
     }
+    if (this instanceof AIContextIndex ai) {
+      ai.applyAIContextFields(esDoc);
+    }
 
     // Phase 3: Entity-specific fields only
     esDoc = this.buildSearchIndexDocInternal(esDoc);

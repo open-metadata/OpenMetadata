@@ -1670,7 +1670,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         }
         for (EntityInterface entity : task.batch().getData()) {
           try {
-            vecService.updateEntityEmbedding(entity, entityIndexName);
+            vecService.updateEntityEmbeddings(entity, entityIndexName);
             processedCounts
                 .computeIfAbsent(
                     entityType, key -> new java.util.concurrent.atomic.AtomicInteger(0))

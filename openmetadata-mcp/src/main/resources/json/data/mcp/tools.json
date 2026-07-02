@@ -238,6 +238,62 @@
       }
     },
     {
+      "name": "get_asset_context",
+      "description": "Get the full AI Context (Context Profile) for a single data asset in one call: the business knowledge attached to it (approved glossary term definitions, Context Center articles) plus the type-specific structural context. For tables this includes the column schema, primary key, foreign keys (with the referenced columns and cardinality), and the columns most frequently joined with other tables — the strong, deterministic signals needed for SQL generation. Returns a compact, LLM-friendly markdown document by default. Prefer this over get_entity_details when you have already selected the asset(s) and need their business rules and join keys. Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results.",
+      "parameters": {
+        "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "Type of asset (e.g., table, dashboard, pipeline, topic). Use the 'entityType' value from search results."
+          },
+          "fqn": {
+            "type": "string",
+            "description": "Fully qualified name of the asset. Use the exact 'fullyQualifiedName' from search results; do not construct it manually."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. 'markdown' (default) returns a compact, LLM-friendly markdown document with a schema table, foreign keys, joins, and business definitions. 'json' returns the structured AIContext object.",
+            "enum": ["markdown", "json"],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "entityType",
+          "fqn"
+        ]
+      }
+    },
+    {
+      "name": "find_context",
+      "description": "For a business question when no specific asset has been chosen yet: semantically searches the company-knowledge layer (glossary term definitions, metric definitions, Context Center articles) and returns the relevant definitions PLUS the candidate data assets each concept points to (glossary terms → the tables tagged with them, metrics → the assets they apply to, articles → the assets they are about). Use this to bootstrap a data question from business concepts into candidate tables, then call get_asset_context on those candidate fullyQualifiedNames. Returns LLM-friendly markdown by default.",
+      "parameters": {
+        "description": "Provide a natural-language 'query' using the business terms or concepts from the user's request.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language question or business terms to find relevant company knowledge and candidate assets for."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of knowledge items to return. Default is 10, maximum is 50.",
+            "default": 10
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. 'markdown' (default) returns definitions and candidate assets as an LLM-friendly document. 'json' returns the structured result.",
+            "enum": ["markdown", "json"],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
       "name": "create_glossary_term",
       "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term.",
       "parameters": {
