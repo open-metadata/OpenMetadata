@@ -640,6 +640,32 @@ export const wrapFlatCredentialsIntoAuthType = (
   return result;
 };
 
+const resolveChildFieldSchema = (
+  parent: Record<string, unknown>,
+  fieldName: string
+): Record<string, unknown> | undefined => {
+  const props = parent.properties as
+    | Record<string, Record<string, unknown>>
+    | undefined;
+  if (props?.[fieldName]) {
+    return props[fieldName];
+  }
+
+  for (const combiner of ['oneOf', 'anyOf', 'allOf'] as const) {
+    const branches = parent[combiner] as
+      | Array<Record<string, unknown>>
+      | undefined;
+    for (const branch of branches ?? []) {
+      const match = resolveChildFieldSchema(branch, fieldName);
+      if (match) {
+        return match;
+      }
+    }
+  }
+
+  return undefined;
+};
+
 /** Resolves the `{title, description}` schema metadata for an RJSF field id. */
 export const getFieldSchemaForId = (
   schema: Record<string, unknown>,
@@ -647,14 +673,10 @@ export const getFieldSchemaForId = (
 ): { title?: string; description?: string } | undefined => {
   const cleanId = fieldId.replace(/__(oneof|anyof|allof)_select$/, '');
   const parts = cleanId.split('/').filter((p) => p && p !== 'root');
-  let current: Record<string, unknown> = schema;
+  let current: Record<string, unknown> | undefined = schema;
   for (const part of parts) {
-    const props = current.properties as
-      | Record<string, Record<string, unknown>>
-      | undefined;
-    if (props?.[part]) {
-      current = props[part];
-    } else {
+    current = resolveChildFieldSchema(current, part);
+    if (!current) {
       return undefined;
     }
   }

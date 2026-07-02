@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Status } from '../../../../generated/entity/automations/workflow';
 import TestConnectionModal from './TestConnectionModal';
 
@@ -662,6 +662,34 @@ describe('TestConnectionModal', () => {
 
     expect(
       screen.getByTestId('connection-remediation-card')
+    ).toBeInTheDocument();
+  });
+
+  it('should render the raw error inside the remediation card when no diagnosis is available', () => {
+    render(
+      <TestConnectionModal
+        {...commonProps}
+        progress={100}
+        testConnectionStep={[
+          { name: 'CheckAccess', description: 'Gate', mandatory: true },
+          { name: 'GetSchemas', description: 'Schemas', mandatory: true },
+        ]}
+        testConnectionStepResult={[
+          { name: 'CheckAccess', passed: true, mandatory: true },
+          {
+            name: 'GetSchemas',
+            passed: false,
+            errorLog: 'Schema access denied',
+            mandatory: true,
+          },
+        ]}
+      />
+    );
+
+    expect(
+      within(screen.getByTestId('connection-remediation-card')).getByText(
+        'Schema access denied'
+      )
     ).toBeInTheDocument();
   });
 

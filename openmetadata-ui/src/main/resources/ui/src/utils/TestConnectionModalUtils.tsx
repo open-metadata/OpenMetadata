@@ -1093,6 +1093,15 @@ export function ConnectionRemediationCard(
           )}
         </div>
       )}
+      {!diagnosis && errorContent && (
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+          {renderColoredLines(
+            errorContent,
+            'tw:text-utility-error-300',
+            'rem-'
+          )}
+        </pre>
+      )}
     </div>
   );
 }

@@ -23,6 +23,7 @@ import {
   flattenAuthTypeIntoConfig,
   getConnectionFieldSection,
   getConnectionSchemas,
+  getFieldSchemaForId,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
   getSnowflakeAccountDisplayHost,
@@ -843,5 +844,81 @@ describe('getConnectionFieldSection', () => {
     expect(getConnectionFieldSection(connSch.schema, 'usageLocation')).toBe(
       'scope'
     );
+  });
+});
+
+describe('getFieldSchemaForId', () => {
+  const schema: Record<string, unknown> = {
+    properties: {
+      hostPort: {
+        type: 'string',
+        title: 'Host and Port',
+        description: 'Host and port of the source service.',
+      },
+      authType: {
+        title: 'Authentication Type',
+        oneOf: [
+          {
+            title: 'Basic Auth',
+            properties: {
+              password: {
+                type: 'string',
+                title: 'Password',
+                description: 'Password to connect to the source.',
+              },
+            },
+          },
+          {
+            title: 'IAM Auth',
+            properties: {
+              awsConfig: {
+                title: 'AWS Config',
+                properties: {
+                  awsRegion: {
+                    type: 'string',
+                    title: 'AWS Region',
+                    description: 'AWS region of the source.',
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it('resolves title and description for a direct property', () => {
+    expect(getFieldSchemaForId(schema, 'root/hostPort')).toEqual({
+      title: 'Host and Port',
+      description: 'Host and port of the source service.',
+    });
+  });
+
+  it('resolves a field nested inside a oneOf branch', () => {
+    expect(getFieldSchemaForId(schema, 'root/authType/password')).toEqual({
+      title: 'Password',
+      description: 'Password to connect to the source.',
+    });
+  });
+
+  it('resolves a deeply nested field through a oneOf branch', () => {
+    expect(
+      getFieldSchemaForId(schema, 'root/authType/awsConfig/awsRegion')
+    ).toEqual({
+      title: 'AWS Region',
+      description: 'AWS region of the source.',
+    });
+  });
+
+  it('strips the oneof select suffix before resolving', () => {
+    expect(getFieldSchemaForId(schema, 'root/authType__oneof_select')).toEqual({
+      title: 'Authentication Type',
+      description: undefined,
+    });
+  });
+
+  it('returns undefined for an unknown field id', () => {
+    expect(getFieldSchemaForId(schema, 'root/doesNotExist')).toBeUndefined();
   });
 });
