@@ -24,6 +24,7 @@ export type TabsInfoData = {
   path: string;
   icon:
     | React.ReactNode
+    | React.ElementType
     | SvgComponent
     | ForwardRefExoticComponent<
         Omit<AntdIconProps, 'ref'> & RefAttributes<HTMLSpanElement>

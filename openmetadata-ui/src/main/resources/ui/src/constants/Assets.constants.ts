@@ -66,6 +66,7 @@ import { ReactComponent as TestCase } from '../assets/svg/entity/test-case.svg';
 import { ReactComponent as TestDefinition } from '../assets/svg/entity/test-definition.svg';
 import { ReactComponent as TestSuite } from '../assets/svg/entity/test-suite.svg';
 import { ReactComponent as Topic } from '../assets/svg/entity/topic.svg';
+import { ReactComponent as KnowledgeCenter } from '../assets/svg/ic-knowledge-center.svg';
 import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -353,6 +354,12 @@ export const ENTITY_ICON_MAPPER: Record<
     bgClass: 'tw:bg-utility-blue-50',
     borderClass: 'tw:border-utility-blue-200',
     icon: File06,
+  },
+  [EntityType.KNOWLEDGE_CENTER]: {
+    iconClass: 'tw:text-utility-blue-700',
+    bgClass: 'tw:bg-utility-blue-50',
+    borderClass: 'tw:border-utility-blue-200',
+    icon: KnowledgeCenter,
   },
   [EntityType.WORKSHEET]: {
     iconClass: 'tw:text-utility-purple-600',

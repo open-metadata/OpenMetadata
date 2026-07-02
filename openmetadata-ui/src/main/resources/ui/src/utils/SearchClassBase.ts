@@ -10,32 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SearchOutlined } from '@ant-design/icons';
-import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
-import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
-import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
-import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
-import { ReactComponent as ColumnIcon } from '../assets/svg/ic-column.svg';
-import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
-import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
-import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
-import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
-import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
-import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
-import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
-import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
-import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
-import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
-import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
-import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
-import { ReactComponent as KnowledgeCenterIconComponent } from '../assets/svg/knowledge-center.svg';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
-import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
+import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -57,13 +32,14 @@ import {
   TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { ENTITY_ICON_MAPPER } from '../constants/Assets.constants';
 import {
   columnSortingFields,
   entitySortingFields,
   INITIAL_SORT_FIELD,
   tableSortingFields,
-  tagSortingFields,
   TAGS_INITIAL_SORT_FIELD,
+  tagSortingFields,
 } from '../constants/explore.constants';
 import {
   Option,
@@ -328,7 +304,7 @@ class SearchClassBase {
             EntityType.WORKSHEET,
           ],
         },
-        icon: getEntityIcon(EntityType.DIRECTORY, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(EntityType.DRIVE_SERVICE, 'service-icon w-4 h-4'),
       },
       {
         title: t('label.governance'),
@@ -409,7 +385,10 @@ class SearchClassBase {
           isRoot: true,
           childEntities: [EntityType.KNOWLEDGE_PAGE],
         },
-        icon: getEntityIcon(EntityType.KNOWLEDGE_PAGE, 'service-icon w-4 h-4'),
+        icon: getEntityIcon(
+          EntityType.KNOWLEDGE_CENTER,
+          'service-icon w-4 h-4'
+        ),
         children: [
           {
             title: t('label.knowledge-page'),
@@ -457,14 +436,14 @@ class SearchClassBase {
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TABLES,
-        icon: TableIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.TABLE].icon,
       },
       [SearchIndex.COLUMN]: {
         label: t('label.column-plural'),
         sortingFields: columnSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.COLUMNS,
-        icon: ColumnIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.TABLE_COLUMN].icon,
         iconClassName: 'text-grey-500',
       },
       [SearchIndex.STORED_PROCEDURE]: {
@@ -472,154 +451,154 @@ class SearchClassBase {
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.STORED_PROCEDURE,
-        icon: IconStoredProcedure,
+        icon: ENTITY_ICON_MAPPER[EntityType.STORED_PROCEDURE].icon,
       },
       [SearchIndex.DATABASE]: {
         label: t('label.database-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE,
-        icon: DatabaseIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.DATABASE].icon,
       },
       [SearchIndex.DATABASE_SCHEMA]: {
         label: t('label.database-schema-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATABASE_SCHEMA,
-        icon: SchemaIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.DATABASE_SCHEMA].icon,
       },
       [SearchIndex.DASHBOARD]: {
         label: t('label.dashboard-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARDS,
-        icon: DashboardIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.DASHBOARD].icon,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
         label: t('label.dashboard-data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DASHBOARD_DATA_MODEL,
-        icon: IconDataModel,
+        icon: ENTITY_ICON_MAPPER[EntityType.DASHBOARD_DATA_MODEL].icon,
       },
       [SearchIndex.CHART]: {
         label: t('label.chart-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.CHARTS,
-        icon: ChartIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.CHART].icon,
       },
       [SearchIndex.PIPELINE]: {
         label: t('label.pipeline-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.PIPELINES,
-        icon: PipelineIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.PIPELINE].icon,
       },
       [SearchIndex.TOPIC]: {
         label: t('label.topic-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TOPICS,
-        icon: TopicIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.TOPIC].icon,
       },
       [SearchIndex.MLMODEL]: {
         label: t('label.ml-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.MLMODELS,
-        icon: MlModelIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.MLMODEL].icon,
       },
       [SearchIndex.CONTAINER]: {
         label: t('label.container-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.CONTAINERS,
-        icon: ContainerIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.CONTAINER].icon,
       },
       [SearchIndex.SEARCH_INDEX]: {
         label: t('label.search-index-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SEARCH_INDEX,
-        icon: SearchOutlined,
+        icon: ENTITY_ICON_MAPPER[EntityType.SEARCH_INDEX].icon,
       },
       [SearchIndex.GLOSSARY_TERM]: {
         label: t('label.glossary-term-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.GLOSSARY,
-        icon: GlossaryIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.GLOSSARY_TERM].icon,
       },
       [SearchIndex.TAG]: {
         label: t('label.tag-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.TAG,
-        icon: ClassificationIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.TAG].icon,
       },
       [SearchIndex.DATA_PRODUCT]: {
         label: t('label.data-product-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DATA_PRODUCT,
-        icon: DataProductIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.DATA_PRODUCT].icon,
       },
       [SearchIndex.API_COLLECTION]: {
         label: t('label.api-collection-plural'),
         sortingFields: tagSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_COLLECTION,
-        icon: IconAPICollection,
+        icon: ENTITY_ICON_MAPPER[EntityType.API_COLLECTION].icon,
       },
       [SearchIndex.API_ENDPOINT]: {
         label: t('label.api-endpoint-plural'),
         sortingFields: tagSortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: ExplorePageTabs.API_ENDPOINT,
-        icon: IconAPIEndpoint,
+        icon: ENTITY_ICON_MAPPER[EntityType.API_ENDPOINT].icon,
       },
       [SearchIndex.METRIC]: {
         label: t('label.metric-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.METRIC,
-        icon: MetricIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.METRIC].icon,
       },
       [SearchIndex.DIRECTORY]: {
         label: t('label.directory-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.DIRECTORIES,
-        icon: DirectoryIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.DIRECTORY].icon,
       },
       [SearchIndex.FILE]: {
         label: t('label.file-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.FILES,
-        icon: FileIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.FILE].icon,
       },
       [SearchIndex.SPREADSHEET]: {
         label: t('label.spreadsheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.SPREADSHEETS,
-        icon: SpreadsheetIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.SPREADSHEET].icon,
       },
       [SearchIndex.WORKSHEET]: {
         label: t('label.worksheet-plural'),
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.WORKSHEETS,
-        icon: WorksheetIcon,
+        icon: ENTITY_ICON_MAPPER[EntityType.WORKSHEET].icon,
       },
       [SearchIndex.KNOWLEDGE_PAGE_INDEX]: {
         label: t('label.knowledge-center'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
         path: 'knowledgePages',
-        icon: KnowledgeCenterIconComponent,
+        icon: ENTITY_ICON_MAPPER[EntityType.KNOWLEDGE_CENTER].icon,
       },
     };
   }
@@ -802,7 +781,7 @@ class SearchClassBase {
       default:
         return {
           label: t('label.table-plural'),
-          GroupIcon: IconTable,
+          GroupIcon: ENTITY_ICON_MAPPER[EntityType.TABLE].icon,
         };
     }
   }

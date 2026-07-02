@@ -227,10 +227,7 @@ const ExploreTree = ({
           let type = null;
           let logo = undefined;
           if (isEntityType) {
-            const isColumn = bucket.key === EntityType.TABLE_COLUMN;
-            const iconClass = classNames('service-icon w-4 h-4', {
-              'text-grey-500': isColumn,
-            });
+            const iconClass = 'service-icon w-4 h-4';
             logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
               <></>
             );

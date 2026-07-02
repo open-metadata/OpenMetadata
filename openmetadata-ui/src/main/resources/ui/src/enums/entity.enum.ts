@@ -27,7 +27,7 @@ export enum EntityType {
   METADATA_SERVICE = 'metadataService',
   DASHBOARD_SERVICE = 'dashboardService',
   PIPELINE_SERVICE = 'pipelineService',
-  MLMODEL_SERVICE = 'mlmodelService',
+  MLMODEL_SERVICE = 'mlModelService',
   STORAGE_SERVICE = 'storageService',
   SEARCH_SERVICE = 'searchService',
   SECURITY_SERVICE = 'securityService',
