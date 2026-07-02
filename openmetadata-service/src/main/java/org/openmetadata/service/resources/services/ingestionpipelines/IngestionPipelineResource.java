@@ -194,7 +194,8 @@ public class IngestionPipelineResource
   protected List<MetadataOperation> getEntitySpecificOperations() {
     return listOf(
         MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
-        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS,
+        MetadataOperation.TRIGGER);
   }
 
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
@@ -819,6 +820,9 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     IngestionPipeline ingestionPipeline =
         getInternal(uriInfo, securityContext, id, FIELDS, Include.NON_DELETED);
     decryptOrNullify(securityContext, ingestionPipeline, true);

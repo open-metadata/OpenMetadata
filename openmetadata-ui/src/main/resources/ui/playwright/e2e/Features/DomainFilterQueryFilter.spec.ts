@@ -36,6 +36,7 @@ import {
   verifyActiveDomainIsDefault,
 } from '../../utils/domain';
 import { assignTier, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { clickUpdateButtonIfVisible } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{ page: Page }>({
@@ -465,12 +466,13 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
       const tier1Option = page.getByTestId('tier.tier1');
       await tier1Option.waitFor({ state: 'visible' });
-      await tier1Option.click();
 
+      // Arm before selecting: immediate-apply fires the query on the click
       const quickFilterApplyRes = page.waitForResponse(
         '/api/v1/search/query?*index=dataAsset*'
       );
-      await page.getByTestId('update-btn').click();
+      await tier1Option.click();
+      await clickUpdateButtonIfVisible(page);
       await quickFilterApplyRes;
       await waitForAllLoadersToDisappear(page);
 
