@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
 import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -88,6 +89,20 @@ public class WorkflowHandler {
   // 60s reset-expired-jobs interval so the periodic async-executor threads always re-validate,
   // while connections in active sub-second use skip the check and pay no overhead.
   private static final int CONNECTION_PING_NOT_USED_FOR_MILLIS = 30000;
+
+  // Admission control for synchronous task resolutions. Flowable runs its own bounded connection
+  // pool; an unbounded approval burst calling taskService.complete() concurrently stampedes that
+  // pool — excess threads block in MyBatis popConnection past the client timeout and strand tasks
+  // in
+  // review. A fair semaphore sized BELOW the Flowable pool lets excess approvals queue efficiently
+  // (in-JVM, FIFO) and drain in order, so the pool is never exhausted and other workflows keep
+  // their
+  // connections. This bounds the failure mode from catastrophic pool-stampede to graceful queueing;
+  // it does not add capacity (a finite pool always has a ceiling) — it makes the existing capacity
+  // usable without the popConnection pathology.
+  private static final int MAX_CONCURRENT_TASK_RESOLUTIONS = 8;
+  private final Semaphore taskResolutionPermits =
+      new Semaphore(MAX_CONCURRENT_TASK_RESOLUTIONS, true);
 
   private WorkflowHandler(OpenMetadataApplicationConfig config, boolean isMigrationContext) {
     this.isMigrationContext = isMigrationContext;
@@ -833,6 +848,17 @@ public class WorkflowHandler {
       UUID customTaskId, Map<String, Object> variables, boolean legacyThreadTask) {
     TaskService taskService = processEngine.getTaskService();
     LOG.debug("[WorkflowTask] RESOLVE: customTaskId='{}' variables={}", customTaskId, variables);
+    // Admission control: bound how many resolutions touch Flowable at once so an approval burst
+    // queues here (fair FIFO) instead of stampeding the Flowable connection pool. A permit is held
+    // only for this resolution's Flowable work.
+    try {
+      taskResolutionPermits.acquire();
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      LOG.error(
+          "[WorkflowTask] Interrupted while awaiting resolution permit for '{}'", customTaskId);
+      return false;
+    }
     try {
       Optional<Task> oTask = Optional.ofNullable(getTaskFromCustomTaskId(customTaskId));
       if (oTask.isPresent()) {
@@ -900,6 +926,8 @@ public class WorkflowHandler {
       LOG.error(
           "[WorkflowTask] ERROR: Failed to resolve task '{}': {}", customTaskId, e.getMessage(), e);
       return false;
+    } finally {
+      taskResolutionPermits.release();
     }
   }
 
