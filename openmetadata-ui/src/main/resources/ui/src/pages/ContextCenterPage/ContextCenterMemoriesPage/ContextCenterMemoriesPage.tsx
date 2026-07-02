@@ -485,10 +485,6 @@ const ContextCenterMemoriesPage: FC = () => {
         actionsSlot={headerActions}
         breadcrumbs={[
           {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
             label: t('label.memory-plural'),
           },
         ]}

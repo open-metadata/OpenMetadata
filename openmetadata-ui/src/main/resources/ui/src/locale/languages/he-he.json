@@ -3679,6 +3679,7 @@
     "request-update-description": "תיאור עדכון לבקשה",
     "reset-layout-confirmation": "האם אתה בטוח שברצונך להחיל את \"Default Layout\"?",
     "reset-link-has-been-sent": "קישור לאיפוס נשלח לדוא\"ל שלך",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "שחזור יישאר את {{entityType}} יחד עם המטה-דאטה שלו.",
     "restore-deleted-team": "שחזור הקבוצה יחזיר את כל המטה-דאטה אל {{brandName}}.",
     "restore-entities-error": "שגיאה במהלך השחזור של {{entity}}",

@@ -3679,6 +3679,7 @@
     "request-update-description": "Запросить обновление описания",
     "reset-layout-confirmation": "Вы уверены что хотите применить \"Default Layout\"?",
     "reset-link-has-been-sent": "Ссылка для сброса отправлена на вашу электронную почту",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "Восстановление объекта с типом «{{entityType}}» восстановит его метаданные в {{brandName}}.",
     "restore-deleted-team": "Восстановление команды вернет ее обратно в {{brandName}}.",
     "restore-entities-error": "Ошибка при восстановлении объекта «{{entity}}»",
