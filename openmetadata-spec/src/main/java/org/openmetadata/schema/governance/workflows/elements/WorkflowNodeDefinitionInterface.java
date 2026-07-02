@@ -9,6 +9,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.ApplyRecognizerFeedbackTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckChangeDescriptionTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunAIAutomationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CreateAndRunIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.DataCompletenessTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PolicyAgentTaskDefinition;
@@ -50,6 +51,9 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(
       value = CreateAndRunIngestionPipelineTaskDefinition.class,
       name = "createAndRunIngestionPipelineTask"),
+  @JsonSubTypes.Type(
+      value = CreateAndRunAIAutomationTaskDefinition.class,
+      name = "createAndRunAIAutomationTask"),
   @JsonSubTypes.Type(value = RunAppTaskDefinition.class, name = "runAppTask"),
   @JsonSubTypes.Type(value = ParallelGatewayDefinition.class, name = "parallelGateway"),
   @JsonSubTypes.Type(value = SinkTaskDefinition.class, name = "sinkTask"),
