@@ -1,6 +1,6 @@
 ---
 name: ui-core-components
-description: Use when writing or editing React/TSX in `openmetadata-ui/src/main/resources/ui/src/` or `openmetadata-ui-core-components/`, before reaching for a raw `<div>` + Tailwind utility classes to build layout (flex rows/columns, grids, bordered panels with header/body/footer, separators). Applies whenever the change adds or restructures a layout container, not to every div.
+description: Use when writing or editing React/TSX in `openmetadata-ui/src/main/resources/ui/src/` or `openmetadata-ui-core-components/`, before reaching for a raw `<div>` + Tailwind utility classes to build layout (flex rows/columns, grids, bordered panels with header/body/footer, separators), and before writing any Tailwind color class (`tw:bg-*`, `tw:text-*`, `tw:border-*`) or hex color value. Applies whenever the change adds or restructures a layout container or touches color/dark-mode styling, not to every div.
 user-invocable: true
 argument-hint: "[component name to look up, e.g. Box, Grid, Card, Divider]"
 allowed-tools:
@@ -121,6 +121,32 @@ plain line.
 <Divider label="or" labelAlign="center" />
 <Divider orientation="vertical" />
 ```
+
+## Color usage
+
+Never write a raw Tailwind palette class (`tw:bg-gray-50`, `tw:text-red-600`,
+`tw:border-blue-500`, ...) or a hardcoded hex value (`style={{ color:
+'#1570ef' }}`). Use the semantic color tokens instead — they remap
+automatically in dark mode via the `.dark-mode` class, raw palette classes do
+not.
+
+**REQUIRED REFERENCE:** read
+`openmetadata-ui/src/main/resources/ui/docs/colors.md` before writing or
+reviewing any color class — it has the full token table (backgrounds, text,
+borders, foreground/icon, utility/badge colors) plus a `dark-gray-red-green`
+→ semantic-token cheat sheet. Highlights:
+
+| Raw pattern | Use instead |
+|---|---|
+| `tw:bg-white` / `tw:bg-gray-50` | `tw:bg-primary` / `tw:bg-secondary` |
+| `tw:text-gray-900` / `tw:text-gray-500` | `tw:text-primary` / `tw:text-quaternary` |
+| `tw:border-gray-300` | `tw:border-primary` |
+| `tw:text-red-600` / `tw:border-red-500` | `tw:text-error-primary` / `tw:border-error` |
+| `tw:bg-green-50 tw:text-green-700` (badge) | `tw:bg-utility-success-50 tw:text-utility-success-700` |
+| `style={{ color: '#1570ef' }}` | `tw:text-fg-brand-primary` |
+
+Icons use `tw:text-fg-*` tokens, not `tw:text-*` — foreground tokens are
+tuned for icon contrast, text tokens aren't.
 
 ## Verify
 
