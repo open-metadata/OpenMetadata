@@ -7,7 +7,7 @@
   "workflowDefinitionRef": "DataAccessRequestTaskWorkflow",
   "formSchema": {
     "type": "object",
-    "required": ["accessType", "reason"],
+    "required": ["accessType", "reason", "duration"],
     "properties": {
       "accessType": {
         "type": "string",
