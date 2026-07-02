@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "फक्त पुनरावलोकक मंजूर किंवा नाकारू शकतात",
     "only-show-columns-with-lineage": "केवळ Lineage असलेले स्तंभ दाखवा",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "ही क्रिया करण्यासाठी तुमच्याकडे परवानगी नाही. कृपया तुमच्या प्रशासकाशी संपर्क साधा.",
     "optional-configuration-update-description-dbt": "dbt मधून वर्णन अद्यतनित करण्यासाठी पर्यायी संरचना",
     "optional-custom-error": "प्रमाणीकरण अयशस्वी झाल्यावर दर्शविला जाणारा ऐच्छिक सानुकूल त्रुटी संदेश",
     "optional-markdown-content": "पर्यायी: संसाधनात थेट एम्बेड करण्यासाठी markdown सामग्री जोडा",
