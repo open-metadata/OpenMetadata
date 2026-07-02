@@ -192,7 +192,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
+            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'search-fitness', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
@@ -250,6 +250,140 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.error("Failed due to ", e);
       return 1;
+    }
+  }
+
+  @Command(
+      name = "search-fitness",
+      description =
+          "Diagnose whether the configured Elasticsearch/OpenSearch cluster is sized for the "
+              + "current OpenMetadata data footprint. Reports per-index size + avg doc bytes, "
+              + "disk watermarks, heap/CPU, thread-pool rejections, circuit breakers, shard "
+              + "layout, and capacity recommendations.")
+  public Integer searchFitness(
+      @Option(
+              names = {"--json"},
+              defaultValue = "false",
+              description = "Print the full report as JSON to stdout instead of an ASCII summary.")
+          boolean jsonOutput) {
+    try {
+      parseConfig();
+      org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer =
+          new org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer(
+              searchRepository);
+      org.openmetadata.service.search.fitness.SearchClusterFitnessReport report =
+          analyzer.analyze();
+      if (jsonOutput) {
+        System.out.println(JsonUtils.pojoToJson(report, true));
+      } else {
+        printSearchFitnessReport(report);
+      }
+      return report.getOverallVerdict()
+              == org.openmetadata.service.search.fitness.FitnessVerdict.OVERLOADED
+          ? 2
+          : 0;
+    } catch (Exception e) {
+      LOG.error("Failed to compute search fitness due to ", e);
+      return 1;
+    }
+  }
+
+  private void printSearchFitnessReport(
+      org.openmetadata.service.search.fitness.SearchClusterFitnessReport report) {
+    LOG.info("=== Search Cluster Fitness ===");
+    LOG.info(
+        "Verdict: {} — {}",
+        report.getOverallVerdict(),
+        report.getSummary() == null ? "" : report.getSummary());
+    LOG.info(
+        "Cluster: {} {} ({}), status={}, nodes={}, data nodes={}, OM indices matched={}, cluster reports={} total indices, shards={}",
+        report.getSearchDistribution(),
+        report.getSearchVersion(),
+        report.getClusterName(),
+        report.getClusterStatus(),
+        report.getTotalNodes(),
+        report.getDataNodes(),
+        report.getTotalIndices(),
+        report.getClusterIndicesCount() == null ? "?" : report.getClusterIndicesCount(),
+        report.getTotalShards());
+    if (report.getSizingGuidance() != null) {
+      var g = report.getSizingGuidance();
+      LOG.info(
+          "Sizing: {} | observed {} data node(s); recommended ≥{} | recommended heap/node {} | recommended disk/node {}",
+          g.getVerdict(),
+          g.getObservedDataNodes(),
+          g.getRecommendedDataNodes(),
+          g.getRecommendedHeapPerNodeBytes() == null
+              ? "?"
+              : (g.getRecommendedHeapPerNodeBytes() / (1024 * 1024)) + "MB",
+          g.getRecommendedDiskPerNodeBytes() == null
+              ? "?"
+              : (g.getRecommendedDiskPerNodeBytes() / (1024 * 1024)) + "MB");
+      LOG.info("Sizing rationale: {}", g.getRationale());
+    }
+    List<List<String>> indexRows = new ArrayList<>();
+    if (report.getIndices() != null) {
+      for (var idx : report.getIndices()) {
+        indexRows.add(
+            List.of(
+                idx.getIndexName(),
+                String.valueOf(idx.getDocsCount() == null ? 0 : idx.getDocsCount()),
+                idx.getPrimarySizeBytes() == null
+                    ? "-"
+                    : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
+                idx.getAvgDocBytes() == null ? "-" : (idx.getAvgDocBytes() / 1024) + " KB",
+                idx.getPrimaryShards() == null
+                    ? "-"
+                    : idx.getPrimaryShards() + "/" + idx.getReplicaShards(),
+                idx.getHealth() == null ? "-" : idx.getHealth()));
+      }
+    }
+    printToAsciiTable(
+        List.of("index", "docs", "primary", "avg/doc", "shards (p/r)", "health"),
+        indexRows,
+        "No OpenMetadata-managed indices found");
+    List<List<String>> signalRows = new ArrayList<>();
+    if (report.getSignals() != null) {
+      for (var s : report.getSignals()) {
+        signalRows.add(
+            List.of(
+                s.getSeverity() == null ? "-" : s.getSeverity().name(),
+                s.getName() == null ? "-" : s.getName(),
+                s.getObserved() == null ? "-" : s.getObserved(),
+                s.getThreshold() == null ? "-" : s.getThreshold(),
+                s.getRecommendation() == null ? "" : s.getRecommendation()));
+      }
+    }
+    printToAsciiTable(
+        List.of("severity", "signal", "observed", "threshold", "recommendation"),
+        signalRows,
+        "No signals fired — cluster looks healthy");
+    if (report.getOtherIndicesOnCluster() != null && !report.getOtherIndicesOnCluster().isEmpty()) {
+      LOG.info(
+          "No OpenMetadata indices matched. Top indices actually present on the cluster (for diagnosis):");
+      List<List<String>> otherRows = new ArrayList<>();
+      for (var idx : report.getOtherIndicesOnCluster()) {
+        otherRows.add(
+            List.of(
+                idx.getIndexName(),
+                String.valueOf(idx.getDocsCount() == null ? 0 : idx.getDocsCount()),
+                idx.getPrimarySizeBytes() == null
+                    ? "-"
+                    : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
+                idx.getPrimaryShards() == null
+                    ? "-"
+                    : idx.getPrimaryShards() + "/" + idx.getReplicaShards(),
+                idx.getHealth() == null ? "-" : idx.getHealth()));
+      }
+      printToAsciiTable(
+          List.of("index (observed)", "docs", "primary", "shards (p/r)", "health"),
+          otherRows,
+          "(none)");
+    }
+    if (report.getInaccessibleMetrics() != null && !report.getInaccessibleMetrics().isEmpty()) {
+      LOG.info(
+          "Note: the following metrics were not accessible on this cluster (likely managed-service restrictions): {}",
+          String.join(", ", report.getInaccessibleMetrics()));
     }
   }
 
