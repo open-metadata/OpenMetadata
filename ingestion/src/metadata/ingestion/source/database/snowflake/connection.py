@@ -218,8 +218,10 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
         ),
         when(Matchers.contains("multi-factor authentication")).diagnose(
             "Multi-factor authentication required",
-            fix="This user requires MFA, which blocks password login for ingestion. Use key-pair "
-            "authentication or a Programmatic Access Token instead of a password.",
+            fix="MFA is enforced on this user, and password login cannot satisfy the MFA prompt "
+            "for a non-interactive ingestion. Switch the connection to key-pair authentication "
+            "(set the Private Key field) or a Programmatic Access Token (put the PAT in the "
+            "Password field); do not use the account password.",
         ),
         when(Matchers.contains("is not granted to this user")).diagnose(
             "Role not granted",
@@ -279,25 +281,20 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
 SNOWFLAKE_ERRORS = _snowflake_errors(DEFAULT_ACCOUNT_USAGE_SCHEMA)
 
 
-def _summarize_databases(rows: Sequence[Row]) -> str:
-    """``N databases enumerated``, with a trailing ``+`` when the probe hit the
-    row cap so the figure is not read as an exact total."""
-    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} databases enumerated"
+def _count_summary(rows: Sequence[Row], noun: str) -> str:
+    """``N <noun>s enumerated`` (``N+`` at the row cap), or ``no <noun>s enumerated``
+    when the probe returns none.
 
-
-def _summarize_tables(rows: Sequence[Row]) -> str:
-    """``N tables enumerated`` (``N+`` at the row cap), or ``no tables enumerated``
-    when the database exposes none to the role.
-
-    The probe excludes INFORMATION_SCHEMA (its views are always present regardless
-    of grants), so an empty result is a real signal - the connection works but
-    there is nothing to ingest. Surfacing that as a Warning caveat depends on the
-    shared ``Evidence`` caveat support; until then it is reported in the summary."""
+    The ``+`` marks a capped sample so the figure is not read as an exact total.
+    The table/view probes exclude INFORMATION_SCHEMA (its objects are always
+    present regardless of grants), so their empty result is a real signal - the
+    connection works but there is nothing to ingest. Surfacing that empty case as
+    a Warning caveat depends on shared ``Evidence`` caveat support; until then it
+    is reported in the summary."""
     if not rows:
-        return "no tables enumerated"
+        return f"no {noun}s enumerated"
     suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} tables enumerated"
+    return f"{len(rows)}{suffix} {noun}s enumerated"
 
 
 def _snowflake_host(account: str) -> str:
@@ -362,7 +359,7 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, SNOWFLAKE_GET_DATABASES, _summarize_databases)
+        return run_sql(self.client, SNOWFLAKE_GET_DATABASES, lambda rows: _count_summary(rows, "database"))
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
@@ -372,17 +369,17 @@ class SnowflakeChecks:
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_TABLES.format(database_name=self._database())
-        return run_sql(self.client, statement, _summarize_tables)
+        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "table"))
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_VIEWS.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda _: "views accessible")
+        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "view"))
 
     @check(DatabaseStep.GetStreams)
     def get_streams(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_STREAMS.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda _: "streams accessible")
+        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "stream"))
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:
