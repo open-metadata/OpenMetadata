@@ -51,9 +51,9 @@ const SummaryPieChartCard = ({
               </div>
             )}
             <Typography
-              className="tw:whitespace-nowrap"
+              className="tw:whitespace-nowrap tw:text-secondary"
               size="text-md"
-              weight="semibold">
+              weight="medium">
               {title}
             </Typography>
           </div>
