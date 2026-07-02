@@ -31,6 +31,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   type,
   divider,
   size,
+  autoCollapse,
   className,
 }) => {
   const navigate = useNavigate();
@@ -70,6 +71,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
+      autoCollapse={autoCollapse}
       className={classNames('tw:mb-3', className)}
       data-testid="breadcrumb"
       divider={divider}

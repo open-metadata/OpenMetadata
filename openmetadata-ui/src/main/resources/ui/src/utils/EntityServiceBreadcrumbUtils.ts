@@ -57,44 +57,64 @@ export const getBreadcrumbForDatabaseService = (
   return items;
 };
 
-export const getBreadcrumbForDatabase = (entity: Database) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  ...getBreadcrumbForEntitiesWithServiceOnly(entity),
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
-    ),
-  },
-];
+export const getBreadcrumbForDatabase = (
+  entity: Database,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    ...getBreadcrumbForEntitiesWithServiceOnly(entity),
+  ];
 
-export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  {
-    name: getEntityName(entity.service),
-    url: entity.service?.name
-      ? getServiceDetailsPath(
-          entity.service?.name ?? '',
-          ServiceCategoryPlural[
-            entity.service?.type as keyof typeof ServiceCategoryPlural
-          ]
-        )
-      : '',
-  },
-  {
-    name: getEntityName(entity.database),
-    url: getEntityDetailsPath(
-      EntityType.DATABASE,
-      entity.database?.fullyQualifiedName ?? ''
-    ),
-  },
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-        EntityType.DATABASE_SCHEMA
-    ),
-  },
-];
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
+      ),
+    });
+  }
+
+  return items;
+};
+
+export const getBreadcrumbForDatabaseSchema = (
+  entity: DatabaseSchema,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    {
+      name: getEntityName(entity.service),
+      url: entity.service?.name
+        ? getServiceDetailsPath(
+            entity.service?.name ?? '',
+            ServiceCategoryPlural[
+              entity.service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+    {
+      name: getEntityName(entity.database),
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
+        entity.database?.fullyQualifiedName ?? ''
+      ),
+    },
+  ];
+
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as unknown as SourceType).entityType as EntityType) ??
+          EntityType.DATABASE_SCHEMA
+      ),
+    });
+  }
+
+  return items;
+};

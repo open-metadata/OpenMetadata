@@ -123,9 +123,12 @@ export const getEntityBreadcrumbs = (
         getEntityName(entity as { name?: string; displayName?: string })
       );
     case EntityType.DATABASE:
-      return getBreadcrumbForDatabase(entity as Database);
+      return getBreadcrumbForDatabase(entity as Database, includeCurrent);
     case EntityType.DATABASE_SCHEMA:
-      return getBreadcrumbForDatabaseSchema(entity as DatabaseSchema);
+      return getBreadcrumbForDatabaseSchema(
+        entity as DatabaseSchema,
+        includeCurrent
+      );
     case EntityType.DATABASE_SERVICE:
       return getBreadcrumbForDatabaseService(
         entity.name,
@@ -245,7 +248,7 @@ export const getEntityBreadcrumbs = (
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
     case EntityType.METRIC:
-      return getBreadcrumbForMetric(entity.name);
+      return getBreadcrumbForMetric(entity.name, includeCurrent);
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
     case EntityType.KNOWLEDGE_PAGE:

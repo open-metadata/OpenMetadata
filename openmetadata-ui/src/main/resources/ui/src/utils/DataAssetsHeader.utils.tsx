@@ -464,8 +464,7 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.breadcrumbs = getEntityBreadcrumbs(
         databaseSchemaDetails,
-        EntityType.DATABASE_SCHEMA,
-        true
+        EntityType.DATABASE_SCHEMA
       );
 
       break;

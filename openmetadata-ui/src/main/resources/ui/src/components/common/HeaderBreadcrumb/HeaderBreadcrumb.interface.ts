@@ -35,6 +35,11 @@ export interface HeaderBreadcrumbProps {
   divider?: BreadcrumbsDivider;
   /** Size of the crumbs. Defaults to 'sm'. */
   size?: BreadcrumbsSize;
+  /**
+   * Keep the trail on a single line and collapse the middle crumbs into a `…`
+   * menu when the container is too narrow to fit them all. Defaults to false.
+   */
+  autoCollapse?: boolean;
   /** Optional class name applied to the root nav element. */
   className?: string;
 }
