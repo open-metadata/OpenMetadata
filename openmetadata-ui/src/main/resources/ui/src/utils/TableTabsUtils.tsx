@@ -81,6 +81,15 @@ const SchemaTable = withSuspenseFallback(
   lazy(() => import('../components/Database/SchemaTable/SchemaTable.component'))
 );
 
+const AssetHealthWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/DataAssets/AssetHealthWidget/AssetHealthWidget.component'
+      )
+  )
+);
+
 const SampleDataTableComponent = withSuspenseFallback(
   lazy(
     () =>
@@ -462,6 +471,8 @@ export const getTableWidgetFromKey = (
     return <FrequentlyJoinedTables />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.PARTITIONED_KEYS)) {
     return <PartitionedKeys />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.ASSET_HEALTH)) {
+    return <AssetHealthWidget />;
   } else {
     return (
       <CommonWidgets
