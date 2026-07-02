@@ -626,7 +626,7 @@ services:
   fuseki:
     build:
       context: ../rdf-store
-    container_name: openmetadata_fuseki
+    container_name: openmetadata-fuseki
     environment:
       # The admin user carries the writer role; the server connects as
       # RDF_REMOTE_USERNAME=admin, so keep this password in sync with
