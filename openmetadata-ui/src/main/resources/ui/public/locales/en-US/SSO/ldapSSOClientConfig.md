@@ -201,8 +201,14 @@ $$section
 - **Validation:** OpenMetadata checks this attribute exists on actual group objects
 $$
 
-$$section
-## Auth Roles Mapping $(id="authRolesMapping")
+## <span data-id="recursiveGroupMembership">Recursive Group Membership</span>
+
+- **Definition:** Enables nested group resolution for Active Directory.
+- **Why it matters:** If an AD group contains another group, users in the nested group will still match the mapped parent group.
+- **How it works:** Uses Active Directory's transitive membership matching rule instead of a direct member equality filter.
+- **When to enable:** Turn this on only when your LDAP directory is Active Directory and you rely on nested groups for access control.
+
+## <span data-id="authRolesMapping">Auth Roles Mapping</span>
 
 - **Definition:** Mapping between LDAP groups and OpenMetadata roles.
 - **Example:** Map "cn=admins,ou=groups,dc=company,dc=com" to "Admin" role
