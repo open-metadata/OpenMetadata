@@ -125,6 +125,10 @@ export interface Aws {
  */
 export interface NaturalLanguageSearch {
     /**
+     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
+     */
+    embeddingProvider?: string;
+    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
