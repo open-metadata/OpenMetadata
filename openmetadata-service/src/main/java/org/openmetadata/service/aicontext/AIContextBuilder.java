@@ -126,6 +126,7 @@ public class AIContextBuilder {
         .withEntityType(entityType)
         .withDisplayName(entity.getDisplayName())
         .withDescription(entity.getDescription())
+        .withResource(entity.getHref())
         .withTags(extractClassificationTags(entity))
         .withGlossaryTerms(resolveGlossaryTerms(entity))
         .withArticles(resolveArticles(entity))

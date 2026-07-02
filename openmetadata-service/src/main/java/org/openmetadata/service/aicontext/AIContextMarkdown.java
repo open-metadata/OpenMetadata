@@ -36,6 +36,7 @@ import org.openmetadata.schema.type.aicontext.TableContext;
  */
 public final class AIContextMarkdown {
   private static final int MAX_CONTENT_CHARS = 2000;
+  private static final int MAX_SUMMARY_CHARS = 150;
 
   private AIContextMarkdown() {}
 
@@ -177,7 +178,11 @@ public final class AIContextMarkdown {
     markdown.append("---\n");
     appendYaml(markdown, "type", context.getEntityType());
     appendYaml(markdown, "title", titleOf(context));
+    appendYaml(markdown, "description", summaryOf(context.getDescription()));
     appendYaml(markdown, "fullyQualifiedName", context.getFullyQualifiedName());
+    if (context.getResource() != null) {
+      appendYaml(markdown, "resource", context.getResource().toString());
+    }
     if (!nullOrEmpty(context.getTags())) {
       markdown.append("tags: [");
       for (int i = 0; i < context.getTags().size(); i++) {
@@ -189,10 +194,25 @@ public final class AIContextMarkdown {
       markdown.append("]\n");
     }
     if (context.getGeneratedAt() != null) {
-      appendYaml(
-          markdown, "generatedAt", Instant.ofEpochMilli(context.getGeneratedAt()).toString());
+      appendYaml(markdown, "timestamp", Instant.ofEpochMilli(context.getGeneratedAt()).toString());
     }
     markdown.append("---\n");
+  }
+
+  /**
+   * The OKF {@code description} frontmatter key is a one-line summary; the full description stays
+   * in the body. Takes the first line and bounds it so previews and index generators stay compact.
+   */
+  private static String summaryOf(String description) {
+    String summary = null;
+    if (!nullOrEmpty(description)) {
+      String firstLine = description.strip().split("\n", 2)[0].strip();
+      summary =
+          firstLine.length() > MAX_SUMMARY_CHARS
+              ? firstLine.substring(0, MAX_SUMMARY_CHARS) + "…"
+              : firstLine;
+    }
+    return summary;
   }
 
   /**

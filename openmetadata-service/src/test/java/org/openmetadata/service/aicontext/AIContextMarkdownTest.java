@@ -82,8 +82,24 @@ class AIContextMarkdownTest {
     assertTrue(markdown.startsWith("---\n"), "missing opening frontmatter");
     assertTrue(markdown.contains("type: \"table\""), "missing type");
     assertTrue(markdown.contains("title: \"Orders\""), "missing title");
+    assertTrue(
+        markdown.contains("description: \"Orders placed by customers.\""),
+        "missing one-line description summary");
     assertTrue(markdown.contains("tags: [\"Tier.Tier1\", \"PII.None\"]"), "missing tags");
-    assertTrue(markdown.contains("generatedAt: \"2026-07-01T"), "missing ISO timestamp");
+    assertTrue(markdown.contains("timestamp: \"2026-07-01T"), "missing ISO timestamp");
+  }
+
+  @Test
+  void render_emitsResourceUriWhenPresent() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withResource(java.net.URI.create("https://openmetadata.example/api/v1/tables/abc"));
+    String markdown = AIContextMarkdown.render(context);
+    assertTrue(
+        markdown.contains("resource: \"https://openmetadata.example/api/v1/tables/abc\""),
+        "missing canonical resource URI");
   }
 
   @Test

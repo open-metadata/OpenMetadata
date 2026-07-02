@@ -372,6 +372,10 @@
         "description": {
             "type": "string"
         },
+        "resource": {
+            "description": "Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).",
+            "$ref": "basic.json#/definitions/href"
+        },
         "tags": {
             "description": "Classification tags and tier applied to the asset (tag fully qualified names).",
             "type": "array",
