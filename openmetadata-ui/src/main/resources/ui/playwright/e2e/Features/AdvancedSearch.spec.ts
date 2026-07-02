@@ -40,6 +40,10 @@ import {
 } from '../../utils/advancedSearch';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickUpdateButtonIfVisible,
+  searchAndClickOnOption,
+} from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -975,6 +979,133 @@ test.describe(
   }
 );
 
+test.describe(
+  'Explore Search Count Visibility',
+  { tag: ['@explore-search-count'] },
+  () => {
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    test('Verify count shows with Advanced Search filter', async ({ page }) => {
+      let resultTotal = 0;
+
+      await test.step('Open Advanced Search', async () => {
+        await showAdvancedSearchDialog(page);
+      });
+
+      await test.step('Apply Description Contains filter', async () => {
+        await fillRule(page, {
+          condition: 'Contains',
+          field: { id: 'Description', name: 'description' },
+          searchCriteria: 'test',
+          index: 1,
+        });
+
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=dataAsset') &&
+            response.url().includes('size=15')
+        );
+
+        await page.getByTestId('apply-btn').click();
+
+        const response = await searchRes;
+        resultTotal = (await response.json()).hits.total.value;
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Verify count is visible and matches the API total', async () => {
+        const countEl = page.getByTestId('search-results-count');
+
+        await expect(countEl).toBeVisible();
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
+      });
+
+      await test.step('Clear filters and verify count disappears', async () => {
+        await page.getByTestId('clear-all-chips').click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+
+    test('Verify count matches the API total for a quick filter', async ({
+      page,
+    }) => {
+      let resultTotal = 0;
+
+      await test.step('Apply the Table data-asset quick filter', async () => {
+        await page.getByTestId('search-dropdown-Data Assets').click();
+
+        const searchRes = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/search/query') &&
+            response.url().includes('index=dataAsset') &&
+            response.url().includes('size=15')
+        );
+
+        await searchAndClickOnOption(
+          page,
+          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          true
+        );
+        await clickUpdateButtonIfVisible(page);
+
+        const response = await searchRes;
+        resultTotal = (await response.json()).hits.total.value;
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Count badge shows the same total as the API', async () => {
+        const countEl = page.getByTestId('search-results-count');
+
+        await expect(countEl).toBeVisible();
+        await expect(countEl).toContainText(resultTotal.toLocaleString());
+      });
+    });
+
+    test('Verify the toolbar Clear All button is removed', async ({ page }) => {
+      await test.step('Apply a quick filter', async () => {
+        await page.getByTestId('search-dropdown-Data Assets').click();
+        await searchAndClickOnOption(
+          page,
+          { label: 'Data Assets', key: 'entityType', value: 'Table' },
+          true
+        );
+        await clickUpdateButtonIfVisible(page);
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Only the chip Clear button exists, no toolbar Clear All', async () => {
+        await expect(page.getByTestId('clear-filters')).not.toBeVisible();
+        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+      });
+    });
+
+    test('Verify browse mode has no count', async ({ page }) => {
+      await test.step('Verify no search and no filters are applied', async () => {
+        await expect(
+          page.getByTestId('advance-search-filter-container')
+        ).not.toBeVisible();
+      });
+
+      await test.step('Verify count is not visible', async () => {
+        await expect(
+          page.getByTestId('search-results-count')
+        ).not.toBeVisible();
+      });
+    });
+  }
+);
+
 const COLUMN_TAG_FIELD = {
   id: 'Column Tags',
   name: 'columns.tags.tagFQN',
@@ -1016,7 +1147,6 @@ test.describe(
           columnTagTable2.create(apiContext),
         ]);
 
-        // table1 column gets tag1; table2 column gets tag2
         await columnTagTable1.patch({
           apiContext,
           patchData: [

@@ -12,11 +12,16 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { redirectToHomePage } from '../../utils/common';
 import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import {
+  advanceToServiceConnectionStep,
+  selectServiceConnector,
+} from '../../utils/serviceIngestion';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -29,14 +34,12 @@ const goToMysqlConnectionStep = async (page: Page, serviceName: string) => {
     waitUntil: 'domcontentloaded',
   });
   await waitForAllLoadersToDisappear(page);
-  await page.getByTestId('Mysql').click();
-  await page.getByTestId('next-button').click();
-  await page.getByTestId('service-name').fill(serviceName);
-  await page.getByTestId('next-button').click();
-  await page.getByTestId('service-requirements').waitFor({ state: 'visible' });
+  await selectServiceConnector(page, 'Mysql');
+  await page.locator('#service-name').fill(serviceName);
+  await advanceToServiceConnectionStep(page);
 };
 
-test.describe('ServiceDocPanel', () => {
+test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -47,8 +50,9 @@ test.describe('ServiceDocPanel', () => {
 
       const docPanel = page.getByTestId('service-requirements');
 
-      // Requirements h2 heading should render as an element, not raw "## Requirements"
-      await expect(docPanel.locator('h2').first()).toBeVisible();
+      await expect(
+        docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
+      ).toBeVisible();
       await expect(docPanel).not.toContainText('## Requirements');
     });
 
@@ -94,13 +98,9 @@ test.describe('ServiceDocPanel', () => {
         waitUntil: 'domcontentloaded',
       });
       await waitForAllLoadersToDisappear(page);
-      await page.getByTestId('Mssql').click();
-      await page.getByTestId('next-button').click();
-      await page.getByTestId('service-name').fill('pw-doc-panel-mssql-img');
-      await page.getByTestId('next-button').click();
-      await page.getByTestId('service-requirements').waitFor({
-        state: 'visible',
-      });
+      await selectServiceConnector(page, 'Mssql');
+      await page.locator('#service-name').fill('pw-doc-panel-mssql-img');
+      await advanceToServiceConnectionStep(page);
 
       const docPanel = page.getByTestId('service-requirements');
       const image = docPanel.locator('img').first();
@@ -115,70 +115,63 @@ test.describe('ServiceDocPanel', () => {
     });
   });
 
-  test.describe('Section highlighting', () => {
-    test('should highlight section when the corresponding form field is focused', async ({
+  test.describe('Focused field documentation', () => {
+    test('should show field documentation when the corresponding form field is focused', async ({
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-highlight');
 
       const docPanel = page.getByTestId('service-requirements');
 
-      // No section should be highlighted initially
-      await expect(
-        docPanel.locator('section[data-highlighted="true"]')
-      ).toHaveCount(0);
-
-      // Focus the username field — activeField becomes "username"
       await page.locator(String.raw`#root\/username`).focus();
 
-      // The username section should now be highlighted
-      const usernameSection = docPanel.locator(
-        'section[data-id="username"][data-highlighted="true"]'
-      );
-
-      await expect(usernameSection).toBeVisible();
+      await expect(
+        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+      ).toBeVisible();
     });
 
-    test('should remove highlight from previous section when a new field is focused', async ({
+    test('should replace focused documentation when a new field is focused', async ({
       page,
     }) => {
       await goToMysqlConnectionStep(page, 'pw-doc-panel-highlight-switch');
 
       const docPanel = page.getByTestId('service-requirements');
 
-      // Focus username first
       await page.locator(String.raw`#root\/username`).focus();
 
       await expect(
-        docPanel.locator('section[data-id="username"][data-highlighted="true"]')
+        docPanel.getByRole('heading', { name: 'Username', level: 1 })
       ).toBeVisible();
 
-      // Focus hostPort — username section should lose highlight
       await page.locator(String.raw`#root\/hostPort`).focus();
 
       await expect(
-        docPanel.locator('section[data-id="username"][data-highlighted="true"]')
+        docPanel.getByRole('heading', { name: 'Username', level: 1 })
       ).toHaveCount(0);
 
-      // hostPort section should now be highlighted
       await expect(
-        docPanel.locator('section[data-id="hostPort"][data-highlighted="true"]')
+        docPanel.getByRole('heading', { name: 'Host Port', level: 1 })
       ).toBeVisible();
     });
 
-    test('should only ever have one section highlighted at a time', async ({
+    test('should show requirements again when service name is focused', async ({
       page,
     }) => {
-      await goToMysqlConnectionStep(page, 'pw-doc-panel-single-highlight');
+      const serviceName = 'pw-doc-panel-service-name-docs';
 
+      await goToMysqlConnectionStep(page, serviceName);
       const docPanel = page.getByTestId('service-requirements');
 
       await page.locator(String.raw`#root\/username`).focus();
-      await page.locator(String.raw`#root\/hostPort`).focus();
+      await expect(
+        docPanel.getByRole('heading', { name: 'Username', level: 1 })
+      ).toBeVisible();
+
+      await page.locator('#service-name').focus();
 
       await expect(
-        docPanel.locator('section[data-highlighted="true"]')
-      ).toHaveCount(1);
+        docPanel.getByRole('heading', { name: 'Requirements', level: 1 })
+      ).toBeVisible();
     });
 
     test('should load the correct doc file for the selected service type', async ({
@@ -188,8 +181,7 @@ test.describe('ServiceDocPanel', () => {
 
       const docPanel = page.getByTestId('service-requirements');
 
-      // MySQL doc starts with "# MySQL"
-      await expect(docPanel.locator('h1').first()).toContainText('MySQL');
+      await expect(docPanel).toContainText('INFORMATION_SCHEMA');
     });
   });
 

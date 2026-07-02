@@ -76,6 +76,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}
+      maxItemWidth={256}
       size={size}
       type={type}
       onAction={handleAction}
