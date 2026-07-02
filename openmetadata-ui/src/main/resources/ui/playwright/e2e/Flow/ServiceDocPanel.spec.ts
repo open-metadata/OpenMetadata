@@ -12,6 +12,7 @@
  */
 
 import { expect, Page, test } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { redirectToHomePage } from '../../utils/common';
 import {
   copyAndGetClipboardText,
@@ -38,7 +39,7 @@ const goToMysqlConnectionStep = async (page: Page, serviceName: string) => {
   await advanceToServiceConnectionStep(page);
 };
 
-test.describe('ServiceDocPanel', () => {
+test.describe('ServiceDocPanel', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
