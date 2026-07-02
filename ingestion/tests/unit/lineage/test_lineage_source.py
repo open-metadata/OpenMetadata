@@ -485,6 +485,7 @@ class TestIntegrationAndEdgeCases(unittest.TestCase):
         self.mock_config.sourceConfig.config.processViewLineage = True
         self.mock_config.sourceConfig.config.processQueryLineage = True
         self.mock_config.sourceConfig.config.threads = 5
+        self.mock_config.sourceConfig.config.resultLimit = 1000
 
         self.lineage_source = TestableLineageSource(self.mock_config, self.mock_metadata)
 
