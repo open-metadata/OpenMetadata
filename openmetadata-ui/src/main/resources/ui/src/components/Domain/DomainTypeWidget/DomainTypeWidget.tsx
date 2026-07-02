@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
-
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,9 +70,11 @@ export const DomainTypeWidget = () => {
   const content = (
     <>
       {!editDomainType && (
-        <Space wrap data-testid="domain-type-label" size={6}>
+        <div
+          className="tw:flex tw:flex-wrap tw:gap-1.5"
+          data-testid="domain-type-label">
           {domain?.domainType}
-        </Space>
+        </div>
       )}
 
       {editDomainType && (

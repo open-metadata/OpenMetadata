@@ -122,6 +122,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
           relatedDataAssets={knowledgePage?.['relatedEntities']}
           onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
         />
+
         {knowledgePage?.id && (
           <div>
             {knowledgePage.processingStatus && (

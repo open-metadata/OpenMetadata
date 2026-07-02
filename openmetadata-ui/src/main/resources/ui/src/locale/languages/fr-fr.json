@@ -3494,7 +3494,7 @@
     "no-profiler-message": "Explorez les métriques de votre table en exécutant le workflow de profilage. Vous verrez: Nombre de lignes, Mises à jour de tables, Changements de volume, et plus encore. Visitez notre documentation pour les étapes de configuration ",
     "no-profiler-title": "Exécuter le Profiler pour déverrouiller les informations de table",
     "no-properties-added": "No properties added.",
-    "no-recently-viewed-date": "Aucune donnée récemment consultée.",
+    "no-recently-viewed-data": "Aucune donnée récemment consultée.",
     "no-reference-available": "Aucune référence disponible.",
     "no-related-terms-available": "Aucun terme associé disponible.",
     "no-relation-at-level": "Aucune relation à ce niveau.",

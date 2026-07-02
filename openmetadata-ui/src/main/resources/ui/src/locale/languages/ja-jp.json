@@ -3494,7 +3494,7 @@
     "no-profiler-message": "テーブルのメトリクスを実行するプロファイラーを設定して探索しましょう。行数、更新頻度、ボリュームの変化などを確認できます。開始手順は次の通りです。",
     "no-profiler-title": "プロファイラーを実行してテーブルインサイトをアンロック",
     "no-properties-added": "No properties added.",
-    "no-recently-viewed-date": "最近表示したデータはありません。",
+    "no-recently-viewed-data": "最近表示したデータはありません。",
     "no-reference-available": "参照はありません。",
     "no-related-terms-available": "関連用語はありません。",
     "no-relation-at-level": "このレベルには関係がありません。",

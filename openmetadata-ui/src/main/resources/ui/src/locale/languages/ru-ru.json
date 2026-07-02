@@ -3494,7 +3494,7 @@
     "no-profiler-message": "Профайлер данных — это необязательная конфигурация при получении данных. Включите профилировщик данных, следуя документации.",
     "no-profiler-title": "Запустите профайлер, чтобы разблокировать статистику таблицы",
     "no-properties-added": "No properties added.",
-    "no-recently-viewed-date": "Нет недавно просмотренных данных.",
+    "no-recently-viewed-data": "Нет недавно просмотренных данных.",
     "no-reference-available": "Нет доступных ссылок.",
     "no-related-terms-available": "Нет доступных связанных терминов.",
     "no-relation-at-level": "На этом уровне нет связей.",

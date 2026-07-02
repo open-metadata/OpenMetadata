@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -99,12 +104,13 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
 
   const showMoreLessElement = useMemo(
     () => (
-      <Typography.Text
-        className="cursor-pointer text-xs text-primary underline"
+      <Typography
+        className="tw:cursor-pointer tw:text-brand-secondary tw:underline"
         data-testid={`show-${isShowMore ? 'less' : 'more'}`}
+        size="text-xs"
         onClick={() => setIsShowMore(!isShowMore)}>
         {isShowMore ? t('label.show-less') : t('label.show-more')}
-      </Typography.Text>
+      </Typography>
     ),
     [isShowMore, hiddenDataAssets]
   );
@@ -112,32 +118,36 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
   const getDataAssetListing = useCallback((dataAssets: EntityReference[]) => {
     return dataAssets.map((item) => (
       <div
-        className="right-panel-list-item flex items-center justify-between"
+        className="right-panel-list-item flex items-center justify-between tw:min-w-0"
         data-testid={getEntityName(item)}
         key={item.id}>
-        <div className="flex items-center">
-          <Link
-            className="font-medium"
-            to={entityUtilClassBase.getEntityLink(
-              item.type,
-              item.fullyQualifiedName ?? ''
-            )}>
-            <Button
-              className="data-asset-button flex-center p-0 m--ml-1"
-              icon={
-                <div className="entity-button-icon m-r-xs">
-                  {getEntityIcon(item.type)}
-                </div>
-              }
-              title={getEntityName(item)}
-              type="text">
-              <Typography.Text
-                className="w-72 text-left text-xs"
-                ellipsis={{ tooltip: true }}>
-                {getEntityName(item)}
-              </Typography.Text>
-            </Button>
-          </Link>
+        <div className="flex items-center tw:min-w-0 tw:w-full">
+          <Tooltip title={getEntityName(item)}>
+            <Link
+              className="font-medium tw:min-w-0 tw:w-full tw:block"
+              to={entityUtilClassBase.getEntityLink(
+                item.type,
+                item.fullyQualifiedName ?? ''
+              )}>
+              <Button
+                ellipsis
+                className="tw:w-full tw:justify-start"
+                color="tertiary"
+                title={getEntityName(item)}>
+                <Box align="center" className="tw:min-w-0 tw:w-full" gap={2}>
+                  {getEntityIcon(item.type, 'tw:h-4 tw:w-4 tw:shrink-0')}
+                  <div className="tw:min-w-0 tw:flex-1">
+                    <Typography
+                      ellipsis
+                      className="tw:text-left"
+                      size="text-xs">
+                      {getEntityName(item)}
+                    </Typography>
+                  </div>
+                </Box>
+              </Button>
+            </Link>
+          </Tooltip>
         </div>
       </div>
     ));

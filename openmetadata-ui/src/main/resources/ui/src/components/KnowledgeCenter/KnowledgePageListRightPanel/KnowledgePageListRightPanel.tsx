@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { File06 } from '@untitledui/icons';
 import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -201,10 +201,10 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
 
         <WidgetCard
           title={t('label.recently-viewed')}
-          titleIcon={<EyeIcon height={16} width={16} />}>
+          titleIcon={<EyeIcon className='tw:text-quaternary' height={16} width={16} />}>
           {isEmpty(recentlyViewed) ? (
             <Typography className="tw:text-gray-500" size="text-xs">
-              {t('message.no-recently-viewed-date')}
+              {t('message.no-recently-viewed-data')}
             </Typography>
           ) : (
             <Box direction="col" gap={2}>
@@ -225,7 +225,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
               return (
                 <WidgetCard
                   title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
-                  titleIcon={<IconArticle height={16} width={16} />}>
+                  titleIcon={<File06 className='tw:text-quaternary' height={16} strokeWidth={1.75} width={16} />}>
                   <Box direction="col" gap={2}>
                     {map(uniqueLinks, (matchedQuickLink) =>
                       getLink(matchedQuickLink, `tag-category-${tagFqn}`)

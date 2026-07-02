@@ -3494,7 +3494,7 @@
     "no-profiler-message": "透過執行分析器工作流程來探索您資料表的指標。您將看到資料列計數、資料表更新、量變更等等。請造訪我們的文件以了解設定步驟",
     "no-profiler-title": "執行分析器以解鎖表洞察",
     "no-properties-added": "No properties added.",
-    "no-recently-viewed-date": "您最近沒有檢視任何資料資產。探索以尋找有趣的東西！",
+    "no-recently-viewed-data": "您最近沒有檢視任何資料資產。探索以尋找有趣的東西！",
     "no-reference-available": "沒有可用的參考。",
     "no-related-terms-available": "沒有可用的相關術語。",
     "no-relation-at-level": "此層級沒有任何關係。",

@@ -3494,7 +3494,7 @@
     "no-profiler-message": "Explore your table's metrics by running the profiler workflow. You'll see Row Count, Table Updates, Volume Changes, and more. Visit our documentation for setup steps ",
     "no-profiler-title": "Run Profiler to Unlock Table Insights",
     "no-properties-added": "No properties added.",
-    "no-recently-viewed-date": "You haven't viewed any data assets recently. Explore to find something interesting!",
+    "no-recently-viewed-data": "You haven't viewed any data assets recently. Explore to find something interesting!",
     "no-reference-available": "No references available.",
     "no-related-terms-available": "No related terms available.",
     "no-relation-at-level": "No relations at this level.",

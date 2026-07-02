@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row, Space, Tag, Typography as AntDTypography } from 'antd';
+import { Col, Row, Space, Tag } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,11 +147,14 @@ const DataProductsContainer = ({
                 height={12}
                 width={12}
               />
-              <AntDTypography.Paragraph
-                className="m-0 tags-label"
-                data-testid={`data-product-${product.fullyQualifiedName}`}>
+              <Typography
+                as="p"
+                className="tw:m-0 tags-label"
+                data-testid={`data-product-${product.fullyQualifiedName}`}
+                size="text-xs"
+                weight="medium">
                 {getEntityName(product)}
-              </AntDTypography.Paragraph>
+              </Typography>
             </div>
           </div>
         </Tag>
@@ -248,9 +251,9 @@ const DataProductsContainer = ({
     <div className="w-full" data-testid="data-products-container">
       {showHeader && (
         <Space align="center" size="middle">
-          <AntDTypography.Text className="text-sm font-medium">
+          <Typography size="text-sm" weight="medium">
             {t('label.data-product-plural')}
-          </AntDTypography.Text>
+          </Typography>
           {headerExtra}
         </Space>
       )}
