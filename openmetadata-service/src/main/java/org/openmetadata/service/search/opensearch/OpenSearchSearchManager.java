@@ -1321,7 +1321,9 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias);
     }
 
-    // Handle fetch source
+    // Handle fetch source. Default-exclude heavy fields the explore/search UI doesn't need
+    // (embeddings, upstreamLineage, suggest fields, ...) to keep responses lean; callers that need
+    // a specific field opt in via includeSourceFields.
     String[] includeFields =
         !nullOrEmpty(request.getIncludeSourceFields())
             ? request.getIncludeSourceFields().toArray(String[]::new)
@@ -1331,12 +1333,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
             ? request.getExcludeSourceFields().toArray(String[]::new)
             : null;
 
-    if (Boolean.TRUE.equals(request.getFetchSource())
-        || includeFields != null
-        || excludeFields != null) {
-      requestBuilder.fetchSource(includeFields, excludeFields);
-    } else if (Boolean.FALSE.equals(request.getFetchSource())) {
+    if (Boolean.FALSE.equals(request.getFetchSource())) {
       requestBuilder.fetchSource(false);
+    } else if (includeFields != null) {
+      requestBuilder.fetchSource(includeFields, excludeFields);
+    } else {
+      requestBuilder.fetchSource(null, SearchUtils.withDefaultSearchSourceExcludes(excludeFields));
     }
 
     // Handle track total hits

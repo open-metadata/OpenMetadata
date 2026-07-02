@@ -974,4 +974,23 @@ class SearchUtilsTest {
     buckets.forEach(b -> keys.add(b.get("key").asText()));
     return keys;
   }
+
+  @Test
+  void defaultSearchSourceExcludes_dropHeavyFieldsAndMergeCallerExcludes() {
+    // Normal /search/query responses must not ship fields the explore UI doesn't need: embeddings
+    // (vector search only), upstreamLineage (lineage pages only), schemaDefinition, customMetrics.
+    assertTrue(
+        SearchUtils.DEFAULT_SEARCH_SOURCE_EXCLUDES.containsAll(
+            List.of("embedding", "upstreamLineage", "schemaDefinition", "customMetrics")),
+        "default search excludes must drop embeddings, upstreamLineage, schemaDefinition, customMetrics");
+
+    Set<String> defaults = Set.copyOf(SearchUtils.DEFAULT_SEARCH_SOURCE_EXCLUDES);
+    assertEquals(defaults, Set.of(SearchUtils.withDefaultSearchSourceExcludes(null)));
+
+    // Caller excludes are merged with (not replaced by) the defaults.
+    Set<String> merged =
+        Set.of(SearchUtils.withDefaultSearchSourceExcludes(new String[] {"sampleData"}));
+    assertTrue(merged.containsAll(defaults));
+    assertTrue(merged.contains("sampleData"));
+  }
 }
