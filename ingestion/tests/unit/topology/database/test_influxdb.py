@@ -148,28 +148,18 @@ class TestInfluxDBSource:
 
     def test_create_validates_connection_type(self):
         config_dict = {
-            "source": {
-                "type": "influxdb",
-                "serviceName": "influxdb_prod",
-                "serviceConnection": {
-                    "config": {
-                        "type": "InfluxDB",
-                        "hostPort": "http://localhost:8086",
-                        "token": "test-token",
-                    }
-                },
-                "sourceConfig": {
-                    "config": {
-                        "type": "DatabaseMetadata",
-                    }
-                },
+            "type": "influxdb",
+            "serviceName": "influxdb_prod",
+            "serviceConnection": {
+                "config": {
+                    "type": "InfluxDB",
+                    "hostPort": "http://localhost:8086",
+                    "token": "test-token",
+                }
             },
-            "sink": {"type": "metadata-rest", "config": {}},
-            "workflowConfig": {
-                "openMetadataServerConfig": {
-                    "hostPort": "http://localhost:8585/api",
-                    "authProvider": "openmetadata",
-                    "securityConfig": {"jwtToken": "test-jwt"},
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseMetadata",
                 }
             },
         }
@@ -186,40 +176,27 @@ class TestInfluxDBSource:
 
     def test_create_rejects_wrong_connection_type(self):
         config_dict = {
-            "source": {
-                "type": "influxdb",
-                "serviceName": "influxdb_prod",
-                "serviceConnection": {
-                    "config": {
-                        "type": "Mysql",
-                        "hostPort": "localhost:3306",
-                    }
-                },
-                "sourceConfig": {
-                    "config": {
-                        "type": "DatabaseMetadata",
-                    }
-                },
+            "type": "influxdb",
+            "serviceName": "influxdb_prod",
+            "serviceConnection": {
+                "config": {
+                    "type": "Mysql",
+                    "hostPort": "localhost:3306",
+                    "username": "test",
+                    "authType": {"password": "test"},
+                }
             },
-            "sink": {"type": "metadata-rest", "config": {}},
-            "workflowConfig": {
-                "openMetadataServerConfig": {
-                    "hostPort": "http://localhost:8585/api",
-                    "authProvider": "openmetadata",
-                    "securityConfig": {"jwtToken": "test-jwt"},
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseMetadata",
                 }
             },
         }
 
-        with patch(
-            "metadata.ingestion.source.database.influxdb.metadata.InfluxDBSource.__init__",
-            return_value=None,
-        ):
-            mock_metadata = MagicMock()
-            with pytest.raises(ValueError, match="Expected InfluxdbConnection"):
-                InfluxDBSource.create(
-                    config_dict, mock_metadata, pipeline_name="test-pipeline"
-                )
+        with pytest.raises(ValueError, match="Expected InfluxdbConnection"):
+            InfluxDBSource.create(
+                config_dict, MagicMock(), pipeline_name="test-pipeline"
+            )
 
     def test_get_table_columns_adds_time_column(self):
         mock_client = MagicMock()
@@ -233,10 +210,10 @@ class TestInfluxDBSource:
 
         columns = source.get_table_columns("iot_data", "temperature")
 
-        assert columns[0].name == "time"
+        assert columns[0].name.root == "time"
         assert columns[0].dataType == DataType.TIMESTAMP
-        assert columns[1].name == "device_id"
-        assert columns[2].name == "value"
+        assert columns[1].name.root == "device_id"
+        assert columns[2].name.root == "value"
 
     def test_get_table_columns_skips_duplicate_time(self):
         mock_client = MagicMock()
@@ -251,8 +228,8 @@ class TestInfluxDBSource:
         columns = source.get_table_columns("iot_data", "temperature")
 
         assert len(columns) == 2  # time + device_id (not 3)
-        assert columns[0].name == "time"
-        assert columns[1].name == "device_id"
+        assert columns[0].name.root == "time"
+        assert columns[1].name.root == "device_id"
 
     def test_get_table_columns_maps_varchar_data_length(self):
         mock_client = MagicMock()
