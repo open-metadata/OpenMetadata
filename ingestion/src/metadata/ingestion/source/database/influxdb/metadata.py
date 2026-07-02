@@ -24,24 +24,15 @@ source extends CommonNoSQLSource with native client calls.
 
 from typing import Iterable, List, Optional, Tuple
 
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
-from metadata.generated.schema.api.data.createDatabaseSchema import (
-    CreateDatabaseSchemaRequest,
-)
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import (
     Column,
-    ColumnName,
     DataType,
     TableConstraint,
-    TableData,
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
     InfluxdbConnection,
-)
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -49,16 +40,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     CommonNoSQLSource,
-    SAMPLE_SIZE,
     TableNameAndType,
 )
-from metadata.utils import fqn
-from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -100,20 +87,20 @@ class InfluxDBSource(CommonNoSQLSource):
             )
         return cls(config, metadata)
 
-    def get_database_names(self) -> Iterable[str]:
-        database_name = (
-            getattr(self.service_connection, "databaseName", None)
-            or DEFAULT_DATABASE
-        )
-        yield database_name
-
     def get_schema_name_list(self) -> List[str]:
         databases = self.connection_obj.list_databases()
         config_db = getattr(self.service_connection, "databaseName", None)
         if config_db:
             databases = [db for db in databases if db == config_db]
+            if not databases:
+                logger.warning(
+                    "Configured databaseName '%s' not found in InfluxDB instance."
+                    " Available databases: %s",
+                    config_db,
+                    self.connection_obj.list_databases(),
+                )
         logger.info(
-            "InfluxDB instance has %d database(s): %s",
+            "Ingesting %d InfluxDB database(s) as schemas: %s",
             len(databases),
             databases,
         )
@@ -170,52 +157,6 @@ class InfluxDBSource(CommonNoSQLSource):
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         yield from super().yield_table(table_name_and_type)
-
-        table_name, _ = table_name_and_type
-        schema_name = self.context.get().database_schema
-        try:
-            self._ingest_sample_data(schema_name, table_name)
-        except Exception:
-            logger.warning(
-                "Failed to ingest sample data for '%s.%s'",
-                schema_name,
-                table_name,
-            )
-
-    def _ingest_sample_data(self, schema_name: str, table_name: str) -> None:
-        from metadata.generated.schema.entity.data.table import Table
-
-        columns, rows = self.connection_obj.fetch_sample_rows(
-            schema_name, table_name, limit=SAMPLE_SIZE
-        )
-        if not columns:
-            return
-
-        table_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.context.get().database_service,
-            database_name=self.context.get().database,
-            schema_name=schema_name,
-            table_name=table_name,
-        )
-        table_entity = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
-        if table_entity is None:
-            return
-
-        table_data = TableData(
-            columns=[ColumnName(col) for col in columns],
-            rows=rows,
-        )
-        self.metadata.ingest_table_sample_data(table_entity, table_data)
-        logger.info(
-            "Ingested %d sample rows for '%s'", len(rows), table_fqn
-        )
-
-    def test_connection(self) -> None:
-        if not self.connection_obj.test_connection():
-            raise ConnectionError("InfluxDB 3 is not ready")
-        logger.info("InfluxDB 3 connection test passed")
 
     def close(self):
         self.connection_obj.close()

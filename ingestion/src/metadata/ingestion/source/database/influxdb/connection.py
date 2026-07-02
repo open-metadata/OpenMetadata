@@ -18,7 +18,6 @@ and a BaseConnection subclass for the OpenMetadata ingestion framework.
 
 from typing import Any, List, Optional, Tuple
 
-import requests
 from requests import Session
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -28,6 +27,7 @@ from metadata.generated.schema.entity.services.connections.database.influxdbConn
     InfluxdbConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    StatusType,
     TestConnectionResult,
 )
 from metadata.ingestion.connections.connection import BaseConnection
@@ -91,8 +91,9 @@ class InfluxDBClient:
     def fetch_sample_rows(
         self, database: str, table: str, limit: int = 50
     ) -> Tuple[List[str], List[List[Any]]]:
+        safe_table = table.replace('"', '""')
         sql = (
-            f'SELECT * FROM "{table}" '
+            f'SELECT * FROM "{safe_table}" '
             f"WHERE time >= now() - INTERVAL '24 hours' "
             f"LIMIT {limit}"
         )
@@ -142,4 +143,4 @@ class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
             )
         finally:
             client.close()
-        return TestConnectionResult(status="Successful")
+        return TestConnectionResult(status=StatusType.Successful, steps=[])
