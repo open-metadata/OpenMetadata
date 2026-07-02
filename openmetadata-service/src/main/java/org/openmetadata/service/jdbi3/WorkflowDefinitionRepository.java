@@ -749,6 +749,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return transitionIds;
   }
 
+  @SuppressWarnings("unchecked")
   private void collectTransitionMetadataIds(Object transitionMetadata, List<String> transitionIds) {
     if (transitionMetadata == null) {
       return;
@@ -770,6 +771,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   // it is emitted by the boundary timer's ExpireOnTimerImpl service task, not by a user click.
   // Without this, workflows that use expiryTimer fail validation because the outgoing edge
   // named after transitionId is not declared in transitionMetadata.
+  @SuppressWarnings("unchecked")
   private void collectExpiryTimerTransitionId(Object expiryTimer, List<String> transitionIds) {
     if (expiryTimer == null) {
       return;
