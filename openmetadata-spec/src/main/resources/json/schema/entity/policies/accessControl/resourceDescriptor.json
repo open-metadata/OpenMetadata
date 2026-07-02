@@ -47,6 +47,8 @@
         "EditTeams",
         "EditTier",
         "EditCertification",
+        "CreateTask",
+        "EditTask",
         "EditTests",
         "EditUsage",
         "EditUsers",
