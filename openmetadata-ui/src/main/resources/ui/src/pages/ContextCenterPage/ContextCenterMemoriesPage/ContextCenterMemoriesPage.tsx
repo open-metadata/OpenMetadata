@@ -582,6 +582,7 @@ const ContextCenterMemoriesPage: FC = () => {
         <Box align="center" gap={2}>
           <DataAssetSelectList
             allowAllOption
+            placeholder={t('label.search-assets-by-name-or-path')}
             popoverPlacement="bottom"
             renderTrigger={({ open }) => (
               <AriaButton
