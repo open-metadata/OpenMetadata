@@ -1253,6 +1253,7 @@ class DistributedSearchIndexExecutorTest {
     SearchIndexJob running =
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
     setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
     when(coordinator.getJob(jobId)).thenReturn(Optional.of(failed));
 
     CountDownLatch neverDrains = new CountDownLatch(1);
@@ -1264,6 +1265,30 @@ class DistributedSearchIndexExecutorTest {
 
     assertTrue(elapsedMs < 30_000, "orchestrator must unwind, not hang, on a wedged worker");
     assertTrue(executor.isStopped(), "terminal detection must trigger stop()");
+    verify(coordinator).requestStop(jobId);
+  }
+
+  @Test
+  void awaitWorkersKeepsWaitingWhenJobStateUnreadableThenUnwindsOnCleanPoll() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob running =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
+    SearchIndexJob failed =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
+    setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
+
+    when(coordinator.getJob(jobId))
+        .thenThrow(new RuntimeException("transient db error"))
+        .thenReturn(Optional.of(failed));
+
+    CountDownLatch neverDrains = new CountDownLatch(1);
+
+    invokePrivate(
+        "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
+
+    assertTrue(
+        executor.isStopped(), "a transient read error must not abort; later clean poll unwinds");
     verify(coordinator).requestStop(jobId);
   }
 
@@ -1293,6 +1318,11 @@ class DistributedSearchIndexExecutorTest {
             Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
     assertFalse(
         (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId)).thenThrow(new RuntimeException("transient db error"));
+    assertFalse(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId),
+        "an unreadable job state must be treated as non-terminal so the wait continues");
   }
 
   private SearchIndexPartition partition(UUID jobId, String entityType, PartitionStatus status) {
