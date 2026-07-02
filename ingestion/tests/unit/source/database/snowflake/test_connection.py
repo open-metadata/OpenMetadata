@@ -33,8 +33,7 @@ from metadata.ingestion.source.database.snowflake.connection import (
     SNOWFLAKE_ERRORS,
     SNOWFLAKE_PORT,
     SnowflakeChecks,
-    _summarize_databases,
-    _summarize_tables,
+    _count_summary,
 )
 
 
@@ -176,25 +175,24 @@ def test_network_errors_classify_through_including():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Connection timed out"
 
 
-def test_get_databases_summary_marks_the_row_cap():
-    assert _summarize_databases([object()] * 3) == "3 databases enumerated"
-    capped = _summarize_databases([object()] * DEFAULT_SAMPLE_ROWS)
-    assert capped == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
-
-
-def test_get_tables_summary_counts_and_marks_empty_and_cap():
-    # The probe now excludes INFORMATION_SCHEMA, so an empty result is meaningful.
-    assert _summarize_tables([]) == "no tables enumerated"
-    assert _summarize_tables([object()] * 3) == "3 tables enumerated"
-    capped = _summarize_tables([object()] * DEFAULT_SAMPLE_ROWS)
+def test_count_summary_marks_empty_count_and_cap():
+    assert _count_summary([], "table") == "no tables enumerated"
+    assert _count_summary([object()] * 3, "database") == "3 databases enumerated"
+    assert _count_summary([object()] * 3, "view") == "3 views enumerated"
+    assert _count_summary([object()] * 1, "stream") == "1 streams enumerated"
+    capped = _count_summary([object()] * DEFAULT_SAMPLE_ROWS, "table")
     assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
 
 
-def test_get_tables_query_excludes_information_schema():
-    from metadata.ingestion.source.database.snowflake.queries import SNOWFLAKE_TEST_GET_TABLES
+def test_table_and_view_probes_exclude_information_schema():
+    from metadata.ingestion.source.database.snowflake.queries import (
+        SNOWFLAKE_TEST_GET_TABLES,
+        SNOWFLAKE_TEST_GET_VIEWS,
+    )
 
-    assert "INFORMATION_SCHEMA" in SNOWFLAKE_TEST_GET_TABLES
-    assert "LIMIT 100" in SNOWFLAKE_TEST_GET_TABLES
+    for query in (SNOWFLAKE_TEST_GET_TABLES, SNOWFLAKE_TEST_GET_VIEWS):
+        assert "INFORMATION_SCHEMA" in query
+        assert "LIMIT 100" in query
 
 
 def test_checks_cover_exactly_the_wired_steps():
