@@ -740,19 +740,21 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @SuppressWarnings("unchecked")
   private List<String> getConfiguredUserApprovalTransitions(WorkflowNodeDefinitionInterface node) {
-    if (node.getConfig() == null) {
-      return List.of();
+    List<String> transitionIds = new ArrayList<>();
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      collectTransitionMetadataIds(config.get("transitionMetadata"), transitionIds);
+      collectExpiryTimerTransitionId(config.get("expiryTimer"), transitionIds);
     }
+    return transitionIds;
+  }
 
-    Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
-    Object transitionMetadata = config.get("transitionMetadata");
+  private void collectTransitionMetadataIds(Object transitionMetadata, List<String> transitionIds) {
     if (transitionMetadata == null) {
-      return List.of();
+      return;
     }
-
     List<Map<String, Object>> transitions =
         JsonUtils.readOrConvertValue(transitionMetadata, List.class);
-    List<String> transitionIds = new ArrayList<>();
     for (Map<String, Object> transition : transitions) {
       if (transition == null) {
         continue;
@@ -762,7 +764,21 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         transitionIds.add(id.trim());
       }
     }
-    return transitionIds;
+  }
+
+  // expiryTimer.transitionId is a legitimate outgoing edge condition on a user approval task —
+  // it is emitted by the boundary timer's ExpireOnTimerImpl service task, not by a user click.
+  // Without this, workflows that use expiryTimer fail validation because the outgoing edge
+  // named after transitionId is not declared in transitionMetadata.
+  private void collectExpiryTimerTransitionId(Object expiryTimer, List<String> transitionIds) {
+    if (expiryTimer == null) {
+      return;
+    }
+    Map<String, Object> timerConfig = JsonUtils.readOrConvertValue(expiryTimer, Map.class);
+    Object transitionId = timerConfig.get("transitionId");
+    if (transitionId instanceof String id && !id.isBlank()) {
+      transitionIds.add(id.trim());
+    }
   }
 
   private void validateUserApprovalTransitions(
