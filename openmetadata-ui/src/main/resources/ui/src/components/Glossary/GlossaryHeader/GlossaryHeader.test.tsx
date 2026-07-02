@@ -181,6 +181,13 @@ jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
 }));
 
 describe('GlossaryHeader component', () => {
+  beforeEach(() => {
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission.EditAll = true;
+    mockContext.type = EntityType.GLOSSARY;
+    mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+  });
+
   it('should render name of Glossary', () => {
     render(
       <GlossaryHeader
@@ -268,6 +275,9 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should render ChangeParentHierarchy component after clicking dropdown menu item', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -294,6 +304,9 @@ describe('GlossaryHeader component', () => {
   });
 
   it('should not render ChangeParentHierarchy component after onCancel call', async () => {
+    mockContext.type = EntityType.GLOSSARY_TERM;
+    mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+
     render(
       <GlossaryHeader
         updateVote={mockOnUpdateVote}
@@ -351,6 +364,28 @@ describe('GlossaryHeader component', () => {
       expect(screen.queryByText('label.export')).toBeInTheDocument();
     });
 
+    it('should show import/export when entity-level All permission is granted via conditional policy', async () => {
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, All: true };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.import')).toBeInTheDocument();
+      expect(screen.queryByText('label.export')).toBeInTheDocument();
+    });
+
     it('should hide import/export when both globalPermissions and entity-level permissions deny', async () => {
       // Both resource-level and entity-level permissions deny — user is not the
       // owner and no other condition grants access.
@@ -373,6 +408,32 @@ describe('GlossaryHeader component', () => {
       );
 
       expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    });
+
+    it('should hide import/export when only a non-edit permission is granted at entity level', async () => {
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Delete: true,
+        ViewAll: true,
+      };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.export')).not.toBeInTheDocument();
     });
   });
 });
