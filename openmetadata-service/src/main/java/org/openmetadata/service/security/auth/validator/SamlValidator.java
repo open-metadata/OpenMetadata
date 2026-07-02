@@ -281,6 +281,7 @@ public class SamlValidator {
   }
 
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+    HttpURLConnection conn = null;
     try {
       String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
       LOG.debug("Testing IdP SSO URL with SAML request: {}", ssoUrl);
@@ -293,7 +294,7 @@ public class SamlValidator {
           ssoUrl + (ssoUrl.contains("?") ? "&" : "?") + "SAMLRequest=" + samlRequest;
 
       URL url = new URL(urlWithParams);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn = (HttpURLConnection) url.openConnection();
       conn.setRequestMethod("GET");
       conn.setConnectTimeout(5000);
       conn.setReadTimeout(5000);
@@ -340,6 +341,10 @@ public class SamlValidator {
       // Warning case - treat as success since URL format might be valid
       LOG.warn("SSO URL validation warning: {}", e.getMessage());
       return null;
+    } finally {
+      if (conn != null) {
+        conn.disconnect();
+      }
     }
   }
 
@@ -394,11 +399,8 @@ public class SamlValidator {
   }
 
   private String readResponseSnippet(HttpURLConnection conn) {
-    try {
-      java.io.InputStream inputStream = conn.getErrorStream();
-      if (inputStream == null) {
-        inputStream = conn.getInputStream();
-      }
+    try (java.io.InputStream errorStream = conn.getErrorStream();
+         java.io.InputStream inputStream = errorStream == null ? conn.getInputStream() : errorStream) {
       if (inputStream != null) {
         byte[] buffer = new byte[500];
         int bytesRead = inputStream.read(buffer);
