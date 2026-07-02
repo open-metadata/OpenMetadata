@@ -225,9 +225,13 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
+        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -256,12 +260,22 @@ test.describe(
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
         await expandTreeNode(page, 'Databases');
 
-        await page
-          .getByTestId(
-            `explore-tree-title-${table.service.serviceType.toLowerCase()}`
-          )
-          .click();
+        // Explicit visibility wait before clicking. The expandTreeNode helper
+        // only waits for loaders to disappear, but the tree's child rows can
+        // continue to animate/reposition for a beat after that — the
+        // subsequent .click() then times out with "waiting for element to be
+        // visible, enabled and stable". toBeVisible polls until the element
+        // is stable too, which lets the click land cleanly.
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+        );
+        await expect(serviceTitle).toBeVisible();
 
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await serviceTitle.click();
+        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
