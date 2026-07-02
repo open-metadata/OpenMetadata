@@ -88,7 +88,9 @@ export const Toast = ({ toast }: ToastProps) => {
           className={cx('tw:size-4', config.iconClass)}
         />
       </span>
-      <span className="tw:flex-1" data-testid="alert-message">
+      <span
+        className="tw:flex-1 tw:max-h-60 tw:overflow-y-auto tw:wrap-break-word"
+        data-testid="alert-message">
         {typeof messageOrNode === 'string'
           ? messageOrNode
           : (messageOrNode as ReactNode)}
