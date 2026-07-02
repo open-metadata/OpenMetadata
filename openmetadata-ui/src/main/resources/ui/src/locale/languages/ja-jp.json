@@ -3679,6 +3679,7 @@
     "request-update-description": "更新内容の説明リクエスト",
     "reset-layout-confirmation": "「デフォルトレイアウト」を適用してもよろしいですか？",
     "reset-link-has-been-sent": "パスワードリセット用のリンクがあなたのメールアドレスに送信されました",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "この{{entityType}}をリストアすると、{{brandName}} にメタデータが復元されます。",
     "restore-deleted-team": "チームをリストアすると、すべてのメタデータが {{brandName}} に戻されます。",
     "restore-entities-error": "{{entity}} のリストア中にエラーが発生しました。",

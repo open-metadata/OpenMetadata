@@ -3679,6 +3679,7 @@
     "request-update-description": "طلب تحديث الوصف",
     "reset-layout-confirmation": "هل أنت متأكد أنك تريد تطبيق \"التخطيط الافتراضي\"؟",
     "reset-link-has-been-sent": "تم إرسال رابط إعادة التعيين إلى بريدك الإلكتروني",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "ستؤدي استعادة {{entityType}} هذا إلى استعادة بياناته الوصفية في {{brandName}}.",
     "restore-deleted-team": "ستؤدي استعادة الفريق إلى إضافة جميع البيانات الوصفية مرة أخرى إلى {{brandName}}",
     "restore-entities-error": "حدث خطأ أثناء استعادة {{entity}}",

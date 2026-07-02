@@ -3679,6 +3679,7 @@
     "request-update-description": "请求更新描述",
     "reset-layout-confirmation": "您确定要使用“默认布局”吗?",
     "reset-link-has-been-sent": "重置链接已发送到您的电子邮箱",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "还原此{{entityType}}将在 {{brandName}} 中还原其元数据",
     "restore-deleted-team": "还原团队将会把所有元数据添加回 {{brandName}}",
     "restore-entities-error": "还原{{entity}}时出现错误",
