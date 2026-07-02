@@ -96,6 +96,24 @@ const EdgeInfoDrawer = ({
     return Boolean(sourceHandle && targetHandle);
   }, [edge]);
 
+  const resolvedSqlQuery = useMemo(() => {
+    const inlineQuery = edgeEntity?.sqlQuery;
+    if (inlineQuery) {
+      return inlineQuery;
+    }
+
+    // When the same SQL appears on multiple edges it is deduped into the target
+    // node's lineageSqlQueries map and referenced from the edge by sqlQueryKey.
+    const sqlQueryKey = edgeEntity?.sqlQueryKey;
+    if (!sqlQueryKey) {
+      return '';
+    }
+
+    const targetNode = nodes.find((node) => node.id === edge.target);
+
+    return targetNode?.data?.node?.lineageSqlQueries?.[sqlQueryKey] ?? '';
+  }, [edgeEntity, nodes, edge.target]);
+
   const onDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
       if (edgeEntity?.description !== updatedHTML && edge) {
@@ -360,8 +378,8 @@ const EdgeInfoDrawer = ({
   useEffect(() => {
     setIsLoading(true);
     getEdgeInfo();
-    setMysqlQuery(edge.data.edge?.sqlQuery);
-  }, [edge, visible, nodes]);
+    setMysqlQuery(resolvedSqlQuery);
+  }, [edge, visible, nodes, resolvedSqlQuery]);
 
   return (
     <>

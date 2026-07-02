@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Domain } from '../support/domain/Domain';
 import { UserClass } from '../support/user/UserClass';
 
@@ -85,4 +85,41 @@ export const safeDelete = async (deleteFn: () => Promise<unknown>) => {
   } catch (error) {
     // Best-effort teardown: one failing delete should not block the rest.
   }
+};
+
+const waitForDomainSearch = (page: Page, domain: Domain) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes(encodeURIComponent(domain.data.name))
+  );
+
+// The admin-facing domain views (navbar dropdown tree and the domains listing page) are
+// server-side paginated over every domain, so a freshly created domain can land off the
+// first page in a busy environment. Searching by name scopes the view to the target
+// domain before asserting, keeping the admin isolation specs deterministic.
+export const searchDomainInDropdownTree = async (
+  page: Page,
+  domain: Domain
+) => {
+  const searchResponse = waitForDomainSearch(page, domain);
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('searchbar')
+    .fill(domain.data.name);
+  await searchResponse;
+};
+
+// The domains listing search box rewrites the typed term before issuing the request, so the
+// encoded name is not a substring of the URL. Match the domain search request loosely (by
+// index) instead, mirroring the established selectDomain helper.
+export const searchDomainInListing = async (page: Page, domain: Domain) => {
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=domain*'
+  );
+  await page
+    .getByTestId('page-layout-v1')
+    .getByPlaceholder('Search')
+    .fill(domain.data.name);
+  await searchResponse;
 };

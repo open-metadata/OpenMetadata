@@ -77,9 +77,11 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -94,9 +96,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
   private final boolean isClientAvailable;
   private final String clusterAlias;
   private final RBACConditionEvaluator rbacConditionEvaluator;
+  private final ContextMemorySearchVisibility contextMemoryVisibility =
+      new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory());
   private final NLQService nlqService;
   private static final String SORT_FIELD_SCORE = "_score";
   private static final String SORT_TYPE_KEYWORD = "keyword";
+  private static final String SORT_FIELD_NAME_KEYWORD = "name.keyword";
+  private static final String SORT_FIELD_ID_KEYWORD = "id.keyword";
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
           "suggest",
@@ -389,6 +395,37 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
+    applyContextMemoryVisibility(subjectContext, requestBuilder);
+  }
+
+  /**
+   * Enforces ContextMemory shareConfig visibility on search results for non-admin subjects. Applied
+   * independently of {@code shouldApplyRbacConditions} because memory visibility is a per-memory
+   * privacy guarantee, not an RBAC policy — disabling RBAC search filtering must not expose private
+   * memories. Non-memory documents are left untouched.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, ElasticSearchRequestBuilder requestBuilder) {
+    OMQueryBuilder visibilityBuilder =
+        contextMemoryVisibility.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query visibilityQuery = ((ElasticQueryBuilder) visibilityBuilder).buildV2();
+      Query existingQuery = requestBuilder.query();
+      if (existingQuery != null) {
+        Query combinedQuery =
+            Query.of(
+                qb ->
+                    qb.bool(
+                        b -> {
+                          b.must(existingQuery);
+                          b.filter(visibilityQuery);
+                          return b;
+                        }));
+        requestBuilder.query(combinedQuery);
+      } else {
+        requestBuilder.query(visibilityQuery);
+      }
+    }
   }
 
   @Override
@@ -646,6 +683,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           }
         }
       }
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations if needed
       ElasticSearchSourceBuilderFactory factory = getSearchBuilderFactory();
@@ -987,7 +1026,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       String clusterAlias)
       throws IOException {
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, false);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     LOG.debug("Executing search on index: {}, query: {}", request.getIndex(), request.getQuery());
 
@@ -1029,7 +1068,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
-        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias, true);
+        buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
 
     try {
       SearchRequest searchRequest = requestBuilder.build(request.getIndex());
@@ -1068,12 +1107,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
   }
 
+  private void appendDeterministicTiebreak(
+      ElasticSearchRequestBuilder requestBuilder, String sortField) {
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_NAME_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_NAME_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+    if (!sortField.equalsIgnoreCase(SORT_FIELD_ID_KEYWORD)) {
+      requestBuilder.sort(SORT_FIELD_ID_KEYWORD, SortOrder.Asc, SORT_TYPE_KEYWORD);
+    }
+  }
+
   private ElasticSearchRequestBuilder buildSearchRequestBuilder(
       org.openmetadata.schema.search.SearchRequest request,
       SubjectContext subjectContext,
       SearchSettings searchSettings,
-      String clusterAlias,
-      boolean isExport)
+      String clusterAlias)
       throws IOException {
     if (!isClientAvailable) {
       throw new IOException("Elasticsearch client is not available");
@@ -1091,6 +1139,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
             request.getSize(),
             request.getExplain(),
             request.getIncludeAggregations() != null ? request.getIncludeAggregations() : true);
+
+    requestBuilder.preference(SearchUtils.searchPreferenceFor(subjectContext));
 
     LOG.debug(
         "Elasticsearch query for index '{}' with sanitized query '{}': {}",
@@ -1195,29 +1245,30 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       requestBuilder.query(deletedQuery);
     }
 
-    // Handle sorting
-    if (!nullOrEmpty(request.getSortFieldParam()) && !request.getIsHierarchy()) {
-      String sortField =
-          SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getSortFieldParam());
-      String sortTypeCapitalized =
-          request.getSortOrder().substring(0, 1).toUpperCase()
-              + request.getSortOrder().substring(1).toLowerCase();
-      SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
+    // Handle sorting — always append a deterministic tiebreaker so equal-ranked docs order
+    // identically across shards/replicas; without it the same query bounces between copies.
+    if (!Boolean.TRUE.equals(request.getIsHierarchy())) {
+      if (!nullOrEmpty(request.getSortFieldParam())) {
+        String sortField =
+            SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(
+                request.getSortFieldParam());
+        String sortTypeCapitalized =
+            request.getSortOrder().substring(0, 1).toUpperCase()
+                + request.getSortOrder().substring(1).toLowerCase();
+        SortOrder sortOrder = SortOrder.valueOf(sortTypeCapitalized);
 
-      if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
-        boolean isKeywordField =
-            sortField.endsWith(".keyword")
-                || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
-        requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
-      } else {
-        requestBuilder.sort(sortField, sortOrder, null);
-      }
-
-      if (sortField.equalsIgnoreCase(SORT_FIELD_SCORE) || isExport) {
-        if (!sortField.equalsIgnoreCase("name.keyword")) {
-          requestBuilder.sort("name.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        if (!sortField.equalsIgnoreCase(SORT_FIELD_SCORE)) {
+          boolean isKeywordField =
+              sortField.endsWith(".keyword")
+                  || SearchSourceBuilderFactory.KEYWORD_SORT_FIELDS.contains(sortField);
+          requestBuilder.sort(sortField, sortOrder, isKeywordField ? SORT_TYPE_KEYWORD : "integer");
+        } else {
+          requestBuilder.sort(sortField, sortOrder, null);
         }
-        requestBuilder.sort("id.keyword", SortOrder.Asc, SORT_TYPE_KEYWORD);
+        appendDeterministicTiebreak(requestBuilder, sortField);
+      } else {
+        requestBuilder.sort(SORT_FIELD_SCORE, SortOrder.Desc, null);
+        appendDeterministicTiebreak(requestBuilder, SORT_FIELD_SCORE);
       }
     }
 
@@ -1550,6 +1601,8 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           }
         }
       }
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder);
 
       // Add aggregations for fallback NLQ search
       addAggregationsToNLQQuery(requestBuilder, request.getIndex());
