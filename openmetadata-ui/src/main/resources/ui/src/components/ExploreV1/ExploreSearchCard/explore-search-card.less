@@ -17,9 +17,8 @@
   position: relative;
   border-radius: @border-rad-sm;
   opacity: 0.95;
-  background-color: @grey-9 !important;
-  border: 0.5px solid @grey-15;
-  border-left: @size-xxs solid transparent;
+  background-color: @white;
+  border: 1px solid @border-color;
   margin: 0 0 @margin-md;
   overflow: hidden;
   cursor: pointer;
@@ -55,9 +54,14 @@
     }
   }
 
+  &:hover {
+    border-color: @primary-1;
+    box-shadow: 0 1px 3px rgba(10, 13, 18, 0.1);
+  }
+
   &.highlight-card {
-    border-left: @size-xxs solid @primary-color;
-    background: @primary-50 !important;
+    border: 1px solid @primary-color;
+    background-color: @white;
   }
 
   &:last-child {
