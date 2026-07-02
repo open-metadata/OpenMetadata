@@ -228,8 +228,7 @@ public class IngestionProgressTracker {
   public void unregisterServiceListener(
       String serviceFqn, Consumer<ServiceProgressEvent> listener) {
     List<Consumer<ServiceProgressEvent>> listeners = serviceListeners.get(serviceFqn);
-    if (listeners != null) {
-      listeners.remove(listener);
+    if (listeners != null && listeners.remove(listener)) {
       activeProgressStreams.decrementAndGet();
       if (listeners.isEmpty()) {
         serviceListeners.remove(serviceFqn);

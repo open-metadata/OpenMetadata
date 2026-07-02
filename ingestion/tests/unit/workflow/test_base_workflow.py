@@ -266,13 +266,9 @@ class TestWorkflowExecuteTeardown:
     def test_success_states_map_to_pipeline_complete_progress(self):
         workflow = SimpleWorkflow(config=config)
 
+        assert workflow.terminal_progress_update_type(PipelineState.success) is ProgressUpdateType.PIPELINE_COMPLETE
         assert (
-            workflow.terminal_progress_update_type(PipelineState.success)
-            is ProgressUpdateType.PIPELINE_COMPLETE
-        )
-        assert (
-            workflow.terminal_progress_update_type(PipelineState.partialSuccess)
-            is ProgressUpdateType.PIPELINE_COMPLETE
+            workflow.terminal_progress_update_type(PipelineState.partialSuccess) is ProgressUpdateType.PIPELINE_COMPLETE
         )
 
     def test_failed_workflow_sends_terminal_error_progress(self):

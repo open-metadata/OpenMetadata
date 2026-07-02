@@ -1,9 +1,23 @@
+/*
+ *  Copyright 2025 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 package org.openmetadata.service.monitoring;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import jakarta.ws.rs.core.GenericType;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.sse.OutboundSseEvent;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseBroadcaster;
@@ -79,7 +93,12 @@ class ServiceProgressStreamerTest {
 
     @Override
     public CompletionStage<?> send(OutboundSseEvent event) {
-      data.add((String) event.getData());
+      Object payload = event.getData();
+      // Ignore data-less frames (e.g. the ProgressSseManager heartbeat comment) so a
+      // heartbeat sweep firing mid-test cannot perturb the payload assertions.
+      if (payload != null) {
+        data.add((String) payload);
+      }
       return CompletableFuture.completedFuture(null);
     }
 
@@ -100,14 +119,70 @@ class ServiceProgressStreamerTest {
       return new StubEvent(data);
     }
 
+    // Return a functional builder (not a thrower): the ProgressSseManager heartbeat builds
+    // comment events via newEventBuilder(), so throwing here would let a heartbeat sweep close
+    // the sink mid-test and make it flaky.
     @Override
     public OutboundSseEvent.Builder newEventBuilder() {
-      throw new UnsupportedOperationException();
+      return new StubBuilder();
     }
 
     @Override
     public SseBroadcaster newBroadcaster() {
       throw new UnsupportedOperationException();
+    }
+  }
+
+  static class StubBuilder implements OutboundSseEvent.Builder {
+    private Object data;
+
+    @Override
+    public OutboundSseEvent.Builder id(String id) {
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder name(String name) {
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder reconnectDelay(long milliseconds) {
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder mediaType(MediaType mediaType) {
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder comment(String comment) {
+      return this;
+    }
+
+    @Override
+    @SuppressWarnings("rawtypes")
+    public OutboundSseEvent.Builder data(Class type, Object payload) {
+      this.data = payload;
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder data(GenericType type, Object payload) {
+      this.data = payload;
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent.Builder data(Object payload) {
+      this.data = payload;
+      return this;
+    }
+
+    @Override
+    public OutboundSseEvent build() {
+      return new StubEvent(data == null ? null : data.toString());
     }
   }
 
@@ -123,8 +198,8 @@ class ServiceProgressStreamerTest {
     }
 
     @Override
-    public jakarta.ws.rs.core.MediaType getMediaType() {
-      return jakarta.ws.rs.core.MediaType.TEXT_PLAIN_TYPE;
+    public MediaType getMediaType() {
+      return MediaType.TEXT_PLAIN_TYPE;
     }
 
     @Override

@@ -31,13 +31,19 @@ public final class ServiceProgressStreamer {
 
   public static void stream(
       String serviceFqn, SseEventSink eventSink, Sse sse, IngestionProgressTracker tracker) {
-    for (ServiceProgressEvent snapshot : tracker.getActiveRunSnapshots(serviceFqn)) {
-      send(eventSink, sse, snapshot);
-    }
     Consumer<ServiceProgressEvent> listener = event -> send(eventSink, sse, event);
     tracker.registerServiceListener(serviceFqn, listener);
     Runnable onClose = () -> tracker.unregisterServiceListener(serviceFqn, listener);
-    if (!ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
+    if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
+      // Register the live listener BEFORE replaying snapshots: a terminal event arriving in
+      // this window is then delivered live rather than lost in a snapshot->register gap, which
+      // would otherwise strand the run displayed as "running" until the client reloads. A
+      // replayed snapshot may duplicate a just-delivered live event, which is harmless (the
+      // client keys by pipelineFqn and renders the latest).
+      for (ServiceProgressEvent snapshot : tracker.getActiveRunSnapshots(serviceFqn)) {
+        send(eventSink, sse, snapshot);
+      }
+    } else {
       onClose.run();
       eventSink.close();
     }
@@ -45,7 +51,14 @@ public final class ServiceProgressStreamer {
 
   private static void send(SseEventSink eventSink, Sse sse, ServiceProgressEvent event) {
     if (!eventSink.isClosed()) {
-      eventSink.send(sse.newEvent(JsonUtils.pojoToJson(event)));
+      eventSink
+          .send(sse.newEvent(JsonUtils.pojoToJson(event)))
+          .whenComplete(
+              (result, error) -> {
+                if (error != null) {
+                  ProgressSseManager.getInstance().close(eventSink);
+                }
+              });
     }
   }
 }
