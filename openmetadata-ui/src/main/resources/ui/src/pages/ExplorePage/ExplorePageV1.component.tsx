@@ -263,6 +263,7 @@ const ExplorePageV1: FC<unknown> = () => {
     navigate({
       search: Qs.stringify({
         ...parsedSearch,
+        currentPage: 1,
         showDeleted: showDeleted ? true : undefined,
       }),
     });

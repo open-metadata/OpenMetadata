@@ -13,7 +13,10 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
+import {
+  ExploreProps,
+  ExploreQuickFilterField,
+} from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -242,5 +245,42 @@ describe('ExplorePageV1', () => {
 
     expect(searchParams.get('currentPage')).toBe('3');
     expect(searchParams.get('pageSize')).toBe('25');
+  });
+
+  it('resets currentPage when show deleted changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    (useCustomLocation as jest.Mock).mockReturnValue({
+      pathname: 'pathname',
+      search: '?currentPage=3&pageSize=25',
+    });
+
+    let capturedCallback: ExploreProps['onChangeShowDeleted'] | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeShowDeleted,
+      }: {
+        onChangeShowDeleted?: ExploreProps['onChangeShowDeleted'];
+      }) => {
+        capturedCallback = onChangeShowDeleted;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.(true);
+    });
+
+    const searchParams = new URLSearchParams(
+      mockNavigate.mock.calls[0][0].search
+    );
+
+    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchParams.get('pageSize')).toBe('25');
+    expect(searchParams.get('showDeleted')).toBe('true');
   });
 });
