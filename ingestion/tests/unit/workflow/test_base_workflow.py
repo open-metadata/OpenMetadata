@@ -194,6 +194,14 @@ class TestBaseWorkflow(TestCase):
 
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
 
+    def test_source_config_with_explicit_type_preserves_generated_discriminator(self):
+        workflow = SimpleWorkflow(config=config)
+
+        source_config = workflow._source_config_with_explicit_type()
+
+        serialized = source_config.model_dump(mode="json", exclude_unset=True, exclude_none=True)
+        assert serialized["config"]["type"] == "DatabaseMetadata"
+
 
 class TestWorkflowExecuteTeardown:
     """

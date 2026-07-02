@@ -383,6 +383,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             service = self._get_ingestion_pipeline_service()
 
             if service is not None:
+                source_config = self._source_config_with_explicit_type()
                 return self.metadata.create_or_update(
                     CreateIngestionPipelineRequest(
                         name=pipeline_name,
@@ -390,8 +391,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                             id=service.id,
                             type=get_reference_type_from_service_type(self.service_type),
                         ),
-                        pipelineType=get_pipeline_type_from_source_config(self.config.source.sourceConfig),
-                        sourceConfig=self.config.source.sourceConfig,
+                        pipelineType=get_pipeline_type_from_source_config(source_config),
+                        sourceConfig=source_config,
                         airflowConfig=AirflowConfig(),
                         enableStreamableLogs=self.config.enableStreamableLogs,
                     )
@@ -402,6 +403,28 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         except Exception as exc:
             logger.error(f"Error trying to get or create the Ingestion Pipeline due to [{exc}]")
             return None
+
+    def _source_config_with_explicit_type(self) -> Any:
+        """
+        Make generated source config discriminators survive exclude_unset serialization.
+        """
+        source = getattr(self.config, "source", None)
+        source_config = getattr(source, "sourceConfig", None)
+        if source_config is None:
+            return source_config
+
+        config = getattr(source_config, "config", None)
+        if config is None:
+            return source_config
+
+        config_type = getattr(config, "type", None)
+        source_config_copy = getattr(source_config, "model_copy", None)
+        config_copy = getattr(config, "model_copy", None)
+
+        if config_type is not None and callable(source_config_copy) and callable(config_copy):
+            source_config = source_config_copy(update={"config": config_copy(update={"type": config_type})})
+
+        return source_config
 
     def _get_ingestion_pipeline_service(self) -> Optional[T]:  # noqa: UP045
         """

@@ -69,6 +69,7 @@ import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.logstorage.S3LogStorage.LogStreamListener;
@@ -291,6 +292,33 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public void prepare(IngestionPipeline ingestionPipeline, boolean update) {
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
+    validateSourceConfigHasType(ingestionPipeline);
+  }
+
+  static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
+    if (ingestionPipeline.getSourceConfig() == null
+        || ingestionPipeline.getSourceConfig().getConfig() == null) {
+      throw new BadRequestException("sourceConfig.config.type is required");
+    }
+
+    Object config = ingestionPipeline.getSourceConfig().getConfig();
+    Object type;
+    try {
+      type =
+          config instanceof Map<?, ?> configMap
+              ? configMap.get("type")
+              : JsonUtils.getMap(config).get("type");
+    } catch (IllegalArgumentException e) {
+      throw new BadRequestException("sourceConfig.config must be an object with type");
+    }
+
+    if (type instanceof String typeValue && !typeValue.isBlank()) {
+      return;
+    }
+    if (type instanceof Enum<?>) {
+      return;
+    }
+    throw new BadRequestException("sourceConfig.config.type is required");
   }
 
   protected boolean requiresRedeployment(IngestionPipeline original, IngestionPipeline updated) {

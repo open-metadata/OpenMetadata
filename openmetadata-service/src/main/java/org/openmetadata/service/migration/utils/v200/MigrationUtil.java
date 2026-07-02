@@ -100,6 +100,62 @@ public class MigrationUtil {
 
   private MigrationUtil() {}
 
+  public static void backfillMetadataSourceConfigTypes(Handle handle) {
+    boolean isMySQL = Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL());
+    String sql =
+        isMySQL
+            ? "UPDATE ingestion_pipeline_entity i "
+                + "JOIN entity_relationship er ON er.toId = i.id "
+                + "AND er.toEntity = 'ingestionPipeline' "
+                + "AND er.relation = 0 "
+                + "AND er.deleted = false "
+                + "JOIN ("
+                + "SELECT 'apiService' AS fromEntity, 'ApiMetadata' AS configType "
+                + "UNION ALL SELECT 'dashboardService', 'DashboardMetadata' "
+                + "UNION ALL SELECT 'databaseService', 'DatabaseMetadata' "
+                + "UNION ALL SELECT 'driveService', 'DriveMetadata' "
+                + "UNION ALL SELECT 'mcpService', 'McpMetadata' "
+                + "UNION ALL SELECT 'messagingService', 'MessagingMetadata' "
+                + "UNION ALL SELECT 'mlmodelService', 'MlModelMetadata' "
+                + "UNION ALL SELECT 'pipelineService', 'PipelineMetadata' "
+                + "UNION ALL SELECT 'searchService', 'SearchMetadata' "
+                + "UNION ALL SELECT 'securityService', 'SecurityMetadata' "
+                + "UNION ALL SELECT 'storageService', 'StorageMetadata'"
+                + ") metadata_config_type ON metadata_config_type.fromEntity = er.fromEntity "
+                + "SET i.json = JSON_SET("
+                + "i.json, '$.sourceConfig.config.type', metadata_config_type.configType) "
+                + "WHERE i.json ->> '$.pipelineType' = 'metadata' "
+                + "AND i.json ->> '$.sourceConfig.config.type' IS NULL "
+                + "AND JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"
+            : "UPDATE ingestion_pipeline_entity i "
+                + "SET json = jsonb_set(i.json::jsonb, '{sourceConfig,config,type}', "
+                + "to_jsonb(metadata_config_type.config_type::text), true)::json "
+                + "FROM entity_relationship er "
+                + "JOIN (VALUES "
+                + "('apiService', 'ApiMetadata'), "
+                + "('dashboardService', 'DashboardMetadata'), "
+                + "('databaseService', 'DatabaseMetadata'), "
+                + "('driveService', 'DriveMetadata'), "
+                + "('mcpService', 'McpMetadata'), "
+                + "('messagingService', 'MessagingMetadata'), "
+                + "('mlmodelService', 'MlModelMetadata'), "
+                + "('pipelineService', 'PipelineMetadata'), "
+                + "('searchService', 'SearchMetadata'), "
+                + "('securityService', 'SecurityMetadata'), "
+                + "('storageService', 'StorageMetadata')"
+                + ") AS metadata_config_type(from_entity, config_type) "
+                + "ON metadata_config_type.from_entity = er.fromentity "
+                + "WHERE er.toid = i.id "
+                + "AND er.toentity = 'ingestionPipeline' "
+                + "AND er.relation = 0 "
+                + "AND er.deleted = false "
+                + "AND i.json ->> 'pipelineType' = 'metadata' "
+                + "AND i.json #>> '{sourceConfig,config,type}' IS NULL "
+                + "AND json_typeof(i.json #> '{sourceConfig,config}') = 'object'";
+    int count = handle.execute(sql);
+    LOG.info("Backfilled metadata source config types for {} ingestion pipelines", count);
+  }
+
   /**
    * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
    * upgrades. Role→Policy attachments are modelled as {@code Relationship.HAS} edges in {@code
