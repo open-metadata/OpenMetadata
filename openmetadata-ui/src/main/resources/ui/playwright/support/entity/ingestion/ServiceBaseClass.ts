@@ -124,16 +124,11 @@ class ServiceBaseClass {
 
       // Using data-key which relies on `name` which is more reliable data in AUTs
       // instead of data-testid which depends on the `displayName` which can change
-      await page
-        .locator(
-          `[data-key="${this.ingestionRunner.name}"]`
-        )
-        .waitFor({ state: 'visible' });
-      await page
-        .locator(
-          `[data-key="${this.ingestionRunner.name}"]`
-        )
-        .click();
+      const runnerOption = page.locator(
+        `[data-key="${this.ingestionRunner.name}"]`
+      );
+      await runnerOption.waitFor({ state: 'visible' });
+      await runnerOption.click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
