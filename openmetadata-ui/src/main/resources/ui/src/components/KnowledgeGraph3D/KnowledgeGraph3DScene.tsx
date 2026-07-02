@@ -97,6 +97,9 @@ const linkWidthFor = (
   highlight: HighlightSet | null
 ): number => {
   let width = link.kind === 'ontology' ? 0.8 : 1.2;
+  if (link.derived) {
+    width = 1.7;
+  }
   if (highlight && highlight.links.has(link)) {
     width = 2.4;
   }
@@ -110,8 +113,11 @@ const linkParticlesFor = (
   reducedMotion: boolean
 ): number => {
   const active = Boolean(highlight && highlight.links.has(link));
+  // Derived ontology edges always animate so they read as semantic (not
+  // technical) links; other ontology edges animate only while highlighted.
+  const animated = link.derived || (link.kind === 'ontology' && active);
 
-  return !reducedMotion && link.kind === 'ontology' && active ? 2 : 0;
+  return !reducedMotion && animated ? 2 : 0;
 };
 
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({

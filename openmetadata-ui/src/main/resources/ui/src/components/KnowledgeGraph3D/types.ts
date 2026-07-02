@@ -63,6 +63,28 @@ export interface GraphNode3D {
   description?: string;
   /** Tables only: true when at least one ontology (glossary) mapping exists. */
   mapped?: boolean;
+  /** Ontology mode: the primary glossary term laid over this asset node. */
+  term?: string;
+  /** Ontology mode: how many glossary terms this asset carries (drives "+N"). */
+  termCount?: number;
+}
+
+/** The kind of glossary relationship a derived ontology edge was inferred from. */
+export type DerivedRelationKind = 'same' | 'siblings' | 'subtype' | 'related';
+
+/**
+ * Structured descriptor of a derived edge's relationship, carrying the glossary
+ * term names so the display string can be built with i18n (the term names are
+ * data; only the connective words are translated).
+ */
+export interface DerivedRelation {
+  kind: DerivedRelationKind;
+  /** Shared term ('same') or shared parent term ('siblings'). */
+  term?: string;
+  /** The A-side term for 'subtype'/'related'. */
+  from?: string;
+  /** The B-side term for 'subtype'/'related'. */
+  to?: string;
 }
 
 export interface GraphLink3D {
@@ -71,6 +93,19 @@ export interface GraphLink3D {
   label: string;
   kind: LinkKind;
   levels: Level[];
+  /**
+   * Ontology mode: true when this asset↔asset edge is inferred by overlaying
+   * the glossary terms, not a direct technical/RDF relation.
+   */
+  derived?: boolean;
+  /** Ontology mode: structured relationship, formatted for display with i18n. */
+  relation?: DerivedRelation;
+  /**
+   * Ontology mode: the derivation chain as display names, endpoints first and
+   * last (assets) with the glossary terms in between — e.g.
+   * `[savings_account, Savings Account, Accounts, Checking Account, checking_account]`.
+   */
+  path?: string[];
 }
 
 export interface Graph3DData {

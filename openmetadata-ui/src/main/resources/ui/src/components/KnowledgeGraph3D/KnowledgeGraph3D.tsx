@@ -48,6 +48,7 @@ import KnowledgeGraph3DControls from './KnowledgeGraph3DControls';
 import KnowledgeGraph3DEdgePanel from './KnowledgeGraph3DEdgePanel';
 import KnowledgeGraph3DLegend from './KnowledgeGraph3DLegend';
 import KnowledgeGraph3DPanel, { TYPE_LABEL_KEY } from './KnowledgeGraph3DPanel';
+import { formatDerivedRelation, ontologyView } from './ontologyView';
 import {
   adaptRdfGraph,
   enrichWithEntityFields,
@@ -102,7 +103,10 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     [entityType, t]
   );
   const view = useMemo(
-    () => viewGraph(adapted, level, lens),
+    () =>
+      lens === 'ontology'
+        ? ontologyView(adapted, level)
+        : viewGraph(adapted, level, lens),
     [adapted, level, lens]
   );
   const nodesById = useMemo(
@@ -138,7 +142,9 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
     NonNullable<KnowledgeGraph3DSceneProps['getLinkTooltip']>
   >(
     (link) =>
-      RELATION_LABEL_KEYS[link.label]
+      link.derived && link.relation
+        ? formatDerivedRelation(t, link.relation)
+        : RELATION_LABEL_KEYS[link.label]
         ? t(RELATION_LABEL_KEYS[link.label])
         : link.label,
     [t]
@@ -151,17 +157,44 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   }, [location.search]);
 
   const caption = useMemo(() => {
-    const total = view.nodes.length;
-    const description = t(`message.knowledge-graph-level-${level}-description`);
+    const truncated = Boolean(rawData?.truncated);
+    if (lens === 'ontology') {
+      return {
+        scope: t('label.ontology-applied'),
+        summary: t('message.knowledge-graph-ontology-summary', {
+          assets: view.nodes.length,
+          relationships: view.links.length,
+        }),
+        description: t('message.knowledge-graph-ontology-description'),
+        truncated,
+      };
+    }
+    const levelKey =
+      level === 'asset'
+        ? 'data-asset'
+        : level === 'product'
+        ? 'data-product'
+        : 'domain';
     const lensSuffix =
       lens === 'all' ? '' : t(`message.knowledge-graph-lens-${lens}-suffix`);
 
     return {
-      total,
-      description: description + lensSuffix,
-      truncated: Boolean(rawData?.truncated),
+      scope: `${t(`label.${levelKey}`)} ${t('label.level')}`,
+      summary: t('message.knowledge-graph-node-count', {
+        count: view.nodes.length,
+      }),
+      description:
+        t(`message.knowledge-graph-level-${level}-description`) + lensSuffix,
+      truncated,
     };
-  }, [view.nodes.length, level, lens, t, rawData?.truncated]);
+  }, [
+    view.nodes.length,
+    view.links.length,
+    level,
+    lens,
+    t,
+    rawData?.truncated,
+  ]);
 
   useEffect(() => {
     if (!entity?.id) {
@@ -313,23 +346,12 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
       <div
         className="knowledge-graph-3d-caption"
         data-testid="knowledge-graph-3d-caption">
-        <span className="knowledge-graph-3d-scope">
-          {t(
-            `label.${
-              level === 'asset'
-                ? 'data-asset'
-                : level === 'product'
-                ? 'data-product'
-                : 'domain'
-            }`
-          )}{' '}
-          {t('label.level')}
-        </span>
+        <span className="knowledge-graph-3d-scope">{caption.scope}</span>
         <span className="knowledge-graph-3d-caption-sep">·</span>
         <span
           className="knowledge-graph-3d-caption-count"
           data-testid="knowledge-graph-3d-node-count">
-          {t('message.knowledge-graph-node-count', { count: caption.total })}
+          {caption.summary}
         </span>
         <span className="knowledge-graph-3d-caption-sep">·</span>
         <span
