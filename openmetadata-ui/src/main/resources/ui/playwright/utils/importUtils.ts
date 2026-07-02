@@ -1210,7 +1210,10 @@ export const fillRowDetails = async (
   isBulkEdit?: boolean
 ) => {
   if (!isFirstCellClick) {
-    await page.locator('.rdg-cell-name').last().click();
+    // Click the active cell (cursor is on the new row's first column after add-row-btn)
+    // to restore keyboard focus before selectActiveRowCellByColumn navigates to 'name'.
+    // eslint-disable-next-line playwright/no-force-option -- RDG fixed-column overlay can intercept clicks on the active cell.
+    await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
   }
 
   await selectActiveRowCellByColumn(page, 'name');
@@ -1528,6 +1531,10 @@ const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
 
   const currentColIndex = await activeCell.getAttribute('aria-colindex');
+
+  if (currentColIndex === '1') {
+    return;
+  }
 
   await page.keyboard.press('ArrowLeft', { delay: 100 });
 
