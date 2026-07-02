@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import {
-  MenuItem,
-  ToggleButton,
-  ToggleButtonGroup,
+  ButtonGroup,
+  ButtonGroupItem,
+  Dropdown,
   Tooltip,
-  useTheme,
-} from '@mui/material';
+} from '@openmetadata/ui-core-components';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
@@ -34,20 +34,16 @@ import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { centerNodePosition } from '../../../../utils/EntityLineageLayoutUtils';
-import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
 
 const LineageControlButtons: FC<{
   onToggleMiniMap: () => void;
   miniMapVisible?: boolean;
 }> = ({ onToggleMiniMap, miniMapVisible = false }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
-    useState<null | HTMLElement>(null);
-
   const { reactFlowInstance, redraw } = useLineageProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
+  const [fitViewOpen, setFitViewOpen] = useState(false);
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -75,13 +71,10 @@ const LineageControlButtons: FC<{
     const currentZoom = reactFlowInstance?.getZoom() ?? 1;
     reactFlowInstance?.fitView({ padding: 0.2 });
     reactFlowInstance?.zoomTo(currentZoom);
-
-    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
     redraw?.();
-    setLineageViewOptionsAnchorEl(null);
   }, [redraw]);
 
   const handleRefocusSelected = useCallback(() => {
@@ -90,129 +83,144 @@ const LineageControlButtons: FC<{
       .find((el) => el.selected);
 
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
   const handleRefocusHome = useCallback(() => {
     const selectedElement = reactFlowInstance
       ?.getNodes()
       .find((el) => el.data.isRootNode);
+
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
-    setLineageViewOptionsAnchorEl(null);
   }, [reactFlowInstance]);
 
+  const handleMenuAction = useCallback(
+    (key: Key) => {
+      switch (key) {
+        case 'fit':
+          handleFitView();
+
+          break;
+        case 'refocus-selected':
+          handleRefocusSelected();
+
+          break;
+        case 'rearrange':
+          handleRearrange();
+
+          break;
+        case 'refocus-home':
+          handleRefocusHome();
+
+          break;
+      }
+    },
+    [handleFitView, handleRefocusSelected, handleRearrange, handleRefocusHome]
+  );
+
   return (
-    <ToggleButtonGroup
-      exclusive
-      color="primary"
-      sx={{
-        /* Shadows/shadow-xs */
-        boxShadow: theme.shadows[1],
-        background: theme.palette.background.paper,
-
-        svg: {
-          height: theme.spacing(4),
-          width: theme.spacing(4),
-        },
-      }}>
-      <Tooltip
-        arrow
-        placement="top"
-        title={t('label.lineage-view-option-plural')}>
-        <ToggleButton
+    <ButtonGroup
+      aria-label={t('label.lineage-controls')}
+      selectedKeys={
+        new Set([
+          ...(miniMapVisible ? ['mind-map'] : []),
+          ...(isFullscreen ? ['full-screen'] : []),
+        ])
+      }
+      selectionMode="multiple"
+      size="sm"
+      onSelectionChange={() => void 0}>
+      <Dropdown.Root isOpen={fitViewOpen} onOpenChange={setFitViewOpen}>
+        <ButtonGroupItem
+          aria-label={t('label.lineage-view-option-plural')}
           data-testid="fit-screen"
-          value="fit-view"
-          onClick={(event) =>
-            setLineageViewOptionsAnchorEl(event.currentTarget)
-          }>
-          <FitViewOptionsIcon />
-        </ToggleButton>
-      </Tooltip>
+          iconLeading={FitViewOptionsIcon as FC<{ className?: string }>}
+          id="fit-view"
+          onPress={() => setFitViewOpen(true)}
+        />
+        <Dropdown.Popover placement="top right">
+          <Dropdown.Menu
+            aria-label={t('label.lineage-view-option-plural')}
+            onAction={handleMenuAction}>
+            <Dropdown.Item
+              icon={FitScreenIcon as FC<{ className?: string }>}
+              id="fit"
+              label={t('label.fit-to-screen')}
+            />
+            <Dropdown.Item
+              icon={FitViewOptionsIcon as FC<{ className?: string }>}
+              id="refocus-selected"
+              label={t('label.refocused-to-selected')}
+            />
+            <Dropdown.Item
+              icon={RearrangeNodesIcon as FC<{ className?: string }>}
+              id="rearrange"
+              label={t('label.rearrange-nodes')}
+            />
+            <Dropdown.Item
+              icon={HomeIcon as FC<{ className?: string }>}
+              id="refocus-home"
+              label={t('label.refocused-to-home')}
+            />
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
 
-      <StyledMenu
-        anchorEl={lineageViewOptionsAnchorEl}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        id="lineage-view-options-menu"
-        open={Boolean(lineageViewOptionsAnchorEl)}
-        slotProps={{
-          paper: {
-            sx: {
-              marginTop: '0',
-            },
-          },
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
-        }}
-        onClose={() => setLineageViewOptionsAnchorEl(null)}>
-        <MenuItem onClick={handleFitView}>
-          <FitScreenIcon />
-          {t('label.fit-to-screen')}
-        </MenuItem>
-        <MenuItem onClick={handleRefocusSelected}>
-          <FitViewOptionsIcon />
-          {t('label.refocused-to-selected')}
-        </MenuItem>
-        <MenuItem onClick={handleRearrange}>
-          <RearrangeNodesIcon />
-          {t('label.rearrange-nodes')}
-        </MenuItem>
-        <MenuItem onClick={handleRefocusHome}>
-          <HomeIcon />
-          {t('label.refocused-to-home')}
-        </MenuItem>
-      </StyledMenu>
-
-      <Tooltip arrow placement="top" title={t('label.mind-map')}>
-        <ToggleButton
+      <Tooltip placement="top" title={t('label.mind-map')}>
+        <ButtonGroupItem
+          aria-label={t('label.mind-map')}
+          className="tw:selected:bg-brand-primary tw:[&[data-selected]>svg]:text-fg-brand-primary"
           data-testid="toggle-mind-map"
-          selected={miniMapVisible}
-          value="mind-map"
-          onClick={onToggleMiniMap}>
-          <MapIcon />
-        </ToggleButton>
+          iconLeading={MapIcon as FC<{ className?: string }>}
+          id="mind-map"
+          onPress={onToggleMiniMap}
+        />
       </Tooltip>
 
-      <Tooltip arrow placement="top" title={t('label.zoom-in')}>
-        <ToggleButton
+      <Tooltip placement="top" title={t('label.zoom-in')}>
+        <ButtonGroupItem
+          aria-label={t('label.zoom-in')}
           data-testid="zoom-in"
-          value="zoom-in"
-          onClick={handleZoomIn}>
-          <ZoomInIcon />
-        </ToggleButton>
+          iconLeading={ZoomInIcon as FC<{ className?: string }>}
+          id="zoom-in"
+          onPress={handleZoomIn}
+        />
       </Tooltip>
 
-      <Tooltip arrow placement="top" title={t('label.zoom-out')}>
-        <ToggleButton
+      <Tooltip placement="top" title={t('label.zoom-out')}>
+        <ButtonGroupItem
+          aria-label={t('label.zoom-out')}
           data-testid="zoom-out"
-          value="zoom-out"
-          onClick={handleZoomOut}>
-          <ZoomOutIcon />
-        </ToggleButton>
+          iconLeading={ZoomOutIcon as FC<{ className?: string }>}
+          id="zoom-out"
+          onPress={handleZoomOut}
+        />
       </Tooltip>
 
       <Tooltip
-        arrow
         placement="top"
         title={
           isFullscreen
             ? t('label.exit-full-screen')
             : t('label.full-screen-view')
         }>
-        <ToggleButton
+        <ButtonGroupItem
+          aria-label={
+            isFullscreen
+              ? t('label.exit-full-screen')
+              : t('label.full-screen-view')
+          }
+          className="tw:selected:bg-brand-primary tw:[&[data-selected]>svg]:text-fg-brand-primary"
           data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-          selected={isFullscreen}
-          size="large"
-          value="full-screen"
-          onClick={toggleFullscreenView}>
-          {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
-        </ToggleButton>
+          iconLeading={
+            (isFullscreen ? ExitFullScreenIcon : FullscreenIcon) as FC<{
+              className?: string;
+            }>
+          }
+          id="full-screen"
+          onPress={toggleFullscreenView}
+        />
       </Tooltip>
-    </ToggleButtonGroup>
+    </ButtonGroup>
   );
 };
 

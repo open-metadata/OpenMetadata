@@ -300,14 +300,12 @@ test.describe('Impact Analysis', () => {
 
   test('validate upstream/ downstream counts', async ({ page }) => {
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 1' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 1' })).toBeVisible();
   });
 
   test('Verify impact analysis requests include entityType and explicit depth bounds', async ({
@@ -363,7 +361,7 @@ test.describe('Impact Analysis', () => {
     }
 
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -400,7 +398,7 @@ test.describe('Impact Analysis', () => {
 
   test('Verify Upstream connections', async ({ page }) => {
     // Verify Dashboard is visible in Impact Analysis for Upstream
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -422,7 +420,7 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     // Verify Table is visible in Impact Analysis for Upstream of Topic
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
     await expectImpactAnalysisTextVisible(
       page,
@@ -543,14 +541,12 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 5' })
+      page.getByRole('radio', { name: 'Downstream 5' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
 
-    await expect(
-      page.getByRole('button', { name: 'Upstream 0' })
-    ).toBeVisible();
+    await expect(page.getByRole('radio', { name: 'Upstream 0' })).toBeVisible();
     await expect
       .poll(() => paginationRequests.length, { timeout: 5000 })
       .toBe(paginationRequestCountBeforeColumnMode);
@@ -584,13 +580,11 @@ test.describe('Impact Analysis', () => {
     await waitForAllLoadersToDisappear(page);
 
     await expect(
-      page.getByRole('button', { name: 'Downstream 0' })
+      page.getByRole('radio', { name: 'Downstream 0' })
     ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
-    await expect(
-      page.getByRole('button', { name: 'Upstream 5' })
-    ).toBeVisible();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
+    await expect(page.getByRole('radio', { name: 'Upstream 5' })).toBeVisible();
   });
 
   test('Verify column mode switches direction with directional lineage requests', async ({
@@ -635,7 +629,7 @@ test.describe('Impact Analysis', () => {
         downstreamDepth: 0,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -740,7 +734,7 @@ test.describe('Impact Analysis', () => {
         fqn: table2.entityResponseData.fullyQualifiedName,
       }
     );
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await upstreamColumnResponse;
     await waitForAllLoadersToDisappear(page);
 
@@ -1136,10 +1130,10 @@ test.describe('Impact Analysis', () => {
 
     const downstreamCount = await page.locator('[data-row-key]').count();
 
-    await page.getByRole('button', { name: 'Upstream' }).click();
+    await page.getByRole('radio', { name: 'Upstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
-    await page.getByRole('button', { name: 'Downstream' }).click();
+    await page.getByRole('radio', { name: 'Downstream' }).click();
     await waitForAllLoadersToDisappear(page);
 
     const finalCount = await page.locator('[data-row-key]').count();
