@@ -221,19 +221,29 @@ public class IngestionProgressTracker {
   }
 
   public void registerServiceListener(String serviceFqn, Consumer<ServiceProgressEvent> listener) {
-    serviceListeners.computeIfAbsent(serviceFqn, k -> new CopyOnWriteArrayList<>()).add(listener);
+    serviceListeners.compute(
+        serviceFqn,
+        (key, listeners) -> {
+          List<Consumer<ServiceProgressEvent>> current =
+              listeners == null ? new CopyOnWriteArrayList<>() : listeners;
+          current.add(listener);
+          return current;
+        });
     activeProgressStreams.incrementAndGet();
   }
 
   public void unregisterServiceListener(
       String serviceFqn, Consumer<ServiceProgressEvent> listener) {
-    List<Consumer<ServiceProgressEvent>> listeners = serviceListeners.get(serviceFqn);
-    if (listeners != null && listeners.remove(listener)) {
-      activeProgressStreams.decrementAndGet();
-      if (listeners.isEmpty()) {
-        serviceListeners.remove(serviceFqn);
-      }
-    }
+    serviceListeners.compute(
+        serviceFqn,
+        (key, listeners) -> {
+          List<Consumer<ServiceProgressEvent>> remaining = listeners;
+          if (listeners != null && listeners.remove(listener)) {
+            activeProgressStreams.decrementAndGet();
+            remaining = listeners.isEmpty() ? null : listeners;
+          }
+          return remaining;
+        });
   }
 
   public List<ServiceProgressEvent> getActiveRunSnapshots(String serviceFqn) {

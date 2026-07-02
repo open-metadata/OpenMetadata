@@ -1281,11 +1281,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
                 (result, error) -> ProgressSseManager.getInstance().close(eventSink));
           }
         };
-    progressTracker.registerProgressListener(pipelineFQN, runId, listener);
     Runnable onClose =
         () -> progressTracker.unregisterProgressListener(pipelineFQN, runId, listener);
-    if (!ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
-      onClose.run();
+    if (ProgressSseManager.getInstance().register(eventSink, sse, onClose)) {
+      progressTracker.registerProgressListener(pipelineFQN, runId, listener);
+    } else {
       eventSink.close();
     }
   }

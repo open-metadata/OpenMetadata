@@ -20,6 +20,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,6 +44,7 @@ public final class ProgressSseManager {
 
   private final Map<Long, Connection> connections = new ConcurrentHashMap<>();
   private final AtomicLong connectionIds = new AtomicLong();
+  private final AtomicInteger activeCount = new AtomicInteger();
   private final ScheduledExecutorService scheduler;
 
   private ProgressSseManager() {
@@ -60,9 +62,11 @@ public final class ProgressSseManager {
    * in which case the caller is responsible for closing the sink.
    */
   public boolean register(SseEventSink eventSink, Sse sse, Runnable onClose) {
-    boolean accepted = connections.size() < MAX_ACTIVE_STREAMS;
+    boolean accepted = activeCount.incrementAndGet() <= MAX_ACTIVE_STREAMS;
     if (accepted) {
       connections.put(connectionIds.incrementAndGet(), new Connection(eventSink, sse, onClose));
+    } else {
+      activeCount.decrementAndGet();
     }
     return accepted;
   }
@@ -118,6 +122,7 @@ public final class ProgressSseManager {
   private void cleanup(long id) {
     Connection connection = connections.remove(id);
     if (connection != null) {
+      activeCount.decrementAndGet();
       connection.onClose().run();
       if (!connection.eventSink().isClosed()) {
         connection.eventSink().close();

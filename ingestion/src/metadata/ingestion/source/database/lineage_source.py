@@ -365,7 +365,9 @@ class LineageSource(QueryParserSource, ABC):
         connection_type = str(self.service_connection.type.value)
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
 
-        self.progress.seed_scope_total("Queries", "run", self.source_config.resultLimit)  # pyright: ignore[reportOptionalMemberAccess, reportArgumentType, reportAttributeAccessIssue]
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
+        if result_limit is not None:
+            self.progress.seed_scope_total("Queries", "run", result_limit)
         produced = 0
 
         def producer_fn():
