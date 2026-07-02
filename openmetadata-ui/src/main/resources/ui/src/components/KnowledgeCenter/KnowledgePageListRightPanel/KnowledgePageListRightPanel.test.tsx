@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    render,
-    screen,
-    waitForElementToBeRemoved,
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitForElementToBeRemoved,
 } from '@testing-library/react';
 
 import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
@@ -23,11 +23,11 @@ import { MemoryRouter } from 'react-router-dom';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';
 import KnowledgePageListRightPanel, {
-    KnowledgePageListRightPanelProps,
+  KnowledgePageListRightPanelProps,
 } from './KnowledgePageListRightPanel';
 import {
-    MOCK_KNOWLEDGE_CENTER_TAG,
-    QUICK_LINK_MOCK_DATA,
+  MOCK_KNOWLEDGE_CENTER_TAG,
+  QUICK_LINK_MOCK_DATA,
 } from './KnowledgePageListRightPanel.mock';
 
 const mockAdd = jest.fn();

@@ -58,7 +58,10 @@ const BookMarkWidget = ({
     }
   };
 
-  const titleIcon = useMemo(() => <Star01 className='tw:text-quaternary' height={16} width={16} />, []);
+  const titleIcon = useMemo(
+    () => <Star01 className="tw:text-quaternary" height={16} width={16} />,
+    []
+  );
 
   useEffect(() => {
     fetchBookMarks();
