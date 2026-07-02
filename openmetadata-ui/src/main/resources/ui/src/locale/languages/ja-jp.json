@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "承認または却下できるのはレビュアーのみです",
     "only-show-columns-with-lineage": "リネージを持つカラムのみを表示",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "この操作を実行する権限がありません。管理者にお問い合わせください。",
     "optional-configuration-update-description-dbt": "dbt から説明文を更新するかどうかのオプション設定です",
     "optional-custom-error": "検証が失敗したときに表示される任意のカスタムエラーメッセージ",
     "optional-markdown-content": "オプション：リソースに直接埋め込むマークダウンコンテンツを追加",

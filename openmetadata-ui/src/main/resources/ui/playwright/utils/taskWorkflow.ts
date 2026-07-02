@@ -384,7 +384,11 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
   const taskCard = getTaskCard(page, task);
   logTaskDebug('openTaskDetails:waitingForCard', task.taskId);
-  await expect(taskCard).toBeVisible({ timeout: 15000 });
+  // The activity-feed UI re-fetches its list after the task is created via
+  // API; under Basic-project parallelism the refresh can lag past 15s and
+  // the card never appears within the default timeout. 45s gives the feed
+  // enough time to propagate without slowing healthy runs.
+  await expect(taskCard).toBeVisible({ timeout: 45000 });
   logTaskDebug('openTaskDetails:click', task.taskId);
   await taskCard.click();
   await expect(page.locator(TASK_TAB_SELECTOR)).toBeVisible();

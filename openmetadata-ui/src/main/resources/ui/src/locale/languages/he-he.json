@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "רק בודקים יכולים לאשר או לדחות",
     "only-show-columns-with-lineage": "הצג רק עמודות עם Lineage",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "אין לך הרשאות לבצע פעולה זו. אנא פנה אל מנהל המערכת.",
     "optional-configuration-update-description-dbt": "הגדרת אופציונלית לעדכון התיאור מ-dbT או לא",
     "optional-custom-error": "הודעת שגיאה מותאמת אישית אופציונלית המוצגת כאשר האימות נכשל",
     "optional-markdown-content": "אופציונלי: הוסף תוכן markdown להטמעה ישירות במשאב",
