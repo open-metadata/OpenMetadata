@@ -86,7 +86,11 @@ const IncidentTimeChartWidget = ({
   }, [chartFilter, incidentMetricType]);
 
   if (isChartLoading) {
-    return <Skeleton height={120} width="100%" />;
+    return (
+      <Card className="custom-chart-background">
+        <Skeleton height={120} width="100%" />
+      </Card>
+    );
   }
 
   return (

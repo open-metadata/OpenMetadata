@@ -513,7 +513,7 @@ export const useIncidentManagerListPage = ({
     [setTestCaseListData]
   );
 
-  const searchTestCases = async (searchValue = WILD_CARD_CHAR) => {
+  const searchTestCases = useCallback(async (searchValue = WILD_CARD_CHAR) => {
     // Encode the search value to handle special characters like #, %, $, etc.
     // Preserve wildcard character to maintain default search behavior
     const encodedSearchValue: string =
@@ -542,7 +542,7 @@ export const useIncidentManagerListPage = ({
     } catch {
       return [];
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (
@@ -577,10 +577,13 @@ export const useIncidentManagerListPage = ({
     []
   );
 
-  const handleAssigneeOwnerChange = (owners: EntityReference[] = []) => {
-    setAssigneeOwnerRefs(owners);
-    updateFilters({ assignee: owners[0]?.name });
-  };
+  const handleAssigneeOwnerChange = useCallback(
+    (owners: EntityReference[] = []) => {
+      setAssigneeOwnerRefs(owners);
+      updateFilters({ assignee: owners[0]?.name });
+    },
+    [updateFilters]
+  );
 
   // On a shared/refreshed link (?assignee=foo) the picker state starts empty.
   // Since the list is filtered by that assignee, each loaded incident carries
@@ -603,107 +606,126 @@ export const useIncidentManagerListPage = ({
     return match ? [match] : [];
   }, [assigneeOwnerRefs, filters.assignee, testCaseListData.data]);
 
-  const fetchTestCaseFilterOptions = async (query = WILD_CARD_CHAR) => {
-    setIsTestCaseOptionsLoading(true);
-    try {
-      const results = await searchTestCases(query);
-      setTestCaseFilterOptions(
-        results
-          .filter((result) => Boolean(result.value))
-          .map((result) => ({
-            value: result.value as string,
-            label: result.label,
-          }))
-      );
-    } finally {
-      setIsTestCaseOptionsLoading(false);
-    }
-  };
+  const fetchTestCaseFilterOptions = useCallback(
+    async (query = WILD_CARD_CHAR) => {
+      setIsTestCaseOptionsLoading(true);
+      try {
+        const results = await searchTestCases(query);
+        setTestCaseFilterOptions(
+          results
+            .filter((result) => Boolean(result.value))
+            .map((result) => ({
+              value: result.value as string,
+              label: result.label,
+            }))
+        );
+      } finally {
+        setIsTestCaseOptionsLoading(false);
+      }
+    },
+    [searchTestCases]
+  );
 
   // Filter descriptors consumed by the AI-mode FilterBar. Migrated one at a time;
-  // the OSS renderer keeps its own antd filter bar.
-  const filterDescriptors: FilterDescriptor[] = [
-    {
-      key: 'testCaseFQN',
-      paramKey: 'testCaseFQN',
-      label: t('label.test-case'),
-      controlType: 'select',
-      searchable: true,
-      value: filters.testCaseFQN,
-      options: testCaseFilterOptions,
-      isLoading: isTestCaseOptionsLoading,
-      onGetInitialOptions: () => {
-        fetchTestCaseFilterOptions();
+  // the OSS renderer keeps its own antd filter bar. Memoized (with useCallback'd
+  // handlers) so the descriptor array stays referentially stable for the renderer.
+  const filterDescriptors = useMemo<FilterDescriptor[]>(
+    () => [
+      {
+        key: 'testCaseFQN',
+        paramKey: 'testCaseFQN',
+        label: t('label.test-case'),
+        controlType: 'select',
+        searchable: true,
+        value: filters.testCaseFQN,
+        options: testCaseFilterOptions,
+        isLoading: isTestCaseOptionsLoading,
+        onGetInitialOptions: () => {
+          fetchTestCaseFilterOptions();
+        },
+        onSearch: (query: string) => {
+          fetchTestCaseFilterOptions(query);
+        },
+        onChange: (value) =>
+          updateFilters({ testCaseFQN: value as string | undefined }),
       },
-      onSearch: (query: string) => {
-        fetchTestCaseFilterOptions(query);
+      {
+        key: 'assignee',
+        paramKey: 'assignee',
+        label: t('label.assignee'),
+        controlType: 'user',
+        searchable: false,
+        value: filters.assignee,
+        options: [],
+        isLoading: false,
+        onGetInitialOptions: noop,
+        onChange: noop,
+        selectedOwners: assigneeOwners,
+        onOwnerChange: handleAssigneeOwnerChange,
       },
-      onChange: (value) =>
-        updateFilters({ testCaseFQN: value as string | undefined }),
-    },
-    {
-      key: 'assignee',
-      paramKey: 'assignee',
-      label: t('label.assignee'),
-      controlType: 'user',
-      searchable: false,
-      value: filters.assignee,
-      options: [],
-      isLoading: false,
-      onGetInitialOptions: noop,
-      onChange: noop,
-      selectedOwners: assigneeOwners,
-      onOwnerChange: handleAssigneeOwnerChange,
-    },
-    {
-      key: 'testCaseResolutionStatusType',
-      paramKey: 'testCaseResolutionStatusType',
-      label: t('label.status'),
-      controlType: 'select',
-      searchable: false,
-      value: filters.testCaseResolutionStatusType,
-      options: STATUS_FILTER_OPTIONS,
-      isLoading: false,
-      onGetInitialOptions: noop,
-      onChange: (value) =>
-        updateFilters({
-          testCaseResolutionStatusType: value as
-            | TestCaseResolutionStatusTypes
-            | undefined,
-        }),
-    },
-    {
-      key: 'dateField',
-      paramKey: 'dateField',
-      label: t('label.date-filter'),
-      controlType: 'select',
-      searchable: false,
-      value: selectedDateFilterKey,
-      options: dateFilterOptions.map((option) => ({
-        label: option.name,
-        value: option.value,
-      })),
-      isLoading: false,
-      onGetInitialOptions: noop,
-      onChange: (value) =>
-        handleDateFieldChange((value as string) ?? 'timestamp'),
-    },
-    {
-      key: 'dateRange',
-      paramKey: 'startTs',
-      label: t('label.date-range'),
-      controlType: 'date',
-      searchable: false,
-      value: { startTs: filters.startTs, endTs: filters.endTs },
-      options: [],
-      isLoading: false,
-      onGetInitialOptions: noop,
-      onChange: (value) => {
-        const range = value as FilterDateValue | undefined;
-        updateFilters({ startTs: range?.startTs, endTs: range?.endTs });
+      {
+        key: 'testCaseResolutionStatusType',
+        paramKey: 'testCaseResolutionStatusType',
+        label: t('label.status'),
+        controlType: 'select',
+        searchable: false,
+        value: filters.testCaseResolutionStatusType,
+        options: STATUS_FILTER_OPTIONS,
+        isLoading: false,
+        onGetInitialOptions: noop,
+        onChange: (value) =>
+          updateFilters({
+            testCaseResolutionStatusType: value as
+              | TestCaseResolutionStatusTypes
+              | undefined,
+          }),
       },
-    },
-  ];
+      {
+        key: 'dateField',
+        paramKey: 'dateField',
+        label: t('label.date-filter'),
+        controlType: 'select',
+        searchable: false,
+        value: selectedDateFilterKey,
+        options: dateFilterOptions.map((option) => ({
+          label: option.name,
+          value: option.value,
+        })),
+        isLoading: false,
+        onGetInitialOptions: noop,
+        onChange: (value) =>
+          handleDateFieldChange((value as string) ?? 'timestamp'),
+      },
+      {
+        key: 'dateRange',
+        paramKey: 'startTs',
+        label: t('label.date-range'),
+        controlType: 'date',
+        searchable: false,
+        value: { startTs: filters.startTs, endTs: filters.endTs },
+        options: [],
+        isLoading: false,
+        onGetInitialOptions: noop,
+        onChange: (value) => {
+          const range = value as FilterDateValue | undefined;
+          updateFilters({ startTs: range?.startTs, endTs: range?.endTs });
+        },
+      },
+    ],
+    [
+      t,
+      filters,
+      testCaseFilterOptions,
+      isTestCaseOptionsLoading,
+      fetchTestCaseFilterOptions,
+      updateFilters,
+      assigneeOwners,
+      handleAssigneeOwnerChange,
+      selectedDateFilterKey,
+      dateFilterOptions,
+      handleDateFieldChange,
+    ]
+  );
 
   const hasActiveFilters = Boolean(
     filters.testCaseFQN ||
@@ -713,7 +735,7 @@ export const useIncidentManagerListPage = ({
       filters.endTs
   );
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setAssigneeOwnerRefs([]);
     updateFilters({
       testCaseFQN: undefined,
@@ -723,7 +745,7 @@ export const useIncidentManagerListPage = ({
       endTs: undefined,
       dateField: undefined,
     });
-  };
+  }, [updateFilters]);
 
   return {
     isIncidentPage,
