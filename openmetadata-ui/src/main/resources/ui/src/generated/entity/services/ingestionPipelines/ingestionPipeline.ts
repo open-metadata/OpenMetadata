@@ -8354,6 +8354,7 @@ export enum PurpleType {
     MicrosoftFabricPipeline = "MicrosoftFabricPipeline",
     Mlflow = "Mlflow",
     Mode = "Mode",
+    Omni = "Omni",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
     Mulesoft = "Mulesoft",
