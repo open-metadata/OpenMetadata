@@ -28,6 +28,7 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
 import { BINARY_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
+import { parseInt } from 'lodash';
 const EntityHealthStatusPieChartWidget = ({
   className = '',
   chartFilter,
