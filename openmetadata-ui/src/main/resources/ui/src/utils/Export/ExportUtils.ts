@@ -11,12 +11,45 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { toPng } from 'html-to-image';
+import { toCanvas } from 'html-to-image';
 import { isUndefined, lowerCase } from 'lodash';
 import { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import i18n from '../i18next/LocalUtil';
 import { showErrorToast } from '../ToastUtils';
+
+// Caps that keep the exported PNG within Chrome's canvas backend limits and
+// V8's max string length. A 16K-square canvas (~64MP) compresses to ~25–50MB
+// of PNG bytes — well under the 512MB JS string limit and safely supported by
+// every canvas backend Chrome ships.
+const MAX_PHYSICAL_PIXELS = 64_000_000;
+const MAX_PHYSICAL_DIM = 16_384;
+const DESIRED_PIXEL_RATIO = 3;
+
+const computeSafePixelRatio = (
+  logicalWidth: number,
+  logicalHeight: number
+): number => {
+  const byArea = Math.sqrt(
+    MAX_PHYSICAL_PIXELS / (logicalWidth * logicalHeight)
+  );
+  const byDim = Math.min(
+    MAX_PHYSICAL_DIM / logicalWidth,
+    MAX_PHYSICAL_DIM / logicalHeight
+  );
+
+  return Math.max(1, Math.min(DESIRED_PIXEL_RATIO, byArea, byDim));
+};
+
+const canvasToBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) =>
+        blob ? resolve(blob) : reject(new Error('canvas.toBlob returned null')),
+      'image/png',
+      1.0
+    );
+  });
 
 export const downloadFile = (
   content: string,
@@ -36,22 +69,11 @@ export const downloadFile = (
   document.body.removeChild(link);
 };
 
-export const downloadImageFromBase64 = (
-  dataUrl: string,
+export const downloadBlob = (
+  blob: Blob,
   fileName: string,
   exportType: ExportTypes
-) => {
-  const [header, base64] = dataUrl.split(',');
-  const mimeMatch = header.match(/:(.*?);/);
-  const mimeType = mimeMatch ? mimeMatch[1] : 'image/png';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-
-  const blob = new Blob([bytes], { type: mimeType });
+): void => {
   const a = document.createElement('a');
 
   a.href = URL.createObjectURL(blob);
@@ -62,14 +84,6 @@ export const downloadImageFromBase64 = (
   URL.revokeObjectURL(a.href);
   document.body.removeChild(a);
 };
-
-const loadImage = (src: string): Promise<HTMLImageElement> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 
 export const exportPNGImageFromElement = async (exportData: ExportData) => {
   const {
@@ -93,19 +107,28 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
   const minWidth = 1000;
   const minHeight = 800;
   const padding = 20;
-  const pixelRatio = 3;
 
   const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
   const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
+  const fullLogicalWidth = imageWidth + padding * 2;
+  const fullLogicalHeight = imageHeight + padding * 2;
+
+  // Adaptively reduce pixelRatio for very large lineage graphs so the
+  // physical canvas dimensions and resulting PNG bytes stay within browser
+  // limits. Without this, a 500-node graph at pixelRatio=3 would request a
+  // ~17946×12792 canvas (>16K dim cap) and produce a base64 string >400MB
+  // (over V8's max string length) — both of which throw "Invalid string
+  // length" or crash the canvas backend.
+  const pixelRatio = computeSafePixelRatio(fullLogicalWidth, fullLogicalHeight);
 
   try {
-    const toPngOptions = {
+    const toCanvasOptions = {
       // When compositing with edges, capture nodes without a background so node
       // cards remain opaque but gaps between them are transparent — allowing
       // edges drawn underneath to show through.
       backgroundColor: renderEdgesOverlay ? undefined : '#ffffff',
-      width: imageWidth + padding * 2,
-      height: imageHeight + padding * 2,
+      width: fullLogicalWidth,
+      height: fullLogicalHeight,
       pixelRatio,
       quality: 1.0,
       style: {
@@ -122,11 +145,17 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       },
     };
 
-    const base64Image = await toPng(exportElement as HTMLElement, toPngOptions);
+    // Render directly to a canvas — no base64 string round-trip. This avoids
+    // the V8 max-string-length blow-up that toPng/toDataURL hit on large
+    // lineage graphs.
+    const nodesCanvas = await toCanvas(
+      exportElement as HTMLElement,
+      toCanvasOptions
+    );
 
     if (renderEdgesOverlay) {
-      const physicalWidth = (imageWidth + padding * 2) * pixelRatio;
-      const physicalHeight = (imageHeight + padding * 2) * pixelRatio;
+      const physicalWidth = fullLogicalWidth * pixelRatio;
+      const physicalHeight = fullLogicalHeight * pixelRatio;
       const composite = document.createElement('canvas');
       composite.width = physicalWidth;
       composite.height = physicalHeight;
@@ -151,18 +180,17 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
       if (edgesCanvas) {
         ctx.drawImage(edgesCanvas, 0, 0);
       }
-      const nodesImg = await loadImage(base64Image);
-      ctx.drawImage(nodesImg, 0, 0);
-      downloadImageFromBase64(
-        composite.toDataURL('image/png', 1.0),
-        name,
-        ExportTypes.PNG
-      );
+      ctx.drawImage(nodesCanvas, 0, 0);
+      const blob = await canvasToBlob(composite);
+
+      downloadBlob(blob, name, ExportTypes.PNG);
 
       return;
     }
 
-    downloadImageFromBase64(base64Image, name, ExportTypes.PNG);
+    const blob = await canvasToBlob(nodesCanvas);
+
+    downloadBlob(blob, name, ExportTypes.PNG);
   } catch (error) {
     const errorMessage = (error as Error).message ?? '';
     const isInvalidStringLength = errorMessage.includes(
