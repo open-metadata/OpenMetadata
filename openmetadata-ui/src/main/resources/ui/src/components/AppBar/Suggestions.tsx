@@ -390,7 +390,7 @@ const Suggestions = ({
     } finally {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
+  }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {
     if (searchText && !isTourOpen) {
@@ -398,7 +398,7 @@ const Suggestions = ({
     } else {
       setIsLoading(false);
     }
-  }, [searchText, searchCriteria]);
+  }, [searchText, searchCriteria, isTourOpen]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {

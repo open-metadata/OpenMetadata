@@ -114,6 +114,8 @@ export const visitEntityPageByFqn = async (data: {
   fqn: string;
 }) => {
   const { page, endpoint, fqn } = data;
+  await waitForAllLoadersToDisappear(page);
+  await removeLandingBanner(page);
   const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
 
   if (!routeSegment) {
