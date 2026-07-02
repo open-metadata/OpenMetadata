@@ -765,7 +765,7 @@ export function ConnectionCapabilitySection(
                   )}
                 </div>
               </AccordionHeader>
-              <AccordionPanel className="tw:p-0">
+              <AccordionPanel unmountOnCollapse className="tw:p-0">
                 {result && (
                   <div className="tw:border-t tw:border-border-secondary">
                     <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">

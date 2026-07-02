@@ -60,6 +60,13 @@ export interface AccordionPanelProps extends AriaDisclosurePanelProps {
    * Optional className for the panel content container.
    */
   className?: string;
+  /**
+   * When true, children are unmounted while the panel is collapsed instead of
+   * just visually hidden. Use for heavy static content; leave false (default)
+   * for content with internal state (e.g. form inputs), which would otherwise
+   * reset on collapse.
+   */
+  unmountOnCollapse?: boolean;
 }
 
 /**
@@ -166,9 +173,11 @@ export const AccordionHeader = ({
 export const AccordionPanel = ({
   children,
   className,
+  unmountOnCollapse = false,
   ...props
 }: AccordionPanelProps) => {
   const state = useContext(DisclosureStateContext);
+  const shouldRenderChildren = !unmountOnCollapse || state?.isExpanded;
 
   return (
     <AriaDisclosurePanel
@@ -178,7 +187,7 @@ export const AccordionPanel = ({
         !state?.isExpanded && 'tw:hidden',
         className
       )}>
-      {state?.isExpanded ? children : null}
+      {shouldRenderChildren ? children : null}
     </AriaDisclosurePanel>
   );
 };
