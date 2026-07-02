@@ -157,7 +157,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   }, [location.search]);
 
   const caption = useMemo(() => {
-    const truncated = Boolean(rawData?.truncated);
+    const truncated = Boolean(rawData?.truncated) || Boolean(view.truncated);
     if (lens === 'ontology') {
       return {
         scope: t('label.ontology-applied'),
@@ -190,6 +190,7 @@ const KnowledgeGraph3D: FC<KnowledgeGraph3DProps> = ({
   }, [
     view.nodes.length,
     view.links.length,
+    view.truncated,
     level,
     lens,
     t,

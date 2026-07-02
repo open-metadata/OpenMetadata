@@ -111,6 +111,12 @@ export interface GraphLink3D {
 export interface Graph3DData {
   nodes: GraphNode3D[];
   links: GraphLink3D[];
+  /**
+   * Ontology mode: true when the derivation hit its asset/edge caps, so the
+   * shown graph is a bounded subset. Surfaced in the caption like the
+   * server-side `truncated` signal.
+   */
+  truncated?: boolean;
 }
 
 /** A relation row used by the detail panel. */

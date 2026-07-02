@@ -249,4 +249,35 @@ describe('ontologyView', () => {
     expect(ontologyView(graph, 'domain').links).toHaveLength(0);
     expect(ontologyView(graph, 'domain').nodes).toHaveLength(0);
   });
+
+  it('does not flag truncation for a small graph', () => {
+    const graph: Graph3DData = {
+      nodes: [
+        node('customer', 'Customer', 'concept'),
+        node('customers', 'CUSTOMERS', 'table'),
+        node('customer360', 'CUSTOMER360', 'table'),
+      ],
+      links: [
+        link('customers', 'customer', 'Mapped to'),
+        link('customer360', 'customer', 'Mapped to'),
+      ],
+    };
+
+    expect(ontologyView(graph, 'asset').truncated).toBe(false);
+  });
+
+  it('bounds a large same-term clique and flags truncation', () => {
+    const nodes: GraphNode3D[] = [node('customer', 'Customer', 'concept')];
+    const links: GraphLink3D[] = [];
+    for (let i = 0; i < 320; i += 1) {
+      nodes.push(node(`t${i}`, `T${i}`, 'table'));
+      links.push(link(`t${i}`, 'customer', 'Mapped to'));
+    }
+
+    const view = ontologyView({ nodes, links }, 'asset');
+
+    expect(view.truncated).toBe(true);
+    expect(view.links.length).toBeLessThanOrEqual(800);
+    expect(view.links.every((edge) => edge.derived)).toBe(true);
+  });
 });

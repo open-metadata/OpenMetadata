@@ -61,6 +61,15 @@ const BROADER_NARROWER = 'Broader / narrower';
 const RELATED_TO = 'Related to';
 const SYNONYM = 'Synonym';
 
+/**
+ * Bounds that keep the derivation cheap and the 3D scene renderable. The pair
+ * scan is O(assets²) and a single popular term (e.g. dozens of tables tagged
+ * "Customer") would otherwise emit an ~n²/2 edge clique. Both caps set the
+ * result's `truncated` flag so the caption can say the graph is partial.
+ */
+const MAX_ONTOLOGY_ASSETS = 300;
+const MAX_DERIVED_EDGES = 800;
+
 interface Lookups {
   /** assetId → the concept (term) ids mapped onto it. */
   mapped: Map<string, Set<string>>;
@@ -268,16 +277,19 @@ export const ontologyView = (graph: Graph3DData, level: Level): Graph3DData => {
   const byId = new Map(graph.nodes.map((node) => [node.id, node]));
   const nameOf = (id: string): string => byId.get(id)?.name ?? id;
   const lookups = buildLookups(graph, byId);
-  const assets = graph.nodes.filter(
+  const eligible = graph.nodes.filter(
     (node) =>
       ONTOLOGY_ASSET_TYPES.has(node.type) &&
       node.levels.includes(level) &&
       (lookups.mapped.get(node.id)?.size ?? 0) > 0
   );
+  const assets = eligible.slice(0, MAX_ONTOLOGY_ASSETS);
+  let truncated = eligible.length > assets.length;
 
   const links: GraphLink3D[] = [];
-  for (let i = 0; i < assets.length; i += 1) {
-    for (let j = i + 1; j < assets.length; j += 1) {
+  let capped = false;
+  for (let i = 0; i < assets.length && !capped; i += 1) {
+    for (let j = i + 1; j < assets.length && !capped; j += 1) {
       const best = strongestRelation(assets[i], assets[j], lookups, nameOf);
       if (best) {
         links.push({
@@ -290,9 +302,11 @@ export const ontologyView = (graph: Graph3DData, level: Level): Graph3DData => {
           path: best.path,
           levels: [level],
         });
+        capped = links.length >= MAX_DERIVED_EDGES;
       }
     }
   }
+  truncated = truncated || capped;
 
   const connected = new Set<string>();
   links.forEach((link) => {
@@ -303,5 +317,5 @@ export const ontologyView = (graph: Graph3DData, level: Level): Graph3DData => {
     .filter((asset) => connected.has(asset.id))
     .map((asset) => withTermOverlay(asset, lookups, byId, nameOf));
 
-  return { nodes, links };
+  return { nodes, links, truncated };
 };
