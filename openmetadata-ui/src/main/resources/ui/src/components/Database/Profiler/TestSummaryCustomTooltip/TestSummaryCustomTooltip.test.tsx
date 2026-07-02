@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 const mockProps = {
@@ -71,15 +73,28 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockReturnValue(1709510434000),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPath: jest.fn(),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
+    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/HistoryUtils', () => ({
+  ...jest.requireActual('../../../../utils/HistoryUtils'),
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+}));
+
+jest.mock('../../../../utils/NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 
@@ -118,5 +133,37 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect((await screen.findByTestId('freshness')).textContent).toBe(
       '7Y 2M 22d 9m 24s'
     );
+  });
+
+  describe('observabilityRouterClassBase migration', () => {
+    it('incident link should use observabilityRouterClassBase.getTestCaseDetailPagePath with ISSUES tab', async () => {
+      const fqn = 'svc.db.schema.table.test_case_freshness';
+      const propsWithIncident = {
+        active: true,
+        testCaseFqn: fqn,
+        payload: [
+          {
+            payload: {
+              name: 1748045364386,
+              status: 'Failed',
+              incidentId: 'incident-123',
+            },
+          },
+        ],
+      };
+
+      render(<TestSummaryCustomTooltip {...propsWithIncident} />);
+
+      const incidentCell = await screen.findByTestId('incident');
+      const link = incidentCell.querySelector('a');
+
+      expect(link).not.toBeNull();
+      expect(link?.getAttribute('data-to')).toBe(
+        observabilityRouterClassBase.getTestCaseDetailPagePath(
+          fqn,
+          TestCasePageTabs.ISSUES
+        )
+      );
+    });
   });
 });

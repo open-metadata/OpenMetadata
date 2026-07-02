@@ -11,7 +11,9 @@
 """
 Grafana Service Specification
 """
+
+from metadata.ingestion.source.dashboard.grafana.connection import GrafanaConnection
 from metadata.ingestion.source.dashboard.grafana.metadata import GrafanaSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=GrafanaSource)
+ServiceSpec = BaseSpec(metadata_source_class=GrafanaSource, connection_class=GrafanaConnection)  # pyright: ignore[reportArgumentType]

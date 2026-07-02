@@ -12,6 +12,7 @@
 """
 Source connection handler for OpenSearch
 """
+
 from pathlib import Path
 from typing import Optional
 
@@ -34,7 +35,7 @@ from metadata.generated.schema.entity.services.connections.search.elasticSearch.
     BasicAuthentication,
 )
 from metadata.generated.schema.entity.services.connections.search.openSearchConnection import (
-    OpenSearchConnection,
+    OpenSearchConnection as OpenSearchConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -42,6 +43,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN, UTF_8
@@ -57,7 +59,7 @@ def _clean_cert_value(cert_data: str) -> str:
 
 
 def write_data_to_file(file_path: Path, cert_data: str) -> None:
-    with open(
+    with open(  # noqa: PTH123
         file_path,
         "w+",
         encoding=UTF_8,
@@ -73,9 +75,7 @@ def _handle_ssl_context_by_value(ssl_config: SslConfig):
     init_staging_dir(ssl_config.certificates.stagingDir)
     if ssl_config.certificates.caCertValue:
         ca_cert = Path(ssl_config.certificates.stagingDir, CA_CERT_FILE_NAME)
-        write_data_to_file(
-            ca_cert, ssl_config.certificates.caCertValue.get_secret_value()
-        )
+        write_data_to_file(ca_cert, ssl_config.certificates.caCertValue.get_secret_value())
     if ssl_config.certificates.clientCertValue:
         client_cert = Path(ssl_config.certificates.stagingDir, CLIENT_CERT_FILE_NAME)
         write_data_to_file(
@@ -100,7 +100,7 @@ def _handle_ssl_context_by_path(ssl_config: SslConfig):
     return ca_cert, client_cert, private_key
 
 
-def get_connection(connection: OpenSearchConnection) -> OpenSearch:
+def get_connection(connection: OpenSearchConnectionConfig) -> OpenSearch:
     """
     Create OpenSearch connection supporting Basic and AWS IAM authentication.
     """
@@ -119,24 +119,15 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
 
     if connection.sslConfig and connection.sslConfig.certificates:
         if isinstance(connection.sslConfig.certificates, SslCertificatesByValues):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_value(ssl_config=connection.sslConfig)
         elif isinstance(connection.sslConfig.certificates, SslCertificatesByPath):
-            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(
-                ssl_config=connection.sslConfig
-            )
+            ca_cert, client_cert, private_key = _handle_ssl_context_by_path(ssl_config=connection.sslConfig)
 
     # Check for Basic Authentication
-    if (
-        isinstance(connection.authType, BasicAuthentication)
-        and connection.authType.username
-    ):
+    if isinstance(connection.authType, BasicAuthentication) and connection.authType.username:
         basic_auth = (
             connection.authType.username,
-            connection.authType.password.get_secret_value()
-            if connection.authType.password
-            else None,
+            (connection.authType.password.get_secret_value() if connection.authType.password else None),
         )
 
     # Check for AWS IAM Authentication
@@ -148,12 +139,9 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
             else None
         )
         aws_region = connection.authType.awsRegion  # Region as a plain string
-        aws_session_token = (
-            connection.authType.awsSessionToken.get_secret_value()
-            if hasattr(connection.authType, "awsSessionToken")
-            and connection.authType.awsSessionToken
-            else None
-        )
+        # awsSessionToken is a plain str in the schema (no "format": "password"),
+        # so we use it directly without calling .get_secret_value()
+        aws_session_token = connection.authType.awsSessionToken or None
         aws_auth = AWS4Auth(
             aws_access_key,
             aws_secret_key,
@@ -182,30 +170,35 @@ def get_connection(connection: OpenSearchConnection) -> OpenSearch:
     )
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: OpenSearch,
-    service_connection: OpenSearchConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection for OpenSearch. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow.
-    """
+class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch]):
+    def _get_client(self) -> OpenSearch:
+        return get_connection(self.service_connection)
 
-    def test_get_search_indexes():
-        client.indices.get_alias(expand_wildcards="open")
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection for OpenSearch. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow.
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-    test_fn = {
-        "CheckAccess": client.info,
-        "GetSearchIndexes": test_get_search_indexes,
-    }
+        def test_get_search_indexes():
+            client.indices.get_alias(expand_wildcards="open")  # pyright: ignore[reportCallIssue]
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "CheckAccess": client.info,
+            "GetSearchIndexes": test_get_search_indexes,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

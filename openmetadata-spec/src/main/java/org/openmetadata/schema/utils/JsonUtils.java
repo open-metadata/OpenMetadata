@@ -14,15 +14,19 @@
 package org.openmetadata.schema.utils;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -54,6 +58,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -122,6 +127,13 @@ public final class JsonUtils {
     OBJECT_MAPPER.registerModule(new JSR353Module());
     // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
     OBJECT_MAPPER.registerModule(new BlackbirdModule());
+
+    // Accept any Date field with or without fractional seconds. Python clients serialize
+    // datetimes with microsecond=0 as "…ssZ" (no fractional), which the strict global
+    // SimpleDateFormat("…SSSSSS'Z'") rejects. Registering the lenient deserializer for all
+    // java.util.Date fields keeps deserialization tolerant while serialization stays on the
+    // microsecond format above.
+    OBJECT_MAPPER.registerModule(lenientDateModule());
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -324,6 +336,8 @@ public final class JsonUtils {
         continue;
       }
 
+      validateJsonPointer(path, "path");
+
       // Skip operations on read-only auto-generated fields
       if (isReadOnlyPatchPath(path)) {
         continue;
@@ -332,6 +346,9 @@ public final class JsonUtils {
       // For copy/move operations, also check the 'from' field if present
       if (jsonObject.containsKey("from")) {
         String from = jsonObject.getString("from", null);
+        if (from != null) {
+          validateJsonPointer(from, "from");
+        }
         if (isReadOnlyPatchPath(from)) {
           continue;
         }
@@ -353,6 +370,15 @@ public final class JsonUtils {
       currentJson = singlePatch.apply(currentJson);
     }
     return currentJson;
+  }
+
+  private static void validateJsonPointer(String pointer, String fieldName) {
+    if (!pointer.isEmpty() && pointer.charAt(0) != '/') {
+      throw new IllegalArgumentException(
+          String.format(
+              "Invalid JSON Patch '%s' value '%s' - non-empty JSON Pointer must begin with '/' (RFC 6901)",
+              fieldName, pointer));
+    }
   }
 
   private static boolean isReadOnlyPatchPath(String path) {
@@ -412,7 +438,8 @@ public final class JsonUtils {
       JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
       return OBJECT_MAPPER.convertValue(jsonNode, clz);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to convert JsonValue to target class", e);
+      throw new RuntimeException(
+          "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
     }
   }
 
@@ -492,7 +519,11 @@ public final class JsonUtils {
   }
 
   public static Schema getJsonSchema(String schema) {
-    return schemaFactory.getSchema(schema);
+    // SchemaRegistry compiles schemas against shared dialect/metaschema caches that are not safe
+    // under concurrent compilation; serialize compilation to avoid transient failures.
+    synchronized (schemaFactory) {
+      return schemaFactory.getSchema(schema);
+    }
   }
 
   public static JsonNode valueToTree(Object object) {
@@ -886,5 +917,98 @@ public final class JsonUtils {
       // Ignored exception
     }
     return retval;
+  }
+
+  /**
+   * Jackson module that deserializes every {@link Date} field leniently, accepting ISO-8601 with
+   * or without fractional seconds as well as epoch milliseconds. Register it on any ObjectMapper
+   * that parses OpenMetadata request bodies so the strict {@link #DATE_TIME_FORMAT} (used for
+   * serialization) does not reject inputs lacking microseconds.
+   */
+  public static SimpleModule lenientDateModule() {
+    SimpleModule module = new SimpleModule("OpenMetadataLenientDateModule");
+    module.addDeserializer(Date.class, new LenientIsoDateDeserializer());
+    return module;
+  }
+
+  /**
+   * Tolerant Date deserializer. The global ObjectMapper serializes with {@code
+   * SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a 6-digit
+   * fractional. Python's {@code datetime.isoformat()} drops the fractional entirely when {@code
+   * microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the strict format rejects.
+   *
+   * <p>This deserializer delegates everything to Jackson's normal path ({@link
+   * DeserializationContext#parseDate}, which uses the same global format) so all forms that
+   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working. The
+   * only addition is: if the value is the bare-second form, pad the fractional with {@code
+   * .000000} so the global format accepts it.
+   */
+  public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
+    @Override
+    public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+      com.fasterxml.jackson.core.JsonToken t = p.currentToken();
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_INT
+          || t == com.fasterxml.jackson.core.JsonToken.VALUE_NUMBER_FLOAT) {
+        return new Date(p.getLongValue());
+      }
+      if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
+        return null;
+      }
+      String value = p.getValueAsString();
+      if (value == null) {
+        return null;
+      }
+      String trimmed = value.trim();
+      if (trimmed.isEmpty()) {
+        return null;
+      }
+      if (looksLikeEpochMillis(trimmed)) {
+        try {
+          return new Date(Long.parseLong(trimmed));
+        } catch (NumberFormatException ignored) {
+          // fall through to date parsing
+        }
+      }
+      String normalized = padBareSecondIso(trimmed);
+      try {
+        return ctxt.parseDate(normalized);
+      } catch (IllegalArgumentException e) {
+        return (Date)
+            ctxt.handleWeirdStringValue(
+                Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
+      }
+    }
+
+    private static boolean looksLikeEpochMillis(String s) {
+      // Epoch-ms for any modern date is 13 digits; 10 digits covers ≥ year 2001.
+      // Reject shorter all-digit strings (e.g. compact "YYYYMMDD") to avoid
+      // misinterpreting them as epoch-ms. Upper bound matches Long.MAX_VALUE width.
+      int start = !s.isEmpty() && s.charAt(0) == '-' ? 1 : 0;
+      int digits = s.length() - start;
+      if (digits < 10 || digits > 19) {
+        return false;
+      }
+      for (int i = start; i < s.length(); i++) {
+        if (!Character.isDigit(s.charAt(i))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    /**
+     * If {@code value} matches the bare-second ISO form {@code "yyyy-MM-ddTHH:mm:ssZ"}, pad
+     * the fractional with six zeros so the global SimpleDateFormat ({@code "…SSSSSS'Z'"})
+     * accepts it. Otherwise return the input unchanged.
+     */
+    private static String padBareSecondIso(String value) {
+      if (value.length() != 20 || !value.endsWith("Z")) {
+        return value;
+      }
+      if (value.charAt(10) != 'T' || value.charAt(13) != ':' || value.charAt(16) != ':') {
+        return value;
+      }
+      return value.substring(0, 19) + ".000000Z";
+    }
   }
 }

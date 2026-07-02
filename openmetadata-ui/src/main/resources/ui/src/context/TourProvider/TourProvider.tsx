@@ -14,14 +14,21 @@ import {
   createContext,
   FC,
   ReactNode,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
+import type {
+  ExploreSearchIndex,
+  SearchHitCounts,
+} from '../../components/Explore/ExplorePage.interface';
 import { ROUTES } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import type { SearchResponse } from '../../interface/search.interface';
 
 interface Props {
   children: ReactNode;
@@ -33,40 +40,78 @@ export interface TourProviderContextProps {
   currentTourPage: CurrentTourPageType;
   activeTabForTourDatasetPage: EntityTabs;
   tourSearchValue: string;
+  tourMockSearchResults?: SearchResponse<ExploreSearchIndex>;
+  tourMockSearchHitCounts?: SearchHitCounts;
+  tourMockDatasetData?: unknown;
   updateIsTourOpen: (value: boolean) => void;
   updateTourPage: (value: CurrentTourPageType) => void;
   updateActiveTab: (value: EntityTabs) => void;
   updateTourSearch: (value: string) => void;
+  updateTourMockData?: (payload: {
+    searchResults: SearchResponse<ExploreSearchIndex>;
+    searchHitCounts: SearchHitCounts;
+    datasetData: unknown;
+  }) => void;
 }
 
 export const TourContext = createContext({} as TourProviderContextProps);
 
 const TourProvider: FC<Props> = ({ children }) => {
   const location = useCustomLocation();
-  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+  const isTourPage = useMemo(
+    () => location.pathname.includes(ROUTES.TOUR),
+    [location.pathname]
+  );
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(isTourPage);
   const [currentTourPage, setCurrentTourPage] = useState<CurrentTourPageType>(
     CurrentTourPageType.MY_DATA_PAGE
   );
   const [activeTabForTourDatasetPage, setActiveTabForTourDatasetPage] =
     useState<EntityTabs>(EntityTabs.SCHEMA);
   const [searchValue, setSearchValue] = useState('');
+  const [tourMockSearchResults, setTourMockSearchResults] =
+    useState<SearchResponse<ExploreSearchIndex>>();
+  const [tourMockSearchHitCounts, setTourMockSearchHitCounts] =
+    useState<SearchHitCounts>();
+  const [tourMockDatasetData, setTourMockDatasetData] = useState<unknown>();
 
-  const isTourPage = useMemo(
-    () => location.pathname.includes(ROUTES.TOUR),
-    [location.pathname]
+  useEffect(() => {
+    if (isTourPage) {
+      setIsTourOpen(true);
+    }
+  }, [isTourPage]);
+
+  const handleIsTourOpen = useCallback((value: boolean) => {
+    setIsTourOpen(value);
+  }, []);
+
+  const handleTourPageChange = useCallback(
+    (value: CurrentTourPageType) => setCurrentTourPage(value),
+    []
   );
 
-  const handleIsTourOpen = (value: boolean) => {
-    setIsTourOpen(value);
-  };
+  const handleActiveTabChange = useCallback(
+    (value: EntityTabs) => setActiveTabForTourDatasetPage(value),
+    []
+  );
 
-  const handleTourPageChange = (value: CurrentTourPageType) =>
-    setCurrentTourPage(value);
+  const handleUpdateTourSearch = useCallback(
+    (value: string) => setSearchValue(value),
+    []
+  );
 
-  const handleActiveTabChange = (value: EntityTabs) =>
-    setActiveTabForTourDatasetPage(value);
-
-  const handleUpdateTourSearch = (value: string) => setSearchValue(value);
+  const handleUpdateTourMockData = useCallback(
+    (payload: {
+      searchResults: SearchResponse<ExploreSearchIndex>;
+      searchHitCounts: SearchHitCounts;
+      datasetData: unknown;
+    }) => {
+      setTourMockSearchResults(payload.searchResults);
+      setTourMockSearchHitCounts(payload.searchHitCounts);
+      setTourMockDatasetData(payload.datasetData);
+    },
+    []
+  );
 
   return (
     <TourContext.Provider
@@ -76,10 +121,14 @@ const TourProvider: FC<Props> = ({ children }) => {
         currentTourPage,
         tourSearchValue: searchValue,
         activeTabForTourDatasetPage,
+        tourMockSearchResults,
+        tourMockSearchHitCounts,
+        tourMockDatasetData,
         updateActiveTab: handleActiveTabChange,
         updateIsTourOpen: handleIsTourOpen,
         updateTourPage: handleTourPageChange,
         updateTourSearch: handleUpdateTourSearch,
+        updateTourMockData: handleUpdateTourMockData,
       }}>
       {children}
     </TourContext.Provider>

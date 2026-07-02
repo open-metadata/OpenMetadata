@@ -73,7 +73,13 @@ export interface ElasticSearchConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage:   SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:      SearchIndexingLimits;
+    searchIndexMappingLanguage: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -119,36 +125,21 @@ export interface Aws {
  */
 export interface NaturalLanguageSearch {
     /**
-     * AWS Bedrock configuration for natural language processing
-     */
-    bedrock?: Bedrock;
-    /**
-     * Embedding generation using Deep Java Library (DJL)
-     */
-    djl?: Djl;
-    /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai).
-     */
-    embeddingProvider?: string;
-    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
     /**
+     * NLQ filter extractor cache and prompt tuning.
+     */
+    filterExtractor?: FilterExtractor;
+    /**
+     * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
+     */
+    hybridSearch?: HybridSearch;
+    /**
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
-    /**
-     * Maximum number of concurrent embedding API requests. Controls the semaphore used to
-     * throttle calls to the embedding provider and prevent overwhelming HTTP/2 connection
-     * limits.
-     */
-    maxConcurrentEmbeddingRequests?: number;
-    /**
-     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
-     * endpoints.
-     */
-    openai?: Openai;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -164,110 +155,64 @@ export interface NaturalLanguageSearch {
 }
 
 /**
- * AWS Bedrock configuration for natural language processing
+ * NLQ filter extractor cache and prompt tuning.
  */
-export interface Bedrock {
+export interface FilterExtractor {
     /**
-     * AWS credentials configuration for Bedrock service
+     * Cache TTL in minutes for NLQ filter extraction results.
      */
-    awsConfig?: AWSBaseConfig;
+    cacheExpiryMinutes?: number;
     /**
-     * Dimension of the embedding vector
+     * Max number of entries in the NLQ filter extraction result cache.
      */
-    embeddingDimension?: number;
+    cacheMaxSize?: number;
     /**
-     * Bedrock embedding model identifier to use for vector search
+     * Max sample values shown per filter category in the system prompt.
      */
-    embeddingModelId?: string;
+    maxSampleValues?: number;
     /**
-     * Bedrock model identifier to use for query transformation
+     * Maximum tokens the model may generate for NLQ filter extraction.
+     */
+    maxTokens?: number;
+    /**
+     * Optional model override for NLQ filter extraction. Leave empty to use the model from
+     * llmConfiguration.
      */
     modelId?: string;
+    /**
+     * Sampling temperature for NLQ filter extraction.
+     */
+    temperature?: number;
+    /**
+     * Per-call timeout in seconds for NLQ filter extraction completion.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
- * AWS credentials configuration for Bedrock service
- *
- * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
- * default credential provider chain.
+ * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
  */
-export interface AWSBaseConfig {
+export interface HybridSearch {
     /**
-     * AWS Access Key ID. Falls back to default credential provider chain if not set.
+     * Highlight fragment size (characters) for hybrid search hits.
      */
-    accessKeyId?: string;
+    fragmentSize?: number;
     /**
-     * ARN of IAM role to assume for cross-account access.
+     * Maximum number of query terms forwarded to the shard-fair keyword sub-query.
      */
-    assumeRoleArn?: string;
+    maxQueryTerms?: number;
     /**
-     * Session name for assumed role.
+     * Pagination depth used by the hybrid query for RRF normalization.
      */
-    assumeRoleSessionName?: string;
+    paginationDepth?: number;
     /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
      */
-    enabled?: boolean;
+    searchPipeline?: string;
     /**
-     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
+     * Minimum score threshold for the semantic (KNN) sub-query results.
      */
-    endpointUrl?: string;
-    /**
-     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
-     */
-    secretAccessKey?: string;
-    /**
-     * AWS Session Token for temporary credentials.
-     */
-    sessionToken?: string;
-}
-
-/**
- * Embedding generation using Deep Java Library (DJL)
- */
-export interface Djl {
-    /**
-     * DJL model name for embedding generation
-     */
-    embeddingModel?: string;
-}
-
-/**
- * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
- * endpoints.
- */
-export interface Openai {
-    /**
-     * API key for authenticating with OpenAI or Azure OpenAI.
-     */
-    apiKey?: string;
-    /**
-     * Azure OpenAI API version. Only used with Azure OpenAI.
-     */
-    apiVersion?: string;
-    /**
-     * Azure OpenAI deployment name. Required when using Azure OpenAI.
-     */
-    deploymentName?: string;
-    /**
-     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
-     */
-    embeddingDimension?: number;
-    /**
-     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
-     */
-    embeddingModelId?: string;
-    /**
-     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
-     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
-     */
-    endpoint?: string;
+    semanticScoreThreshold?: number;
 }
 
 /**
@@ -278,6 +223,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**

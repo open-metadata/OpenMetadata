@@ -15,50 +15,67 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
+import static org.openmetadata.csv.CsvUtil.addExtension;
+import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
+import static org.openmetadata.csv.CsvUtil.addReviewers;
+import static org.openmetadata.csv.CsvUtil.addTagLabels;
+import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
 
-import jakarta.json.JsonPatch;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.csv.CsvExportProgressCallback;
+import org.openmetadata.csv.CsvImportProgressCallback;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskStatus;
-import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.type.csv.CsvDocumentation;
+import org.openmetadata.schema.type.csv.CsvFile;
+import org.openmetadata.schema.type.csv.CsvHeader;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.WebsocketNotificationHandler;
+import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
   private static final String UPDATE_FIELDS = "relatedMetrics";
   private static final String PATCH_FIELDS = "relatedMetrics";
+  static final String FIELD_DERIVED_FROM = "derivedFrom";
 
   public MetricRepository() {
     super(
@@ -108,11 +125,27 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
+    if (fields.contains(FIELD_DERIVED_FROM)) {
+      metric.setDerivedFrom(getDerivedFrom(metric));
+    }
   }
 
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+    if (!fields.contains(FIELD_DERIVED_FROM)) {
+      entity.setDerivedFrom(null);
+    }
+  }
+
+  /**
+   * Returns the context memory from which the Memory Agent created this metric.
+   * Edge direction: from=metric → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
+   */
+  private EntityReference getDerivedFrom(Metric metric) {
+    final List<EntityReference> refs =
+        findTo(metric.getId(), Entity.METRIC, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
+    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   // Individual field fetchers registered in constructor
@@ -161,6 +194,45 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
+  public String exportToCsv(String name, String user, boolean recursive) throws IOException {
+    return exportToCsv(name, user, recursive, null);
+  }
+
+  @Override
+  public String exportToCsv(
+      String name, String user, boolean recursive, CsvExportProgressCallback callback)
+      throws IOException {
+    List<Metric> metrics =
+        "*".equals(name)
+            ? listAll(getFields("*"), new ListFilter(NON_DELETED))
+            : List.of(getByName(null, name, getFields("*")));
+    return new MetricCsv(user).exportCsv(metrics, callback);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name, String csv, boolean dryRun, String user, boolean recursive) throws IOException {
+    return importFromCsv(name, csv, dryRun, user, recursive, (CsvImportProgressCallback) null);
+  }
+
+  @Override
+  public CsvImportResult importFromCsv(
+      String name,
+      String csv,
+      boolean dryRun,
+      String user,
+      boolean recursive,
+      CsvImportProgressCallback callback)
+      throws IOException {
+    return new MetricCsv(user).importCsv(csv, dryRun, callback);
+  }
+
+  @Override
+  public boolean supportsBulkImportVersioning() {
+    return false;
+  }
+
+  @Override
   public EntityRepository<Metric>.EntityUpdater getUpdater(
       Metric original, Metric updated, Operation operation, ChangeSource changeSource) {
     return new MetricRepository.MetricUpdater(original, updated, operation);
@@ -175,6 +247,189 @@ public class MetricRepository extends EntityRepository<Metric> {
       if (relatedMetric.getId().equals(metric.getId())) {
         throw new IllegalArgumentException(
             "Related metric " + relatedMetric.getId() + " cannot be the same as the metric");
+      }
+    }
+  }
+
+  public static class MetricCsv extends EntityCsv<Metric> {
+    public static final CsvDocumentation DOCUMENTATION = getCsvDocumentation(METRIC, false);
+    public static final List<CsvHeader> HEADERS = DOCUMENTATION.getHeaders();
+
+    MetricCsv(String user) {
+      super(METRIC, HEADERS, user);
+    }
+
+    @Override
+    protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
+      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return;
+      }
+
+      Metric metric =
+          new Metric()
+              .withName(csvRecord.get(0))
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withMetricType(getMetricType(printer, csvRecord, 3))
+              .withUnitOfMeasurement(getUnitOfMeasurement(printer, csvRecord, 4))
+              .withCustomUnitOfMeasurement(csvRecord.get(5))
+              .withGranularity(getGranularity(printer, csvRecord, 6))
+              .withMetricExpression(getMetricExpression(printer, csvRecord))
+              .withRelatedMetrics(getEntityReferences(printer, csvRecord, 9, METRIC))
+              .withTags(
+                  getTagLabels(
+                      printer,
+                      csvRecord,
+                      List.of(
+                          Pair.of(10, TagLabel.TagSource.CLASSIFICATION),
+                          Pair.of(11, TagLabel.TagSource.GLOSSARY),
+                          Pair.of(12, TagLabel.TagSource.CLASSIFICATION))))
+              .withOwners(getOwners(printer, csvRecord, 13))
+              .withReviewers(getReviewers(printer, csvRecord, 14))
+              .withDomains(getDomains(printer, csvRecord, 15))
+              .withDataProducts(getEntityReferences(printer, csvRecord, 16, Entity.DATA_PRODUCT))
+              .withEntityStatus(getEntityStatus(printer, csvRecord, 17))
+              .withExtension(getExtension(printer, csvRecord, 18));
+
+      if (processRecord) {
+        createEntity(printer, csvRecord, metric);
+      }
+    }
+
+    @Override
+    protected void addRecord(CsvFile csvFile, Metric entity) {
+      List<String> recordList = new ArrayList<>();
+      MetricExpression expression = entity.getMetricExpression();
+
+      addField(recordList, entity.getName());
+      addField(recordList, entity.getDisplayName());
+      addField(recordList, entity.getDescription());
+      addField(recordList, entity.getMetricType() == null ? null : entity.getMetricType().value());
+      addField(
+          recordList,
+          entity.getUnitOfMeasurement() == null ? null : entity.getUnitOfMeasurement().value());
+      addField(recordList, entity.getCustomUnitOfMeasurement());
+      addField(
+          recordList, entity.getGranularity() == null ? null : entity.getGranularity().value());
+      addField(
+          recordList,
+          expression == null || expression.getLanguage() == null
+              ? null
+              : expression.getLanguage().value());
+      addField(recordList, expression == null ? null : expression.getCode());
+      addEntityReferences(recordList, entity.getRelatedMetrics());
+      addTagLabels(recordList, entity.getTags());
+      addGlossaryTerms(recordList, entity.getTags());
+      addTagTiers(recordList, entity.getTags());
+      addOwners(recordList, entity.getOwners());
+      addReviewers(recordList, entity.getReviewers());
+      addEntityReferences(recordList, entity.getDomains());
+      addEntityReferences(recordList, entity.getDataProducts());
+      addField(
+          recordList, entity.getEntityStatus() == null ? null : entity.getEntityStatus().value());
+      addExtension(recordList, entity.getExtension());
+      addRecord(csvFile, recordList);
+    }
+
+    private MetricExpression getMetricExpression(CSVPrinter printer, CSVRecord csvRecord)
+        throws IOException {
+      MetricExpressionLanguage language = getExpressionLanguage(printer, csvRecord, 7);
+      String code = csvRecord.get(8);
+      if (language == null && nullOrEmpty(code)) {
+        return null;
+      }
+      return new MetricExpression().withLanguage(language).withCode(code);
+    }
+
+    private MetricType getMetricType(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+        throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricType.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(fieldNumber, "Metric type " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricUnitOfMeasurement getUnitOfMeasurement(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricUnitOfMeasurement.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                "Metric unit of measurement " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricGranularity getGranularity(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricGranularity.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber, "Metric granularity " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private MetricExpressionLanguage getExpressionLanguage(
+        CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return MetricExpressionLanguage.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber,
+                "Metric expression language " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
+      }
+    }
+
+    private EntityStatus getEntityStatus(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+        throws IOException {
+      if (nullOrEmpty(csvRecord.get(fieldNumber))) {
+        return null;
+      }
+      try {
+        return EntityStatus.fromValue(csvRecord.get(fieldNumber));
+      } catch (Exception ex) {
+        importFailure(
+            printer,
+            invalidField(
+                fieldNumber, "Entity status " + csvRecord.get(fieldNumber) + " is invalid"),
+            csvRecord);
+        processRecord = false;
+        return null;
       }
     }
   }
@@ -229,6 +484,15 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
+    }
+
+    private boolean managedFieldChanged() {
+      return !Objects.equals(original.getName(), updated.getName())
+          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
+          || !Objects.equals(original.getDescription(), updated.getDescription())
+          || !Objects.equals(original.getMetricType(), updated.getMetricType())
+          || !Objects.equals(original.getMetricExpression(), updated.getMetricExpression());
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {
@@ -361,47 +625,22 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   private void closeApprovalTask(Metric entity, String comment) {
-    EntityLink about = new EntityLink(METRIC, entity.getFullyQualifiedName());
-    FeedRepository feedRepository = Entity.getFeedRepository();
-    try {
-      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      feedRepository.closeTask(
-          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
-    } catch (EntityNotFoundException ex) {
-      LOG.info(
-          "{} Task not found for metric {}",
-          TaskType.RequestApproval,
-          entity.getFullyQualifiedName());
-    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.closeApprovalTaskForEntity(
+        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
   }
 
   protected void updateTaskWithNewReviewers(Metric metric) {
-    try {
-      MessageParser.EntityLink about =
-          new MessageParser.EntityLink(METRIC, metric.getFullyQualifiedName());
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread originalTask =
-          feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
-      metric =
-          Entity.getEntityByName(
-              Entity.METRIC,
-              metric.getFullyQualifiedName(),
-              "id,fullyQualifiedName,reviewers",
-              Include.ALL);
-
-      Thread updatedTask = JsonUtils.deepCopy(originalTask, Thread.class);
-      updatedTask.getTask().withAssignees(new ArrayList<>(metric.getReviewers()));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalTask, updatedTask);
-      RestUtil.PatchResponse<Thread> thread =
-          feedRepository.patchThread(null, originalTask.getId(), updatedTask.getUpdatedBy(), patch);
-
-      // Send WebSocket Notification
-      WebsocketNotificationHandler.handleTaskNotification(thread.entity());
-    } catch (EntityNotFoundException e) {
-      LOG.info(
-          "{} Task not found for metric {}",
-          TaskType.RequestApproval,
-          metric.getFullyQualifiedName());
-    }
+    metric =
+        Entity.getEntityByName(
+            Entity.METRIC,
+            metric.getFullyQualifiedName(),
+            "id,fullyQualifiedName,reviewers",
+            Include.ALL);
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.updateApprovalTaskAssignees(
+        metric.getFullyQualifiedName(),
+        new ArrayList<>(metric.getReviewers()),
+        metric.getUpdatedBy());
   }
 }

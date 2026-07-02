@@ -4,16 +4,22 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTI
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -45,6 +51,7 @@ import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -67,8 +74,31 @@ public class OpenSearchBulkSink implements BulkSink {
       new JacksonJsonpMapper(OBJECT_MAPPER);
   private static final int DEFAULT_DOC_BUILD_POOL_SIZE =
       Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+
+  /**
+   * Bounded work queue for the shared doc-build pool. An unbounded queue let a fast partition
+   * reader pile doc-build tasks faster than they drain; pairing a bounded queue with {@link
+   * ThreadPoolExecutor.CallerRunsPolicy} turns overflow into backpressure (the submitting thread
+   * runs the task inline) instead of unbounded heap growth. Mirrors the bounded-queue + backpressure
+   * pattern already used by EventPubSub and OrderedLaneExecutor in this codebase.
+   */
+  private static final int DOC_BUILD_QUEUE_CAPACITY = 2_000;
+
   private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
       createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  /**
+   * Dedicated pool for table column indexing, isolated from {@link #DOC_BUILD_EXECUTOR} so a burst
+   * of column work cannot starve latency-sensitive entity doc-build (which is joined per batch and
+   * shares a single FIFO queue). Also bounded + CallerRuns; in practice the column-task semaphore is
+   * the binding limit and CallerRuns is only a backstop. Capacity is kept >= the semaphore permits
+   * so the semaphore, not the queue, is what throttles.
+   */
+  private static final int COLUMN_BUILD_QUEUE_CAPACITY =
+      Math.max(16, 4 * DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  private static final ThreadPoolExecutor COLUMN_BUILD_EXECUTOR =
+      createColumnBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
 
   private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
     ThreadPoolExecutor pool =
@@ -77,22 +107,42 @@ public class OpenSearchBulkSink implements BulkSink {
             poolSize,
             60L,
             TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("reindex-os-doc-build-", 0).factory());
+            new LinkedBlockingQueue<>(DOC_BUILD_QUEUE_CAPACITY),
+            Thread.ofVirtual().name("reindex-os-doc-build-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  private static ThreadPoolExecutor createColumnBuildExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(COLUMN_BUILD_QUEUE_CAPACITY),
+            Thread.ofVirtual().name("reindex-os-column-build-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
     pool.allowCoreThreadTimeOut(true);
     return pool;
   }
 
   public static synchronized void setDocBuildPoolSize(int size) {
     int newSize = Math.max(1, Math.min(50, size));
-    if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
-      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
-      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+    resizePool(DOC_BUILD_EXECUTOR, newSize);
+    resizePool(COLUMN_BUILD_EXECUTOR, newSize);
+    LOG.info("OpenSearch doc-build and column-build pools resized to {} threads", newSize);
+  }
+
+  private static void resizePool(ThreadPoolExecutor pool, int newSize) {
+    if (newSize <= pool.getMaximumPoolSize()) {
+      pool.setCorePoolSize(newSize);
+      pool.setMaximumPoolSize(newSize);
     } else {
-      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
-      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+      pool.setMaximumPoolSize(newSize);
+      pool.setCorePoolSize(newSize);
     }
-    LOG.info("OpenSearch doc-build pool resized to {} threads", newSize);
   }
 
   public static synchronized void resetDocBuildPoolSize() {
@@ -143,6 +193,24 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong columnBuildFailed = new AtomicLong(0);
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
+
+  /**
+   * Process-wide upper bound on in-flight table column-index tasks. Each queued/running task retains
+   * its full {@link Table} (with every column) until it runs, so unbounded fire-and-forget
+   * submission lets a fast partition reader pin thousands of Tables at once in the {@link
+   * #COLUMN_BUILD_EXECUTOR} queue — the OOM root cause for wide tables. The semaphore turns the
+   * column path into bounded backpressure: {@link #submitColumnIndexTask} blocks the reader once this
+   * many tasks are outstanding instead of queueing another that pins a Table. This is a hard memory
+   * ceiling: it is intentionally fixed and is NOT scaled by {@link #setDocBuildPoolSize} (which tunes
+   * doc-build parallelism, not the memory bound).
+   */
+  private static final int MAX_INFLIGHT_COLUMN_TASKS = Math.max(8, 2 * DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  // Static so the cap is shared across all sink instances, matching the static
+  // COLUMN_BUILD_EXECUTOR
+  // and its bounded queue: total in-flight column tasks (and retained Tables) stay bounded by
+  // MAX_INFLIGHT_COLUMN_TASKS regardless of how many sinks run concurrently.
+  private static final Semaphore columnTaskSemaphore = new Semaphore(MAX_INFLIGHT_COLUMN_TASKS);
 
   public OpenSearchBulkSink(
       SearchRepository searchRepository,
@@ -217,8 +285,6 @@ public class OpenSearchBulkSink implements BulkSink {
       throw new IllegalArgumentException("Entity type is required in context data");
     }
 
-    Boolean recreateIndex = (Boolean) contextData.getOrDefault("recreateIndex", false);
-
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
 
@@ -247,6 +313,12 @@ public class OpenSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      // Process timing wraps the batch's parallel doc-build join. Each entity's runAsync builds
+      // a search doc (Jackson serialize + tag enrichment) and submits to the bulk processor;
+      // the actual OS bulk write is timed separately at the bulk-request site. So this is
+      // pure CPU/serialization time per batch, isolated from upstream DB read and downstream
+      // OS write.
+      long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
         List<EntityTimeSeriesInterface> tsEntities = (List<EntityTimeSeriesInterface>) entities;
@@ -266,15 +338,36 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                 : null;
 
-        // Pre-fetch fingerprints for batch optimization (skip during recreate — fresh index)
-        Map<String, String> existingFingerprints = Collections.emptyMap();
-        if (embeddingsEnabled && !recreateIndex) {
-          existingFingerprints =
-              fetchExistingFingerprints(entityInterfaces, indexName, reindexContext);
+        // Pre-fetch cached embeddings for entities whose state is unchanged so we can splice them
+        // into the staged doc instead of regenerating (avoids expensive embedding-provider calls).
+        // The service-layer two-step keeps large vector payloads off the wire for entities that
+        // will be re-embedded anyway, and uses the entity's `updatedAt` as a fast-path: when it
+        // matches the cached value the fingerprint supplier is never invoked.
+        Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
+        if (embeddingsEnabled) {
+          Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+              new HashMap<>(entityInterfaces.size());
+          for (EntityInterface e : entityInterfaces) {
+            currentById.put(
+                e.getId().toString(),
+                new OpenSearchVectorService.EntityFingerprintInput(
+                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
+          }
+          existingEmbeddingsById =
+              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
         }
 
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+
         // Add entities to search index in parallel
-        Map<String, String> finalFingerprints = existingFingerprints;
+        Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
         List<CompletableFuture<Void>> futures =
             entityInterfaces.stream()
                 .map(
@@ -284,31 +377,27 @@ public class OpenSearchBulkSink implements BulkSink {
                                 addEntity(
                                     entity,
                                     indexName,
-                                    recreateIndex,
                                     reindexContext,
                                     tracker,
                                     embeddingsEnabled,
-                                    finalFingerprints),
+                                    finalEmbeddingsById,
+                                    docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
-        // Index columns asynchronously when processing table entities
+        // Index columns asynchronously when processing table entities. Each submission is gated by
+        // a semaphore so a fast reader cannot pin an unbounded number of Table entities in the
+        // shared doc-build queue (see submitColumnIndexTask).
         if (Entity.TABLE.equals(entityType)) {
           for (EntityInterface entity : entityInterfaces) {
-            CompletableFuture<Void> future =
-                CompletableFuture.runAsync(
-                        () -> indexTableColumns(entity, recreateIndex, reindexContext),
-                        DOC_BUILD_EXECUTOR)
-                    .exceptionally(
-                        ex -> {
-                          LOG.error("Failed to index columns for table {}", entity.getName(), ex);
-                          return null;
-                        });
-            pendingColumnFutures.add(future);
+            submitColumnIndexTask(entity, reindexContext);
           }
-          pendingColumnFutures.removeIf(CompletableFuture::isDone);
         }
+      }
+      if (tracker != null) {
+        tracker.addStageTime(
+            StageStatsTracker.Stage.PROCESS, System.nanoTime() - processStartNanos);
       }
     } catch (Exception e) {
       LOG.error("Failed to write {} entities of type {}", entities.size(), entityType, e);
@@ -341,18 +430,19 @@ public class OpenSearchBulkSink implements BulkSink {
   private void addEntity(
       EntityInterface entity,
       String indexName,
-      boolean recreateIndex,
       ReindexContext reindexContext,
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
-      Map<String, String> existingFingerprints) {
+      Map<String, JsonNode> existingEmbeddingsById,
+      Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
+      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, recreateIndex, existingFingerprints, tracker);
+        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
       }
 
       String finalJson = json;
@@ -394,27 +484,14 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       final String indexableJson = finalJson;
-      BulkOperation operation;
-      if (recreateIndex) {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.index(
-                        idx ->
-                            idx.index(indexName)
-                                .id(docId)
-                                .document(OsUtils.toJsonData(indexableJson))));
-      } else {
-        operation =
-            BulkOperation.of(
-                op ->
-                    op.update(
-                        upd ->
-                            upd.index(indexName)
-                                .id(docId)
-                                .document(OsUtils.toJsonData(indexableJson))
-                                .docAsUpsert(true)));
-      }
+      BulkOperation operation =
+          BulkOperation.of(
+              op ->
+                  op.index(
+                      idx ->
+                          idx.index(indexName)
+                              .id(docId)
+                              .document(OsUtils.toJsonData(indexableJson))));
       if (tracker != null) {
         tracker.incrementPendingSink();
       }
@@ -559,8 +636,55 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private void indexTableColumns(
-      EntityInterface entity, boolean recreateIndex, ReindexContext reindexContext) {
+  /**
+   * Submit a table's column-indexing work to the shared doc-build pool under a bounded permit.
+   *
+   * <p>The permit is acquired on the calling (partition-reader) thread <em>before</em> the task is
+   * scheduled, so when {@link #MAX_INFLIGHT_COLUMN_TASKS} tasks are already outstanding the reader
+   * blocks here rather than queueing another task that pins a full {@link Table}. The permit is
+   * released exactly once when the task completes (success or failure), or here if scheduling
+   * itself fails synchronously.
+   */
+  private void submitColumnIndexTask(EntityInterface entity, ReindexContext reindexContext) {
+    try {
+      columnTaskSemaphore.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      // Record the skip so getColumnStats() reflects the missing work instead of counting these
+      // columns as silently successful.
+      columnBuildFailed.incrementAndGet();
+      LOG.warn(
+          "Interrupted while waiting to submit column-index task for table {}; skipping columns",
+          entity.getName());
+      return;
+    }
+
+    boolean releaseOwnedByTask = false;
+    try {
+      CompletableFuture<Void> future =
+          CompletableFuture.runAsync(
+                  () -> indexTableColumns(entity, reindexContext), COLUMN_BUILD_EXECUTOR)
+              .exceptionally(
+                  ex -> {
+                    LOG.error("Failed to index columns for table {}", entity.getName(), ex);
+                    return null;
+                  })
+              .whenComplete((result, ex) -> columnTaskSemaphore.release());
+      releaseOwnedByTask = true;
+      pendingColumnFutures.add(future);
+      pendingColumnFutures.removeIf(CompletableFuture::isDone);
+    } finally {
+      // If scheduling threw synchronously (e.g. executor shutdown) the task's whenComplete never
+      // ran, so release the permit here to avoid leaking it.
+      if (!releaseOwnedByTask) {
+        columnTaskSemaphore.release();
+      }
+    }
+  }
+
+  // Visible for testing: overridden by the column-backpressure regression test to control task
+  // timing without standing up a real cluster.
+  protected void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -588,27 +712,14 @@ public class OpenSearchBulkSink implements BulkSink {
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
 
-        BulkOperation operation;
-        if (recreateIndex) {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.index(
-                          idx ->
-                              idx.index(columnIndexName)
-                                  .id(docId)
-                                  .document(OsUtils.toJsonData(json))));
-        } else {
-          operation =
-              BulkOperation.of(
-                  op ->
-                      op.update(
-                          upd ->
-                              upd.index(columnIndexName)
-                                  .id(docId)
-                                  .document(OsUtils.toJsonData(json))
-                                  .docAsUpsert(true)));
-        }
+        BulkOperation operation =
+            BulkOperation.of(
+                op ->
+                    op.index(
+                        idx ->
+                            idx.index(columnIndexName)
+                                .id(docId)
+                                .document(OsUtils.toJsonData(json))));
         long estimatedSize =
             (long) json.getBytes(StandardCharsets.UTF_8).length + BULK_OPERATION_METADATA_OVERHEAD;
         columnBulkProcessor.add(operation, docId, Entity.TABLE_COLUMN, null, estimatedSize);
@@ -786,12 +897,10 @@ public class OpenSearchBulkSink implements BulkSink {
         && searchRepository.getIndexMapping(entityType) != null;
   }
 
-  @SuppressWarnings("unchecked")
   private String enrichWithEmbedding(
       EntityInterface entity,
       String json,
-      boolean recreateIndex,
-      Map<String, String> existingFingerprints,
+      Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
@@ -799,28 +908,34 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
-      if (!recreateIndex) {
-        String currentFp = VectorDocBuilder.computeFingerprintForEntity(entity);
-        String existingFp = existingFingerprints.get(entity.getId().toString());
-        if (existingFp != null && existingFp.equals(currentFp)) {
-          vectorSuccess.incrementAndGet();
-          if (tracker != null) {
-            tracker.recordVector(StatsResult.SUCCESS);
-          }
-          return json;
-        }
+      JsonNode parsed = OBJECT_MAPPER.readTree(json);
+      if (!(parsed instanceof ObjectNode doc)) {
+        LOG.warn(
+            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
+            entity.getId());
+        return json;
       }
 
-      Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-      Map<String, Object> docMap = OBJECT_MAPPER.readValue(json, Map.class);
-      docMap.putAll(embeddingFields);
-      String enrichedJson = OBJECT_MAPPER.writeValueAsString(docMap);
+      int expectedDimension =
+          vectorService.getEmbeddingClient() != null
+              ? vectorService.getEmbeddingClient().getDimension()
+              : -1;
+      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
+      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+        // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
+        // service-layer pre-filter only admits entries whose state matches (same fingerprint or
+        // same updatedAt), and fingerprint covers the body text that determines chunk count.
+        doc.setAll((ObjectNode) cached);
+      } else {
+        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+      }
 
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);
       }
-      return enrichedJson;
+      return OBJECT_MAPPER.writeValueAsString(doc);
     } catch (Exception e) {
       LOG.warn(
           "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
@@ -832,13 +947,50 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
+  /**
+   * The cached payload from {@code fetchExistingEmbeddings} is pre-filtered by the service layer
+   * to entries whose state matches. As defense-in-depth at the splice site we also require the
+   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, (c) have an
+   * {@code embedding} whose length matches {@code expectedDimension} — the current embedding
+   * client's dimension — and (d) have a textual non-blank {@code fingerprint}.
+   *
+   * <p>The dimension check is essential: the reuse pre-filter keys only on entity content
+   * (fingerprint / {@code updatedAt}), which does not change when the embedding model or dimension
+   * changes. Without this guard, a recreate that switches model/dimension would splice an
+   * old-dimension vector into a staged index built for the new dimension, and the document would be
+   * rejected by the knn field — silently leaving the entity unembedded. When {@code
+   * expectedDimension} is non-positive (no active client) the dimension check is skipped.
+   *
+   * <p>Tree-model access is type-tolerant — a missing or unexpectedly-typed field returns a safe
+   * default rather than throwing — and the fingerprint check ensures we never splice a vector into
+   * the new index without also carrying its fingerprint, which would silently break future reuse
+   * for that entity.
+   */
+  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
+  }
+
   @Override
   public int getActiveBulkRequestCount() {
     return bulkProcessor.activeBulkRequests.get();
   }
 
-  private Map<String, String> fetchExistingFingerprints(
-      List<EntityInterface> entities, String indexName, ReindexContext reindexContext) {
+  private Map<String, JsonNode> fetchExistingEmbeddings(
+      List<EntityInterface> entities,
+      Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById,
+      String indexName,
+      ReindexContext reindexContext) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
@@ -846,21 +998,15 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       String entityType = entities.getFirst().getEntityReference().getType();
-      String targetIndex = indexName;
-      if (reindexContext != null) {
-        String stagedIndex = reindexContext.getStagedIndex(entityType).orElse(null);
-        if (stagedIndex != null) {
-          targetIndex = stagedIndex;
-        }
-      }
-
-      List<String> entityIds = new ArrayList<>(entities.size());
-      for (EntityInterface entity : entities) {
-        entityIds.add(entity.getId().toString());
-      }
-      return vectorService.getExistingFingerprintsBatch(targetIndex, entityIds);
+      // During a recreate, read embeddings from the pre-recreate live index (the staged index is
+      // empty by definition). Outside a recreate, read from the canonical index passed in.
+      String sourceIndex =
+          reindexContext != null
+              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
+              : indexName;
+      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
     } catch (Exception e) {
-      LOG.warn("Failed to fetch existing fingerprints: {}", e.getMessage());
+      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
       return Collections.emptyMap();
     }
   }
@@ -884,6 +1030,22 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   public static class CustomBulkProcessor {
+    /**
+     * Cap on how long a flush will wait for a permit before declaring the bulk failed. With an
+     * unbounded {@code acquire()} a single leaked async future (no completion, no release) parks
+     * every subsequent caller permanently and the entire pipeline freezes at whatever record
+     * count was in flight at the time. 60s is conservative — well above any realistic OS bulk
+     * latency, well below "user gives up and bounces the pod". Stored per-instance (instead of
+     * a static constant) so tests can shorten it without sleeping for a minute.
+     */
+    private static final long DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS = 60L;
+
+    // Volatile for cross-thread visibility. Read by flushInternal on the scheduler thread and
+    // from any caller that triggers a flush via add(); written by the package-private test
+    // setter from a different thread. Without volatile a stale value could be observed.
+    private volatile long semaphoreAcquireTimeoutSeconds =
+        DEFAULT_SEMAPHORE_ACQUIRE_TIMEOUT_SECONDS;
+
     private final OpenSearchAsyncClient asyncClient;
     private final List<BulkOperation> buffer = new ArrayList<>();
 
@@ -1024,6 +1186,15 @@ public class OpenSearchBulkSink implements BulkSink {
     }
 
     /**
+     * Test-only override for the semaphore acquire timeout. Production code uses 60s; tests
+     * exercising the timeout path shorten this so they don't sleep for a minute. Not exposed
+     * via any non-test caller, hence package-private.
+     */
+    void setSemaphoreAcquireTimeoutSecondsForTesting(long seconds) {
+      this.semaphoreAcquireTimeoutSeconds = seconds;
+    }
+
+    /**
      * Flush pending requests and wait for all active bulk requests to complete. Unlike awaitClose,
      * this does not close the processor - it can continue to be used after this call.
      *
@@ -1081,12 +1252,32 @@ public class OpenSearchBulkSink implements BulkSink {
       int numberOfActions = toFlush.size();
       LOG.debug("Executing bulk request {} with {} actions", executionId, numberOfActions);
 
+      // Bounded acquire: a leaked bulk future (callback never fires — e.g., the OpenSearch HC5
+      // I/O reactor died, PR #27698 territory) used to drain this semaphore and park every
+      // subsequent caller forever. With a timeout we surface the leak as a permanent failure
+      // so workers can keep moving and operators see an actual error instead of the pipeline
+      // silently freezing at a fixed record count.
+      boolean acquired;
       try {
-        concurrentRequestSemaphore.acquire();
+        acquired =
+            concurrentRequestSemaphore.tryAcquire(semaphoreAcquireTimeoutSeconds, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         LOG.error("Interrupted while waiting for semaphore", e);
         Thread.currentThread().interrupt();
         recordPermanentFailure(toFlush, numberOfActions, "Interrupted while waiting for semaphore");
+        if (metrics != null) {
+          metrics.decrementPendingBulkRequests();
+        }
+        return;
+      }
+      if (!acquired) {
+        LOG.error(
+            "Bulk semaphore exhausted for {}s — recording {} ops as failed (active bulk requests={}). Likely a leaked async future.",
+            semaphoreAcquireTimeoutSeconds,
+            numberOfActions,
+            activeBulkRequests.get());
+        recordPermanentFailure(
+            toFlush, numberOfActions, "Bulk semaphore timeout — likely future leak");
         if (metrics != null) {
           metrics.decrementPendingBulkRequests();
         }
@@ -1118,6 +1309,13 @@ public class OpenSearchBulkSink implements BulkSink {
       io.micrometer.core.instrument.Timer.Sample bulkTimerSample =
           metrics != null ? metrics.startBulkRequestTimer() : null;
 
+      // Sink timing wraps the bulk HTTP round-trip — pure OpenSearch latency, isolated from
+      // upstream Reader (DB) and Process (doc build). Resolve the set of trackers
+      // participating in this bulk before submit (without removing), so the completion handler
+      // can attribute the wall-clock to each participating entity tracker.
+      long bulkStartNanos = System.nanoTime();
+      Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
+
       CompletableFuture<BulkResponse> future;
       try {
         future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
@@ -1140,6 +1338,10 @@ public class OpenSearchBulkSink implements BulkSink {
 
       future.whenComplete(
           (response, error) -> {
+            long bulkElapsedNanos = System.nanoTime() - bulkStartNanos;
+            for (StageStatsTracker tracker : participatingTrackers) {
+              tracker.addStageTime(StageStatsTracker.Stage.SINK, bulkElapsedNanos);
+            }
             boolean retryScheduled = false;
             try {
               if (error != null) {
@@ -1179,6 +1381,28 @@ public class OpenSearchBulkSink implements BulkSink {
               }
             }
           });
+    }
+
+    /**
+     * Resolve the distinct set of trackers represented in this bulk by walking each operation's
+     * docId. Used to charge Sink wall-clock time to every participating entity. Each tracker
+     * gets the full bulk-request elapsed time, which slightly overcounts when a single bulk
+     * mixes entity types but is fine for diagnostic comparison ("which entity's docs are
+     * spending the most time in OS bulk requests"). In practice batches are usually
+     * homogeneous because the producer fills bulks per-entity.
+     */
+    private Set<StageStatsTracker> collectTrackers(List<BulkOperation> operations) {
+      Set<StageStatsTracker> trackers = new HashSet<>();
+      for (BulkOperation op : operations) {
+        String docId = getDocId(op);
+        if (docId != null) {
+          StageStatsTracker tracker = docIdToTracker.get(docId);
+          if (tracker != null) {
+            trackers.add(tracker);
+          }
+        }
+      }
+      return trackers;
     }
 
     private boolean handleBulkFailure(

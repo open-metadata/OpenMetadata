@@ -22,6 +22,7 @@ import {
 import {
   fillDescriptionDetails,
   performBulkDownload,
+  startCsvPreviewAndWaitForGrid,
 } from '../../utils/importUtils';
 import { visitServiceDetailsPage } from '../../utils/service';
 
@@ -226,8 +227,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      // Wait for CSV grid to render
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify CSV loaded correctly - this would fail before the fix
       // because the CSV parser couldn't handle quoted FQN values
@@ -326,7 +326,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // The main assertion - CSV should load without errors
       // Before the fix, this would fail with CSV parsing error
@@ -407,7 +407,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify grid loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -495,7 +495,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify CSV loads correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -585,7 +585,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify CSV loaded - columns with dots should be properly escaped
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -657,7 +657,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${serviceNameWithDot}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       await expect(page.locator('.rdg-header-row')).toBeVisible();
 
@@ -772,7 +772,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${databaseName}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify CSV loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -877,7 +877,7 @@ test.describe('Bulk Import Export with Dot in Service Name', () => {
       const fileInput = page.getByTestId('upload-file-widget');
       await fileInput?.setInputFiles([`downloads/${schemaName}.csv`]);
 
-      await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Verify CSV loaded
       await expect(page.locator('.rdg-header-row')).toBeVisible();

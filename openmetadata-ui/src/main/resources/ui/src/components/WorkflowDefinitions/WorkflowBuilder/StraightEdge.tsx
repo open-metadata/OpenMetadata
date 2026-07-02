@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
+import { XClose } from '@untitledui/icons';
 import classNames from 'classnames';
+import { capitalize, startCase } from 'lodash';
+import React, { useState } from 'react';
 import { BaseEdge, EdgeLabelRenderer, EdgeProps, Position } from 'reactflow';
-import { ConditionValue } from '../../../constants/WorkflowBuilder.constants';
+import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 
 const getCleanStraightPath = (
   sourceX: number,
@@ -62,6 +65,9 @@ const getCleanStraightPath = (
   return [path, labelX, labelY] as const;
 };
 
+const formatEdgeLabel = (label: string): string =>
+  startCase(label).split(' ').map(capitalize).join(' ');
+
 export const StraightEdge = (props: EdgeProps) => {
   const {
     id,
@@ -78,6 +84,17 @@ export const StraightEdge = (props: EdgeProps) => {
     labelBgStyle,
   } = props;
 
+  const [isHovered, setIsHovered] = useState(false);
+
+  const { allowStructuralGraphEdits } = useWorkflowModeContext();
+  const onEdgeDelete = props.data?.onEdgeDelete as
+    | ((edgeId: string) => void)
+    | undefined;
+  const showDeleteButton =
+    isHovered && allowStructuralGraphEdits && !!onEdgeDelete;
+
+  const isHorizontalEdge = Math.abs(sourceY - targetY) < 10;
+
   const [path, labelX, labelY] = getCleanStraightPath(
     sourceX,
     sourceY,
@@ -86,13 +103,16 @@ export const StraightEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   );
-  const isConditionLabel =
-    label === ConditionValue.TRUE || label === ConditionValue.FALSE;
+  const displayLabel =
+    typeof label === 'string' && label.length > 0
+      ? formatEdgeLabel(label)
+      : label;
+  const hasStyleOverrides = !!(labelBgStyle?.fill || labelStyle?.color);
   const labelClassName = classNames(
     'tw:flex tw:items-center tw:rounded tw:border tw:border-border-secondary tw:bg-primary tw:px-2 tw:py-1 tw:shadow-sm',
-    { 'tw:cursor-pointer': isConditionLabel }
+    { 'tw:cursor-pointer': hasStyleOverrides }
   );
-  const labelStyleOverrides = isConditionLabel
+  const labelStyleOverrides = hasStyleOverrides
     ? {
         backgroundColor: labelBgStyle?.fill,
         borderColor: labelBgStyle?.stroke,
@@ -104,8 +124,17 @@ export const StraightEdge = (props: EdgeProps) => {
   return (
     <>
       <BaseEdge id={id} markerEnd={markerEnd} path={path} style={style} />
-      {label && (
-        <EdgeLabelRenderer>
+      <path
+        d={path}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={20}
+        style={{ pointerEvents: 'all' }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      />
+      <EdgeLabelRenderer>
+        {label && (
           <div
             className={labelClassName}
             style={{
@@ -113,13 +142,37 @@ export const StraightEdge = (props: EdgeProps) => {
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
               pointerEvents: 'all',
               ...labelStyleOverrides,
-            }}>
+            }}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}>
             <Typography size="text-xs" weight="semibold">
-              {label}
+              {displayLabel}
             </Typography>
           </div>
-        </EdgeLabelRenderer>
-      )}
+        )}
+        {showDeleteButton && (
+          <div
+            className="tw:absolute tw:pointer-events-auto"
+            style={{
+              transform: `translate(-50%, -50%) translate(${
+                label && isHorizontalEdge ? labelX + 48 : labelX
+              }px, ${label && !isHorizontalEdge ? labelY - 36 : labelY}px)`,
+            }}>
+            <Button
+              className="tw:rounded-full tw:bg-primary tw:shadow-sm"
+              color="tertiary-destructive"
+              iconLeading={XClose}
+              size="sm"
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.stopPropagation();
+                onEdgeDelete(id);
+              }}
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            />
+          </div>
+        )}
+      </EdgeLabelRenderer>
     </>
   );
 };

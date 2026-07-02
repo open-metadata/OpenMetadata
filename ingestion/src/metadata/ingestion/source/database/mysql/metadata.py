@@ -9,8 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Mysql source module"""
+
 import traceback
-from typing import Iterable, Optional, cast
+from typing import Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
 from sqlalchemy.dialects.mysql.base import ischema_names
@@ -37,6 +38,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.mysql.models import (
+    DEFAULT_STORED_PROC_LANGUAGE,
     STORED_PROC_LANGUAGE_MAP,
     STORED_PROC_TYPE_MAP,
     MysqlRoutine,
@@ -67,15 +69,11 @@ class MysqlSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection = cast(MysqlConnection, config.serviceConnection.root.config)
+        connection = cast(MysqlConnection, config.serviceConnection.root.config)  # noqa: TC006
         if not isinstance(connection, MysqlConnection):
-            raise InvalidSourceException(
-                f"Expected MysqlConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected MysqlConnection, but got {connection}")
         return cls(config, metadata)
 
     def get_stored_procedures(self) -> Iterable[MysqlRoutine]:
@@ -83,11 +81,7 @@ class MysqlSource(CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(
-                        MYSQL_GET_ROUTINES.format(
-                            schema_name=self.context.get().database_schema
-                        )
-                    )
+                    text(MYSQL_GET_ROUTINES).bindparams(schema_name=self.context.get().database_schema)  # pyright: ignore[reportAttributeAccessIssue]
                 ).all()
             for row in results:
                 try:
@@ -110,20 +104,14 @@ class MysqlSource(CommonDbSourceService):
                         )
                     )
 
-    def yield_stored_procedure(
-        self, stored_procedure: MysqlRoutine
-    ) -> Iterable[Either[CreateStoredProcedureRequest]]:
+    def yield_stored_procedure(self, stored_procedure: MysqlRoutine) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
-                description=(
-                    Markdown(stored_procedure.description)
-                    if stored_procedure.description
-                    else None
-                ),
+                description=(Markdown(stored_procedure.description) if stored_procedure.description else None),
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
+                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language, DEFAULT_STORED_PROC_LANGUAGE),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(
@@ -133,9 +121,7 @@ class MysqlSource(CommonDbSourceService):
                     database_name=self.context.get().database,
                     schema_name=self.context.get().database_schema,
                 ),
-                storedProcedureType=STORED_PROC_TYPE_MAP.get(
-                    stored_procedure.routine_type
-                ),
+                storedProcedureType=STORED_PROC_TYPE_MAP.get(stored_procedure.routine_type),
             )
             yield Either(right=stored_procedure_request)
             self.register_record_stored_proc_request(stored_procedure_request)

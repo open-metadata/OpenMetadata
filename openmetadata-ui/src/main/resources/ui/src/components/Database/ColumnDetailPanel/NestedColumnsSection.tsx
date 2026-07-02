@@ -14,10 +14,10 @@ import { Badge } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-new.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
 import { Column } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getNestedSectionTitle } from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNestedSectionTitle } from '../../../utils/TablePureUtils';
 import { NestedColumnsSectionProps } from './NestedColumnsSection.interface';
 
 const NestedColumnItem: React.FC<{
@@ -76,7 +76,7 @@ export const NestedColumnsSection: React.FC<NestedColumnsSectionProps> = ({
   return (
     <div className="tw:border-b-[0.6px] tw:border-tertiary tw:px-4 tw:pb-4">
       <div className="tw:mb-3 tw:flex tw:items-center tw:gap-2">
-        <span className="tw:text-[13px] tw:font-semibold tw:text-primary">
+        <span className="tw:text-sm tw:font-semibold tw:text-primary">
           {t(getNestedSectionTitle(entityType))}
         </span>
 

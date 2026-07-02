@@ -75,6 +75,10 @@
   },
   "mappings": {
     "properties": {
+      "extension": {
+        "type": "object",
+        "enabled": false
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -394,6 +398,9 @@
       },
       "fingerprint": {
         "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
       },
       "textToEmbed": {
         "type": "text"

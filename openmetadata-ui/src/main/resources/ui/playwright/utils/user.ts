@@ -36,12 +36,30 @@ import {
 } from './common';
 import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
+import { clickUpdateButtonIfVisible } from './explore';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
   await settingClick(page, GlobalSettingOptions.USERS);
   await fetchUsers;
+};
+
+export const searchUserByEmail = async (
+  page: Page,
+  email: string,
+  userName: string
+) => {
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
+  );
+  await page.getByTestId('searchbar').fill(email);
+  await searchResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId(userName)).toBeVisible();
 };
 
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
@@ -232,9 +250,7 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
-    /deleted successfully!/
-  );
+  await toastNotification(page, /deleted successfully!/);
 };
 
 export const editDisplayName = async (page: Page, editedUserName: string) => {
@@ -451,6 +467,15 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
+  if (!isUserSoftDeleted) {
+    // Modal opens with soft-delete as default; wait for the form's
+    // initialization effect before switching, otherwise the click races
+    // with setFieldsValue and the selection gets clobbered.
+    await page
+      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
+      .waitFor();
+  }
+
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
@@ -635,14 +660,21 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await dataAssetDropdownRequest;
 
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
-  await page.click('[data-testid="table-checkbox"]');
 
+  // Arm before the option click: immediate-apply fires the query on the click
   const getSearchResultResponse = page.waitForResponse(
     '/api/v1/search/query?q=*'
   );
-  await page.click('[data-testid="update-btn"]');
+  await page.click('[data-testid="table-checkbox"]');
+  await clickUpdateButtonIfVisible(page);
 
   await getSearchResultResponse;
+  await waitForAllLoadersToDisappear(page);
+
+  // Close the dropdown by toggling its trigger — pressing Escape would also
+  // close the auto-opened summary panel (ExploreV1 has a document-level
+  // Escape handler), removing the entity-link this step needs to click.
+  await page.click('[data-testid="search-dropdown-Data Assets"]');
 
   // Click on the entity link in the drawer title
   await page.click('.summary-panel-container [data-testid="entity-link"]');
@@ -710,7 +742,7 @@ export const addUser = async (
   await waitForAllLoadersToDisappear(page);
   await page.click('[data-testid="add-user"]');
 
-  await page.waitForResponse('/api/v1/roles?default=false&limit=100&fields=');
+  await page.waitForResponse('/api/v1/roles/search?*');
   await page.fill('[data-testid="email"]', email);
 
   await page.fill('[data-testid="displayName"]', name);
@@ -726,7 +758,9 @@ export const addUser = async (
     .getByRole('combobox');
   await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
   await rolesCombobox.click();
+  const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
+  await rolesSearchResponse;
   const roleOption = page
     .locator('.ant-select-item-option-content')
     .filter({ hasText: new RegExp(`^${role}$`) })

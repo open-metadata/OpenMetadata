@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -38,7 +39,7 @@ import {
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
-test.describe('Lineage Interactions', () => {
+test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const table1 = new TableClass();
   const table2 = new TableClass();
   const topic = new TopicClass();
@@ -435,10 +436,22 @@ test.describe('Lineage Interactions', () => {
         const fqnParts: Array<string> = tableFqn.split('.');
         fqnParts.pop();
 
-        expect(breadcrumbCount).toBe(fqnParts.length);
-
+        // Breadcrumbs use autoCollapse, so when the node is narrow the
+        // middle crumbs fold into a "..." menu. The visible items remain
+        // a contiguous prefix and suffix of the FQN path, so they must
+        // appear in the original order.
+        const visibleTexts: Array<string> = [];
         for (let i = 0; i < breadcrumbCount; i++) {
-          await expect(breadcrumbItems.nth(i)).toHaveText(fqnParts[i]);
+          visibleTexts.push(
+            (await breadcrumbItems.nth(i).textContent())?.trim() ?? ''
+          );
+        }
+
+        let fqnCursor = 0;
+        for (const text of visibleTexts) {
+          const matchIndex = fqnParts.indexOf(text, fqnCursor);
+          expect(matchIndex).toBeGreaterThanOrEqual(0);
+          fqnCursor = matchIndex + 1;
         }
       } finally {
         await table.delete(apiContext);

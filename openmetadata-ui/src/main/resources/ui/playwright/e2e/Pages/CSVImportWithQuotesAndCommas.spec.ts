@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, test } from '@playwright/test';
 import * as fs from 'fs';
 import { Glossary } from '../../support/glossary/Glossary';
 import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
@@ -19,6 +19,7 @@ import {
   validateImportStatus,
   waitForImportGridLoadMaskToDisappear,
 } from '../../utils/importUtils';
+import { setupCsvImportListener } from '../../utils/websocket';
 
 const cleanupTempFile = (filePath: string | undefined): void => {
   if (filePath && fs.existsSync(filePath)) {
@@ -30,23 +31,59 @@ const cleanupTempFile = (filePath: string | undefined): void => {
   }
 };
 
+type GlossaryTermsResponse = {
+  data?: Array<{
+    name?: string;
+  }>;
+};
+
+const waitForGlossaryTerms = async (
+  apiContext: APIRequestContext,
+  glossaryId: string,
+  termNames: string[]
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/glossaryTerms?glossary=${glossaryId}&limit=100`
+        );
+
+        if (!response.ok()) {
+          return [];
+        }
+
+        const data = (await response.json()) as GlossaryTermsResponse;
+
+        return data.data?.map((term) => term.name ?? '') ?? [];
+      },
+      { timeout: 60000 }
+    )
+    .toEqual(expect.arrayContaining(termNames));
+};
+
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-,"Term1",TermAnuj,"<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,
-,"Test1234","Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.","<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,
-,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,`;
+const CSV_WITH_QUOTES_AND_COMMAS = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+,"Term1",TermAnuj,"<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,,
+,"Test1234","Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.","<p>Contains a timestamp for the most recent ""login"" of this feature user, to be used for PIN expiration.</p>",,,,,,user:admin,Approved,,,,
+,"TermWithComma,AndQuote","Display name with ""quoted"" text, and comma","<p>Description with ""quotes"" and, commas</p>",,,,,,user:admin,Approved,,,,`;
 
 test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
+  let createCsvImportPromise: () => Promise<void>;
+
   test.beforeEach(async ({ page }) => {
+    createCsvImportPromise = await setupCsvImportListener(page);
     await redirectToHomePage(page);
   });
 
   test('Create glossary with CSV, export it, create new glossary and import exported data', async ({
     page,
   }) => {
+    test.setTimeout(180_000);
+
     const { apiContext } = await getApiContext(page);
     const sourceGlossary = new Glossary(`QuotesCommas-${uuid()}`);
     const targetGlossary = new Glossary(`QuotesCommas-Target-${uuid()}`);
@@ -67,6 +104,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
           {
             isContentString: true,
             tempFileName: `temp-quotes-commas-${uuid()}.csv`,
+            csvImportCompletedPromise: createCsvImportPromise(),
           }
         );
         tempFilePath = tempFile;
@@ -110,10 +148,16 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
             response.url().includes('dryRun=false') &&
             response.request().method() === 'PUT'
         );
+        const importCompletedPromise = createCsvImportPromise();
 
         await page.getByRole('button', { name: 'Update' }).click();
         await importResponse;
+        await importCompletedPromise;
         await waitForImportGridLoadMaskToDisappear(page);
+        await waitForGlossaryTerms(apiContext, sourceGlossary.responseData.id, [
+          'Term1',
+          'TermWithComma,AndQuote',
+        ]);
       } finally {
         cleanupTempFile(tempFilePath);
       }
@@ -148,7 +192,9 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       await page.click('[data-testid="import-button-description"]');
 
       try {
-        await uploadCSVAndWaitForGrid(page, exportedCsvPath);
+        await uploadCSVAndWaitForGrid(page, exportedCsvPath, {
+          csvImportCompletedPromise: createCsvImportPromise(),
+        });
 
         await expect(
           page.getByRole('gridcell', { name: 'Term1' }).first()
@@ -189,9 +235,11 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
             response.url().includes('dryRun=false') &&
             response.request().method() === 'PUT'
         );
+        const importCompletedPromise = createCsvImportPromise();
 
         await page.getByRole('button', { name: 'Update' }).click();
         await importResponse;
+        await importCompletedPromise;
         await waitForImportGridLoadMaskToDisappear(page);
       } finally {
         if (exportedCsvPath && fs.existsSync(exportedCsvPath)) {

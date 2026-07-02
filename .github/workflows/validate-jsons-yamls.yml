@@ -28,11 +28,12 @@ permissions:
 jobs:
   validate-json-yaml:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
     permissions:
       pull-requests: write
     steps:
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

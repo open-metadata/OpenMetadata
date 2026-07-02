@@ -66,9 +66,7 @@ class TestBurstIQConnection(TestCase):
 
         # Mock get dictionaries response
         mock_dict_response = Mock()
-        mock_dict_response.json.return_value = [
-            {"name": "test_dict", "attributes": [], "indexes": []}
-        ]
+        mock_dict_response.json.return_value = [{"name": "test_dict", "attributes": [], "indexes": []}]
         mock_dict_response.raise_for_status = Mock()
         mock_request.return_value = mock_dict_response
 
@@ -146,9 +144,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(len(edges), 1)
         self.assertEqual(edges[0].name, "test_edge")
 
-    @patch(
-        "metadata.ingestion.source.database.burstiq.connection.test_connection_steps"
-    )
+    @patch("metadata.ingestion.source.database.burstiq.connection.test_connection_steps")
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
     def test_connection_full_test(self, mock_post, mock_test_steps):
         """Test full connection test flow"""
@@ -170,14 +166,14 @@ class TestBurstIQConnection(TestCase):
         client = BurstIQClient(self.config)
 
         # Call test_connection directly - import inline to avoid pytest collection issues
-        from metadata.ingestion.source.database.burstiq import (
-            connection as burstiq_conn,
+        from metadata.ingestion.source.database.burstiq.connection import (
+            BurstIQConnection,
         )
 
-        result = burstiq_conn.test_connection(
+        handler = BurstIQConnection(self.config)
+        handler._client = client
+        result = handler.test_connection(  # noqa: F841
             metadata=mock_metadata,
-            client=client,
-            service_connection=self.config,
             timeout_seconds=180,
         )
 

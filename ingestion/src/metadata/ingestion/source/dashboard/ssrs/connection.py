@@ -11,17 +11,19 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.ssrsConnection import (
-    SsrsConnection,
+    SsrsConnection as SsrsConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.ssrs.client import SsrsClient
@@ -29,7 +31,7 @@ from metadata.utils.constants import THREE_MIN
 from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 
-def get_connection(connection: SsrsConnection) -> SsrsClient:
+def get_connection(connection: SsrsConnectionConfig) -> SsrsClient:
     verify_ssl = None
     if connection.verifySSL:
         verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
@@ -37,22 +39,27 @@ def get_connection(connection: SsrsConnection) -> SsrsClient:
     return SsrsClient(connection, verify_ssl=verify_ssl)
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: SsrsClient,
-    service_connection: SsrsConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    test_fn = {
-        "CheckAccess": client.test_access,
-        "GetDashboards": client.get_reports,
-    }
+class SsrsConnection(BaseConnection[SsrsConnectionConfig, SsrsClient]):
+    def _get_client(self) -> SsrsClient:
+        return get_connection(self.service_connection)
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        client = self.client
+        service_connection = self.service_connection
+        test_fn = {
+            "CheckAccess": client.test_access,
+            "GetDashboards": client.test_get_reports,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

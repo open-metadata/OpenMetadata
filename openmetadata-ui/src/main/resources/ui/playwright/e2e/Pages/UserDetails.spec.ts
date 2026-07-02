@@ -501,7 +501,11 @@ test.describe('User with different Roles', () => {
 
     await expect(adminPage.getByTestId('user-profile-roles')).toBeVisible();
 
+    const initialRolesResponse = adminPage.waitForResponse(
+      '/api/v1/roles/search?*'
+    );
     await adminPage.getByTestId('edit-roles-button').click();
+    await initialRolesResponse;
 
     await expect(
       adminPage.getByTestId('profile-edit-roles-select')
@@ -511,6 +515,15 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
+    await adminPage
+      .getByTestId('profile-edit-roles-select')
+      .locator('input')
+      .fill('Application');
+    await adminPage.waitForResponse('/api/v1/roles/search?*');
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role', { exact: true })
+      .waitFor({ state: 'visible' });
     await adminPage
       .locator('.ant-select-item-option-content')
       .getByText('Application bot role', { exact: true })
@@ -616,31 +629,41 @@ test.describe('User with different Roles', () => {
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const searchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const searchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(encodeURIComponent(table.entity.name))
       );
+
+      const assetCardText = table.entity.displayName ?? table.entity.name;
 
       await assetsSearchBox.fill(table.entity.name);
 
-      await searchResponse;
+      const searchResponse = await searchPromise;
+      expect(searchResponse.status()).toBe(200);
 
-      const assetCard = adminPage.getByText(table.entity.name).first();
+      const assetCard = adminPage.getByText(assetCardText).first();
 
       await expect(assetCard).toBeVisible();
 
       await assetsSearchBox.clear();
 
-      const incorrectSearchResponse = adminPage.waitForResponse(
-        '**/api/v1/search/query*'
+      const incorrectSearchTerm = 'nonexistent-asset-name-xyz-123';
+
+      const incorrectSearchPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          response.url().includes(incorrectSearchTerm)
       );
 
-      await assetsSearchBox.fill('nonexistent-asset-name-xyz-123');
+      await assetsSearchBox.fill(incorrectSearchTerm);
 
-      await incorrectSearchResponse;
+      const incorrectSearchResponse = await incorrectSearchPromise;
+      expect(incorrectSearchResponse.status()).toBe(200);
 
       await expect(assetsSearchBox).toBeVisible();
 
-      const incorrectAssetCard = adminPage.getByText(table.entity.name);
+      const incorrectAssetCard = adminPage.getByText(assetCardText);
 
       await expect(incorrectAssetCard).not.toBeVisible();
 

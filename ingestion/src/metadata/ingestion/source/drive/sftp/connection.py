@@ -11,6 +11,7 @@
 """
 SFTP connection and helpers
 """
+
 import io
 import traceback
 from dataclasses import dataclass
@@ -25,11 +26,14 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
     BasicAuth,
     KeyAuth,
-    SftpConnection,
+)
+from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
+    SftpConnection as SftpConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -59,7 +63,7 @@ class SftpClient:
             logger.warning(f"Error closing SFTP connection: {exc}")
 
 
-def get_connection(connection: SftpConnection) -> SftpClient:
+def get_connection(connection: SftpConnectionConfig) -> SftpClient:
     """
     Create connection to SFTP server
     """
@@ -70,31 +74,24 @@ def get_connection(connection: SftpConnection) -> SftpClient:
         auth_type = connection.authType
 
         if isinstance(auth_type, BasicAuth):
-            password = (
-                auth_type.password.get_secret_value() if auth_type.password else None
-            )
+            password = auth_type.password.get_secret_value() if auth_type.password else None
             transport.connect(
                 username=auth_type.username,
                 password=password,
             )
         elif isinstance(auth_type, KeyAuth):
             private_key_str = auth_type.privateKey.get_secret_value()
-            passphrase = (
-                auth_type.privateKeyPassphrase.get_secret_value()
-                if auth_type.privateKeyPassphrase
-                else None
-            )
+            passphrase = auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None
 
             pkey = _parse_private_key(private_key_str, passphrase)
             if pkey is None:
-                raise ValueError(
-                    "Unable to parse private key. Ensure it is in PEM format "
-                    "(RSA, Ed25519, ECDSA, or DSS)."
+                raise ValueError(  # noqa: TRY301
+                    "Unable to parse private key. Ensure it is in PEM format (RSA, Ed25519, ECDSA, or DSS)."
                 )
 
             transport.connect(username=auth_type.username, pkey=pkey)
         else:
-            raise ValueError(f"Unsupported authentication type: {type(auth_type)}")
+            raise ValueError(f"Unsupported authentication type: {type(auth_type)}")  # noqa: TRY004, TRY301
 
         sftp_client = SFTPClient.from_transport(transport)
 
@@ -102,17 +99,15 @@ def get_connection(connection: SftpConnection) -> SftpClient:
 
     except Exception as exc:
         if transport:
-            try:
+            try:  # noqa: SIM105
                 transport.close()
             except Exception:
                 pass
         logger.debug(traceback.format_exc())
-        raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")
+        raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")  # noqa: B904
 
 
-def _parse_private_key(
-    private_key_str: str, passphrase: Optional[str] = None
-) -> Optional[paramiko.PKey]:
+def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:  # noqa: UP045
     """
     Parse a private key string in PEM format.
     Tries RSA, Ed25519, ECDSA, and DSS key types.
@@ -135,64 +130,65 @@ def _parse_private_key(
     return None
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: SftpClient,
-    service_connection: SftpConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,
-    timeout_seconds: Optional[int] = THREE_MIN,
-) -> TestConnectionResult:
-    """
-    Test connection to SFTP server
-    """
-    logger.info("Starting SFTP test connection")
+class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
+    def _get_client(self) -> SftpClient:
+        return get_connection(self.service_connection)
 
-    def check_access():
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
         """
-        Check if we can access SFTP server
+        Test connection to SFTP server
         """
-        try:
-            client.sftp.stat(".")
-            logger.info("Successfully authenticated to SFTP server")
-        except Exception as exc:
-            logger.debug(f"Access check error traceback: {traceback.format_exc()}")
-            raise SourceConnectionException(f"Failed to access SFTP server: {exc}")
+        client = self.client
+        service_connection = self.service_connection
+        logger.info("Starting SFTP test connection")
 
-    def list_directories():
-        """
-        Test listing root directories
-        """
-        try:
-            logger.info("Testing SFTP directory listing")
-            root_dirs = service_connection.rootDirectories or ["/"]
+        def check_access():
+            """
+            Check if we can access SFTP server
+            """
+            try:
+                client.sftp.stat(".")
+                logger.info("Successfully authenticated to SFTP server")
+            except Exception as exc:
+                logger.debug(f"Access check error traceback: {traceback.format_exc()}")
+                raise SourceConnectionException(f"Failed to access SFTP server: {exc}")  # noqa: B904
 
-            for root_dir in root_dirs:
-                try:
-                    entries = client.sftp.listdir(root_dir)
-                    logger.info(f"Found {len(entries)} entries in '{root_dir}'")
-                except Exception as dir_exc:
-                    logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")
-                    raise SourceConnectionException(
-                        f"Failed to list directory '{root_dir}': {dir_exc}"
-                    )
+        def list_directories():
+            """
+            Test listing root directories
+            """
+            try:
+                logger.info("Testing SFTP directory listing")
+                root_dirs = service_connection.rootDirectories or ["/"]
 
-        except SourceConnectionException:
-            raise
-        except Exception as exc:
-            logger.debug(
-                f"Directory listing test error traceback: {traceback.format_exc()}"
-            )
-            raise SourceConnectionException(f"Failed to list directories: {exc}")
+                for root_dir in root_dirs:
+                    try:
+                        entries = client.sftp.listdir(root_dir)
+                        logger.info(f"Found {len(entries)} entries in '{root_dir}'")
+                    except Exception as dir_exc:
+                        logger.warning(f"Could not list directory '{root_dir}': {dir_exc}")
+                        raise SourceConnectionException(f"Failed to list directory '{root_dir}': {dir_exc}")  # noqa: B904
 
-    test_fn = {
-        "CheckAccess": check_access,
-        "ListDirectories": list_directories,
-    }
+            except SourceConnectionException:
+                raise
+            except Exception as exc:
+                logger.debug(f"Directory listing test error traceback: {traceback.format_exc()}")
+                raise SourceConnectionException(f"Failed to list directories: {exc}")  # noqa: B904
 
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        test_fn = {
+            "CheckAccess": check_access,
+            "ListDirectories": list_directories,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

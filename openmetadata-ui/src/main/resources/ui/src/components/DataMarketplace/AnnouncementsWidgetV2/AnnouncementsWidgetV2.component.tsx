@@ -17,49 +17,54 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getActiveAnnouncement } from '../../../rest/feedsAPI';
+import {
+  AnnouncementEntity,
+  getActiveAnnouncements,
+} from '../../../rest/announcementsAPI';
 import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../utils/FeedUtils';
+} from '../../../utils/FeedUtilsPure';
 import Loader from '../../common/Loader/Loader';
 import AnnouncementItemV2 from './AnnouncementItemV2.component';
-
 const DISPLAY_COUNT = 4;
 
-const DUMMY_ANNOUNCEMENTS: Thread[] = [
+const DUMMY_ANNOUNCEMENTS: AnnouncementEntity[] = [
   {
     id: 'dummy-1',
-    message: "Upcoming changes to the 'Customer Insights' data product",
-    announcement: {
-      description:
-        "The 'Customer Insights' data product will be updated to remove the 'Demographics' asset.",
-      startTime: Date.now(),
-      endTime: Date.now() + 86400000,
-    },
-    about: '<#E::dataProduct::customer-insights>',
-  } as Thread,
+    name: 'upcoming-customer-insights',
+    displayName: "Upcoming changes to the 'Customer Insights' data product",
+    description:
+      "The 'Customer Insights' data product will be updated to remove the 'Demographics' asset.",
+    entityLink: '<#E::dataProduct::customer-insights>',
+    startTime: Date.now(),
+    endTime: Date.now() + 86400000,
+    createdBy: 'governance-bot',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
   {
     id: 'dummy-2',
-    message:
+    name: 'deprecate-location-field',
+    displayName:
       "Deprecation of 'Location' field in the 'Customer Demographics' dataset",
-    announcement: {
-      description:
-        "Important: Retirement of 'Customer Location' attribute in the 'Global Customers' dataset",
-      startTime: Date.now(),
-      endTime: Date.now() + 86400000,
-    },
-    about: '<#E::domain::customer-demographics>',
-  } as Thread,
+    description:
+      "Important: Retirement of 'Customer Location' attribute in the 'Global Customers' dataset",
+    entityLink: '<#E::domain::customer-demographics>',
+    startTime: Date.now(),
+    endTime: Date.now() + 86400000,
+    createdBy: 'governance-bot',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
 ];
 
 const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [announcements, setAnnouncements] = useState<Thread[]>(
+  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>(
     isEditView ? DUMMY_ANNOUNCEMENTS : []
   );
   const [loading, setLoading] = useState(!isEditView);
@@ -71,9 +76,9 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
     }
     setLoading(true);
     try {
-      const res = await getActiveAnnouncement();
-      const filtered = (res.data ?? []).filter((thread: Thread) => {
-        const type = getEntityType(thread.about);
+      const res = await getActiveAnnouncements();
+      const filtered = (res.data ?? []).filter((announcement) => {
+        const type = getEntityType(announcement.entityLink ?? '');
 
         return type === EntityType.DOMAIN || type === EntityType.DATA_PRODUCT;
       });
@@ -95,12 +100,12 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
   );
 
   const handleAnnouncementClick = useCallback(
-    (announcement: Thread) => {
+    (announcement: AnnouncementEntity) => {
       if (isEditView) {
         return;
       }
-      const entityType = getEntityType(announcement.about);
-      const entityFQN = getEntityFQN(announcement.about);
+      const entityType = getEntityType(announcement.entityLink ?? '');
+      const entityFQN = getEntityFQN(announcement.entityLink ?? '');
 
       if (entityType && entityFQN) {
         navigate(prepareFeedLink(entityType, entityFQN));
@@ -112,7 +117,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
   if (loading) {
     return (
       <div
-        className="tw:rounded-xl tw:border tw:border-border-primary tw:bg-utility-blue-100 tw:px-1 tw:pt-3 tw:pb-1"
+        className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1"
         data-testid="announcements-widget-v2">
         <Loader size="small" />
       </div>
@@ -125,7 +130,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
 
   return (
     <div
-      className="tw:rounded-xl tw:border tw:border-border-primary tw:bg-utility-blue-100 tw:px-1 tw:pt-3 tw:pb-1 tw:mb-5"
+      className="tw:rounded-xl tw:border tw:border-gray-blue-100 tw:bg-utility-blue-dark-50 tw:px-1 tw:pt-3 tw:pb-1 tw:mb-5"
       data-testid="announcements-widget-v2">
       <div className="tw:flex tw:items-center tw:justify-between tw:mb-2 tw:px-3">
         <div className="tw:flex tw:items-center tw:gap-2">
@@ -142,7 +147,7 @@ const AnnouncementsWidgetV2 = ({ isEditView }: WidgetCommonProps) => {
             className="tw:rounded-md tw:bg-bg-primary tw:px-2 tw:py-0.5 tw:text-text-tertiary"
             size="text-sm"
             weight="medium">
-            {String(announcements.length).padStart(2, '0')}
+            {announcements.length}
           </Typography>
         </div>
       </div>

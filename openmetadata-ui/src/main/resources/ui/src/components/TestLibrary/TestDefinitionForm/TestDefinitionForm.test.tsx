@@ -17,18 +17,19 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
   EntityType,
   TestDataType,
-  TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import TestDefinitionForm from './TestDefinitionForm.component';
 
 const mockOnSuccess = jest.fn();
@@ -105,15 +106,26 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
     )),
 }));
 
+jest.mock('../../common/ServiceDocPanel/ServiceDocPanel', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ activeField, serviceName }) => (
+    <div data-testid="service-doc-panel">
+      {serviceName}:{activeField}
+    </div>
+  )),
+}));
+
 describe('TestDefinitionForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (createTestDefinition as jest.Mock).mockResolvedValue({});
     (patchTestDefinition as jest.Mock).mockResolvedValue({});
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollTo = jest.fn();
   });
 
   describe('Rendering', () => {
-    it('should render form in create mode with all required fields', () => {
+    it('should render form in create mode with all required fields', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -121,7 +133,9 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+
+      await screen.findByTestId('code-editor');
+
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.test-platform-plural')
@@ -172,6 +186,38 @@ describe('TestDefinitionForm Component', () => {
       );
 
       expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+    });
+
+    it('should render field documentation panel and update active field on focus', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByTestId('service-doc-panel')).toHaveTextContent(
+        'TestDefinitionForm:'
+      );
+
+      fireEvent.focus(screen.getByLabelText('label.name'));
+
+      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          activeField: 'root/name',
+          serviceName: 'TestDefinitionForm',
+          serviceType: 'OpenMetadata',
+        }),
+        expect.anything()
+      );
+
+      fireEvent.focus(screen.getByLabelText('label.description'));
+
+      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          activeField: 'root/description',
+          serviceName: 'TestDefinitionForm',
+          serviceType: 'OpenMetadata',
+        }),
+        expect.anything()
+      );
     });
 
     it('should render parameter section with add button', () => {
@@ -351,9 +397,9 @@ describe('TestDefinitionForm Component', () => {
       });
     };
 
-    // testPlatforms defaults to [OpenMetadata] so it never fires an error on empty submit.
-    // name + entityType are the two required fields without defaults.
-    it('should show exactly 2 validation errors when create form is submitted empty', async () => {
+    // name, entityType, and supportedDataTypes are required on empty submit.
+    // supportedDataTypes is required because testPlatforms defaults to [OpenMetadata].
+    it('should show exactly 3 validation errors when create form is submitted empty', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -363,7 +409,7 @@ describe('TestDefinitionForm Component', () => {
       await waitFor(() => {
         const errors = screen.getAllByText('message.field-text-is-required');
 
-        expect(errors).toHaveLength(2);
+        expect(errors).toHaveLength(3);
       });
     });
 
@@ -379,14 +425,18 @@ describe('TestDefinitionForm Component', () => {
         await submitEmptyForm();
 
         await waitFor(() => {
-          const nameFormItem = screen
-            .getByLabelText('label.name')
-            .closest('.ant-form-item');
-
-          expect(nameFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
+          expect(
+            screen.getAllByText('message.field-text-is-required').length
+          ).toBeGreaterThan(0);
         });
+
+        const nameFormItem = screen
+          .getByLabelText('label.name')
+          .closest('.ant-form-item');
+
+        expect(nameFormItem).toHaveTextContent(
+          'message.field-text-is-required'
+        );
       });
 
       it('entityType field is required', async () => {
@@ -400,14 +450,18 @@ describe('TestDefinitionForm Component', () => {
         await submitEmptyForm();
 
         await waitFor(() => {
-          const entityTypeFormItem = screen
-            .getByLabelText('label.entity-type')
-            .closest('.ant-form-item');
-
-          expect(entityTypeFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
+          expect(
+            screen.getAllByText('message.field-text-is-required').length
+          ).toBeGreaterThan(0);
         });
+
+        const entityTypeFormItem = screen
+          .getByLabelText('label.entity-type')
+          .closest('.ant-form-item');
+
+        expect(entityTypeFormItem).toHaveTextContent(
+          'message.field-text-is-required'
+        );
       });
 
       it('testPlatforms field is required', () => {

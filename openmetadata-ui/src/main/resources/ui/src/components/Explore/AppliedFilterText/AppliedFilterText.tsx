@@ -12,36 +12,40 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Space, Typography } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Edit05, XCircle } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
 import './applied-filter-text.less';
 
 interface AppliedFilterTextProps {
   filterText: string;
   onEdit: () => void;
+  onClear: () => void;
 }
 
 const AppliedFilterText: FC<AppliedFilterTextProps> = ({
   filterText,
   onEdit,
+  onClear,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <Space
-      className="p-x-xs w-full"
-      data-testid="advance-search-filter-container"
-      direction="vertical">
-      <Typography.Text className="text-grey-muted">
-        {t('label.applied-advanced-search')}
-      </Typography.Text>
-      <Space
+    <Box
+      align="center"
+      className="tw:ml-2"
+      colGap={2}
+      data-testid="advance-search-filter-container">
+      <Typography className="tw:text-tertiary">
+        {t('label.advanced-search')}
+      </Typography>
+      <Box
         align="center"
-        className="w-full advanced-filter-text justify-between">
-        <Space className="w-full">
+        className="advanced-filter-text tw:flex-1"
+        justify="between">
+        <Box className="w-full" colGap={2}>
           <Icon
             alt="success-badge"
             className="align-middle m-l-xs"
@@ -51,16 +55,24 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
           <Typography data-testid="advance-search-filter-text">
             {filterText}
           </Typography>
-        </Space>
-        <Button
-          className="flex-center"
-          data-testid="advance-search-filter-btn"
-          icon={<EditIcon width={16} />}
-          type="text"
-          onClick={onEdit}
-        />
-      </Space>
-    </Space>
+        </Box>
+        <Box>
+          <Button
+            color="tertiary"
+            data-testid="advance-search-filter-btn"
+            iconLeading={<Edit05 size={16} />}
+            size="sm"
+            onClick={onEdit}
+          />
+          <Button
+            color="tertiary"
+            data-testid="advance-search-clear-btn"
+            iconLeading={<XCircle size={16} />}
+            onClick={onClear}
+          />
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

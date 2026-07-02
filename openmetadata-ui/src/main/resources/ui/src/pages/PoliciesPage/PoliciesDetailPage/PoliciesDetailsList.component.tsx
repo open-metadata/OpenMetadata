@@ -20,7 +20,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
 import Table from '../../../components/common/Table/Table';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,

@@ -65,9 +65,11 @@ export interface EntityRelationship {
 export enum RelationshipType {
     AddressedTo = "addressedTo",
     AppliedTo = "appliedTo",
+    AssignedTo = "assignedTo",
     Contains = "contains",
     CreatedBy = "createdBy",
     DefaultsTo = "defaultsTo",
+    DerivedFrom = "derivedFrom",
     EditedBy = "editedBy",
     Expert = "expert",
     Follows = "follows",

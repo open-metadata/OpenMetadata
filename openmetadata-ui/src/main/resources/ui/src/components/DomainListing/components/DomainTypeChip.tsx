@@ -54,7 +54,7 @@ export const DomainTypeChip = ({ domainType }: DomainTypeChipProps) => {
       );
     default:
       return (
-        <Typography className="tw:text-gray-700" size="text-xs">
+        <Typography className="tw:text-secondary" size="text-xs">
           {EMPTY_VALUE_INDICATOR}
         </Typography>
       );

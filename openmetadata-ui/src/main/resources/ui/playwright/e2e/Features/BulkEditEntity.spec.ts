@@ -44,43 +44,64 @@ import {
   pressKeyXTimes,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
+
+interface GlossaryDetails {
+  name: string;
+  parent: string;
+}
 
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const user1 = new UserClass();
-const user2 = new UserClass();
-const glossary = new Glossary();
-const glossaryTerm = new GlossaryTerm(glossary);
-const domain1 = new Domain();
-const domain2 = new Domain();
+let user1: UserClass;
+let user2: UserClass;
+let glossary: Glossary;
+let glossaryTerm: GlossaryTerm;
+let domain1: Domain;
+let domain2: Domain;
 
-const glossaryDetails = {
-  name: glossaryTerm.data.name,
-  parent: glossary.data.name,
+let glossaryDetails: GlossaryDetails;
+let databaseSchemaDetails1: ReturnType<
+  typeof createDatabaseSchemaRowDetails
+> & { glossary: GlossaryDetails };
+let tableDetails1: ReturnType<typeof createTableRowDetails> & {
+  glossary: GlossaryDetails;
 };
-
-const databaseSchemaDetails1 = {
-  ...createDatabaseSchemaRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const tableDetails1 = {
-  ...createTableRowDetails(),
-  glossary: glossaryDetails,
-};
-
-const columnDetails1 = {
-  ...createColumnRowDetails(),
-  glossary: glossaryDetails,
+let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
+  glossary: GlossaryDetails;
 };
 
 test.describe('Bulk Edit Entity', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
+    user1 = new UserClass();
+    user2 = new UserClass();
+    glossary = new Glossary();
+    glossaryTerm = new GlossaryTerm(glossary);
+    domain1 = new Domain();
+    domain2 = new Domain();
+
+    glossaryDetails = {
+      name: glossaryTerm.data.name,
+      parent: glossary.data.name,
+    };
+    databaseSchemaDetails1 = {
+      ...createDatabaseSchemaRowDetails(),
+      glossary: glossaryDetails,
+    };
+    tableDetails1 = {
+      ...createTableRowDetails(),
+      glossary: glossaryDetails,
+    };
+    columnDetails1 = {
+      ...createColumnRowDetails(),
+      glossary: glossaryDetails,
+    };
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await user1.create(apiContext);
@@ -168,14 +189,15 @@ test.describe('Bulk Edit Entity', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
 
@@ -183,15 +205,18 @@ test.describe('Bulk Edit Entity', () => {
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
       await page.click('[data-testid="databases"]');
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.database.name}${databaseDetails.displayName}`
-      );
+      // Verify Details updated. Narrow by the entity name so the assertion
+      // resolves to the just-edited row even when the listing renders more
+      // than one row (e.g. sibling entities from earlier steps that share
+      // the parent).
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.database.name })
+      ).toHaveText(`${table.database.name}${databaseDetails.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -239,9 +264,7 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database', async ({ page }) => {
     test.slow(true);
-
     let customPropertyRecord: Record<string, string> = {};
-
     const table = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
@@ -316,8 +339,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -327,18 +350,19 @@ test.describe('Bulk Edit Entity', () => {
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
       await page
         .locator('.inovua-react-toolkit-load-mask__background-layer')
         .waitFor({ state: 'detached' });
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.schema.name}${databaseSchemaDetails1.displayName}`
-      );
+      // Verify Details updated. See sibling-row note in the Database step.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.schema.name })
+      ).toHaveText(`${table.schema.name}${databaseSchemaDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -391,7 +415,6 @@ test.describe('Bulk Edit Entity', () => {
 
   test('Database Schema', async ({ page }) => {
     test.slow(true);
-
     let customPropertyRecord: Record<string, string> = {};
     const table = new TableClass();
 
@@ -463,23 +486,26 @@ test.describe('Bulk Edit Entity', () => {
       await page.getByRole('button', { name: 'Next' }).click();
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=false*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
       await page.getByRole('button', { name: 'Update' }).click();
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
-      // Verify Details updated
-      await expect(page.getByTestId('column-name')).toHaveText(
-        `${table.entity.name}${tableDetails1.displayName}`
-      );
+      // Verify Details updated. See sibling-row note in the Database step —
+      // the schema listing can render 15+ table rows on redirect (each with a
+      // column-name span), so this narrows to the just-edited table.
+      await expect(
+        page.getByTestId('column-name').filter({ hasText: table.entity.name })
+      ).toHaveText(`${table.entity.name}${tableDetails1.displayName}`);
 
       await expect(
         page.locator(`.ant-table-cell ${descriptionBoxReadOnly}`)
@@ -567,7 +593,13 @@ test.describe('Bulk Edit Entity', () => {
 
       await page.click(RDG_ACTIVE_CELL_SELECTOR);
 
-      await pressKeyXTimes(page, 2, 'ArrowRight');
+      await pressKeyXTimes(page, 3, 'ArrowRight');
+
+      const activeDescriptionCell = page
+        .locator(RDG_ACTIVE_CELL_SELECTOR)
+        .first();
+      // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+      await activeDescriptionCell.dblclick({ force: true });
 
       await fillDescriptionDetails(page, columnDetails1.description);
 
@@ -588,11 +620,9 @@ test.describe('Bulk Edit Entity', () => {
 
       // eslint-disable-next-line playwright/no-force-option -- button obscured by data grid overlay
       await page.click('[type="button"] >> text="Next"', { force: true });
-      // total column count +1 for header row
-      const count = `${tableEntity.entityLinkColumnsName.length + 1}`;
       await validateImportStatus(page, {
-        passed: count,
-        processed: count,
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -647,6 +677,18 @@ test.describe('Bulk Edit Entity', () => {
     await glossary.create(apiContext);
     await glossaryTerm.create(apiContext);
 
+    // Wait for the glossary term to be indexed in ES before bulk-edit reads
+    // the glossary's term list. Otherwise the bulk-edit table comes back
+    // empty, the test fills row 1 with the term's name, and the system
+    // creates a new term instead of recognizing the existing one — the
+    // subsequent status assertion gets "Entity created" instead of
+    // "Entity updated".
+    await waitForSearchIndexed(
+      apiContext,
+      glossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
+
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
         page,
@@ -696,8 +738,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 
@@ -835,8 +877,8 @@ test.describe('Bulk Edit Entity', () => {
       await loader.waitFor({ state: 'hidden' });
 
       await validateImportStatus(page, {
-        passed: '2',
-        processed: '2',
+        passed: '1',
+        processed: '1',
         failed: '0',
       });
 

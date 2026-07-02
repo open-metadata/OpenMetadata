@@ -36,6 +36,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Flowable delegate that executes sink operations within a workflow.
@@ -239,7 +240,10 @@ public class SinkTaskDelegate implements JavaDelegate {
                   for (String entityLinkStr : subBatch) {
                     try {
                       var entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-                      entities.add(Entity.getEntity(entityLink, "*", Include.ALL));
+                      String fields =
+                          String.join(
+                              ",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
+                      entities.add(Entity.getEntity(entityLink, fields, Include.ALL));
                     } catch (Exception e) {
                       LOG.error("Failed to fetch entity: {}", entityLinkStr, e);
                       fetchErrors.add(
@@ -288,7 +292,9 @@ public class SinkTaskDelegate implements JavaDelegate {
         (String) varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
 
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    String fields =
+        String.join(",", ReindexingUtil.getSearchIndexFields(entityLink.getEntityType()));
+    EntityInterface entity = Entity.getEntity(entityLink, fields, Include.ALL);
 
     LOG.info(
         "[{}] Executing single entity sink for: {}",

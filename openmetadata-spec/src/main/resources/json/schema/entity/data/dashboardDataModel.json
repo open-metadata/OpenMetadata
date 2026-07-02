@@ -29,8 +29,11 @@
         "QuickSightDataModel",
         "SigmaDataModel",
         "PowerBIDataFlow",
+        "PowerBIDatamart",
         "MicroStrategyDataset",
-        "ThoughtSpotDataModel"
+        "ThoughtSpotDataModel",
+        "SapS4HanaCdsView",
+        "SsrsDataModel"
       ],
       "javaEnums": [
         {
@@ -70,10 +73,19 @@
           "name": "PowerBIDataFlow"
         },
         {
+          "name": "PowerBIDatamart"
+        },
+        {
           "name": "MicroStrategyDataset"
         },
         {
           "name": "ThoughtSpotDataModel"
+        },
+        {
+          "name": "SapS4HanaCdsView"
+        },
+        {
+          "name": "SsrsDataModel"
         }
       ]
     }

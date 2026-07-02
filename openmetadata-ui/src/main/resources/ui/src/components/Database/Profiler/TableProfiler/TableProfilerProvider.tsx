@@ -15,6 +15,7 @@ import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import {
   createContext,
+  lazy,
   useCallback,
   useContext,
   useEffect,
@@ -28,7 +29,6 @@ import { ReactComponent as CreatedDateIcon } from '../../../../assets/svg/data-o
 import { ReactComponent as ProfileSampleIcon } from '../../../../assets/svg/data-observability/profile-sample.svg';
 import { ReactComponent as RowCountIcon } from '../../../../assets/svg/data-observability/row-count.svg';
 import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-observability/total-size.svg';
-import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -47,15 +47,13 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
-import {
-  aggregateTestResultsByEntity,
-  TestCaseCountByStatus,
-} from '../../../../utils/DataQuality/DataQualityUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
-import { generateEntityLink } from '../../../../utils/TableUtils';
+import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { bytesToSize } from '../../../../utils/StringUtils';
+import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
@@ -64,6 +62,14 @@ import {
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
+const TestCaseFormV1 = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1'
+      )
+  )
+);
 
 export const TableProfilerContext =
   createContext<TableProfilerContextInterface>(
@@ -77,7 +83,7 @@ export const TableProfilerProvider = ({
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
-  const { isTourOpen } = useTourProvider();
+  const { isTourOpen, tourMockDatasetData } = useTourProvider();
   const testCasePaging = usePaging();
   const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
@@ -298,9 +304,12 @@ export const TableProfilerProvider = ({
       setIsProfilerDataLoading(false);
     }
     if (isTourOpen) {
-      setTableProfiler(mockDatasetData.tableDetails as unknown as Table);
+      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
+      if (mock?.tableDetails) {
+        setTableProfiler(mock.tableDetails as Table);
+      }
     }
-  }, [datasetFQN, isTourOpen, activeTab]);
+  }, [datasetFQN, isTourOpen, activeTab, tourMockDatasetData]);
 
   useEffect(() => {
     const fetchTest =

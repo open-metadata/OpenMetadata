@@ -42,13 +42,6 @@ public class DefaultLogStorage implements LogStorageInterface {
   }
 
   @Override
-  public OutputStream getLogOutputStream(String pipelineFQN, UUID runId) {
-    // Default implementation doesn't support streaming writes
-    throw new UnsupportedOperationException(
-        "DefaultLogStorage does not support streaming log writes. Use appendLogs instead.");
-  }
-
-  @Override
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
     // Default implementation doesn't support direct log writes
     throw new UnsupportedOperationException(

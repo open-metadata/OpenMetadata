@@ -11,7 +11,9 @@
 """
 SFTP Service Spec
 """
+
+from metadata.ingestion.source.drive.sftp.connection import SftpConnection
 from metadata.ingestion.source.drive.sftp.metadata import SftpSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(metadata_source_class=SftpSource)
+ServiceSpec = BaseSpec(metadata_source_class=SftpSource, connection_class=SftpConnection)  # pyright: ignore[reportArgumentType]

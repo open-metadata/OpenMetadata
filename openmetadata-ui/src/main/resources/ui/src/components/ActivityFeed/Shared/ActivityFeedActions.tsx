@@ -12,11 +12,11 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
-import { useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import {
   Post,
   Thread,
@@ -27,6 +27,13 @@ import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
+
+const ConfirmationModal = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../components/Modals/ConfirmationModal/ConfirmationModal')
+  )
+);
 
 interface ActivityFeedActionsProps {
   post: Post;
@@ -66,9 +73,7 @@ const ActivityFeedActions = ({
   };
 
   const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement && !isPost) {
-      return false;
-    } else if (feed.type === ThreadType.Task && !isPost) {
+    if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor) {
       return true;

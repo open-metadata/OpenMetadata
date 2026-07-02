@@ -31,11 +31,21 @@ const mockProps: CustomizeMyDataProps = {
 jest.mock(
   '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
   () => {
-    return jest
+    const ActivityFeedProvider = jest
       .fn()
       .mockImplementation(({ children }) => (
         <div data-testid="activity-feed-provider">{children}</div>
       ));
+
+    return {
+      __esModule: true,
+      default: ActivityFeedProvider,
+      useActivityFeedProvider: jest.fn().mockReturnValue({
+        isActivityLoading: false,
+        activityEvents: [],
+        fetchMyActivityFeed: jest.fn(),
+      }),
+    };
   }
 );
 
@@ -66,6 +76,12 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => {
   return mockCustomizePageClassBase;
 });
 
+jest.mock('../../../../utils/CustomizableLandingPageUtils', () => ({
+  getWidgetFromKey: jest
+    .fn()
+    .mockImplementation(({ widgetConfig }) => <div>{widgetConfig.i}</div>),
+}));
+
 jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children, header }) => (
     <div data-testid="page-layout-v1">
@@ -84,8 +100,8 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
   })),
 }));
 
-jest.mock('../../../../rest/feedsAPI', () => ({
-  getActiveAnnouncement: jest
+jest.mock('../../../../rest/announcementsAPI', () => ({
+  getActiveAnnouncements: jest
     .fn()
     .mockImplementation(() => mockActiveAnnouncementData),
 }));

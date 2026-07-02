@@ -11,14 +11,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch.core.MgetResponse;
+import os.org.opensearch.client.opensearch.core.get.GetResult;
+import os.org.opensearch.client.opensearch.core.mget.MultiGetResponseItem;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
@@ -66,13 +73,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public void close() {
-    try {
-      if (client != null && client._transport() != null) {
-        client._transport().close();
-      }
-    } catch (Exception e) {
-      LOG.warn("Error closing OpenSearch transport: {}", e.getMessage());
-    }
+    // No-op by design. The opensearch-java client stored here was constructed
+    // elsewhere and its transport is shared with OpenSearchClient and every
+    // other manager. Closing the transport from here permanently shuts down
+    // the HC5 IOReactor for the whole application, which was a root cause of
+    // production "I/O reactor has been shut down" errors.
   }
 
   public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
@@ -184,7 +189,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int size,
       int from,
       int k,
-      double threshold) {
+      double threshold,
+      String preference) {
     long start = System.currentTimeMillis();
     try {
       float[] queryVector = embeddingClient.embed(query);
@@ -203,8 +209,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         String queryJson =
             VectorSearchQueryBuilder.build(
                 queryVector, overFetchSize, rawOffset, k, filters, threshold);
-        String responseBody =
-            executeGenericRequest("POST", "/" + aliasName + "/_search", queryJson);
+        String endpoint =
+            SearchUtils.appendPreferenceParam("/" + aliasName + "/_search", preference);
+        String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
         JsonNode hitsNode = root.path("hits").path("hits");
@@ -303,47 +310,141 @@ public class OpenSearchVectorService implements VectorIndexService {
     return null;
   }
 
-  public Map<String, String> getExistingFingerprintsBatch(
-      String indexName, List<String> entityIds) {
-    if (entityIds == null || entityIds.isEmpty()) {
+  private static final List<String> EMBEDDING_SOURCE_FIELDS =
+      List.of(
+          "fingerprint",
+          "embedding",
+          "textToLLMContext",
+          "textToEmbed",
+          "chunkIndex",
+          "chunkCount",
+          "parentId");
+
+  // Jackson-backed mapper so JsonData.to(JsonNode.class, ...) deserializes via Jackson
+  // and produces a tree of Jackson types (TextNode, ArrayNode, etc.) rather than
+  // jakarta.json.JsonValue wrappers like org.glassfish.json.JsonStringImpl.
+  private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
+
+  /**
+   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. {@code currentFingerprint}
+   * is a {@link Supplier} so the caller doesn't pay the MD5 + meta-text construction cost when the
+   * cheaper {@code updatedAt} fast-path resolves the match. {@code updatedAt} may be {@code null}
+   * for entities that don't expose it; in that case the supplier is consulted unconditionally.
+   */
+  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
+
+  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
+
+  /**
+   * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
+   * whose cached state matches the caller-provided current state. Designed to keep large vector
+   * payloads off the wire for entities that will be re-embedded anyway.
+   *
+   * <p>Step 1 — {@code mget} {@code fingerprint} + {@code updatedAt} only for every requested ID,
+   * then decide which IDs "match":
+   *
+   * <ul>
+   *   <li>Fast path: cached {@code updatedAt} equals current {@code updatedAt} — the entity hasn't
+   *       been touched since the prior index, so the embedding is reusable without recomputing the
+   *       fingerprint.
+   *   <li>Fallback: the lazy fingerprint {@link Supplier} is invoked and compared against the
+   *       cached fingerprint.
+   * </ul>
+   *
+   * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
+   * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
+   * value being safe to splice into a staged index document.
+   */
+  public Map<String, JsonNode> getExistingEmbeddingsBatch(
+      String indexName, Map<String, EntityFingerprintInput> currentById) {
+    if (currentById == null || currentById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      StringBuilder idsArray = new StringBuilder("[");
-      for (int i = 0; i < entityIds.size(); i++) {
-        if (i > 0) idsArray.append(',');
-        idsArray
-            .append("\"")
-            .append(VectorSearchQueryBuilder.escape(entityIds.get(i)))
-            .append("\"");
+      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      MgetResponse<JsonData> headerResponse =
+          client.mget(
+              m -> m.index(indexName).ids(entityIds).sourceIncludes(FINGERPRINT_HEADER_FIELDS),
+              JsonData.class);
+
+      List<String> matchingIds = new ArrayList<>();
+      for (MultiGetResponseItem<JsonData> item : headerResponse.docs()) {
+        if (!item.isResult()) {
+          continue;
+        }
+        GetResult<JsonData> doc = item.result();
+        if (!doc.found() || doc.source() == null) {
+          continue;
+        }
+        JsonNode header = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
+        if (header == null || !header.isObject()) {
+          continue;
+        }
+        EntityFingerprintInput input = currentById.get(doc.id());
+        if (input == null) {
+          continue;
+        }
+        if (cachedStateMatches(header, input)) {
+          matchingIds.add(doc.id());
+        }
       }
-      idsArray.append("]");
+      if (matchingIds.isEmpty()) {
+        return Collections.emptyMap();
+      }
 
-      String query =
-          "{\"size\":"
-              + entityIds.size()
-              + ",\"_source\":[\"fingerprint\"]"
-              + ",\"query\":{\"ids\":{\"values\":"
-              + idsArray
-              + "}}}";
+      MgetResponse<JsonData> response =
+          client.mget(
+              m -> m.index(indexName).ids(matchingIds).sourceIncludes(EMBEDDING_SOURCE_FIELDS),
+              JsonData.class);
 
-      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-      JsonNode root = MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      Map<String, String> result = new HashMap<>();
-      for (JsonNode hit : hits) {
-        String id = hit.path("_id").asText();
-        String fp = hit.path("_source").path("fingerprint").asText(null);
-        if (id != null && fp != null) {
-          result.put(id, fp);
+      Map<String, JsonNode> result = new HashMap<>();
+      for (MultiGetResponseItem<JsonData> item : response.docs()) {
+        if (!item.isResult()) {
+          continue;
+        }
+        GetResult<JsonData> doc = item.result();
+        if (!doc.found() || doc.source() == null) {
+          continue;
+        }
+        JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
+        if (isSpliceable(cached)) {
+          result.put(doc.id(), cached);
         }
       }
       return result;
     } catch (Exception e) {
-      LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
+      LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
+  }
+
+  /**
+   * The splice-site contract: callers can rely on every returned entry being a JSON object whose
+   * {@code embedding} is a non-empty array and whose {@code fingerprint} is non-blank text.
+   * Anything else is dropped — silently, since these only fail on corrupt or partial cached docs
+   * that the caller will regenerate from scratch anyway.
+   */
+  private static boolean isSpliceable(JsonNode cached) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
+  }
+
+  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
+    JsonNode cachedUpdatedAt = header.path("updatedAt");
+    if (cachedUpdatedAt.isIntegralNumber()
+        && input.updatedAt() != null
+        && cachedUpdatedAt.asLong() == input.updatedAt()) {
+      return true;
+    }
+    String cachedFp = header.path("fingerprint").asText(null);
+    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
   }
 
   public void partialUpdateEntity(

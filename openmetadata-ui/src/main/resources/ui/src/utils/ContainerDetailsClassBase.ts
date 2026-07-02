@@ -19,6 +19,7 @@ import {
   DESCRIPTION_WIDGET,
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
+  KNOWLEDGE_ARTICLE_WIDGET,
   TAGS_WIDGET,
 } from '../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -31,7 +32,7 @@ import {
   getContainerDetailPageTabs,
   getContainerWidgetsFromKey,
 } from './ContainerDetailUtils';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 
 export interface ContainerDetailPageTabProps {
@@ -41,12 +42,14 @@ export interface ContainerDetailPageTabProps {
   editCustomAttributePermission: boolean;
   viewAllPermission: boolean;
   viewCustomPropertiesPermission: boolean;
+  viewSampleDataPermission: boolean;
   feedCount: FeedCounts;
   getEntityFeedCount: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
   tab: EntityTabs;
   deleted: boolean;
   containerData?: Container;
+  containerPermissions: import('../context/PermissionProvider/PermissionProvider.interface').OperationPermission;
   fetchContainerDetail: (containerFQN: string) => Promise<void>;
   labelMap?: Record<EntityTabs, string>;
   childrenCount: number;
@@ -59,7 +62,8 @@ type ContainerWidgetKeys =
   | DetailPageWidgetKeys.DATA_PRODUCTS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
 class ContainerDetailsClassBase {
   defaultWidgetHeight: Record<ContainerWidgetKeys, number>;
@@ -73,6 +77,7 @@ class ContainerDetailsClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
+      [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
   }
 
@@ -86,6 +91,7 @@ class ContainerDetailsClassBase {
     return [
       EntityTabs.SCHEMA,
       EntityTabs.CHILDREN,
+      EntityTabs.SAMPLE_DATA,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.LINEAGE,
       EntityTabs.CONTRACT,
@@ -93,7 +99,14 @@ class ContainerDetailsClassBase {
     ].map((tab: EntityTabs) => ({
       id: tab,
       name: tab,
-      displayName: getTabLabelFromId(tab),
+      // Container-specific override: TAB_LABEL_MAP renders EntityTabs.CHILDREN as
+      // "Children" globally (used by other entity types like Directory), but for
+      // Container detail pages the tab is displayed as "Containers" — keep the
+      // customize-page editor in sync with what the live page shows.
+      displayName:
+        tab === EntityTabs.CHILDREN
+          ? i18n.t('label.container-plural')
+          : getTabLabelFromId(tab),
       layout: this.getDefaultLayout(tab),
       editable: tab === EntityTabs.CHILDREN || tab === EntityTabs.SCHEMA,
     }));
@@ -172,6 +185,14 @@ class ContainerDetailsClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.KNOWLEDGE_ARTICLE],
+        i: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
@@ -198,7 +219,7 @@ class ContainerDetailsClassBase {
       },
       {
         fullyQualifiedName: DetailPageWidgetKeys.CONTAINER_CHILDREN,
-        name: i18n.t('label.children'),
+        name: i18n.t('label.container-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -207,6 +228,7 @@ class ContainerDetailsClassBase {
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 

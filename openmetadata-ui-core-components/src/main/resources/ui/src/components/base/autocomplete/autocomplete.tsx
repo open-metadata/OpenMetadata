@@ -18,6 +18,7 @@ import type {
   PointerEventHandler,
   ReactNode,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -54,9 +55,14 @@ interface AutocompleteContextValue {
   selectedItems: SelectItemType[];
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
+  onCreateItem?: (value: string) => void;
+  allowsCreation: boolean;
+  hideDropdown: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
   multiple: boolean;
+  visibleItemCount: number;
+  triggerRef: RefObject<HTMLDivElement | null>;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -65,15 +71,20 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   selectedItems: [],
   onRemove: () => {},
   onInputChange: () => {},
+  onCreateItem: undefined,
+  allowsCreation: false,
+  hideDropdown: false,
   maxVisibleItems: undefined,
   multiple: true,
+  visibleItemCount: 0,
+  triggerRef: { current: null },
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
   size: 'sm' | 'md';
   isDisabled?: boolean;
   placeholder?: string;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   onFocus?: FocusEventHandler;
   onPointerEnter?: PointerEventHandler;
 }
@@ -88,15 +99,18 @@ export interface AutocompleteProps
   items?: SelectItemType[];
   popoverClassName?: string;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
-  placeholderIcon?: IconComponentType | null;
+  icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemInserted?: (key: Key) => void;
   onItemCleared?: (key: Key) => void;
+  onFocus?: FocusEventHandler;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
+  allowsCreation?: boolean;
+  hideDropdown?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -130,12 +144,24 @@ const InnerAutocomplete = ({
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
 
+  const canCreateItem =
+    context.allowsCreation &&
+    (context.hideDropdown || context.visibleItemCount === 0);
+
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
 
-    if (!isCaretAtStart && event.currentTarget.value !== '') {
+    if (event.key === 'Enter' && canCreateItem && inputValue.trim() !== '') {
+      event.preventDefault();
+      context.onCreateItem?.(inputValue.trim());
+
+      return;
+    }
+
+    if (!isCaretAtStart && inputValue !== '') {
       return;
     }
 
@@ -253,8 +279,17 @@ const InnerAutocomplete = ({
           !multiple && !isSelectionEmpty && 'tw:hidden'
         )}>
         <AriaInput
-          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-none tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
+          className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
+          onBlur={(event) => {
+            const inputValue = event.target.value.trim();
+            const isMovingInsideWidget = context.triggerRef?.current?.contains(
+              event.relatedTarget
+            );
+            if (!isMovingInsideWidget && canCreateItem && inputValue !== '') {
+              context.onCreateItem?.(inputValue);
+            }
+          }}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
         />
@@ -266,7 +301,7 @@ const InnerAutocomplete = ({
 const AutocompleteTrigger = ({
   size,
   placeholder,
-  placeholderIcon: Icon = SearchLg,
+  icon: Icon = SearchLg,
   isDisabled: _isDisabled,
   isInvalid,
   ...otherProps
@@ -320,9 +355,12 @@ export const AutocompleteBase = ({
   popoverClassName,
   renderTag,
   filterOption,
+  onFocus,
   multiple = true,
   onSearchChange,
   maxVisibleItems,
+  allowsCreation = false,
+  hideDropdown = false,
   name: _name,
   className: _className,
   ...props
@@ -402,6 +440,29 @@ export const AutocompleteBase = ({
     [onSearchChange]
   );
 
+  const onCreateItem = useCallback(
+    (value: string) => {
+      const newItem: SelectItemType = { id: value, label: value };
+      setAllItems((prev) =>
+        prev.some((item) => item.id === value) ? prev : [...prev, newItem]
+      );
+      const alreadySelected = internalSelected.some(
+        (item) => item.id === value
+      );
+      if (!multiple) {
+        setInternalSelected([newItem]);
+        if (!alreadySelected) {
+          onItemInserted?.(value);
+        }
+      } else if (!alreadySelected) {
+        setInternalSelected((prev) => [...prev, newItem]);
+        onItemInserted?.(value);
+      }
+      setFilterText('');
+    },
+    [onItemInserted, multiple, internalSelected]
+  );
+
   const triggerRef = useRef<HTMLDivElement>(null);
   const [popoverWidth, setPopoverWidth] = useState('');
 
@@ -416,7 +477,7 @@ export const AutocompleteBase = ({
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ fontSize: 'md' as const, size: 'sm' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
     []
   );
 
@@ -427,18 +488,28 @@ export const AutocompleteBase = ({
       selectedItems: internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItemCount: visibleItems.length,
+      triggerRef,
     }),
     [
       selectedKeys,
       internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItems.length,
+      triggerRef,
     ]
   );
 
@@ -464,26 +535,31 @@ export const AutocompleteBase = ({
 
               <div className="tw:relative tw:w-full" ref={triggerRef}>
                 <AutocompleteTrigger
+                  icon={props.icon}
                   isInvalid={isInvalid}
                   placeholder={placeholder}
-                  placeholderIcon={props.placeholderIcon}
                   size="sm"
-                  onFocus={onResize}
+                  onFocus={(event) => {
+                    onResize();
+                    onFocus?.(event);
+                  }}
                   onPointerEnter={onResize}
                 />
               </div>
 
-              <Popover
-                className={popoverClassName}
-                size="md"
-                style={{ width: popoverWidth }}
-                triggerRef={triggerRef}>
-                <AriaListBox
-                  className="tw:size-full tw:outline-hidden"
-                  selectionMode="multiple">
-                  {children}
-                </AriaListBox>
-              </Popover>
+              {!hideDropdown && (
+                <Popover
+                  className={popoverClassName}
+                  size="md"
+                  style={{ width: popoverWidth }}
+                  triggerRef={triggerRef}>
+                  <AriaListBox
+                    className="tw:size-full tw:outline-hidden"
+                    selectionMode="multiple">
+                    {children}
+                  </AriaListBox>
+                </Popover>
+              )}
 
               {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
             </div>

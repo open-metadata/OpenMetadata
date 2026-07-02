@@ -6,10 +6,13 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.Function;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
@@ -90,6 +93,57 @@ public class RuleEvaluator {
       return false;
     }
     return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());
+  }
+
+  @Function(
+      name = "isTaskFiler",
+      input = "none",
+      description =
+          "Returns true if the logged in user filed (created) the task being accessed. "
+              + "Only applies when the resource is a task.",
+      examples = {"isTaskFiler()", "!isTaskFiler()"})
+  public boolean isTaskFiler() {
+    Task task = currentTask();
+    boolean filer = false;
+    if (task != null && task.getCreatedBy() != null) {
+      filer = subjectContext.isOwner(List.of(task.getCreatedBy()));
+    }
+    return filer;
+  }
+
+  @Function(
+      name = "isTaskAssignee",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is an assignee of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskAssignee()", "!isTaskAssignee()"})
+  public boolean isTaskAssignee() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getAssignees());
+  }
+
+  @Function(
+      name = "isTaskReviewer",
+      input = "none",
+      description =
+          "Returns true if the logged in user (or one of their teams) is a reviewer of the "
+              + "task being accessed. Only applies when the resource is a task.",
+      examples = {"isTaskReviewer()", "!isTaskReviewer()"})
+  public boolean isTaskReviewer() {
+    Task task = currentTask();
+    return task != null && subjectContext.isOwner(task.getReviewers());
+  }
+
+  private Task currentTask() {
+    Task task = null;
+    if (!expressionValidation && subjectContext != null && resourceContext != null) {
+      EntityInterface entity = resourceContext.getEntity();
+      if (entity instanceof Task t) {
+        task = t;
+      }
+    }
+    return task;
   }
 
   @Function(
@@ -373,6 +427,41 @@ public class RuleEvaluator {
       }
     }
     return false;
+  }
+
+  @Function(
+      name = "isAdminUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is an admin. Use with the "
+              + "Impersonate operation to control whether bots can impersonate admin users.",
+      examples = {"isAdminUser()", "!isAdminUser()"})
+  @SuppressWarnings("unused")
+  public boolean isAdminUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsAdmin()));
+  }
+
+  @Function(
+      name = "isBotUser",
+      input = "none",
+      description =
+          "Returns true if the user being accessed as a resource is a bot. Use with the "
+              + "Impersonate operation to control whether bots can impersonate other bots.",
+      examples = {"isBotUser()", "!isBotUser()"})
+  @SuppressWarnings("unused")
+  public boolean isBotUser() {
+    return matchesUserResource(user -> Boolean.TRUE.equals(user.getIsBot()));
+  }
+
+  private boolean matchesUserResource(Predicate<User> predicate) {
+    boolean result = false;
+    if (!expressionValidation
+        && resourceContext != null
+        && Entity.USER.equals(resourceContext.getResource())
+        && resourceContext.getEntity() instanceof User user) {
+      result = predicate.test(user);
+    }
+    return result;
   }
 
   private void validateEntityReference(String entityType, String fqn) {

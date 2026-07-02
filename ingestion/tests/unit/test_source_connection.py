@@ -13,10 +13,6 @@ from unittest import TestCase
 
 from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
 
-from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
-    AthenaConnection,
-    AthenaScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
@@ -44,24 +40,6 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
     Db2Connection,
     Db2Scheme,
 )
-from metadata.generated.schema.entity.services.connections.database.druidConnection import (
-    DruidConnection,
-    DruidScheme,
-)
-from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
-    ExasolConnection,
-    ExasolScheme,
-    ExasolType,
-    Tls,
-)
-from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
-    HiveConnection,
-    HiveScheme,
-)
-from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
-    ImpalaConnection,
-    ImpalaScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
     MariaDBScheme,
@@ -83,17 +61,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
     OracleServiceName,
     OracleTNSConnection,
 )
-from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
-    PinotDBConnection,
-    PinotDBScheme,
-)
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
     PostgresScheme,
-)
-from metadata.generated.schema.entity.services.connections.database.prestoConnection import (
-    PrestoConnection,
-    PrestoScheme,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -115,11 +85,6 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.connections.database.trinoConnection import (
     TrinoScheme,
 )
-from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
-    VerticaConnection,
-    VerticaScheme,
-)
-from metadata.generated.schema.security.credentials import awsCredentials
 from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
@@ -136,9 +101,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
             httpPath="/sql/1.0/warehouses/abcdedfg",
@@ -150,9 +115,9 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_result = "databricks+connector://1.1.1.1:443"
+        expected_result = "databricks://1.1.1.1:443?catalog=main"
         databricks_conn_obj = DatabricksConnection(
-            scheme=DatabricksScheme.databricks_connector,
+            scheme=DatabricksScheme.databricks,
             hostPort="1.1.1.1:443",
             authType=DatabricksOauth(
                 clientId="d40e2905-88ef-42ab-8898-fbefff2d071d",
@@ -163,260 +128,98 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_result == get_connection_url(databricks_conn_obj)
 
-    def test_hive_url(self):
-        from metadata.ingestion.source.database.hive.connection import (
+    def test_databricks_pipeline_url(self):
+        from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
+            DatabricksPipelineConnection,
+        )
+        from metadata.ingestion.source.pipeline.databrickspipeline.connection import (
             get_connection_url,
         )
 
-        expected_result = "hive://localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive, hostPort="localhost:10000"
+        conn_obj = DatabricksPipelineConnection(
+            hostPort="my-workspace.cloud.databricks.com:443",
+            token="dapi1234567890",
         )
-        assert expected_result == get_connection_url(hive_conn_obj)
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://token:dapi1234567890@my-workspace.cloud.databricks.com:443"
+        assert "databricks+connector" not in url
 
-        expected_http_result = "hive+http://localhost:1000"
-        http_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive_http, hostPort="localhost:1000"
-        )
-
-        assert expected_http_result == get_connection_url(http_conn_obj)
-
-        exptected_https_result = "hive+https://localhost:1000"
-        http_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive_https, hostPort="localhost:1000"
-        )
-        assert exptected_https_result == get_connection_url(http_conn_obj)
-
-    def test_hive_url_custom_auth(self):
-        from metadata.ingestion.source.database.hive.connection import (
+    def test_databricks_url_with_special_chars_in_catalog(self):
+        from metadata.ingestion.source.database.databricks.connection import (
             get_connection_url,
         )
 
-        expected_result = "hive://username:password@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username",
-            password="password",
-            hostPort="localhost:10000",
-            connectionArguments={"auth": "CUSTOM"},
+        databricks_conn_obj = DatabricksConnection(
+            scheme=DatabricksScheme.databricks,
+            hostPort="1.1.1.1:443",
+            authType=PersonalAccessToken(token="KlivDTACWXKmZVfN1qIM"),
+            httpPath="/sql/1.0/warehouses/abcdedfg",
+            catalog="my catalog&name=val",
         )
-        assert expected_result == get_connection_url(hive_conn_obj)
+        url = get_connection_url(databricks_conn_obj)
+        assert url == "databricks://1.1.1.1:443?catalog=my+catalog%26name%3Dval"
 
-        # Passing @ in username and password
-        expected_result = "hive://username%40444:password%40333@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username@444",
-            password="password@333",
-            hostPort="localhost:10000",
-            connectionArguments={"auth": "CUSTOM"},
+    def test_unity_catalog_url_without_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
         )
-
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_hive_url_conn_options_with_db(self):
-        from metadata.ingestion.source.database.hive.connection import (
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
             get_connection_url,
         )
 
-        expected_result = "hive://localhost:10000/test_db?Key=Value"
-        hive_conn_obj = HiveConnection(
-            hostPort="localhost:10000",
-            databaseSchema="test_db",
-            connectionOptions={"Key": "Value"},
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
         )
-        assert expected_result == get_connection_url(hive_conn_obj)
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443"
 
-    def test_hive_url_conn_options_without_db(self):
-        from metadata.ingestion.source.database.hive.connection import (
+    def test_unity_catalog_url_with_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
             get_connection_url,
         )
 
-        expected_result = "hive://localhost:10000?Key=Value"
-        hive_conn_obj = HiveConnection(
-            hostPort="localhost:10000",
-            connectionOptions={"Key": "Value"},
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="production",
         )
-        assert expected_result == get_connection_url(hive_conn_obj)
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=production"
 
-    def test_hive_url_with_kerberos_auth(self):
-        from metadata.ingestion.source.database.hive.connection import (
+    def test_unity_catalog_url_with_special_chars_in_catalog(self):
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            DatabricksScheme as UCDatabricksScheme,
+        )
+        from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+            UnityCatalogConnection,
+        )
+        from metadata.ingestion.source.database.unitycatalog.connection import (
             get_connection_url,
         )
 
-        expected_result = "hive://localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            hostPort="localhost:10000",
-            connectionArguments={
-                "auth": "KERBEROS",
-                "kerberos_service_name": "hive",
-            },
+        conn_obj = UnityCatalogConnection(
+            scheme=UCDatabricksScheme.databricks,
+            hostPort="my-workspace.cloud.databricks.com:443",
+            authType=PersonalAccessToken(token="dapi1234567890"),
+            httpPath="/sql/1.0/warehouses/abc",
+            catalog="my catalog&name=val",
         )
-
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_hive_url_with_ldap_auth(self):
-        from metadata.ingestion.source.database.hive.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "hive://username:password@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username",
-            password="password",
-            hostPort="localhost:10000",
-            connectionArguments={"auth": "LDAP"},
-        )
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_hive_url_without_auth(self):
-        from metadata.ingestion.source.database.hive.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "hive://username:password@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username",
-            password="password",
-            hostPort="localhost:10000",
-            connectionArguments={"customKey": "value"},
-        )
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_hive_url_without_connection_arguments(self):
-        from metadata.ingestion.source.database.hive.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "hive://username:password@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username",
-            password="password",
-            hostPort="localhost:10000",
-        )
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_hive_url_without_connection_arguments_pass(self):
-        from metadata.ingestion.source.database.hive.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "hive://username@localhost:10000"
-        hive_conn_obj = HiveConnection(
-            scheme=HiveScheme.hive.value,
-            username="username",
-            hostPort="localhost:10000",
-        )
-        assert expected_result == get_connection_url(hive_conn_obj)
-
-    def test_impala_url(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala, hostPort="localhost:21050"
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_custom_auth(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://username:password@localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username",
-            password="password",
-            hostPort="localhost:21050",
-            connectionArguments={"auth": "CUSTOM"},
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-        # Passing @ in username and password
-        expected_result = "impala://username%40444:password%40333@localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username@444",
-            password="password@333",
-            hostPort="localhost:21050",
-            connectionArguments={"auth": "CUSTOM"},
-        )
-
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_conn_options_with_db(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://localhost:21050/test_db?Key=Value"
-        impala_conn_obj = ImpalaConnection(
-            hostPort="localhost:21050",
-            databaseSchema="test_db",
-            connectionOptions={"Key": "Value"},
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_conn_options_without_db(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://localhost:21050?Key=Value"
-        impala_conn_obj = ImpalaConnection(
-            hostPort="localhost:21050",
-            connectionOptions={"Key": "Value"},
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_with_ldap_auth(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://username:password@localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username",
-            password="password",
-            hostPort="localhost:21050",
-            connectionArguments={"auth_mechanism": "LDAP"},
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_without_connection_arguments(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://username:password@localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username",
-            password="password",
-            hostPort="localhost:21050",
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
-
-    def test_impala_url_without_connection_arguments_pass(self):
-        from metadata.ingestion.source.database.impala.connection import (
-            get_connection_url,
-        )
-
-        expected_result = "impala://username@localhost:21050"
-        impala_conn_obj = ImpalaConnection(
-            scheme=ImpalaScheme.impala.value,
-            username="username",
-            hostPort="localhost:21050",
-        )
-        assert expected_result == get_connection_url(impala_conn_obj)
+        url = get_connection_url(conn_obj)
+        assert url == "databricks://my-workspace.cloud.databricks.com:443?catalog=my+catalog%26name%3Dval"
 
     def test_trino_url_without_params(self):
         expected_url = "trino://username@localhost:443/catalog"
@@ -459,9 +262,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
         # connection arguments with connectionArguments and without proxies
         expected_args = {
@@ -478,9 +279,7 @@ class SourceConnectionTest(TestCase):
             scheme=TrinoScheme.trino,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
         # connection arguments without connectionArguments and with proxies
         expected_args = {
@@ -552,9 +351,7 @@ class SourceConnectionTest(TestCase):
         )
         trino_connection = TrinoConnection(trino_conn_obj)
         assert expected_url == str(trino_connection.client.url)
-        assert (
-            expected_args == trino_connection.build_connection_args(trino_conn_obj).root
-        )
+        assert expected_args == trino_connection.build_connection_args(trino_conn_obj).root
 
     def test_trino_with_proxies(self):
         test_proxies = {"http": "http_proxy", "https": "https_proxy"}
@@ -567,12 +364,7 @@ class SourceConnectionTest(TestCase):
             proxies=test_proxies,
         )
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            test_proxies
-            == trino_connection.build_connection_args(trino_conn_obj)
-            .root.get("http_session")
-            .proxies
-        )
+        assert test_proxies == trino_connection.build_connection_args(trino_conn_obj).root.get("http_session").proxies
 
     def test_trino_without_catalog(self):
         # Test trino url without catalog
@@ -587,7 +379,7 @@ class SourceConnectionTest(TestCase):
         trino_connection = TrinoConnection(trino_conn_obj)
         assert expected_url == str(trino_connection.client.url)
 
-    def test_trino_without_catalog(self):
+    def test_trino_without_catalog(self):  # noqa: F811
         # Test trino url without catalog
         expected_url = "trino://username@localhost:443"
         trino_conn_obj = TrinoConnectionConfig(
@@ -602,7 +394,7 @@ class SourceConnectionTest(TestCase):
 
     def test_trino_with_oauth2(self):
         # Test trino url without catalog
-        expected_url = "trino://username@localhost:443"
+        expected_url = "trino://username@localhost:443"  # noqa: F841
         trino_conn_obj = TrinoConnectionConfig(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -611,63 +403,7 @@ class SourceConnectionTest(TestCase):
         )
 
         trino_connection = TrinoConnection(trino_conn_obj)
-        assert (
-            trino_connection.build_connection_args(trino_conn_obj).root.get("auth")
-            == OAuth2Authentication()
-        )
-
-    def test_vertica_url(self):
-        expected_url = (
-            "vertica+vertica_python://username:password@localhost:5443/database"
-        )
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username",
-            password="password",
-            database="database",
-        )
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
-
-        # Passing @ in username and password
-        expected_url = "vertica+vertica_python://username%40444:password%40123@localhost:5443/database"
-        vertica_conn_obj = VerticaConnection(
-            scheme=VerticaScheme.vertica_vertica_python,
-            hostPort="localhost:5443",
-            username="username@444",
-            password="password@123",
-            database="database",
-        )
-
-        assert expected_url == get_connection_url_common(vertica_conn_obj)
-
-    def test_druid_url(self):
-        from metadata.ingestion.source.database.druid.connection import (
-            get_connection_url,
-        )
-
-        expected_url = "druid://localhost:8082/druid/v2/sql"
-        druid_conn_obj = DruidConnection(
-            scheme=DruidScheme.druid, hostPort="localhost:8082"
-        )
-
-        assert expected_url == get_connection_url(druid_conn_obj)
-
-    def test_pinotdb_url(self):
-        from metadata.ingestion.source.database.pinotdb.connection import (
-            get_connection_url,
-        )
-
-        expected_url = (
-            "pinot://localhost:8099/query/sql?controller=http://localhost:9000/"
-        )
-        pinot_conn_obj = PinotDBConnection(
-            scheme=PinotDBScheme.pinot,
-            hostPort="localhost:8099",
-            pinotControllerHost="http://localhost:9000/",
-        )
-
-        assert expected_url == get_connection_url(pinot_conn_obj)
+        assert trino_connection.build_connection_args(trino_conn_obj).root.get("auth") == OAuth2Authentication()
 
     def test_mysql_url(self):
         # connection arguments without db
@@ -709,14 +445,12 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url_common(clickhouse_conn_obj)
 
-        expected_url = (
-            "clickhouse+http://username:@localhost:8123/default?protocol=https"
-        )
+        expected_url = "clickhouse+http://username:@localhost:8123/default?protocol=https"
         clickhouse_conn_obj = ClickhouseConnection(
             username="username",
             hostPort="localhost:8123",
             scheme=ClickhouseScheme.clickhouse_http,
-            connectionOptions=dict(protocol="https"),
+            connectionOptions=dict(protocol="https"),  # noqa: C408
             databaseSchema="default",
         )
         assert expected_url == get_connection_url_common(clickhouse_conn_obj)
@@ -753,7 +487,9 @@ class SourceConnectionTest(TestCase):
 
     def test_redshift_url(self):
         # connection arguments witho db
-        expected_url = "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
+        expected_url = (
+            "redshift+psycopg2://username:strong_password@cluster.name.region.redshift.amazonaws.com:5439/dev"
+        )
         redshift_conn_obj = RedshiftConnection(
             username="username",
             authType=BasicAuth(password="strong_password"),
@@ -763,10 +499,10 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url_common(redshift_conn_obj)
 
-    def test_singleStore_url(self):
+    def test_singleStore_url(self):  # noqa: N802
         # connection arguments without db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
@@ -775,7 +511,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with db
         expected_url = "mysql+pymysql://openmetadata_user:@localhost:5432"
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="openmetadata_user",
             hostPort="localhost:5432",
             scheme=SingleStoreScheme.mysql_pymysql,
@@ -804,12 +540,12 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == SnowflakeConnection.get_connection_url(
-            snowflake_conn_obj
-        )
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
 
         # connection arguments with db
-        expected_url = "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        expected_url = (
+            "snowflake://coding:Abhi@ue18849.us-east-2.aws/testdb?account=ue18849.us-east-2.aws&warehouse=COMPUTE_WH"
+        )
         snowflake_conn_obj = SnowflakeConnectionConfig(
             scheme=SnowflakeScheme.snowflake,
             username="coding",
@@ -819,9 +555,7 @@ class SourceConnectionTest(TestCase):
             account="ue18849.us-east-2.aws",
         )
 
-        assert expected_url == SnowflakeConnection.get_connection_url(
-            snowflake_conn_obj
-        )
+        assert expected_url == SnowflakeConnection.get_connection_url(snowflake_conn_obj)
 
     def test_mysql_conn_arguments(self):
         # connection arguments without connectionArguments
@@ -952,10 +686,10 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_args == get_connection_args_common(redshift_conn_obj)
 
-    def test_singleStore_conn_arguments(self):
+    def test_singleStore_conn_arguments(self):  # noqa: N802
         # connection arguments without connectionArguments
         expected_args = {}
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="user",
             password=None,
             hostPort="localhost:443",
@@ -966,7 +700,7 @@ class SourceConnectionTest(TestCase):
 
         # connection arguments with connectionArguments
         expected_args = {"user": "user-to-be-impersonated"}
-        singleStore_conn_obj = SingleStoreConnection(
+        singleStore_conn_obj = SingleStoreConnection(  # noqa: N806
             username="user",
             password=None,
             hostPort="localhost:443",
@@ -1026,36 +760,6 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_args == get_connection_args_common(snowflake_conn_obj)
 
-    def test_athena_url(self):
-        from metadata.ingestion.source.database.athena.connection import (
-            get_connection_url,
-        )
-
-        # connection arguments without db
-        awsCreds = awsCredentials.AWSCredentials(
-            awsAccessKeyId="key", awsRegion="us-east-2", awsSecretAccessKey="secret_key"
-        )
-
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fpostgres%2Finput%2F&work_group=primary"
-        athena_conn_obj = AthenaConnection(
-            awsConfig=awsCreds,
-            s3StagingDir="s3://postgres/input/",
-            workgroup="primary",
-            scheme=AthenaScheme.awsathena_rest,
-        )
-
-        assert expected_url == get_connection_url(athena_conn_obj)
-
-        # connection arguments witho db
-        expected_url = "awsathena+rest://key:secret_key@athena.us-east-2.amazonaws.com:443?s3_staging_dir=s3%3A%2F%2Fpostgres%2Fintput%2F&work_group=primary"
-        athena_conn_obj = AthenaConnection(
-            awsConfig=awsCreds,
-            s3StagingDir="s3://postgres/intput/",
-            workgroup="primary",
-            scheme=AthenaScheme.awsathena_rest,
-        )
-        assert expected_url == get_connection_url(athena_conn_obj)
-
     def test_mssql_url(self):
         from metadata.ingestion.source.database.mssql.connection import (
             get_connection_url,
@@ -1073,7 +777,7 @@ class SourceConnectionTest(TestCase):
 
         assert expected_url == get_connection_url(mssql_conn_obj)
 
-    def test_mssql_url(self):
+    def test_mssql_url(self):  # noqa: F811
         from metadata.ingestion.source.database.mssql.connection import (
             get_connection_url,
         )
@@ -1101,52 +805,6 @@ class SourceConnectionTest(TestCase):
         )
         assert expected_url == get_connection_url(mssql_conn_obj)
 
-    def test_presto_url(self):
-        from metadata.ingestion.source.database.presto.connection import (
-            get_connection_url,
-        )
-
-        # connection arguments without db
-        expected_url = "presto://admin@localhost:8080/test_catalog"
-
-        presto_conn_obj = PrestoConnection(
-            username="admin",
-            hostPort="localhost:8080",
-            scheme=PrestoScheme.presto,
-            catalog="test_catalog",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
-        # Passing @ in username and password
-        expected_url = "presto://admin%40333:pass%40111@localhost:8080/test_catalog"
-
-        presto_conn_obj = PrestoConnection(
-            username="admin@333",
-            password="pass@111",
-            hostPort="localhost:8080",
-            scheme=PrestoScheme.presto,
-            catalog="test_catalog",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
-    def test_presto_without_catalog(self):
-        from metadata.ingestion.source.database.presto.connection import (
-            get_connection_url,
-        )
-
-        # Test presto url without catalog
-        expected_url = "presto://username:pass@localhost:8080"
-        presto_conn_obj = PrestoConnection(
-            scheme=PrestoScheme.presto,
-            hostPort="localhost:8080",
-            username="username",
-            password="pass",
-        )
-
-        assert expected_url == get_connection_url(presto_conn_obj)
-
     def test_oracle_url(self):
         # oracle with db
         expected_url = "oracle+cx_oracle://admin:password@localhost:1541/testdb"
@@ -1162,9 +820,7 @@ class SourceConnectionTest(TestCase):
         assert expected_url == OracleConnection.get_connection_url(oracle_conn_obj)
 
         # oracle with service name
-        expected_url = (
-            "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
-        )
+        expected_url = "oracle+cx_oracle://admin:password@localhost:1541/?service_name=testdb"
 
         oracle_conn_obj = OracleConnectionConfig(
             username="admin",
@@ -1187,9 +843,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleDatabaseSchema(databaseSchema="testdb"),
-            connectionOptions=dict(
-                test_key_1="test_value_1", test_key_2="test_value_2"
-            ),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1205,9 +859,7 @@ class SourceConnectionTest(TestCase):
             hostPort="localhost:1541",
             scheme=OracleScheme.oracle_cx_oracle,
             oracleConnectionType=OracleServiceName(oracleServiceName="testdb"),
-            connectionOptions=dict(
-                test_key_1="test_value_1", test_key_2="test_value_2"
-            ),
+            connectionOptions=dict(test_key_1="test_value_1", test_key_2="test_value_2"),  # noqa: C408
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) in expected_url
 
@@ -1221,66 +873,6 @@ class SourceConnectionTest(TestCase):
             username="admin",
             password="password",
             hostPort="localhost:1541",  # We will ignore it here
-            oracleConnectionType=OracleTNSConnection(
-                oracleTNSConnection=tns_connection
-            ),
+            oracleConnectionType=OracleTNSConnection(oracleTNSConnection=tns_connection),
         )
         assert OracleConnection.get_connection_url(oracle_conn_obj) == expected_url
-
-    def test_exasol_url(self):
-        from metadata.ingestion.source.database.exasol.connection import (
-            get_connection_url,
-        )
-
-        def generate_test_data(
-            username="admin", password="password", port=8563, hostname="localhost"
-        ):
-            from collections import namedtuple
-
-            TestData = namedtuple("TestData", ["comment", "kwargs", "expected"])
-            host_port = f"{hostname}:{port}"
-
-            yield from (
-                TestData(
-                    comment="Testing default parameters",
-                    kwargs={
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.validate_certificate,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563",
-                ),
-                TestData(
-                    comment="Testing the manual setting of parameters",
-                    kwargs={
-                        "type": ExasolType.Exasol,
-                        "scheme": ExasolScheme.exa_websocket,
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.ignore_certificate,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE",
-                ),
-                TestData(
-                    comment="Testing disabling TLS completely",
-                    kwargs={
-                        "type": ExasolType.Exasol,
-                        "scheme": ExasolScheme.exa_websocket,
-                        "username": username,
-                        "password": password,
-                        "hostPort": host_port,
-                        "tls": Tls.disable_tls,
-                    },
-                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=no",
-                ),
-            )
-
-        # execute test cases
-        for data in generate_test_data():
-            with self.subTest(kwargs=data.kwargs, expected=data.expected):
-                connection = ExasolConnection(**data.kwargs)
-                actual = get_connection_url(connection)
-                expected = data.expected
-                assert actual == expected

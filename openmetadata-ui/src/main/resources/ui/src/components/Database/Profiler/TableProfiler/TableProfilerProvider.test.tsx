@@ -65,7 +65,7 @@ jest.mock('../../../../rest/testAPI', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('entityLink'),
 }));
 jest.mock('../../../../constants/mockTourData.constants', () => ({

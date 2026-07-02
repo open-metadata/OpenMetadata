@@ -51,7 +51,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
@@ -63,6 +62,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -70,7 +70,13 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -101,6 +107,7 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.RestoreEntityResponse;
 import org.openmetadata.service.util.ValidatorUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -309,7 +316,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getInternal(
         uriInfo,
         securityContext,
@@ -347,7 +355,25 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+  }
+
+  /**
+   * REST GETs consult the entity cache only when a distributed cache (Redis) is configured *and*
+   * currently reachable. With Redis, invalidation in {@code EntityRepository.invalidateCache}
+   * keeps all instances coherent so cached reads stay fresh. If Redis isn't wired, or the
+   * provider flipped to unavailable after a connection loss, we fall back to {@code
+   * fromCache=false} to avoid serving stale reads from a per-instance Guava cache in a
+   * multi-instance deployment.
+   */
+  private static boolean isDistributedCacheEnabled() {
+    if (CacheBundle.getCachedEntityDao() == null) {
+      return false;
+    }
+    CacheProvider provider = CacheBundle.getCacheProvider();
+    return provider != null && provider.available();
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -412,7 +438,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       String includeRelations) {
     Fields fields = getFields(fieldsParam);
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
-    RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
+    Include resolvedInclude = include != null ? include : Include.NON_DELETED;
+    RelationIncludes relationIncludes = new RelationIncludes(resolvedInclude, includeRelations);
     return getByNameInternal(
         uriInfo,
         securityContext,
@@ -450,7 +477,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, relationIncludes, false));
+    return addHref(
+        uriInfo,
+        repository.getByName(uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -703,6 +732,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 if (hardDelete) {
                   limits.invalidateCache(entityType);
                 }
+                repository.storeChangeEventForAsyncOperation(
+                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
@@ -747,11 +778,32 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response restoreEntity(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    // Read ?async=true off uriInfo so subclass resources that haven't (yet) declared the
+    // QueryParam still honor the async contract. Lets SDK callers opt into async restore
+    // universally regardless of which Resource subclass forwarded the parameter.
+    boolean asyncFromQuery =
+        uriInfo != null && Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("async"));
+    return restoreEntity(uriInfo, securityContext, id, asyncFromQuery);
+  }
+
+  public Response restoreEntity(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean async) {
+    if (async) {
+      return restoreEntityAsync(uriInfo, securityContext, id);
+    }
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
+    if (response == null) {
+      // EntityRepository.restoreEntity now calls find(id, Include.ALL) up front, so a truly
+      // missing id has already propagated EntityNotFoundException (→ 404) before we got
+      // here. A null response can only mean "entity exists but is not in DELETED state" —
+      // map that to 400.
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
     repository.restoreFromSearch(response.getEntity());
     addHref(uriInfo, response.getEntity());
     LOG.info(
@@ -761,36 +813,128 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  /**
+   * Async restore variant. Returns 202 Accepted with a job ID and runs the restore on the
+   * shared async executor. The caller can subscribe to
+   * {@link org.openmetadata.service.socket.WebSocketManager#RESTORE_ENTITY_CHANNEL} to be
+   * notified when the restore completes or fails. Used to avoid proxy / ALB idle timeouts on
+   * large hierarchies (issue #4003).
+   */
+  public Response restoreEntityAsync(UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    // Cheap pre-check so we return a synchronous error instead of 202 + delayed WebSocket
+    // FAILED for a request that can't succeed. Distinguish the two failure modes that the
+    // raw EntityNotFoundException would conflate: 404 if the entity truly doesn't exist
+    // (Include.ALL still finds nothing) and 400 if it exists but is already restored.
+    // Capturing the entity here also yields a meaningful name for any later FAILED
+    // notification.
+    T preCheck;
+    try {
+      preCheck = repository.find(id, Include.DELETED);
+    } catch (EntityNotFoundException notDeleted) {
+      // Probe with Include.ALL to distinguish 404-missing from 400-not-deleted. Narrow
+      // catch so unrelated failures (DB connectivity, auth) propagate naturally rather
+      // than being mis-mapped to 400 "not in deleted state".
+      boolean entityExists;
+      try {
+        repository.find(id, Include.ALL);
+        entityExists = true;
+      } catch (EntityNotFoundException missing) {
+        entityExists = false;
+      }
+      if (entityExists) {
+        throw new BadRequestException(
+            String.format("Entity %s:%s is not in deleted state", entityType, id));
+      }
+      throw notDeleted;
+    }
+    String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
+    String jobId = UUID.randomUUID().toString();
+    String userName = securityContext.getUserPrincipal().getName();
+    // Resolve the WebSocket user id on the request thread, while the SecurityContext is
+    // still valid. JAX-RS may invalidate request-scoped state once the 202 response is
+    // returned, so we cannot rely on securityContext.getUserPrincipal() inside the lambda.
+    UUID notifyUserId = WebsocketNotificationHandler.resolveUserId(securityContext);
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    // Intentionally don't capture uriInfo in the lambda — same request-scope concern. The
+    // WebSocket notification only needs name/status, not HREFs.
+    executorService.submit(
+        RequestLatencyContext.wrapWithContext(
+            () -> {
+              try {
+                PutResponse<T> response = repository.restoreEntity(userName, id);
+                if (response == null) {
+                  // Pre-check saw the entity in DELETED state; a null response now means a
+                  // concurrent restore won the race. Treat as idempotent success — the
+                  // operator's request is satisfied. If the entity has since been hard-
+                  // deleted, surface that as a real failure.
+                  handleAlreadyRestored(jobId, id, entityName, notifyUserId);
+                  return;
+                }
+                repository.restoreFromSearch(response.getEntity());
+                repository.storeChangeEventForAsyncOperation(
+                    response.getEntity(), response.getChangeType(), false, userName);
+                LOG.info(
+                    "[AsyncRestore] Restored {}:{} (jobId={})",
+                    Entity.getEntityTypeFromObject(response.getEntity()),
+                    response.getEntity().getId(),
+                    jobId);
+                WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                    jobId, notifyUserId, response.getEntity());
+              } catch (Exception e) {
+                LOG.error(
+                    "[AsyncRestore] Failed to restore {}:{} (name={})",
+                    entityType,
+                    id,
+                    entityName,
+                    e);
+                WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                    jobId,
+                    notifyUserId,
+                    entityName,
+                    e.getMessage() == null ? e.toString() : e.getMessage());
+              }
+            }));
+    RestoreEntityResponse response =
+        new RestoreEntityResponse(jobId, "Restore initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  private void handleAlreadyRestored(String jobId, UUID id, String entityName, UUID notifyUserId) {
+    try {
+      T restored = repository.find(id, Include.NON_DELETED);
+      LOG.info(
+          "[AsyncRestore] {} {} was already restored by another request (jobId={})",
+          entityType,
+          id,
+          jobId);
+      WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+          jobId, notifyUserId, restored);
+    } catch (EntityNotFoundException missing) {
+      WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+          jobId, notifyUserId, entityName, "Entity was hard-deleted before restore");
+    }
+  }
+
   public Response exportCsvInternalAsync(
       SecurityContext securityContext, String name, boolean recursive) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                CsvExportProgressCallback progressCallback =
-                    (exported, total, message) ->
-                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
-                            jobId, securityContext, exported, total, message);
-
-                String csvData =
-                    repository.exportToCsv(
-                        name,
-                        securityContext.getUserPrincipal().getName(),
-                        recursive,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                    jobId, securityContext, csvData);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while exporting.", e);
-                WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.EXPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            false,
+            recursive,
+            null,
+            null);
+    String jobId = job.getJobId();
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
@@ -921,43 +1065,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.IMPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            recursive,
+            csv,
+            versioningEntityType);
+    String jobId = job.getJobId();
     CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
-    Response response =
-        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                WebsocketNotificationHandler.sendCsvImportStartedNotification(
-                    jobId, securityContext);
-
-                CsvImportProgressCallback progressCallback =
-                    (rowsProcessed, totalRows, batchNumber, message) ->
-                        WebsocketNotificationHandler.sendCsvImportProgressNotification(
-                            jobId, securityContext, rowsProcessed, totalRows, message);
-
-                CsvImportResult result =
-                    importCsvInternal(
-                        uriInfo,
-                        securityContext,
-                        name,
-                        csv,
-                        dryRun,
-                        recursive,
-                        versioningEntityType,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while importing.", e);
-                WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
-
-    return response;
+    return Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
@@ -1133,11 +1254,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<T> entities,
       String userName,
       Map<String, T> existingByFqn,
+      boolean overrideMetadata,
       List<BulkResponse> authFailedResponses,
       int totalRequests) {
     repository
         .submitAsyncBulkOperation(
-            uriInfo, entities, userName, existingByFqn, authFailedResponses, totalRequests)
+            uriInfo,
+            entities,
+            userName,
+            existingByFqn,
+            overrideMetadata,
+            authFailedResponses,
+            totalRequests)
         .thenAccept(
             result ->
                 LOG.info(
@@ -1151,6 +1279,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     result.setNumberOfRowsProcessed(totalRequests);
     result.setNumberOfRowsPassed(0);
     result.setNumberOfRowsFailed(authFailedResponses.size());
+    List<BulkResponse> acceptedResponses = new ArrayList<>(entities.size());
+    for (T entity : entities) {
+      BulkResponse accepted = new BulkResponse();
+      accepted.setRequest(entity.getFullyQualifiedName());
+      accepted.setStatus(202);
+      acceptedResponses.add(accepted);
+    }
+    result.setSuccessRequest(acceptedResponses);
     if (!authFailedResponses.isEmpty()) {
       result.setStatus(ApiStatus.PARTIAL_SUCCESS);
       result.setFailedRequest(authFailedResponses);
@@ -1162,9 +1298,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected Response bulkCreateOrUpdateSync(
-      UriInfo uriInfo, List<T> entities, String userName, Map<String, T> existingByFqn) {
+      UriInfo uriInfo,
+      List<T> entities,
+      String userName,
+      Map<String, T> existingByFqn,
+      boolean overrideMetadata) {
     BulkOperationResult result =
-        repository.bulkCreateOrUpdateEntities(uriInfo, entities, userName, existingByFqn);
+        repository.bulkCreateOrUpdateEntities(
+            uriInfo, entities, userName, existingByFqn, overrideMetadata);
+    return Response.ok(result).build();
+  }
+
+  /**
+   * Reads the {@code overrideMetadata} query param from the bulk request URI. When true, the bulk
+   * update path is allowed to overwrite user-curated metadata (description, displayName) that a bot
+   * PUT would otherwise preserve, and the sourceHash fast-path is disabled. Read from {@link
+   * UriInfo} so the flag is honored uniformly across every {@code /bulk} endpoint without changing
+   * each resource method signature.
+   */
+  protected boolean isOverrideMetadata(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst("overrideMetadata"));
+  }
+
+  /**
+   * Deletes entities of this type within the request scope that the ingestion connector did not
+   * report in the current run. By default the deletion is soft; set {@code hardDelete=true} on the
+   * request to hard-delete. Requires {@code DELETE} permission on this entity type. See {@link
+   * EntityRepository#bulkDeleteStaleEntities} for the stale-detection semantics.
+   */
+  protected Response deleteStaleEntities(
+      SecurityContext securityContext, BulkDeleteStaleRequest request) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    BulkOperationResult result =
+        repository.bulkDeleteStaleEntities(request, securityContext.getUserPrincipal().getName());
     return Response.ok(result).build();
   }
 
@@ -1175,6 +1342,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       EntityMapper<T, C> mapper,
       boolean async) {
 
+    boolean overrideMetadata = isOverrideMetadata(uriInfo);
     List<T> validEntities = new ArrayList<>();
     List<BulkResponse> failedResponses = new ArrayList<>();
 
@@ -1295,11 +1463,13 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
               validEntities,
               userName,
               existingByFqn,
+              overrideMetadata,
               failedResponses,
               createRequests.size());
     } else {
       BulkOperationResult result =
-          repository.bulkCreateOrUpdateEntities(uriInfo, validEntities, userName, existingByFqn);
+          repository.bulkCreateOrUpdateEntities(
+              uriInfo, validEntities, userName, existingByFqn, overrideMetadata);
 
       if (!failedResponses.isEmpty()) {
         result.setStatus(ApiStatus.PARTIAL_SUCCESS);

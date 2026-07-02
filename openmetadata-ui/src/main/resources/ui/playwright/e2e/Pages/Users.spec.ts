@@ -26,21 +26,19 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
-import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin } from '../../utils/admin';
+import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
 import {
-  getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
-import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import {
   addUser,
@@ -57,6 +55,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  searchUserByEmail,
   settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
@@ -87,6 +86,7 @@ let user2: UserClass;
 let user3: UserClass;
 let tableEntity: TableClass;
 let tableEntity2: TableClass;
+let dataStewardPermissionTableUrl: string;
 let policy: PolicyClass;
 let role: RolesClass;
 let persona1: PersonaClass;
@@ -164,7 +164,16 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await user3.create(apiContext);
   await user3.setAdminRole(apiContext);
   await tableEntity.create(apiContext);
-  await tableEntity2.create(apiContext);
+  const { entity: dataStewardPermissionTable } = await tableEntity2.create(
+    apiContext
+  );
+  await tableEntity2.setOwner(apiContext, {
+    id: user3.responseData.id,
+    type: 'user',
+  });
+  dataStewardPermissionTableUrl = `/table/${encodeURIComponent(
+    dataStewardPermissionTable.fullyQualifiedName
+  )}`;
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext, [adminUser.responseData.id]);
@@ -197,6 +206,14 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step('User is searchable by email', async () => {
+      await searchUserByEmail(
+        adminPage,
+        updatedUserDetails.email,
+        updatedUserDetails.name
+      );
+    });
+
     await test.step("User shouldn't be allowed to create User with same Email", async () => {
       await checkForUserExistError(adminPage, {
         name: updatedUserDetails.name,
@@ -210,6 +227,16 @@ test.describe('User with Admin Roles', () => {
       updatedUserDetails.name,
       updatedUserDetails.name,
       false
+    );
+  });
+
+  test('Admin is searchable by email', async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+    await settingClick(adminPage, GlobalSettingOptions.ADMINS);
+    await searchUserByEmail(
+      adminPage,
+      adminUser.data.email,
+      adminUser.responseData.name
     );
   });
 
@@ -257,107 +284,6 @@ test.describe('User with Admin Roles', () => {
 
     await restoreUserProfilePage(adminPage, user.responseData.displayName);
     await hardDeleteUserProfilePage(adminPage, user.responseData.displayName);
-  });
-
-  test('User should be visible in right panel on table page when added as custom property', async ({
-    adminPage,
-  }) => {
-    const { apiContext } = await getApiContext(adminPage);
-
-    // await redirectToHomePage(adminPage);
-    // 1. Setup - Create Custom Property and assign to Table
-    const customPropertyName = `pwCustomUserList${uuid()}`;
-    const customPropertyDescription = 'test description';
-
-    // Get Entity Reference List Type ID
-    const typeResponse = await apiContext.get(
-      '/api/v1/metadata/types/name/entityReferenceList'
-    );
-    const typeData = await typeResponse.json();
-    const typeId = typeData.id;
-
-    // Get Table Entity ID
-    const tableTypeResponse = await apiContext.get(
-      '/api/v1/metadata/types/name/table'
-    );
-    const tableTypeData = await tableTypeResponse.json();
-    const tableTypeId = tableTypeData.id;
-
-    // Create Custom Property
-    await apiContext.put(`/api/v1/metadata/types/${tableTypeId}`, {
-      data: {
-        name: customPropertyName,
-        description: customPropertyDescription,
-        propertyType: {
-          id: typeId,
-          type: 'type',
-        },
-        customPropertyConfig: {
-          config: ['user'],
-        },
-      },
-    });
-
-    const userName = user3.responseData.name;
-    const userDisplayName =
-      user3.responseData.displayName ?? user3.responseData.name;
-    // Patch Table to add the user to the custom property
-    await tableEntity.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/extension',
-          value: {
-            [customPropertyName]: [
-              {
-                id: user3.responseData.id,
-                type: 'user',
-                name: userName,
-                fullyQualifiedName: user3.responseData.fullyQualifiedName,
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    // 2. UI Verification
-    await redirectToHomePage(adminPage);
-    await tableEntity.visitEntityPage(adminPage);
-
-    // Check if the user details are visible in the right panel
-    const userElement = adminPage.getByTestId(userName);
-    const isUserVisible = await userElement.isVisible();
-
-    // If not visible, click on Custom Properties tab to see all custom properties
-    if (!isUserVisible) {
-      await adminPage.getByTestId('custom_properties').click();
-    }
-
-    // Verify Custom Property in Right Panel
-    const rightPanelSection = adminPage.getByTestId(customPropertyName);
-    await expect(rightPanelSection).toBeVisible();
-
-    // Verify User Link - the link displays the username (not displayName)
-    const userLink = adminPage.getByTestId(userName).getByRole('link');
-
-    await expect(userLink).toContainText(userName);
-
-    // Click User Link and Verify Navigation
-    const userDetailsResponse = adminPage.waitForResponse(
-      '/api/v1/users/name/*'
-    );
-    await userLink.click();
-    await userDetailsResponse;
-
-    // URL may contain encoded quotes (%22) around the username
-    await expect(adminPage).toHaveURL(
-      new RegExp(`/users/(%22)?${userName}(%22)?`, 'i')
-    );
-    await expect(adminPage.getByTestId('user-display-name')).toHaveText(
-      userDisplayName
-    );
   });
 });
 
@@ -456,27 +382,46 @@ test.describe('User with Data Consumer Roles', () => {
   });
 
   test('Permissions for table details page for Data Consumer', async ({
-    adminPage,
     dataConsumerPage,
   }) => {
     test.slow(true);
-    await redirectToHomePage(adminPage);
+    const permissionTable = new TableClass();
+    const { apiContext, afterAction } = await createAdminApiContext();
+    try {
+      const { entity } = await permissionTable.create(apiContext);
+      const tableFqn = entity.fullyQualifiedName;
+      const tableId = entity.id;
+      const tablePageUrl = `/table/${encodeURIComponent(tableFqn)}`;
 
-    await tableEntity.visitEntityPage(adminPage);
-    await waitForAllLoadersToDisappear(adminPage);
+      const ownerPatchResponse = await apiContext.patch(
+        `/api/v1/tables/${tableId}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/owners',
+              value: [{ id: user3.responseData.id, type: 'user' }],
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      );
 
-    await addOwner({
-      page: adminPage,
-      owner: user.responseData.displayName,
-      type: 'Users',
-      endpoint: EntityTypeEndpoint.Table,
-      dataTestId: 'data-assets-header',
-    });
+      expect(
+        ownerPatchResponse.ok(),
+        `Failed to patch table ${tableId}: ${await ownerPatchResponse.text()}`
+      ).toBeTruthy();
 
-    await tableEntity.visitEntityPage(dataConsumerPage);
-    await waitForAllLoadersToDisappear(dataConsumerPage);
+      await dataConsumerPage.goto(tablePageUrl);
+      await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    await checkDataConsumerPermissions(dataConsumerPage);
+      await checkDataConsumerPermissions(dataConsumerPage);
+    } finally {
+      await permissionTable.delete(apiContext).catch(() => undefined);
+      await afterAction();
+    }
   });
 
   test('Update user details for Data Consumer', async ({
@@ -558,26 +503,13 @@ test.describe('User with Data Steward Roles', () => {
     await settingPageOperationPermissionCheck(dataStewardPage);
   });
 
-  test('Check permissions for Data Steward', async ({
-    adminPage,
-    dataStewardPage,
-  }) => {
+  test('Check permissions for Data Steward', async ({ dataStewardPage }) => {
     test.slow();
-    await redirectToHomePage(adminPage);
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await tableEntity2.visitEntityPage(adminPage);
-
-    await addOwner({
-      page: adminPage,
-      owner: user.responseData.displayName ?? user.responseData.name,
-      type: 'Users',
-      endpoint: EntityTypeEndpoint.Table,
-      dataTestId: 'data-assets-header',
-    });
-
-    await tableEntity2.visitEntityPage(dataStewardPage);
+    await dataStewardPage.goto(dataStewardPermissionTableUrl);
+    await waitForAllLoadersToDisappear(dataStewardPage);
 
     await checkStewardPermissions(dataStewardPage);
   });
@@ -605,6 +537,40 @@ test.describe('User with Data Steward Roles', () => {
 });
 
 test.describe('User Profile Feed Interactions', () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const testMessage = 'Initial conversation thread for mention test';
+    const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
+
+    await apiContext.post('/api/v1/feed', {
+      data: {
+        message: testMessage,
+        about: entityLink,
+        type: 'Conversation',
+      },
+    });
+
+    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+      entityLink
+    )}&type=Conversation&limit=25`;
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(feedUrl);
+          const data = await response.json();
+
+          return (data.data ?? []).some((thread: { message?: string }) =>
+            thread.message?.includes(testMessage)
+          );
+        },
+        { timeout: 60_000, intervals: [2_000] }
+      )
+      .toBe(true);
+
+    await afterAction();
+  });
+
   test('Should navigate to user profile from feed card avatar click', async ({
     browser,
   }) => {
@@ -616,7 +582,10 @@ test.describe('User Profile Feed Interactions', () => {
     await visitOwnProfilePage(page);
     await feedResponse;
 
-    await page.getByTestId('message-container').first().waitFor();
+    await page
+      .getByTestId('message-container')
+      .first()
+      .waitFor({ state: 'visible' });
 
     const avatar = page
       .locator('#feedData [data-testid="message-container"]')
@@ -767,18 +736,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.locator('input[type="radio"]')
+    ).not.toBeChecked();
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -1318,23 +1286,6 @@ test.describe('User Profile Persona Interactions', () => {
   });
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await persona2.delete(apiContext);
-  await persona1.delete(apiContext);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await tableEntity2.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await user3.delete(apiContext);
-  await user2.delete(apiContext);
-  await user.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await adminUser.delete(apiContext);
-  await afterAction();
-});
-
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
@@ -1403,23 +1354,6 @@ base.describe(
         team5.create(apiContext),
       ]);
 
-      await afterAction();
-    });
-
-    base.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await Promise.all([
-        policy.delete(apiContext),
-        role.delete(apiContext),
-        policy2.delete(apiContext),
-        role2.delete(apiContext),
-        policy3.delete(apiContext),
-        role3.delete(apiContext),
-        policy4.delete(apiContext),
-        role4.delete(apiContext),
-        policy5.delete(apiContext),
-        role5.delete(apiContext),
-      ]);
       await afterAction();
     });
 

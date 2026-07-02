@@ -29,7 +29,7 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 
 // Default rows per page options used across pagination components
 const DEFAULT_ROWS_PER_PAGE_OPTIONS = [

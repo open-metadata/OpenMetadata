@@ -108,27 +108,34 @@ class JobRecoveryOrphanDetectionTest {
     }
 
     @Test
-    @DisplayName("Job with stale updatedAt but valid lock IS orphaned (coordinator crashed)")
-    void staleUpdatedAtWithValidLockIsOrphaned() throws Exception {
-      // Simulate: lock held but coordinator crashed — lock not expired yet but
-      // updatedAt is stale because lock-refresh loop died with the coordinator
+    @DisplayName("Job with stale updatedAt but a live (unexpired) lock is NOT orphaned")
+    void staleUpdatedAtWithLiveLockIsNotOrphaned() throws Exception {
+      // A live coordinator refreshes the lock every 60s (5 min TTL) and touches updatedAt in the
+      // same loop. If the updatedAt write lags (touchJob failing while refresh succeeds, or a long
+      // single-partition batch), the heartbeat can look stale while the lock stays fresh. Because
+      // the lock TTL (5 min) is shorter than the 10 min staleness threshold, a crashed
+      // coordinator's
+      // lock would already have expired — so a still-valid lock here can only be a live
+      // coordinator,
+      // and abandoning the job would wrongly fail a healthy reindex.
       SearchIndexJob job = buildJob(IndexJobStatus.RUNNING, NOW - TimeUnit.MINUTES.toMillis(12));
-      SearchReindexLockDAO.LockInfo lockInfo =
+      SearchReindexLockDAO.LockInfo liveLock =
           new SearchReindexLockDAO.LockInfo(
               "SEARCH_REINDEX_LOCK",
               JOB_ID.toString(),
-              "crashed-server",
-              NOW - TimeUnit.MINUTES.toMillis(4),
-              NOW - TimeUnit.MINUTES.toMillis(2),
-              NOW + TimeUnit.MINUTES.toMillis(1));
-      when(lockDAO.getLockInfo("SEARCH_REINDEX_LOCK")).thenReturn(lockInfo);
+              "live-coordinator",
+              NOW - TimeUnit.MINUTES.toMillis(20),
+              NOW - TimeUnit.SECONDS.toMillis(30),
+              NOW + TimeUnit.MINUTES.toMillis(4) + TimeUnit.SECONDS.toMillis(30));
+      when(lockDAO.getLockInfo("SEARCH_REINDEX_LOCK")).thenReturn(liveLock);
 
       JobRecoveryManager manager = new JobRecoveryManager(collectionDAO);
       boolean orphaned = invokeIsJobOrphaned(manager, job);
 
-      assertTrue(
+      assertFalse(
           orphaned,
-          "Job with valid lock but stale updatedAt should be orphaned (coordinator crashed)");
+          "A still-valid lock proves the coordinator is alive (lock TTL < staleness threshold); "
+              + "the job must not be treated as orphaned/abandoned");
     }
 
     @Test
@@ -242,6 +249,21 @@ class JobRecoveryOrphanDetectionTest {
       when(record.lastError()).thenReturn(null);
       when(record.retryCount()).thenReturn(0);
       when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+      when(partitionDAO.updateIfProcessing(
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              any(),
+              anyInt()))
+          .thenReturn(1);
 
       // Mock job completion check — job still has pending partitions
       when(partitionDAO.findByJobIdAndStatus(JOB_ID.toString(), "PENDING"))
@@ -273,6 +295,21 @@ class JobRecoveryOrphanDetectionTest {
       when(record.lastError()).thenReturn(null);
       when(record.retryCount()).thenReturn(0);
       when(partitionDAO.findById(partitionId.toString())).thenReturn(record);
+      when(partitionDAO.updateIfProcessing(
+              anyString(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyString(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              anyLong(),
+              any(),
+              anyInt()))
+          .thenReturn(1);
 
       when(partitionDAO.findByJobIdAndStatus(JOB_ID.toString(), "PENDING"))
           .thenReturn(List.of(record));

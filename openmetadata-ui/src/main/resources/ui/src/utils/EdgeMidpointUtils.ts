@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edge, Node, Position } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { Position } from 'reactflow';
 import { getEdgeCoordinates } from './CanvasUtils';
-import { getEdgePathData } from './EntityLineageUtils';
-import { getEntityName } from './EntityUtils';
+import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getEntityName } from './EntityNameUtils';
 
 export interface EdgeMidpoint {
   id: string;

@@ -128,7 +128,7 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> doc = getDocumentById(testTable.getId().toString());
     assertNotNull(doc, "Entity document should exist");
-    assertNotNull(doc.get("textToEmbed"), "Document should have text_to_embed");
+    assertNotNull(doc.get("textToLLMContext"), "Document should have textToLLMContext");
     assertNotNull(doc.get("embedding"), "Document should have embedding");
     assertNotNull(doc.get("fingerprint"), "Document should have fingerprint");
     assertEquals(
@@ -242,13 +242,29 @@ class VectorEmbeddingIntegrationIT {
     vectorService.updateEntityEmbedding(entity2, TEST_INDEX);
     Thread.sleep(1000);
 
-    Map<String, String> fingerprints =
-        vectorService.getExistingFingerprintsBatch(
-            TEST_INDEX, List.of(entity1Id.toString(), entity2Id.toString()));
+    Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+        Map.of(
+            entity1Id.toString(),
+            new OpenSearchVectorService.EntityFingerprintInput(
+                entity1.getUpdatedAt(),
+                () -> VectorDocBuilder.computeFingerprintForEntity(entity1)),
+            entity2Id.toString(),
+            new OpenSearchVectorService.EntityFingerprintInput(
+                entity2.getUpdatedAt(),
+                () -> VectorDocBuilder.computeFingerprintForEntity(entity2)));
 
-    assertEquals(2, fingerprints.size(), "Should retrieve fingerprints for both entities");
-    assertNotNull(fingerprints.get(entity1Id.toString()));
-    assertNotNull(fingerprints.get(entity2Id.toString()));
+    Map<String, JsonNode> cachedEmbeddings =
+        vectorService.getExistingEmbeddingsBatch(TEST_INDEX, currentById);
+
+    assertEquals(2, cachedEmbeddings.size(), "Should retrieve cached embeddings for both entities");
+    JsonNode cached1 = cachedEmbeddings.get(entity1Id.toString());
+    JsonNode cached2 = cachedEmbeddings.get(entity2Id.toString());
+    assertNotNull(cached1);
+    assertNotNull(cached2);
+    assertTrue(cached1.path("fingerprint").isTextual());
+    assertTrue(cached2.path("fingerprint").isTextual());
+    assertTrue(cached1.path("embedding").isArray() && !cached1.path("embedding").isEmpty());
+    assertTrue(cached2.path("embedding").isArray() && !cached2.path("embedding").isEmpty());
   }
 
   @Test
@@ -323,7 +339,7 @@ class VectorEmbeddingIntegrationIT {
 
     assertNotNull(fields);
     assertNotNull(fields.get("embedding"));
-    assertNotNull(fields.get("textToEmbed"));
+    assertNotNull(fields.get("textToLLMContext"));
     assertNotNull(fields.get("fingerprint"));
     assertEquals(testTable.getId().toString(), fields.get("parentId"));
     assertEquals(0, fields.get("chunkIndex"));
@@ -347,7 +363,7 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> initialDoc = getDocumentById(testTable.getId().toString());
     String initialFingerprint = (String) initialDoc.get("fingerprint");
-    String initialTextToEmbed = (String) initialDoc.get("textToEmbed");
+    String initialTextToEmbed = (String) initialDoc.get("textToLLMContext");
 
     String patchedDescription = "Revenue metrics for quarterly financial reporting analysis";
     testTable.setDescription(patchedDescription);
@@ -358,15 +374,16 @@ class VectorEmbeddingIntegrationIT {
 
     Map<String, Object> updatedDoc = getDocumentById(testTable.getId().toString());
     String updatedFingerprint = (String) updatedDoc.get("fingerprint");
-    String updatedTextToEmbed = (String) updatedDoc.get("textToEmbed");
+    String updatedTextToEmbed = (String) updatedDoc.get("textToLLMContext");
 
     assertFalse(
         initialFingerprint.equals(updatedFingerprint), "Fingerprint should change after PATCH");
     assertFalse(
-        initialTextToEmbed.equals(updatedTextToEmbed), "textToEmbed should change after PATCH");
+        initialTextToEmbed.equals(updatedTextToEmbed),
+        "textToLLMContext should change after PATCH");
     assertTrue(
         updatedTextToEmbed.contains("Revenue metrics"),
-        "Updated textToEmbed should reflect patched description");
+        "Updated textToLLMContext should reflect patched description");
 
     List<Map<String, Object>> results =
         executeKnnSearch("quarterly financial revenue reporting", 10);
@@ -421,23 +438,16 @@ class VectorEmbeddingIntegrationIT {
   }
 
   private DjlEmbeddingClient createTestEmbeddingClient() throws EmbeddingInitializationException {
-    org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration config =
-        new org.openmetadata.schema.service.configuration.elasticsearch
-            .ElasticSearchConfiguration();
-
-    org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration
-        nlSearch =
-            new org.openmetadata.schema.service.configuration.elasticsearch
-                .NaturalLanguageSearchConfiguration();
-
-    org.openmetadata.schema.service.configuration.elasticsearch.Djl djlConfig =
-        new org.openmetadata.schema.service.configuration.elasticsearch.Djl();
-
-    djlConfig.setEmbeddingModel(
-        "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2");
-    nlSearch.setDjl(djlConfig);
-    config.setNaturalLanguageSearch(nlSearch);
-
+    org.openmetadata.schema.configuration.LLMConfiguration config =
+        new org.openmetadata.schema.configuration.LLMConfiguration()
+            .withEmbeddings(
+                new org.openmetadata.schema.configuration.LLMEmbeddingsConfig()
+                    .withProvider(
+                        org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider.DJL)
+                    .withDjl(
+                        new org.openmetadata.schema.configuration.LLMDjlEmbeddingConfig()
+                            .withEmbeddingModel(
+                                "ai.djl.huggingface.pytorch/sentence-transformers/all-MiniLM-L6-v2")));
     return new DjlEmbeddingClient(config);
   }
 

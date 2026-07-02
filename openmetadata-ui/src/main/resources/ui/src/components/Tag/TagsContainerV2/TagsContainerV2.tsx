@@ -15,8 +15,7 @@ import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LIST_SIZE } from '../../../constants/constants';
@@ -29,15 +28,17 @@ import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTierTags } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
+import { getTagPlaceholder } from '../../../utils/TagsPureUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
@@ -46,16 +47,18 @@ import {
   PlusIconButton,
   RequestIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
+const TagSelectForm = withSuspenseFallback(
+  lazy(() => import('../TagsSelectForm/TagsSelectForm.component'))
+);
 
 const TagsContainerV2 = ({
   permission,
@@ -163,27 +166,28 @@ const TagsContainerV2 = ({
   );
 
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
+    // Pass every TagLabel field through so server-managed ones (appliedBy, appliedAt) survive the JSON-Patch diff.
     const updatedTags = (isArray(data) ? data : [data]).map((tag) => {
-      let tagData: EntityTags = {
-        tagFQN: typeof tag === 'string' ? tag : tag.value,
+      const tagFQN: string =
+        typeof tag === 'string' ? tag : String(tag.value ?? '');
+
+      const option = typeof tag === 'object' ? tag.data ?? {} : {};
+
+      return {
+        tagFQN,
         source: tagType,
-        labelType: LabelType.Manual,
+        labelType: option.labelType ?? defaultLabelType ?? LabelType.Manual,
+        state: option.state ?? defaultState ?? State.Confirmed,
+        name: option.name,
+        displayName: option.displayName,
+        description: option.description,
+        style: option.style ?? {},
+        href: option.href,
+        appliedBy: option.appliedBy,
+        appliedAt: option.appliedAt,
+        metadata: option.metadata,
+        reason: option.reason,
       };
-
-      if (tag.data) {
-        tagData = {
-          ...tagData,
-          name: tag.data?.name,
-          displayName: tag.data?.displayName,
-          description: tag.data?.description,
-          style: tag.data?.style ?? {},
-          labelType:
-            tag.data?.labelType ?? defaultLabelType ?? LabelType.Manual,
-          state: tag.data?.state ?? defaultState ?? State.Confirmed,
-        };
-      }
-
-      return tagData;
     });
 
     const newTags = updatedTags.map((t) => t.tagFQN);

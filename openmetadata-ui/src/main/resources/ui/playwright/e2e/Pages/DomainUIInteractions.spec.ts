@@ -27,6 +27,7 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{
@@ -93,8 +94,12 @@ test.describe('Domain Owner Management', () => {
         }
 
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 
@@ -244,8 +249,12 @@ test.describe('Domain Expert Management', () => {
 
         // Wait before retry (ES indexing delay)
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 
@@ -431,8 +440,12 @@ test.describe('Data Product UI Operations', () => {
         }
 
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 
@@ -579,13 +592,15 @@ test.describe('Domain Form Validation', () => {
     await page.click('[data-testid="add-domain"]');
     await page.getByTestId('form-heading').waitFor();
 
-    await page.locator('#root\\/name').fill('Invalid@Name#Test');
+    await page.locator('#root\\/name').fill('Invalid::Name');
     await page.locator('#root\\/displayName').fill('Test Domain');
 
     await page.getByRole('button', { name: 'Save' }).click();
 
     await expect(
-      page.locator('.ant-form-item-explain-error').first()
+      page.getByText(
+        'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.'
+      )
     ).toBeVisible();
   });
 

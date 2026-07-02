@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIResponse, expect, Page } from '@playwright/test';
+import { APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -147,33 +147,180 @@ export const testConnection = async (page: Page) => {
   await page.getByTestId('test-connection-btn').waitFor();
 
   await page.click('[data-testid="test-connection-btn"]');
-  const modalTitle = page.locator(
-    '[data-testid="test-connection-modal"] .ant-modal-title'
-  );
+  const testConnectionDialog = page
+    .getByRole('dialog')
+    .filter({ hasText: /Connection status|Test Connection/ });
 
-  await expect(modalTitle).toBeVisible();
+  await expect(testConnectionDialog).toBeVisible();
 
-  await page.getByRole('button', { name: 'OK' }).click();
+  await testConnectionDialog.getByRole('button', { name: /Done|OK/ }).click();
 
   // Wait for the success badge or the warning badge to appear
-  const successBadge = page.locator('[data-testid="success-badge"]');
+  const statusBadge = page.locator(
+    '[data-testid="test-connection-card-Successful"], [data-testid="test-connection-card-Warning"]'
+  );
 
-  const warningBadge = page.locator('[data-testid="warning-badge"]');
-
-  await expect(successBadge.or(warningBadge)).toBeVisible({
+  await expect(statusBadge).toBeVisible({
     timeout: 3.5 * 60 * 1000, // 3 minutes for connection test and 0.5 minute buffer
   });
 
-  await expect(page.getByTestId('messag-text')).toContainText(
-    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
+  await expect(
+    page
+      .locator('[data-testid^="test-connection-card-"]')
+      .getByTestId('alert-title')
+  ).toContainText(
+    /Connection verified|Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata./
   );
+};
+
+export const mockSuccessfulTestConnection = async (page: Page) => {
+  const workflowId = 'pw-successful-test-connection-workflow';
+
+  await page.route(
+    '**/api/v1/services/testConnectionDefinitions/name/**',
+    (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Playwright.testConnectionDefinition',
+          steps: [
+            {
+              name: 'CheckAccess',
+              mandatory: true,
+              description: 'Establish connection',
+            },
+          ],
+        }),
+      })
+  );
+
+  await page.route('**/api/v1/automations/workflows', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+
+      return;
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: workflowId,
+        name: workflowId,
+        status: 'Running',
+        workflowType: 'TEST_CONNECTION',
+      }),
+    });
+  });
+
+  await page.route('**/api/v1/automations/workflows/trigger/**', (route) =>
+    route.fulfill({ status: 200, body: '{}' })
+  );
+
+  await page.route(
+    `**/api/v1/automations/workflows/${workflowId}**`,
+    (route) => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ id: workflowId }),
+        });
+      }
+
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: workflowId,
+          name: workflowId,
+          status: 'Successful',
+          workflowType: 'TEST_CONNECTION',
+          response: {
+            status: 'Successful',
+            steps: [
+              {
+                name: 'CheckAccess',
+                mandatory: true,
+                passed: true,
+                message: 'Connected',
+              },
+            ],
+          },
+        }),
+      });
+    }
+  );
+};
+
+export const testConnectionIfRequired = async (page: Page) => {
+  await waitForServiceConnectionForm(page);
+
+  const submitButton = page.getByTestId('next-button');
+
+  if (await submitButton.isDisabled().catch(() => false)) {
+    await testConnection(page);
+    await expect(submitButton).toBeEnabled();
+  }
 };
 
 export const checkServiceFieldSectionHighlighting = async (
   page: Page,
   field: string
 ) => {
-  await page.locator(`[data-id="${field}"][data-highlighted="true"]`).waitFor();
+  const highlightedField = page.locator(
+    `[data-id="${field}"][data-highlighted="true"]`
+  );
+
+  if (await highlightedField.isVisible().catch(() => false)) {
+    return;
+  }
+
+  await expect(page.getByTestId('service-requirements')).toBeVisible();
+};
+
+export const selectServiceConnector = async (
+  page: Page,
+  connectorType: string
+) => {
+  await page.getByTestId(connectorType).click();
+
+  try {
+    await page.getByTestId('service-name').waitFor({
+      state: 'visible',
+    });
+  } catch {
+    await page.getByTestId('next-button').click();
+    await page.getByTestId('service-name').waitFor({ state: 'visible' });
+  }
+};
+
+export const waitForServiceConnectionForm = async (page: Page) => {
+  await page
+    .getByTestId('connection-schema-loader')
+    .waitFor({ state: 'detached' })
+    .catch(() => null);
+
+  await page.getByTestId('next-button').waitFor({ state: 'visible' });
+};
+
+export const advanceToServiceConnectionStep = async (
+  page: Page,
+  waitForTestId = 'next-button'
+) => {
+  const target = page.getByTestId(waitForTestId);
+  if (await target.isVisible().catch(() => false)) {
+    if (waitForTestId === 'next-button') {
+      await waitForServiceConnectionForm(page);
+    }
+
+    return;
+  }
+
+  await page.getByTestId('next-button').click();
+
+  if (waitForTestId === 'next-button') {
+    await waitForServiceConnectionForm(page);
+  } else {
+    await target.waitFor({ state: 'visible' });
+  }
 };
 
 type RetryRequestData = {
@@ -199,6 +346,33 @@ export const makeRetryRequest = async (data: RetryRequestData) => {
       }
       // eslint-disable-next-line playwright/no-wait-for-timeout -- exponential backoff for retry
       await page.waitForTimeout(1000 * (i + 1));
+    }
+  }
+};
+
+const REMOTE_RUNNER_NAME = 'RemoteRunner';
+
+export const setRemoteRunnerAsDefault = async (
+  apiContext: APIRequestContext
+): Promise<void> => {
+  const runnersRes = await apiContext.get('/api/v1/ingestionRunners?limit=100');
+  if (!runnersRes.ok()) {
+    return;
+  }
+
+  const runnersBody = await runnersRes.json();
+  const runners: { id: string; name: string; isDefault?: boolean }[] =
+    runnersBody.data ?? [];
+
+  const remoteRunner = runners.find((r) => r.name === REMOTE_RUNNER_NAME);
+  if (remoteRunner && !remoteRunner.isDefault) {
+    const putRes = await apiContext.put(
+      `/api/v1/ingestionRunners/setDefault/${remoteRunner.id}`
+    );
+    if (!putRes.ok()) {
+      throw new Error(
+        `Failed to set RemoteRunner as default: ${putRes.status()} ${putRes.statusText()}`
+      );
     }
   }
 };

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.POST_CREATED;
 import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
@@ -68,12 +69,17 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.FeedRepository.PaginationType;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
@@ -190,7 +196,7 @@ public class FeedResource {
           boolean resolved,
       @Parameter(
               description =
-                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task', 'Announcement'",
+                  "The type of thread to filter the results. It can take one of 'Conversation', 'Task'. Legacy announcement threads are no longer served from this API.",
               schema = @Schema(implementation = ThreadType.class))
           @QueryParam("type")
           ThreadType threadType,
@@ -199,20 +205,14 @@ public class FeedResource {
                   "The status of tasks to filter the results. It can take one of 'Open', 'Closed'. This filter will take effect only when type is set to Task",
               schema = @Schema(implementation = TaskStatus.class))
           @QueryParam("taskStatus")
-          TaskStatus taskStatus,
-      @Parameter(
-              description =
-                  "Whether to filter results by announcements that are currently active. This filter will take effect only when type is set to Announcement",
-              schema = @Schema(type = "boolean"))
-          @QueryParam("activeAnnouncement")
-          Boolean activeAnnouncement) {
+          TaskStatus taskStatus) {
+    rejectLegacyAnnouncementAccess(threadType == ThreadType.Announcement);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
     FeedFilter filter =
         FeedFilter.builder()
             .threadType(threadType)
             .taskStatus(taskStatus)
-            .activeAnnouncement(activeAnnouncement)
             .resolved(resolved)
             .filterType(filterType)
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
@@ -252,7 +252,9 @@ public class FeedResource {
       @Parameter(description = "Id of the Thread", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
-    return addHref(uriInfo, dao.get(id));
+    Thread thread = dao.get(id);
+    rejectLegacyAnnouncementThread(thread);
+    return addHref(uriInfo, thread);
   }
 
   @GET
@@ -363,6 +365,9 @@ public class FeedResource {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    Thread original = dao.get(UUID.fromString(id));
+    rejectLegacyAnnouncementThread(original);
+    authorizeThreadEdit(securityContext, original);
     PatchResponse<Thread> response =
         dao.patchThread(
             uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
@@ -387,13 +392,21 @@ public class FeedResource {
       })
   public ResultList<ThreadCount> getThreadCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Filter threads by entity link",
               schema =
                   @Schema(type = "string", example = "<E#/{entityType}/{entityFQN}/{fieldName}>"))
           @QueryParam("entityLink")
           String entityLink) {
-    return new ResultList<>(dao.getThreadsCount(entityLink));
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    boolean applyDomainFilter =
+        !subjectContext.isAdmin()
+            && !subjectContext.isBot()
+            && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+    List<UUID> domains =
+        subjectContext.getUserDomains().stream().map(EntityReference::getId).toList();
+    return new ResultList<>(dao.getThreadsCount(entityLink, applyDomainFilter, domains));
   }
 
   @POST
@@ -416,12 +429,56 @@ public class FeedResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateThread create) {
+    rejectLegacyAnnouncementAccess(create.getType() == ThreadType.Announcement);
+    authorizeThreadCreate(securityContext, create);
     Thread thread = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(thread));
     return Response.created(thread.getHref())
         .entity(thread)
         .header(CHANGE_CUSTOM_HEADER, THREAD_CREATED)
         .build();
+  }
+
+  private void authorizeThreadCreate(SecurityContext securityContext, CreateThread create) {
+    if (create.getType() == ThreadType.Task) {
+      if (nullOrEmpty(create.getAbout())) {
+        throw new IllegalArgumentException("Task thread requires an 'about' entity link");
+      }
+      EntityLink about = EntityLink.parse(create.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.CREATE_TASK);
+      authorizer.authorize(securityContext, entityOpContext, entityResourceContext);
+    }
+  }
+
+  /**
+   * Authorize an edit on an existing task thread with ANY-of semantics: pass if the caller has
+   * {@code EditTask} on the target entity (per-entity grant, e.g. owner via {@code isOwner}) OR
+   * {@code EditAll} on the existing thread instance (covers the original creator and admin-style
+   * thread-resource grants). Mirrors the TestCase pattern for an EXISTING child entity.
+   */
+  private void authorizeThreadEdit(SecurityContext securityContext, Thread thread) {
+    if (thread.getType() == ThreadType.Task && !nullOrEmpty(thread.getAbout())) {
+      EntityLink about = EntityLink.parse(thread.getAbout());
+      EntityReference aboutRef = EntityUtil.validateEntityLink(about);
+      ResourceContext<?> entityResourceContext =
+          new ResourceContext<>(aboutRef.getType(), aboutRef.getId(), null);
+      OperationContext entityOpContext =
+          new OperationContext(aboutRef.getType(), MetadataOperation.EDIT_TASK);
+      OperationContext threadOpContext =
+          new OperationContext(Entity.THREAD, MetadataOperation.EDIT_ALL);
+      ResourceContextInterface threadResourceContext =
+          new ThreadResourceContext(thread.getCreatedBy());
+      authorizer.authorizeRequests(
+          securityContext,
+          List.of(
+              new AuthRequest(entityOpContext, entityResourceContext),
+              new AuthRequest(threadOpContext, threadResourceContext)),
+          AuthorizationLogic.ANY);
+    }
   }
 
   @POST
@@ -447,6 +504,7 @@ public class FeedResource {
           @PathParam("id")
           UUID id,
       @Valid CreatePost createPost) {
+    rejectLegacyAnnouncementThread(dao.get(id));
     Post post = postMapper.createToEntity(createPost, securityContext.getUserPrincipal().getName());
     Thread thread =
         addHref(
@@ -492,6 +550,7 @@ public class FeedResource {
           JsonPatch patch) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     Post post = dao.getPostById(thread, postId);
 
     PatchResponse<Post> response =
@@ -519,6 +578,7 @@ public class FeedResource {
           UUID threadId) {
     // validate and get the thread
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.THREAD, MetadataOperation.DELETE);
@@ -552,6 +612,7 @@ public class FeedResource {
           UUID postId) {
     // validate and get thread & post
     Thread thread = dao.get(threadId);
+    rejectLegacyAnnouncementThread(thread);
     Post post = dao.getPostById(thread, postId);
     // delete post only if the admin/bot/author tries to delete it
     OperationContext operationContext =
@@ -581,6 +642,19 @@ public class FeedResource {
       @Parameter(description = "Id of the thread", schema = @Schema(type = "string"))
           @PathParam("id")
           UUID id) {
+    rejectLegacyAnnouncementThread(dao.get(id));
     return new ResultList<>(dao.listPosts(id));
+  }
+
+  private void rejectLegacyAnnouncementAccess(boolean announcementRequest) {
+    if (announcementRequest) {
+      throw new IllegalArgumentException(
+          "Announcements are no longer served from /v1/feed. Use /v1/announcements instead.");
+    }
+  }
+
+  private void rejectLegacyAnnouncementThread(Thread thread) {
+    rejectLegacyAnnouncementAccess(
+        thread != null && thread.getType() != null && thread.getType() == ThreadType.Announcement);
   }
 }

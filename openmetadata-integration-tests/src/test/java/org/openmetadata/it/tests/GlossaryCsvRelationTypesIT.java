@@ -18,17 +18,28 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
@@ -36,6 +47,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.TermRelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,8 +118,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -130,8 +142,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -164,8 +176,8 @@ public class GlossaryCsvRelationTypesIT {
     String termName = ns.prefix("") + "_mixedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,,",
             termName,
             term1.getFullyQualifiedName(),
             term2.getFullyQualifiedName(),
@@ -194,8 +206,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -342,8 +354,8 @@ public class GlossaryCsvRelationTypesIT {
     String newTermName = ns.prefix("") + "_importedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,,",
             newTermName, existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -404,8 +416,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -413,6 +425,302 @@ public class GlossaryCsvRelationTypesIT {
     assertNotNull(result);
 
     LOG.debug("FQN with colon handling verified for glossary: {}", glossary.getName());
+  }
+
+  /**
+   * Shared resource key for the global {@code glossaryTermRelationSettings} endpoint. Any IT class
+   * that mutates these settings must use the same key on a {@link ResourceLock} so JUnit serialises
+   * across classes; a class-local synchronized block would only guard intra-class concurrency.
+   */
+  private static final String SETTINGS_RESOURCE_KEY = "glossaryTermRelationSettings";
+
+  @Test
+  void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm t1 = GlossaryTermTestFactory.createWithName(ns, glossary, "t1");
+    GlossaryTerm t2 = GlossaryTermTestFactory.createWithName(ns, glossary, "t2");
+    GlossaryTerm t3 = GlossaryTermTestFactory.createWithName(ns, glossary, "t3");
+
+    String newTermName = ns.prefix("") + "_mixed";
+    String csvContent =
+        String.format(
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed,Mixed term,,synonym:%s;%s;narrower:%s,,,,,Draft,,,,",
+            newTermName,
+            t1.getFullyQualifiedName(),
+            t2.getFullyQualifiedName(),
+            t3.getFullyQualifiedName());
+
+    String result = importGlossaryCsv(glossary.getName(), csvContent, false);
+    assertNotNull(result);
+    assertTrue(
+        result.contains("\"numberOfRowsPassed\":1"), "Expected one row to pass. Result: " + result);
+
+    GlossaryTerm imported =
+        getGlossaryTerm(glossary.getFullyQualifiedName() + "." + newTermName, "relatedTerms");
+    assertNotNull(imported, "Imported term should be retrievable via API");
+    assertNotNull(imported.getRelatedTerms(), "Imported term should have related terms");
+    assertEquals(
+        3,
+        imported.getRelatedTerms().size(),
+        "Expected exactly 3 relations. Got: " + imported.getRelatedTerms());
+
+    Map<String, String> typeByTermId = new HashMap<>();
+    for (TermRelation r : imported.getRelatedTerms()) {
+      typeByTermId.put(r.getTerm().getId().toString(), r.getRelationType());
+    }
+    assertEquals("synonym", typeByTermId.get(t1.getId().toString()), "t1 should be synonym");
+    assertEquals("relatedTo", typeByTermId.get(t2.getId().toString()), "t2 should be relatedTo");
+    assertEquals("narrower", typeByTermId.get(t3.getId().toString()), "t3 should be narrower");
+  }
+
+  @Test
+  void testAsymmetricRelationExportShowsBothSides(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm parentTerm = GlossaryTermTestFactory.createWithName(ns, glossary, "parentConcept");
+    GlossaryTerm childTerm = GlossaryTermTestFactory.createWithName(ns, glossary, "childConcept");
+
+    addTermRelation(childTerm.getId().toString(), parentTerm.getId().toString(), "broader");
+
+    String csv = exportGlossaryCsv(glossary.getName());
+    LOG.debug("Exported CSV for asymmetric test:\n{}", csv);
+
+    String childRow = findRowByTerm(csv, childTerm.getName());
+    String parentRow = findRowByTerm(csv, parentTerm.getName());
+    assertNotNull(childRow, "Child term row should be in CSV");
+    assertNotNull(parentRow, "Parent term row should be in CSV");
+
+    assertTrue(
+        childRow.contains("broader:" + parentTerm.getFullyQualifiedName()),
+        "Child term row should reference parent with 'broader' prefix. Row: " + childRow);
+    assertTrue(
+        parentRow.contains("narrower:" + childTerm.getFullyQualifiedName()),
+        "Parent term row should reference child with 'narrower' prefix (inverse). Row: "
+            + parentRow);
+  }
+
+  @Test
+  void testFullExportReimportPreservesRelationTypes(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm t1 = GlossaryTermTestFactory.createWithName(ns, glossary, "alpha");
+    GlossaryTerm t2 = GlossaryTermTestFactory.createWithName(ns, glossary, "beta");
+    GlossaryTerm t3 = GlossaryTermTestFactory.createWithName(ns, glossary, "gamma");
+    GlossaryTerm origin = GlossaryTermTestFactory.createWithName(ns, glossary, "origin");
+
+    addTermRelation(origin.getId().toString(), t1.getId().toString(), "synonym");
+    addTermRelation(origin.getId().toString(), t2.getId().toString(), "broader");
+    addTermRelation(origin.getId().toString(), t3.getId().toString(), "relatedTo");
+
+    String exportedCsv = exportGlossaryCsv(glossary.getName());
+    String[] lines = exportedCsv.split("\\R");
+    String header = lines[0];
+    String originRow = findRowByTerm(exportedCsv, origin.getName());
+    assertNotNull(originRow, "Origin row should be present in exported CSV");
+
+    String cloneName = ns.prefix("") + "_clone";
+    String clonedRow = originRow.replace("," + origin.getName() + ",", "," + cloneName + ",");
+    assertFalse(
+        clonedRow.equals(originRow),
+        "Replacement should produce a different name; row was: " + originRow);
+
+    String reimportCsv = header + "\r\n" + clonedRow;
+    String result = importGlossaryCsv(glossary.getName(), reimportCsv, false);
+    assertNotNull(result);
+    assertTrue(
+        result.contains("\"numberOfRowsPassed\":1"),
+        "Reimport should pass exactly one row. Result: " + result);
+
+    GlossaryTerm clone =
+        getGlossaryTerm(glossary.getFullyQualifiedName() + "." + cloneName, "relatedTerms");
+    assertNotNull(clone, "Cloned term should be retrievable via API");
+    assertNotNull(clone.getRelatedTerms(), "Cloned term should have related terms");
+    assertEquals(
+        3,
+        clone.getRelatedTerms().size(),
+        "Cloned term should have 3 relations. Got: " + clone.getRelatedTerms());
+
+    Map<String, String> typeByTermId = new HashMap<>();
+    for (TermRelation r : clone.getRelatedTerms()) {
+      typeByTermId.put(r.getTerm().getId().toString(), r.getRelationType());
+    }
+    assertEquals(
+        "synonym", typeByTermId.get(t1.getId().toString()), "synonym relation should round-trip");
+    assertEquals(
+        "broader", typeByTermId.get(t2.getId().toString()), "broader relation should round-trip");
+    assertEquals(
+        "relatedTo",
+        typeByTermId.get(t3.getId().toString()),
+        "relatedTo relation should round-trip");
+  }
+
+  @Test
+  @ResourceLock(value = SETTINGS_RESOURCE_KEY, mode = ResourceAccessMode.READ_WRITE)
+  void testRoundTripWithCustomRelationType(TestNamespace ns) throws Exception {
+    String customType = "causes" + System.currentTimeMillis();
+    String inverseType = "causedBy" + System.currentTimeMillis();
+    addCustomRelationTypePair(customType, inverseType);
+    try {
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm cause = GlossaryTermTestFactory.createWithName(ns, glossary, "cause");
+      GlossaryTerm effect = GlossaryTermTestFactory.createWithName(ns, glossary, "effect");
+
+      addTermRelation(cause.getId().toString(), effect.getId().toString(), customType);
+
+      String csv = exportGlossaryCsv(glossary.getName());
+      String causeRow = findRowByTerm(csv, cause.getName());
+      assertNotNull(causeRow, "Cause row should be present in exported CSV");
+      assertTrue(
+          causeRow.contains(customType + ":" + effect.getFullyQualifiedName()),
+          "Cause row should contain '" + customType + ":<effect-fqn>'. Row: " + causeRow);
+
+      String newName = ns.prefix("") + "_imported";
+      String csvImport =
+          String.format(
+              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,,",
+              newName, customType, effect.getFullyQualifiedName());
+      String result = importGlossaryCsv(glossary.getName(), csvImport, false);
+      assertNotNull(result);
+      assertTrue(
+          result.contains("\"numberOfRowsPassed\":1"),
+          "Import with custom relation type should pass. Result: " + result);
+
+      GlossaryTerm imported =
+          getGlossaryTerm(glossary.getFullyQualifiedName() + "." + newName, "relatedTerms");
+      assertNotNull(imported, "Imported term should be retrievable");
+      assertNotNull(imported.getRelatedTerms(), "Imported term should have related terms");
+      assertEquals(1, imported.getRelatedTerms().size(), "Expected one custom relation");
+      assertEquals(
+          customType,
+          imported.getRelatedTerms().get(0).getRelationType(),
+          "Custom relation type should be preserved through CSV import");
+    } finally {
+      cleanupCustomTypes(customType, inverseType);
+    }
+  }
+
+  /**
+   * Locate a CSV row by its glossary-term name. Uses Apache Commons CSV so quoted/escaped fields
+   * (commas, embedded newlines, etc.) don't shift column indices and break the lookup. Returns a
+   * normalized CSV row reconstructed from the parsed record so callers can run substring
+   * assertions without relying on physical line numbers.
+   */
+  private String findRowByTerm(String csvContent, String termName) throws Exception {
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csvContent))) {
+      for (CSVRecord record : parser) {
+        if (termName.equals(record.get("name*"))) {
+          return CSVFormat.DEFAULT.format((Object[]) record.values());
+        }
+      }
+    }
+    return null;
+  }
+
+  private void addCustomRelationTypePair(String customType, String inverseType) throws Exception {
+    JsonNode current = getRelationSettings();
+    ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
+
+    ObjectNode forward = OBJECT_MAPPER.createObjectNode();
+    forward.put("name", customType);
+    forward.put("displayName", "Causes");
+    forward.put("description", "Test custom relation");
+    forward.put("inverseRelation", inverseType);
+    forward.put("isSymmetric", false);
+    forward.put("isTransitive", false);
+    forward.put("isCrossGlossaryAllowed", true);
+    forward.put("category", "associative");
+    forward.put("isSystemDefined", false);
+    forward.put("color", "#aa00ff");
+    types.add(forward);
+
+    ObjectNode inverse = OBJECT_MAPPER.createObjectNode();
+    inverse.put("name", inverseType);
+    inverse.put("displayName", "Caused By");
+    inverse.put("description", "Inverse of the test custom relation");
+    inverse.put("inverseRelation", customType);
+    inverse.put("isSymmetric", false);
+    inverse.put("isTransitive", false);
+    inverse.put("isCrossGlossaryAllowed", true);
+    inverse.put("category", "associative");
+    inverse.put("isSystemDefined", false);
+    inverse.put("color", "#ff00aa");
+    types.add(inverse);
+
+    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+    payload.set("relationTypes", types);
+    putRelationSettings(payload);
+  }
+
+  private void cleanupCustomTypes(String... customTypes) {
+    try {
+      JsonNode current = getRelationSettings();
+      ArrayNode types = (ArrayNode) current.get("config_value").get("relationTypes");
+      ArrayNode filtered = OBJECT_MAPPER.createArrayNode();
+      for (JsonNode type : types) {
+        String name = type.get("name").asText();
+        boolean drop = false;
+        for (String custom : customTypes) {
+          if (custom.equals(name)) {
+            drop = true;
+            break;
+          }
+        }
+        if (!drop) {
+          filtered.add(type);
+        }
+      }
+      ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+      payload.set("relationTypes", filtered);
+      putRelationSettings(payload);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to cleanup custom relation types {}: {}", List.of(customTypes), e.getMessage());
+    }
+  }
+
+  private JsonNode getRelationSettings() throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/v1/system/settings/glossaryTermRelationSettings"))
+            .header("Authorization", "Bearer " + token)
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new RuntimeException("Failed to read settings: " + response.body());
+    }
+    return OBJECT_MAPPER.readTree(response.body());
+  }
+
+  private void putRelationSettings(ObjectNode configValue) throws Exception {
+    String baseUrl = SdkClients.getServerUrl();
+    String token = SdkClients.getAdminToken();
+    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    payload.set("config_value", configValue);
+
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(payload)))
+            .build();
+
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      throw new RuntimeException(
+          "Failed to update settings: status="
+              + response.statusCode()
+              + ", body="
+              + response.body());
+    }
   }
 
   private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType)

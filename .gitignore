@@ -23,6 +23,8 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+.claude/*
+.claude
 .maestro
 catalog-services/catalog-services.iml
 
@@ -90,6 +92,7 @@ openmetadata-ui/src/main/resources/ui/.env
 openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
 openmetadata-ui/src/main/resources/ui/test-results/
+openmetadata-ui/src/main/resources/ui/flakiness-report/
 
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/*
@@ -161,7 +164,7 @@ ingestion/.nox/
 _bmad/
 
 # Claude Flow generated files
-.claude/settings.local.json
+.claude/*
 .mcp.json
 claude-flow.config.json
 .swarm/
@@ -185,7 +188,7 @@ claude-flow.bat
 claude-flow.ps1
 hive-mind-prompt-*.txt
 .claude-flow/
-memory
+/memory/
 .claude/agents
 .claude/hooks/
 ingestion/.claude/agents
@@ -197,5 +200,12 @@ ingestion/.claude/agents
 # Connector audit working files — per-session, never committed
 .claude/audit-results/
 .claude/connector-audit.json
+.claude/scheduled_tasks.lock
+.claude/plans/
+
+# Serena MCP language-server cache — local tooling, not committed
+.serena/
 
 test-results/
+
+docs/superpowers/*

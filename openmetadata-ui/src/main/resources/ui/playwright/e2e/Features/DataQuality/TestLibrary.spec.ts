@@ -12,7 +12,12 @@
  */
 import test, { expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
-import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from '../../../utils/common';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -88,19 +93,31 @@ test.describe(
         // Navigate to Test Library
         await page.goto('/test-library');
 
+        const testDefinitionFormDoc = page.waitForResponse(
+          '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
+        );
+
         // Click add button
         await page.getByTestId('add-test-definition-button').click();
 
         // Wait for drawer to open
         await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+        await testDefinitionFormDoc;
 
         // Verify drawer title
         await expect(page.locator('.ant-drawer-title')).toContainText(
           'Add Test Definition'
         );
 
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toBeVisible();
+
         // Fill in form fields
         await page.locator('#name').fill(TEST_DEFINITION_NAME);
+        await expect(
+          page.locator('.drawer-doc-panel.service-doc-panel')
+        ).toContainText('Name');
         await page.locator('#displayName').fill(TEST_DEFINITION_DISPLAY_NAME);
         await page.locator('#description').fill(TEST_DEFINITION_DESCRIPTION);
 
@@ -110,6 +127,15 @@ test.describe(
           .locator('.ant-select-item-option-content:has-text("TABLE")')
           .first()
           .click();
+
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
 
         // Select test platform
         await page.locator('#testPlatforms').click();
@@ -134,7 +160,7 @@ test.describe(
         expect(responseData.status()).toBe(201);
 
         // Wait for success toast
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
 
         // Verify test definition appears in table
         await expect(page.getByTestId(TEST_DEFINITION_NAME)).toBeVisible();
@@ -185,7 +211,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('should enable/disable test definition', async () => {
@@ -214,7 +240,7 @@ test.describe(
         expect(responseData.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
         await expect(firstSwitch).toHaveAttribute(
@@ -259,7 +285,7 @@ test.describe(
         expect(response.status()).toBe(200);
 
         // Wait for success toast
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Verify test definition is removed from table
         await expect(page.getByText(TEST_DEFINITION_NAME)).not.toBeVisible();
@@ -283,6 +309,105 @@ test.describe(
       await expect(
         page.locator('.ant-form-item-explain-error').first()
       ).toBeVisible();
+    });
+
+    test('should require supported data types only when OpenMetadata platform is selected', async ({
+      page,
+    }) => {
+      test.slow();
+      let createdTestDefinitionId: string | undefined;
+
+      try {
+        await test.step('Open create form', async () => {
+          await page.goto('/test-library');
+          await page.getByTestId('add-test-definition-button').click();
+          await page.locator('.ant-drawer').waitFor({ state: 'visible' });
+        });
+
+        await test.step('Verify supported data types is required with default OpenMetadata platform', async () => {
+          // Fill required fields except supportedDataTypes
+          await page.locator('#name').fill(`validation-test-${uuid()}`);
+          await page.locator('#entityType').click();
+          await page
+            .locator('.ant-select-dropdown:visible')
+            .locator('.ant-select-item-option-content:has-text("TABLE")')
+            .first()
+            .click();
+
+          // Wait for entity type dropdown to close before submitting
+          await expect(
+            page.locator('.ant-select-dropdown:visible')
+          ).not.toBeVisible();
+
+          // Submit the form
+          await page.getByTestId('save-test-definition').click();
+
+          // Expect validation error on supportedDataTypes
+          const supportedDataTypesItem = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Supported Data Types' });
+
+          await expect(
+            supportedDataTypesItem.locator('.ant-form-item-explain-error')
+          ).toBeVisible();
+        });
+
+        await test.step('Remove OpenMetadata and select only dbt — field should not be required', async () => {
+          // Remove OpenMetadata from testPlatforms
+          const testPlatformsSelector = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Test Platforms' })
+            .locator('.ant-select');
+          const openMetadataTag = testPlatformsSelector.locator(
+            '.ant-select-selection-item[title="OpenMetadata"] .ant-select-selection-item-remove'
+          );
+          await openMetadataTag.click();
+
+          // Add dbt
+          await page.locator('#testPlatforms').click();
+          await page
+            .locator('.ant-select-dropdown:visible')
+            .locator('.ant-select-item-option-content:has-text("dbt")')
+            .first()
+            .click();
+
+          // Close dropdown
+          await page.keyboard.press('Escape');
+
+          // Wait for the validation error to clear after removing OpenMetadata
+          const supportedDataTypesItem = page
+            .locator('.ant-form-item')
+            .filter({ hasText: 'Supported Data Types' });
+          await expect(
+            supportedDataTypesItem.locator('.ant-form-item-explain-error')
+          ).not.toBeVisible();
+
+          // Submit the form — supportedDataTypes should no longer block submission
+          const testDefinitionResponse = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+              response.request().method() === 'POST'
+          );
+          await page.getByTestId('save-test-definition').click();
+
+          const responseData = await testDefinitionResponse;
+          expect(responseData.status()).toBe(201);
+
+          const responseBody = await responseData.json();
+          createdTestDefinitionId = responseBody.id;
+
+          await toastNotification(page, /created successfully/i);
+        });
+      } finally {
+        if (createdTestDefinitionId) {
+          const { apiContext } = await getApiContext(page);
+          const deleteResponse = await apiContext.delete(
+            `/api/v1/dataQuality/testDefinitions/${createdTestDefinitionId}`
+          );
+
+          expect(deleteResponse.ok()).toBeTruthy();
+        }
+      }
     });
 
     test('should cancel form and close drawer', async ({ page }) => {
@@ -511,7 +636,7 @@ test.describe(
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).toBeVisible();
       });
 
@@ -600,7 +725,7 @@ test.describe(
         expect(updatedBody.parameterDefinition[0].dataType).toBeUndefined();
         expect(updatedBody.parameterDefinition[0].description).toBeUndefined();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete external test definition', async () => {
@@ -630,7 +755,7 @@ test.describe(
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(page.getByTestId(EXTERNAL_TEST_NAME)).not.toBeVisible();
       });
     });
@@ -667,6 +792,15 @@ test.describe(
           page.locator('.ant-select-dropdown:visible')
         ).not.toBeVisible();
 
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
+
         await page.locator('#supportedServices').click();
         await page.locator('#supportedServices').fill('Mysql');
         const mysqlOption = page
@@ -702,7 +836,7 @@ test.describe(
         const createdData = await responseData.json();
         createdTestId = createdData.id;
 
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).toBeVisible();
@@ -824,7 +958,7 @@ test.describe(
         expect(updatedData.supportedServices).toContain('BigQuery');
         expect(updatedData.supportedServices).not.toContain('MySql');
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Verify updated supported services are persisted', async () => {
@@ -905,7 +1039,7 @@ test.describe(
             updatedData.supportedServices.length === 0
         ).toBeTruthy();
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
       });
 
       await test.step('Delete test definition', async () => {
@@ -931,7 +1065,7 @@ test.describe(
         const response = await deleteResponse;
         expect(response.status()).toBe(200);
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
         await expect(
           page.getByTestId(SUPPORTED_SERVICES_TEST_NAME)
         ).not.toBeVisible();
@@ -941,6 +1075,7 @@ test.describe(
     test('should maintain page on edit and reset to first page on delete', async ({
       page,
     }) => {
+      test.slow();
       const PAGINATION_TEST_NAME = `zzzzPaginationTest${uuid()}`;
       const PAGINATION_TEST_DISPLAY_NAME = `Zzzz Pagination Test ${uuid()}`;
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
@@ -965,6 +1100,15 @@ test.describe(
           page.locator('.ant-select-dropdown:visible')
         ).not.toBeVisible();
 
+        // Select supported data types (required when OpenMetadata platform is selected)
+        await page.locator('#supportedDataTypes').click();
+        await page.locator('#supportedDataTypes').fill('NUMBER');
+        await page
+          .locator('.ant-select-dropdown:visible')
+          .getByTitle('NUMBER')
+          .click();
+        await page.keyboard.press('Escape');
+
         const createResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -975,7 +1119,7 @@ test.describe(
 
         const responseData = await createResponse;
         expect(responseData.status()).toBe(201);
-        await expect(page.getByText(/created successfully/i)).toBeVisible();
+        await toastNotification(page, /created successfully/i);
       });
 
       await test.step('Change page size to 25', async () => {
@@ -1051,7 +1195,7 @@ test.describe(
         const updateResponse = await patchResponse;
         expect(updateResponse.status()).toBe(200);
 
-        await expect(page.getByText(/updated successfully/i)).toBeVisible();
+        await toastNotification(page, /updated successfully/i);
 
         // Verify we stayed on the same page (previous button state should be unchanged)
         if (prevDisabledBefore) {
@@ -1093,7 +1237,7 @@ test.describe(
         // Wait for the GET that happens after delete (page reset + fetch)
         await getResponse;
 
-        await expect(page.getByText(/deleted successfully/i)).toBeVisible();
+        await toastNotification(page, /deleted successfully/i);
 
         // Previous button should be disabled on first page
         const previousButton = page.getByTestId('previous');

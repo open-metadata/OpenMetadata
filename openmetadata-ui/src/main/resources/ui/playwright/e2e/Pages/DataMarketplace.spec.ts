@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -39,7 +40,7 @@ const uiCreatedDomainName = `PW-mp-domain-${uuid()}`;
 
 test.describe(
   'Data Marketplace - Core',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -236,7 +237,7 @@ test.describe(
 
       await test.step('Open add data product drawer', async () => {
         await page.getByTestId('add-data-product-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill data product form and select domain', async () => {
@@ -247,8 +248,9 @@ test.describe(
           domains: [],
         } as DataProduct['data']);
 
-        const domainInput = page.getByTestId('domain-select');
-        await domainInput.scrollIntoViewIfNeeded();
+        const domainContainer = page.getByTestId('domain-select');
+        await domainContainer.scrollIntoViewIfNeeded();
+        const domainInput = domainContainer.getByRole('combobox');
         await domainInput.click();
 
         const searchDomain = page.waitForResponse((response) =>
@@ -274,7 +276,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(page.getByTestId('marketplace-dp-widget')).toBeVisible();
       });
@@ -291,7 +293,7 @@ test.describe(
 
       await test.step('Open add domain drawer', async () => {
         await page.getByTestId('add-domain-btn').click();
-        await expect(page.getByTestId('add-domain')).toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).toBeVisible();
       });
 
       await test.step('Fill domain form and select type', async () => {
@@ -315,7 +317,7 @@ test.describe(
       });
 
       await test.step('Verify drawer closes and widget refreshes', async () => {
-        await expect(page.getByTestId('add-domain')).not.toBeVisible();
+        await expect(page.getByTestId('add-domain-form')).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);
         await expect(
           page.getByTestId('marketplace-domains-widget')

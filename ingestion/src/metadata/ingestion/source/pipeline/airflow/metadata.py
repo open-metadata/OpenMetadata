@@ -13,19 +13,21 @@
 Airflow source to extract metadata from OM UI
 """
 
+import json  # noqa: I001
 import traceback
+import zlib
 from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 from urllib.parse import quote
 
 from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
-from airflow.serialization.serialized_objects import SerializedDAG
+from airflow.serialization.definitions.dag import SerializedDAG
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import and_, column, func, inspect, join
+from sqlalchemy import SQLColumnExpression, and_, column, func, inspect, join, literal
 from sqlalchemy.orm import Session
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
@@ -118,9 +120,9 @@ class OMTaskInstance(BaseModel):
     """
 
     task_id: str
-    state: Optional[str]
-    start_date: Optional[datetime]
-    end_date: Optional[datetime]
+    state: Optional[str]  # noqa: UP045
+    start_date: Optional[datetime]  # noqa: UP045
+    end_date: Optional[datetime]  # noqa: UP045
 
 
 # pylint: disable=too-many-locals,too-many-nested-blocks,too-many-boolean-expressions
@@ -138,7 +140,7 @@ class AirflowSource(PipelineServiceSource):
         super().__init__(config, metadata)
         self.today = datetime.now().strftime("%Y-%m-%d")
         self._session = None
-        self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        self.observability_cache: Dict[Tuple[str, str], Dict[str, Any]] = {}  # noqa: UP006
 
         self._execution_date_column = None
         self._is_remote_airflow_3 = None
@@ -172,14 +174,10 @@ class AirflowSource(PipelineServiceSource):
                 self._is_remote_airflow_3 = False
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x"
-            )
+            logger.warning(f"Failed to detect remote Airflow version - {exc}. Assuming Airflow 2.x")
             self._is_remote_airflow_3 = False
 
-        logger.info(
-            f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}"
-        )
+        logger.info(f"Detected remote Airflow version: {'3.x' if self._is_remote_airflow_3 else '2.x'}")
         return self._is_remote_airflow_3
 
     @property
@@ -199,29 +197,23 @@ class AirflowSource(PipelineServiceSource):
                 self._execution_date_column = "execution_date"
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date"
-            )
+            logger.warning(f"Failed to inspect dag_run table columns - {exc}. Fallback to execution_date")
             self._execution_date_column = "execution_date"
 
         return self._execution_date_column
 
     @classmethod
-    def create(
-        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
-    ):
-        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # noqa: PLC0415
             AirflowRestApiConnection,
         )
 
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: AirflowConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirflowConnection):
-            raise InvalidSourceException(
-                f"Expected AirflowConnection, but got {connection}"
-            )
+            raise InvalidSourceException(f"Expected AirflowConnection, but got {connection}")
         if isinstance(connection.connection, AirflowRestApiConnection):
-            from metadata.ingestion.source.pipeline.airflow.api.source import (
+            from metadata.ingestion.source.pipeline.airflow.api.source import (  # noqa: PLC0415
                 AirflowApiSource,
             )
 
@@ -239,7 +231,7 @@ class AirflowSource(PipelineServiceSource):
         return self._session
 
     @staticmethod
-    def _extract_serialized_task(task: Dict) -> Dict:
+    def _extract_serialized_task(task: Dict) -> Dict:  # noqa: UP006
         """
         Given the serialization changes introduced in Airflow 2.10,
         ensure compatibility with all versions.
@@ -248,23 +240,16 @@ class AirflowSource(PipelineServiceSource):
             return task["__var"]
         return task
 
-    def get_all_tags(self, dag_id: str) -> List[str]:
+    def get_all_tags(self, dag_id: str) -> List[str]:  # noqa: UP006
         try:
-            tag_query = (
-                self.session.query(DagTag.name)
-                .filter(DagTag.dag_id == dag_id)
-                .distinct()
-                .all()
-            )
+            tag_query = self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).distinct().all()
             return [tag[0] for tag in tag_query]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Could not extract tags details due to {exc}")
         return []
 
-    def yield_tag(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, pipeline_details: AirflowDagDetails) -> Iterable[Either[OMetaTagAndClassification]]:
         yield from get_ometa_tag_and_classification(
             tags=self.get_all_tags(dag_id=pipeline_details.dag_id),
             classification_name=AIRFLOW_TAG_CATEGORY,
@@ -273,7 +258,7 @@ class AirflowSource(PipelineServiceSource):
             include_tags=self.source_config.includeTags,
         )
 
-    def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
+    def get_pipeline_status(self, dag_id: str) -> List[DagRun]:  # noqa: UP006
         """
         Return the DagRuns of given dag
         """
@@ -294,7 +279,7 @@ class AirflowSource(PipelineServiceSource):
                 )
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(db_date_column.desc())
-                .limit(self.config.serviceConnection.root.config.numberOfStatus)
+                .limit(self.config.serviceConnection.root.config.numberOfStatus)  # pyright: ignore[reportAttributeAccessIssue]
                 .all()
             )
 
@@ -318,7 +303,7 @@ class AirflowSource(PipelineServiceSource):
 
                 dag_runs.append(DagRun(**kwargs))
 
-            return dag_runs
+            return dag_runs  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -328,15 +313,18 @@ class AirflowSource(PipelineServiceSource):
             return []
 
     def get_task_instances(
-        self, dag_id: str, run_ids: List[str], serialized_tasks: List[AirflowTask]
-    ) -> Dict[str, List[OMTaskInstance]]:
+        self,
+        dag_id: str,
+        run_ids: list[str],
+        serialized_tasks: List[AirflowTask],  # noqa: UP006
+    ) -> Dict[str, List[OMTaskInstance]]:  # noqa: UP006
         """
         Fetch all TaskInstances for the given DAG and run IDs in a single query,
         returning a dict keyed by run_id. This avoids an N+1 pattern where a
         separate query was previously fired for each DagRun.
         """
         serialized_tasks_ids = {task.task_id for task in serialized_tasks}
-        result: Dict[str, List[OMTaskInstance]] = defaultdict(list)
+        result: Dict[str, List[OMTaskInstance]] = defaultdict(list)  # noqa: UP006
 
         # Short-circuit: avoid building and executing a query with an empty
         # IN(...) list - unnecessary DB round-trip and rejected by some SQL
@@ -372,8 +360,7 @@ class AirflowSource(PipelineServiceSource):
                     run_id = row.get("run_id")
                     if not task_id or not run_id:
                         logger.debug(
-                            f"Skipping TaskInstance row with missing "
-                            f"task_id/run_id for dag_id={dag_id}: {row}"
+                            f"Skipping TaskInstance row with missing task_id/run_id for dag_id={dag_id}: {row}"
                         )
                         continue
                     if task_id not in serialized_tasks_ids:
@@ -388,10 +375,7 @@ class AirflowSource(PipelineServiceSource):
                     )
                 except Exception as row_exc:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Skipping malformed TaskInstance row for "
-                        f"dag_id={dag_id}: {row_exc}"
-                    )
+                    logger.warning(f"Skipping malformed TaskInstance row for dag_id={dag_id}: {row_exc}")
                     continue
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -402,9 +386,7 @@ class AirflowSource(PipelineServiceSource):
 
         return result
 
-    def yield_pipeline_status(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(self, pipeline_details: AirflowDagDetails) -> Iterable[Either[OMetaPipelineStatus]]:
         try:
             dag_run_list = self.get_pipeline_status(pipeline_details.dag_id)
 
@@ -412,9 +394,7 @@ class AirflowSource(PipelineServiceSource):
             # has no tasks in the current context, in which case we skip the
             # DB round trip entirely.
             task_names = self.context.get().task_names
-            eligible_runs = [
-                dag_run for dag_run in dag_run_list if dag_run.run_id and task_names
-            ]
+            eligible_runs = [dag_run for dag_run in dag_run_list if dag_run.run_id and task_names]
 
             # Chunk run_ids so we never send an unbounded IN(...) list to the
             # DB and so we can stream per-run statuses without buffering every
@@ -449,13 +429,9 @@ class AirflowSource(PipelineServiceSource):
                     task_statuses = [
                         TaskStatus(
                             name=task.task_id,
-                            executionStatus=STATUS_MAP.get(
-                                task.state, StatusType.Pending.value
-                            ),
+                            executionStatus=STATUS_MAP.get(task.state or "", StatusType.Pending.value),
                             startTime=datetime_to_ts(task.start_date),
-                            endTime=datetime_to_ts(
-                                task.end_date
-                            ),  # Might be None for running tasks
+                            endTime=datetime_to_ts(task.end_date),  # Might be None for running tasks
                         )  # Log link might not be present in all Airflow versions
                         for task in tasks
                         if task.task_id in task_names
@@ -474,9 +450,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_status = PipelineStatus(
                         executionId=dag_run.run_id,
                         taskStatus=task_statuses,
-                        executionStatus=STATUS_MAP.get(
-                            dag_run.state, StatusType.Pending.value
-                        ),
+                        executionStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
                         timestamp=Timestamp(timestamp),
                     )
                     pipeline_fqn = fqn.build(
@@ -499,6 +473,25 @@ class AirflowSource(PipelineServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _resolve_dag_data(
+        self,
+        raw_data: Optional[Any],  # noqa: UP045
+        dag_id: str,
+        compressed_data: Optional[bytes],  # noqa: UP045
+    ) -> Optional[Any]:  # noqa: UP045
+        if raw_data is not None:
+            return raw_data
+        if compressed_data is None:
+            return None
+        try:
+            return json.loads(zlib.decompress(compressed_data))
+        except zlib.error as exc:
+            logger.warning(
+                f"Failed to decompress serialized DAG data for '{dag_id}'. "
+                f"Ensure COMPRESS_SERIALIZED_DAGS uses zlib compression (the Airflow default): {exc}"
+            )
+            return None
 
     def get_pipelines_list(self) -> Iterable[AirflowDagDetails]:
         """
@@ -532,15 +525,22 @@ class AirflowSource(PipelineServiceSource):
             .subquery()
         )
 
+        compressed_col: SQLColumnExpression = (  # pyright: ignore[reportAssignmentType]
+            SerializedDagModel._data_compressed  # pylint: disable=protected-access
+            if hasattr(SerializedDagModel, "_data_compressed")
+            else literal(None)
+        )
+
         # In Airflow 3.x, fileloc is not available on SerializedDagModel
         # We need to get it from DagModel instead
         if hasattr(SerializedDagModel, "fileloc"):
             # Airflow 2.x: fileloc is on SerializedDagModel
             # Use tuple IN clause to get only the latest version of each DAG
-            session_query = self.session.query(
+            session_query = self.session.query(  # pyright: ignore[reportCallIssue]
                 SerializedDagModel.dag_id,
                 json_data_column,
                 SerializedDagModel.fileloc,
+                compressed_col,
             ).join(
                 latest_dag_subquery,
                 and_(
@@ -551,10 +551,11 @@ class AirflowSource(PipelineServiceSource):
         else:
             # Airflow 3.x: fileloc is only on DagModel, we need to join
             session_query = (
-                self.session.query(
+                self.session.query(  # pyright: ignore[reportCallIssue]
                     SerializedDagModel.dag_id,
                     json_data_column,
                     DagModel.fileloc,
+                    compressed_col,
                 )
                 .join(
                     latest_dag_subquery,
@@ -581,17 +582,13 @@ class AirflowSource(PipelineServiceSource):
                 )
             # Add the is_paused filter
             session_query = session_query.filter(
-                DagModel.is_paused == False  # pylint: disable=singleton-comparison
+                DagModel.is_paused == False  # pylint: disable=singleton-comparison  # noqa: E712
             )
         limit = 100  # Number of records per batch
         offset = 0  # Start
 
         while True:
-            paginated_query = (
-                session_query.order_by(SerializedDagModel.dag_id.asc())
-                .limit(limit)
-                .offset(offset)
-            )
+            paginated_query = session_query.order_by(SerializedDagModel.dag_id.asc()).limit(limit).offset(offset)
             results = paginated_query.all()
             if not results:
                 break
@@ -600,14 +597,10 @@ class AirflowSource(PipelineServiceSource):
                     # Query only the is_paused column from DagModel
                     try:
                         is_paused_result = (
-                            self.session.query(DagModel.is_paused)
-                            .filter(DagModel.dag_id == serialized_dag[0])
-                            .scalar()
+                            self.session.query(DagModel.is_paused).filter(DagModel.dag_id == serialized_dag[0]).scalar()
                         )
                         pipeline_state = (
-                            PipelineState.Active.value
-                            if not is_paused_result
-                            else PipelineState.Inactive.value
+                            PipelineState.Active.value if not is_paused_result else PipelineState.Inactive.value
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
@@ -618,18 +611,23 @@ class AirflowSource(PipelineServiceSource):
                         # If we can't query is_paused, assume the pipeline is active
                         pipeline_state = PipelineState.Active.value
 
-                    data = serialized_dag[1]["dag"]
+                    raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], serialized_dag[3])
+                    if raw_data is None:
+                        logger.warning("No serialized data available for dag %s, skipping", serialized_dag[0])
+                        continue
+                    data = raw_data.get("dag")
+                    if data is None:
+                        logger.warning("Missing 'dag' key in serialized data for dag %s, skipping", serialized_dag[0])
+                        continue
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],
                         fileloc=serialized_dag[2],
-                        data=AirflowDag.model_validate(serialized_dag[1]),
+                        data=AirflowDag.model_validate(raw_data),
                         max_active_runs=data.get("max_active_runs", None),
                         description=data.get("_description", None),
                         start_date=data.get("start_date", None),
                         state=pipeline_state,
-                        tasks=list(
-                            map(self._extract_serialized_task, data.get("tasks", []))
-                        ),
+                        tasks=list(map(self._extract_serialized_task, data.get("tasks", []))),
                         schedule_interval=get_schedule_interval(data),
                         owner=self.fetch_dag_owners(data),
                     )
@@ -637,16 +635,14 @@ class AirflowSource(PipelineServiceSource):
                     yield dag
                 except ValidationError as err:
                     logger.debug(traceback.format_exc())
-                    logger.warning(
-                        f"Error building pydantic model for {serialized_dag} - {err}"
-                    )
+                    logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
 
             offset += limit
 
-    def fetch_dag_owners(self, data) -> Optional[str]:
+    def fetch_dag_owners(self, data) -> Optional[str]:  # noqa: UP045
         """
         In Airflow, ownership is defined as:
         - `default_args`: Applied to all tasks and available on the DAG payload
@@ -671,11 +667,7 @@ class AirflowSource(PipelineServiceSource):
 
             for task in tasks:
                 # Flatten serialized task
-                task_data = (
-                    task.get("__var")
-                    if isinstance(task, dict) and "__var" in task
-                    else task
-                )
+                task_data = task.get("__var") if isinstance(task, dict) and "__var" in task else task
 
                 owner = task_data.get("owner") or default_owner
 
@@ -686,12 +678,10 @@ class AirflowSource(PipelineServiceSource):
                 most_common_owner, _ = Counter(task_owners).most_common(1)[0]
                 return most_common_owner
 
-            return default_owner
+            return default_owner  # noqa: TRY300
 
         except Exception as exc:
-            self.status.warning(
-                data.get("dag_id"), f"Could not extract owner information due to {exc}"
-            )
+            self.status.warning(data.get("dag_id"), f"Could not extract owner information due to {exc}")
         return None
 
     def get_pipeline_name(self, pipeline_details: SerializedDAG) -> str:
@@ -700,15 +690,13 @@ class AirflowSource(PipelineServiceSource):
         """
         return pipeline_details.dag_id
 
-    def get_pipeline_state(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Optional[PipelineState]:
+    def get_pipeline_state(self, pipeline_details: AirflowDagDetails) -> Optional[PipelineState]:  # noqa: UP045
         """
         Return the state of the DAG
         """
         return PipelineState[pipeline_details.state]
 
-    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:
+    def get_tasks_from_dag(self, dag: AirflowDagDetails, host_port: str) -> List[Task]:  # noqa: UP006
         """
         Obtain the tasks from a SerializedDAG
         :param dag: AirflowDagDetails
@@ -720,25 +708,23 @@ class AirflowSource(PipelineServiceSource):
                 name=task.task_id,
                 description=task.doc_md,
                 sourceUrl=SourceUrl(
-                    (
+                    (  # noqa: UP034
                         f"{clean_uri(host_port)}/dags/{quote(dag.dag_id)}/tasks/{quote(task.task_id)}"
                         if self.is_remote_airflow_3
                         else f"{clean_uri(host_port)}/taskinstance/list/"
                         f"?_flt_3_dag_id={quote(dag.dag_id)}&_flt_3_task_id={quote(task.task_id)}"
                     )
                 ),
-                downstreamTasks=(
-                    list(task.downstream_task_ids) if task.downstream_task_ids else []
-                ),
+                downstreamTasks=(list(task.downstream_task_ids) if task.downstream_task_ids else []),
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
                 owners=self.get_owner(task.owner),
             )
-            for task in cast(Iterable[BaseOperator], dag.tasks)
+            for task in cast(Iterable[BaseOperator], dag.tasks)  # noqa: TC006
         ]
 
-    def get_owner(self, owner) -> Optional[EntityReferenceList]:
+    def get_owner(self, owner) -> Optional[EntityReferenceList]:  # noqa: UP045
         """
         Fetching users by name via ES to keep things as fast as possible.
 
@@ -755,9 +741,7 @@ class AirflowSource(PipelineServiceSource):
             logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
 
-    def yield_pipeline(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(self, pipeline_details: AirflowDagDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """
         Convert a DAG into a Pipeline Entity
         :param pipeline_details: SerializedDAG from airflow metadata DB
@@ -774,23 +758,13 @@ class AirflowSource(PipelineServiceSource):
 
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=(
-                    Markdown(pipeline_details.description)
-                    if pipeline_details.description
-                    else None
-                ),
+                description=(Markdown(pipeline_details.description) if pipeline_details.description else None),
                 sourceUrl=SourceUrl(source_url),
                 state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=(
-                    pipeline_details.start_date.isoformat()
-                    if pipeline_details.start_date
-                    else None
-                ),
-                tasks=self.get_tasks_from_dag(
-                    pipeline_details, self.service_connection.hostPort
-                ),
+                startDate=(pipeline_details.start_date.isoformat() if pipeline_details.start_date else None),
+                tasks=self.get_tasks_from_dag(pipeline_details, self.service_connection.hostPort),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owners=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
@@ -803,9 +777,7 @@ class AirflowSource(PipelineServiceSource):
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
-            self.context.get().task_names = {
-                task.name for task in pipeline_request.tasks or []
-            }
+            self.context.get().task_names = {task.name for task in pipeline_request.tasks or []}
         except TypeError as err:
             self.context.get().task_names = set()
             yield Either(
@@ -878,46 +850,33 @@ class AirflowSource(PipelineServiceSource):
         self.context.get().current_dag_runs = dag_runs
         self.context.get().latest_dag_run = dag_runs[0] if dag_runs else None
 
-        xlets: List[XLets] = (
-            get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []
-        )
+        xlets: List[XLets] = get_xlets_from_dag(dag=pipeline_details) if pipeline_details else []  # noqa: UP006
 
         table_fqns = []
         for xlet in xlets:
             for from_xlet in xlet.inlets or []:
-                from_entity = self.metadata.get_by_name(
-                    entity=from_xlet.entity, fqn=from_xlet.fqn
-                )
+                from_entity = self.metadata.get_by_name(entity=from_xlet.entity, fqn=from_xlet.fqn)
                 if from_entity:
                     # Track table FQNs for observability
                     if from_xlet.entity == Table and from_xlet.fqn not in table_fqns:
                         table_fqns.append(from_xlet.fqn)
 
                     for to_xlet in xlet.outlets or []:
-                        to_entity = self.metadata.get_by_name(
-                            entity=to_xlet.entity, fqn=to_xlet.fqn
-                        )
+                        to_entity = self.metadata.get_by_name(entity=to_xlet.entity, fqn=to_xlet.fqn)
                         if to_entity:
                             # Track table FQNs for observability
-                            if (
-                                to_xlet.entity == Table
-                                and to_xlet.fqn not in table_fqns
-                            ):
+                            if to_xlet.entity == Table and to_xlet.fqn not in table_fqns:
                                 table_fqns.append(to_xlet.fqn)
 
                             lineage = AddLineageRequest(
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(
                                         id=from_entity.id,
-                                        type=ENTITY_REFERENCE_TYPE_MAP[
-                                            from_xlet.entity.__name__
-                                        ],
+                                        type=ENTITY_REFERENCE_TYPE_MAP[from_xlet.entity.__name__],
                                     ),
                                     toEntity=EntityReference(
                                         id=to_entity.id,
-                                        type=ENTITY_REFERENCE_TYPE_MAP[
-                                            to_xlet.entity.__name__
-                                        ],
+                                        type=ENTITY_REFERENCE_TYPE_MAP[to_xlet.entity.__name__],
                                     ),
                                     lineageDetails=lineage_details,
                                 )
@@ -958,7 +917,7 @@ class AirflowSource(PipelineServiceSource):
         self,
         dag_run: DagRun,
         pipeline_entity: Pipeline,
-        schedule_interval: Optional[str] = None,
+        schedule_interval: Optional[str] = None,  # noqa: UP045
     ) -> PipelineObservability:
         """Build PipelineObservability object from DagRun data."""
         # DagRun objects are built with logical_date (SDK is Airflow 3.x)
@@ -966,11 +925,7 @@ class AirflowSource(PipelineServiceSource):
 
         return PipelineObservability(
             pipeline=EntityReference(
-                id=(
-                    pipeline_entity.id.root
-                    if hasattr(pipeline_entity.id, "root")
-                    else pipeline_entity.id
-                ),
+                id=(pipeline_entity.id.root if hasattr(pipeline_entity.id, "root") else pipeline_entity.id),
                 type="pipeline",
                 fullyQualifiedName=(
                     pipeline_entity.fullyQualifiedName.root
@@ -979,31 +934,21 @@ class AirflowSource(PipelineServiceSource):
                 ),
             ),
             scheduleInterval=schedule_interval,
-            startTime=(
-                Timestamp(datetime_to_ts(dag_run.start_date))
-                if dag_run.start_date
-                else None
-            ),
-            endTime=(
-                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
-            ),
-            lastRunTime=(
-                Timestamp(datetime_to_ts(execution_date)) if execution_date else None
-            ),
+            startTime=(Timestamp(datetime_to_ts(dag_run.start_date)) if dag_run.start_date else None),
+            endTime=(Timestamp(datetime_to_ts(execution_date)) if execution_date else None),
+            lastRunTime=(Timestamp(datetime_to_ts(execution_date)) if execution_date else None),
             lastRunStatus=STATUS_MAP.get(dag_run.state, StatusType.Pending.value),
         )
 
     def get_table_pipeline_observability(
         self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Dict[str, List[PipelineObservability]]]:
+    ) -> Iterable[Dict[str, List[PipelineObservability]]]:  # noqa: UP006
         """
         Extract pipeline observability data from cached lineage artifacts.
         Uses context data first (current dag), falls back to cache for historical data.
         """
         try:
-            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(
-                list
-            )
+            table_pipeline_map: Dict[str, List[PipelineObservability]] = defaultdict(list)  # noqa: UP006
 
             ctx = self.context.get()
 
@@ -1035,9 +980,7 @@ class AirflowSource(PipelineServiceSource):
                             table_pipeline_map[table_fqn].append(observability)
 
                     except Exception as exc:
-                        logger.warning(
-                            f"Failed to build observability for dag run {dag_run.run_id}: {exc}"
-                        )
+                        logger.warning(f"Failed to build observability for dag run {dag_run.run_id}: {exc}")
                         logger.debug(traceback.format_exc())
                         continue
 
@@ -1055,9 +998,7 @@ class AirflowSource(PipelineServiceSource):
 
                     # Validate cache structure
                     if not isinstance(cached_data, dict):
-                        logger.warning(
-                            f"Invalid cache structure for {cache_key}, skipping"
-                        )
+                        logger.warning(f"Invalid cache structure for {cache_key}, skipping")
                         failed_cache_entries += 1
                         continue
 
@@ -1068,17 +1009,11 @@ class AirflowSource(PipelineServiceSource):
 
                     # Validate cache entry has required data
                     if not pipeline_entity or not table_fqns or not dag_run:
-                        logger.debug(
-                            f"Incomplete cache entry for {cache_key}, skipping"
-                        )
+                        logger.debug(f"Incomplete cache entry for {cache_key}, skipping")
                         continue
 
                     # Build observability for this cached run
-                    schedule_interval = (
-                        cached_pipeline_details.schedule_interval
-                        if cached_pipeline_details
-                        else None
-                    )
+                    schedule_interval = cached_pipeline_details.schedule_interval if cached_pipeline_details else None
 
                     observability = self._build_observability_from_dag_run(
                         dag_run=dag_run,
@@ -1108,9 +1043,7 @@ class AirflowSource(PipelineServiceSource):
             yield table_pipeline_map
 
         except Exception as exc:
-            logger.error(
-                f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}"
-            )
+            logger.error(f"Failed to extract pipeline observability data for {pipeline_details.dag_id}: {exc}")
             logger.debug(traceback.format_exc())
 
     def close(self):

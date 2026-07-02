@@ -12,6 +12,7 @@
 """
 Validate entity fetcher filtering strategies
 """
+
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -118,9 +119,7 @@ PROFILER_CONFIG = {
     },
 }
 
-SERVICE_REF = EntityReference(
-    id=uuid.uuid4(), name="my_service", type="databaseService"
-)
+SERVICE_REF = EntityReference(id=uuid.uuid4(), name="my_service", type="databaseService")
 
 PROD_DB = Database(
     id=uuid.uuid4(),
@@ -228,6 +227,58 @@ UNTAGGED_TABLE = Table(
     tableType=TableType.Regular,
 )
 
+MULTI_TAG_TABLE = Table(
+    id=uuid.uuid4(),
+    name="transactions",
+    fullyQualifiedName="my_service.prod.finance.transactions",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="PII",
+            tagFQN="PII.Sensitive",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
+TIER_REVENUE_TABLE = Table(
+    id=uuid.uuid4(),
+    name="ledger",
+    fullyQualifiedName="my_service.prod.finance.ledger",
+    columns=[Column(name="id", dataType=DataType.INT)],
+    database=DB_REF,
+    databaseSchema=FINANCE_SCHEMA_REF,
+    tableType=TableType.Regular,
+    tags=[
+        TagLabel(
+            labelType="Manual",
+            name="Tier1",
+            tagFQN="Tier.Tier1",
+            state="Confirmed",
+            source="Classification",
+        ),
+        TagLabel(
+            labelType="Manual",
+            name="Revenue",
+            tagFQN="Finance.Revenue",
+            state="Confirmed",
+            source="Classification",
+        ),
+    ],
+)
+
 
 def _make_fetcher(source_config_overrides=None):
     """Build a DatabaseFetcherStrategy with a mocked metadata client"""
@@ -284,9 +335,7 @@ class TestGetDatabaseEntities:
     def test_multiple_includes_combined_with_or(self):
         """includes=["prod", "staging"] combines into "(prod)|(staging)".
         The server returns both matching databases but not temp_analytics."""
-        fetcher = _make_fetcher(
-            {"databaseFilterPattern": {"includes": ["prod", "staging"]}}
-        )
+        fetcher = _make_fetcher({"databaseFilterPattern": {"includes": ["prod", "staging"]}})
         fetcher.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB])
 
         result = list(fetcher._get_database_entities())
@@ -319,9 +368,7 @@ class TestGetDatabaseEntities:
         """Without a filter pattern, no regex params should be sent
         and the API returns all databases for the service."""
         fetcher = _make_fetcher()
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [PROD_DB, STAGING_DB, TEMP_DB]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([PROD_DB, STAGING_DB, TEMP_DB])
 
         result = list(fetcher._get_database_entities())
 
@@ -332,9 +379,7 @@ class TestGetDatabaseEntities:
     def test_raises_when_server_returns_no_databases(self):
         """If the server returns 0 results (e.g., overly restrictive regex),
         a ValueError should be raised with the filter pattern details."""
-        fetcher = _make_fetcher(
-            {"databaseFilterPattern": {"includes": ["nonexistent"]}}
-        )
+        fetcher = _make_fetcher({"databaseFilterPattern": {"includes": ["nonexistent"]}})
         fetcher.metadata.list_all_entities.return_value = iter([])
 
         with pytest.raises(ValueError, match="databaseFilterPattern returned 0 result"):
@@ -369,9 +414,7 @@ class TestGetTableEntities:
         """The API returns a mix of regular tables and views.
         With includeViews=False, views must be stripped client-side."""
         fetcher = _make_fetcher({"includeViews": False})
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [ORDERS_TABLE, REVENUE_VIEW, CUSTOMERS_TABLE]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW, CUSTOMERS_TABLE])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
@@ -381,9 +424,7 @@ class TestGetTableEntities:
     def test_views_included_when_configured(self):
         """With includeViews=True, views should pass through."""
         fetcher = _make_fetcher({"includeViews": True})
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [ORDERS_TABLE, REVENUE_VIEW]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, REVENUE_VIEW])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
@@ -398,9 +439,7 @@ class TestGetTableEntities:
                 "classificationFilterPattern": {"excludes": ["PII.*"]},
             }
         )
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [EMPLOYEES_TABLE, SALARY_TABLE, UNTAGGED_TABLE]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([EMPLOYEES_TABLE, SALARY_TABLE, UNTAGGED_TABLE])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
@@ -416,13 +455,56 @@ class TestGetTableEntities:
                 "classificationFilterPattern": {"includes": ["PII.*"]},
             }
         )
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [EMPLOYEES_TABLE, SALARY_TABLE, UNTAGGED_TABLE]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([EMPLOYEES_TABLE, SALARY_TABLE, UNTAGGED_TABLE])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
         assert result == [SALARY_TABLE]
+
+    def test_classification_include_keeps_table_with_extra_tags(self):
+        """A table carrying a matching include tag is kept even when it also
+        has other, non-matching tags. A single matching tag is sufficient."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"includes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([MULTI_TAG_TABLE, TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [MULTI_TAG_TABLE]
+
+    def test_classification_exclude_takes_precedence_over_include(self):
+        """When a table matches both an include and an exclude pattern,
+        exclude wins and the table is filtered out."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {
+                    "includes": ["Tier.*"],
+                    "excludes": ["Revenue.*"],
+                },
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == []
+
+    def test_classification_exclude_keeps_multi_tag_table_without_excluded_tag(self):
+        """A multi-tag table is kept when none of its tags match the exclude
+        pattern, regardless of how many other tags it carries."""
+        fetcher = _make_fetcher(
+            {
+                "classificationFilterPattern": {"excludes": ["PII.*"]},
+            }
+        )
+        fetcher.metadata.list_all_entities.return_value = iter([TIER_REVENUE_TABLE, MULTI_TAG_TABLE])
+
+        result = list(fetcher._get_table_entities(PROD_DB))
+
+        assert result == [TIER_REVENUE_TABLE]
 
     def test_views_and_classifications_combined(self):
         """Both view filtering and classification filtering
@@ -512,9 +594,7 @@ class TestGetTableEntities:
                 "includeViews": True,
             }
         )
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [ORDERS_TABLE, CUSTOMERS_TABLE, REVENUE_VIEW]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, CUSTOMERS_TABLE, REVENUE_VIEW])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
@@ -536,9 +616,7 @@ class TestGetTableEntities:
                 "includeViews": True,
             }
         )
-        fetcher.metadata.list_all_entities.return_value = iter(
-            [ORDERS_TABLE, EMPLOYEES_TABLE]
-        )
+        fetcher.metadata.list_all_entities.return_value = iter([ORDERS_TABLE, EMPLOYEES_TABLE])
 
         result = list(fetcher._get_table_entities(PROD_DB))
 
@@ -554,9 +632,7 @@ class TestFetch:
     """Validate end-to-end fetch() pipeline across multiple databases"""
 
     @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
-    def test_fetch_iterates_databases_and_tables_with_correct_params(
-        self, mock_factory
-    ):
+    def test_fetch_iterates_databases_and_tables_with_correct_params(self, mock_factory):
         """fetch() should iterate over each database from _get_database_entities,
         then for each database call _get_table_entities with the right params.
         Verifies the full param chain from config to API calls."""

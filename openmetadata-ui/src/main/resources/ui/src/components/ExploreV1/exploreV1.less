@@ -24,15 +24,23 @@
 }
 
 .explore-page {
-  .sorting-dropdown-container {
-    .ant-typography {
-      color: @grey-700;
-      font-weight: 500;
-    }
+  .content-height-with-resizable-panel {
+    height: calc(
+      100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
+    );
+    overflow-y: auto;
 
-    svg {
-      color: @grey-700;
+    &.filter-applied {
+      height: calc(
+        100vh - @om-navbar-height - @quick-filters-container-height - @size-xs -
+          40px // filter applied height adjustment
+      );
     }
+  }
+
+  .explore-page-right-panel {
+    // fixed width to right panel
+    flex: 0 0 400px;
   }
 
   .explore-icon {
@@ -47,60 +55,20 @@
     min-width: 0;
   }
 
-  .explore-left-panel {
-    position: sticky;
-    top: 0;
-    overflow-y: auto;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-
-    .custom-menu {
-      .ant-menu-item {
-        height: 36px;
-        line-height: 36px;
-      }
-    }
-
-    .ant-card {
-      flex: 1;
-    }
-  }
-
-  .explore-right-panel {
-    position: sticky;
-    top: 0;
-    border-radius: 8px;
-    overflow: hidden;
-    padding-left: 0px !important;
-  }
-
-  .explore-main-container {
-    height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none;
-    overflow-x: hidden;
-  }
-
-  .explore-data-container {
-    height: calc(
-      100vh - @om-navbar-height - @quick-filters-container-height - @size-mlg
-    );
-    overflow-y: auto;
-    margin-right: 0;
-  }
-
   .explore-main-card {
+    // body should occupy 100% height
     .ant-card-body {
       height: 100%;
       overflow-y: auto;
     }
-  }
 
-  .quick-filters-container {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    // pagination sticky
+    .ant-pagination {
+      bottom: -20px;
+      background: var(--tw-color-bg-primary);
+      margin: -10px;
+      border-radius: 12px;
+    }
   }
 
   .explore-tree {

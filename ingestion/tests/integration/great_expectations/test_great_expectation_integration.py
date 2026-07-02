@@ -36,16 +36,14 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..conftest import _safe_delete
+from ..conftest import _safe_delete  # noqa: TID252
 
 
 class Base(DeclarativeBase):
     pass
 
 
-TEST_CASE_FQN = (
-    "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
-)
+TEST_CASE_FQN = "test_sqlite.default.main.users.name.expect_column_values_to_not_be_null"
 SQLLITE_SHARD = "file:cachedb?mode=memory&cache=shared&check_same_thread=False"
 LOGGER = logging.getLogger(__name__)
 
@@ -107,9 +105,7 @@ class TestGreatExpectationIntegration(TestCase):
         hostPort=WORKFLOW_CONFIG["openMetadataServerConfig"]["hostPort"],
         authProvider=WORKFLOW_CONFIG["openMetadataServerConfig"]["authProvider"],
         securityConfig=OpenMetadataJWTClientConfig(
-            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"][
-                "jwtToken"
-            ]
+            jwtToken=WORKFLOW_CONFIG["openMetadataServerConfig"]["securityConfig"]["jwtToken"]
         ),
     )  # type: ignore
     metadata = OpenMetadata(server_config)
@@ -117,18 +113,18 @@ class TestGreatExpectationIntegration(TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up class by ingesting metadata"""
-        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")
-        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")
-        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")
+        gx_base_dir = os.path.join(os.path.dirname(__file__), "gx")  # noqa: PTH118, PTH120
+        gx_expectations_dir = os.path.join(gx_base_dir, "expectations")  # noqa: PTH118
+        gx_checkpoints_dir = os.path.join(gx_base_dir, "checkpoints")  # noqa: PTH118
 
         for suite_name in ["users_query_suite.json", "orders_query_suite.json"]:
-            suite_file = os.path.join(gx_expectations_dir, suite_name)
-            if os.path.exists(suite_file):
-                os.remove(suite_file)
+            suite_file = os.path.join(gx_expectations_dir, suite_name)  # noqa: PTH118
+            if os.path.exists(suite_file):  # noqa: PTH110
+                os.remove(suite_file)  # noqa: PTH107
 
-        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")
-        if os.path.exists(checkpoint_file):
-            os.remove(checkpoint_file)
+        checkpoint_file = os.path.join(gx_checkpoints_dir, "multi_table_checkpoint.yml")  # noqa: PTH118
+        if os.path.exists(checkpoint_file):  # noqa: PTH110
+            os.remove(checkpoint_file)  # noqa: PTH107
 
         try:
             User.__table__.create(bind=cls.engine)
@@ -211,9 +207,7 @@ class TestGreatExpectationIntegration(TestCase):
         Clean up
         """
 
-        service_entity = cls.metadata.get_by_name(
-            entity=DatabaseService, fqn="test_sqlite"
-        )
+        service_entity = cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite")
         if service_entity:
             _safe_delete(
                 cls.metadata,
@@ -259,10 +253,10 @@ class TestGreatExpectationIntegration(TestCase):
         assert not orders_table.testSuite
 
         # GE config file
-        ge_folder = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
+        ge_folder = os.path.join(  # noqa: PTH118
+            os.path.dirname(os.path.abspath(__file__)),  # noqa: PTH100, PTH120
         )
-        ometa_config = os.path.join(ge_folder, "gx/ometa_config")
+        ometa_config = os.path.join(ge_folder, "gx/ometa_config")  # noqa: PTH118
         context = gx.get_context(project_root_dir=ge_folder)
 
         # Create query-based expectation suite for users table
@@ -323,9 +317,7 @@ class TestGreatExpectationIntegration(TestCase):
                         "data_connector_name": "default_runtime_data_connector_name",
                         "data_asset_name": "orders_query_asset",
                         "runtime_parameters": {"query": orders_query},
-                        "batch_identifiers": {
-                            "default_identifier_name": "orders_check"
-                        },
+                        "batch_identifiers": {"default_identifier_name": "orders_check"},
                     },
                     "expectation_suite_name": "orders_query_suite",
                 },
@@ -362,9 +354,7 @@ class TestGreatExpectationIntegration(TestCase):
             entity=TestSuite, entity_id=users_table.testSuite.id, fields=["tests"]
         )
         assert len(users_test_suite.tests) >= 1
-        assert any(
-            "name" in str(test.fullyQualifiedName) for test in users_test_suite.tests
-        )
+        assert any("name" in str(test.fullyQualifiedName) for test in users_test_suite.tests)
 
         # Verify orders table received its test results
         orders_table = self.metadata.get_by_name(
@@ -377,12 +367,8 @@ class TestGreatExpectationIntegration(TestCase):
             entity=TestSuite, entity_id=orders_table.testSuite.id, fields=["tests"]
         )
         assert len(orders_test_suite.tests) >= 1
-        assert any(
-            "amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests
-        )
+        assert any("amount" in str(test.fullyQualifiedName) for test in orders_test_suite.tests)
 
     def install_gx_018x(self):
         """Install GX 0.18.x at runtime as we support 0.18.x and 1.x.x and setup will install 1 default version"""
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "great-expectations~=0.18.0"])

@@ -14,25 +14,18 @@
 import { Card } from 'antd';
 import { AxiosError } from 'axios';
 import _ from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
-import { PAGE_SIZE_EXTRA_LARGE } from '../../constants/constants';
+import { CreateUserFormData } from '../../components/Settings/Users/CreateUser/CreateUser.interface';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { CreateUser } from '../../generated/api/teams/createUser';
-import { Role } from '../../generated/entity/teams/role';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { createBot } from '../../rest/botsAPI';
-import { getAllRoles } from '../../rest/rolesAPIV1';
-import {
-  createUser,
-  createUserWithPut,
-  getBotByName,
-} from '../../rest/userAPI';
+import { createBot, getBotByName } from '../../rest/botsAPI';
+import { createUser, createUserWithPut } from '../../rest/userAPI';
 import {
   getBotsPagePath,
   getSettingPath,
@@ -40,8 +33,7 @@ import {
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { getUserCreationErrorMessage } from '../../utils/Users.util';
-
+import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';
 const CreateUserPage = () => {
   const {
     state,
@@ -53,7 +45,6 @@ const CreateUserPage = () => {
   const isAdminPage = Boolean(state?.isAdminPage);
   const { setInlineAlertDetails } = useApplicationStore();
   const { getResourceLimit } = useLimitStore();
-  const [roles, setRoles] = useState<Array<Role>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const { bot } = useRequiredParams<{ bot: string }>();
@@ -84,23 +75,24 @@ const CreateUserPage = () => {
    * Submit handler for new user form.
    * @param userData Data for creating new user
    */
-  const handleAddUserSave = async (userData: CreateUser) => {
+  const handleAddUserSave = async (userData: CreateUserFormData) => {
     setIsLoading(true);
+    const { allowImpersonation, ...userPayload } = userData;
     if (bot) {
-      const isBotExists = await checkBotInUse(userData.name);
+      const isBotExists = await checkBotInUse(userPayload.name);
       if (isBotExists) {
         showErrorToast(
           t('server.email-already-exist', {
             entity: t('label.bot-lowercase'),
-            name: userData.name,
+            name: userPayload.name,
           })
         );
       } else {
         try {
           // Create a user with isBot:true
           const userResponse = await createUserWithPut({
-            ...userData,
-            botName: userData.name,
+            ...userPayload,
+            botName: userPayload.name,
           });
 
           // Create a bot entity with botUser data
@@ -109,6 +101,7 @@ const CreateUserPage = () => {
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
+            allowImpersonation,
           });
 
           // Update current count when Create / Delete operation performed
@@ -133,7 +126,7 @@ const CreateUserPage = () => {
       }
     } else {
       try {
-        await createUser(userData);
+        await createUser(userPayload);
         // Update current count when Create / Delete operation performed
         await getResourceLimit('user', true, true);
         goToUserListPage();
@@ -153,27 +146,6 @@ const CreateUserPage = () => {
     }
     setIsLoading(false);
   };
-
-  const fetchRoles = async () => {
-    try {
-      const roles = await getAllRoles(
-        '',
-        false,
-        PAGE_SIZE_EXTRA_LARGE // until we implement server-side search, fetch all pages
-      );
-      setRoles(roles);
-    } catch (err) {
-      setRoles([]);
-      showErrorToast(
-        err as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.role-plural') })
-      );
-    }
-  };
-
-  useEffect(() => {
-    fetchRoles();
-  }, []);
 
   const BREADCRUMB_DETAILS = useMemo(() => {
     if (bot) {
@@ -222,7 +194,6 @@ const CreateUserPage = () => {
           <CreateUserComponent
             forceBot={Boolean(bot)}
             isLoading={isLoading}
-            roles={roles}
             onCancel={handleCancel}
             onSave={handleAddUserSave}
           />

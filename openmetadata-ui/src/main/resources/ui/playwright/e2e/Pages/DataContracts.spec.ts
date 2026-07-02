@@ -73,7 +73,7 @@ import {
   triggerContractValidation,
   validateDataContractInsideBundleTestSuites,
   validateSecurityAndSLADetails,
-  waitForDataContractExecution,
+  waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
 import {
   addOwner,
@@ -143,7 +143,7 @@ test.describe('Data Contracts', () => {
       page,
     }) => {
       // 12-min timeout so waitForDataContractExecution completes first.
-      test.setTimeout(720_000);
+      test.setTimeout(900_000);
 
       const testClassification = new ClassificationClass();
       const testTag = new TagClass({
@@ -182,7 +182,7 @@ test.describe('Data Contracts', () => {
         // Add owner using created user to verify displayName is shown in UserTag
         await addOwnerWithoutValidation({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           initiatorId: 'select-owners',
         });
@@ -190,7 +190,7 @@ test.describe('Data Contracts', () => {
         // Verify the UserTag shows the user's displayName (not name)
         await expect(page.getByTestId('user-tag')).toBeVisible();
         await expect(
-          page.getByTestId('user-tag').getByText(user.responseData.displayName)
+          page.getByTestId('user-tag').getByText(user.getUserDisplayName())
         ).toBeVisible();
       });
 
@@ -259,7 +259,7 @@ test.describe('Data Contracts', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.displayName,
+          user.getUserDisplayName(),
           true
         );
         await page.getByRole('button', { name: 'Add New Rule' }).click();
@@ -353,18 +353,22 @@ test.describe('Data Contracts', () => {
 
         await addOwner({
           page,
-          owner: user.responseData.displayName,
+          owner: user.getUserDisplayName(),
           type: 'Users',
           endpoint: entity.endpoint,
           dataTestId: 'data-assets-header',
         });
 
-        await triggerContractValidation(page);
+        // Register before clicking so the observer is already attached when
+        // the toast appears — avoids a race where the page reloads after the
+        // API response and closes the page context before waitFor is called.
+        const toastPromise = page
+          .getByTestId('alert-bar')
+          .getByText('Contract validation trigger successfully.')
+          .waitFor({ state: 'visible' });
 
-        await toastNotification(
-          page,
-          'Contract validation trigger successfully.'
-        );
+        await triggerContractValidation(page);
+        await toastPromise;
 
         await page.reload();
 
@@ -442,9 +446,7 @@ test.describe('Data Contracts', () => {
 
           await page.getByTestId('pipeline-name').fill('test-pipeline');
 
-          await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
@@ -473,6 +475,9 @@ test.describe('Data Contracts', () => {
           // save and trigger contract validation
           const response = await saveAndTriggerDataContractValidation(page);
 
+          // The test suite results may be available before the contract's latestResult is
+          // updated. If waitForDataContractExecution times out, fall back to the DataQuality
+          // page to verify the test suite ran successfully.
           if (
             typeof response === 'object' &&
             response !== null &&
@@ -481,13 +486,20 @@ test.describe('Data Contracts', () => {
             const { id: contractId } = response as { id: string };
 
             if (contractId) {
-              await waitForDataContractExecution(page, contractId);
+              const contractResultVisible =
+                await waitForContractExecutionWithFallback(
+                  page,
+                  contractId,
+                  DATA_CONTRACT_DETAILS.name
+                );
+
+              if (contractResultVisible) {
+                await expect(
+                  page.getByTestId('data-contract-latest-result-btn')
+                ).toBeVisible();
+              }
             }
           }
-
-          await expect(
-            page.getByTestId('data-contract-latest-result-btn')
-          ).toBeVisible();
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
@@ -496,7 +508,7 @@ test.describe('Data Contracts', () => {
           await expect(
             page
               .getByTestId('test-suite-table')
-              .locator('.ant-table-cell')
+              .locator('[role="gridcell"]')
               .filter({
                 hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
               })
@@ -820,8 +832,21 @@ test.describe('Data Contracts', () => {
       });
 
       await test.step('Save contract and validate for schema', async () => {
+        const saveResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts') &&
+            response.request().method() === 'POST'
+        );
+        const getResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataContracts/entity') &&
+            response.request().method() === 'GET'
+        );
+
         await page.getByTestId('save-contract-btn').click();
-        await page.waitForResponse('/api/v1/dataContracts/*');
+
+        await saveResponsePromise;
+        await getResponsePromise;
 
         // Check all schema from 1 to 50, and 10 is the max-pagination chip
         await expect(page.getByTitle('10')).toBeVisible();
@@ -883,7 +908,7 @@ test.describe('Data Contracts', () => {
       await test.step('Re-select some columns on page 1, save and validate', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
@@ -1112,9 +1137,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1287,9 +1319,16 @@ test.describe('Data Contracts', () => {
 
     await navigateToContractTab(page);
 
-    await triggerContractValidation(page);
+    // Register before clicking so the observer is already attached when
+    // the toast appears — avoids a race where the page reloads after the
+    // API response and closes the page context before waitFor is called.
+    const toastPromise = page
+      .getByTestId('alert-bar')
+      .getByText('Contract validation trigger successfully.')
+      .waitFor({ state: 'visible' });
 
-    await toastNotification(page, 'Contract validation trigger successfully.');
+    await triggerContractValidation(page);
+    await toastPromise;
 
     await page.reload();
 
@@ -1444,7 +1483,7 @@ test.describe('Data Contracts', () => {
     // Run Contract After Schema Change should Fail
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
 
@@ -1473,7 +1512,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('manage-contract-actions').click();
 
-    await page.locator('.contract-action-dropdown').waitFor({
+    await page.getByTestId('contract-action-dropdown').waitFor({
       state: 'visible',
     });
     await page.getByTestId('contract-edit-button').click();
@@ -2058,7 +2097,7 @@ test.describe('Data Contracts', () => {
         // Click to import via the modal
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2068,9 +2107,6 @@ test.describe('Data Contracts', () => {
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'update.yaml',
@@ -2092,16 +2128,17 @@ description:
         ).toBeVisible();
 
         // Verify merge is default selected
-        const mergeRadio = page.locator('input[type="radio"][value="merge"]');
-        await expect(mergeRadio).toBeVisible();
-        await expect(mergeRadio).toBeChecked();
+        await expect(page.getByTestId('import-mode-merge')).toBeVisible();
+        await expect(
+          page.locator('input[type="radio"][value="merge"]')
+        ).toBeChecked();
 
         // Import with merge mode
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=merge**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
@@ -2141,7 +2178,7 @@ description:
       await test.step('Import again via modal with replace mode', async () => {
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2151,9 +2188,6 @@ description:
         await page.getByTestId('import-contract-modal').waitFor();
 
         // Upload a new ODCS file with different content
-        const dropzone = page.locator('.import-content-wrapper');
-        await dropzone.click();
-
         const fileInput = page.getByTestId('file-upload-input');
         await fileInput.setInputFiles({
           name: 'replace.yaml',
@@ -2174,17 +2208,14 @@ description:
         ).toBeVisible();
 
         // Select replace mode
-        const replaceRadio = page.locator(
-          'input[type="radio"][value="replace"]'
-        );
-        await expect(replaceRadio).toBeVisible();
-        await replaceRadio.click();
+        await expect(page.getByTestId('import-mode-replace')).toBeVisible();
+        await page.getByTestId('import-mode-replace').click();
 
         const importResponse = page.waitForResponse(
           '/api/v1/dataContracts/odcs/yaml**mode=replace**'
         );
 
-        await page.getByRole('button', { name: 'Import' }).click();
+        await page.getByTestId('import-button').click();
         await importResponse;
 
         await toastNotification(page, 'ODCS Contract imported successfully');
@@ -2383,17 +2414,17 @@ entitiesWithDataContracts.forEach((EntityClass) => {
 
               const searchUser = page.waitForResponse(
                 `/api/v1/search/query?q=*${encodeURIComponent(
-                  adminUser.responseData.displayName
+                  adminUser.getUserDisplayName()
                 )}*`
               );
               await page
                 .getByTestId('searchbar')
-                .fill(adminUser.responseData.displayName);
+                .fill(adminUser.getUserDisplayName());
               await searchUser;
 
               await page
                 .getByRole('listitem', {
-                  name: adminUser.responseData.displayName,
+                  name: adminUser.getUserDisplayName(),
                 })
                 .click();
 

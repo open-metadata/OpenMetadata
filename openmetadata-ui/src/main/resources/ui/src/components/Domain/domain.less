@@ -13,7 +13,7 @@
 @import (reference) '../../styles/variables.less';
 
 .domain-page-container {
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   border: 1px solid var(--tw-color-gray-blue-100);
   border-radius: 6px;
   margin-bottom: 20px;
@@ -120,16 +120,12 @@
 .domain-form-container,
 .add-subdomain-modal,
 .add-data-product-modal {
-  .toastui-editor {
-    min-height: 150px !important; // overriding inline style
+  .block-editor-wrapper {
+    min-height: 150px;
 
-    .ProseMirror {
+    .tiptap.ProseMirror {
       min-height: 150px;
     }
-  }
-
-  .toastui-editor-md-preview {
-    min-height: 150px;
   }
 }
 
@@ -137,11 +133,11 @@
   max-width: 750px;
 
   .ant-tooltip-arrow-content::before {
-    background: @white;
+    background: var(--tw-color-bg-primary);
   }
 
   .ant-tooltip-inner {
-    background: @white;
+    background: var(--tw-color-bg-primary);
     padding: 20px;
   }
 }

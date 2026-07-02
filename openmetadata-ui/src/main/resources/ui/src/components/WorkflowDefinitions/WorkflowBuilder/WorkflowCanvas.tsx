@@ -47,6 +47,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   onConnect,
   onNodeClick,
   onEdgeClick,
+  onEdgeDelete,
   onDragOver,
   onDragEnter,
   onDragLeave,
@@ -62,8 +63,12 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   isConnectionModalOpen,
   pendingConnection,
 }) => {
-  const { allowStructuralGraphEdits, isViewMode, showWorkflowNodePalette } =
-    useWorkflowModeContext();
+  const {
+    allowStructuralGraphEdits,
+    canDragNodesInViewMode,
+    isViewMode,
+    showWorkflowNodePalette,
+  } = useWorkflowModeContext();
 
   const structuralEditMode = allowStructuralGraphEdits && !isViewMode;
   const enablePaletteDrop =
@@ -73,7 +78,10 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
     (changes: NodeChange[]) => {
       if (!allowStructuralGraphEdits) {
         const allowed = changes.filter(
-          (c) => c.type === 'select' || c.type === 'dimensions'
+          (c) =>
+            c.type === 'select' ||
+            c.type === 'dimensions' ||
+            (canDragNodesInViewMode && c.type === 'position')
         );
         if (allowed.length > 0) {
           onNodesChange(allowed);
@@ -83,7 +91,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
       }
       onNodesChange(changes);
     },
-    [allowStructuralGraphEdits, onNodesChange]
+    [allowStructuralGraphEdits, canDragNodesInViewMode, onNodesChange]
   );
 
   const guardedOnEdgesChange = useCallback(
@@ -104,14 +112,13 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
   const canvasClassName = classNames(
     'workflow-canvas',
     isViewMode ? 'view-mode' : 'edit-mode',
-    'tw:relative tw:h-full tw:w-full tw:overflow-hidden'
+    'tw:relative tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-hidden'
   );
 
   return (
     <Card
-      className={canvasClassName}
-      data-testid="workflow-canvas"
-      style={{ height: '100%', minHeight: 0 }}>
+      className={classNames(canvasClassName, 'tw:flex-1 tw:min-h-0')}
+      data-testid="workflow-canvas">
       {focusedConnection && (
         <div className="tw:absolute tw:inset-0 tw:bg-brand-900/20 tw:z-[1] tw:pointer-events-none tw:transition-opacity tw:duration-300" />
       )}
@@ -157,6 +164,10 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
               cursor:
                 edge.data?.conditions && !isViewMode ? 'pointer' : 'default',
             },
+            data: {
+              ...edge.data,
+              onEdgeDelete,
+            },
           };
         })}
         edgesUpdatable={structuralEditMode}
@@ -180,13 +191,22 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
               node.id !== pendingConnection.target;
           }
 
+          let nodeCursor: string;
+          if (canDragNodesInViewMode) {
+            nodeCursor = 'grab';
+          } else if (isViewMode) {
+            nodeCursor = 'default';
+          } else {
+            nodeCursor = 'pointer';
+          }
+
           return {
             ...node,
             style: {
               ...node.style,
               opacity: shouldDimNode ? (isConnectionModalOpen ? 0.15 : 0.3) : 1,
               transition: 'opacity 0.3s ease',
-              cursor: isViewMode ? 'default' : 'pointer',
+              cursor: nodeCursor,
             },
             data: {
               ...node.data,
@@ -195,7 +215,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
           };
         })}
         nodesConnectable={structuralEditMode}
-        nodesDraggable={structuralEditMode}
+        nodesDraggable={structuralEditMode || canDragNodesInViewMode}
         onConnect={structuralEditMode ? onConnect : undefined}
         onDragEnter={enablePaletteDrop ? onDragEnter : undefined}
         onDragLeave={enablePaletteDrop ? onDragLeave : undefined}

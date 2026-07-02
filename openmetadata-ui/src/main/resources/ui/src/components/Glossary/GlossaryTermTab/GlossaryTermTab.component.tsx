@@ -32,7 +32,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useInView } from 'react-intersection-observer';
 import { Link, useNavigate } from 'react-router-dom';
@@ -54,7 +54,6 @@ import {
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
-import { TaskOperation } from '../../../constants/Feeds.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
   GLOSSARY_TERM_STATUS_OPTIONS,
@@ -70,16 +69,10 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import {
-  Thread,
-  ThreadTaskStatus,
-  ThreadType,
-} from '../../../generated/entity/feed/thread';
 import { User } from '../../../generated/entity/teams/user';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
@@ -87,37 +80,50 @@ import {
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
-import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import {
-  getEntityBulkEditPath,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+  listTasks,
+  resolveTask as resolveTaskAPI,
+  Task,
+  TaskCategory,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskResolutionType,
+} from '../../../rest/tasksAPI';
+import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
-} from '../../../utils/GlossaryUtils';
+} from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
+import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusAction from '../../common/StatusAction/StatusAction';
 import Table from '../../common/Table/Table';
 import TagButton from '../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import WorkflowHistory from '../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
   ModifiedGlossaryTerm,
   MoveGlossaryTermType,
 } from './GlossaryTermTab.interface';
+const WorkflowHistory = withSuspenseFallback(
+  lazy(
+    () => import('../GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component')
+  )
+);
 
 const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
@@ -135,7 +141,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
   const [termTaskThreads, setTermTaskThreads] = useState<
-    Record<string, Thread[]>
+    Record<string, Task[]>
   >({});
 
   const { glossaryTerms, expandableKeys } = useMemo(() => {
@@ -390,30 +396,30 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return;
     }
 
-    const entityType = isGlossary
-      ? EntityType.GLOSSARY
-      : EntityType.GLOSSARY_TERM;
-
     try {
-      const { data } = await getAllFeeds(
-        `<#E::${entityType}::${activeGlossary.fullyQualifiedName}>`,
-        undefined,
-        ThreadType.Task,
-        undefined,
-        ThreadTaskStatus.Open,
-        undefined,
-        API_RES_MAX_SIZE
-      );
+      const { data } = await listTasks({
+        status: TaskEntityStatus.Open,
+        category: TaskCategory.Approval,
+        type: TaskEntityType.RequestApproval,
+        limit: API_RES_MAX_SIZE,
+        fields: 'about,assignees',
+      });
 
-      // Organize tasks by glossary term FQN
+      // Glossary approvals are now workflow-managed RequestApproval tasks created
+      // for each glossary term, not legacy glossary-root tasks.
       const tasksByTerm = data.reduce(
-        (acc: Record<string, Thread[]>, thread: Thread) => {
-          const termFQN = thread.about;
-          if (termFQN) {
-            if (!acc[termFQN]) {
-              acc[termFQN] = [];
+        (acc: Record<string, Task[]>, task: Task) => {
+          const termFQN = task.about?.fullyQualifiedName;
+          const isGlossaryTermTask =
+            task.about?.type === EntityType.GLOSSARY_TERM &&
+            termFQN?.startsWith(`${activeGlossary.fullyQualifiedName}.`);
+
+          if (isGlossaryTermTask && termFQN) {
+            const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${termFQN}>`;
+            if (!acc[entityLink]) {
+              acc[entityLink] = [];
             }
-            acc[termFQN].push(thread);
+            acc[entityLink].push(task);
           }
 
           return acc;
@@ -650,6 +656,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }) as ModifiedGlossary[];
   };
 
+  const updateGlossaryTermTask = (
+    tasks: Record<string, Task[]>,
+    entityLink: string,
+    updatedTask: Task
+  ) => {
+    const existingTasks = tasks[entityLink] ?? [];
+
+    return {
+      ...tasks,
+      [entityLink]: existingTasks.map((task) =>
+        task.id === updatedTask.id ? updatedTask : task
+      ),
+    };
+  };
+
   const updateTaskData = useCallback(
     async (
       data: ResolveTask,
@@ -661,13 +682,39 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return;
         }
 
-        await updateTask(TaskOperation.RESOLVE, taskId + '', data);
-        showSuccessToast(t('server.task-resolved-successfully'));
+        const resolutionType =
+          data.newValue === 'approved'
+            ? TaskResolutionType.Approved
+            : TaskResolutionType.Rejected;
+
+        const updatedTask = await resolveTaskAPI(taskId + '', {
+          resolutionType,
+          newValue: data.newValue,
+        });
+        const isPendingFurtherApproval =
+          isTaskPendingFurtherApproval(updatedTask);
+
+        showSuccessToast(
+          isPendingFurtherApproval
+            ? 'Vote recorded.'
+            : t('server.task-resolved-successfully')
+        );
 
         const currentExpandedKeys = [...expandedRowKeys];
         setExpandedRowKeys(currentExpandedKeys);
 
         if (glossaryChildTerms && glossaryTermFqn) {
+          const entityLink = `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFqn}>`;
+          if (isPendingFurtherApproval) {
+            if (termTaskThreads[entityLink]) {
+              setTermTaskThreads(
+                updateGlossaryTermTask(termTaskThreads, entityLink, updatedTask)
+              );
+            }
+
+            return;
+          }
+
           const newStatus =
             data.newValue === 'approved'
               ? EntityStatus.Approved
@@ -692,13 +739,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             setGlossaryChildTerms(updatedTerms);
           }
 
-          // remove resolved task from term task threads
-          if (termTaskThreads[glossaryTermFqn]) {
+          if (termTaskThreads[entityLink]) {
             const updatedThreads = { ...termTaskThreads };
-            updatedThreads[glossaryTermFqn] = updatedThreads[
-              glossaryTermFqn
-            ].filter(
-              (thread) => !(thread.id && thread.id.toString() === taskId)
+            updatedThreads[entityLink] = updatedThreads[entityLink].filter(
+              (task) => !(task.id && task.id.toString() === taskId)
             );
 
             setTermTaskThreads(updatedThreads);
