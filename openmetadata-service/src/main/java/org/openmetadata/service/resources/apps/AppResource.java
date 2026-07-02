@@ -735,11 +735,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET
@@ -777,11 +778,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
           Include include) {
     App app = getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
     if (include != Include.DELETED && !Boolean.TRUE.equals(app.getDeleted())) {
-      return ApplicationHandler.getInstance()
-          .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
-    } else {
-      return app;
+      app =
+          ApplicationHandler.getInstance()
+              .appWithDecryptedAppConfiguration(app, Entity.getCollectionDAO(), searchRepository);
     }
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @GET

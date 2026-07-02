@@ -6,6 +6,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -175,9 +176,24 @@ public class AppRepository extends EntityRepository<App> {
     return daoCollection.applicationDAO().listAppsRef();
   }
 
+  // openMetadataServerConnection and privateConfiguration are runtime-only fields
+  // (re-injected on demand by ApplicationHandler.setAppRuntimeProperties). They carry
+  // secrets (app bot JWT, external tokens) and must never be persisted or serialized.
+  private static final List<String> RUNTIME_SECRET_FIELDS =
+      List.of("openMetadataServerConnection", "privateConfiguration");
+
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("bot");
+    List<String> strippedFields = new ArrayList<>(RUNTIME_SECRET_FIELDS);
+    strippedFields.add("bot");
+    return strippedFields;
+  }
+
+  @Override
+  protected String serializeForVersionHistory(App entity) {
+    ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
+    node.remove(RUNTIME_SECRET_FIELDS);
+    return node.toString();
   }
 
   @Override
