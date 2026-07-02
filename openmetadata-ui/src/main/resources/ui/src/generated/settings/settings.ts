@@ -692,6 +692,13 @@ export interface AllowedFieldField {
      */
     description: string;
     /**
+     * Whether this field may be enabled for search highlighting. Only fields backed by an
+     * analyzed (text) mapping support highlighting; flattened/flat_object and non-indexed
+     * (enabled:false) fields must not be highlighted. The UI only offers the highlight toggle
+     * for fields where this is true. Defaults to false.
+     */
+    highlight?: boolean;
+    /**
      * Field name that can be used in searchFields
      */
     name: string;
