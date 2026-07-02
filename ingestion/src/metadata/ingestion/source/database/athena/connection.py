@@ -13,42 +13,217 @@
 Source connection handler
 """
 
-from functools import partial
-from typing import List, Optional  # noqa: UP035
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
+from botocore.exceptions import ClientError
 from sqlalchemy.engine import Engine
-from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Matchers,
+    check,
+    when,
 )
+from metadata.core.connections.test_connection.checks.database import (
+    DatabaseStep,
+    list_schemas,
+    run_sql,
+)
+from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import (
-    execute_inspector_func,
-    test_connection_engine_step,
-    test_connection_steps,
-)
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections_utils import kill_active_connections
-from metadata.utils.constants import THREE_MIN
 from metadata.utils.filters import filter_by_schema
+
+if TYPE_CHECKING:
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
+    from metadata.generated.schema.type.filterPattern import FilterPattern
 
 # Cap how many schemas the test connection probes so a catalog with many
 # databases cannot exhaust the test-connection timeout.
 MAX_SCHEMAS_TO_PROBE = 100
+
+
+def _message(error: BaseException) -> str:
+    """The lower-cased text of the error and its cause chain."""
+    return " ".join(str(current) for current in exception_chain(error)).lower()
+
+
+def _aws_error_code(error: BaseException) -> str | None:
+    """The botocore ``ClientError`` code anywhere in the cause chain.
+
+    pyathena wraps a botocore ``ClientError`` raised by the underlying AWS call;
+    SQLAlchemy then wraps that, so the actionable code (``AccessDeniedException``
+    and friends) only survives by walking the chain."""
+    code = None
+    for current in exception_chain(error):
+        if isinstance(current, ClientError):
+            code = current.response.get("Error", {}).get("Code")
+            break
+    return code
+
+
+def _aws_code(*codes: str) -> Matcher:
+    """Match a botocore ``ClientError`` code - the stable signal for an AWS-side
+    rejection, where the rendered message text varies."""
+    wanted = frozenset(codes)
+    return lambda error: _aws_error_code(error) in wanted
+
+
+def _all_of(*tokens: str) -> Matcher:
+    """Match when every token is present in the error's cause-chain text."""
+    return lambda error: all(token in _message(error) for token in tokens)
+
+
+def _authorization_error(error: BaseException) -> bool:
+    """An IAM authorization failure - valid credentials, missing permission.
+
+    ``AccessDeniedException`` is botocore's authorization code (distinct from the
+    authentication codes), and AWS usually renders it "... is not authorized to
+    perform: ...". Match either form so a missing-privilege error is never read as
+    a credential problem, whatever the message wording."""
+    return _aws_error_code(error) == "AccessDeniedException" or "not authorized" in _message(error)
+
+
+# Athena's transport is HTTPS to the regional AWS endpoint over botocore, so auth
+# and permission failures surface as botocore ``ClientError``s matched by
+# code/message, not driver errnos. NETWORK_ERRORS is still folded in so a genuine
+# DNS/socket failure to the endpoint is typed rather than left raw.
+ATHENA_ERRORS = ErrorPack(
+    when(
+        _aws_code(
+            "UnrecognizedClientException",
+            "InvalidSignatureException",
+            "AuthFailure",
+        )
+    ).diagnose(
+        "Authentication failed",
+        fix="Check the AWS credentials (access key, secret, session token, or assume-role ARN).",
+    ),
+    when(_authorization_error).diagnose(
+        "Not authorized",
+        fix="Grant the IAM principal the required Athena and Glue permissions "
+        "(e.g. athena:StartQueryExecution, glue:GetDatabases, glue:GetTables).",
+    ),
+    when(_all_of("workgroup", "is not found")).diagnose(
+        "Workgroup not found",
+        fix="Verify the configured workgroup exists in this account and region.",
+    ),
+    when(Matchers.contains("output location")).diagnose(
+        "Query result location not configured",
+        fix="Set s3StagingDir to an S3 path the principal can write to, or configure a query "
+        "result location on the workgroup.",
+    ),
+    when(Matchers.contains("could not connect to the endpoint")).diagnose(
+        "Cannot reach the AWS Athena endpoint",
+        fix="Check that awsRegion is correct and that the Athena endpoint is reachable from where ingestion runs.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+class AthenaChecks:
+    """Test-connection checks for Athena."""
+
+    errors = ATHENA_ERRORS
+
+    def __init__(
+        self,
+        client: Engine,
+        schema_filter_pattern: FilterPattern | None = None,
+        catalog_id: str | None = None,
+    ) -> None:
+        self.client = client
+        self.schema_filter_pattern = schema_filter_pattern
+        self.catalog_id = catalog_id
+        self._targeted: list[str] | None = None
+
+    @property
+    def _catalog_label(self) -> str:
+        return f"catalog '{self.catalog_id}'" if self.catalog_id else "the default catalog (AwsDataCatalog)"
+
+    def _targeted_schemas(self) -> list[str]:
+        """The schemas the configured schemaFilterPattern would target, mirroring
+        what the ingestion run will read.
+
+        Memoized so the table and view checks share a single catalog listing, and
+        built lazily here - never at construction - so the catalog is listed only
+        after the CheckAccess gate has confirmed connectivity. Collection stops at
+        MAX_SCHEMAS_TO_PROBE so a catalog with very many databases cannot exhaust
+        the test-connection timeout."""
+        if self._targeted is None:
+            inspector = inspect(self.client)
+            targeted: list[str] = []
+            for schema in inspector.get_schema_names() or []:
+                if filter_by_schema(self.schema_filter_pattern, schema):
+                    continue
+                targeted.append(schema)
+                if len(targeted) >= MAX_SCHEMAS_TO_PROBE:
+                    break
+            self._targeted = targeted
+        return self._targeted
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        # run_sql, not ping: the URL carries the AWS endpoint host:port but the
+        # transport is HTTPS over botocore, so a raw TCP preflight to it would be
+        # meaningless. A real reachability failure still surfaces via NETWORK_ERRORS.
+        return run_sql(self.client, "SELECT 1", lambda _: "connection established")
+
+    @check(DatabaseStep.GetSchemas)
+    def get_schemas(self) -> Evidence:
+        return list_schemas(self.client)
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        # AWS Lake Formation silently filters unreadable objects - pyathena even
+        # converts the underlying ClientError into an empty list - so an empty
+        # result is indistinguishable from missing grants. Raise so a missing grant
+        # surfaces here instead of passing and then ingesting 0 tables. This by
+        # design also fails a genuinely empty or view-only catalog; the message
+        # calls out that possibility.
+        targeted = self._targeted_schemas()
+        if not targeted:
+            raise RuntimeError(
+                f"No schemas were available to read in {self._catalog_label}. This usually means the "
+                "configured schemaFilterPattern matches no databases, or the IAM role is missing "
+                "AWS Lake Formation DESCRIBE grants. Grant Lake Formation DESCRIBE/SELECT and verify "
+                "the schema filter pattern."
+            )
+        inspector = inspect(self.client)
+        readable = any(inspector.get_table_names(schema) for schema in targeted)
+        if not readable:
+            raise RuntimeError(
+                f"Connected and listed schemas, but no tables were readable in any of the "
+                f"{len(targeted)} targeted schema(s) of {self._catalog_label}. AWS Lake Formation "
+                "returns an empty list (instead of an error) when grants are missing, so ingestion "
+                "would succeed and ingest 0 tables. Grant Lake Formation DESCRIBE/SELECT to the IAM "
+                "role on the catalog and its databases/tables, then retry. If the catalog is "
+                "genuinely empty (no tables yet), this failure is expected and can be ignored."
+            )
+        return Evidence(summary=f"tables readable across {len(targeted)} targeted schema(s) of {self._catalog_label}")
+
+    @check(DatabaseStep.GetViews)
+    def get_views(self) -> Evidence:
+        # Views are frequently absent and GetViews is non-mandatory, so we probe
+        # for visibility but never raise on an empty result.
+        targeted = self._targeted_schemas()
+        inspector = inspect(self.client)
+        visible = any(inspector.get_view_names(schema) for schema in targeted)
+        summary = "views visible" if visible else "no views visible (not required)"
+        return Evidence(summary=f"{summary} across {len(targeted)} targeted schema(s)")
 
 
 class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
@@ -87,106 +262,20 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
         return url
 
     def _get_client(self) -> Engine:
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=self.service_connection,
             get_connection_url_fn=self.get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
+        return engine
 
-    def _get_targeted_schemas(self, inspector: Inspector) -> List[str]:  # noqa: UP006
-        """
-        Return the schemas the configured schemaFilterPattern would target,
-        mirroring what the ingestion run will actually read. With no pattern
-        configured, every schema in the catalog is returned. Collection stops at
-        MAX_SCHEMAS_TO_PROBE so a catalog with very many databases cannot exhaust
-        the test-connection timeout.
-        """
-        schema_filter_pattern = self.service_connection.schemaFilterPattern
-        targeted: List[str] = []  # noqa: UP006
-        for schema in inspector.get_schema_names() or []:
-            if filter_by_schema(schema_filter_pattern, schema):
-                continue
-            targeted.append(schema)
-            if len(targeted) >= MAX_SCHEMAS_TO_PROBE:
-                break
-        return targeted
-
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow.
-
-        GetTables raises when the targeted schemas return zero readable tables
-        anywhere. AWS Lake Formation silently filters results - pyathena even
-        converts the underlying ClientError into an empty list - so an empty
-        result is indistinguishable from missing grants. Raising surfaces the
-        missing DESCRIBE/SELECT grants instead of passing and then ingesting 0
-        tables. By design this also fails a genuinely empty or view-only catalog
-        (no tables anywhere); the error message calls out that possibility.
-        """
-        engine = self.client
-        catalog_id = self.service_connection.catalogId
-        catalog_label = f"catalog '{catalog_id}'" if catalog_id else "the default catalog (AwsDataCatalog)"
-        targeted_schemas_cache: dict = {}
-
-        def get_targeted_schemas() -> List[str]:  # noqa: UP006
-            if "value" not in targeted_schemas_cache:
-                targeted_schemas_cache["value"] = self._get_targeted_schemas(inspect(engine))
-            return targeted_schemas_cache["value"]
-
-        def custom_executor_for_table():
-            targeted_schemas = get_targeted_schemas()
-            inspector = inspect(engine)
-            if not targeted_schemas:
-                raise RuntimeError(
-                    f"No schemas were available to read in {catalog_label}. This usually means the "
-                    "configured schemaFilterPattern matches no databases, or the IAM role is missing "
-                    "AWS Lake Formation DESCRIBE grants. Grant Lake Formation DESCRIBE/SELECT and verify "
-                    "the schema filter pattern."
-                )
-            readable = any(inspector.get_table_names(schema) for schema in targeted_schemas)
-            if not readable:
-                raise RuntimeError(
-                    f"Connected and listed schemas, but no tables were readable in any of the "
-                    f"{len(targeted_schemas)} targeted schema(s) of {catalog_label}. AWS Lake Formation "
-                    "returns an empty list (instead of an error) when grants are missing, so ingestion "
-                    "would succeed and ingest 0 tables. Grant Lake Formation DESCRIBE/SELECT to the IAM "
-                    "role on the catalog and its databases/tables, then retry. If the catalog is "
-                    "genuinely empty (no tables yet), this failure is expected and can be ignored."
-                )
-
-        def custom_executor_for_view():
-            targeted_schemas = get_targeted_schemas()
-            inspector = inspect(engine)
-            # Views are frequently absent and GetViews is non-mandatory, so we
-            # probe for visibility but never raise on an empty result.
-            for schema in targeted_schemas:
-                if inspector.get_view_names(schema):
-                    break
-
-        test_fn = {
-            "CheckAccess": partial(test_connection_engine_step, engine),
-            "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-            "GetTables": custom_executor_for_table,
-            "GetViews": custom_executor_for_view,
-        }
-
-        result = test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+    def checks(self) -> ChecksProvider:
+        return AthenaChecks(
+            client=self.client,
+            schema_filter_pattern=self.service_connection.schemaFilterPattern,
+            catalog_id=self.service_connection.catalogId,
         )
-
-        kill_active_connections(engine)
-
-        return result
 
 
 def get_lake_formation_client(connection: AthenaConnectionConfig):
