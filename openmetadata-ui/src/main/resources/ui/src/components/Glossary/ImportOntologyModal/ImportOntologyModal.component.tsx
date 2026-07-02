@@ -29,13 +29,7 @@ import {
   OntologyImportResult,
 } from '../../../rest/importExportAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-interface ImportOntologyModalProps {
-  glossaryName: string;
-  open: boolean;
-  onCancel: () => void;
-  onSuccess: () => void;
-}
+import { ImportOntologyModalProps } from './ImportOntologyModal.interface';
 
 const looksLikeRdfXml = (content: string): boolean => {
   const head = content.trimStart();
