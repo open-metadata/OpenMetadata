@@ -1561,7 +1561,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // TODO: Migrate put_tableJoinsInvalidColumnName_4xx - Requires SDK table joins validation
   // TODO: Migrate put_tableSampleData_200 - Requires SDK sample data support
   // TODO: Migrate put_tableInvalidSampleData_4xx - Requires SDK sample data validation
-  // TODO: Migrate put_schemaDefinition_200 - Requires SDK schema definition support
   // TODO: Migrate put_profileConfig_200 - Requires SDK profiler config support
   // TODO: Migrate put_tableProfile_200 - Requires SDK table profile support
   // TODO: Migrate create_profilerWrongTimestamp - Requires SDK profile timestamp validation
@@ -2372,7 +2371,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_schemaDefinition_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a view table with schema definition
     String query =
         """
         sales_vw
@@ -2384,16 +2382,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         """;
 
     CreateTable createRequest = createRequest(ns.prefix("view_table"), ns);
-    createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
+    createRequest.setTableType(TableType.View);
     createRequest.setSchemaDefinition(query);
 
     Table table = createEntity(createRequest);
     assertNotNull(table);
-    assertEquals(org.openmetadata.schema.type.TableType.View, table.getTableType());
+    assertEquals(TableType.View, table.getTableType());
 
-    // Fetch with schemaDefinition field
+    // Verify schemaDefinition persisted on create
     Table fetched = client.tables().get(table.getId().toString(), "schemaDefinition");
     assertEquals(query, fetched.getSchemaDefinition());
+
+    // Verify schemaDefinition is updated via PUT
+    String updatedQuery =
+        """
+        sales_vw
+        create view sales_vw as
+        select * from public.sales;
+        """;
+    createRequest.setSchemaDefinition(updatedQuery);
+    createEntity(createRequest);
+
+    Table fetchedAfterUpdate = client.tables().get(table.getId().toString(), "schemaDefinition");
+    assertEquals(updatedQuery, fetchedAfterUpdate.getSchemaDefinition());
   }
 
   // ===================================================================
