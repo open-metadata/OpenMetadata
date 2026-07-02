@@ -437,10 +437,23 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
+          false,
           null,
+          null,
+          false,
+          Map.of(),
           docBuildContexts);
 
       assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
@@ -467,10 +480,23 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
+          false,
           null,
+          null,
+          false,
+          Map.of(),
           Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
@@ -505,10 +531,23 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            boolean.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
+          false,
+          null,
           tracker,
+          false,
+          Map.of(),
           Collections.emptyMap());
 
       vectorServiceMock.verify(OpenSearchVectorService::getInstance, never());

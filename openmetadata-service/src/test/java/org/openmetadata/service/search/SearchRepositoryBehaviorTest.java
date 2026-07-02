@@ -2819,7 +2819,7 @@ class SearchRepositoryBehaviorTest {
     doReturn(true).when(spyRepository).isVectorEmbeddingEnabled();
     doReturn(embeddingClient)
         .when(spyRepository)
-        .createEmbeddingClient(any(ElasticSearchConfiguration.class));
+        .createEmbeddingClient(nullable(LLMConfiguration.class));
     setPrivateField(spyRepository, "searchClient", elasticSearchClient);
 
     try (var settingsCacheMock = mockStatic(SettingsCache.class);
