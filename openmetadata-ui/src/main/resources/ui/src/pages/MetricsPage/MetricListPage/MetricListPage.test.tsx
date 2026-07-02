@@ -15,11 +15,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityStatus } from '../../../generated/entity/data/metric';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 
 import MetricListPage from './MetricListPage';
 
 const mockNavigate = jest.fn();
+
+const buildSearchResponse = (metrics: Array<Record<string, unknown>>) => ({
+  hits: {
+    hits: metrics.map((metric) => ({ _source: metric })),
+    total: { value: metrics.length },
+  },
+});
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: jest
@@ -65,7 +74,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         <button data-testid={testId}>Actions</button>
       )),
     Item: jest.fn().mockImplementation(({ label }) => <div>{label}</div>),
-    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, onAction }) => (
+      <div>
+        {(Array.isArray(children) ? children : [children]).flat().map((child) =>
+          child?.props?.id ? (
+            <button
+              data-testid={`status-option-${child.props.id}`}
+              key={child.props.id}
+              type="button"
+              onClick={() => onAction?.(child.props.id)}>
+              {child.props.label}
+            </button>
+          ) : (
+            child
+          )
+        )}
+      </div>
+    )),
     Popover: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
@@ -100,14 +125,41 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-// Mock metrics API to return an empty list
 jest.mock('../../../rest/metricsAPI', () => ({
-  getMetrics: jest.fn().mockResolvedValue({
-    data: [],
-    paging: {},
-  }),
   exportMetricDetailsInCSV: jest.fn().mockResolvedValue({}),
   deleteMetricAsync: jest.fn().mockResolvedValue({}),
+}));
+
+// Metrics list is driven by the search API (server-side filter + pagination).
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
+
+// Return stable paging handlers so the debounced-search identity stays fixed;
+// this isolates the debounce-cancel behaviour from usePaging's internal churn.
+jest.mock('../../../hooks/paging/usePaging', () => {
+  const handlePageChange = jest.fn();
+  const handlePagingChange = jest.fn();
+  const handlePageSizeChange = jest.fn();
+
+  return {
+    usePaging: () => ({
+      paging: { total: 0 },
+      handlePagingChange,
+      currentPage: 1,
+      handlePageChange,
+      pageSize: 15,
+      handlePageSizeChange,
+      showPagination: false,
+      pagingCursor: {},
+    }),
+  };
+});
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+  showWarningToast: jest.fn(),
 }));
 
 // Mock the empty state placeholder to render a docs link
@@ -186,11 +238,8 @@ jest.mock('../../../hoc/LimitWrapper', () => ({
 describe('MetricListPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    getMetrics.mockResolvedValue({
-      data: [],
-      paging: {},
-    });
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(buildSearchResponse([]));
   });
 
   it('renders the docs link with correct URL when empty state is shown', async () => {
@@ -239,17 +288,12 @@ describe('MetricListPage', () => {
   });
 
   it('passes selected metric scope when selected rows are bulk edited', async () => {
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    getMetrics.mockResolvedValue({
-      data: [
-        {
-          id: 'metric-id',
-          name: 'net_sales',
-          displayName: 'Net Sales',
-        },
-      ],
-      paging: {},
-    });
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(
+      buildSearchResponse([
+        { id: 'metric-id', name: 'net_sales', displayName: 'Net Sales' },
+      ])
+    );
 
     render(
       <MemoryRouter>
@@ -300,5 +344,78 @@ describe('MetricListPage', () => {
     });
 
     dispatchEventSpy.mockRestore();
+  });
+
+  it('filters the listing by status via a server-side search query', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockImplementation((req: { queryFilter?: unknown }) => {
+      const isDraftFilter = JSON.stringify(req.queryFilter ?? {}).includes(
+        EntityStatus.Draft
+      );
+
+      return Promise.resolve(
+        buildSearchResponse(
+          isDraftFilter
+            ? [{ id: 'd1', name: 'draft_metric', entityStatus: 'Draft' }]
+            : [
+                { id: 'a1', name: 'approved_metric', entityStatus: 'Approved' },
+                { id: 'd1', name: 'draft_metric', entityStatus: 'Draft' },
+              ]
+        )
+      );
+    });
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('approved_metric')).toBeInTheDocument();
+    expect(screen.getByText('draft_metric')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
+
+    await waitFor(() =>
+      expect(screen.queryByText('approved_metric')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByText('draft_metric')).toBeInTheDocument();
+    expect(searchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+      })
+    );
+  });
+
+  it('cancels a pending debounced search when the status filter changes mid-typing', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(buildSearchResponse([]));
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    const searchInput = await screen.findByPlaceholderText(
+      'label.search-entity'
+    );
+
+    jest.useFakeTimers();
+    fireEvent.change(searchInput, { target: { value: 'sales' } });
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
+    jest.advanceTimersByTime(2000);
+    jest.useRealTimers();
+
+    // The stale debounced search (captured with no status) is cancelled, so the
+    // last query still carries the Draft filter instead of resetting it.
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+        })
+      )
+    );
   });
 });
