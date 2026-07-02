@@ -23,7 +23,14 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
 from metadata.clients.aws_client import AWSClient
-from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
+)
+from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
@@ -62,7 +69,6 @@ if TYPE_CHECKING:
 
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
-    from metadata.core.connections.test_connection.records import Evidence
 
 logger = ingestion_logger()
 
@@ -341,7 +347,14 @@ class RedshiftChecks:
         # privilege query run only after CheckAccess - never ahead of the gate.
         instance_type = get_redshift_instance_type(self.client)
         statement = REDSHIFT_TEST_GET_QUERIES_MAP[instance_type]
-        return run_sql(self.client, statement, lambda rows: _summarize_queries(instance_type, rows))
+        try:
+            evidence = run_sql(self.client, statement, lambda rows: _summarize_queries(instance_type, rows))
+        except SourceConnectionException as missing_privilege:
+            # The privilege probe raises from the summary callback, outside run_sql's
+            # own CheckError wrapping - re-raise with the statement so the failed step
+            # still reports the command it ran, like every other step.
+            raise CheckError(missing_privilege, Evidence(command=statement)) from missing_privilege
+        return evidence
 
 
 class RedshiftConnection(BaseConnection[RedshiftConnectionConfig, Engine]):

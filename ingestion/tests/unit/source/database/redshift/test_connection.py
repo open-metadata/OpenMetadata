@@ -33,11 +33,16 @@ from metadata.generated.schema.entity.services.connections.database.redshiftConn
     RedshiftConnection as RedshiftConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.database.redshift.connection import (
     REDSHIFT_ERRORS,
     RedshiftChecks,
     RedshiftConnection,
     _summarize_databases,
+)
+from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
+from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_TEST_GET_QUERIES_MAP,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.redshift.connection"
@@ -160,6 +165,23 @@ def test_database_summary_flags_a_capped_count_with_a_plus():
     # as "at least N", never as an exact total.
     capped = list(range(DEFAULT_SAMPLE_ROWS))
     assert _summarize_databases(capped) == f"{DEFAULT_SAMPLE_ROWS}+ databases reachable"
+
+
+def test_get_queries_failure_reports_the_attempted_command_as_evidence():
+    # A missing privilege raises from run_sql's summary callback, outside its own
+    # CheckError wrapping; get_queries must re-raise with the statement so the
+    # failed step still shows the command it ran, like every other step.
+    engine = MagicMock()
+    checks = RedshiftChecks(client=engine)
+    with (
+        patch(f"{CONNECTION_MODULE}.get_redshift_instance_type", return_value=RedshiftInstanceType.PROVISIONED),
+        patch(f"{CONNECTION_MODULE}.run_sql", side_effect=SourceConnectionException("missing privilege")) as mock_run,
+        pytest.raises(CheckError) as exc,
+    ):
+        checks.get_queries()
+    assert exc.value.evidence.command == REDSHIFT_TEST_GET_QUERIES_MAP[RedshiftInstanceType.PROVISIONED]
+    assert isinstance(exc.value.cause, SourceConnectionException)
+    assert mock_run.call_count == 1
 
 
 def test_checks_cover_exactly_the_seeded_steps():
