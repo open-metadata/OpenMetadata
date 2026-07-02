@@ -512,7 +512,10 @@ export const PaginationCardWithControls = ({
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:py-3">
           <Pagination.PrevTrigger asChild>
-            <button className={compactIconButtonClassName} type="button">
+            <button
+              className={compactIconButtonClassName}
+              data-testid="previous"
+              type="button">
               <ChevronLeft className="tw:size-3.5" />
             </button>
           </Pagination.PrevTrigger>
@@ -542,7 +545,10 @@ export const PaginationCardWithControls = ({
           </Pagination.Context>
 
           <Pagination.NextTrigger asChild>
-            <button className={compactIconButtonClassName} type="button">
+            <button
+              className={compactIconButtonClassName}
+              data-testid="next"
+              type="button">
               <ChevronRight className="tw:size-3.5" />
             </button>
           </Pagination.NextTrigger>
