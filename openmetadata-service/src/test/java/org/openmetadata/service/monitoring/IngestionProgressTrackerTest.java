@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetric;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetri
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 
 class IngestionProgressTrackerTest {
 
@@ -258,5 +260,91 @@ class IngestionProgressTrackerTest {
     double metricsCount =
         meterRegistry.find("om_operation_metrics_batches_total").counter().count();
     assertEquals(1.0, metricsCount);
+  }
+
+  @Test
+  void testServiceListenerReceivesAllPipelinesOfService() {
+    UUID run1 = UUID.randomUUID();
+    UUID run2 = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m"));
+    tracker.updateProgress("svc.lineage", run2, processing(run2, "l"));
+
+    assertEquals(2, received.size());
+    assertEquals("svc.metadata", received.get(0).getPipelineFqn());
+    assertEquals("svc.lineage", received.get(1).getPipelineFqn());
+    assertEquals(run1.toString(), received.get(0).getRunId());
+  }
+
+  @Test
+  void testServiceListenerIsolation() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> svcA = new ArrayList<>();
+    tracker.registerServiceListener("svcA", svcA::add);
+
+    tracker.updateProgress("svcB.metadata", run, processing(run, "b"));
+
+    assertTrue(svcA.isEmpty());
+  }
+
+  @Test
+  void testActiveRunSnapshotsReflectLatestAndDropOnTerminal() {
+    UUID run1 = UUID.randomUUID();
+    UUID run2 = UUID.randomUUID();
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m1"));
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m2"));
+    tracker.updateProgress("svc.lineage", run2, processing(run2, "l1"));
+
+    List<ServiceProgressEvent> snaps = tracker.getActiveRunSnapshots("svc");
+    assertEquals(2, snaps.size());
+
+    tracker.updateProgress("svc.metadata", run1, terminal(run1));
+
+    List<ServiceProgressEvent> after = tracker.getActiveRunSnapshots("svc");
+    assertEquals(1, after.size());
+    assertEquals("svc.lineage", after.get(0).getPipelineFqn());
+  }
+
+  @Test
+  void testTerminalEventIsForwardedBeforeDrop() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, processing(run, "p"));
+    tracker.updateProgress("svc.metadata", run, terminal(run));
+
+    assertEquals(2, received.size());
+    assertEquals(ProgressUpdateType.PIPELINE_COMPLETE, received.get(1).getEvent().getUpdateType());
+    assertTrue(tracker.getActiveRunSnapshots("svc").isEmpty());
+  }
+
+  @Test
+  void testUnregisterServiceListenerStopsDelivery() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    Consumer<ServiceProgressEvent> listener = received::add;
+    tracker.registerServiceListener("svc", listener);
+    tracker.updateProgress("svc.metadata", run, processing(run, "a"));
+    tracker.unregisterServiceListener("svc", listener);
+    tracker.updateProgress("svc.metadata", run, processing(run, "b"));
+    assertEquals(1, received.size());
+  }
+
+  private static ProgressUpdate processing(UUID runId, String msg) {
+    return new ProgressUpdate()
+        .withRunId(runId.toString())
+        .withTimestamp(System.currentTimeMillis())
+        .withUpdateType(ProgressUpdateType.PROCESSING)
+        .withMessage(msg);
+  }
+
+  private static ProgressUpdate terminal(UUID runId) {
+    return new ProgressUpdate()
+        .withRunId(runId.toString())
+        .withTimestamp(System.currentTimeMillis())
+        .withUpdateType(ProgressUpdateType.PIPELINE_COMPLETE);
   }
 }

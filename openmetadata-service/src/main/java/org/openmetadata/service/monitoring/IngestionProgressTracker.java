@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.monitoring;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import io.micrometer.core.instrument.Counter;
@@ -31,6 +33,9 @@ import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Singleton
@@ -47,6 +52,11 @@ public class IngestionProgressTracker {
   private final Counter progressUpdatesReceived;
   private final Counter metricsBatchesReceived;
   private final AtomicInteger activeProgressStreams;
+
+  private final Map<String, Map<String, ServiceProgressEvent>> serviceActiveRuns =
+      new ConcurrentHashMap<>();
+  private final Map<String, List<Consumer<ServiceProgressEvent>>> serviceListeners =
+      new ConcurrentHashMap<>();
 
   @Inject
   public IngestionProgressTracker(MeterRegistry meterRegistry) {
@@ -88,6 +98,7 @@ public class IngestionProgressTracker {
     }
 
     notifyListeners(key, update);
+    routeToService(pipelineFqn, runId, update);
   }
 
   public void addMetricsBatch(String pipelineFqn, UUID runId, OperationMetricsBatch batch) {
@@ -156,6 +167,82 @@ public class IngestionProgressTracker {
 
   private String buildKey(String pipelineFqn, UUID runId) {
     return pipelineFqn + "/" + runId.toString();
+  }
+
+  private void routeToService(String pipelineFqn, UUID runId, ProgressUpdate update) {
+    String serviceFqn = FullyQualifiedName.getParentFQN(pipelineFqn);
+    if (!nullOrEmpty(serviceFqn)) {
+      String runKey = buildKey(pipelineFqn, runId);
+      ServiceProgressEvent event =
+          new ServiceProgressEvent()
+              .withPipelineFqn(pipelineFqn)
+              .withRunId(runId.toString())
+              .withEvent(update);
+      recordActiveRun(serviceFqn, runKey, event);
+      notifyServiceListeners(serviceFqn, event);
+      dropRunIfTerminal(serviceFqn, runKey, update);
+    }
+  }
+
+  private void recordActiveRun(String serviceFqn, String runKey, ServiceProgressEvent event) {
+    serviceActiveRuns
+        .computeIfAbsent(serviceFqn, k -> new ConcurrentHashMap<>())
+        .put(runKey, event);
+  }
+
+  private void dropRunIfTerminal(String serviceFqn, String runKey, ProgressUpdate update) {
+    if (isTerminal(update)) {
+      Map<String, ServiceProgressEvent> runs = serviceActiveRuns.get(serviceFqn);
+      if (runs != null) {
+        runs.remove(runKey);
+        if (runs.isEmpty()) {
+          serviceActiveRuns.remove(serviceFqn);
+        }
+      }
+    }
+  }
+
+  private boolean isTerminal(ProgressUpdate update) {
+    return update.getUpdateType() == ProgressUpdateType.PIPELINE_COMPLETE
+        || update.getUpdateType() == ProgressUpdateType.ERROR;
+  }
+
+  private void notifyServiceListeners(String serviceFqn, ServiceProgressEvent event) {
+    List<Consumer<ServiceProgressEvent>> listeners = serviceListeners.get(serviceFqn);
+    if (listeners != null) {
+      for (Consumer<ServiceProgressEvent> listener : listeners) {
+        try {
+          listener.accept(event);
+        } catch (Exception e) {
+          LOG.warn("Error notifying service progress listener: {}", e.getMessage());
+        }
+      }
+    }
+  }
+
+  public void registerServiceListener(String serviceFqn, Consumer<ServiceProgressEvent> listener) {
+    serviceListeners.computeIfAbsent(serviceFqn, k -> new CopyOnWriteArrayList<>()).add(listener);
+    activeProgressStreams.incrementAndGet();
+  }
+
+  public void unregisterServiceListener(
+      String serviceFqn, Consumer<ServiceProgressEvent> listener) {
+    List<Consumer<ServiceProgressEvent>> listeners = serviceListeners.get(serviceFqn);
+    if (listeners != null) {
+      listeners.remove(listener);
+      activeProgressStreams.decrementAndGet();
+      if (listeners.isEmpty()) {
+        serviceListeners.remove(serviceFqn);
+      }
+    }
+  }
+
+  public List<ServiceProgressEvent> getActiveRunSnapshots(String serviceFqn) {
+    Map<String, ServiceProgressEvent> runs = serviceActiveRuns.get(serviceFqn);
+    if (runs == null) {
+      return List.of();
+    }
+    return List.copyOf(runs.values());
   }
 
   public static class ProgressState {
