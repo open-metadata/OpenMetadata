@@ -1,32 +1,38 @@
 package org.openmetadata.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.commons.lang3.StringUtils;
 
 @Getter
 @Setter
 public class AzureConfiguration {
 
   @JsonProperty("containerName")
-  @NotBlank(message = "Container name must be provided")
   private String containerName;
 
+  /**
+   * Deprecated Azure credential fields are retained only so existing YAML files
+   * continue to deserialize while asset uploads authenticate through
+   * DefaultAzureCredential.
+   */
+  @Deprecated
   @JsonProperty("connectionString")
   private String connectionString;
 
+  @Deprecated
   @JsonProperty("useManagedIdentity")
-  private boolean useManagedIdentity = false;
+  private boolean useManagedIdentity;
 
+  @Deprecated
   @JsonProperty("clientId")
   private String clientId;
 
+  @Deprecated
   @JsonProperty("tenantId")
   private String tenantId;
 
+  @Deprecated
   @JsonProperty("clientSecret")
   private String clientSecret;
 
@@ -44,20 +50,4 @@ public class AzureConfiguration {
 
   @JsonProperty("blobEndpoint")
   private String blobEndpoint;
-
-  @AssertTrue(
-      message =
-          "Either useManagedIdentity must be true, or a connectionString must be provided, "
-              + "or all service principal details (clientId, tenantId, clientSecret) must be provided")
-  public boolean isValidAzureCredentials() {
-    if (useManagedIdentity) {
-      return true;
-    } else if (StringUtils.isNotBlank(connectionString)) {
-      return true;
-    } else {
-      return StringUtils.isNotBlank(clientId)
-          && StringUtils.isNotBlank(tenantId)
-          && StringUtils.isNotBlank(clientSecret);
-    }
-  }
 }
