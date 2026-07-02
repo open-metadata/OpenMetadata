@@ -377,6 +377,7 @@ const onChangeSortOder = jest.fn();
 const onChangeSortValue = jest.fn();
 const onChangeShowDeleted = jest.fn();
 const onChangePage = jest.fn();
+const onChangePageSize = jest.fn();
 
 const props = {
   aggregations: {},
@@ -409,6 +410,7 @@ const props = {
   onChangeShowDeleted: onChangeShowDeleted,
   showDeleted: false,
   onChangePage: onChangePage,
+  onChangePageSize: onChangePageSize,
   loading: false,
   quickFilters: {
     query: {
@@ -474,13 +476,13 @@ describe('ExploreV1', () => {
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
-  it('normalizes out-of-range page query to the last available page', async () => {
-    window.location.search = '?page=999&size=10';
-
-    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+  it('normalizes out-of-range current page to the last available page', async () => {
+    render(<ExploreV1 {...props} currentPage={999} pageSize={10} />, {
+      wrapper: Wrapper,
+    });
 
     await waitFor(() => {
-      expect(onChangePage).toHaveBeenCalledWith(2, 10);
+      expect(onChangePage).toHaveBeenCalledWith(2);
     });
   });
 
@@ -513,7 +515,7 @@ describe('ExploreV1', () => {
     expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
   });
 
-  it('does not show query-panel chips for an advanced-search-only filter', () => {
+  it('shows query-panel empty text for an advanced-search-only filter', () => {
     const onResetAllFilters = jest.fn();
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
@@ -526,8 +528,9 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(
-      screen.queryByTestId('explore-query-filter-chips')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('explore-query-filter-chips')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
     expect(onResetAllFilters).not.toHaveBeenCalled();
   });

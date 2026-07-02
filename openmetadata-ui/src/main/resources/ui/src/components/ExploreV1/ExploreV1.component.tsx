@@ -54,7 +54,6 @@ import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE, SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { exportSearchResultsAsync, searchQuery } from '../../rest/searchAPI';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
@@ -104,18 +103,6 @@ const EXPLORE_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_LARGE,
 ];
 
-const getValidSearchNumber = (value: unknown, fallback: number) => {
-  if (Array.isArray(value)) {
-    return fallback;
-  }
-
-  const parsedValue = Number(value);
-
-  return Number.isInteger(parsedValue) && parsedValue > 0
-    ? parsedValue
-    : fallback;
-};
-
 const ExploreV1: React.FC<ExploreProps> = ({
   aggregations,
   activeTabKey,
@@ -124,6 +111,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onChangeAdvancedSearchQuickFilters,
   searchIndex,
   sortOrder,
+  currentPage = 1,
   onChangeSortOder,
   sortValue,
   onChangeSortValue,
@@ -131,7 +119,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onChangeSearchIndex,
   showDeleted,
   onChangePage = noop,
+  onChangePageSize = noop,
   loading,
+  pageSize = PAGE_SIZE_BASE,
   quickFilters,
   isElasticSearchIssue,
   browseFields = [],
@@ -146,10 +136,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
-  const {
-    preferences: { globalPageSize },
-  } = useCurrentUserPreferences();
-
   const firstEntity = searchResults?.hits
     ?.hits[0] as SearchedDataProps['data'][number];
 
@@ -168,21 +154,13 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [location.search]
   );
   const totalValue = searchResults?.hits.total.value ?? 0;
-  const currentPageSize = useMemo(
-    () => getValidSearchNumber(parsedSearch.size, globalPageSize),
-    [globalPageSize, parsedSearch.size]
-  );
   const totalPages = useMemo(
-    () => Math.max(Math.ceil(totalValue / currentPageSize), 1),
-    [currentPageSize, totalValue]
+    () => Math.max(Math.ceil(totalValue / pageSize), 1),
+    [pageSize, totalValue]
   );
-  const currentPage = useMemo(
-    () => Math.min(getValidSearchNumber(parsedSearch.page, 1), totalPages),
-    [parsedSearch.page, totalPages]
-  );
-  const rawPage = useMemo(
-    () => getValidSearchNumber(parsedSearch.page, 1),
-    [parsedSearch.page]
+  const validCurrentPage = useMemo(
+    () => Math.min(Math.max(currentPage, 1), totalPages),
+    [currentPage, totalPages]
   );
 
   const {
@@ -316,7 +294,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         return undefined;
       }
 
-      return (currentPage - 1) * currentPageSize;
+      return (validCurrentPage - 1) * pageSize;
     })();
 
     const params: Parameters<typeof exportSearchResultsAsync>[0] = {
@@ -362,8 +340,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     visibleResultCount,
     isSearchMode,
     pageResultCount,
-    currentPage,
-    currentPageSize,
+    validCurrentPage,
+    pageSize,
     searchQueryParam,
     sortValue,
     sortOrder,
@@ -411,21 +389,16 @@ const ExploreV1: React.FC<ExploreProps> = ({
 
   const handleExplorePageChange = useCallback(
     (updatedPage: number) => {
-      onChangePage(updatedPage, currentPageSize);
+      onChangePage(updatedPage);
     },
-    [currentPageSize, onChangePage]
+    [onChangePage]
   );
 
   const handleExplorePageSizeChange = useCallback(
     (updatedPageSize: number) => {
-      const updatedTotalPages = Math.max(
-        Math.ceil(totalValue / updatedPageSize),
-        1
-      );
-
-      onChangePage(Math.min(currentPage, updatedTotalPages), updatedPageSize);
+      onChangePageSize(updatedPageSize);
     },
-    [currentPage, onChangePage, totalValue]
+    [onChangePageSize]
   );
 
   useEffect(() => {
@@ -433,20 +406,19 @@ const ExploreV1: React.FC<ExploreProps> = ({
       loading ||
       isElasticSearchIssue ||
       !searchResults ||
-      rawPage === currentPage
+      currentPage === validCurrentPage
     ) {
       return;
     }
 
-    onChangePage?.(currentPage, currentPageSize);
+    onChangePage(validCurrentPage);
   }, [
     currentPage,
-    currentPageSize,
     isElasticSearchIssue,
     loading,
     onChangePage,
-    rawPage,
     searchResults,
+    validCurrentPage,
   ]);
 
   const clearFilters = () => {
@@ -569,8 +541,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
     [hasQuickFilterValues, browseFields]
   );
   const shouldShowQueryFilterChips = useMemo(
-    () => hasActiveFilterQuery || (!searchQueryParam && !sqlQuery),
-    [hasActiveFilterQuery, searchQueryParam, sqlQuery]
+    () => hasActiveFilterQuery || !searchQueryParam,
+    [hasActiveFilterQuery, searchQueryParam]
   );
 
   const selectedEntityTypes = useMemo(() => {
@@ -833,7 +805,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     : t('message.browse-estate-query-placeholder')
                 }
                 fields={selectedQuickFilters}
-                hasAdditionalQuery={Boolean(sqlQuery)}
                 onClearAll={clearFilters}
                 onRemoveBrowseLevel={handleRemoveBrowseLevel}
                 onRemoveValue={handleRemoveQuickFilterValue}
@@ -897,8 +868,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 {!loading && !isElasticSearchIssue && totalValue > 0 ? (
                   <PaginationCardWithControls
                     className="tw:rounded-t-none"
-                    page={currentPage}
-                    pageSize={currentPageSize}
+                    page={validCurrentPage}
+                    pageSize={pageSize}
                     pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
                     total={totalPages}
                     onPageChange={handleExplorePageChange}

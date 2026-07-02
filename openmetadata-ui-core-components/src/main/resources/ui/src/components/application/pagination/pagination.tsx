@@ -3,18 +3,17 @@ import {
   ButtonGroupItem,
 } from '@/components/base/button-group/button-group';
 import { Button } from '@/components/base/buttons/button';
-import { Dropdown } from '@/components/base/dropdown/dropdown';
+import { Select } from '@/components/base/select/select';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { cx } from '@/utils/cx';
 import {
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
 } from '@untitledui/icons';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';
 import { Pagination } from './pagination-base';
 
@@ -79,11 +78,11 @@ const compactPageInputClassName = cx(
   'tw:focus-visible:outline-none'
 );
 
-const compactRowsPerPageButtonClassName =
-  'tw:h-6 tw:w-[44px] tw:shrink-0 tw:p-0! tw:outline-none! tw:focus-visible:outline-none!';
+const compactRowsPerPageSelectClassName =
+  'tw:w-[44px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:outline-none! tw:[&>button]:focus-visible:outline-none! tw:[&>button]:focus-visible:ring-0 tw:[&>button]:focus-visible:ring-offset-0 tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 
 const compactRowsPerPageItemClassName =
-  'tw:[&>div]:h-8 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>span]:text-sm tw:[&>div>span]:leading-5';
+  'tw:px-0 tw:[&>div]:h-8 tw:[&>div]:px-2 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>div]:min-w-0 tw:[&>div>div>span]:text-xs tw:[&>div>div>span]:leading-[18px]';
 
 interface MobilePaginationProps {
   /** The current page. */
@@ -417,6 +416,14 @@ export const PaginationCardWithControls = ({
   const totalPages = Math.max(total, 1);
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const [pageInput, setPageInput] = useState(String(currentPage));
+  const pageSizeItems = useMemo(
+    () =>
+      pageSizeOptions.map((option) => ({
+        id: String(option),
+        label: String(option),
+      })),
+    [pageSizeOptions]
+  );
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -543,37 +550,28 @@ export const PaginationCardWithControls = ({
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
           <span className={compactTextClassName}>Rows per page</span>
-          <Dropdown.Root>
-            <Button
-              noTextPadding
-              className={compactRowsPerPageButtonClassName}
-              color="secondary"
-              data-testid="rows-per-page-dropdown"
-              size="xs"
-              type="button">
-              <span className="tw:inline-flex tw:w-full tw:items-center tw:justify-center tw:gap-1">
-                <span>{pageSize}</span>
-                <ChevronDown className="tw:size-3 tw:shrink-0" />
-              </span>
-            </Button>
-            <Dropdown.Popover className="tw:w-24" placement="top right">
-              <Dropdown.Menu
-                aria-label="Rows per page"
-                selectedKeys={[String(pageSize)]}
-                onAction={(key) => onPageSizeChange?.(Number(key))}>
-                {pageSizeOptions.map((option) => (
-                  <Dropdown.Item
-                    className={compactRowsPerPageItemClassName}
-                    data-testid={`rows-per-page-option-${option}`}
-                    id={String(option)}
-                    key={option}
-                    label={String(option)}
-                    textValue={String(option)}
-                  />
-                ))}
-              </Dropdown.Menu>
-            </Dropdown.Popover>
-          </Dropdown.Root>
+          <Select
+            aria-label="Rows per page"
+            className={compactRowsPerPageSelectClassName}
+            data-testid="rows-per-page-dropdown"
+            fontSize="xs"
+            items={pageSizeItems}
+            placeholder={String(pageSize)}
+            popoverClassName="tw:min-w-16!"
+            selectedKey={String(pageSize)}
+            size="sm"
+            onSelectionChange={(key) => onPageSizeChange?.(Number(key))}>
+            {(item) => (
+              <Select.Item
+                className={compactRowsPerPageItemClassName}
+                data-testid={`rows-per-page-option-${item.id}`}
+                id={item.id}
+                key={item.id}
+                textValue={item.label}>
+                {item.label}
+              </Select.Item>
+            )}
+          </Select>
         </div>
       </div>
     </Pagination.Root>

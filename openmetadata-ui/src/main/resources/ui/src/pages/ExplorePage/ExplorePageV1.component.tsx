@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { get, isEmpty, isNil, isString, omit } from 'lodash';
+import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +25,11 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
@@ -32,6 +37,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../hooks/useExploreCache';
@@ -53,6 +59,12 @@ import {
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
+const EXPLORE_PAGE_SIZE_OPTIONS = [
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
+];
+
 const ExplorePageV1: FC<unknown> = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
@@ -66,8 +78,21 @@ const ExplorePageV1: FC<unknown> = () => {
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
   const {
     preferences: { globalPageSize },
-    setPreference,
   } = useCurrentUserPreferences();
+  const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
+    ? globalPageSize
+    : PAGE_SIZE_BASE;
+  const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
+    usePaging(defaultPageSize);
+  const currentPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)
+    ? pageSize
+    : defaultPageSize;
+
+  useEffect(() => {
+    if (!EXPLORE_PAGE_SIZE_OPTIONS.includes(pageSize)) {
+      handlePageSizeChange(defaultPageSize);
+    }
+  }, [defaultPageSize, handlePageSizeChange, pageSize]);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -103,11 +128,9 @@ const ExplorePageV1: FC<unknown> = () => {
     browseFields,
     sortValue,
     sortOrder,
-    page,
-    size,
     showDeleted,
   } = useMemo(() => {
-    return parseSearchParams(location.search, globalPageSize, queryFilter);
+    return parseSearchParams(location.search, queryFilter);
   }, [location.search, queryFilter]);
 
   // ES filter contributed by the browse-tree location. It ANDs with the
@@ -117,34 +140,21 @@ const ExplorePageV1: FC<unknown> = () => {
     [browseFields]
   );
 
-  const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
-    setPreference({ globalPageSize: size ?? globalPageSize });
+  const handleSortValueChange = (sortVal: string) => {
     navigate({
       search: Qs.stringify({
         ...parsedSearch,
-        page,
-        size: size ?? globalPageSize,
-      }),
-    });
-  };
-
-  const handleSortValueChange = (page: number, sortVal: string) => {
-    navigate({
-      search: Qs.stringify({
-        ...parsedSearch,
-        page,
-        size,
+        currentPage: 1,
         sort: sortVal,
       }),
     });
   };
 
-  const handleSortOrderChange = (page: number, sortOrderVal: string) => {
+  const handleSortOrderChange = (sortOrderVal: string) => {
     navigate({
       search: Qs.stringify({
         ...parsedSearch,
-        page,
-        size,
+        currentPage: 1,
         sortOrder: sortOrderVal,
       }),
     });
@@ -152,17 +162,16 @@ const ExplorePageV1: FC<unknown> = () => {
 
   // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
   const commonQuickFilters = useMemo(() => {
-    const mustField: QueryFieldInterface[] = get(
-      advancedSearchQuickFilters,
-      'query.bool.must',
-      []
-    );
+    const rawMustField = get(advancedSearchQuickFilters, 'query.bool.must', []);
+    const mustField: QueryFieldInterface[] = Array.isArray(rawMustField)
+      ? (rawMustField as QueryFieldInterface[])
+      : [];
 
     // Getting the filters that can be common for all the Entities
     const must = mustField.filter((filterCategory: QueryFieldInterface) => {
       const rawShouldField = get(filterCategory, 'bool.should', []);
       const shouldField: QueryFieldInterface[] = Array.isArray(rawShouldField)
-        ? rawShouldField
+        ? (rawShouldField as QueryFieldInterface[])
         : [];
 
       const terms = extractTermKeys(shouldField);
@@ -198,7 +207,7 @@ const ExplorePageV1: FC<unknown> = () => {
               sort: searchQueryParam
                 ? '_score'
                 : tabsInfo[nSearchIndex].sortField,
-              page: '1',
+              currentPage: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
@@ -217,11 +226,10 @@ const ExplorePageV1: FC<unknown> = () => {
         search: Qs.stringify({
           ...parsedSearch,
           quickFilter: quickFilter ? JSON.stringify(quickFilter) : undefined,
-          page: 1,
         }),
       });
     },
-    [history, parsedSearch]
+    [parsedSearch]
   );
 
   // A tree click may update the browse location AND the Type quick filter
@@ -243,7 +251,6 @@ const ExplorePageV1: FC<unknown> = () => {
             ? undefined
             : JSON.stringify(updatedBrowseFields),
           ...(quickFilter ? { quickFilter: JSON.stringify(quickFilter) } : {}),
-          page: 1,
         }),
       });
     },
@@ -253,22 +260,11 @@ const ExplorePageV1: FC<unknown> = () => {
   const handleShowDeletedChange: ExploreProps['onChangeShowDeleted'] = (
     showDeleted
   ) => {
-    // Removed existing showDeleted from the parsedSearch object
-    const filteredParsedSearch = omit(parsedSearch, 'showDeleted');
-
-    // Set the default search object with page as 1
-    const defaultSearchObject = {
-      ...filteredParsedSearch,
-      page: 1,
-    };
-
-    // If showDeleted is true, add it to the search object
-    const searchObject = showDeleted
-      ? { ...defaultSearchObject, showDeleted: true }
-      : defaultSearchObject;
-
     navigate({
-      search: Qs.stringify(searchObject),
+      search: Qs.stringify({
+        ...parsedSearch,
+        showDeleted: showDeleted ? true : undefined,
+      }),
     });
   };
 
@@ -309,12 +305,6 @@ const ExplorePageV1: FC<unknown> = () => {
     searchQueryParam,
     searchCriteria,
   ]);
-
-  useEffect(() => {
-    if (!isEmpty(parsedSearch)) {
-      handlePageChange(page, size);
-    }
-  }, [page, size, parsedSearch]);
 
   const getAdvancedSearchQuickFilters = useCallback(() => {
     if (!isString(parsedSearch.quickFilter)) {
@@ -358,8 +348,8 @@ const ExplorePageV1: FC<unknown> = () => {
       sortValue,
       sortOrder,
       showDeleted,
-      page,
-      size,
+      page: currentPage,
+      size: currentPageSize,
       searchIndex,
     });
   }, [
@@ -370,8 +360,8 @@ const ExplorePageV1: FC<unknown> = () => {
     sortValue,
     sortOrder,
     showDeleted,
-    page,
-    size,
+    currentPage,
+    currentPageSize,
     searchIndex,
   ]);
 
@@ -506,8 +496,8 @@ const ExplorePageV1: FC<unknown> = () => {
         showDeleted,
         sortValue,
         sortOrder,
-        page,
-        size,
+        page: currentPage,
+        size: currentPageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -536,8 +526,8 @@ const ExplorePageV1: FC<unknown> = () => {
         showDeleted,
         sortValue,
         sortOrder,
-        page,
-        size,
+        page: currentPage,
+        size: currentPageSize,
         isNLPRequestEnabled,
         tab,
         TABS_SEARCH_INDEXES,
@@ -570,7 +560,7 @@ const ExplorePageV1: FC<unknown> = () => {
       setAdvancedSearchQuickFilters(filter);
       handleQuickFilterChange(filter);
     },
-    [setAdvancedSearchQuickFilters, history, parsedSearch]
+    [setAdvancedSearchQuickFilters, handleQuickFilterChange]
   );
 
   return (
@@ -579,8 +569,10 @@ const ExplorePageV1: FC<unknown> = () => {
       aggregations={updatedAggregations}
       browseFields={browseFields}
       browseQueryFilter={browseQueryFilter}
+      currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
       loading={isLoading && !isTourOpen}
+      pageSize={currentPageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
@@ -590,13 +582,14 @@ const ExplorePageV1: FC<unknown> = () => {
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
+      onChangePageSize={handlePageSizeChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
       onChangeSortOder={(sortOrderVal) => {
-        handleSortOrderChange(1, sortOrderVal);
+        handleSortOrderChange(sortOrderVal);
       }}
       onChangeSortValue={(sortVal) => {
-        handleSortValueChange(1, sortVal);
+        handleSortValueChange(sortVal);
       }}
       onTreeSelect={handleTreeSelect}
     />

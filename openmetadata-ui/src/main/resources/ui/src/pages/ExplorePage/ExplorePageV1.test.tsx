@@ -13,8 +13,16 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
+import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import ExplorePageV1 from './ExplorePageV1.component';
+
+const mockHandlePageChange = jest.fn();
+const mockHandlePageSizeChange = jest.fn();
+const mockLocation = { pathname: 'pathname', search: '' };
 
 jest.mock(
   '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
@@ -45,10 +53,25 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => ({ pathname: 'pathname', search: '' }));
+  return jest.fn().mockImplementation(() => mockLocation);
 });
+
+jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
+  useCurrentUserPreferences: jest.fn(() => ({
+    preferences: {
+      globalPageSize: 25,
+    },
+  })),
+}));
+
+jest.mock('../../hooks/paging/usePaging', () => ({
+  usePaging: jest.fn(() => ({
+    currentPage: 3,
+    handlePageChange: mockHandlePageChange,
+    handlePageSizeChange: mockHandlePageSizeChange,
+    pageSize: 25,
+  })),
+}));
 
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => {
@@ -64,10 +87,23 @@ const mockProps = {
 };
 
 describe('ExplorePageV1', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLocation.pathname = 'pathname';
+    mockLocation.search = '';
+    (useCustomLocation as jest.Mock).mockImplementation(() => mockLocation);
+    (useCurrentUserPreferences as jest.Mock).mockReturnValue({
+      preferences: {
+        globalPageSize: 25,
+      },
+    });
+  });
+
   it('renders without crashing', async () => {
     render(<ExplorePageV1 {...mockProps} />);
 
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
+    expect(usePaging).toHaveBeenCalledWith(25);
   });
 
   it('calls navigate exactly once with quickFilter when filter changes', async () => {
@@ -108,5 +144,103 @@ describe('ExplorePageV1', () => {
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
     expect(mockNavigate.mock.calls[0][0].search).toContain('quickFilter');
+  });
+
+  it('preserves currentPage and pageSize when quick filter changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    (useCustomLocation as jest.Mock).mockReturnValue({
+      pathname: 'pathname',
+      search: '?currentPage=3&pageSize=25&search=orders',
+    });
+
+    let capturedCallback:
+      | ((filter?: Record<string, unknown>) => void)
+      | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onChangeAdvancedSearchQuickFilters,
+      }: {
+        onChangeAdvancedSearchQuickFilters?: (
+          filter?: Record<string, unknown>
+        ) => void;
+      }) => {
+        capturedCallback = onChangeAdvancedSearchQuickFilters;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.({
+        query: {
+          bool: {
+            must: [{ bool: { should: [{ term: { entityType: 'table' } }] } }],
+          },
+        },
+      });
+    });
+
+    const searchParams = new URLSearchParams(
+      mockNavigate.mock.calls[0][0].search
+    );
+
+    expect(searchParams.get('currentPage')).toBe('3');
+    expect(searchParams.get('pageSize')).toBe('25');
+  });
+
+  it('preserves currentPage and pageSize when browse filter changes', async () => {
+    const mockNavigate = jest.fn();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+    (useCustomLocation as jest.Mock).mockReturnValue({
+      pathname: 'pathname',
+      search: '?currentPage=3&pageSize=25',
+    });
+
+    let capturedCallback:
+      | ((payload: {
+          browseFields: ExploreQuickFilterField[];
+          quickFilter?: Record<string, unknown>;
+        }) => void)
+      | undefined;
+    (ExploreV1 as jest.Mock).mockImplementationOnce(
+      ({
+        onTreeSelect,
+      }: {
+        onTreeSelect?: (payload: {
+          browseFields: ExploreQuickFilterField[];
+          quickFilter?: Record<string, unknown>;
+        }) => void;
+      }) => {
+        capturedCallback = onTreeSelect;
+
+        return <p>ExploreV1</p>;
+      }
+    );
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    act(() => {
+      capturedCallback?.({
+        browseFields: [
+          {
+            key: 'serviceType',
+            label: 'Service Type',
+            value: [{ key: 'BigQuery', label: 'BigQuery' }],
+          },
+        ],
+      });
+    });
+
+    const searchParams = new URLSearchParams(
+      mockNavigate.mock.calls[0][0].search
+    );
+
+    expect(searchParams.get('currentPage')).toBe('3');
+    expect(searchParams.get('pageSize')).toBe('25');
   });
 });

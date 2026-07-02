@@ -363,21 +363,23 @@ test('an impossible filter combination shows the no-results placeholder and reco
     await expect(page.getByTestId('no-search-results')).not.toBeVisible();
     await expect(page.getByTestId('explore-query-filter-chips')).toBeVisible();
     await expect(page.getByTestId('query-bar-empty-text')).toBeVisible();
+    expect(page.url()).toContain('currentPage=1');
   });
 });
 
-test('applying a filter from a deep page resets pagination to page 1', async ({
+test('applying a filter from a deep page preserves pagination params', async ({
   page,
 }) => {
   test.slow();
 
   await test.step('Navigate to an explore page beyond the first', async () => {
-    await page.goto('/explore/tables?page=2');
+    await page.goto('/explore/tables?currentPage=2&pageSize=25');
     await waitForAllLoadersToDisappear(page);
-    expect(page.url()).toContain('page=2');
+    expect(page.url()).toContain('currentPage=2');
+    expect(page.url()).toContain('pageSize=25');
   });
 
-  await test.step('Selecting a tree category resets to page 1', async () => {
+  await test.step('Selecting a tree category keeps current paging params', async () => {
     const browseRes = page.waitForResponse(
       '/api/v1/search/query?*index=dataAsset*'
     );
@@ -385,8 +387,8 @@ test('applying a filter from a deep page resets pagination to page 1', async ({
     await browseRes;
     await waitForAllLoadersToDisappear(page);
 
-    expect(page.url()).toContain('page=1');
-    expect(page.url()).not.toContain('page=2');
+    expect(page.url()).toContain('currentPage=2');
+    expect(page.url()).toContain('pageSize=25');
   });
 });
 

@@ -19,6 +19,8 @@ import {
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
+  getExploreClearQueryFilterSearchParams,
+  getExploreResetFiltersSearchParams,
   getQuickFilterMust,
   hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
@@ -89,6 +91,52 @@ describe('getQuickFilterMust', () => {
     expect(
       getQuickFilterMust(JSON.stringify({ query: { bool: { must } } }))
     ).toEqual(must);
+  });
+});
+
+describe('getExploreResetFiltersSearchParams', () => {
+  it('clears filter params while resetting currentPage and preserving pageSize', () => {
+    const search = getExploreResetFiltersSearchParams({
+      browsePath: '[{"key":"serviceType"}]',
+      currentPage: '3',
+      pageSize: '25',
+      queryFilter: '{"some":"value"}',
+      quickFilter: '{"some":"value"}',
+      search: 'orders',
+      showDeleted: 'true',
+    });
+    const searchParams = new URLSearchParams(search);
+
+    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchParams.get('pageSize')).toBe('25');
+    expect(searchParams.get('search')).toBe('orders');
+    expect(searchParams.has('browsePath')).toBe(false);
+    expect(searchParams.has('queryFilter')).toBe(false);
+    expect(searchParams.has('quickFilter')).toBe(false);
+    expect(searchParams.has('showDeleted')).toBe(false);
+  });
+});
+
+describe('getExploreClearQueryFilterSearchParams', () => {
+  it('clears advanced search while resetting currentPage and preserving other filters', () => {
+    const search = getExploreClearQueryFilterSearchParams({
+      browsePath: '[{"key":"serviceType"}]',
+      currentPage: '3',
+      pageSize: '25',
+      queryFilter: '{"some":"value"}',
+      quickFilter: '{"some":"value"}',
+      search: 'orders',
+      showDeleted: 'true',
+    });
+    const searchParams = new URLSearchParams(search);
+
+    expect(searchParams.get('browsePath')).toBe('[{"key":"serviceType"}]');
+    expect(searchParams.get('currentPage')).toBe('1');
+    expect(searchParams.get('pageSize')).toBe('25');
+    expect(searchParams.get('quickFilter')).toBe('{"some":"value"}');
+    expect(searchParams.get('search')).toBe('orders');
+    expect(searchParams.get('showDeleted')).toBe('true');
+    expect(searchParams.has('queryFilter')).toBe(false);
   });
 });
 

@@ -37,7 +37,6 @@ const ExploreQueryFilterChips = ({
   onRemoveValue,
   onRemoveBrowseLevel,
   onClearAll,
-  hasAdditionalQuery = false,
   emptyText,
 }: ExploreQueryFilterChipsProps) => {
   const { t } = useTranslation();
@@ -79,7 +78,6 @@ const ExploreQueryFilterChips = ({
   );
 
   const hasFilterChips = !isEmpty(chips) || !isEmpty(browseFields);
-  const hasActiveQuery = hasFilterChips || hasAdditionalQuery;
 
   if (!hasFilterChips && !emptyText) {
     return null;
@@ -94,7 +92,7 @@ const ExploreQueryFilterChips = ({
         {t('label.query')}
       </span>
 
-      {!hasActiveQuery && (
+      {!hasFilterChips && (
         <span
           className="explore-query-filter-chips__empty"
           data-testid="query-bar-empty-text">
@@ -157,7 +155,7 @@ const ExploreQueryFilterChips = ({
         </span>
       ))}
 
-      {hasActiveQuery && onClearAll && (
+      {hasFilterChips && onClearAll && (
         <Button
           className="text-primary tw:ml-auto tw:self-center tw:cursor-pointer tw:bg-transparent tw:p-0! tw:font-medium tw:shadow-none tw:ring-0 tw:hover:bg-transparent"
           color="tertiary"
