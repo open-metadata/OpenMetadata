@@ -516,7 +516,7 @@ test.describe('Context Center Articles', () => {
     await expect(card.getByTestId('owner-label')).not.toBeVisible();
     await expect(card.getByTestId('domain-link')).not.toBeVisible();
 
-    await navigateToArticle(page, title);
+    await card.click();
     await page.getByTestId('edit-domain-btn').click();
     await waitForAllLoadersToDisappear(page);
 
@@ -555,13 +555,14 @@ test.describe('Context Center Articles', () => {
       tag: 'Article',
       tagFqn: 'KnowledgeCenter.Article',
     });
+    await page.getByTestId('tags-container').getByTestId('edit-button').waitFor({ state: 'visible' });
     await updateTags(page, {
       tag: 'HowToGuide',
       tagFqn: 'KnowledgeCenter.HowToGuide',
     });
 
     const followBtn = page.getByTestId('follow-btn');
-    await toggleKnowledgePageBookmark(page, followBtn, title, true);
+    await toggleKnowledgePageBookmark(page, followBtn);
 
     await navigateToArticles(page);
     card = page.getByTestId(`knowledge-card-${title}`);
@@ -676,7 +677,16 @@ test.describe('Context Center Articles', () => {
         {
           op: 'add',
           path: '/parent',
-          value: parent.fullyQualifiedName,
+          value: {
+            id: parent.id, type: "page", fullyQualifiedName: parent.fullyQualifiedName,
+displayName
+: 
+parent.displayName,
+
+name
+: 
+parent.name
+          },
         },
       ],
       headers: { 'Content-Type': 'application/json-patch+json' },
@@ -684,18 +694,24 @@ test.describe('Context Center Articles', () => {
     await afterAction();
 
     await navigateToArticles(page);
-    const parentNode = await scrollHierarchyToNode(page, parent.displayName);
-    await parentNode.click();
-
-    const collapseIcon = page.getByTestId(
-      `${parent.displayName}-collapse-icon`
-    );
-    await expect(collapseIcon).toBeVisible();
-    await collapseIcon.click();
+    await scrollHierarchyToNode(page, parent.displayName);
+    const ExpandIcon = page.getByRole('button', { name: `Expand ${parent.displayName}` });
+    await expect(ExpandIcon).toBeVisible();
+    await ExpandIcon.click();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
+    const collapseIcon = page.getByRole('button', { name: `Collapse ${parent.displayName}` });
     await collapseIcon.click();
+    await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).not.toBeVisible();
+
+    await page.getByLabel('Expand All').click();
+     await expect(
+      page.getByTestId(`page-node-${child.displayName}`)
+    ).toBeVisible();
+    await page.getByLabel('Collapse All').click();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).not.toBeVisible();
@@ -1095,9 +1111,9 @@ test.describe('Context Center Articles', () => {
     await updateBody(dataConsumerPage, `Edited by data consumer ${uuid()}`);
 
     await navigateToArticle(page, article.fullyQualifiedName);
-    await expect(page.locator(`[data-testid="owner-name"]`)).toContainText(
-      /data consumer/i
-    );
+    await expect(
+      page.locator('a[href*="/users/pw-data-consumer"]')
+    ).toBeVisible();
     const { apiContext, afterAction } = await getApiContext(page);
     await deleteArticleByFqn(apiContext, article.fullyQualifiedName);
     await afterAction();

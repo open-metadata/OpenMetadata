@@ -129,6 +129,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const [isHierarchyInitialized, setIsHierarchyInitialized] =
       useState<boolean>(false);
     const lastFetchedFqnRef = useRef<string | null>(null);
+    const consumedCreateHashFqnRef = useRef<string | null>(null);
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
@@ -162,7 +163,7 @@ const KnowledgePagesHierarchy = forwardRef<
         ): PageHierarchy[] => {
           const unloaded: PageHierarchy[] = [];
           nodes.forEach((n) => {
-            if (n.childrenCount > 0 && !n.children) {
+            if (n.childrenCount > (n.children?.length ?? 0)) {
               unloaded.push(n);
             } else if (n.children) {
               unloaded.push(...collectUnloadedExpandableNodes(n.children));
@@ -247,7 +248,10 @@ const KnowledgePagesHierarchy = forwardRef<
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
     ) => {
-      const isCreateHash = hash?.slice(1) === CREATE_PAGE_HASH;
+      const isCreateHash =
+        hash?.slice(1) === CREATE_PAGE_HASH &&
+        !isPaginationLoading &&
+        consumedCreateHashFqnRef.current !== fqn;
 
       if (
         !forceRefresh &&
@@ -289,6 +293,14 @@ const KnowledgePagesHierarchy = forwardRef<
 
         if (isCreateHash || forceRefresh) {
           setKnowledgePageHierarchy(data);
+          if (forceRefresh) {
+            setExpandedKeys([]);
+            setIsUserExpandedAll(false);
+          }
+          if (isCreateHash) {
+            consumedCreateHashFqnRef.current = fqn;
+            fetchKnowledgePagesTotalCount();
+          }
         } else {
           const fqnParts = fqn ? Fqn.split(fqn) : [];
           const isNestedNode = fqnParts.length > 1;
@@ -324,7 +336,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const loadNodeChildren = useCallback(
       async (nodeKey: string) => {
         const node = findPageInTreeData(knowledgePageHierarchy, nodeKey);
-        if (!node || node.children) {
+        if (!node || node.childrenCount <= (node.children?.length ?? 0)) {
           return;
         }
         try {
@@ -703,7 +715,7 @@ const KnowledgePagesHierarchy = forwardRef<
     useEffect(() => {
       expandedKeys.forEach((key) => {
         const node = findPageInTreeData(knowledgePageHierarchy, key);
-        if (node && !node.children) {
+        if (node && node.childrenCount > (node.children?.length ?? 0)) {
           loadNodeChildren(key);
         }
       });

@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -31,6 +31,8 @@ import {
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
+  scrollHierarchyToNode,
+  scrollListingToCard,
   uploadDisposableDocument,
   waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
@@ -529,10 +531,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('hierarchy tree delete button is hidden for articles', async () => {
         await navigateToArticles(viewOnlyPage);
 
-        const articleNode = viewOnlyPage.getByTestId(
-          `page-node-${articleEntity.responseData.displayName}`
+        const articleNode = await scrollHierarchyToNode(
+          viewOnlyPage,
+          articleEntity.responseData.displayName
         );
-        await expect(articleNode).toBeVisible();
         await articleNode.hover();
         await expect(
           viewOnlyPage.getByTestId(
@@ -544,10 +546,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('quick link card has no edit or delete buttons', async () => {
         await navigateToArticles(viewOnlyPage);
 
-        const qlCard = viewOnlyPage.getByTestId(
-          `knowledge-card-${quickLinkDisplayName}`
+        const qlCard = await scrollListingToCard(
+          viewOnlyPage,
+          quickLinkDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(
           qlCard.getByTestId('edit-quick-link-btn')
         ).not.toBeVisible();
@@ -574,7 +576,7 @@ test.describe('Context Center Permissions', () => {
       });
 
       await test.step('can copy article link', async () => {
-        const shareBtn = viewOnlyPage.getByTestId('share-btn');
+        const shareBtn = viewOnlyPage.getByTestId('copy-btn');
         await expect(shareBtn).toBeVisible();
         await shareBtn.click();
 
@@ -677,10 +679,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('hierarchy tree delete button is hidden for articles', async () => {
         await navigateToArticles(createAllPage);
 
-        const articleNode = createAllPage.getByTestId(
-          `page-node-${articleEntity.responseData.displayName}`
+        const articleNode = await scrollHierarchyToNode(
+          createAllPage,
+          articleEntity.responseData.displayName
         );
-        await expect(articleNode).toBeVisible();
         await articleNode.hover();
         await expect(
           createAllPage.getByTestId(
@@ -825,12 +827,15 @@ test.describe('Context Center Permissions', () => {
         );
 
         await navigateToArticles(createAllPage);
-        await createAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-        await createAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .dragTo(createAllPage.getByTestId(`page-node-${parentDisplayName}`));
+        const childNode = await scrollHierarchyToNode(
+          createAllPage,
+          childDisplayName
+        );
+        const parentNode = await scrollHierarchyToNode(
+          createAllPage,
+          parentDisplayName
+        );
+        await childNode.dragTo(parentNode);
 
         const confirmationModal =
           createAllPage.getByTestId('confirmation-modal');
@@ -865,10 +870,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('quick link card shows edit button but not delete button', async () => {
         await navigateToArticles(editAllPage);
 
-        const qlCard = editAllPage.getByTestId(
-          `knowledge-card-${quickLinkDisplayName}`
+        const qlCard = await scrollListingToCard(
+          editAllPage,
+          quickLinkDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(qlCard.getByTestId('edit-quick-link-btn')).toBeVisible();
         await expect(
           qlCard.getByTestId('delete-quick-link-btn')
@@ -939,13 +944,15 @@ test.describe('Context Center Permissions', () => {
         );
 
         await navigateToArticles(editAllPage);
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .dragTo(editAllPage.getByTestId(`page-node-${parentDisplayName}`));
+        const childNode = await scrollHierarchyToNode(
+          editAllPage,
+          childDisplayName
+        );
+        const parentNodeForDrag = await scrollHierarchyToNode(
+          editAllPage,
+          parentDisplayName
+        );
+        await childNode.dragTo(parentNodeForDrag);
 
         const confirmationModal = editAllPage.getByTestId('confirmation-modal');
         await expect(confirmationModal).toBeVisible();
@@ -963,19 +970,12 @@ test.describe('Context Center Permissions', () => {
         expect(moveRes.status()).toBe(200);
         await expect(confirmationModal).not.toBeVisible();
 
-        await editAllPage
-          .getByTestId(`page-node-${parentDisplayName}`)
-          .waitFor({ state: 'visible' });
-        const parentNode = editAllPage.getByTestId(
-          `page-node-${parentDisplayName}`
+        const parentNode = await scrollHierarchyToNode(
+          editAllPage,
+          parentDisplayName
         );
         await parentNode.click();
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-        await expect(
-          editAllPage.getByTestId(`page-node-${childDisplayName}`)
-        ).toBeVisible();
+        await scrollHierarchyToNode(editAllPage, childDisplayName);
 
         const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
           await getDefaultAdminAPIContext(browser);
@@ -1016,10 +1016,10 @@ test.describe('Context Center Permissions', () => {
 
         await navigateToArticles(deleteAllPage);
 
-        const qlCard = deleteAllPage.getByTestId(
-          `knowledge-card-${disposableQlDisplayName}`
+        const qlCard = await scrollListingToCard(
+          deleteAllPage,
+          disposableQlDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(
           qlCard.getByTestId('edit-quick-link-btn')
         ).not.toBeVisible();
@@ -2068,7 +2068,6 @@ test.describe('Context Center Permissions', () => {
         ).toBeVisible();
         await expect(
           dataStewardPage
-            .getByTestId('KnowledgePanel.GlossaryTerms')
             .getByTestId('glossary-container')
             .getByTestId('add-tag')
         ).toBeVisible();
