@@ -24,7 +24,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   onChange,
   debounceTimeout = 800,
   initialOptions,
-  allowAllOption=false,
+  allowAllOption = false,
   searchIndex = SearchIndex.DATA_ASSET,
   value: selectedValue,
   filterFqns = [],
@@ -33,7 +33,7 @@ const DataAssetSelectList: FC<DataAssetSelectListProps> = ({
   renderTrigger,
   popoverClassName,
   popoverAlign,
-  selectionMode = "multiple",
+  selectionMode = 'multiple',
   popoverPlacement = 'top',
 }) => {
   const [isOpen, setIsOpen] = useState(false);

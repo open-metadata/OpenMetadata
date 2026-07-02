@@ -18,7 +18,7 @@ import {
   Input,
   PaginationCardMinimal,
   Tabs,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Check,
@@ -580,7 +580,7 @@ const ContextCenterMemoriesPage: FC = () => {
         </Tabs>
 
         <Box align="center" gap={2}>
-           <DataAssetSelectList
+          <DataAssetSelectList
             allowAllOption
             popoverPlacement="bottom"
             renderTrigger={({ open }) => (
@@ -618,7 +618,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 />
               </AriaButton>
             )}
-            selectionMode = "single"
+            selectionMode="single"
             value={selectedAsset}
             onChange={(value) => {
               setSelectedAsset(value as DataAssetOption);
