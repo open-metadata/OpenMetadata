@@ -49,6 +49,11 @@ public class NodeFactoryRegistry {
     extensions.remove(subType);
   }
 
+  // Package-private: only tests read the registry (production uses register/create).
+  Optional<NodeFactoryExtension> getExtension(NodeSubType subType) {
+    return Optional.ofNullable(extensions.get(subType));
+  }
+
   public Optional<NodeInterface> create(
       NodeSubType subType,
       WorkflowNodeDefinitionInterface nodeDefinition,
