@@ -37,7 +37,7 @@ export class PipelineClass extends EntityClass {
         type: string;
         host: string;
         token: string;
-        timeout: string;
+        timeout: number;
         supportsMetadataExtraction: boolean;
       };
     };
@@ -74,9 +74,9 @@ export class PipelineClass extends EntityClass {
       connection: {
         config: {
           type: 'Dagster',
-          host: 'admin',
+          host: 'http://localhost:3000',
           token: 'admin',
-          timeout: '1000',
+          timeout: 1000,
           supportsMetadataExtraction: true,
         },
       },

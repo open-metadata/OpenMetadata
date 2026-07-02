@@ -124,7 +124,7 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 256,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
     },
     "customPropertyName": {
       "description": "Name of a custom property. Allowed characters: alphanumeric, _ - . % # @ ! , ; = | ' + ? ` space ( ) [ ] { }. Must start with an alphanumeric character. Disallowed characters: \" * & < > : ^ $ \\ / ~. The forward slash and tilde are reserved by JSON Pointer (RFC 6901) and cause silent corruption when the property name is interpolated into JSON Patch paths.",
@@ -137,7 +137,7 @@
       "description": "Name that identifies a test definition and test case.",
       "type": "string",
       "minLength": 1,
-      "pattern": "^((?!::).)*$"
+      "pattern": "^((?!::)[^><\"|\\x00-\\x1f])*$"
     },
     "fullyQualifiedEntityName": {
       "description": "A unique name that identifies an entity. Example for table 'DatabaseService.Database.Schema.Table'.",

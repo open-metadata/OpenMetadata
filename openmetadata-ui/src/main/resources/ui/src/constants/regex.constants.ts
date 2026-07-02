@@ -24,10 +24,11 @@ export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
 /**
- * strings that contain a combination of letters, alphanumeric characters, hyphens,
- * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
+ * Validates entity names. Blocks reserved FQN separator characters (::, >, <, ", |)
+ * and ASCII control characters. Supports Unicode characters.
  */
-export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+// eslint-disable-next-line no-control-regex
+export const ENTITY_NAME_REGEX = /^((?!::)[^><"|\u0000-\u001f])*$/;
 
 /**
  * Custom property name validation:
@@ -41,13 +42,11 @@ export const CUSTOM_PROPERTY_NAME_REGEX =
   /^[A-Za-z0-9][A-Za-z0-9 _\-.,;%#@!'(){}[\]|=+?`]*$/;
 
 /**
- * Matches any string that does NOT contain the following:
- * - Double colon (::)
- * - Double quote (")
- * - Greater-than symbol (>)
- * Useful for restricting names from including these forbidden characters.
+ * Validates test case names. Reuses ENTITY_NAME_REGEX to stay in sync
+ * with the backend's testCaseEntityName pattern (blocks ::, ><"|, and
+ * ASCII control characters).
  */
-export const TEST_CASE_NAME_REGEX = /^((?!::)(?!")(?!>).)*$/;
+export const TEST_CASE_NAME_REGEX = ENTITY_NAME_REGEX;
 
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 export const NAME_LENGTH_REGEX = /^.{2,64}$/;
