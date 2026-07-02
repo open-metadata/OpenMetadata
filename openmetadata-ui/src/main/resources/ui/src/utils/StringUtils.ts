@@ -16,6 +16,7 @@ import parse from 'html-react-parser';
 import { get, isString } from 'lodash';
 import removeMarkdown from 'remove-markdown';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
+import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
@@ -196,6 +197,19 @@ export const getErrorText = (
 
   // if error text is still empty, return the fallback text
   return errorText || fallbackText;
+};
+
+export const getPermissionErrorText = (
+  value: AxiosError | string,
+  fallbackText: string
+): string => {
+  const isForbidden =
+    !isString(value) &&
+    get(value, 'response.status') === ClientErrors.FORBIDDEN;
+
+  return isForbidden
+    ? i18n.t('message.operation-forbidden-please-contact-admin')
+    : getErrorText(value, fallbackText);
 };
 
 /**
