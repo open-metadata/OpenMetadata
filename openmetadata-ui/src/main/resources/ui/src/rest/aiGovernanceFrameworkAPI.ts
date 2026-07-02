@@ -19,7 +19,11 @@ import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type FrameworkSource = 'BuiltIn' | 'Custom' | 'ForkedFrom';
-export type AssessmentCadence = 'Monthly' | 'Quarterly' | 'SemiAnnual' | 'Annual';
+export type AssessmentCadence =
+  | 'Monthly'
+  | 'Quarterly'
+  | 'SemiAnnual'
+  | 'Annual';
 
 export interface FrameworkAutoApplyRules {
   assetTypes?: string[];
@@ -73,7 +77,13 @@ export interface AIFrameworkControl {
   description?: string;
   framework: EntityReference;
   code?: string;
-  category?: 'Risk' | 'Process' | 'Data' | 'Transparency' | 'Quality' | 'Governance';
+  category?:
+    | 'Risk'
+    | 'Process'
+    | 'Data'
+    | 'Transparency'
+    | 'Quality'
+    | 'Governance';
   evidenceRequirements?: string[];
 }
 
@@ -103,7 +113,10 @@ export interface FrameworkCoverageResponse {
 const FRAMEWORK_BASE = '/aiGovernanceFrameworks';
 const CONTROL_BASE = '/aiFrameworkControls';
 
-export const listFrameworks = async (params?: { limit?: number; fields?: string }) => {
+export const listFrameworks = async (params?: {
+  limit?: number;
+  fields?: string;
+}) => {
   const response = await APIClient.get<{
     data: AIGovernanceFramework[];
     paging: Paging;
@@ -179,7 +192,10 @@ export const forkFramework = async (
 ) => {
   const response = await APIClient.post<
     typeof body,
-    AxiosResponse<{ framework: AIGovernanceFramework; copiedControlsCount: number }>
+    AxiosResponse<{
+      framework: AIGovernanceFramework;
+      copiedControlsCount: number;
+    }>
   >(`${FRAMEWORK_BASE}/${id}/fork`, body);
 
   return response.data;

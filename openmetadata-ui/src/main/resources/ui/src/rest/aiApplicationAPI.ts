@@ -28,10 +28,10 @@ import APIClient from './index';
 const BASE_URL = '/aiApplications';
 
 export const createAIApplication = async (data: Partial<AIApplication>) => {
-  const response = await APIClient.post<Partial<AIApplication>, AxiosResponse<AIApplication>>(
-    BASE_URL,
-    data
-  );
+  const response = await APIClient.post<
+    Partial<AIApplication>,
+    AxiosResponse<AIApplication>
+  >(BASE_URL, data);
 
   return response.data;
 };
@@ -108,7 +108,11 @@ export const addAIApplicationFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${BASE_URL}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

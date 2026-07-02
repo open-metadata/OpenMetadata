@@ -95,7 +95,11 @@ export const addLLMModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+  >(
+    `${BASE_URL}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };

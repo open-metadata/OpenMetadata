@@ -51,7 +51,7 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
-  void extensionFieldMustBeFlattenedInAllIndices() {
+  void extensionFieldMustBeDisabledObjectInAllIndices() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
       String entity = entry.getKey();
@@ -63,9 +63,11 @@ class IndexMappingNestedFieldConsistencyTest {
     }
     assertTrue(
         violations.isEmpty(),
-        "The 'extension' field must have \"type\": \"flattened\" in all index mappings. "
-            + "Using 'keyword' or 'object' will cause reindex failures when custom properties "
-            + "(entityExtension) contain object/map values. Violations: "
+        "The 'extension' field must be \"type\": \"object\" with \"enabled\": false in all index "
+            + "mappings. It stores arbitrary custom-property (entityExtension) values without "
+            + "indexing them, which avoids field explosion and the Lucene 32766-byte immense-term "
+            + "failure that flattened/flat_object leaves hit on OpenSearch. Custom-property search "
+            + "goes through customPropertiesTyped. Violations: "
             + violations);
   }
 
@@ -185,9 +187,13 @@ class IndexMappingNestedFieldConsistencyTest {
       String path = currentPath.isEmpty() ? name : currentPath + "." + name;
       if (name.equals("extension")) {
         String type = fieldNode.path("type").asText("");
-        if (!"flattened".equals(type)) {
+        boolean disabledObject =
+            "object".equals(type) && !fieldNode.path("enabled").asBoolean(true);
+        if (!disabledObject) {
           String detail =
-              type.isEmpty() ? "missing \"type\" (implicit object)" : "\"" + type + "\"";
+              type.isEmpty()
+                  ? "missing \"type\" (implicit object)"
+                  : "\"" + type + "\" enabled=" + fieldNode.path("enabled").asText("true");
           violations.add(entity + " (" + path + "): " + detail);
         }
       }
