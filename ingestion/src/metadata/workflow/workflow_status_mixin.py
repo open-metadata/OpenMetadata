@@ -208,8 +208,8 @@ class WorkflowStatusMixin:
                     runId=self.run_id,
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
                     updateType=update_type,
-                    progress=progress_data if progress_data else None,
-                    globalCounters=[
+                    progress=progress_data if progress_data else None,  # pyright: ignore[reportArgumentType]
+                    globalCounters=[  # pyright: ignore[reportArgumentType]
                         {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
                     ],
                     estimatedSecondsRemaining=eta_seconds,
