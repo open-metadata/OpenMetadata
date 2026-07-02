@@ -10,20 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
-import { ReactNode } from 'react';
+@import (reference) '../../styles/variables.less';
 
-export interface MuiDrawerProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  formRef?: FormInstance;
-  isLoading?: boolean;
-  isFormInvalid?: boolean;
-  submitBtnLabel?: string;
-  cancelBtnLabel?: string;
-  children: ReactNode;
-  headerWidget?: ReactNode;
-  sidePanel?: ReactNode;
-  hasSidePanel?: boolean;
+.search-index-mappings-page {
+  padding: 16px;
+
+  &__editor .CodeMirror {
+    height: calc(100vh - 380px);
+    min-height: 420px;
+  }
+
+  &__editor-loader,
+  &__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 420px;
+  }
 }
