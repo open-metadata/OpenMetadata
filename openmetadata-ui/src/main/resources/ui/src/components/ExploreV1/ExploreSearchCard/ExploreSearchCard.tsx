@@ -167,7 +167,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           key: 'Owner',
           value: (
             <OwnerLabel
-              avatarSize={20}
+              avatarSize={18}
               isCompactView={false}
               owners={columnSource?.owners ?? []}
               showLabel={false}
@@ -223,7 +223,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           key: 'Owner',
           value: (
             <OwnerLabel
-              avatarSize={20}
+              avatarSize={18}
               isCompactView={false}
               owners={(source?.owners as EntityReference[]) ?? []}
               showLabel={false}
@@ -269,28 +269,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
-        if (source.entityType === 'glossaryTerm') {
-          if (source.style?.iconURL) {
-            return (
-              <img
-                alt={source.entityType}
-                className="align-middle object-contain"
-                data-testid="icon"
-                height={20}
-                src={source.style.iconURL}
-                width={20}
-              />
-            );
-          }
-
-          return null;
-        }
-
         return (
-          <span className="tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center tw:text-brand-secondary">
+          <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
               source.entityType ?? '',
-              'tw:size-full tw:text-inherit'
+              'text-link-color'
             )}
           </span>
         );
@@ -315,7 +298,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[8, 8]}>
+        <Row gutter={[4, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
               <Checkbox
@@ -366,18 +349,19 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             {isTourOpen ? (
               <Button data-testid={source.fullyQualifiedName} type="link">
                 <Typography.Text
-                  className="tw:text-lg tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
+                  className="text-lg font-medium text-link-color"
                   data-testid="entity-header-display-name">
                   {stringToHTML(searchClassBase.getEntityName(source))}
                 </Typography.Text>
               </Button>
             ) : (
-              <div className="tw:flex tw:w-full tw:items-center tw:gap-1.5">
+              <div className="w-full d-flex items-center">
                 {entityIcon}
 
                 <Link
-                  className={classNames('d-flex no-underline line-height-22', {
+                  className={classNames('d-flex no-underline line-height-22 ', {
                     'w-max-full': !hasGlossaryTermStatus,
+                    'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"
                   state={{ breadcrumbData: breadcrumbs.slice(0, -1) }}
@@ -389,7 +373,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                   onFocus={handlePrefetch}
                   onMouseEnter={handlePrefetch}>
                   <Typography.Text
-                    className="break-word whitespace-normal tw:text-md tw:font-semibold tw:tracking-normal tw:text-brand-secondary"
+                    className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
@@ -398,12 +382,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {!isEmpty(
                   (source as Table)?.certification?.tagLabel?.tagFQN
                 ) && (
-                  <div
-                    className={classNames(
-                      'tw:inline-flex tw:size-5 tw:shrink-0 tw:items-center tw:justify-center',
-                      'tw:[&_.certification-img]:size-5 tw:[&_.certification-img]:shrink-0',
-                      'tw:[&_svg]:size-5 tw:[&_svg]:shrink-0'
-                    )}>
+                  <div className="p-l-sm">
                     <CertificationTag
                       certification={
                         (source as Table).certification as AssetCertification
@@ -459,7 +438,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             data-testid="matches-stats">
             <span>{`${t('label.matches')}:`}</span>
             {matches.map((data, i) => (
-              <span className="m-l-xss" key={uniqueId()}>
+              <span className="m-l-xs" key={uniqueId()}>
                 {`${data.value} ${t('label.in-lowercase')} 
                 ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
               </span>

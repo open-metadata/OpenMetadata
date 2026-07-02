@@ -12,9 +12,10 @@
  */
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import type { FC } from 'react';
-import { ENTITY_TYPE_ICON_URL_MAP } from '../components/OntologyExplorer/utils/entityIconUrls';
 import { EntityType } from '../enums/entity.enum';
+import { ServiceCategoryPlural } from '../enums/service.enum';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import {
   getBreadcrumbEntityTypeFromHref,
@@ -22,26 +23,22 @@ import {
   isServiceBreadcrumbHref,
 } from './EntityBreadcrumbPureUtils';
 import { getEntityName } from './EntityNameUtils';
-import serviceUtilClassBase from './ServiceUtilClassBase';
+import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
+import { getEntityIcon } from './TableUtils';
 
 type BreadcrumbIconFC = FC<{ className?: string }>;
 
 const getBreadcrumbHref = (url: string | { pathname?: string }): string =>
   typeof url === 'string' ? url : url.pathname ?? '';
 
-// Build stable module-level icon FCs for every entity type that has an icon
-// URL so React reconciles in place rather than remounting on every render.
-const ENTITY_BREADCRUMB_ICONS: Partial<Record<string, BreadcrumbIconFC>> =
-  Object.fromEntries(
-    Object.entries(ENTITY_TYPE_ICON_URL_MAP).map(([entityType, iconUrl]) => {
-      const Icon: BreadcrumbIconFC = ({ className }) => (
-        <img alt={entityType} className={className} src={iconUrl} />
-      );
-      Icon.displayName = `${entityType}BreadcrumbIcon`;
-
-      return [entityType, Icon];
-    })
-  );
+const getBreadcrumbIcon = (
+  entityType?: EntityType | string
+): BreadcrumbIconFC | undefined =>
+  entityType
+    ? ({ className }) => (
+        <>{getEntityIcon(entityType, classNames(className, 'text-grey-500'))}</>
+      )
+    : undefined;
 
 export const getEntityBreadcrumbItems = (
   source: SearchSourceAlias
@@ -55,18 +52,16 @@ export const getEntityBreadcrumbItems = (
     isServiceBreadcrumbHref(getBreadcrumbHref(b.url))
   );
 
-  // Service icon is dynamic (Snowflake, BigQuery…) resolved from the source's
-  // serviceType. Created inline since it changes with the source.
-  const serviceLogoUrl =
-    serviceBreadcrumbIndex >= 0
-      ? serviceUtilClassBase.getServiceTypeLogo(source)
+  const serviceType = 'service' in source ? source.service?.type : undefined;
+  const serviceCategory =
+    serviceType && serviceType in ServiceCategoryPlural
+      ? ServiceCategoryPlural[serviceType as keyof typeof ServiceCategoryPlural]
       : undefined;
 
-  const ServiceBreadcrumbIcon: BreadcrumbIconFC | undefined = serviceLogoUrl
-    ? ({ className }) => (
-        <img alt="service-icon" className={className} src={serviceLogoUrl} />
-      )
-    : undefined;
+  const ServiceBreadcrumbIcon =
+    serviceBreadcrumbIndex >= 0 && serviceCategory
+      ? getBreadcrumbIcon(getEntityTypeFromServiceCategory(serviceCategory))
+      : undefined;
 
   return breadcrumbs.map((b, index) => {
     const href = getBreadcrumbHref(b.url);
@@ -79,7 +74,7 @@ export const getEntityBreadcrumbItems = (
       icon:
         index === serviceBreadcrumbIndex
           ? ServiceBreadcrumbIcon
-          : ENTITY_BREADCRUMB_ICONS[breadcrumbEntityType ?? ''],
+          : getBreadcrumbIcon(breadcrumbEntityType),
     };
   });
 };
