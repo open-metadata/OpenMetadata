@@ -32,44 +32,84 @@ import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import { LogViewerModalProps } from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
+import { useLogStream } from './useLogStream';
 
-const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
-  open,
-  onClose,
-  title,
-  logs,
-  loading = false,
-  theme = 'dark',
-  follow = false,
-  enableSearch = true,
-  enableCopy = true,
-  colorize = true,
-  onDownload,
-  status,
-  totalLines,
-  runId,
-  lastRun,
-}: LogViewerModalProps) => {
+const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
+  const {
+    open,
+    onClose,
+    title,
+    loading = false,
+    theme = 'dark',
+    follow = false,
+    enableSearch = true,
+    enableCopy = true,
+    colorize = true,
+    onDownload,
+    status,
+    totalLines,
+    runId,
+    lastRun,
+  } = props;
+
   const { t } = useTranslation();
-  const hasFooter = Boolean(
-    status || totalLines !== undefined || runId || lastRun
-  );
   const [searchText, setSearchText] = useState('');
   const [wrap, setWrap] = useState(false);
-  const { hasCopied, onCopyToClipBoard } = useClipboard(logs);
+
+  const isStream = props.mode === 'stream';
+  const fqn = isStream ? props.fqn : '';
+  const streamRunId = isStream ? props.runId : '';
+  const seedLogs = isStream ? props.logs ?? '' : props.logs;
+
+  const {
+    logs: streamLogs,
+    loading: streamLoading,
+    streamDone,
+    error: streamError,
+  } = useLogStream(fqn, streamRunId, isStream && open);
+
+  const resolvedLogs = useMemo(() => {
+    if (!isStream) {
+      return seedLogs;
+    }
+
+    const parts = [seedLogs, streamLogs];
+
+    if (streamError) {
+      parts.push(`[ERROR] Could not connect to log stream: ${streamError}`);
+    }
+
+    return parts.filter(Boolean).join('\n');
+  }, [isStream, seedLogs, streamLogs, streamError]);
+
+  const resolvedLoading = isStream ? streamLoading : loading;
+  const resolvedFollow = isStream && !streamDone ? true : follow;
+  const resolvedTotalLines = useMemo(
+    () =>
+      isStream
+        ? resolvedLogs.split('\n').filter(Boolean).length || undefined
+        : totalLines,
+    [isStream, resolvedLogs, totalLines]
+  );
+
+  const hasFooter = Boolean(
+    status || resolvedTotalLines !== undefined || runId || lastRun
+  );
+
+  const { hasCopied, onCopyToClipBoard } = useClipboard(resolvedLogs);
 
   const query = searchText.trim().toLowerCase();
 
   const filteredLogs = useMemo(() => {
     if (!query) {
-      return logs;
+      return resolvedLogs;
     }
 
-    return logs
+    return resolvedLogs
       .split('\n')
       .filter((line) => line.toLowerCase().includes(query))
       .join('\n');
-  }, [logs, query]);
+  }, [resolvedLogs, query]);
 
   const matchCount = useMemo(() => {
     if (!query) {
@@ -116,6 +156,20 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                 </span>
               </div>
               <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
+                {isStream && !streamDone && (
+                  <span
+                    aria-label={t('label.live')}
+                    className="lvm-dot lvm-dot--live"
+                    data-testid="log-viewer-live-indicator"
+                  />
+                )}
+                {isStream && streamDone && (
+                  <span
+                    aria-label={t('label.done')}
+                    className="lvm-dot lvm-dot--done"
+                    data-testid="log-viewer-done-indicator"
+                  />
+                )}
                 {enableSearch && (
                   <div className="lvm-search">
                     <SearchMd aria-hidden className="lvm-search-icon" />
@@ -143,7 +197,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                     className="lvm-copy-button"
                     data-testid="log-viewer-copy"
                     type="button"
-                    onClick={() => onCopyToClipBoard(logs)}>
+                    onClick={() => onCopyToClipBoard(resolvedLogs)}>
                     <Copy01 aria-hidden className="lvm-copy-icon" />
                     <span>
                       {hasCopied ? t('label.copied') : t('label.copy')}
@@ -183,7 +237,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
             <div
               className="lvm-body tw:relative tw:flex-1 tw:overflow-hidden"
               data-testid="log-viewer-body">
-              {loading ? (
+              {resolvedLoading ? (
                 <div className="tw:flex tw:h-full tw:items-center tw:justify-center">
                   <Loader />
                 </div>
@@ -200,7 +254,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                   selectableLines
                   enableSearch={false}
                   extraLines={1}
-                  follow={follow}
+                  follow={resolvedFollow}
                   formatPart={colorize ? formatLogPart : undefined}
                   rowHeight={25}
                   text={filteredLogs}
@@ -224,9 +278,11 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = ({
                       {status.label}
                     </span>
                   )}
-                  {totalLines !== undefined && (
+                  {resolvedTotalLines !== undefined && (
                     <span data-testid="log-viewer-total-lines">
-                      {`${totalLines} ${t('label.line-plural').toLowerCase()}`}
+                      {`${resolvedTotalLines} ${t(
+                        'label.line-plural'
+                      ).toLowerCase()}`}
                     </span>
                   )}
                 </div>

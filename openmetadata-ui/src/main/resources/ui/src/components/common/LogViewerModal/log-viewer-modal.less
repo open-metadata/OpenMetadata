@@ -101,6 +101,26 @@
     &--green {
       background-color: #27c93f;
     }
+
+    &--live {
+      background-color: var(--lvm-level-ok);
+      animation: lvm-pulse 1.2s ease-in-out infinite;
+    }
+
+    &--done {
+      background-color: var(--lvm-text-muted);
+    }
+  }
+
+  @keyframes lvm-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.3;
+    }
   }
 
   .lvm-file-icon {
