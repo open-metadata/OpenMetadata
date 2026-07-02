@@ -18,7 +18,8 @@ import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPag
 import { TestSuitesTable } from './TestSuitesTable.component';
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const SortContext = require('react').createContext<{
+  const React = require('react') as typeof import('react');
+  const SortContext = React.createContext<{
     sortDescriptor?: { column?: string; direction?: string };
     onSortChange?: (desc: {
       column?: string;
@@ -37,14 +38,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     allowsSorting?: boolean;
     isRowHeader?: boolean;
   }) => {
-    const { onSortChange, sortDescriptor } =
-      require('react').useContext(SortContext);
+    const { onSortChange, sortDescriptor } = React.useContext(SortContext);
     const handleClick = () => {
       if (!allowsSorting || !onSortChange) {
         return;
       }
       const currentDir =
-        sortDescriptor?.column === id ? sortDescriptor.direction : undefined;
+        sortDescriptor?.column === id ? sortDescriptor?.direction : undefined;
       const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
       onSortChange({ column: id, direction: newDir });
     };
@@ -195,7 +195,7 @@ const mockData: TestSuite[] = [
     fullyQualifiedName: 'svc.suite',
     basic: false,
     summary: { total: 10, success: 8 },
-  } as TestSuite,
+  },
 ];
 
 const mockPaging: Paging = { offset: 0, limit: 15, total: 1 };

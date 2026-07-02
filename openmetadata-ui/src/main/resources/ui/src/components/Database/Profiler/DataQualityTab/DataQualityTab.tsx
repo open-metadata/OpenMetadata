@@ -622,13 +622,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Table.Cell
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('name', 1)}>
-          <div
+          <Box
             data-testid={record.name}
-            role="presentation"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             <Link
-              className="tw:block tw:truncate"
+              className="tw:block tw:min-w-0 tw:truncate"
               state={{ breadcrumbData }}
               title={getEntityName(record)}
               to={{
@@ -639,16 +638,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }}>
               {getEntityName(record)}
             </Link>
-          </div>
+          </Box>
         </Table.Cell>
         {showTableColumn && (
           <Table.Cell style={getColumnLayoutStyle('table', 1)}>
-            <div
-              role="presentation"
+            <Box
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word"
+                className="break-word tw:min-w-0"
                 data-testid="table-link"
                 title={tableFqn}
                 to={getEntityDetailsPath(
@@ -659,7 +657,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 )}>
                 {tableFqn}
               </Link>
-            </div>
+            </Box>
           </Table.Cell>
         )}
         <Table.Cell
@@ -678,22 +676,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Table.Cell
           className="tw:whitespace-nowrap"
           style={getColumnLayoutStyle('incident', 1)}>
-          <div
-            role="presentation"
+          <Box
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             {renderIncidentCell(record)}
-          </div>
+          </Box>
         </Table.Cell>
         <Table.Cell
           className="tw:whitespace-nowrap tw:bg-primary tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
           style={getColumnLayoutStyle('actions', 1)}>
-          <div
-            role="presentation"
+          <Box
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             {renderActionsCell(record)}
-          </div>
+          </Box>
         </Table.Cell>
       </Table.Row>
     );

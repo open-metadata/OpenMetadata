@@ -186,7 +186,7 @@ export const TestSuitesTable = ({
         <Table.Body
           items={isLoading ? [] : data}
           renderEmptyState={() => (isLoading ? <></> : noDataPlaceholder)}>
-          {(record) => renderRow(record as TestSuite)}
+          {(record) => renderRow(record)}
         </Table.Body>
       </Table>
 

@@ -65,7 +65,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         items?: unknown[];
         children: (item: unknown) => React.ReactNode;
         renderEmptyState?: () => React.ReactNode;
-        dependencies?: unknown[];
       }) => (
         <tbody>
           {!items || items.length === 0

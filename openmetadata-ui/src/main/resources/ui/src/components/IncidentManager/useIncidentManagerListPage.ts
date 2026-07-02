@@ -63,13 +63,13 @@ import { getUserAndTeamSearch } from '../../rest/miscAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
+import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import {
   FilterDateValue,
   FilterDescriptor,
   FilterOptionData,
-} from '../common/FilterChip/FilterChip.interface';
-import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
-import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
+} from '../DataQuality/TestCases/FilterChip.interface';
 
 export interface UseIncidentManagerListPageProps {
   isIncidentPage?: boolean;

@@ -61,15 +61,15 @@ import {
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { TestCaseSearchParams } from '../DataQuality.interface';
 import {
   FilterControlType,
   FilterDescriptor,
   FilterOptionData,
   FilterValue,
-} from '../../common/FilterChip/FilterChip.interface';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { TestCaseSearchParams } from '../DataQuality.interface';
+} from './FilterChip.interface';
 
 /**
  * Back-compat aliases for existing importers. The descriptor the hook emits is
@@ -80,7 +80,7 @@ export type {
   FilterDescriptor as TestCaseFilterDescriptor,
   FilterOptionData as TestCaseFilterOptionData,
   FilterValue as TestCaseFilterValue,
-} from '../../common/FilterChip/FilterChip.interface';
+} from './FilterChip.interface';
 
 interface FetchedOption extends DefaultOptionType {
   /** Plain name kept alongside the rich antd JSX label for renderer reuse. */
@@ -163,9 +163,9 @@ export const useTestCaseListPage = () => {
     const search = location.search;
     const parsed = QueryString.parse(
       search.startsWith('?') ? search.substring(1) : search
-    );
+    ) as TestCaseSearchParams;
 
-    return parsed as TestCaseSearchParams;
+    return parsed;
   }, [location.search]);
 
   const { searchValue = '' } = params;

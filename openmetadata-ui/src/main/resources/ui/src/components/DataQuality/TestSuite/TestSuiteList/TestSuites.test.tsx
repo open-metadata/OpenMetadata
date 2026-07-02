@@ -60,8 +60,8 @@ const mockList = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const { createContext } = require('react') as typeof import('react');
-  const SortContext = createContext<{
+  const React = require('react') as typeof import('react');
+  const SortContext = React.createContext<{
     sortDescriptor?: { column?: string; direction?: string };
     onSortChange?: (desc: {
       column?: string;
@@ -78,14 +78,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     id?: string;
     allowsSorting?: boolean;
   }) => {
-    const { onSortChange, sortDescriptor } =
-      require('react').useContext(SortContext);
+    const { onSortChange, sortDescriptor } = React.useContext(SortContext);
     const handleClick = () => {
       if (!allowsSorting || !onSortChange) {
         return;
       }
       const currentDir =
-        sortDescriptor?.column === id ? sortDescriptor.direction : undefined;
+        sortDescriptor?.column === id ? sortDescriptor?.direction : undefined;
       const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
       onSortChange({ column: id, direction: newDir });
     };
@@ -110,12 +109,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => void;
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
-  }>) => (
-    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
-      <table data-testid={testId}>{children}</table>
-    </SortContext.Provider>
-  );
+  }>) => {
+    const value = { sortDescriptor, onSortChange };
 
+    return (
+      <SortContext.Provider value={value}>
+        <table data-testid={testId}>{children}</table>
+      </SortContext.Provider>
+    );
+  };
   MockTable.Header = ({
     columns,
     children,
@@ -160,10 +162,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   const cloneWith = (children: React.ReactNode, props: object) =>
-    require('react').Children.map(children, (child: React.ReactNode) =>
-      require('react').isValidElement(child)
-        ? require('react').cloneElement(child, props)
-        : child
+    React.Children.map(children, (child: React.ReactNode) =>
+      React.isValidElement(child) ? React.cloneElement(child, props) : child
     );
 
   const MockTabs = ({

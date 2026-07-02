@@ -91,12 +91,12 @@ jest.mock('react-aria-components', () => ({
     }
 
     return (
-      <div
+      <button
         data-disabled={String(Boolean(isDisabled))}
         data-testid={testId}
         onClick={() => onAction?.(id)}>
         {children}
-      </div>
+      </button>
     );
   },
 }));

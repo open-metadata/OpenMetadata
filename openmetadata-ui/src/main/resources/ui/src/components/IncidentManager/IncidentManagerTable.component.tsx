@@ -178,10 +178,7 @@ const IncidentManagerTable = ({
           </Table.Cell>
         )}
         <Table.Cell className="tw:whitespace-nowrap">
-          <DateTimeDisplay
-            size="compact"
-            timestamp={record.timestamp as number}
-          />
+          <DateTimeDisplay size="compact" timestamp={record.timestamp} />
         </Table.Cell>
         <Table.Cell>
           {isPermissionLoading ? (

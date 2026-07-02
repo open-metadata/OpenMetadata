@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode, act } from 'react';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {

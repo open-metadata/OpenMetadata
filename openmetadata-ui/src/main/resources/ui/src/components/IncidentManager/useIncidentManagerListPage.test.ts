@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import QueryString from 'qs';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';

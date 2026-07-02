@@ -147,7 +147,7 @@ describe('useDataQualityDashboardFilters', () => {
 
     act(() => {
       findOwner(result.current.filters).onChange([
-        { id: '1', type: 'user', name: 'john' } as EntityReference,
+        { id: '1', type: 'user', name: 'john' },
       ]);
     });
 
