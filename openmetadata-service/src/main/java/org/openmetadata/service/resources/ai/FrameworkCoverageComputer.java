@@ -60,19 +60,26 @@ final class FrameworkCoverageComputer {
 
   static Map<String, Object> compute(
       AIGovernanceFramework framework, List<AIFrameworkControl> controls) {
-    List<EntityInterface> assets = collectInScopeAssets(framework);
+    return compute(framework, controls, collectInScopeAssets(framework));
+  }
+
+  static Map<String, Object> compute(
+      AIGovernanceFramework framework,
+      List<AIFrameworkControl> controls,
+      List<EntityInterface> assets) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("frameworkId", framework.getId() == null ? null : framework.getId().toString());
     response.put("frameworkName", framework.getName());
     response.put("assetsInScope", assets.size());
 
     String frameworkName = framework.getName();
-    int totalEvidenceCount = 0;
+    List<AssetCompliance> assetCompliance =
+        assets.stream().map(asset -> assetCompliance(asset, frameworkName)).toList();
     int compliantAssetCount = 0;
     int partialAssetCount = 0;
     int nonCompliantAssetCount = 0;
-    for (EntityInterface asset : assets) {
-      Map<String, Object> record = findComplianceRecord(asset, frameworkName);
+    for (AssetCompliance compliance : assetCompliance) {
+      Map<String, Object> record = compliance.record();
       if (record == null) {
         nonCompliantAssetCount++;
         continue;
@@ -85,26 +92,21 @@ final class FrameworkCoverageComputer {
       } else if ("NonCompliant".equals(status) || "UnderReview".equals(status)) {
         nonCompliantAssetCount++;
       }
-      Object verification = record.get("verification");
-      if (verification instanceof Map<?, ?> v
-          && ((Map<String, Object>) v).get("certificateUrl") != null) {
-        totalEvidenceCount++;
-      }
     }
 
     List<Map<String, Object>> entries = new ArrayList<>();
-    int controlEvidenceShare = controls.isEmpty() ? 0 : totalEvidenceCount / controls.size();
     for (AIFrameworkControl control : controls) {
       Map<String, Object> entry = new LinkedHashMap<>();
       String code = control.getCode() == null ? control.getName() : control.getCode();
+      ControlCoverage coverage = controlCoverage(assetCompliance, frameworkName, code);
       entry.put("code", code);
       entry.put("displayName", control.getDisplayName());
       entry.put("category", control.getCategory());
-      entry.put("status", deriveControlStatus(nonCompliantAssetCount, partialAssetCount));
+      entry.put("status", deriveControlStatus(coverage.nonCompliant(), coverage.partial()));
       entry.put(
           "affectedAssetCount",
-          deriveAffectedAssetCount(nonCompliantAssetCount, partialAssetCount));
-      entry.put("evidenceCount", controlEvidenceShare);
+          deriveAffectedAssetCount(coverage.nonCompliant(), coverage.partial()));
+      entry.put("evidenceCount", coverage.evidence());
       entries.add(entry);
     }
     response.put("controls", entries);
@@ -119,6 +121,32 @@ final class FrameworkCoverageComputer {
             nonCompliantAssetCount));
 
     return response;
+  }
+
+  private static ControlCoverage controlCoverage(
+      List<AssetCompliance> assetCompliance, String frameworkName, String controlCode) {
+    int evidence = 0;
+    int partial = 0;
+    int nonCompliant = 0;
+    for (AssetCompliance compliance : assetCompliance) {
+      Map<String, Object> record = compliance.record();
+      if (record == null) {
+        nonCompliant++;
+        continue;
+      }
+      if (hasEvidence(record)) {
+        evidence++;
+      }
+      String status = String.valueOf(record.getOrDefault("status", "UnderReview"));
+      if ("NonCompliant".equals(status) || "UnderReview".equals(status)) {
+        nonCompliant++;
+      } else if ("PartiallyCompliant".equals(status)
+          || hasPendingRemediation(compliance.remediationActions(), frameworkName, controlCode)) {
+        partial++;
+      }
+    }
+
+    return new ControlCoverage(evidence, partial, nonCompliant);
   }
 
   private static String deriveControlStatus(int nonCompliant, int partial) {
@@ -138,10 +166,21 @@ final class FrameworkCoverageComputer {
     return nonCompliant + partial;
   }
 
+  private static AssetCompliance assetCompliance(EntityInterface asset, String frameworkName) {
+    Map<String, Object> raw = rawAsset(asset);
+    Map<String, Object> governance = governanceOf(raw);
+    return new AssetCompliance(
+        findComplianceRecord(governance, frameworkName), remediationActions(raw, governance));
+  }
+
   private static Map<String, Object> findComplianceRecord(
       EntityInterface asset, String frameworkName) {
+    return findComplianceRecord(governanceOf(asset), frameworkName);
+  }
+
+  private static Map<String, Object> findComplianceRecord(
+      Map<String, Object> governance, String frameworkName) {
     Map<String, Object> result = null;
-    Map<String, Object> governance = governanceOf(asset);
     if (governance != null) {
       Object aiCompliance = governance.get("aiCompliance");
       if (aiCompliance instanceof Map<?, ?> compliance) {
@@ -164,6 +203,31 @@ final class FrameworkCoverageComputer {
     return result;
   }
 
+  private static boolean hasEvidence(Map<String, Object> record) {
+    Object verification = record.get("verification");
+    return verification instanceof Map<?, ?> v
+        && ((Map<String, Object>) v).get("certificateUrl") != null;
+  }
+
+  private static boolean hasPendingRemediation(
+      List<Map<String, Object>> remediationActions, String frameworkName, String controlCode) {
+    boolean result = false;
+    for (Map<String, Object> action : remediationActions) {
+      if (frameworkMatches(action.get("frameworkRef"), frameworkName)
+          && controlMatches(action.get("controlCode"), controlCode)
+          && !"Done".equals(String.valueOf(action.get("status")))) {
+        result = true;
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  private static boolean controlMatches(Object actionControlCode, String controlCode) {
+    return actionControlCode instanceof String value && value.equalsIgnoreCase(controlCode);
+  }
+
   private static boolean frameworkMatches(Object recordFramework, String frameworkName) {
     boolean result = false;
     if (recordFramework instanceof String value && value.equalsIgnoreCase(frameworkName)) {
@@ -179,18 +243,48 @@ final class FrameworkCoverageComputer {
   }
 
   private static Map<String, Object> governanceOf(EntityInterface asset) {
+    return governanceOf(rawAsset(asset));
+  }
+
+  private static Map<String, Object> rawAsset(EntityInterface asset) {
     Map<String, Object> result = null;
     try {
-      Map<String, Object> raw = JsonUtils.readValue(JsonUtils.pojoToJson(asset), Map.class);
+      result = JsonUtils.readValue(JsonUtils.pojoToJson(asset), Map.class);
+    } catch (Exception ignored) {
+      // Best-effort — empty entity state returns null
+    }
+
+    return result;
+  }
+
+  private static Map<String, Object> governanceOf(Map<String, Object> raw) {
+    Map<String, Object> result = null;
+    if (raw != null) {
       Object governance = raw.get("governanceMetadata");
       if (governance instanceof Map<?, ?> g) {
         result = (Map<String, Object>) g;
       }
-    } catch (Exception ignored) {
-      // Best-effort — empty governance returns null
     }
 
     return result;
+  }
+
+  private static List<Map<String, Object>> remediationActions(
+      Map<String, Object> raw, Map<String, Object> governance) {
+    List<Map<String, Object>> result = new ArrayList<>();
+    addRemediationActions(result, governance == null ? null : governance.get("remediationActions"));
+    addRemediationActions(result, raw == null ? null : raw.get("remediationActions"));
+    return result;
+  }
+
+  private static void addRemediationActions(List<Map<String, Object>> result, Object actions) {
+    if (actions instanceof List<?> list) {
+      for (Object action : list) {
+        if (action instanceof Map<?, ?> actionMap) {
+          result.add((Map<String, Object>) actionMap);
+        }
+      }
+    }
   }
 
   private static List<EntityInterface> collectInScopeAssets(AIGovernanceFramework framework) {
@@ -412,4 +506,9 @@ final class FrameworkCoverageComputer {
 
     return result;
   }
+
+  private record AssetCompliance(
+      Map<String, Object> record, List<Map<String, Object>> remediationActions) {}
+
+  private record ControlCoverage(int evidence, int partial, int nonCompliant) {}
 }

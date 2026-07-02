@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.ai;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
@@ -318,7 +319,8 @@ final class PolicyEvaluator {
           continue;
         }
         String ruleName = String.valueOf(rule.get("name"));
-        if (ruleNamePattern != null && !ruleName.toLowerCase().contains(ruleNamePattern)) {
+        if (ruleNamePattern != null
+            && !ruleName.toLowerCase(Locale.ROOT).contains(ruleNamePattern)) {
           continue;
         }
         Long observedAt = entity.getUpdatedAt();
@@ -375,7 +377,9 @@ final class PolicyEvaluator {
           (AIGovernancePolicyRepository) Entity.getEntityRepository(Entity.AI_GOVERNANCE_POLICY);
       AIGovernancePolicy policy = repo.get(null, policyId, repo.getFields("id,name"));
       String name =
-          policy == null || policy.getName() == null ? "" : policy.getName().toLowerCase();
+          policy == null || policy.getName() == null
+              ? ""
+              : policy.getName().toLowerCase(Locale.ROOT);
       if (name.contains("pii") || name.contains("dpia")) {
         return "pii";
       }
