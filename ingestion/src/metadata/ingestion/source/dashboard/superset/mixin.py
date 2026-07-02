@@ -20,6 +20,8 @@ from collate_sqllineage.core.models import Column as LineageColumn
 from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
@@ -298,14 +300,36 @@ class SupersetSourceMixin(DashboardServiceSource):
             fqn=datamodel_fqn,
         )
 
+    def yield_datamodel_dashboard_lineage(
+        self,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Skip the base class' direct DataModel -> Dashboard lineage edge.
+        For Superset we bridge the chain through the Chart node so the graph
+        renders DataModel -> Chart -> Dashboard rather than DataModel ->
+        Dashboard alongside the chart list. The DataModel -> Chart edge is
+        emitted in yield_dashboard_lineage_details.
+        """
+        return
+        yield  # pragma: no cover  # noqa: F841  # mark this as a generator
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Union[FetchDashboard, DashboardResult],  # noqa: UP007
         db_service_prefix: Optional[str] = None,  # noqa: UP045
     ) -> Iterable[Either[AddLineageRequest]]:
         """
-        Get lineage between datamodel and table
+        Emit lineage edges Table -> DataModel -> Chart -> Dashboard for every
+        chart on this dashboard. Dashboard.charts (set in yield_dashboard)
+        is a structural ref only — the dashboard lineage graph traverses
+        through explicit lineage edges, so we also emit Chart -> Dashboard
+        here. The base class' direct DataModel -> Dashboard edge is
+        suppressed by the override of yield_datamodel_dashboard_lineage so
+        the chart node bridges the chain in the rendered graph.
         """
+        # Resolve the dashboard entity once per dashboard, not once per chart,
+        # to avoid an N+1 lookup against the metadata server.
+        dashboard_entity = self._get_dashboard_entity(dashboard_details)
         for chart_json in filter(
             None,
             [self.all_charts.get(chart_id) for chart_id in self._get_charts_of_dashboard(dashboard_details)],
@@ -324,6 +348,26 @@ class SupersetSourceMixin(DashboardServiceSource):
                             from_entity=from_entity_table,
                             column_lineage=column_lineage,
                         )
+
+                    # DataModel -> Chart -> Dashboard bridge: emit BOTH edges
+                    # so the dashboard's lineage graph renders the chart
+                    # between the datamodel and the dashboard, instead of
+                    # the datamodel hanging off the dashboard directly.
+                    chart_entity = self._get_chart_entity(chart_json)
+                    if chart_entity is not None:
+                        dm_to_chart = self._get_add_lineage_request(
+                            to_entity=chart_entity,
+                            from_entity=to_entity,
+                        )
+                        if dm_to_chart is not None:
+                            yield dm_to_chart
+                        if dashboard_entity is not None:
+                            chart_to_dash = self._get_add_lineage_request(
+                                to_entity=dashboard_entity,
+                                from_entity=chart_entity,
+                            )
+                            if chart_to_dash is not None:
+                                yield chart_to_dash
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -335,6 +379,54 @@ class SupersetSourceMixin(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def _get_dashboard_entity(self, dashboard_details) -> Optional[Dashboard]:
+        """
+        Look up the Dashboard entity created earlier so we can emit a
+        Chart -> Dashboard lineage edge.
+        """
+        dashboard_id = getattr(dashboard_details, "id", None)
+        if dashboard_id is None:
+            return None
+        try:
+            dashboard_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,
+                dashboard_name=str(dashboard_id),
+            )
+            return self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to resolve dashboard entity for dashboard_id=%s: %s",
+                dashboard_id,
+                exc,
+            )
+            return None
+
+    def _get_chart_entity(self, chart_json) -> Optional[Chart]:
+        """
+        Look up the Chart entity created earlier in this pipeline so we can
+        emit a DataModel -> Chart lineage edge.
+        """
+        chart_id = getattr(chart_json, "id", None)
+        if chart_id is None:
+            return None
+        try:
+            chart_fqn = fqn.build(
+                self.metadata,
+                entity_type=Chart,
+                service_name=self.context.get().dashboard_service,
+                chart_name=str(chart_id),
+            )
+            return self.metadata.get_by_name(entity=Chart, fqn=chart_fqn)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "Failed to resolve chart entity for chart_id=%s: %s",
+                chart_id,
+                exc,
+            )
+            return None
 
     def _get_datamodel(self, datamodel: Union[SupersetDatasource, FetchChart]) -> Optional[DashboardDataModel]:  # noqa: UP007, UP045
         """
