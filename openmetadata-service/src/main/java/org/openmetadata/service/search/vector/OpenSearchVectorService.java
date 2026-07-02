@@ -352,7 +352,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("tier", nestedKeyword("tagFQN"));
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
-    var mappings = MAPPER.createObjectNode().put("dynamic", "false").set("properties", properties);
+    var mappings = MAPPER.createObjectNode().put("dynamic", false).set("properties", properties);
     var root = MAPPER.createObjectNode();
     root.set(
         "settings",
@@ -482,30 +482,46 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure): if any
-   * chunk docs still exist for the parent, remove them by query before rewriting, so stale ids
-   * beyond the new count cannot linger. The {@code _count} guard keeps the common first-write path
-   * (genuinely no chunks yet) free of delete-by-query.
+   * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure).
+   * {@code previousCount == 0} is overwhelmingly the brand-new-entity case on the write and
+   * reindex-backfill hot paths, so the guard is the cheapest primitive available — a real-time
+   * by-id existence probe of chunk 1 that never touches the search layer. Only when a trailing
+   * chunk survived without its header do we pay a delete-by-query heal. (A failure that drops
+   * both chunk 0 and chunk 1 while later chunks survive would evade the probe; the next
+   * successful full write overwrites those ids anyway.)
    */
   private void cleanOrphanChunks(String indexName, String parentId) {
     try {
-      String body =
-          "{\"query\":{\"term\":{\"parentId\":\""
-              + VectorSearchQueryBuilder.escape(parentId)
-              + "\"}}}";
-      String response = executeGenericRequest("POST", "/" + indexName + "/_count", body);
-      long count = MAPPER.readTree(response).path("count").asLong(0);
-      if (count > 0) {
-        LOG.warn(
-            "Healing {} orphan chunk doc(s) for parent {} with missing chunk-0 header",
-            count,
-            parentId);
+      if (chunkDocExists(indexName, parentId + "_1")) {
+        LOG.warn("Healing orphan chunk docs for parent {} with missing chunk-0 header", parentId);
+        String body =
+            "{\"query\":{\"term\":{\"parentId\":\""
+                + VectorSearchQueryBuilder.escape(parentId)
+                + "\"}}}";
         executeGenericRequest(
             "POST", "/" + indexName + "/_delete_by_query?conflicts=proceed", body);
       }
     } catch (Exception e) {
       LOG.debug("Orphan chunk cleanup skipped for {}: {}", parentId, e.getMessage());
     }
+  }
+
+  private boolean chunkDocExists(String indexName, String docId) {
+    boolean exists = false;
+    try {
+      OpenSearchGenericClient genericClient = client.generic();
+      var request =
+          Requests.builder()
+              .endpoint("/" + indexName + "/_doc/" + docId + "?_source=false")
+              .method("HEAD")
+              .build();
+      try (var response = genericClient.execute(request)) {
+        exists = response.getStatus() < 300;
+      }
+    } catch (Exception e) {
+      LOG.debug("Chunk existence probe failed for {}: {}", docId, e.getMessage());
+    }
+    return exists;
   }
 
   private static void appendChunkDeletes(
@@ -625,15 +641,23 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private static boolean isDuplicateChunk(List<Map<String, Object>> group, Object chunkIndex) {
     boolean duplicate = false;
-    if (chunkIndex != null) {
-      for (Map<String, Object> member : group) {
-        if (chunkIndex.equals(member.get("chunkIndex"))) {
-          duplicate = true;
-          break;
-        }
+    Object key = normalizeChunkIndex(chunkIndex);
+    for (Map<String, Object> member : group) {
+      if (key.equals(normalizeChunkIndex(member.get("chunkIndex")))) {
+        duplicate = true;
+        break;
       }
     }
     return duplicate;
+  }
+
+  /**
+   * Every embedding writer (legacy entity-doc and chunk-index) sets {@code chunkIndex} — 0 for the
+   * legacy single-doc format — so a missing value can only come from exotic/manual docs. Treat it
+   * as chunk 0 so such a doc still dedupes against the real chunk 0 during dual-write migration.
+   */
+  private static Object normalizeChunkIndex(Object chunkIndex) {
+    return chunkIndex == null ? 0 : chunkIndex;
   }
 
   private static long extractTotalHits(JsonNode root) {
