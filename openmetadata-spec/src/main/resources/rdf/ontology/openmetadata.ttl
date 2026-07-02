@@ -24,7 +24,7 @@
 
 # OpenMetadata Complete Ontology
 om: a owl:Ontology ;
-    owl:versionInfo "1.0.0" ;
+    owl:versionInfo "1.1.0" ;
     dct:title "OpenMetadata Ontology" ;
     dct:description "Complete ontology for OpenMetadata covering all entities and relationships" ;
     dct:creator "OpenMetadata Team" ;
@@ -602,6 +602,16 @@ om:belongsToService a owl:ObjectProperty ;
 om:Column a owl:Class ;
     rdfs:label "Column" ;
     rdfs:comment "Column in a table" ;
+    rdfs:subClassOf om:Entity .
+
+om:TableConstraint a owl:Class ;
+    rdfs:label "Table Constraint" ;
+    rdfs:comment "A constraint (primary key, foreign key, unique, etc.) declared on a table." ;
+    rdfs:subClassOf om:Entity .
+
+om:LineageDetails a owl:Class ;
+    rdfs:label "Lineage Details" ;
+    rdfs:comment "Reified details of a lineage edge, including column-level mappings and the pipeline that produced it." ;
     rdfs:subClassOf om:Entity .
 
 om:hasColumn a owl:ObjectProperty ;

@@ -49,6 +49,12 @@ export interface RDFConfiguration {
      */
     enabled: boolean;
     /**
+     * Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is
+     * disabled by default; SERVICE clauses are rejected unless the target URI is in the
+     * allowlist.
+     */
+    federation?: Federation;
+    /**
      * Enable inference/reasoning on SPARQL queries. When enabled, SPARQL queries will use the
      * inference engine to derive additional triples based on the reasoning level.
      */
@@ -100,6 +106,24 @@ export enum ReasoningLevel {
     OwlDL = "OWL_DL",
     OwlLite = "OWL_LITE",
     Rdfs = "RDFS",
+}
+
+/**
+ * Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is
+ * disabled by default; SERVICE clauses are rejected unless the target URI is in the
+ * allowlist.
+ */
+export interface Federation {
+    /**
+     * External SPARQL endpoint URIs that may appear in SERVICE clauses. Compared verbatim
+     * against the URI in the SERVICE clause; trailing slashes matter.
+     */
+    allowedEndpoints?: string[];
+    /**
+     * Master switch for federated SPARQL. When false, every SERVICE clause is rejected
+     * regardless of allowlist contents.
+     */
+    enabled?: boolean;
 }
 
 /**

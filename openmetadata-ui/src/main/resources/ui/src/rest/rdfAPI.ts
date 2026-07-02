@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  Format as SparqlResultFormat,
+  Inference as SparqlInferenceLevel,
+} from '../generated/api/rdf/sparqlQuery';
+import { SparqlResponse } from '../generated/api/rdf/sparqlResponse';
 import APIClient from './index';
 import {
   EntityGraphExportFormat,
@@ -18,6 +23,79 @@ import {
   GlossaryGraphParams,
   GraphData,
 } from './rdfAPI.interface';
+
+export type SparqlPlaygroundFormat = `${SparqlResultFormat}`;
+export type SparqlPlaygroundInference = `${SparqlInferenceLevel}`;
+
+export interface SparqlPlaygroundParams {
+  query: string;
+  format?: SparqlPlaygroundFormat;
+  inference?: SparqlPlaygroundInference;
+}
+
+export interface SparqlPlaygroundResult {
+  format: SparqlPlaygroundFormat;
+  body: string;
+  parsed?: SparqlResponse;
+  contentType: string;
+  durationMs: number;
+}
+
+const SPARQL_RESULT_MIME: Record<SparqlPlaygroundFormat, string> = {
+  json: 'application/sparql-results+json',
+  xml: 'application/sparql-results+xml',
+  csv: 'text/csv',
+  tsv: 'text/tab-separated-values',
+  turtle: 'text/turtle',
+  rdfxml: 'application/rdf+xml',
+  ntriples: 'application/n-triples',
+  jsonld: 'application/ld+json',
+};
+
+/**
+ * POST /v1/rdf/sparql. The server returns the result body in the requested
+ * SPARQL serialization (JSON/XML/CSV/TSV for SELECT/ASK; Turtle/N-Triples/
+ * RDF-XML/JSON-LD for CONSTRUCT/DESCRIBE).
+ */
+export const runSparqlQuery = async (
+  params: SparqlPlaygroundParams
+): Promise<SparqlPlaygroundResult> => {
+  const format: SparqlPlaygroundFormat = params.format ?? 'json';
+  const inference: SparqlPlaygroundInference = params.inference ?? 'none';
+  const acceptMime = SPARQL_RESULT_MIME[format];
+  const start = performance.now();
+  const response = await APIClient.post(
+    '/rdf/sparql',
+    {
+      query: params.query,
+      format,
+      inference,
+    },
+    {
+      headers: { Accept: acceptMime },
+      transformResponse: [(data) => data],
+      responseType: 'text',
+    }
+  );
+  const durationMs = Math.round(performance.now() - start);
+  const body = typeof response.data === 'string' ? response.data : '';
+  let parsed: SparqlResponse | undefined;
+  if (format === 'json') {
+    try {
+      parsed = JSON.parse(body) as SparqlResponse;
+    } catch (e) {
+      parsed = undefined;
+    }
+  }
+
+  return {
+    format,
+    body,
+    parsed,
+    contentType: response.headers['content-type'] ?? acceptMime,
+    durationMs,
+  };
+};
 
 export const EXPORT_FORMAT_TO_ACCEPT_HEADER: Record<string, string> = {
   jsonld: 'application/ld+json',

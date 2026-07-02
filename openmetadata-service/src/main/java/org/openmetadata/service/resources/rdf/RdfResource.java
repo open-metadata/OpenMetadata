@@ -19,19 +19,45 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import javax.validation.constraints.NotEmpty;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.shacl.ValidationReport;
+import org.apache.jena.update.UpdateFactory;
+import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
+import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.extension.CustomOntologyRegistry;
+import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
+import org.openmetadata.service.rdf.inference.InferenceRuleRegistry;
+import org.openmetadata.service.rdf.inference.InferenceRuleValidator;
+import org.openmetadata.service.rdf.insights.CentralityComputation;
+import org.openmetadata.service.rdf.insights.CoOccurrenceQueryBuilder;
+import org.openmetadata.service.rdf.insights.CommunityComputation;
+import org.openmetadata.service.rdf.insights.ImportanceQueryBuilder;
+import org.openmetadata.service.rdf.insights.LineagePathBuilder;
+import org.openmetadata.service.rdf.insights.LineagePathFinder;
+import org.openmetadata.service.rdf.insights.RecommendationsQueryBuilder;
 import org.openmetadata.service.rdf.semantic.SemanticSearchEngine;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -49,6 +75,7 @@ public class RdfResource {
   private volatile RdfRepository rdfRepository;
   private final Authorizer authorizer;
   private volatile SemanticSearchEngine semanticSearchEngine;
+  private volatile SparqlFederationGuard federationGuard;
   private OpenMetadataApplicationConfig config;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -91,6 +118,15 @@ public class RdfResource {
         || !Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
       LOG.info("RDF support is disabled in configuration");
     }
+    this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
+  }
+
+  private synchronized SparqlFederationGuard getFederationGuard() {
+    if (federationGuard == null) {
+      // Tests or restarted resource without initialize(); default to closed allowlist.
+      federationGuard = new SparqlFederationGuard(null);
+    }
+    return federationGuard;
   }
 
   @GET
@@ -130,6 +166,598 @@ public class RdfResource {
             enabled ? getRdfRepository().getConfig().getStorageType() : "N/A");
 
     return Response.ok().entity(statusJson).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @POST
+  @Path("/validate")
+  @Produces({TURTLE, JSON_LD, MediaType.APPLICATION_JSON})
+  @Operation(
+      operationId = "validateGraph",
+      summary = "Run SHACL validation against the OpenMetadata knowledge graph",
+      description =
+          "Loads the canonical SHACL shapes (rdf/shapes/openmetadata-shapes.ttl) and validates either a single entity's subgraph or the entire dataset against them. The endpoint reports violations; it does not mutate the graph or block writes.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description =
+                "SHACL validation report (sh:ValidationReport). Conforms field is true when there are no violations.",
+            content = {@Content(mediaType = TURTLE), @Content(mediaType = JSON_LD)}),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response validateGraph(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Optional. Full URI of the entity to scope the validation to (DESCRIBE <uri>). Omit to validate the whole dataset (admin-only, expensive).")
+          @QueryParam("entityUri")
+          String entityUri,
+      @Parameter(description = "Report serialization: turtle (default) or jsonld")
+          @QueryParam("format")
+          @DefaultValue("turtle")
+          String format) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("{\"error\": \"RDF service not enabled\"}")
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+
+    String constructQuery;
+    if (entityUri != null && !entityUri.isBlank()) {
+      String validated = RdfIriValidator.validateEntityIri(entityUri);
+      if (validated == null) {
+        return Response.status(Response.Status.BAD_REQUEST)
+            .entity(buildErrorResponse("entityUri must be an absolute http(s) IRI"))
+            .type(MediaType.APPLICATION_JSON)
+            .build();
+      }
+      constructQuery = String.format("DESCRIBE <%s>", validated);
+    } else {
+      constructQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
+    }
+
+    String dataTurtle = getRdfRepository().executeSparqlQueryDirect(constructQuery, "text/turtle");
+    Model dataModel = ModelFactory.createDefaultModel();
+    try (StringReader reader = new StringReader(dataTurtle)) {
+      RDFDataMgr.read(dataModel, reader, getRdfRepository().getBaseUri(), Lang.TURTLE);
+    } catch (Exception e) {
+      LOG.error("Failed to parse subgraph for SHACL validation", e);
+      return Response.serverError()
+          .entity("{\"error\": \"failed to load subgraph for validation\"}")
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+
+    ValidationReport report = RdfShaclValidator.validate(dataModel);
+
+    RDFFormat rdfFormat =
+        "jsonld".equalsIgnoreCase(format) ? RDFFormat.JSONLD_PRETTY : RDFFormat.TURTLE_PRETTY;
+    String responseMediaType = "jsonld".equalsIgnoreCase(format) ? JSON_LD : TURTLE;
+
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    RDFDataMgr.write(out, report.getModel(), rdfFormat);
+    return Response.ok(out.toString(StandardCharsets.UTF_8))
+        .type(responseMediaType)
+        .header("OM-SHACL-Conforms", String.valueOf(report.conforms()))
+        .build();
+  }
+
+  @GET
+  @Path("/rules")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "listInferenceRules",
+      summary = "List loaded inference rules",
+      description =
+          "Returns all inference rules loaded into this server, in execution order (priority then name). Includes the shipped starter pack plus any rules that have been upserted at runtime.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "List of inference rules"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response listInferenceRules(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    List<InferenceRule> rules = InferenceRuleRegistry.getInstance().list();
+    return Response.ok(JsonUtils.pojoToJson(Map.of("rules", rules))).build();
+  }
+
+  @GET
+  @Path("/rules/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "getInferenceRule",
+      summary = "Get a single inference rule by name",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The rule"),
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "Rule not found")
+      })
+  public Response getInferenceRule(
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
+    authorizer.authorizeAdmin(securityContext);
+    return InferenceRuleRegistry.getInstance()
+        .get(name)
+        .map(rule -> Response.ok(JsonUtils.pojoToJson(rule)).build())
+        .orElse(
+            Response.status(Response.Status.NOT_FOUND)
+                .entity(buildErrorResponse("Inference rule not found: " + name))
+                .type(MediaType.APPLICATION_JSON)
+                .build());
+  }
+
+  @GET
+  @Path("/insights/important")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "listImportantEntities",
+      summary = "Rank entities by an importance score that blends usage data and lineage topology",
+      description =
+          "Returns the top-N entities of the given type ranked by a composite importance score. The score blends OpenMetadata's existing usage percentile (real query data — 0.6 weight) with downstream lineage edge count (graph topology — 0.4 weight). Once Phase 3.1.b ships, an om:centralityScore from PageRank will fill in for entities that have no query usage data. Results are SPARQL JSON.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description =
+                "Ranked list of entities with usage percentile, downstream count, and composite score"),
+        @ApiResponse(responseCode = "400", description = "Invalid entityType, window, or limit"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response listImportantEntities(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description =
+                  "Entity type to rank (singular: table, dashboard, pipeline, mlmodel, ...). Required.",
+              required = true)
+          @QueryParam("entityType")
+          @NotEmpty
+          String entityType,
+      @Parameter(description = "Usage window: daily, weekly, or monthly. Defaults to daily.")
+          @QueryParam("window")
+          @DefaultValue("daily")
+          String window,
+      @Parameter(description = "Number of results. 1–100, defaults to 20.")
+          @QueryParam("limit")
+          @DefaultValue("20")
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    String sparql;
+    try {
+      sparql = ImportanceQueryBuilder.build(entityType, window, limit);
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(sparql, "json", "none");
+  }
+
+  @POST
+  @Path("/insights/recompute-centrality")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "recomputeCentrality",
+      summary = "Run weighted PageRank on the entity graph and persist scores",
+      description =
+          "Triggers Phase 3.1.b's centrality computation: walks lineage / tagging / containment edges of the requested entity type, runs weighted PageRank, and writes the results to the named graph <om:insights/centrality/{entityType}>. The /v1/rdf/insights/important endpoint blends these scores in for entities without query usage data. Admin-only; expensive — designed to run on a schedule, but exposed for manual triggering.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Centrality computation result"),
+        @ApiResponse(responseCode = "400", description = "Invalid entityType"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response recomputeCentrality(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type to score (e.g. table, dashboard, pipeline). Required.",
+              required = true)
+          @QueryParam("entityType")
+          @NotEmpty
+          String entityType) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    try {
+      CentralityComputation.Result result =
+          new CentralityComputation(getRdfRepository()).computeAndPersist(entityType);
+      return Response.ok(JsonUtils.pojoToJson(result)).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+  }
+
+  @POST
+  @Path("/insights/recompute-communities")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "recomputeCommunities",
+      summary = "Run Louvain community detection and persist communities",
+      description =
+          "Phase 3.2: extracts the lineage or tag-co-occurrence graph for the requested entity type, runs Louvain modularity optimization, and persists communities to the named graph <om:insights/communities/{graphType}/{entityType}>. Each community is an om:Community resource with om:hasMember triples and modularity score. Admin-only; designed to be triggered on a schedule.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Community detection result"),
+        @ApiResponse(responseCode = "400", description = "Invalid entityType or graphType"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response recomputeCommunities(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type to cluster (e.g. table, dashboard).", required = true)
+          @QueryParam("entityType")
+          @NotEmpty
+          String entityType,
+      @Parameter(description = "Source graph: lineage (default) or tagCoOccurrence.")
+          @QueryParam("graphType")
+          @DefaultValue("lineage")
+          String graphType) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    try {
+      CommunityComputation.Result result =
+          new CommunityComputation(getRdfRepository()).computeAndPersist(entityType, graphType);
+      return Response.ok(JsonUtils.pojoToJson(result)).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/insights/communities")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "listCommunities",
+      summary = "List communities discovered by the latest community-detection run",
+      description =
+          "Returns a SPARQL SELECT JSON document with rows of (community, size, modularity, member) for the named graph populated by /insights/recompute-communities. Communities are ordered by size descending; one row per (community, member) pair so the caller can group as needed.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Communities + members"),
+        @ApiResponse(responseCode = "400", description = "Invalid entityType or graphType"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response listCommunities(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Entity type whose community partition you want.", required = true)
+          @QueryParam("entityType")
+          @NotEmpty
+          String entityType,
+      @Parameter(description = "Source graph: lineage (default) or tagCoOccurrence.")
+          @QueryParam("graphType")
+          @DefaultValue("lineage")
+          String graphType) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    String sparql;
+    try {
+      sparql = CommunityComputation.listingSparql(entityType, graphType);
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(sparql, "json", "none");
+  }
+
+  @GET
+  @Path("/insights/path")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "findLineagePath",
+      summary = "Find the shortest lineage path between two entities",
+      description =
+          "BFS over the lineage graph (prov:wasDerivedFrom, om:upstream, om:downstream) returning the shortest path between two URIs. Use direction=upstream to walk from entity to its sources, downstream to walk to derived entities, both for either. Each hop returns the URI, the predicate that connected it, and any om:* rdf:type values. Useful for explain-lineage UIs and impact-analysis tooling.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Path between the two entities (or found=false)"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid from/to URI, direction, or maxHops"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response findLineagePath(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Starting entity URI (absolute http(s)).", required = true)
+          @QueryParam("from")
+          @NotEmpty
+          String from,
+      @Parameter(description = "Target entity URI (absolute http(s)).", required = true)
+          @QueryParam("to")
+          @NotEmpty
+          String to,
+      @Parameter(description = "Walk direction: upstream (default), downstream, or both.")
+          @QueryParam("direction")
+          @DefaultValue("upstream")
+          String direction,
+      @Parameter(description = "Max hops to explore. 1–25, defaults to 6.") @QueryParam("maxHops")
+          Integer maxHops) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    try {
+      LineagePathBuilder.Direction dir = LineagePathBuilder.Direction.parse(direction);
+      LineagePathFinder.Path path =
+          new LineagePathFinder(getRdfRepository()).findPath(from, to, dir, maxHops);
+      return Response.ok(JsonUtils.pojoToJson(path)).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/insights/recommendations")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "datasetRecommendations",
+      summary = "Recommend related entities for a given seed URI",
+      description =
+          "Phase 3.4: ranks every other entity by graph-topology similarity to the given seed — overlap on tags, glossary terms, and direct lineage neighbours. Pure SPARQL, no precomputation. Score formula: 1.0 · tagOverlap + 1.5 · glossaryOverlap + 2.0 · lineageOverlap.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Ranked recommendations"),
+        @ApiResponse(responseCode = "400", description = "Invalid entityUri or limit"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response datasetRecommendations(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Seed entity URI (absolute http(s)).", required = true)
+          @QueryParam("entityUri")
+          @NotEmpty
+          String entityUri,
+      @Parameter(description = "Number of recommendations. 1–50, default 10.")
+          @QueryParam("limit")
+          @DefaultValue("10")
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    String sparql;
+    try {
+      sparql = RecommendationsQueryBuilder.build(entityUri, limit);
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(sparql, "json", "none");
+  }
+
+  @GET
+  @Path("/insights/tag-cooccurrence")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "tagCoOccurrence",
+      summary = "Pairs of tags applied to the same entities",
+      description =
+          "Phase 3.5: returns pairs of tags that appear together on the same entity, sorted by overlap count descending. Surfaces governance signals like 'PII and Confidential are almost always co-applied'. Pure SPARQL aggregate over om:hasTag — no precomputation required.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Tag pair counts"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response tagCoOccurrence(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Minimum number of shared entities. 1+, default 2.")
+          @QueryParam("minCount")
+          @DefaultValue("2")
+          int minCount,
+      @Parameter(description = "Number of pairs to return. 1–100, default 20.")
+          @QueryParam("limit")
+          @DefaultValue("20")
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(
+        CoOccurrenceQueryBuilder.tagCoOccurrence(minCount, limit), "json", "none");
+  }
+
+  @GET
+  @Path("/insights/glossary-reach")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "glossaryReach",
+      summary = "Glossary terms ranked by domain reach",
+      description =
+          "Phase 3.5: returns glossary terms ordered by the number of distinct domains in which they're used, surfacing the most cross-cutting concepts. Pure SPARQL aggregate over om:hasGlossaryTerm × om:hasDomain.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Term reach counts"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response glossaryReach(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Minimum number of domains. 1+, default 2.")
+          @QueryParam("minDomains")
+          @DefaultValue("2")
+          int minDomains,
+      @Parameter(description = "Number of terms to return. 1–100, default 20.")
+          @QueryParam("limit")
+          @DefaultValue("20")
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(
+        CoOccurrenceQueryBuilder.glossaryReach(minDomains, limit), "json", "none");
+  }
+
+  @GET
+  @Path("/insights/tag-popularity")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "tagPopularity",
+      summary = "Tags ranked by number of tagged entities",
+      description =
+          "Phase 3.5: returns tags ordered by the number of distinct entities they're applied to. Companion to /insights/tag-cooccurrence — useful for triaging tag taxonomy bloat.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Tag entity counts"),
+        @ApiResponse(responseCode = "503", description = "RDF service not enabled")
+      })
+  public Response tagPopularity(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Number of tags to return. 1–100, default 20.")
+          @QueryParam("limit")
+          @DefaultValue("20")
+          int limit) {
+    authorizer.authorizeAdmin(securityContext);
+    if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity(buildErrorResponse("RDF repository is not enabled"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+    return executeSparqlQuery(CoOccurrenceQueryBuilder.tagPopularity(limit), "json", "none");
+  }
+
+  @GET
+  @Path("/ontology/extensions")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "listCustomOntologyExtensions",
+      summary = "List user-authored ontology extensions",
+      description =
+          "Returns every ontology extension registered with this server. Each extension is a bundle of custom OWL classes and properties under the om-extension namespace.",
+      responses = {@ApiResponse(responseCode = "200", description = "Extension list")})
+  public Response listCustomOntologyExtensions(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return Response.ok(
+            JsonUtils.pojoToJson(Map.of("extensions", CustomOntologyRegistry.getInstance().list())))
+        .build();
+  }
+
+  @GET
+  @Path("/ontology/extensions/{name}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "getCustomOntologyExtension",
+      summary = "Get a single custom ontology extension by name",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "The extension"),
+        @ApiResponse(responseCode = "404", description = "Extension not found")
+      })
+  public Response getCustomOntologyExtension(
+      @Context SecurityContext securityContext, @PathParam("name") String name) {
+    authorizer.authorizeAdmin(securityContext);
+    return CustomOntologyRegistry.getInstance()
+        .get(name)
+        .map(ext -> Response.ok(JsonUtils.pojoToJson(ext)).build())
+        .orElse(
+            Response.status(Response.Status.NOT_FOUND)
+                .entity(buildErrorResponse("Custom ontology extension not found: " + name))
+                .type(MediaType.APPLICATION_JSON)
+                .build());
+  }
+
+  @POST
+  @Path("/ontology/extensions/validate")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "validateCustomOntologyExtension",
+      summary = "Validate a candidate ontology extension without persisting it",
+      description =
+          "Runs the same validator that admin writes are gated on (URIs in om-extension namespace, no redefinition of canonical classes, no cycles, valid domain/range references) and returns the list of errors.",
+      responses = {@ApiResponse(responseCode = "200", description = "Validation result")})
+  public Response validateCustomOntologyExtension(
+      @Context SecurityContext securityContext, CustomOntology candidate) {
+    authorizer.authorizeAdmin(securityContext);
+    List<String> errors = CustomOntologyValidator.validate(candidate);
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("valid", errors.isEmpty());
+    body.put("errors", errors);
+    return Response.ok(JsonUtils.pojoToJson(body)).build();
+  }
+
+  @POST
+  @Path("/rules/validate")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "validateInferenceRule",
+      summary = "Validate a candidate inference rule without persisting it",
+      description =
+          "Runs the same validator that admin writes are gated on (CONSTRUCT-only, no SERVICE clauses, syntactically well-formed) and returns the list of errors. Useful for an admin UI that wants live feedback while editing a rule.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Validation result"),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public Response validateInferenceRule(
+      @Context SecurityContext securityContext, InferenceRule candidate) {
+    authorizer.authorizeAdmin(securityContext);
+    List<String> errors = InferenceRuleValidator.validate(candidate);
+    Map<String, Object> body = new java.util.LinkedHashMap<>();
+    body.put("valid", errors.isEmpty());
+    body.put("errors", errors);
+    return Response.ok(JsonUtils.pojoToJson(body)).build();
+  }
+
+  @GET
+  @Path("/ontology")
+  @Produces({TURTLE, RDF_XML, N_TRIPLES, JSON_LD, MediaType.WILDCARD})
+  @Operation(
+      operationId = "getOntology",
+      summary = "Download the OpenMetadata ontology",
+      description =
+          "Returns the canonical OpenMetadata OWL ontology and its PROV-aligned extension as a single document. The ontology imports DCAT, PROV-O, and SKOS by reference. Format is selected via the Accept header or the format query param: turtle (default), rdfxml, ntriples, jsonld.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Ontology document in the requested serialization",
+            content = {
+              @Content(mediaType = TURTLE),
+              @Content(mediaType = RDF_XML),
+              @Content(mediaType = N_TRIPLES),
+              @Content(mediaType = JSON_LD)
+            }),
+        @ApiResponse(responseCode = "500", description = "Ontology resource missing or unreadable")
+      })
+  public Response getOntology(
+      @Parameter(
+              description =
+                  "Output serialization. One of: turtle, rdfxml, ntriples, jsonld. Defaults to turtle.")
+          @QueryParam("format")
+          @DefaultValue("turtle")
+          String format) {
+    return OntologyDocument.serve(format);
   }
 
   @GET
@@ -475,22 +1103,32 @@ public class RdfResource {
           .build();
     }
 
+    String query = sparqlQuery.getQuery();
+    if (query == null || query.isBlank()) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse("SPARQL update body is required"))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
+
+    // Validate with Jena's parser, which understands PREFIX / BASE prologues, comments, and
+    // whitespace. The prior implementation matched the first keyword as a substring after
+    // upper-casing the body — that rejected legitimate updates beginning with `PREFIX …` and
+    // could be bypassed by injecting whitespace or comments. UpdateFactory throws if the body
+    // doesn't parse as a SPARQL UPDATE (which includes SELECT/ASK/CONSTRUCT/DESCRIBE — those
+    // belong on the read endpoint).
     try {
-      String query = sparqlQuery.getQuery().trim().toUpperCase();
-      if (!query.startsWith("INSERT")
-          && !query.startsWith("DELETE")
-          && !query.startsWith("LOAD")
-          && !query.startsWith("CLEAR")
-          && !query.startsWith("CREATE")
-          && !query.startsWith("DROP")) {
-        return Response.status(Response.Status.BAD_REQUEST)
-            .entity("Only SPARQL UPDATE operations are allowed on this endpoint")
-            .build();
-      }
+      UpdateFactory.create(query);
+    } catch (Exception e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(buildErrorResponse("Invalid SPARQL UPDATE: " + e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
+          .build();
+    }
 
-      getRdfRepository().executeSparqlUpdate(sparqlQuery.getQuery());
+    try {
+      getRdfRepository().executeSparqlUpdate(query);
       return Response.ok().entity("{\"status\": \"success\"}").build();
-
     } catch (Exception e) {
       LOG.error("Error executing SPARQL update", e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -503,6 +1141,16 @@ public class RdfResource {
     if (getRdfRepository() == null || !getRdfRepository().isEnabled()) {
       return Response.status(Response.Status.SERVICE_UNAVAILABLE)
           .entity("RDF repository is not enabled")
+          .build();
+    }
+
+    try {
+      getFederationGuard().enforce(query);
+    } catch (SparqlFederationGuard.FederationDisallowedException e) {
+      LOG.warn("Rejected SPARQL with disallowed SERVICE clause: {}", e.getBlockedEndpoint());
+      return Response.status(Response.Status.FORBIDDEN)
+          .entity(buildErrorResponse(e.getMessage()))
+          .type(MediaType.APPLICATION_JSON)
           .build();
     }
 

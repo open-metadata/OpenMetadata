@@ -105,6 +105,29 @@
       "description": "Cache inferred triples for better query performance (requires more storage)",
       "type": "boolean",
       "default": false
+    },
+    "federation": {
+      "description": "Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is disabled by default; SERVICE clauses are rejected unless the target URI is in the allowlist.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig",
+      "properties": {
+        "enabled": {
+          "description": "Master switch for federated SPARQL. When false, every SERVICE clause is rejected regardless of allowlist contents.",
+          "type": "boolean",
+          "default": false
+        },
+        "allowedEndpoints": {
+          "description": "External SPARQL endpoint URIs that may appear in SERVICE clauses. Compared verbatim against the URI in the SERVICE clause; trailing slashes matter.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false,
+      "default": null
     }
   },
   "required": ["enabled", "storageType"],

@@ -50,8 +50,17 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that should be omitted from RDF because they are audit/helper data.
-  private static final Set<String> IGNORED_PROPERTIES = Set.of("changeDescription", "votes");
+  // Properties that should be omitted from RDF because they are audit/helper data, or are
+  // handled by a dedicated emission step elsewhere in this class (e.g. tableConstraints, which
+  // requires the parent table FQN to mint constrained-column URIs).
+  private static final Set<String> IGNORED_PROPERTIES =
+      Set.of(
+          "changeDescription",
+          "votes",
+          "tableConstraints",
+          "profile",
+          "pipelineStatus",
+          "usageSummary");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
@@ -118,6 +127,37 @@ public class RdfPropertyMapper {
       } else if (context instanceof Map) {
         // Process single context object
         processContextMappings((Map<String, Object>) context, entityJson, entityResource, model);
+      }
+
+      // Table-level constraints need the parent table's FQN to resolve column-name references
+      // into om:Column URIs, so they're emitted here rather than through the field-mapping loop.
+      if (entityJson.has("tableConstraints") && entityJson.get("tableConstraints").isArray()) {
+        emitTableConstraints(
+            entityJson.get("tableConstraints"),
+            entity.getFullyQualifiedName(),
+            entityResource,
+            model);
+      }
+
+      // Table profile becomes structured DQV measurements rather than an opaque JSON literal.
+      if (entityJson.has("profile")) {
+        RdfQualityMapper.emitTableProfile(entityJson.get("profile"), entityResource, model);
+      }
+
+      // Pipeline runs surface as prov:Activity resources tied back to inputs and outputs.
+      if (entityJson.has("pipelineStatus") && !entityJson.get("pipelineStatus").isNull()) {
+        RdfActivityMapper.emitPipelineActivity(
+            entityJson.get("pipelineStatus"),
+            entity.getFullyQualifiedName(),
+            entityResource,
+            baseUri,
+            model);
+      }
+
+      // Usage summary becomes om:usageDaily/Weekly/MonthlyCount + Percentile triples so the
+      // /v1/rdf/insights/important endpoint can rank entities by real query usage.
+      if (entityJson.has("usageSummary") && !entityJson.get("usageSummary").isNull()) {
+        RdfUsageMapper.emitUsageSummary(entityJson.get("usageSummary"), entityResource, model);
       }
 
       // Always add standard properties
@@ -233,6 +273,11 @@ public class RdfPropertyMapper {
     // Check if this is a structured property that needs special handling
     if (STRUCTURED_PROPERTIES.contains(fieldName) && fieldValue.isObject()) {
       addStructuredProperty(fieldName, fieldValue, entityResource, model);
+      return;
+    }
+
+    if ("columns".equals(fieldName) && fieldValue.isArray()) {
+      emitColumns(fieldValue, entityResource, model);
       return;
     }
 
@@ -1001,14 +1046,22 @@ public class RdfPropertyMapper {
 
   /**
    * Adds column-level lineage as structured RDF. Enables SPARQL queries like: "Which columns feed
-   * into column X" or "What transformation is applied to column Y"
+   * into column X" or "What transformation is applied to column Y".
+   *
+   * <p>Source and destination columns are emitted as URI references via om:fromColumn /
+   * om:toColumn so that SPARQL property paths can join them with om:Column resources minted on the
+   * Table side. The original FQN string is preserved as om:fromColumnFqn / om:toColumnFqn for
+   * back-compatibility with consumers that match by string FQN.
    */
   private void addColumnLineage(
       JsonNode columnsLineage, Resource lineageDetailsResource, Model model) {
     Property hasColumnLineage = model.createProperty(OM_NS, "hasColumnLineage");
+    Property fromColumn = model.createProperty(OM_NS, "fromColumn");
+    Property toColumn = model.createProperty(OM_NS, "toColumn");
+    Property fromColumnFqn = model.createProperty(OM_NS, "fromColumnFqn");
+    Property toColumnFqn = model.createProperty(OM_NS, "toColumnFqn");
 
     for (JsonNode colLineage : columnsLineage) {
-      // Create column lineage resource
       String colLineageUri =
           lineageDetailsResource.getURI() + "/columnLineage/" + UUID.randomUUID();
       Resource colLineageResource = model.createResource(colLineageUri);
@@ -1016,26 +1069,42 @@ public class RdfPropertyMapper {
       lineageDetailsResource.addProperty(hasColumnLineage, colLineageResource);
       colLineageResource.addProperty(RDF.type, model.createResource(OM_NS + "ColumnLineage"));
 
-      // Add source columns
       if (colLineage.has("fromColumns") && colLineage.get("fromColumns").isArray()) {
-        Property fromColumnProp = model.createProperty(OM_NS, "fromColumn");
         for (JsonNode fromCol : colLineage.get("fromColumns")) {
-          colLineageResource.addProperty(fromColumnProp, fromCol.asText());
+          linkColumn(colLineageResource, fromColumn, fromColumnFqn, fromCol, model);
         }
       }
 
-      // Add destination column
       if (colLineage.has("toColumn") && !colLineage.get("toColumn").isNull()) {
-        colLineageResource.addProperty(
-            model.createProperty(OM_NS, "toColumn"), colLineage.get("toColumn").asText());
+        linkColumn(colLineageResource, toColumn, toColumnFqn, colLineage.get("toColumn"), model);
       }
 
-      // Add transformation function
       if (colLineage.has("function") && !colLineage.get("function").isNull()) {
         colLineageResource.addProperty(
             model.createProperty(OM_NS, "transformFunction"), colLineage.get("function").asText());
       }
     }
+  }
+
+  private void linkColumn(
+      Resource colLineageResource,
+      Property uriProperty,
+      Property fqnProperty,
+      JsonNode columnFqnNode,
+      Model model) {
+    String fqn = columnFqnNode.asText();
+    if (fqn == null || fqn.isEmpty()) {
+      return;
+    }
+    colLineageResource.addProperty(fqnProperty, fqn);
+    String columnUri = RdfUtils.columnUri(baseUri, fqn);
+    if (columnUri == null) {
+      return;
+    }
+    Resource columnResource = model.createResource(columnUri);
+    columnResource.addProperty(RDF.type, model.createResource(OM_NS + "Column"));
+    columnResource.addProperty(model.createProperty(OM_NS, "fullyQualifiedName"), fqn);
+    colLineageResource.addProperty(uriProperty, columnResource);
   }
 
   /**
@@ -1115,6 +1184,218 @@ public class RdfPropertyMapper {
             addEntityReference(resource, propertyId, item, model);
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Emit each Column in a Table.columns array as a first-class named resource and link the table
+   * to it via om:hasColumn. URIs are derived from the Column's FQN so that lineage edges
+   * (om:fromColumn / om:toColumn) resolve to the same resource.
+   */
+  private void emitColumns(JsonNode columns, Resource tableResource, Model model) {
+    Property hasColumn = model.createProperty(OM_NS, "hasColumn");
+    for (JsonNode column : columns) {
+      if (!column.isObject() || !column.has("fullyQualifiedName")) {
+        continue;
+      }
+      Resource columnResource = buildColumnResource(column, model);
+      if (columnResource != null) {
+        tableResource.addProperty(hasColumn, columnResource);
+        if (column.has("children") && column.get("children").isArray()) {
+          emitColumnChildren(column.get("children"), columnResource, model);
+        }
+      }
+    }
+  }
+
+  /**
+   * Emit table-level constraints (PRIMARY_KEY, UNIQUE, FOREIGN_KEY, ...) from
+   * {@code Table.tableConstraints[]} as named om:TableConstraint resources, and project
+   * back onto the constrained columns. For FOREIGN_KEY, also emit
+   * {@code <sourceColumn> om:references <referredColumn>} triples so SPARQL queries can
+   * traverse FK edges directly.
+   */
+  private void emitTableConstraints(
+      JsonNode constraints, String tableFqn, Resource tableResource, Model model) {
+    if (tableFqn == null || tableFqn.isEmpty()) {
+      return;
+    }
+    Property hasConstraint = model.createProperty(OM_NS, "hasConstraint");
+    Property constraintType = model.createProperty(OM_NS, "constraintType");
+    Property hasConstrainedColumn = model.createProperty(OM_NS, "hasConstrainedColumn");
+    Property hasReferredColumn = model.createProperty(OM_NS, "hasReferredColumn");
+    Property references = model.createProperty(OM_NS, "references");
+    Property relationshipType = model.createProperty(OM_NS, "relationshipType");
+    Property isUnique = model.createProperty(OM_NS, "isUnique");
+    Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
+    Resource tableConstraintClass = model.createResource(OM_NS + "TableConstraint");
+
+    int index = 0;
+    for (JsonNode constraint : constraints) {
+      if (!constraint.isObject() || !constraint.has("constraintType")) {
+        index++;
+        continue;
+      }
+      String type = constraint.get("constraintType").asText();
+      Resource constraintResource = model.createResource(constraintUri(tableResource, type, index));
+      constraintResource.addProperty(RDF.type, tableConstraintClass);
+      constraintResource.addProperty(constraintType, type);
+      tableResource.addProperty(hasConstraint, constraintResource);
+      if (constraint.has("relationshipType") && !constraint.get("relationshipType").isNull()) {
+        constraintResource.addProperty(
+            relationshipType, constraint.get("relationshipType").asText());
+      }
+
+      java.util.List<Resource> sourceColumns =
+          resolveColumns(constraint.get("columns"), tableFqn, model);
+      for (Resource sourceColumn : sourceColumns) {
+        constraintResource.addProperty(hasConstrainedColumn, sourceColumn);
+        if ("PRIMARY_KEY".equals(type)) {
+          sourceColumn.addProperty(isPrimaryKey, model.createTypedLiteral(true));
+          sourceColumn.addProperty(
+              model.createProperty(OM_NS, "isNullable"), model.createTypedLiteral(false));
+          sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
+        } else if ("UNIQUE".equals(type)) {
+          sourceColumn.addProperty(isUnique, model.createTypedLiteral(true));
+        }
+      }
+
+      if ("FOREIGN_KEY".equals(type)) {
+        java.util.List<Resource> referredColumns =
+            resolveReferredColumns(constraint.get("referredColumns"), model);
+        for (Resource referred : referredColumns) {
+          constraintResource.addProperty(hasReferredColumn, referred);
+        }
+        // Pair source columns with referred columns positionally so SPARQL can traverse
+        // <sourceCol> om:references <referredCol> directly without going through the
+        // constraint resource. The pairs are in declared array order.
+        int pairs = Math.min(sourceColumns.size(), referredColumns.size());
+        for (int i = 0; i < pairs; i++) {
+          sourceColumns.get(i).addProperty(references, referredColumns.get(i));
+        }
+      }
+      index++;
+    }
+  }
+
+  private String constraintUri(Resource tableResource, String type, int index) {
+    return tableResource.getURI() + "/constraint/" + type + "/" + index;
+  }
+
+  private java.util.List<Resource> resolveColumns(
+      JsonNode columnNames, String tableFqn, Model model) {
+    java.util.List<Resource> resolved = new java.util.ArrayList<>();
+    if (columnNames == null || !columnNames.isArray()) {
+      return resolved;
+    }
+    for (JsonNode name : columnNames) {
+      if (!name.isTextual()) {
+        continue;
+      }
+      String columnFqn = tableFqn + "." + name.asText();
+      Resource columnResource = ensureColumnResource(columnFqn, model);
+      if (columnResource != null) {
+        resolved.add(columnResource);
+      }
+    }
+    return resolved;
+  }
+
+  private java.util.List<Resource> resolveReferredColumns(JsonNode referred, Model model) {
+    java.util.List<Resource> resolved = new java.util.ArrayList<>();
+    if (referred == null || !referred.isArray()) {
+      return resolved;
+    }
+    for (JsonNode fqnNode : referred) {
+      if (!fqnNode.isTextual()) {
+        continue;
+      }
+      Resource columnResource = ensureColumnResource(fqnNode.asText(), model);
+      if (columnResource != null) {
+        resolved.add(columnResource);
+      }
+    }
+    return resolved;
+  }
+
+  private Resource ensureColumnResource(String columnFqn, Model model) {
+    String columnUri = RdfUtils.columnUri(baseUri, columnFqn);
+    if (columnUri == null) {
+      return null;
+    }
+    Resource columnResource = model.createResource(columnUri);
+    columnResource.addProperty(RDF.type, model.createResource(OM_NS + "Column"));
+    columnResource.addProperty(model.createProperty(OM_NS, "fullyQualifiedName"), columnFqn);
+    return columnResource;
+  }
+
+  private void emitColumnChildren(JsonNode children, Resource parentColumn, Model model) {
+    Property hasChild = model.createProperty(OM_NS, "hasChildColumn");
+    for (JsonNode child : children) {
+      if (!child.isObject() || !child.has("fullyQualifiedName")) {
+        continue;
+      }
+      Resource childResource = buildColumnResource(child, model);
+      if (childResource != null) {
+        parentColumn.addProperty(hasChild, childResource);
+        if (child.has("children") && child.get("children").isArray()) {
+          emitColumnChildren(child.get("children"), childResource, model);
+        }
+      }
+    }
+  }
+
+  private Resource buildColumnResource(JsonNode column, Model model) {
+    String fqn = column.get("fullyQualifiedName").asText();
+    String columnUri = RdfUtils.columnUri(baseUri, fqn);
+    if (columnUri == null) {
+      return null;
+    }
+    Resource columnResource = model.createResource(columnUri);
+    columnResource.addProperty(RDF.type, model.createResource(OM_NS + "Column"));
+    columnResource.addProperty(model.createProperty(OM_NS, "fullyQualifiedName"), fqn);
+    if (column.has("name") && !column.get("name").isNull()) {
+      columnResource.addProperty(RDFS.label, column.get("name").asText());
+    }
+    if (column.has("dataType") && !column.get("dataType").isNull()) {
+      columnResource.addProperty(
+          model.createProperty(OM_NS, "columnDataType"), column.get("dataType").asText());
+    }
+    if (column.has("description") && !column.get("description").isNull()) {
+      columnResource.addProperty(
+          model.createProperty(OM_NS, "columnDescription"), column.get("description").asText());
+    }
+    if (column.has("ordinalPosition") && column.get("ordinalPosition").isNumber()) {
+      columnResource.addProperty(
+          model.createProperty(OM_NS, "ordinalPosition"),
+          model.createTypedLiteral(column.get("ordinalPosition").asInt()));
+    }
+    if (column.has("constraint") && !column.get("constraint").isNull()) {
+      applyColumnConstraint(columnResource, column.get("constraint").asText(), model);
+    }
+    if (column.has("profile") && !column.get("profile").isNull()) {
+      RdfQualityMapper.emitColumnProfile(column.get("profile"), columnResource, model);
+    }
+    return columnResource;
+  }
+
+  private void applyColumnConstraint(Resource columnResource, String constraint, Model model) {
+    Property isPrimaryKey = model.createProperty(OM_NS, "isPrimaryKey");
+    Property isNullable = model.createProperty(OM_NS, "isNullable");
+    Property isUnique = model.createProperty(OM_NS, "isUnique");
+    switch (constraint) {
+      case "PRIMARY_KEY" -> {
+        columnResource.addProperty(isPrimaryKey, model.createTypedLiteral(true));
+        columnResource.addProperty(isNullable, model.createTypedLiteral(false));
+        columnResource.addProperty(isUnique, model.createTypedLiteral(true));
+      }
+      case "UNIQUE" -> columnResource.addProperty(isUnique, model.createTypedLiteral(true));
+      case "NOT_NULL" -> columnResource.addProperty(isNullable, model.createTypedLiteral(false));
+      case "NULL" -> columnResource.addProperty(isNullable, model.createTypedLiteral(true));
+      default -> {
+        // Unknown / vendor-specific (DIST_KEY, SORT_KEY, etc.) — fall through; surfaced via
+        // table-level constraints if relevant.
       }
     }
   }

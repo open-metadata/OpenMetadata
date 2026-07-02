@@ -862,6 +862,140 @@
       }
     },
     {
+      "name": "sparql_query",
+      "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default 1 MiB).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The SPARQL query string. Use https://open-metadata.org/ontology/ as the om: prefix."
+          },
+          "format": {
+            "type": "string",
+            "description": "Result format. SELECT/ASK: json (default), xml, csv, tsv. CONSTRUCT/DESCRIBE: turtle, jsonld, ntriples, rdfxml.",
+            "default": "json"
+          },
+          "inferenceLevel": {
+            "type": "string",
+            "description": "Optional. Reasoning level applied at query time: none (default), rdfs, owl, custom.",
+            "default": "none"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "description": "Cap on the response body size in bytes. Default 1048576 (1 MiB). Min 1024, max 16777216.",
+            "default": 1048576
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "entity_neighborhood",
+      "description": "Return the n-hop neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "UUID of the entity (the 'id' field on the entity)."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Entity type singular (table, dashboard, pipeline, glossaryTerm, ...)."
+          },
+          "depth": {
+            "type": "integer",
+            "description": "Hop depth, 1-3. Default 2.",
+            "default": 2
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum triples returned. Default 200, max 2000.",
+            "default": 200
+          }
+        },
+        "required": ["entityId", "entityType"]
+      }
+    },
+    {
+      "name": "find_by_tag",
+      "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "tagFqn": {
+            "type": "string",
+            "description": "FQN of the tag or glossary term (e.g. 'PII.Sensitive', 'BusinessTerms.Customer')."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Restrict results to a single entity type (e.g. 'table')."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results. Default 50, max 500.",
+            "default": 50
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Page offset. Default 0.",
+            "default": 0
+          }
+        },
+        "required": ["tagFqn"]
+      }
+    },
+    {
+      "name": "shacl_validate",
+      "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entityId": {
+            "type": "string",
+            "description": "Optional. UUID of the entity to scope validation to."
+          },
+          "entityType": {
+            "type": "string",
+            "description": "Optional. Entity type singular. Required if entityId is provided."
+          },
+          "entityUri": {
+            "type": "string",
+            "description": "Optional alternative to entityId+entityType: full URI of the entity."
+          },
+          "fullGraph": {
+            "type": "boolean",
+            "description": "Must be set to true to validate the entire dataset when no entity scope (entityId+entityType or entityUri) is given. Whole-graph validation can be expensive, so it is opt-in.",
+            "default": false
+          },
+          "format": {
+            "type": "string",
+            "description": "Report format: turtle (default) or jsonld.",
+            "default": "turtle"
+          }
+        }
+      }
+    },
+    {
+      "name": "ontology_describe",
+      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Format: turtle (default), jsonld, ntriples, rdfxml.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "resource": {
+            "type": "string",
+            "description": "Optional. Full URI of the class or property to DESCRIBE (e.g. 'https://open-metadata.org/ontology/Column'). Omit to return the full ontology."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. Default 'turtle'.",
+            "default": "turtle"
+          }
+        }
+      }
+    },
+    {
       "name": "create_context_memory",
       "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
       "parameters": {
