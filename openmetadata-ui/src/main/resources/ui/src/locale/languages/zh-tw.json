@@ -3679,6 +3679,7 @@
     "request-update-description": "請求更新描述",
     "reset-layout-confirmation": "您確定要套用「預設版面配置」嗎？",
     "reset-link-has-been-sent": "重設連結已傳送到您的電子郵件",
+    "reset-search-settings-confirmation": "Are you sure you want to reset the search settings to their default values? This will discard all your customizations.",
     "restore-action-description": "還原此 {{entityType}} 將在 {{brandName}} 中還原其元資料。",
     "restore-deleted-team": "還原團隊將把所有元資料加回 {{brandName}}",
     "restore-entities-error": "還原 {{entity}} 時發生錯誤",
