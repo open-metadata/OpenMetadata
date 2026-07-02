@@ -8,9 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Unit tests for the InfluxDB 3 connector.
-"""
+"""Unit tests for the InfluxDB 3 connector."""
 
 from unittest.mock import MagicMock, patch
 
@@ -47,10 +45,7 @@ class TestInfluxTypeMapping:
 
     def test_timestamp_types(self):
         assert _INFLUX_TO_OM_TYPE["Timestamp(Nanosecond, None)"] == DataType.TIMESTAMP
-        assert (
-            _INFLUX_TO_OM_TYPE["Timestamp(Nanosecond, Some(\"UTC\"))"]
-            == DataType.TIMESTAMP
-        )
+        assert _INFLUX_TO_OM_TYPE['Timestamp(Nanosecond, Some("UTC"))'] == DataType.TIMESTAMP
 
     def test_unknown_type_defaults_to_varchar(self):
         assert _INFLUX_TO_OM_TYPE.get("UnknownType", DataType.VARCHAR) == DataType.VARCHAR
@@ -169,9 +164,7 @@ class TestInfluxDBSource:
             return_value=None,
         ):
             mock_metadata = MagicMock()
-            source = InfluxDBSource.create(
-                config_dict, mock_metadata, pipeline_name="test-pipeline"
-            )
+            source = InfluxDBSource.create(config_dict, mock_metadata, pipeline_name="test-pipeline")
             assert isinstance(source, InfluxDBSource)
 
     def test_create_rejects_wrong_connection_type(self):
@@ -193,10 +186,8 @@ class TestInfluxDBSource:
             },
         }
 
-        with pytest.raises(ValueError, match="Expected InfluxdbConnection"):
-            InfluxDBSource.create(
-                config_dict, MagicMock(), pipeline_name="test-pipeline"
-            )
+        with pytest.raises(TypeError, match="Expected InfluxdbConnection"):
+            InfluxDBSource.create(config_dict, MagicMock(), pipeline_name="test-pipeline")
 
     def test_get_table_columns_adds_time_column(self):
         mock_client = MagicMock()

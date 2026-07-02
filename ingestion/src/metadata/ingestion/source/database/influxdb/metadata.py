@@ -8,8 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-InfluxDB 3 source module.
+"""InfluxDB 3 source module.
 
 Maps InfluxDB 3 concepts to OpenMetadata entities:
 
@@ -22,7 +21,7 @@ introspection. There is no SQLAlchemy dialect for InfluxDB 3, so this
 source extends CommonNoSQLSource with native client calls.
 """
 
-from typing import Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import (
@@ -63,39 +62,35 @@ _INFLUX_TO_OM_TYPE = {
     "Boolean": DataType.BOOLEAN,
     "Dictionary(Int32, Utf8)": DataType.VARCHAR,
     "Timestamp(Nanosecond, None)": DataType.TIMESTAMP,
-    "Timestamp(Nanosecond, Some(\"UTC\"))": DataType.TIMESTAMP,
+    'Timestamp(Nanosecond, Some("UTC"))': DataType.TIMESTAMP,
 }
 
 
 class InfluxDBSource(CommonNoSQLSource):
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
-    connection_obj: "InfluxDBClient"  # set by base class via get_connection()
 
     @classmethod
     def create(
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,
+        pipeline_name: str | None = None,
     ) -> "InfluxDBSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: InfluxdbConnection = config.serviceConnection.root.config
         if not isinstance(connection, InfluxdbConnection):
-            raise ValueError(
-                f"Expected InfluxdbConnection, but got {type(connection).__name__}"
-            )
+            raise TypeError(f"Expected InfluxdbConnection, but got {type(connection).__name__}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:
+    def get_schema_name_list(self) -> list[str]:
         databases = self.connection_obj.list_databases()
         config_db = getattr(self.service_connection, "databaseName", None)
         if config_db:
             databases = [db for db in databases if db == config_db]
             if not databases:
                 logger.warning(
-                    "Configured databaseName '%s' not found in InfluxDB instance."
-                    " Available databases: %s",
+                    "Configured databaseName '%s' not found in InfluxDB instance. Available databases: %s",
                     config_db,
                     self.connection_obj.list_databases(),
                 )
@@ -106,21 +101,15 @@ class InfluxDBSource(CommonNoSQLSource):
         )
         return databases
 
-    def query_table_names_and_types(
-        self, schema_name: str
-    ) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         try:
             tables = self.connection_obj.list_tables(schema_name)
             for table in tables:
                 yield TableNameAndType(name=table)
         except Exception:
-            logger.warning(
-                "Failed to list tables for InfluxDB database '%s'", schema_name
-            )
+            logger.warning("Failed to list tables for InfluxDB database '%s'", schema_name)
 
-    def get_table_columns(
-        self, schema_name: str, table_name: str
-    ) -> List[Column]:
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         columns_info = self.connection_obj.get_columns(schema_name, table_name)
 
         columns = [
@@ -148,14 +137,10 @@ class InfluxDBSource(CommonNoSQLSource):
 
         return columns
 
-    def get_table_constraints(
-        self, db_name: str, schema_name: str, table_name: str
-    ) -> Optional[List[TableConstraint]]:
+    def get_table_constraints(self, db_name: str, schema_name: str, table_name: str) -> list[TableConstraint] | None:
         return None
 
-    def yield_table(
-        self, table_name_and_type: Tuple[str, TableType]
-    ) -> Iterable[Either[CreateTableRequest]]:
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         yield from super().yield_table(table_name_and_type)
 
     def close(self):

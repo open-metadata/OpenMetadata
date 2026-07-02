@@ -8,15 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-InfluxDB 3 connection handler.
+"""InfluxDB 3 connection handler.
 
 InfluxDB 3 uses the HTTP API (SQL via /api/v3/query_sql) rather than
 a SQLAlchemy dialect. This module provides a thin HTTP client wrapper
 and a BaseConnection subclass for the OpenMetadata ingestion framework.
 """
 
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from requests import Session
 
@@ -39,8 +38,7 @@ logger = ingestion_logger()
 
 
 class InfluxDBClient:
-    """
-    Thin wrapper around the InfluxDB 3 HTTP API for metadata introspection.
+    """Thin wrapper around the InfluxDB 3 HTTP API for metadata introspection.
 
     Uses the /api/v3/query_sql endpoint to run SQL queries against
     InfluxDB 3 databases, system tables, and information_schema.
@@ -51,7 +49,7 @@ class InfluxDBClient:
         self._session = Session()
         self._session.headers["Authorization"] = f"Bearer {token}"
 
-    def _query(self, database: str, sql: str) -> List[dict]:
+    def _query(self, database: str, sql: str) -> list[dict]:
         params = {"db": database, "q": sql, "format": "json"}
         resp = self._session.get(
             f"{self._url}/api/v3/query_sql",
@@ -61,25 +59,21 @@ class InfluxDBClient:
         resp.raise_for_status()
         return resp.json()
 
-    def list_databases(self) -> List[str]:
+    def list_databases(self) -> list[str]:
         rows = self._query(
             "_internal",
             "SELECT database_name FROM system.databases WHERE deleted=false",
         )
-        return [
-            row["database_name"]
-            for row in rows
-            if row["database_name"] != "_internal"
-        ]
+        return [row["database_name"] for row in rows if row["database_name"] != "_internal"]
 
-    def list_tables(self, database: str) -> List[str]:
+    def list_tables(self, database: str) -> list[str]:
         rows = self._query(
             database,
             "SELECT table_name FROM information_schema.tables WHERE table_schema = 'iox'",
         )
         return [row["table_name"] for row in rows]
 
-    def get_columns(self, database: str, table: str) -> List[dict]:
+    def get_columns(self, database: str, table: str) -> list[dict]:
         safe_table = table.replace("'", "''")
         sql = (
             "SELECT column_name, data_type, is_nullable "
@@ -88,15 +82,9 @@ class InfluxDBClient:
         )
         return self._query(database, sql)
 
-    def fetch_sample_rows(
-        self, database: str, table: str, limit: int = 50
-    ) -> Tuple[List[str], List[List[Any]]]:
+    def fetch_sample_rows(self, database: str, table: str, limit: int = 50) -> tuple[list[str], list[list[Any]]]:
         safe_table = table.replace('"', '""')
-        sql = (
-            f'SELECT * FROM "{safe_table}" '
-            f"WHERE time >= now() - INTERVAL '24 hours' "
-            f"LIMIT {limit}"
-        )
+        sql = f"SELECT * FROM \"{safe_table}\" WHERE time >= now() - INTERVAL '24 hours' LIMIT {limit}"
         data = self._query(database, sql)
         if not data:
             return [], []
@@ -113,8 +101,7 @@ class InfluxDBClient:
 
 
 class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
-    """
-    Connection class that builds an InfluxDB 3 HTTP client.
+    """Connection class that builds an InfluxDB 3 HTTP client.
 
     Since InfluxDB 3 has no SQLAlchemy dialect, the client returned by
     ``_get_client`` is the raw ``InfluxDBClient`` wrapper, not a DB-API
@@ -128,8 +115,8 @@ class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,
-        timeout_seconds: Optional[int] = THREE_MIN,
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         client = self.client
         service_connection = self.service_connection
