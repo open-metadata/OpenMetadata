@@ -12,9 +12,9 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
-import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import IncidentManagerTable, {
   IncidentManagerTableProps,
 } from './IncidentManagerTable.component';
@@ -87,7 +87,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest
     .fn()
-    .mockImplementation(() => <div data-testid="next-previous">NextPrevious</div>);
+    .mockImplementation(() => (
+      <div data-testid="next-previous">NextPrevious</div>
+    ));
 });
 
 jest.mock('../common/DateTimeDisplay/DateTimeDisplay', () => {
@@ -121,9 +123,9 @@ jest.mock(
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, ...rest }) => (
-    <a {...rest}>{children}</a>
-  )),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
@@ -220,9 +222,7 @@ describe('IncidentManagerTable', () => {
       testCaseListData: { data: [], isLoading: false },
     });
 
-    expect(
-      screen.getByTestId('filter-table-placeholder')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-case-test_case_1')
     ).not.toBeInTheDocument();
