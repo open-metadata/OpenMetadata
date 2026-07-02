@@ -35,6 +35,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Classification entity operations.
@@ -466,6 +467,50 @@ public class ClassificationResourceIT extends BaseEntityIT<Classification, Creat
         classification.getAutoClassificationConfig().getConflictResolution());
     assertFalse(classification.getAutoClassificationConfig().getRequireExplicitMatch());
     assertTrue(classification.getMutuallyExclusive());
+  }
+
+  @Test
+  void test_putPreservesAutoClassificationConfig_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source classification with a bare PUT
+    // (name + description only, no autoClassificationConfig). This must NOT wipe
+    // an existing config - the regression that disabled auto-classification for
+    // PII/PersonalData after every metadata ingestion.
+    CreateClassification createClassification = new CreateClassification();
+    createClassification.setName(ns.prefix("classification_put_preserve"));
+    createClassification.setDescription("Classification with auto-classification enabled");
+    createClassification.setAutoClassificationConfig(
+        new AutoClassificationConfig().withEnabled(true).withMinimumConfidence(0.6));
+
+    Classification classification = createEntity(createClassification);
+    assertNotNull(classification.getAutoClassificationConfig());
+    assertTrue(classification.getAutoClassificationConfig().getEnabled());
+
+    // Simulate the ingestion sink's create_or_update: PUT /v1/classifications with a
+    // CreateClassification carrying only name + description (no autoClassificationConfig).
+    CreateClassification bareUpsert =
+        new CreateClassification()
+            .withName(classification.getName())
+            .withDescription("Updated by metadata ingestion");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/classifications", bareUpsert, Classification.class);
+
+    // The config must survive the bare PUT
+    Classification afterIngestion =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNotNull(
+        afterIngestion.getAutoClassificationConfig(),
+        "Bare PUT from ingestion must not delete autoClassificationConfig");
+    assertTrue(afterIngestion.getAutoClassificationConfig().getEnabled());
+
+    // An explicit PATCH clearing the config must still delete it
+    afterIngestion.setAutoClassificationConfig(null);
+    patchEntity(afterIngestion.getId().toString(), afterIngestion);
+    Classification afterPatch =
+        getEntityWithFields(classification.getId().toString(), "autoClassificationConfig");
+    assertNull(
+        afterPatch.getAutoClassificationConfig(),
+        "Explicit PATCH clearing the config must still delete it");
   }
 
   @Test
