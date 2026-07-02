@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import { FC } from 'react';
+import WorkflowsHeader, {
+  WorkflowsHeaderProps,
+} from '../pages/WorkflowDefinitions/WorkflowsPage/WorkflowsHeader';
+
 export interface WorkflowCapabilities {
   allowCreateWorkflow: boolean;
   allowDeleteWorkflow: boolean;
@@ -34,6 +39,10 @@ export class WorkflowClassBase {
       allowScheduledTrigger: false,
       allowViewModeDrag: false,
     };
+  }
+
+  public getHeader(): FC<WorkflowsHeaderProps> {
+    return WorkflowsHeader;
   }
 }
 
