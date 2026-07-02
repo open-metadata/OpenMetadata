@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
-import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -551,17 +550,15 @@ public class DatabaseServiceResourceIT
                     .withDatabaseSchema(schema.getFullyQualifiedName())
                     .withColumns(
                         List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
-    // Column docs live in a separate column_search_index pruned only by the per-table search
-    // dispatch — which the recursive service hard delete skips — so guard it here to catch
-    // orphaned column docs that the ancestor service.id cascade must also remove.
-    String columnDocId =
-        ColumnSearchIndex.generateColumnId(table.getColumns().getFirst().getFullyQualifiedName());
+    // The column_search_index cleanup on recursive hard delete is covered by the unit test
+    // SearchRepositoryBehaviorTest and the scale IT ServiceDeleteSearchCleanupScaleIT. It is not
+    // asserted here: under the full concurrent IT suite the per-delete column delete-by-query
+    // contends on the shared column_search_index, delaying visibility of a freshly indexed column
+    // doc past the precondition timeout and flaking this otherwise-unrelated regression.
     return new DeletableSubtree(
         service.getId().toString(),
         List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),
-        List.of(
-            new SearchDoc("table_search_index", table.getId().toString()),
-            new SearchDoc("column_search_index", columnDocId)));
+        List.of(new SearchDoc("table_search_index", table.getId().toString())));
   }
 
   @Test
