@@ -27,10 +27,10 @@ from metadata.generated.schema.entity.services.connections.database.influxdbConn
     InfluxdbConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    StatusType,
     TestConnectionResult,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -131,16 +131,28 @@ class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
         automation_workflow: Optional[AutomationWorkflow] = None,
         timeout_seconds: Optional[int] = THREE_MIN,
     ) -> TestConnectionResult:
-        client = self._get_client()
-        try:
-            is_healthy = client.test_connection()
-            if not is_healthy:
+        client = self.client
+        service_connection = self.service_connection
+
+        def test_check_health():
+            if not client.test_connection():
                 raise ConnectionError("InfluxDB 3 health check failed")
+
+        def test_get_databases():
             databases = client.list_databases()
-            logger.info(
-                "InfluxDB 3 connection test passed — %d database(s) found.",
-                len(databases),
-            )
-        finally:
-            client.close()
-        return TestConnectionResult(status=StatusType.Successful, steps=[])
+            if not databases:
+                raise ConnectionError("No InfluxDB databases found")
+            logger.info("Found %d database(s): %s", len(databases), databases)
+
+        test_fn = {
+            "CheckAccess": test_check_health,
+            "GetDatabases": test_get_databases,
+        }
+
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
