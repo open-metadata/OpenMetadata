@@ -309,7 +309,6 @@ test.describe('Activity Feed - Filters', () => {
       await subFilterDropdown.click();
       await page.getByRole('menuitem', { name: menuLabel }).click();
       await expect(subFilterDropdown).toContainText(new RegExp(menuLabel, 'i'));
-      await page.waitForTimeout(300);
     };
 
     await subFilterDropdown.click();
