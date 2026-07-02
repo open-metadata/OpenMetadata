@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -180,7 +181,13 @@ def get_orm_schema(table: Table, metadata: OpenMetadata) -> str:
     :return: qualified schema name
     """
 
-    schema: DatabaseSchema = metadata.get_by_id(entity=DatabaseSchema, entity_id=table.databaseSchema.id)
+    if table.databaseSchema is None:
+        raise ValueError("Table databaseSchema must be set")
+    schema_id = require_entity_reference_id(table.databaseSchema, "Table databaseSchema")
+    schema = cast(
+        "DatabaseSchema",
+        metadata.get_by_id(entity=DatabaseSchema, entity_id=schema_id, nullable=False),
+    )
 
     return str(schema.name.root)
 
@@ -196,6 +203,12 @@ def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
         str
     """
 
-    database: Database = metadata.get_by_id(entity=Database, entity_id=table.database.id)
+    if table.database is None:
+        raise ValueError("Table database must be set")
+    database_id = require_entity_reference_id(table.database, "Table database")
+    database = cast(
+        "Database",
+        metadata.get_by_id(entity=Database, entity_id=database_id, nullable=False),
+    )
 
     return str(database.name.root)

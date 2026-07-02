@@ -14,6 +14,7 @@ Python API REST wrapper and helpers
 
 import time
 import traceback
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
 
@@ -21,11 +22,12 @@ import requests
 from requests.exceptions import HTTPError, JSONDecodeError
 
 from metadata.config.common import ConfigModel
+from metadata.ingestion import diagnostics
+from metadata.ingestion.diagnostics.collectors.http import get_global_tracker
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.ingestion.ometa.utils import sanitize_user_agent
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -248,32 +250,41 @@ class REST:
         if effective_timeout:
             opts["timeout"] = effective_timeout
 
+        # Per-call `retries` override takes precedence over the client
+        # config. `_retry` / `_retry_wait` are Optional in ClientConfig;
+        # narrow to plain ints here so the loop body type-checks cleanly.
+        total_retries: int
         if retries is not None:
             total_retries = retries if retries > 0 else 0
         else:
             total_retries = self._retry if self._retry and self._retry > 0 else 0
-        retry = total_retries
-        while retry >= 0:
-            try:
-                return self._one_request(method, url, opts, retry)
-            except LimitsException as exc:
-                logger.error(f"Feature limit exceeded for {url}")
-                self._limits_reached.add(path)
-                raise exc  # noqa: TRY201
-            except RetryException:
-                retry_wait = self._retry_wait * (total_retries - retry + 1)
-                logger.warning(
-                    "sleep %s seconds and retrying %s %s more time(s)...",
-                    retry_wait,
-                    url,
-                    retry,
-                )
-                time.sleep(retry_wait)
-                retry -= 1
-                if retry == 0:
-                    logger.error(f"No more retries left for {url}")
-                    traceback.format_exc()
-        return None
+        retry: int = total_retries
+        retry_wait_base: int = self._retry_wait or 0
+        http_tracker = get_global_tracker()
+        http_cm = http_tracker.request(method, url) if http_tracker is not None else nullcontext()
+        op_cm = diagnostics.operation("ometa.http", method=method, url=str(url))
+        with http_cm, op_cm:
+            while retry >= 0:
+                try:
+                    return self._one_request(method, url, opts, retry)
+                except LimitsException as exc:
+                    logger.error(f"Feature limit exceeded for {url}")
+                    self._limits_reached.add(path)
+                    raise exc  # noqa: TRY201
+                except RetryException:
+                    retry_wait = retry_wait_base * (total_retries - retry + 1)
+                    logger.warning(
+                        "sleep %s seconds and retrying %s %s more time(s)...",
+                        retry_wait,
+                        url,
+                        retry,
+                    )
+                    time.sleep(retry_wait)
+                    retry -= 1
+                    if retry == 0:
+                        logger.error(f"No more retries left for {url}")
+                        traceback.format_exc()
+            return None
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
@@ -329,7 +340,6 @@ class REST:
 
         return None
 
-    @calculate_execution_time(context="GET")
     def get(self, path, data=None, headers=None):
         """
         GET method
@@ -344,7 +354,6 @@ class REST:
         """
         return self._request("GET", path, data, headers=headers)
 
-    @calculate_execution_time(context="POST")
     def post(
         self,
         path: str,
@@ -427,7 +436,6 @@ class REST:
             headers = {**headers, **extra_headers}
         return headers
 
-    @calculate_execution_time(context="PUT")
     def put(self, path, data=None, json=None, headers=None):
         """
         PUT method
@@ -443,26 +451,30 @@ class REST:
         """
         return self._request("PUT", path, data, json=json, headers=headers)
 
-    @calculate_execution_time(context="PATCH")
-    def patch(self, path, data=None):
+    def patch(self, path, data=None, headers=None):
         """
         PATCH method
 
         Parameters:
             path (str):
             data ():
+            headers (dict): Optional extra headers (e.g. ``If-Match`` for
+                optimistic-concurrency-safe writes) merged on top of the
+                JSON Patch content type.
 
         Returns:
             Response
         """
+        request_headers = {"Content-type": "application/json-patch+json"}
+        if headers:
+            request_headers.update(headers)
         return self._request(
             method="PATCH",
             path=path,
             data=data,
-            headers={"Content-type": "application/json-patch+json"},
+            headers=request_headers,
         )
 
-    @calculate_execution_time(context="DELETE")
     def delete(self, path, data=None, headers=None):
         """
         DELETE method

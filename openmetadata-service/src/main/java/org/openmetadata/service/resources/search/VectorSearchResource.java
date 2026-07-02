@@ -21,12 +21,14 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.FingerprintResponse;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchRequest;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 @Path("/v1/search/vector")
@@ -61,7 +63,7 @@ public class VectorSearchResource {
       })
   public Response vectorSearchPost(
       @Context SecurityContext securityContext, VectorSearchRequest request) {
-    DefaultAuthorizer.getSubjectContext(securityContext);
+    SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
 
     if (request.query == null || request.query.isBlank()) {
       return Response.status(Response.Status.BAD_REQUEST)
@@ -93,7 +95,8 @@ public class VectorSearchResource {
               effectiveSize,
               effectiveFrom,
               effectiveK,
-              request.threshold);
+              request.threshold,
+              SearchUtils.searchPreferenceFor(subjectContext));
       return Response.ok(response).build();
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);

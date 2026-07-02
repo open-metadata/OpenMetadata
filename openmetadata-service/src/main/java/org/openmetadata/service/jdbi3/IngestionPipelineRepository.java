@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -139,7 +140,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
     ingestionPipeline.setPipelineStatuses(
         fields.contains("pipelineStatuses")
-            ? getLatestPipelineStatus(ingestionPipeline)
+            ? getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName())
             : ingestionPipeline.getPipelineStatuses());
 
     if (ingestionPipeline.getSourceConfig() != null
@@ -190,10 +191,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     // Batch fetch service references for all pipelines
     Map<UUID, EntityReference> serviceRefs = batchFetchServices(pipelines);
 
-    // Batch fetch latest pipeline statuses if requested
-    Map<String, PipelineStatus> statusMap = Map.of();
+    // Batch fetch recent pipeline statuses if requested
+    Map<String, List<PipelineStatus>> statusMap = Map.of();
     if (fields.contains("pipelineStatuses")) {
-      statusMap = batchFetchLatestPipelineStatuses(pipelines);
+      statusMap = batchFetchRecentPipelineStatuses(pipelines);
     }
 
     for (IngestionPipeline pipeline : pipelines) {
@@ -222,22 +223,40 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     }
   }
 
-  private Map<String, PipelineStatus> batchFetchLatestPipelineStatuses(
+  private Map<String, List<PipelineStatus>> batchFetchRecentPipelineStatuses(
       List<IngestionPipeline> pipelines) {
     List<String> fqnHashes =
         pipelines.stream()
             .map(p -> FullyQualifiedName.buildHash(p.getFullyQualifiedName()))
             .toList();
-    Map<String, String> jsonMap =
-        getLatestExtensionFromTimeSeriesBatch(fqnHashes, PIPELINE_STATUS_EXTENSION);
-    Map<String, PipelineStatus> result = new HashMap<>();
-    for (Map.Entry<String, String> entry : jsonMap.entrySet()) {
-      PipelineStatus status = JsonUtils.readValue(entry.getValue(), PipelineStatus.class);
-      if (status != null) {
-        result.put(entry.getKey(), status);
-      }
+    Map<String, List<String>> jsonMap =
+        getLatestExtensionsFromTimeSeriesBatch(
+            fqnHashes, PIPELINE_STATUS_EXTENSION, DEFAULT_RECENT_RUN_LIMIT);
+    Map<String, List<PipelineStatus>> result = new HashMap<>();
+    for (Map.Entry<String, List<String>> entry : jsonMap.entrySet()) {
+      result.put(entry.getKey(), toPipelineStatuses(entry.getValue()));
     }
     return result;
+  }
+
+  public List<PipelineStatus> getRecentPipelineStatuses(String ingestionPipelineFQN) {
+    String fqnHash = FullyQualifiedName.buildHash(ingestionPipelineFQN);
+    Map<String, List<String>> jsonMap =
+        getLatestExtensionsFromTimeSeriesBatch(
+            List.of(fqnHash), PIPELINE_STATUS_EXTENSION, DEFAULT_RECENT_RUN_LIMIT);
+    return toPipelineStatuses(jsonMap.getOrDefault(fqnHash, List.of()));
+  }
+
+  private static List<PipelineStatus> toPipelineStatuses(List<String> jsonValues) {
+    return jsonValues.stream()
+        .map(json -> JsonUtils.readValue(json, PipelineStatus.class))
+        .filter(Objects::nonNull)
+        .toList();
+  }
+
+  public static PipelineStatus latestPipelineStatus(IngestionPipeline ingestionPipeline) {
+    List<PipelineStatus> statuses = ingestionPipeline.getPipelineStatuses();
+    return nullOrEmpty(statuses) ? null : statuses.getFirst();
   }
 
   private Map<UUID, EntityReference> batchFetchServices(List<IngestionPipeline> pipelines) {
@@ -361,10 +380,6 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ServiceEntityInterface service =
         Entity.getEntity(decrypted.getService(), "", Include.NON_DELETED);
 
-    if (isS3LogStorageEnabled() && getLogStorageConfiguration().getEnabled()) {
-      decrypted.setEnableStreamableLogs(true);
-    }
-
     PipelineServiceClientResponse deployResponse = deployIngestionPipeline(decrypted, service);
 
     if (deployResponse.getCode() != 200) {
@@ -421,7 +436,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("service", "openMetadataServerConnection", "processingEngine");
+    return List.of(
+        "service", "openMetadataServerConnection", "processingEngine", "pipelineStatuses");
   }
 
   @Override
@@ -596,7 +612,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
-    ingestionPipeline.setPipelineStatuses(pipelineStatus);
+    ingestionPipeline.setPipelineStatuses(
+        getRecentPipelineStatuses(ingestionPipeline.getFullyQualifiedName()));
     ingestionPipeline.setChangeDescription(change);
 
     // Ensure entity reference is set before firing lifecycle event
@@ -652,7 +669,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         JsonUtils.readObjects(jsonResults, PipelineStatus.class);
     List<PipelineStatus> allPipelineStatusList = new ArrayList<>();
     if (pipelineServiceClient != null) {
-      allPipelineStatusList = pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline);
+      allPipelineStatusList.addAll(
+          pipelineServiceClient.getQueuedPipelineStatus(ingestionPipeline));
     }
     allPipelineStatusList.addAll(pipelineStatusList);
     allPipelineStatusList.sort(
@@ -1316,8 +1334,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
+
+  // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
+  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
+  // runner (service / test-suite / application) and derive the flag from it.
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation

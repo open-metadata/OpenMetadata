@@ -14,8 +14,24 @@ public interface VectorIndexService {
 
   void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
 
+  default VectorSearchResponse search(
+      String query,
+      Map<String, List<String>> filters,
+      int size,
+      int from,
+      int k,
+      double threshold) {
+    return search(query, filters, size, from, k, threshold, null);
+  }
+
   VectorSearchResponse search(
-      String query, Map<String, List<String>> filters, int size, int from, int k, double threshold);
+      String query,
+      Map<String, List<String>> filters,
+      int size,
+      int from,
+      int k,
+      double threshold,
+      String preference);
 
   String getExistingFingerprint(String indexName, String entityId);
 

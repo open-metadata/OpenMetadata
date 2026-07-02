@@ -80,7 +80,7 @@ export const KNOWLEDGE_PAGE_MOCK_DATA = {
   version: 1.2,
   updatedAt: 1695189199255,
   updatedBy: 'sachinchaurasiya87',
-  href: 'http://localhost:8585/api/v1/knowledgeCenter/8e6427d6-98cc-4334-b2f2-15fb62bde887',
+  href: 'http://localhost:8585/api/v1/contextCenter/pages/8e6427d6-98cc-4334-b2f2-15fb62bde887',
   changeDescription: {
     fieldsAdded: [],
     fieldsUpdated: [
@@ -147,7 +147,7 @@ export const KNOWLEDGE_PAGE_PARTIAL_MOCK_DATA = {
   version: 1.2,
   updatedAt: 1695189199255,
   updatedBy: 'sachinchaurasiya87',
-  href: 'http://localhost:8585/api/v1/knowledgeCenter/8e6427d6-98cc-4334-b2f2-15fb62bde887',
+  href: 'http://localhost:8585/api/v1/contextCenter/pages/8e6427d6-98cc-4334-b2f2-15fb62bde887',
   changeDescription: {
     fieldsAdded: [],
     fieldsUpdated: [
@@ -176,7 +176,7 @@ export const QUICK_LINK_MOCK_DATA = {
   fullyQualifiedName: 'QuickLink_AOJs37ZW',
   displayName: 'OpenMetadata Docs updated',
   description: 'Quick Link for OpenMetadata Website updated.',
-  href: 'http://sandbox-beta.open-metadata.org/api/v1/knowledgeCenter/fea97e8c-b2ac-4103-b827-29530d1292ad',
+  href: 'http://sandbox-beta.open-metadata.org/api/v1/contextCenter/pages/fea97e8c-b2ac-4103-b827-29530d1292ad',
   changeDescription: {
     fieldsAdded: [
       {

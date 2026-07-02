@@ -39,12 +39,12 @@
   .update-btn {
     background-color: @primary-color;
     border-color: @primary-color;
-    color: @white;
+    color: var(--tw-color-text-white);
   }
 
   .update-btn:hover {
     background-color: @primary-7;
-    color: @white;
+    color: var(--tw-color-text-white);
   }
 
   mark {
@@ -72,5 +72,55 @@
 
   .filters-label.ant-typography {
     color: @grey-600;
+  }
+}
+
+// Compact menu for the Explore immediate-apply mode: rounded boxes that show
+// a "+" when selected, plain right-aligned counts, tighter rows.
+.immediate-apply-dropdown {
+  .ant-dropdown-menu {
+    box-shadow: none;
+    padding: 4px;
+  }
+
+  .ant-dropdown-menu-item {
+    border-radius: 8px;
+    padding: 6px 8px;
+  }
+
+  .ant-checkbox-inner {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+  }
+
+  .ant-checkbox-checked .ant-checkbox-inner {
+    background-color: @primary-color;
+    border-color: @primary-color;
+
+    &::after {
+      border: none;
+      width: auto;
+      height: auto;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -54%);
+      content: '+';
+      color: @white;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1;
+    }
+  }
+
+  .global-border.rounded-4 {
+    border: none;
+    background: transparent;
+    color: @grey-4;
+    font-weight: 600;
+  }
+
+  .dropdown-option-label {
+    font-size: 13px;
   }
 }

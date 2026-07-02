@@ -177,6 +177,10 @@ public final class Queries {
     public QueryDeleter delete() {
       return new QueryDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Query> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.queries(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

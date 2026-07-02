@@ -50,11 +50,13 @@ jest.mock('../../../../utils/EntityVersionUtils', () => ({
     (_changeDescription, columns) => columns
   ),
 }));
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn(() => 'Column'),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn((columns) => columns),
+  getTagsWithoutTier: jest.fn((tags) => tags),
+  getTierTags: jest.fn(() => []),
 }));
 jest.mock('../../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: jest.fn(() => (

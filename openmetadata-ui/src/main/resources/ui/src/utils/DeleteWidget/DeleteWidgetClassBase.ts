@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { startCase } from 'lodash';
 import { EntityType } from '../../enums/entity.enum';
-import { getEntityDeleteMessage } from '../CommonUtils';
-import { getTitleCase } from '../EntityUtils';
+import { getEntityDeleteMessage } from '../EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 
 class DeleteWidgetClassBase {
@@ -54,7 +54,7 @@ class DeleteWidgetClassBase {
         return `drives/${entityType}s`;
       case EntityType.KNOWLEDGE_CENTER:
       case EntityType.KNOWLEDGE_PAGE:
-        return 'knowledgeCenter';
+        return 'contextCenter/pages';
       default:
         return `${entityType}s`;
     }
@@ -68,7 +68,7 @@ class DeleteWidgetClassBase {
     const softDeleteText = i18n.t('message.soft-delete-message-for-entity', {
       entity: entityName,
     });
-    const hardDeleteText = getEntityDeleteMessage(getTitleCase(entityType), '');
+    const hardDeleteText = getEntityDeleteMessage(startCase(entityType), '');
 
     return softDelete ? softDeleteText : hardDeleteText;
   }

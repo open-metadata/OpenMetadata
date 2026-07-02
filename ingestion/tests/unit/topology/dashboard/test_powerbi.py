@@ -1,6 +1,6 @@
 import uuid
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,6 +16,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -24,6 +26,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     DataflowMashup,
+    Datamart,
     Dataset,
     Datasource,
     DatasourceConnectionDetails,
@@ -33,9 +36,11 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
+    PowerBIUser,
     ReportPage,
     Tile,
     UpstreaDataflow,
+    UpstreamDatamart,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
@@ -665,6 +670,30 @@ MOCK_DATAMODEL_ENTITY = DashboardDataModel(
     id=uuid.uuid4(),
     dataModelType=DataModelType.PowerBIDataFlow.value,
     columns=[],
+)
+MOCK_DATAMART = Datamart(
+    id="datamart_b",
+    name="sales_datamart",
+    description="Sales datamart",
+    modifiedBy="jane.doe@example.com",
+    users=[
+        PowerBIUser(
+            displayName="Jane Doe",
+            emailAddress="jane.doe@example.com",
+            datamartUserAccessRight="ReadWriteReshare",
+            userType="Member",
+        )
+    ],
+    upstreamDatamarts=[
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_a",
+        ),
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_b",
+        ),
+    ],
 )
 
 
@@ -2329,3 +2358,90 @@ class PowerBIUnitTest(TestCase):
             assert any(expected_table.lower() in t["table"].lower() for t in result), (
                 f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
             )
+
+    def test_yield_dashboard_lineage_yields_barrier_first(self):
+        """The override must emit a ``Barrier`` as its first record so the sink
+        flushes before ``super().yield_dashboard_lineage`` runs its
+        ``get_by_name`` lookups. Subsequent yields come from ``super``.
+        """
+        ws_id = "test-workspace-id"
+        mock_workspace = MagicMock()
+        mock_workspace.id = ws_id
+        mock_ctx = MagicMock()
+        mock_ctx.get.return_value = MagicMock(workspace=mock_workspace)
+
+        sentinel_super_records = [
+            Either(right=MagicMock(name="lineage-1")),
+            Either(right=MagicMock(name="lineage-2")),
+        ]
+
+        with (
+            patch.object(self.powerbi, "context", mock_ctx),
+            patch(
+                "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
+                return_value=iter(sentinel_super_records),
+            ),
+        ):
+            emitted = list(self.powerbi.yield_dashboard_lineage(MagicMock()))
+
+        # First record is a Barrier carrying the workspace id in its reason.
+        assert len(emitted) == 1 + len(sentinel_super_records)
+        first = emitted[0]
+        assert isinstance(first.right, Barrier)
+        assert ws_id in (first.right.reason or "")
+
+        # Subsequent records are exactly what super yielded, in order.
+        for actual, expected in zip(emitted[1:], sentinel_super_records, strict=True):
+            assert actual is expected
+
+    @pytest.mark.order(53)
+    @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
+    @patch.object(fqn, "build", return_value="powerbi.datamart_a")
+    def test_upstream_datamart_lineage(self, *_):
+        """`create_datamart_upstream_datamart_lineage` should emit one lineage
+        request per non-self upstream datamart reference. The self-reference in
+        MOCK_DATAMART (targetDatamartId == datamart_b == datamart.id) must be
+        filtered out.
+        """
+        MOCK_DATAMART_ENTITY = DashboardDataModel(  # noqa: N806
+            name="datamart_b",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDatamart.value,
+            columns=[],
+        )
+
+        lineage_requests = list(
+            self.powerbi.create_datamart_upstream_datamart_lineage(MOCK_DATAMART, MOCK_DATAMART_ENTITY)
+        )
+
+        successful = [r for r in lineage_requests if r.right is not None]
+        assert len(successful) == 1
+
+    @pytest.mark.order(54)
+    def test_yield_datamodel_for_datamart(self):
+        """`yield_datamodel` should emit a CreateDashboardDataModelRequest with
+        dataModelType=PowerBIDatamart, no columns, and the datamart-specific
+        sourceUrl when the workspace contains a Datamart.
+        """
+        mock_context = MagicMock()
+        mock_context.workspace = Group(
+            id="ws-1",
+            name="Test Workspace",
+            datasets=[],
+            dataflows=[],
+            datamarts=[MOCK_DATAMART],
+        )
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+        self.powerbi.source_config.includeDataModels = True
+        self.powerbi.source_config.includeOwners = False
+        self.powerbi.state.set_filtered_datamodels(None)
+
+        results = list(self.powerbi.yield_datamodel(mock_context.workspace))
+        successful = [r.right for r in results if r.right is not None]
+
+        assert len(successful) == 1
+        request = successful[0]
+        assert request.dataModelType == DataModelType.PowerBIDatamart
+        assert request.columns == []
+        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")

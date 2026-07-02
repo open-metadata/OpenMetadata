@@ -20,11 +20,30 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
+ * HTTP/2 (TLS) mode is opt-in via PW_PROTOCOL=h2. When set, the suite runs
+ * against the h2 connector configured in conf/openmetadata-h2-test.yaml on
+ * https://localhost:8585 with the self-signed cert under
+ * openmetadata-service/src/test/resources/localhost-h2.p12. The default
+ * `yarn playwright:run` flow is unaffected and still targets HTTP/1.1.
+ */
+const isH2Mode = process.env.PW_PROTOCOL === 'h2';
+const defaultBaseURL = isH2Mode
+  ? 'https://localhost:8585'
+  : 'http://localhost:8585';
+
+/**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './playwright/e2e',
   outputDir: './playwright/output/test-results',
+  // Omit {projectName} and {platform} from snapshot filenames so a single
+  // reference image works on both macOS dev machines and Linux CI runners.
+  // Edge lines in the lineage PNG are pure bezier geometry (no text/fonts)
+  // and render identically across platforms; the threshold in toMatchSnapshot
+  // absorbs any minor anti-aliasing differences in the node-card text areas.
+  snapshotPathTemplate:
+    '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -43,15 +62,24 @@ export default defineConfig({
       {
         useDetails: true,
         showError: true,
+        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
+        showArtifactsLink: true,
       },
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
+    [
+      '@flakiness/playwright',
+      { flakinessProject: 'OpenMetadata/OpenMetadata' },
+    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || defaultBaseURL,
+
+    /* Self-signed cert in h2 mode — accept it. No effect on HTTP/1.1 runs. */
+    ignoreHTTPSErrors: isH2Mode,
 
     /* Collect trace and video on every failure (not just retries) for debugging */
     trace: 'on-first-retry',
@@ -86,13 +114,29 @@ export default defineConfig({
         '**/nightly/**',
         '**/Search/**',
         '**/Auth/**',
+        '**/Http2/**',
         '**/DataAssetRulesEnabled.spec.ts',
         '**/DataAssetRulesDisabled.spec.ts',
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/IntakeForm.spec.ts',
+        '**/DomainIsolation/**',
       ],
     },
+    // Only register the h2 project when explicitly opted in. Always-on registration would force
+    // Playwright to do discovery for it on every default run even though its spec files are
+    // skipped — small cost, but pointless when the h2 server isn't running.
+    ...(isH2Mode
+      ? [
+          {
+            name: 'chromium-h2',
+            testMatch: '**/Http2/**',
+            use: { ...devices['Desktop Chrome'] },
+            fullyParallel: true,
+          },
+        ]
+      : []),
     {
       name: 'sso-auth',
       testMatch: ['**/SSOLogin.spec.ts', '**/SSORenewal.spec.ts'],
@@ -150,7 +194,7 @@ export default defineConfig({
       name: 'Basic',
       grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       fullyParallel: true,
     },
     {
@@ -160,11 +204,29 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
     },
+    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
+    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
+    // prevents cross-file races on that shared setting.
+    {
+      name: 'DomainIsolation',
+      testMatch: '**/DomainIsolation/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: false,
+      workers: 1,
+    },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,

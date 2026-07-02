@@ -80,7 +80,7 @@ test('Knowledge Center ViewAll role based access validations', async ({
 
   const articleResponse = userPage.waitForResponse(
     (response) =>
-      response.url().includes('/api/v1/knowledgeCenter/') &&
+      response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'GET'
   );
 
@@ -147,7 +147,7 @@ testWithRolesPages(
 
     const articleResponse = dataConsumerPage.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter/') &&
+        response.url().includes('/api/v1/contextCenter/pages/') &&
         response.request().method() === 'GET'
     );
 
@@ -184,19 +184,9 @@ testWithRolesPages(
 
     await expect(dataConsumerPage.getByTestId('Add')).not.toBeVisible();
 
-    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
-
-    const ownerLabel = dataConsumerPage.getByTestId('owner-label');
-    const hasOwner = await ownerLabel
-      .getByTestId('owner-link')
-      .first()
-      .isVisible();
-
-    if (hasOwner) {
-      await expect(dataConsumerPage.getByTestId('add-owner')).not.toBeVisible();
-    } else {
-      await expect(dataConsumerPage.getByTestId('add-owner')).toBeVisible();
-    }
+    await expect(
+      dataConsumerPage.getByTestId('edit-owner-btn')
+    ).not.toBeVisible();
 
     await expect(
       dataConsumerPage.getByTestId('add-data-assets-container')
@@ -217,7 +207,7 @@ testWithRolesPages(
 
     const articleResponse = dataStewardPage.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/knowledgeCenter/') &&
+        response.url().includes('/api/v1/contextCenter/pages/') &&
         response.request().method() === 'GET'
     );
 
@@ -247,19 +237,7 @@ testWithRolesPages(
     await expect(editor).toBeVisible();
     await expect(editor).toHaveAttribute('contenteditable', 'true');
 
-    const ownerLabel = dataStewardPage.getByTestId('owner-label');
-    const hasOwner = await ownerLabel
-      .getByTestId('owner-link')
-      .first()
-      .isVisible();
-
-    if (hasOwner) {
-      await expect(dataStewardPage.getByTestId('edit-owner')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('add-owner')).not.toBeVisible();
-    } else {
-      await expect(dataStewardPage.getByTestId('add-owner')).toBeVisible();
-      await expect(dataStewardPage.getByTestId('edit-owner')).not.toBeVisible();
-    }
+    await expect(dataStewardPage.getByTestId('edit-owner-btn')).toBeVisible();
 
     const rightPanel = dataStewardPage.getByTestId('right-panel');
     await rightPanel.evaluate((el) => el.scrollTo(0, el.scrollHeight));

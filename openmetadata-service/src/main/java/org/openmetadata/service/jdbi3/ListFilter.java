@@ -24,7 +24,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
-  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -55,6 +54,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getDomainSelfCondition(tableName));
     conditions.add(getOwnerCondition(tableName));
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
@@ -86,8 +86,10 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
-    conditions.add(getServerIdCondition(tableName));
+    conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
+    conditions.add(getSourceFileCondition());
+    conditions.add(getSourceEntityCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -125,6 +127,39 @@ public class ListFilter extends Filter<ListFilter> {
       return new ResourceContext<>(parentEntityType, java.util.UUID.fromString(entityId), null);
     }
     return null;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from a given context file. */
+  private String getSourceFileCondition() {
+    String sourceFileId = queryParams.get("sourceFileId");
+    String result = "";
+    if (!nullOrEmpty(sourceFileId)) {
+      queryParams.put("sourceFileIdParam", sourceFileId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
+                  + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from any source entity. */
+  private String getSourceEntityCondition() {
+    String sourceEntityId = queryParams.get("sourceEntityId");
+    String result = "";
+    if (!nullOrEmpty(sourceEntityId)) {
+      queryParams.put("sourceEntityIdParam", sourceEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
   }
 
   private String getAssignee() {
@@ -498,6 +533,35 @@ public class ListFilter extends Filter<ListFilter> {
         entityIdColumn, domainInClause);
   }
 
+  private String getDomainSelfCondition(String tableName) {
+    String domainIds = getQueryParam("restrictToDomainIds");
+    String result = "";
+    if (domainIds != null) {
+      String idColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+      String idInClause = buildIndexedBindParams("restrictDomainId", domainIds.replace("'", ""));
+      List<String> clauses = new ArrayList<>();
+      clauses.add(String.format("%s IN (%s)", idColumn, idInClause));
+      clauses.addAll(buildDomainFqnPrefixClauses(tableName));
+      result = "(" + String.join(" OR ", clauses) + ")";
+    }
+    return result;
+  }
+
+  private List<String> buildDomainFqnPrefixClauses(String tableName) {
+    List<String> clauses = new ArrayList<>();
+    String fqnHashes = getQueryParam("restrictToDomainFqnHashes");
+    if (!nullOrEmpty(fqnHashes)) {
+      String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+      int index = 0;
+      for (String fqnHash : fqnHashes.split(",")) {
+        String key = "restrictDomainFqn_" + index++;
+        queryParams.put(key, fqnHash.trim() + Entity.SEPARATOR + "%");
+        clauses.add(String.format("%s LIKE :%s", fqnHashColumn, key));
+      }
+    }
+    return clauses;
+  }
+
   private String getOwnerCondition(String tableName) {
     String ownerId = getQueryParam("ownerId");
     if (ownerId == null) {
@@ -593,11 +657,9 @@ public class ListFilter extends Filter<ListFilter> {
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
-  private String getServerIdCondition(String tableName) {
+  private String getServerIdCondition() {
     String serverId = queryParams.get("serverId");
-    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
-        ? ""
-        : "serverId = :serverId";
+    return serverId == null ? "" : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {
@@ -977,10 +1039,49 @@ public class ListFilter extends Filter<ListFilter> {
     return name.replace("'", "''");
   }
 
+  /**
+   * Defence-in-depth: when a value is embedded inside a single-quoted SQL string literal,
+   * escape backslashes before apostrophes (MySQL treats {@code \} as a string-literal escape
+   * by default, and Postgres does too when {@code standard_conforming_strings = off}). Run
+   * this BEFORE {@link #escapeApostrophe} so the {@code \\} we just inserted isn't itself
+   * re-doubled.
+   */
+  public static String escapeBackslashAndApostrophe(String name) {
+    return escapeApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
+   * Escape a string for use as the <em>replacement</em> argument to MySQL's
+   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
+   * <ol>
+   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
+   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
+   *       Each literal backslash in the input needs to become {@code \\} for the regex
+   *       engine to emit a single {@code \}.</li>
+   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
+   *       single-quoted SQL string, so each remaining {@code \} doubles again
+   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
+   * </ol>
+   * Net effect: one input backslash → four backslashes in the SQL statement text, which
+   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
+   * folds to one literal backslash in the replacement output. Apostrophes just double
+   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   *
+   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
+   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
+   * re-escape the apostrophes we already doubled.
+   */
+  public static String escapeForMySqlRegexReplacement(String name) {
+    // Step 1: double backslashes for the regex replacement layer.
+    String regexEscaped = name.replace("\\", "\\\\");
+    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
+    return escapeBackslashAndApostrophe(regexEscaped);
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
-    name = escapeApostrophe(name);
+    name = escapeBackslashAndApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }
@@ -992,8 +1093,13 @@ public class ListFilter extends Filter<ListFilter> {
       if ("open".equalsIgnoreCase(statusGroup)) {
         return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
       } else if ("active".equalsIgnoreCase(statusGroup)) {
+        // ManualRevoke means access is still live at the source waiting for a human to confirm
+        // the revoke — non-terminal, so belongs in 'active'. Keep in sync with
+        // {@code CreateTask.isTerminalTaskStatus} and {@code
+        // TaskRepository.NON_TERMINAL_TASK_STATUSES}.
         return String.format(
-            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
+            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')",
+            column);
       } else if ("closed".equalsIgnoreCase(statusGroup)) {
         // 'Approved' is intentionally a member of both 'active' and 'closed' because the
         // same status maps to different lifecycle meanings depending on the task type:
@@ -1004,7 +1110,7 @@ public class ListFilter extends Filter<ListFilter> {
         // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
         // A future refactor could make status group resolution task-type aware.
         return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
+            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')",
             column);
       }
     }

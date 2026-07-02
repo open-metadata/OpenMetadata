@@ -63,6 +63,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -233,11 +234,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     // Validate and load each record with batch progress tracking
     while (recordIndex < records.size()) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       processRecord(resultsPrinter, records);
       rowsInBatch++;
 
       // Send progress notification after each batch
       if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        if (callback != null) {
+          callback.checkpoint();
+        }
         // Flush pending entity operations using batch DB operations
         flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
@@ -294,6 +301,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     int batchNumber = 0;
 
     for (T entity : entities) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       addRecord(csvFile, entity);
       exported++;
 
@@ -316,7 +326,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String path =
         String.format(
-            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
+            ".*json/data/%s/%sCsvDocumentation\\.json$",
+            Pattern.quote(effectiveEntityType), Pattern.quote(effectiveEntityType));
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
@@ -457,17 +468,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
+  protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    EntityInterface entity =
+        entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
+    return entity != null
+        ? entity.getEntityReference()
+        : Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+  }
+
   protected final EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) {
     if (nullOrEmpty(fqn)) {
       return null;
     }
-    EntityInterface entity = getEntityByName(entityType, fqn);
-    if (entity == null) {
+    try {
+      return getEntityReferenceByName(entityType, fqn);
+    } catch (EntityNotFoundException ex) {
       deferredFailure(csvRecord, entityNotFound(fieldNumber, entityType, fqn));
       return null;
     }
-    return entity.getEntityReference();
   }
 
   protected final List<EntityReference> getEntityReferences(

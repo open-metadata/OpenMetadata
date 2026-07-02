@@ -13,70 +13,83 @@
 
 import {
   Button,
-  ButtonUtility,
   Dialog,
   FileUpload,
   FileUploadDropZone,
-  getReadableFileSize,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { AlertCircle, Trash01, UploadCloud02 } from '@untitledui/icons';
-import { Asset } from 'generated/attachments/asset';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
-import { uploadAsset } from '../../../rest/assetAPI';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { uploadDriveFile } from '../../../rest/assetAPI';
+import { showSuccessToast } from '../../../utils/ToastUtils';
 import {
   QueuedFile,
-  StagedFile,
   UploadDocumentModalProps,
 } from './UploadDocumentModal.interface';
 
+const getFileExt = (name: string) =>
+  name.split('.').pop()?.toLowerCase() ?? 'empty';
+
 const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   isOpen,
-  entityLink,
+  folderFqn,
   onClose,
   onUploaded,
 }) => {
   const { t } = useTranslation();
-  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
-  const [queuedFiles, setQueuedFiles] = useState<QueuedFile[]>([]);
+  const [files, setFiles] = useState<QueuedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [sizeError, setSizeError] = useState('');
-  const uploadedAssetsRef = useRef<Asset[]>([]);
   const cancelledRef = useRef(false);
 
-  const hasStartedUploading = queuedFiles.length > 0;
+  const hasPendingFiles = files.some(
+    (f) => f.status === 'done' && !f.sizeExceeded
+  );
 
   const handleClose = () => {
     cancelledRef.current = true;
-    uploadedAssetsRef.current = [];
-    setStagedFiles([]);
-    setQueuedFiles([]);
+    setFiles([]);
     setIsUploading(false);
-    setSizeError('');
     onClose();
   };
 
-  const uploadSingleFile = async (entry: QueuedFile): Promise<Asset | null> => {
-    setQueuedFiles((prev) =>
-      prev.map((f) =>
-        f.id === entry.id ? { ...f, progress: 0, status: 'uploading' } : f
-      )
-    );
+  const handleDropFiles = (dropped: FileList) => {
+    const newEntries: QueuedFile[] = Array.from(dropped).map((file) => ({
+      file,
+      id: uuidv4(),
+      progress: 100,
+      status: 'done',
+    }));
 
+    setFiles((prev) => [...prev, ...newEntries]);
+  };
+
+  const handleSizeLimitExceed = (oversized: FileList) => {
+    const newEntries: QueuedFile[] = Array.from(oversized).map((file) => ({
+      file,
+      id: uuidv4(),
+      progress: 0,
+      sizeExceeded: true,
+      status: 'error',
+    }));
+
+    setFiles((prev) => [...prev, ...newEntries]);
+  };
+
+  const handleRemove = (id: string) => {
+    setFiles((prev) => prev.filter((f) => f.id !== id));
+  };
+
+  const uploadSingleFile = async (
+    entry: QueuedFile
+  ): Promise<ContextFile | null> => {
     try {
-      const asset = await uploadAsset(entry.file, entityLink);
-      setQueuedFiles((prev) =>
-        prev.map((f) =>
-          f.id === entry.id ? { ...f, progress: 100, status: 'done' } : f
-        )
-      );
-
-      return asset;
+      return await uploadDriveFile(entry.file, folderFqn);
     } catch {
-      setQueuedFiles((prev) =>
+      setFiles((prev) =>
         prev.map((f) =>
           f.id === entry.id ? { ...f, progress: 0, status: 'error' } : f
         )
@@ -86,79 +99,51 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
     }
   };
 
-  const handleDropFiles = (files: FileList) => {
-    const newEntries: StagedFile[] = Array.from(files).map((file) => ({
-      file,
-      id: crypto.randomUUID(),
-    }));
-
-    setStagedFiles((prev) => [...prev, ...newEntries]);
-  };
-
-  const handleSizeLimitExceed = () => {
-    setSizeError(t('message.file-size-limit-exceeded'));
-  };
-
-  const handleRemoveStaged = (id: string) => {
-    setStagedFiles((prev) => prev.filter((f) => f.id !== id));
-  };
-
-  const handleRemoveQueued = (id: string) => {
-    setQueuedFiles((prev) => prev.filter((f) => f.id !== id));
-  };
-
   const handleRetry = async (id: string) => {
-    const entry = queuedFiles.find((f) => f.id === id);
+    const entry = files.find((f) => f.id === id);
 
     if (!entry) {
       return;
     }
 
     setIsUploading(true);
-    const asset = await uploadSingleFile(entry);
+    const contextFile = await uploadSingleFile(entry);
     setIsUploading(false);
 
-    if (asset) {
-      uploadedAssetsRef.current = [...uploadedAssetsRef.current, asset];
-      onUploaded?.([asset]);
+    if (contextFile) {
+      onUploaded?.([contextFile]);
     }
   };
 
   const handleAttach = async () => {
-    if (stagedFiles.length === 0) {
+    const pending = files.filter((f) => f.status === 'done' && !f.sizeExceeded);
+
+    if (pending.length === 0) {
       return;
     }
 
     cancelledRef.current = false;
-
-    const newQueued: QueuedFile[] = stagedFiles.map(({ id, file }) => ({
-      file,
-      id,
-      progress: 0,
-      status: 'uploading',
-    }));
-
-    setStagedFiles([]);
-    setQueuedFiles((prev) => [...prev, ...newQueued]);
     setIsUploading(true);
 
-    const batchAssets: Asset[] = [];
-    for (const entry of newQueued) {
+    const batchFiles: ContextFile[] = [];
+    for (const entry of pending) {
       if (cancelledRef.current) {
         break;
       }
 
-      const asset = await uploadSingleFile(entry);
-      if (asset) {
-        batchAssets.push(asset);
+      const contextFile = await uploadSingleFile(entry);
+      if (contextFile) {
+        batchFiles.push(contextFile);
       }
     }
 
     if (!cancelledRef.current) {
       setIsUploading(false);
 
-      if (batchAssets.length > 0) {
-        onUploaded?.(batchAssets);
+      if (batchFiles.length > 0) {
+        onUploaded?.(batchFiles);
+        showSuccessToast(t('message.documents-uploaded-successfully'));
+        handleClose();
       }
     }
   };
@@ -170,118 +155,61 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
       style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
-        <Dialog
-          showCloseButton
-          title={t('label.upload-document-plural')}
-          width={500}
-          onClose={handleClose}>
-          <Dialog.Content className="tw:pb-6">
+        <Dialog showCloseButton width={500} onClose={handleClose}>
+          <Dialog.Header title={t('label.upload-document-plural')} />
+          <Dialog.Content className="tw:pb-6 tw:max-h-[60vh] tw:overflow-y-auto tw:overflow-x-visible">
             <FileUpload.Root>
               <FileUploadDropZone
                 allowsMultiple
                 clickToUploadLabel={t('label.click-to-upload')}
                 hint={t('message.upload-document-hint')}
+                input-data-testid="file-upload-input"
                 maxSize={DOCUMENT_MAX_FILE_SIZE}
                 orDragAndDropLabel={t('label.or-drag-and-drop')}
                 onDropFiles={handleDropFiles}
                 onSizeLimitExceed={handleSizeLimitExceed}
               />
 
-              {stagedFiles.length > 0 && (
-                <ul className="tw:flex tw:max-h-60 tw:flex-col tw:gap-3 tw:overflow-y-auto">
-                  {stagedFiles.map(({ id, file }) => (
-                    <li
-                      className="tw:flex tw:items-center tw:gap-3 tw:rounded-xl tw:bg-primary tw:p-4 tw:ring-1 tw:ring-secondary tw:ring-inset"
-                      key={id}>
-                      <div className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-secondary">
-                        <UploadCloud02
-                          className="tw:size-5 tw:text-tertiary"
-                          strokeWidth={1.5}
-                        />
-                      </div>
-
-                      <div className="tw:min-w-0 tw:flex-1">
-                        <p className="tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
-                          {file.name}
-                        </p>
-
-                        <p className="tw:text-sm tw:text-tertiary">
-                          {getReadableFileSize(file.size)}
-                        </p>
-                      </div>
-
-                      <ButtonUtility
-                        className="tw:shrink-0"
-                        color="tertiary"
-                        icon={Trash01}
-                        size="xs"
-                        tooltip={t('label.delete')}
-                        onClick={() => handleRemoveStaged(id)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {hasStartedUploading && (
-                <FileUpload.List className="tw:max-h-60 tw:overflow-y-auto">
-                  {queuedFiles.map(({ id, file, progress, status }) => (
+              {files.length > 0 && (
+                <FileUpload.List>
+                  {files.map(({ id, file, progress, status, sizeExceeded }) => (
                     <FileUpload.ListItemProgressBar
                       completeLabel={t('label.complete')}
                       deleteLabel={t('label.delete')}
                       failed={status === 'error'}
-                      failedLabel={t('message.upload-failed')}
+                      failedLabel={t('label.failed')}
                       key={id}
                       name={file.name}
                       progress={status === 'done' ? 100 : progress}
                       size={file.size}
                       tryAgainLabel={t('label.try-again')}
+                      type={getFileExt(file.name)}
                       uploadingLabel={t('label.uploading')}
-                      onDelete={
-                        status === 'uploading'
-                          ? undefined
-                          : () => handleRemoveQueued(id)
-                      }
+                      onDelete={() => handleRemove(id)}
                       onRetry={
-                        status === 'error' ? () => handleRetry(id) : undefined
+                        status === 'error' && !sizeExceeded
+                          ? () => handleRetry(id)
+                          : undefined
                       }
                     />
                   ))}
                 </FileUpload.List>
               )}
             </FileUpload.Root>
-
-            {sizeError && (
-              <div
-                className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:bg-error-secondary tw:px-3 tw:py-2 tw:text-sm tw:text-error-primary"
-                data-testid="size-error-message">
-                <AlertCircle
-                  className="tw:size-4 tw:shrink-0"
-                  strokeWidth={2}
-                />
-                <span>{sizeError}</span>
-              </div>
-            )}
-
-            <div className="tw:flex tw:justify-end tw:gap-3">
-              <Button
-                color="secondary"
-                isDisabled={isUploading}
-                size="sm"
-                onClick={handleClose}>
-                {t('label.cancel')}
-              </Button>
-
-              <Button
-                color="primary"
-                isDisabled={stagedFiles.length === 0 || isUploading}
-                isLoading={isUploading}
-                size="sm"
-                onClick={handleAttach}>
-                {t('label.attach-file-plural')}
-              </Button>
-            </div>
           </Dialog.Content>
+          <Dialog.Footer className="quick-link-modal-footer">
+            <Button color="secondary" size="sm" onClick={handleClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              isDisabled={!hasPendingFiles || isUploading}
+              isLoading={isUploading}
+              size="sm"
+              onClick={handleAttach}>
+              {t('label.attach-file-plural')}
+            </Button>
+          </Dialog.Footer>
         </Dialog>
       </Modal>
     </ModalOverlay>

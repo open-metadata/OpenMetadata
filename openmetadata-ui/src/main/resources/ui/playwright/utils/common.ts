@@ -181,12 +181,14 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').getByText(message).waitFor({
-    state: 'visible',
-    timeout,
-  });
+  const toast = page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first();
 
-  await expect(page.getByTestId('alert-icon')).toBeVisible();
+  await toast.waitFor({ state: 'visible', timeout });
+
+  await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -196,6 +198,25 @@ export const clickOutside = async (page: Page) => {
       y: 0,
     },
   });
+};
+
+export const searchFromSearchInput = async (
+  page: Page,
+  searchInput: Locator,
+  searchTerm: string
+) => {
+  const searchResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.request().method() === 'GET'
+  );
+
+  await searchInput.clear();
+  await searchInput.fill(searchTerm);
+  await expect(searchInput).toHaveValue(searchTerm);
+
+  const searchResponse = await searchResponsePromise;
+  expect(searchResponse.status()).toBe(200);
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
@@ -702,10 +723,10 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
-  const toastElement = page.getByTestId('alert-bar');
+  const closeIcon = page.getByTestId('alert-icon-close').first();
 
-  if ((await toastElement.count()) > 0) {
-    await page.getByTestId('alert-icon-close').first().click();
+  if (await closeIcon.isVisible()) {
+    await closeIcon.click();
   }
 };
 

@@ -7,7 +7,7 @@
   "workflowDefinitionRef": "DataAccessRequestTaskWorkflow",
   "formSchema": {
     "type": "object",
-    "required": ["accessType", "reason"],
+    "required": ["accessType", "reason", "duration"],
     "properties": {
       "accessType": {
         "type": "string",
@@ -17,7 +17,7 @@
       },
       "columns": {
         "type": "array",
-        "title": "Select Columns",
+        "title": "Selected Columns",
         "items": {
           "type": "string"
         },

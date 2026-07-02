@@ -14,6 +14,9 @@
 
 package org.openmetadata.service.tasks;
 
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
 import java.util.List;
@@ -22,6 +25,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 
 /** Validates persisted task payload schemas and payload instances against those schemas. */
 public final class TaskFormSchemaValidator {
+
+  private static final LoadingCache<String, Schema> SCHEMA_CACHE =
+      CacheBuilder.newBuilder().maximumSize(256).build(CacheLoader.from(JsonUtils::getJsonSchema));
 
   private TaskFormSchemaValidator() {
     /* Utility class */
@@ -56,9 +62,10 @@ public final class TaskFormSchemaValidator {
     }
 
     try {
-      return JsonUtils.getJsonSchema(JsonUtils.pojoToJson(formSchema));
+      return SCHEMA_CACHE.get(JsonUtils.pojoToJson(formSchema));
     } catch (Exception e) {
-      throw new IllegalArgumentException("Invalid task form schema: " + e.getMessage(), e);
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      throw new IllegalArgumentException("Invalid task form schema: " + cause.getMessage(), e);
     }
   }
 }

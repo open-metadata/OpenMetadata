@@ -73,7 +73,13 @@ export interface ElasticSearchConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage:   SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:      SearchIndexingLimits;
+    searchIndexMappingLanguage: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -119,18 +125,6 @@ export interface Aws {
  */
 export interface NaturalLanguageSearch {
     /**
-     * AWS Bedrock configuration for natural language processing
-     */
-    bedrock?: Bedrock;
-    /**
-     * Embedding generation using Deep Java Library (DJL)
-     */
-    djl?: Djl;
-    /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
-     */
-    embeddingProvider?: string;
-    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -138,10 +132,6 @@ export interface NaturalLanguageSearch {
      * NLQ filter extractor cache and prompt tuning.
      */
     filterExtractor?: FilterExtractor;
-    /**
-     * Google Gemini configuration for embedding generation via the Generative Language API.
-     */
-    google?: Google;
     /**
      * Hybrid search runtime tuning combining BM25 keyword and KNN semantic queries.
      */
@@ -162,11 +152,6 @@ export interface NaturalLanguageSearch {
      */
     maxConcurrentRequests?: number;
     /**
-     * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
-     * endpoints.
-     */
-    openai?: Openai;
-    /**
      * Fully qualified class name of the NLQService implementation to use
      */
     providerClass?: string;
@@ -178,93 +163,6 @@ export interface NaturalLanguageSearch {
      * Weight for semantic vector search results in hybrid RRF pipeline (0.0-1.0)
      */
     semanticWeight?: number;
-}
-
-/**
- * AWS Bedrock configuration for natural language processing
- */
-export interface Bedrock {
-    /**
-     * AWS credentials configuration for Bedrock service
-     */
-    awsConfig?: AWSBaseConfig;
-    /**
-     * Dimension of the embedding vector
-     */
-    embeddingDimension?: number;
-    /**
-     * Bedrock embedding model identifier to use for vector search
-     */
-    embeddingModelId?: string;
-    /**
-     * Maximum tokens the Bedrock model is allowed to generate.
-     */
-    maxTokens?: number;
-    /**
-     * Bedrock model identifier to use for query transformation
-     */
-    modelId?: string;
-    /**
-     * Sampling temperature for Bedrock requests.
-     */
-    temperature?: number;
-    /**
-     * Bedrock InvokeModel API call timeout in seconds.
-     */
-    timeoutSeconds?: number;
-}
-
-/**
- * AWS credentials configuration for Bedrock service
- *
- * Base AWS configuration for authentication. Supports static credentials, IAM roles, and
- * default credential provider chain.
- */
-export interface AWSBaseConfig {
-    /**
-     * AWS Access Key ID. Falls back to default credential provider chain if not set.
-     */
-    accessKeyId?: string;
-    /**
-     * ARN of IAM role to assume for cross-account access.
-     */
-    assumeRoleArn?: string;
-    /**
-     * Session name for assumed role.
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * Custom endpoint URL for AWS-compatible services (MinIO, LocalStack).
-     */
-    endpointUrl?: string;
-    /**
-     * AWS Region (e.g., us-east-1). Required when AWS authentication is enabled.
-     */
-    region?: string;
-    /**
-     * AWS Secret Access Key. Falls back to default credential provider chain if not set.
-     */
-    secretAccessKey?: string;
-    /**
-     * AWS Session Token for temporary credentials.
-     */
-    sessionToken?: string;
-}
-
-/**
- * Embedding generation using Deep Java Library (DJL)
- */
-export interface Djl {
-    /**
-     * DJL model name for embedding generation
-     */
-    embeddingModel?: string;
 }
 
 /**
@@ -283,40 +181,23 @@ export interface FilterExtractor {
      * Max sample values shown per filter category in the system prompt.
      */
     maxSampleValues?: number;
-}
-
-/**
- * Google Gemini configuration for embedding generation via the Generative Language API.
- */
-export interface Google {
     /**
-     * API key from Google AI Studio for authenticating with the Generative Language API.
+     * Maximum tokens the model may generate for NLQ filter extraction.
      */
-    apiKey?: string;
+    maxTokens?: number;
     /**
-     * Dimension of the embedding vector, sent to Google as `outputDimensionality`. For
-     * `gemini-embedding-001` valid values are 768, 1536, or 3072. For `text-embedding-004` use
-     * 768.
-     */
-    embeddingDimension?: number;
-    /**
-     * Gemini embedding model identifier (e.g., gemini-embedding-001, text-embedding-004).
-     */
-    embeddingModelId?: string;
-    /**
-     * Optional override for the full embedding endpoint URL. Must be the complete URL including
-     * the model and `:embedContent` action (e.g.
-     * `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent`),
-     * not just a base URL. Leave empty to use the default Generative Language API endpoint,
-     * which is constructed from `embeddingModelId`. The `key` query parameter is appended
-     * automatically.
-     */
-    endpoint?: string;
-    /**
-     * Gemini chat model identifier for query transformation (e.g., gemini-2.5-flash,
-     * gemini-1.5-flash).
+     * Optional model override for NLQ filter extraction. Leave empty to use the model from
+     * llmConfiguration.
      */
     modelId?: string;
+    /**
+     * Sampling temperature for NLQ filter extraction.
+     */
+    temperature?: number;
+    /**
+     * Per-call timeout in seconds for NLQ filter extraction completion.
+     */
+    timeoutSeconds?: number;
 }
 
 /**
@@ -346,54 +227,6 @@ export interface HybridSearch {
 }
 
 /**
- * OpenAI configuration for embedding generation. Supports both OpenAI and Azure OpenAI
- * endpoints.
- */
-export interface Openai {
-    /**
-     * API key for authenticating with OpenAI or Azure OpenAI.
-     */
-    apiKey?: string;
-    /**
-     * Azure OpenAI API version. Only used with Azure OpenAI.
-     */
-    apiVersion?: string;
-    /**
-     * Azure OpenAI deployment name. Required when using Azure OpenAI.
-     */
-    deploymentName?: string;
-    /**
-     * Dimension of the embedding vector. Default is 1536 for text-embedding-3-small.
-     */
-    embeddingDimension?: number;
-    /**
-     * OpenAI embedding model identifier (e.g., text-embedding-3-small, text-embedding-ada-002).
-     */
-    embeddingModelId?: string;
-    /**
-     * Custom endpoint URL. For Azure OpenAI, use the Azure resource endpoint (e.g.,
-     * https://your-resource.openai.azure.com). Leave empty for standard OpenAI API.
-     */
-    endpoint?: string;
-    /**
-     * Maximum tokens the OpenAI model is allowed to generate.
-     */
-    maxTokens?: number;
-    /**
-     * OpenAI model identifier to use for query transformation (chat completions).
-     */
-    modelId?: string;
-    /**
-     * Sampling temperature for OpenAI requests.
-     */
-    temperature?: number;
-    /**
-     * OpenAI HTTP request and connect timeout in seconds.
-     */
-    timeoutSeconds?: number;
-}
-
-/**
  * This schema defines the language options available for search index mappings.
  */
 export enum SearchIndexMappingLanguage {
@@ -401,6 +234,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**

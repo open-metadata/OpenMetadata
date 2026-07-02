@@ -33,7 +33,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import javax.imageio.ImageIO;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -101,7 +106,7 @@ class DriveFileUploadIT {
 
     uploadTarget =
         multipartClient
-            .target(serverBaseUrl + "/api/v1/drive/files/upload")
+            .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/upload")
             .property(ClientProperties.CONNECT_TIMEOUT, 30000)
             .property(ClientProperties.READ_TIMEOUT, 30000);
   }
@@ -156,10 +161,30 @@ class DriveFileUploadIT {
     return uploadFixture(resourcePath, fileName, displayName, null);
   }
 
+  private Response uploadUniqueFixture(TestNamespace ns, String resourcePath, String displayName)
+      throws IOException {
+    return uploadFixture(resourcePath, uniqueUploadedFileName(ns, resourcePath), displayName, null);
+  }
+
   private Response uploadFixture(
       String resourcePath, String uploadedFileName, String displayName, String folderFqn)
       throws IOException {
     return uploadFile(uploadedFileName, readFixture(resourcePath), displayName, folderFqn);
+  }
+
+  private String uniqueUploadedFileName(TestNamespace ns, String resourcePath) {
+    String fileName = resourcePath.substring(resourcePath.lastIndexOf('/') + 1);
+    int dotIndex = fileName.lastIndexOf('.');
+    if (dotIndex <= 0) {
+      return ns.prefix(fileName);
+    }
+    return ns.prefix(fileName.substring(0, dotIndex)) + fileName.substring(dotIndex);
+  }
+
+  private ContextFile readCreatedContextFile(Response response, String failurePrefix) {
+    String body = response.readEntity(String.class);
+    assertEquals(CREATED.getStatusCode(), response.getStatus(), failurePrefix + ": " + body);
+    return JsonUtils.readValue(body, ContextFile.class);
   }
 
   private String resolveStoredObjectKey(S3Client s3Client, String assetId) {
@@ -219,10 +244,19 @@ class DriveFileUploadIT {
 
   private ContextFile fetchFile(UUID fileId) {
     try {
-      return RestClient.admin().getById("v1/drive/files", fileId, "", ContextFile.class);
+      return RestClient.admin()
+          .getById("v1/contextCenter/drive/files", fileId, "", ContextFile.class);
     } catch (Exception e) {
       throw new AssertionError("Failed to fetch uploaded file " + fileId, e);
     }
+  }
+
+  private Folder createFolder(TestNamespace ns, String name) throws Exception {
+    return RestClient.admin()
+        .create(
+            "v1/contextCenter/drive/folders",
+            new CreateFolder().withName(ns.prefix(name)),
+            Folder.class);
   }
 
   private void assertSearchContainsFile(String query, UUID fileId) {
@@ -329,12 +363,8 @@ class DriveFileUploadIT {
   void testUploadPdfToMinIO(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
     ContextFile file;
-    try (Response response = uploadFixture("/drive/sample-report.pdf", "Annual Report")) {
-      String body = response.readEntity(String.class);
-      assertEquals(
-          CREATED.getStatusCode(), response.getStatus(), "Upload to MinIO failed: " + body);
-
-      file = JsonUtils.readValue(body, ContextFile.class);
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-report.pdf", "Annual Report")) {
+      file = readCreatedContextFile(response, "Upload to MinIO failed");
       assertNotNull(file.getId());
       assertNotNull(file.getAssetId(), "File should have assetId from S3 upload");
       assertNotNull(file.getHeadContentId(), "File should point at a current content snapshot");
@@ -357,12 +387,9 @@ class DriveFileUploadIT {
   @Test
   void testUploadSpreadsheetToMinIO(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-pricing.xlsx");
-    Response response = uploadFixture("/drive/sample-pricing.xlsx", "Pricing Sheet");
+    Response response = uploadUniqueFixture(ns, "/drive/sample-pricing.xlsx", "Pricing Sheet");
 
-    String body = response.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    ContextFile file = readCreatedContextFile(response, "Upload failed");
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
     assertEquals("Pricing Sheet", file.getDisplayName());
@@ -372,26 +399,21 @@ class DriveFileUploadIT {
   @Test
   void testUploadCsvToMinIO(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-data.csv");
-    Response response = uploadFixture("/drive/sample-data.csv", null);
+    String uploadedFileName = uniqueUploadedFileName(ns, "/drive/sample-data.csv");
+    Response response = uploadFixture("/drive/sample-data.csv", uploadedFileName, null, null);
 
-    String body = response.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    ContextFile file = readCreatedContextFile(response, "Upload failed");
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
-    assertEquals("sample-data.csv", file.getDisplayName());
+    assertEquals(uploadedFileName, file.getDisplayName());
     assertEquals(content.length, file.getFileSize().intValue());
   }
 
   @Test
   void testUploadVerifyFileSize(TestNamespace ns) throws Exception {
     byte[] contentBytes = readFixture("/drive/sample-notes.txt");
-    try (Response response = uploadFixture("/drive/sample-notes.txt", "Sized File")) {
-      String body = response.readEntity(String.class);
-      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-
-      ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Sized File")) {
+      ContextFile file = readCreatedContextFile(response, "Upload failed");
       assertEquals(
           contentBytes.length,
           file.getFileSize().intValue(),
@@ -523,7 +545,7 @@ class DriveFileUploadIT {
     RestClient rest = RestClient.admin();
     Folder folder =
         rest.create(
-            "v1/drive/folders",
+            "v1/contextCenter/drive/folders",
             new CreateFolder().withName(ns.prefix("upload-target-folder")),
             Folder.class);
 
@@ -541,34 +563,115 @@ class DriveFileUploadIT {
     assertNotNull(file.getAssetId());
     assertNotNull(file.getHeadContentId());
 
-    ContextFile fetched = rest.getById("v1/drive/files", file.getId(), "folder", ContextFile.class);
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "folder", ContextFile.class);
     assertNotNull(fetched.getFolder(), "File should be in folder");
     assertEquals(folder.getId(), fetched.getFolder().getId());
   }
 
   @Test
-  void testUploadMultipleFilesUniqueness(TestNamespace ns) throws Exception {
+  void testUploadRejectsDuplicateFileNameCaseInsensitiveInRoot(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
 
-    Response resp1 = uploadFile("duplicate.pdf", content, "First Upload", null);
-    Response resp2 = uploadFile("duplicate.pdf", content, "Second Upload", null);
+    try (Response resp1 = uploadFile("Duplicate.PDF", content, "First Title", null);
+        Response resp2 = uploadFile("duplicate.pdf", content, "Different Title", null)) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
 
-    String body1 = resp1.readEntity(String.class);
-    String body2 = resp2.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals("First Title", file.getDisplayName());
+      assertStoredInMinIO(file.getAssetId(), content);
 
-    assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
-    assertEquals(CREATED.getStatusCode(), resp2.getStatus(), "Second upload failed: " + body2);
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains("duplicate.pdf"));
+    }
+  }
 
-    ContextFile file1 = JsonUtils.readValue(body1, ContextFile.class);
-    ContextFile file2 = JsonUtils.readValue(body2, ContextFile.class);
+  @Test
+  void testUploadRejectsDuplicateFileNameCaseInsensitiveInSameFolder(TestNamespace ns)
+      throws Exception {
+    byte[] content = "nested duplicate content".getBytes(StandardCharsets.UTF_8);
+    Folder folder = createFolder(ns, "duplicate-upload-folder");
 
-    assertTrue(
-        !file1.getId().equals(file2.getId()), "Two uploads of same filename should get unique IDs");
-    assertTrue(
-        !file1.getName().equals(file2.getName()),
-        "Two uploads of same filename should get unique names");
-    assertNotNull(file1.getHeadContentId());
-    assertNotNull(file2.getHeadContentId());
+    try (Response resp1 =
+            uploadFile(
+                "NestedDuplicate.txt", content, "Nested First", folder.getFullyQualifiedName());
+        Response resp2 =
+            uploadFile(
+                "nestedduplicate.TXT",
+                content,
+                "Nested Different",
+                folder.getFullyQualifiedName())) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals("Nested First", file.getDisplayName());
+      assertEquals(folder.getId(), file.getFolder().getId());
+      assertStoredInMinIO(file.getAssetId(), content);
+
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains("nestedduplicate.txt"));
+    }
+  }
+
+  @Test
+  void testUploadRejectsDuplicateSanitizedFileName() throws Exception {
+    byte[] content = "duplicate sanitized content".getBytes(StandardCharsets.UTF_8);
+    String fileName = "Quarterly Report (" + UUID.randomUUID() + ").pdf";
+    String expectedName =
+        fileName.replaceAll("[^a-zA-Z0-9._-]", "_").replaceAll("_+", "_").toLowerCase();
+
+    try (Response resp1 = uploadFile(fileName, content, "First Title", null);
+        Response resp2 = uploadFile(fileName, content, "Different Title", null)) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
+      assertEquals(expectedName, file.getName());
+      assertStoredInMinIO(file.getAssetId(), content);
+
+      assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
+      assertTrue(body2.contains(expectedName));
+    }
+  }
+
+  @Test
+  void testUploadAllowsSameFileNameInDifferentFolders(TestNamespace ns) throws Exception {
+    byte[] content = "shared name different folders".getBytes(StandardCharsets.UTF_8);
+    Folder firstFolder = createFolder(ns, "shared-name-first-folder");
+    Folder secondFolder = createFolder(ns, "shared-name-second-folder");
+
+    try (Response resp1 =
+            uploadFile(
+                "shared-name.txt",
+                content,
+                "First Folder Title",
+                firstFolder.getFullyQualifiedName());
+        Response resp2 =
+            uploadFile(
+                "SHARED-NAME.txt",
+                content,
+                "Second Folder Different Title",
+                secondFolder.getFullyQualifiedName())) {
+      String body1 = resp1.readEntity(String.class);
+      String body2 = resp2.readEntity(String.class);
+
+      assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
+      assertEquals(CREATED.getStatusCode(), resp2.getStatus(), "Second upload failed: " + body2);
+
+      ContextFile firstFile = JsonUtils.readValue(body1, ContextFile.class);
+      ContextFile secondFile = JsonUtils.readValue(body2, ContextFile.class);
+      assertEquals(firstFolder.getId(), firstFile.getFolder().getId());
+      assertEquals(secondFolder.getId(), secondFile.getFolder().getId());
+      assertEquals("First Folder Title", firstFile.getDisplayName());
+      assertEquals("Second Folder Different Title", secondFile.getDisplayName());
+      assertStoredInMinIO(firstFile.getAssetId(), content);
+      assertStoredInMinIO(secondFile.getAssetId(), content);
+    }
   }
 
   @Test
@@ -583,18 +686,20 @@ class DriveFileUploadIT {
 
   @Test
   void testUploadDetectsFileType(TestNamespace ns) throws Exception {
-    Response pdfResp = uploadFixture("/drive/sample-report.pdf", "PDF Test");
-    ContextFile pdf = JsonUtils.readValue(pdfResp.readEntity(String.class), ContextFile.class);
-
-    Response csvResp = uploadFixture("/drive/sample-data.csv", "CSV Test");
-    ContextFile csv = JsonUtils.readValue(csvResp.readEntity(String.class), ContextFile.class);
-
-    Response spreadsheetResp = uploadFixture("/drive/sample-pricing.xlsx", "Spreadsheet Test");
-    ContextFile spreadsheet =
-        JsonUtils.readValue(spreadsheetResp.readEntity(String.class), ContextFile.class);
-
-    Response textResp = uploadFixture("/drive/sample-notes.txt", "Text Test");
-    ContextFile text = JsonUtils.readValue(textResp.readEntity(String.class), ContextFile.class);
+    ContextFile pdf;
+    ContextFile csv;
+    ContextFile spreadsheet;
+    ContextFile text;
+    try (Response pdfResp = uploadUniqueFixture(ns, "/drive/sample-report.pdf", "PDF Test");
+        Response csvResp = uploadUniqueFixture(ns, "/drive/sample-data.csv", "CSV Test");
+        Response spreadsheetResp =
+            uploadUniqueFixture(ns, "/drive/sample-pricing.xlsx", "Spreadsheet Test");
+        Response textResp = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Text Test")) {
+      pdf = readCreatedContextFile(pdfResp, "PDF upload failed");
+      csv = readCreatedContextFile(csvResp, "CSV upload failed");
+      spreadsheet = readCreatedContextFile(spreadsheetResp, "Spreadsheet upload failed");
+      text = readCreatedContextFile(textResp, "Text upload failed");
+    }
 
     assertEquals(ContextFileType.PDF, pdf.getFileType());
     assertEquals(ContextFileType.CSV, csv.getFileType());
@@ -606,11 +711,8 @@ class DriveFileUploadIT {
   void testDownloadUploadedFileThroughContextFileEndpoint(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-notes.txt");
 
-    Response uploadResponse = uploadFixture("/drive/sample-notes.txt", "Download Test");
-    String body = uploadResponse.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), uploadResponse.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    Response uploadResponse = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Download Test");
+    ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
 
     await()
         .pollDelay(Duration.ZERO)
@@ -622,7 +724,7 @@ class DriveFileUploadIT {
                       multipartClient
                           .target(
                               serverBaseUrl
-                                  + "/api/v1/drive/files/"
+                                  + "/api/v1/contextCenter/drive/files/"
                                   + file.getId()
                                   + "/download?redirect=false")
                           .request()
@@ -636,14 +738,131 @@ class DriveFileUploadIT {
   }
 
   @Test
+  void testBulkDownloadUploadedFilesAsZip(TestNamespace ns) throws Exception {
+    byte[] firstContent = "first bulk download".getBytes(StandardCharsets.UTF_8);
+    byte[] secondContent = "second bulk download".getBytes(StandardCharsets.UTF_8);
+
+    ContextFile firstFile;
+    try (Response response = uploadFile("bulk-one.txt", firstContent, "Bulk One", null)) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      firstFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile secondFile;
+    try (Response response = uploadFile("bulk-two.txt", secondContent, "Bulk Two", null)) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      secondFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    Map<String, Object> request =
+        Map.of("ids", List.of(firstFile.getId().toString(), secondFile.getId().toString()));
+    try (Response downloadResponse =
+            multipartClient
+                .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/bulk/download")
+                .request()
+                .headers(adminAuthHeaders())
+                .post(Entity.entity(JsonUtils.pojoToJson(request), MediaType.APPLICATION_JSON));
+        ZipInputStream zipInputStream =
+            new ZipInputStream(downloadResponse.readEntity(InputStream.class))) {
+      assertEquals(200, downloadResponse.getStatus());
+
+      Map<String, byte[]> entries = new HashMap<>();
+      ZipEntry entry;
+      while ((entry = zipInputStream.getNextEntry()) != null) {
+        entries.put(entry.getName(), zipInputStream.readAllBytes());
+        zipInputStream.closeEntry();
+      }
+
+      assertArrayEquals(firstContent, entries.get("bulk-one.txt"));
+      assertArrayEquals(secondContent, entries.get("bulk-two.txt"));
+    }
+  }
+
+  @Test
+  void testBulkDownloadDisambiguatesGeneratedZipEntryCollisions(TestNamespace ns) throws Exception {
+    byte[] firstContent = "first collision download".getBytes(StandardCharsets.UTF_8);
+    byte[] explicitContent = "explicit collision download".getBytes(StandardCharsets.UTF_8);
+    byte[] secondContent = "second collision download".getBytes(StandardCharsets.UTF_8);
+    Folder firstFolder = createFolder(ns, "zip-collision-first-folder");
+    Folder explicitFolder = createFolder(ns, "zip-collision-explicit-folder");
+    Folder secondFolder = createFolder(ns, "zip-collision-second-folder");
+
+    ContextFile firstFile;
+    try (Response response =
+        uploadFile(
+            "collision.txt",
+            firstContent,
+            "Collision First",
+            firstFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      firstFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile explicitFile;
+    try (Response response =
+        uploadFile(
+            "collision (2).txt",
+            explicitContent,
+            "Collision Explicit",
+            explicitFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      explicitFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile secondFile;
+    try (Response response =
+        uploadFile(
+            "collision.txt",
+            secondContent,
+            "Collision Second",
+            secondFolder.getFullyQualifiedName())) {
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      secondFile = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    Map<String, Object> request =
+        Map.of(
+            "ids",
+            List.of(
+                firstFile.getId().toString(),
+                explicitFile.getId().toString(),
+                secondFile.getId().toString()));
+    try (Response downloadResponse =
+            multipartClient
+                .target(serverBaseUrl + "/api/v1/contextCenter/drive/files/bulk/download")
+                .request()
+                .headers(adminAuthHeaders())
+                .post(Entity.entity(JsonUtils.pojoToJson(request), MediaType.APPLICATION_JSON));
+        ZipInputStream zipInputStream =
+            new ZipInputStream(downloadResponse.readEntity(InputStream.class))) {
+      assertEquals(200, downloadResponse.getStatus());
+
+      Map<String, byte[]> entries = new HashMap<>();
+      ZipEntry entry;
+      while ((entry = zipInputStream.getNextEntry()) != null) {
+        entries.put(entry.getName(), zipInputStream.readAllBytes());
+        zipInputStream.closeEntry();
+      }
+
+      assertEquals(3, entries.size());
+      assertArrayEquals(firstContent, entries.get("collision.txt"));
+      assertArrayEquals(explicitContent, entries.get("collision (2).txt"));
+      assertArrayEquals(secondContent, entries.get("collision (3).txt"));
+    }
+  }
+
+  @Test
   void testDownloadUploadedFileThroughSignedRedirect(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-notes.txt");
 
-    Response uploadResponse = uploadFixture("/drive/sample-notes.txt", "Redirect Download");
-    String body = uploadResponse.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), uploadResponse.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    Response uploadResponse =
+        uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Redirect Download");
+    ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
 
     await()
         .pollDelay(Duration.ZERO)
@@ -654,7 +873,10 @@ class DriveFileUploadIT {
               try (Response redirectResponse =
                       multipartClient
                           .target(
-                              serverBaseUrl + "/api/v1/drive/files/" + file.getId() + "/download")
+                              serverBaseUrl
+                                  + "/api/v1/contextCenter/drive/files/"
+                                  + file.getId()
+                                  + "/download")
                           .property(ClientProperties.FOLLOW_REDIRECTS, false)
                           .request()
                           .headers(adminAuthHeaders())
@@ -678,18 +900,15 @@ class DriveFileUploadIT {
     byte[] content = readFixture("/drive/sample-notes.txt");
     RestClient rest = RestClient.admin();
 
-    Response uploadResponse = uploadFixture("/drive/sample-notes.txt", "Trash Download");
-    String body = uploadResponse.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), uploadResponse.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
-    rest.delete("v1/drive/files", file.getId());
+    Response uploadResponse = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Trash Download");
+    ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
+    rest.delete("v1/contextCenter/drive/files", file.getId());
 
     try (Response downloadResponse =
             multipartClient
                 .target(
                     serverBaseUrl
-                        + "/api/v1/drive/files/"
+                        + "/api/v1/contextCenter/drive/files/"
                         + file.getId()
                         + "/download?include=all&redirect=false")
                 .request()
@@ -706,21 +925,23 @@ class DriveFileUploadIT {
     byte[] content = readFixture("/drive/sample-notes.txt");
     RestClient rest = RestClient.admin();
 
-    Response uploadResponse = uploadFixture("/drive/sample-notes.txt", "Hard Delete");
-    String body = uploadResponse.readEntity(String.class);
-    assertEquals(CREATED.getStatusCode(), uploadResponse.getStatus(), "Upload failed: " + body);
-
-    ContextFile file = JsonUtils.readValue(body, ContextFile.class);
+    Response uploadResponse = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Hard Delete");
+    ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
     assertStoredInMinIO(file.getAssetId(), content);
 
-    rest.hardDelete("v1/drive/files", file.getId());
+    rest.hardDelete("v1/contextCenter/drive/files", file.getId());
 
+    // Hard delete is asynchronous: the server returns 200 immediately, then a background
+    // worker soft-deletes (if needed), removes search/relationship state, drops the row,
+    // and unlinks the object from MinIO. Under CI load this chain can take well over 10s,
+    // so poll with a generous ceiling rather than gambling on a tight window.
     await()
-        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
         .untilAsserted(
             () -> {
               try (Response deletedResponse =
-                  rest.rawGet("v1/drive/files/" + file.getId() + "?include=all")) {
+                  rest.rawGet("v1/contextCenter/drive/files/" + file.getId() + "?include=all")) {
                 assertEquals(404, deletedResponse.getStatus());
               }
             });

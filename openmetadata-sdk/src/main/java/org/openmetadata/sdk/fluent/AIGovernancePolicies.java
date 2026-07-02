@@ -215,6 +215,11 @@ public final class AIGovernancePolicies {
     public AIGovernancePolicyDeleter delete() {
       return new AIGovernancePolicyDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<AIGovernancePolicy> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.aiGovernancePolicies(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

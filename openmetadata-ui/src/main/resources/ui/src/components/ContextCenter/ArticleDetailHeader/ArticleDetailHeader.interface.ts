@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
-import { OperationPermission } from 'context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   ArticleTab,
   ContentChangeState,
   KnowledgePage,
-} from 'interface/knowledge-center.interface';
+} from '../../../interface/knowledge-center.interface';
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export type { ArticleTab };
 
@@ -33,8 +33,8 @@ export interface ArticleDetailHeaderProps {
   onToggleRightPanel: () => void;
   onVoteChange: (type: VotingDataProps) => Promise<void>;
   onFollowChange: () => Promise<void>;
-  onToggleDelete: () => void;
   onSave?: () => void;
   onSetThreadLink: (link: string) => void;
   fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
 }

@@ -16,7 +16,11 @@ import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { fillTagDetails, pressKeyXTimes } from './importUtils';
+import {
+  fillTagDetails,
+  pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
+} from './importUtils';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -342,6 +346,8 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
  * @returns Download object from Playwright
  */
 export const performTestCaseExport = async (page: Page) => {
+  const downloadPromise = page.waitForEvent('download');
+
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
   await page.locator('#export-form').waitFor({
@@ -349,8 +355,6 @@ export const performTestCaseExport = async (page: Page) => {
   });
   await expect(page.locator('#export-form')).toBeVisible();
   await expect(page.locator('#submit-button')).not.toBeDisabled();
-
-  const downloadPromise = page.waitForEvent('download');
   await page.locator('#submit-button').click();
   const download = await downloadPromise;
 
@@ -379,9 +383,7 @@ export const navigateToImportPage = async (
 export const uploadCSVFile = async (page: Page, filePath: string) => {
   await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.getByTestId('upload-file-widget').waitFor({
-    state: 'hidden',
-  });
+  await startCsvPreviewAndWaitForGrid(page);
 };
 
 /**
@@ -675,6 +677,8 @@ export const performE2EExportImportFlow = async (
       .locator('[type="file"]')
       .setInputFiles(['downloads/' + exportedFile]);
 
+    await startCsvPreviewAndWaitForGrid(page);
+
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
@@ -749,7 +753,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell1.dblclick();
     await page.keyboard.type(' - Updated via Bulk Edit');
     await page.keyboard.press('Enter');
@@ -759,7 +763,7 @@ export const performE2EExportImportFlow = async (
     const displayNameCell2 = page
       .locator('.rdg-row')
       .nth(1)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell2.dblclick();
     await page.keyboard.type(' - Bulk Edited');
     await page.keyboard.press('Enter');
@@ -769,8 +773,8 @@ export const performE2EExportImportFlow = async (
     await page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="1"]')
-      .click(); // Click Name column to ensure focus
+      .locator('[aria-colindex="2"]')
+      .click(); // Click Name column (colindex=2) to ensure focus
     await pressKeyXTimes(page, 9, 'ArrowRight'); // Navigate from Name (2) to Tags (11) = 9 presses
     await fillTagDetails(page, 'PII.Sensitive');
 

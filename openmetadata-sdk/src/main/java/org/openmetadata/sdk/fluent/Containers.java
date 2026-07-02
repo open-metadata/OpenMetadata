@@ -235,6 +235,11 @@ public final class Containers {
     public ContainerDeleter delete() {
       return new ContainerDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Container> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.containers(), identifier);
+    }
   }
 
   // ==================== Deleter ====================

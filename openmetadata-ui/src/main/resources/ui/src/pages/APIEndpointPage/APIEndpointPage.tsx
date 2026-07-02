@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
@@ -30,23 +31,29 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
+import { Operation as PermissionOperation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addApiEndpointFollower,
-  getApiEndPointByFQN,
   patchApiEndPoint,
   removeApiEndpointFollower,
   updateApiEndPointVote,
 } from '../../rest/apiEndpointsAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+  apiEndpointQueryFn,
+  apiEndpointQueryKey,
+  API_ENDPOINT_DEFAULT_FIELDS,
+} from '../../rest/queries/apiEndpointQuery';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getPrioritizedViewPermission,
+} from '../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -56,52 +63,114 @@ const APIEndpointPage = () => {
   const currentUserId = currentUser?.id ?? '';
   const navigate = useNavigate();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const queryClient = useQueryClient();
 
   const { entityFqn: apiEndpointFqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
 
-  const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
-    {} as APIEndpoint
-  );
-  const [isLoading, setLoading] = useState<boolean>(true);
-  const [isError, setIsError] = useState(false);
-
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [apiEndpointPermissions, setApiEndpointPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const { id: apiEndpointId, version: currentVersion } = apiEndpointDetails;
+  const canViewApiEndpoint = useMemo(
+    () =>
+      getPrioritizedViewPermission(
+        apiEndpointPermissions,
+        PermissionOperation.ViewBasic
+      ) === true,
+    [apiEndpointPermissions]
+  );
 
-  const saveUpdatedApiEndpointData = (updatedData: APIEndpoint) => {
-    const jsonPatch = compare(
-      omitBy(apiEndpointDetails, isUndefined),
-      updatedData
-    );
+  const apiEndpointCacheKey = useMemo(
+    () => apiEndpointQueryKey(apiEndpointFqn, API_ENDPOINT_DEFAULT_FIELDS),
+    [apiEndpointFqn]
+  );
 
-    return patchApiEndPoint(apiEndpointId, jsonPatch);
-  };
+  const {
+    data: apiEndpointDetails,
+    isLoading: apiEndpointLoading,
+    error: apiEndpointError,
+  } = useQuery({
+    queryKey: apiEndpointCacheKey,
+    queryFn: apiEndpointQueryFn(apiEndpointFqn, API_ENDPOINT_DEFAULT_FIELDS),
+    enabled: Boolean(
+      apiEndpointFqn && canViewApiEndpoint && !permissionsLoading
+    ),
+  });
 
-  const handleApiEndpointUpdate = async (
-    updatedData: APIEndpoint,
-    key?: keyof APIEndpoint
-  ) => {
-    try {
-      const res = await saveUpdatedApiEndpointData(updatedData);
+  const isError = useMemo(
+    () =>
+      (apiEndpointError as AxiosError | undefined)?.response?.status === 404,
+    [apiEndpointError]
+  );
 
-      setApiEndpointDetails((previous) => {
-        return {
-          ...previous,
-          ...res,
-          ...(key && { [key]: res[key] }),
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+  useEffect(() => {
+    const status = (apiEndpointError as AxiosError | undefined)?.response
+      ?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (status && status !== 404) {
+      showErrorToast(
+        apiEndpointError as AxiosError,
+        t('server.entity-details-fetch-error', {
+          entityType: t('label.api-endpoint'),
+          entityName: apiEndpointFqn,
+        })
+      );
     }
-  };
+  }, [apiEndpointError, navigate, apiEndpointFqn, t]);
 
+  useEffect(() => {
+    if (!apiEndpointDetails) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(apiEndpointDetails),
+      entityType: EntityType.API_ENDPOINT,
+      fqn: apiEndpointDetails.fullyQualifiedName ?? '',
+      serviceType: apiEndpointDetails.serviceType,
+      timestamp: 0,
+      id: apiEndpointDetails.id,
+    });
+  }, [apiEndpointDetails]);
+
+  const setApiEndpointDetails = useCallback(
+    (
+      updater:
+        | APIEndpoint
+        | undefined
+        | ((prev: APIEndpoint | undefined) => APIEndpoint | undefined)
+    ) => {
+      queryClient.setQueryData<APIEndpoint | undefined>(
+        apiEndpointCacheKey,
+        updater
+      );
+    },
+    [queryClient, apiEndpointCacheKey]
+  );
+
+  const refetchApiEndpointDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: apiEndpointCacheKey }),
+    [queryClient, apiEndpointCacheKey]
+  );
+
+  const { id: apiEndpointId, version: currentVersion } =
+    apiEndpointDetails ?? {};
+  const isFollowing = useMemo(
+    () =>
+      apiEndpointDetails?.followers?.some(({ id }) => id === currentUserId) ??
+      false,
+    [apiEndpointDetails?.followers, currentUserId]
+  );
+  const entityName = useMemo(
+    () => getEntityName(apiEndpointDetails),
+    [apiEndpointDetails]
+  );
+
+  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
   const fetchResourcePermission = async (entityFqn: string) => {
-    setLoading(true);
+    setPermissionsLoading(true);
     try {
       const permissions = await getEntityPermissionByFqn(
         ResourceEntity.API_ENDPOINT,
@@ -115,94 +184,123 @@ const APIEndpointPage = () => {
         })
       );
     } finally {
-      setLoading(false);
+      setPermissionsLoading(false);
     }
   };
 
-  const fetchApiEndPointDetail = async (apiEndpointFqn: string) => {
-    setLoading(true);
+  const saveUpdatedApiEndpointData = useCallback(
+    (updatedData: APIEndpoint) => {
+      if (!apiEndpointDetails || !apiEndpointId) {
+        return Promise.reject(new Error('API Endpoint not loaded'));
+      }
+      const jsonPatch = compare(
+        omitBy(apiEndpointDetails, isUndefined),
+        updatedData
+      );
+
+      return patchApiEndPoint(apiEndpointId, jsonPatch);
+    },
+    [apiEndpointDetails, apiEndpointId]
+  );
+
+  const handleApiEndpointUpdate = async (
+    updatedData: APIEndpoint,
+    key?: keyof APIEndpoint
+  ) => {
     try {
-      const res = await getApiEndPointByFQN(apiEndpointFqn, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.DOMAINS,
-          TabSpecificField.DATA_PRODUCTS,
-          TabSpecificField.VOTES,
-          TabSpecificField.EXTENSION,
-        ].join(','),
-      });
-      const { id, fullyQualifiedName, serviceType } = res;
+      const res = await saveUpdatedApiEndpointData(updatedData);
 
-      setApiEndpointDetails(res);
+      setApiEndpointDetails((previous) => {
+        if (!previous) {
+          return previous;
+        }
 
-      addToRecentViewed({
-        displayName: getEntityName(res),
-        entityType: EntityType.API_ENDPOINT,
-        fqn: fullyQualifiedName ?? '',
-        serviceType: serviceType,
-        timestamp: 0,
-        id: id,
+        return {
+          ...previous,
+          ...res,
+          ...(key && { [key]: res[key] }),
+        };
       });
     } catch (error) {
-      if ((error as AxiosError).response?.status === 404) {
-        setIsError(true);
-      } else if (
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
-      ) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: APIEndpoint | undefined }
+  >({
+    mutationFn: async () => {
+      if (!apiEndpointId) {
+        return;
+      }
+      if (isFollowing) {
+        await removeApiEndpointFollower(apiEndpointId, currentUserId);
       } else {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-details-fetch-error', {
-            entityType: t('label.api-endpoint'),
-            entityName: apiEndpointFqn,
-          })
+        await addApiEndpointFollower(apiEndpointId, currentUserId);
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: apiEndpointCacheKey });
+      const previous = queryClient.getQueryData<APIEndpoint | undefined>(
+        apiEndpointCacheKey
+      );
+      queryClient.setQueryData<APIEndpoint | undefined>(
+        apiEndpointCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(
+                ({ id }) => id !== currentUserId
+              ),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: currentUserId, type: 'user' },
+            ] as APIEndpoint['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<APIEndpoint | undefined>(
+          apiEndpointCacheKey,
+          context.previous
         );
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const followApiEndPoint = async () => {
-    try {
-      const res = await addApiEndpointFollower(apiEndpointId, currentUserId);
-      const { newValue } = res.changeDescription.fieldsAdded[0];
-      setApiEndpointDetails((prev) => ({
-        ...prev,
-        followers: [...(prev?.followers ?? []), ...newValue],
-      }));
-    } catch (error) {
       showErrorToast(
         error as AxiosError,
-        t('server.entity-follow-error', {
-          entity: getEntityName(apiEndpointDetails),
-        })
+        isFollowing
+          ? t('server.entity-unfollow-error', { entity: entityName })
+          : t('server.entity-follow-error', { entity: entityName })
       );
-    }
-  };
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: apiEndpointCacheKey });
+    },
+  });
 
-  const unFollowApiEndPoint = async () => {
-    try {
-      const res = await removeApiEndpointFollower(apiEndpointId, currentUserId);
-      const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setApiEndpointDetails((prev) => ({
-        ...prev,
-        followers: (prev?.followers ?? []).filter(
-          (follower) => follower.id !== oldValue[0].id
-        ),
-      }));
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-unfollow-error', {
-          entity: getEntityName(apiEndpointDetails),
-        })
-      );
-    }
-  };
+  const followApiEndPoint = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
+
+  const unFollowApiEndPoint = useCallback(async () => {
+    await followMutation.mutateAsync();
+  }, [followMutation]);
 
   const versionHandler = () => {
     currentVersion &&
@@ -232,40 +330,28 @@ const APIEndpointPage = () => {
   const handleUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateApiEndPointVote(id, data);
-      const details = await getApiEndPointByFQN(apiEndpointFqn, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.FOLLOWERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.VOTES,
-        ].join(','),
-      });
-      setApiEndpointDetails(details);
+      await queryClient.invalidateQueries({ queryKey: apiEndpointCacheKey });
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const updateApiEndpointDetails = useCallback((data: DataAssetWithDomains) => {
-    const updatedData = data as APIEndpoint;
-
-    setApiEndpointDetails((data) => ({
-      ...(updatedData ?? data),
-      version: updatedData.version,
-    }));
-  }, []);
+  const updateApiEndpointDetails = useCallback(
+    (data: DataAssetWithDomains) => {
+      const updatedData = data as APIEndpoint;
+      setApiEndpointDetails((prev) => ({
+        ...(updatedData ?? prev),
+        version: updatedData.version,
+      }));
+    },
+    [setApiEndpointDetails]
+  );
 
   useEffect(() => {
     fetchResourcePermission(apiEndpointFqn);
   }, [apiEndpointFqn]);
 
-  useEffect(() => {
-    if (apiEndpointPermissions.ViewAll || apiEndpointPermissions.ViewBasic) {
-      fetchApiEndPointDetail(apiEndpointFqn);
-    }
-  }, [apiEndpointPermissions, apiEndpointFqn]);
-
-  if (isLoading) {
+  if (permissionsLoading || apiEndpointLoading) {
     return <Loader />;
   }
   if (isError) {
@@ -286,12 +372,15 @@ const APIEndpointPage = () => {
       />
     );
   }
+  if (!apiEndpointDetails) {
+    return <Loader />;
+  }
 
   return (
     <APIEndpointDetails
       apiEndpointDetails={apiEndpointDetails}
       apiEndpointPermissions={apiEndpointPermissions}
-      fetchAPIEndpointDetails={() => fetchApiEndPointDetail(apiEndpointFqn)}
+      fetchAPIEndpointDetails={refetchApiEndpointDetails}
       onApiEndpointUpdate={handleApiEndpointUpdate}
       onFollowApiEndPoint={followApiEndPoint}
       onToggleDelete={handleToggleDelete}

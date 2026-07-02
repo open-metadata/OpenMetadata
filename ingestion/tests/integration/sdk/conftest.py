@@ -34,6 +34,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ..conftest import _safe_delete  # noqa: TID252
+
 
 @pytest.fixture(scope="module")
 def metadata():
@@ -69,7 +71,13 @@ def db_service(metadata, create_postgres_service, postgres_container):  # noqa: 
 
     service = metadata.get_by_name(DatabaseService, service_entity.fullyQualifiedName.root)
     if service:
-        metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="module")

@@ -36,7 +36,7 @@ import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
-import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-page.less';
 
@@ -57,17 +57,31 @@ const ServicesPage = () => {
       ? 'pipelines'
       : 'services');
 
+  const serviceCategoryValues = useMemo(
+    () => new Set<string>(Object.values(ServiceCategory)),
+    []
+  );
+
   const isValidTab =
     tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
-    Boolean(SERVICE_CATEGORY[tab]);
+    Boolean(SERVICE_CATEGORY[tab]) ||
+    serviceCategoryValues.has(tab);
 
-  const serviceName = useMemo(
-    () =>
-      tab === GlobalSettingOptions.DATA_OBSERVABILITY
-        ? 'dataObservabilityServices'
-        : SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
-    [tab]
-  );
+  const serviceName = useMemo(() => {
+    if (tab === GlobalSettingOptions.DATA_OBSERVABILITY) {
+      return 'dataObservabilityServices';
+    }
+
+    if (SERVICE_CATEGORY[tab]) {
+      return SERVICE_CATEGORY[tab];
+    }
+
+    if (serviceCategoryValues.has(tab)) {
+      return tab as ServiceCategory;
+    }
+
+    return ServiceCategory.DATABASE_SERVICES;
+  }, [tab, serviceCategoryValues]);
 
   const { permissions } = usePermissionProvider();
 
