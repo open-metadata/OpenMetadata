@@ -27,6 +27,7 @@ export const ENTITY_PERMISSIONS = {
   EditTags: true,
   EditTests: true,
   EditTier: true,
+  Trigger: true,
   ViewAll: true,
   ViewBasic: true,
   ViewDataProfile: true,

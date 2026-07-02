@@ -20,7 +20,7 @@ import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
 import {
   getDescriptionDiff,
   getNormalizedTaskPayload,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskPayloadUtils';
 import { DescriptionTabs } from './DescriptionTabs';
 import { DiffViewNew } from './DiffViewNew';
 
