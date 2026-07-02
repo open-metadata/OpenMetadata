@@ -217,7 +217,7 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full. For wide entities (many columns), the 'columns' array is paginated: when it is capped the response sets 'columnsTruncated' with 'totalColumns', 'returnedColumns', 'columnOffset' and 'hasMoreColumns'. When 'hasMoreColumns' is true, fetch the next page by calling again with 'columnOffset' set to the previous 'columnOffset' + 'returnedColumns'; when it is false there are no further columns to retrieve.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
@@ -229,6 +229,14 @@
           "fqn": {
             "type": "string",
             "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
+          },
+          "columnOffset": {
+            "type": "integer",
+            "description": "Zero-based index of the first column to return, for paging through a wide entity's columns. Defaults to 0. Only applies to entities that have a 'columns' array (e.g. tables)."
+          },
+          "columnLimit": {
+            "type": "integer",
+            "description": "Maximum number of columns to return starting at 'columnOffset'. Omit to return as many columns as fit the response size budget (columns beyond the budget are dropped and flagged with 'columnsTruncated'/'hasMoreColumns')."
           }
         },
         "required": [

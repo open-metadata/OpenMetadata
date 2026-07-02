@@ -4,10 +4,12 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -58,6 +60,25 @@ public class GetEntityTool implements McpTool {
   private static final String SCHEMA_DEFINITION_TRUNCATED_KEY = "schemaDefinitionTruncated";
   private static final String SQL_TRUNCATED_KEY = "sqlTruncated";
 
+  private static final String COLUMN_OFFSET_PARAM = "columnOffset";
+  private static final String COLUMN_LIMIT_PARAM = "columnLimit";
+  private static final String TOTAL_COLUMNS_KEY = "totalColumns";
+  private static final String RETURNED_COLUMNS_KEY = "returnedColumns";
+  private static final String COLUMN_OFFSET_KEY = "columnOffset";
+  private static final String COLUMNS_TRUNCATED_KEY = "columnsTruncated";
+  private static final String HAS_MORE_COLUMNS_KEY = "hasMoreColumns";
+  private static final String COLUMNS_MESSAGE_KEY = "columnsMessage";
+
+  private static final int DEFAULT_COLUMN_OFFSET = 0;
+  private static final int NO_COLUMN_LIMIT = -1;
+
+  /**
+   * Fraction of {@link McpResponseTrim#MAX_RESPONSE_CHARS} the windowed columns may occupy. Leaves
+   * headroom for the entity-level fields and the window markers so the assembled response lands
+   * comfortably below the dispatch-level cap rather than right at it.
+   */
+  private static final double COLUMN_BUDGET_FACTOR = 0.8;
+
   @Override
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
@@ -69,12 +90,109 @@ public class GetEntityTool implements McpTool {
         new OperationContext(entityType, VIEW_ALL),
         new ResourceContext<>(entityType));
     LOG.info("Getting details for entity type: {}, FQN: {}", entityType, fqn);
+    int columnOffset =
+        Math.max(0, McpParams.getInt(params, COLUMN_OFFSET_PARAM, DEFAULT_COLUMN_OFFSET));
+    int columnLimit = McpParams.getInt(params, COLUMN_LIMIT_PARAM, NO_COLUMN_LIMIT);
     String fields = "*";
     Map<String, Object> entityData =
         JsonUtils.getMap(Entity.getEntityByName(entityType, fqn, fields, null));
 
-    // Clean response to optimize LLM context usage
-    return cleanEntityResponse(entityData);
+    // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
+    // stays under the dispatch-level size cap instead of being replaced by an empty stub.
+    Map<String, Object> cleaned = cleanEntityResponse(entityData);
+    return applyColumnWindow(cleaned, columnOffset, columnLimit);
+  }
+
+  /**
+   * Bounds the {@code columns} array so a wide entity (hundreds/thousands of columns) never blows the
+   * {@link McpResponseTrim#MAX_RESPONSE_CHARS} cap that would otherwise discard the whole payload.
+   * Entity-level fields are always left intact — only columns are windowed. A client-supplied {@code
+   * columnLimit}/{@code columnOffset} pages deterministically (opt-in); with no limit, columns are
+   * auto-capped to the size budget. Non-column entities (no {@code columns} array) pass through
+   * unchanged, and a small response gains no markers so its shape is byte-identical to before.
+   */
+  @VisibleForTesting
+  static Map<String, Object> applyColumnWindow(
+      Map<String, Object> cleaned, int columnOffset, int columnLimit) {
+    Map<String, Object> result = cleaned;
+    if (cleaned.get(COLUMNS_KEY) instanceof List<?> columns && !columns.isEmpty()) {
+      result = windowColumns(cleaned, columns, columnOffset, columnLimit);
+    }
+    return result;
+  }
+
+  private static Map<String, Object> windowColumns(
+      Map<String, Object> cleaned, List<?> columns, int columnOffset, int columnLimit) {
+    int total = columns.size();
+    int start = Math.min(columnOffset, total);
+    int requestedEnd = columnLimit >= 0 ? Math.min(start + columnLimit, total) : total;
+    int end = fitToBudget(overheadChars(cleaned), columns, start, requestedEnd);
+    cleaned.put(COLUMNS_KEY, new ArrayList<>(columns.subList(start, end)));
+    annotateWindow(cleaned, total, start, end);
+    return cleaned;
+  }
+
+  /** Serialized length of the response with the columns array excluded. */
+  private static int overheadChars(Map<String, Object> cleaned) {
+    Object savedColumns = cleaned.remove(COLUMNS_KEY);
+    int length = McpResponseTrim.serializedLength(cleaned);
+    cleaned.put(COLUMNS_KEY, savedColumns);
+    return length;
+  }
+
+  /**
+   * Returns the exclusive end index of the largest column window starting at {@code start} whose
+   * serialized size stays within the column budget. When the entity-level overhead alone already
+   * exceeds the budget nothing is added and the caller still gets full metadata (better than the
+   * empty oversized stub). When the overhead leaves room but a single column at {@code start} is
+   * itself larger than the budget, that one column is emitted anyway so a paging client always
+   * advances by at least one column instead of re-requesting the same offset forever.
+   */
+  private static int fitToBudget(int overhead, List<?> columns, int start, int end) {
+    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    long used = 0;
+    int fitEnd = start;
+    for (int i = start; i < end && used <= available; i++) {
+      used += McpResponseTrim.serializedLength(columns.get(i)) + 1;
+      if (used <= available) {
+        fitEnd = i + 1;
+      }
+    }
+    boolean singleColumnOverflowsBudget = fitEnd == start && start < end && available > 0;
+    if (singleColumnOverflowsBudget) {
+      fitEnd = start + 1;
+    }
+    return fitEnd;
+  }
+
+  private static void annotateWindow(Map<String, Object> cleaned, int total, int start, int end) {
+    boolean windowed = start > 0 || end < total;
+    if (windowed) {
+      int returned = end - start;
+      boolean hasMore = end < total && returned > 0;
+      cleaned.put(TOTAL_COLUMNS_KEY, total);
+      cleaned.put(RETURNED_COLUMNS_KEY, returned);
+      cleaned.put(COLUMN_OFFSET_KEY, start);
+      cleaned.put(COLUMNS_TRUNCATED_KEY, Boolean.TRUE);
+      cleaned.put(HAS_MORE_COLUMNS_KEY, hasMore);
+      cleaned.put(COLUMNS_MESSAGE_KEY, columnsMessage(total, start, returned, end, hasMore));
+    }
+  }
+
+  /**
+   * Human/LLM-readable window summary. Uses the {@code returnedColumns}/{@code columnOffset} counts
+   * rather than an inclusive-vs-exclusive index range so it cannot be misread, and only advertises a
+   * next page when one is actually reachable.
+   */
+  private static String columnsMessage(
+      int total, int start, int returned, int end, boolean hasMore) {
+    String message =
+        String.format(
+            "Returning %d of %d columns starting at columnOffset %d.", returned, total, start);
+    if (hasMore) {
+      message += String.format(" Fetch the next page with columnOffset=%d.", end);
+    }
+    return message;
   }
 
   /**
