@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "Alleen reviewers kunnen goedkeuren of afwijzen",
     "only-show-columns-with-lineage": "Toon alleen kolommen met Lineage",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "U heeft geen rechten om deze actie uit te voeren. Neem contact op met uw beheerder.",
     "optional-configuration-update-description-dbt": "Optionele configuratie om de beschrijving van dbt eventueel bij te werken",
     "optional-custom-error": "Optioneel aangepast foutbericht dat wordt getoond wanneer validatie mislukt",
     "optional-markdown-content": "Optioneel: Voeg markdown-inhoud toe om direct in de bron in te sluiten",

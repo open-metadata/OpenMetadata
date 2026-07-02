@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "只有審核者可以核准或拒絕",
     "only-show-columns-with-lineage": "僅顯示具有血緣關係的欄位",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "您沒有執行此操作的權限。請聯絡您的管理員。",
     "optional-configuration-update-description-dbt": "是否從 dbt 更新描述的選用組態",
     "optional-custom-error": "驗證失敗時顯示的選填自訂錯誤訊息",
     "optional-markdown-content": "可選：添加要直接嵌入資源的 markdown 內容",

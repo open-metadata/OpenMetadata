@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "يمكن للمراجعين فقط الموافقة أو الرفض",
     "only-show-columns-with-lineage": "إظهار الأعمدة ذات سلسلة البيانات فقط",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "ليس لديك الأذونات اللازمة لتنفيذ هذا الإجراء. يرجى الاتصال بالمسؤول.",
     "optional-configuration-update-description-dbt": "تكوين اختياري لتحديث الوصف من dbt أو لا",
     "optional-custom-error": "رسالة خطأ مخصصة اختيارية تظهر عند فشل التحقق",
     "optional-markdown-content": "اختياري: أضف محتوى Markdown لتضمينه مباشرة في المورد",

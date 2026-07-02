@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "فقط بازبینان می‌توانند تأیید یا رد کنند.",
     "only-show-columns-with-lineage": "فقط ستون‌هایی با Lineage را نمایش بده",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "شما اجازه انجام این عمل را ندارید. لطفاً با مدیر سیستم خود تماس بگیرید.",
     "optional-configuration-update-description-dbt": "پیکربندی اختیاری برای به‌روزرسانی توضیحات از dbt یا خیر.",
     "optional-custom-error": "پیام خطای سفارشی اختیاری که هنگام شکست اعتبارسنجی نمایش داده می‌شود",
     "optional-markdown-content": "اختیاری: محتوای Markdown را برای جاسازی مستقیم در منبع اضافه کنید",
