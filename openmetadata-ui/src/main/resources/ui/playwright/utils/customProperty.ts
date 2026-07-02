@@ -236,7 +236,7 @@ export const setValueForProperty = async (data: {
           val
         )}*`;
         await page.route(searchApi, (route) => route.continue());
-        await container.locator('#entityReference').clear();
+        await page.getByTestId('asset-select-list').getByRole('button').click();
         const searchEntity = page.waitForResponse(searchApi);
         await container.locator('#entityReference').fill(val);
         await searchEntity;
@@ -1411,7 +1411,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
           val
         )}*`;
         await page.route(searchApi, (route) => route.continue());
-        await page.locator('#entityReference').clear();
+        await page.getByTestId('asset-select-list').getByRole('button').click();
         const searchEntity = page.waitForResponse(searchApi);
         await page.locator('#entityReference').fill(val);
         await searchEntity;

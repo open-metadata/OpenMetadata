@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { HTMLAttributes, ReactNode } from 'react';
 import { cx } from '@/utils/cx';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 type Gap = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '8' | '10' | '12';
 
@@ -111,15 +111,15 @@ export const GridItem = ({
   ...props
 }: GridItemProps) => {
   const clampedStart =
-    start !== undefined ? clamp(start, 1, GRID_COLUMNS) : undefined;
+    start === undefined ? undefined : clamp(start, 1, GRID_COLUMNS);
   const maxSpan =
-    clampedStart !== undefined ? GRID_COLUMNS - clampedStart + 1 : GRID_COLUMNS;
+    clampedStart === undefined ? GRID_COLUMNS : GRID_COLUMNS - clampedStart + 1;
   const clampedSpan = clamp(span, 1, maxSpan);
 
   const gridColumn =
-    clampedStart !== undefined
-      ? `${clampedStart} / span ${clampedSpan}`
-      : `span ${clampedSpan}`;
+    clampedStart === undefined
+      ? `span ${clampedSpan}`
+      : `${clampedStart} / span ${clampedSpan}`;
 
   return (
     <div {...props} className={cx(className)} style={{ gridColumn, ...style }}>

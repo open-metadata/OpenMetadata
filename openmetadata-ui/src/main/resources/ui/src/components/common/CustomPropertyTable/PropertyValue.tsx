@@ -651,8 +651,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'entityReference':
       case 'entityReferenceList': {
-        const mode =
-          propertyType.name === 'entityReferenceList' ? 'multiple' : undefined;
+        const multiple = propertyType.name === 'entityReferenceList';
 
         const index = (property.customPropertyConfig?.config as string[]) ?? [];
 
@@ -663,6 +662,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           if (isArray(value)) {
             initialOptions = value.map((item: EntityReference) => {
               return {
+                id: item.fullyQualifiedName ?? item.id ?? '',
                 displayName: getEntityName(item),
                 reference: item,
                 label: getEntityName(item),
@@ -676,6 +676,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           } else {
             initialOptions = [
               {
+                id: value?.fullyQualifiedName ?? value?.id ?? '',
                 displayName: getEntityName(value),
                 reference: value,
                 label: getEntityName(value),
@@ -710,9 +711,15 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: {
-                entityReference: DataAssetOption | DataAssetOption[];
+                entityReference: DataAssetOption | DataAssetOption[] | null;
               }) => {
                 const { entityReference } = values;
+
+                if (!entityReference) {
+                  onInputSave(undefined);
+
+                  return;
+                }
 
                 if (Array.isArray(entityReference)) {
                   const references = entityReference
@@ -732,11 +739,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
-                  mode={mode}
+                  multiple={multiple}
                   placeholder={
-                    mode === 'multiple'
-                      ? t('label.entity-reference')
-                      : t('label.entity-reference-plural')
+                    multiple
+                      ? t('label.entity-reference-plural')
+                      : t('label.entity-reference')
                   }
                   searchIndex={index.join(',') as SearchIndex}
                 />

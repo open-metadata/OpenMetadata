@@ -144,12 +144,9 @@ export const updateDataAsset = async (
     .first()
     .click();
 
-  await page.waitForSelector(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
-    { state: 'visible' }
-  );
+  await page.locator('[data-testid="asset-select-list"] input').waitFor();
   await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
+    '[data-testid="asset-select-list"] input',
     dataAsset.entity.name
   );
   await page
@@ -162,9 +159,7 @@ export const updateDataAsset = async (
   const response = await updateKnowledgePage;
   expect(response.status()).toBe(200);
 
-  await page.waitForSelector(`[data-testid="${dataAsset.entity.name}"]`, {
-    state: 'visible',
-  });
+  await page.getByTestId(`asset-select-list`).locator(`input`).waitFor();
   await page.click(`[data-testid="${dataAsset.entity.name}"]`);
 
   await page.getByRole('link', { name: title }).click();

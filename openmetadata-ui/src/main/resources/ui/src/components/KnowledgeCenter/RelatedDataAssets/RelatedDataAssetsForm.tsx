@@ -83,8 +83,8 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="dataAssets">
             <DataAssetAsyncSelectList
+              multiple
               initialOptions={initialOptions}
-              mode="multiple"
               placeholder={t('label.data-asset-plural')}
               queryFilter={knowledgeCenterQueryFilter}
             />

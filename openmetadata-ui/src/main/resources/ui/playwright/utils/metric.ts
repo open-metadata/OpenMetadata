@@ -155,7 +155,7 @@ export const updateRelatedMetric = async (
   }
 
   await page
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
+    .locator('[data-testid="asset-select-list"] input')
     .waitFor({ state: 'visible' });
 
   const apiPromise = page.waitForResponse(
@@ -163,17 +163,14 @@ export const updateRelatedMetric = async (
   );
 
   await page.fill(
-    '[data-testid="asset-select-list"] > .ant-select-selector input',
+    '[data-testid="asset-select-list"] input',
     dataAsset.entity.name
   );
 
   await apiPromise;
 
-  await page
-    .locator('.ant-select-item-option-content', {
-      hasText: dataAsset.entity.name,
-    })
-    .click();
+  await page.getByTestId(`option-${dataAsset.entity.name}`).waitFor();
+  await page.getByTestId(`option-${dataAsset.entity.name}`).click();
 
   // perform click outside to close the select options and make click to button
   await clickOutside(page);
