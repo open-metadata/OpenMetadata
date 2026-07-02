@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { parseInt } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -28,7 +29,6 @@ import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.compone
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
 import { BINARY_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
-import { parseInt } from 'lodash';
 const EntityHealthStatusPieChartWidget = ({
   className = '',
   chartFilter,

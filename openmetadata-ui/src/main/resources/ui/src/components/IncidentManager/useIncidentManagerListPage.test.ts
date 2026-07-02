@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';
 import QueryString from 'qs';
+import { act } from 'react';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';

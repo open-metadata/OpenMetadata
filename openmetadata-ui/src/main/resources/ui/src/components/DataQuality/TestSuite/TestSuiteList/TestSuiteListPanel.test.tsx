@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode, act } from 'react';
+import { act, ReactNode } from 'react';
 import { TestSuite } from '../../../../generated/tests/testCase';
 import { DataQualitySubTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
