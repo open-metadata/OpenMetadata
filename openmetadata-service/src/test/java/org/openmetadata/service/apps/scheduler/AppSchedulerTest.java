@@ -400,16 +400,6 @@ class AppSchedulerTest {
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
   }
 
-  private App nonConcurrentApp(String name) {
-    return new App()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(name)
-        .withClassName("org.openmetadata.service.resources.apps.TestApp")
-        .withAllowConcurrentExecution(false)
-        .withRuntime(new ScheduledExecutionContext().withEnabled(true));
-  }
-
   // --- Tests for the reindex/ops path: clear a stale on-demand job, then trigger ---
 
   private App nonConcurrentApp(String name) {
