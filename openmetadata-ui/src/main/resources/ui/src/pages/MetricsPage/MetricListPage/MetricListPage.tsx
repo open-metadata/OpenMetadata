@@ -38,14 +38,13 @@ import {
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
+import { debounce, startCase } from 'lodash';
 import {
   ChangeEvent,
   Key,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,17 +66,17 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
-import { Include } from '../../../generated/type/include';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
-  getMetrics,
 } from '../../../rest/metricsAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
@@ -86,12 +85,9 @@ import {
 } from '../../../utils/EntityPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { getErrorText } from '../../../utils/StringUtils';
-import {
-  showErrorToast,
-  showSuccessToast,
-  showWarningToast,
-} from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   MetricBulkEditListFilters,
   MetricBulkEditScope,
@@ -148,43 +144,21 @@ const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
 const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
   typeof value === 'string' ? value : value.target.value;
 
-const METRIC_FETCH_PAGE_SIZE = 100;
-const MAX_METRIC_FETCH_PAGES = 50;
-
-// Metrics are a curated collection, so the listing loads the full set once and
-// filters/paginates client-side. This keeps the Status and search filters
-// consistent with pagination (server cursor pagination cannot filter by
-// entityStatus, which left filtered views empty while pagination showed the
-// unfiltered total).
-const getAllMetrics = async (): Promise<{
-  metrics: Metric[];
-  isTruncated: boolean;
-}> => {
-  const collectedMetrics: Metric[] = [];
-  let after: string | undefined;
-  let fetchedPages = 0;
-
-  do {
-    const response = await getMetrics({
-      fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
-      limit: METRIC_FETCH_PAGE_SIZE,
-      after,
-      include: Include.All,
-    });
-    collectedMetrics.push(...response.data);
-    after = response.paging?.after;
-    fetchedPages += 1;
-  } while (after && fetchedPages < MAX_METRIC_FETCH_PAGES);
-
-  return { metrics: collectedMetrics, isTruncated: Boolean(after) };
-};
+const METRIC_SEARCH_DEBOUNCE_MS = 500;
 
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
-  const { pageSize, currentPage, handlePageChange, handlePageSizeChange } =
-    usePaging();
+  const {
+    pageSize,
+    currentPage,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    paging,
+    showPagination,
+  } = usePaging();
 
   const { getResourcePermission } = usePermissionProvider();
   const [permission, setPermission] = useState<OperationPermission>(
@@ -214,18 +188,49 @@ const MetricListPage = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
 
-  const applyFetchedMetrics = useCallback(
-    (result: { metrics: Metric[]; isTruncated: boolean }) => {
-      setMetrics(result.metrics);
-      if (result.isTruncated) {
-        showWarningToast(
-          t('message.metric-list-truncated', {
-            count: result.metrics.length,
+  // All filtering (search + status) and pagination is done server-side via the
+  // metric search index, so the Status filter and search stay consistent with
+  // pagination totals.
+  const fetchMetrics = useCallback(
+    async ({
+      page,
+      search,
+      status,
+      size,
+    }: {
+      page: number;
+      search: string;
+      status?: EntityStatus;
+      size: number;
+    }) => {
+      try {
+        setLoadingMore(true);
+        const response = await searchQuery({
+          query: search,
+          pageNumber: page,
+          pageSize: size,
+          searchIndex: SearchIndex.METRIC,
+          trackTotalHits: true,
+          queryFilter: status
+            ? getTermQuery({ entityStatus: status })
+            : undefined,
+        });
+        setMetrics(response.hits.hits.map((hit) => hit._source));
+        handlePagingChange({ total: response.hits.total.value });
+      } catch (error) {
+        const errorMessage = getErrorText(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.metric-plural'),
           })
         );
+        showErrorToast(errorMessage);
+        setError(errorMessage);
+      } finally {
+        setLoadingMore(false);
       }
     },
-    [t]
+    [handlePagingChange, t]
   );
 
   const init = async () => {
@@ -234,7 +239,12 @@ const MetricListPage = () => {
       const permission = await getResourcePermission(ResourceEntity.METRIC);
       setPermission(permission);
       if (permission.ViewAll || permission.ViewBasic) {
-        applyFetchedMetrics(await getAllMetrics());
+        await fetchMetrics({
+          page: currentPage,
+          search: searchText,
+          status: statusFilter,
+          size: pageSize,
+        });
       }
     } catch (error) {
       const errorMessage = getErrorText(
@@ -250,23 +260,61 @@ const MetricListPage = () => {
     }
   };
 
-  const fetchMetrics = useCallback(async () => {
-    try {
-      setLoadingMore(true);
-      applyFetchedMetrics(await getAllMetrics());
-    } catch (error) {
-      const errorMessage = getErrorText(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.metric-plural'),
-        })
-      );
-      showErrorToast(errorMessage);
-      setError(errorMessage);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [applyFetchedMetrics, t]);
+  // Search box changes debounce a fresh first-page query; filters and paging
+  // fetch immediately.
+  const debouncedSearchFetch = useMemo(
+    () =>
+      debounce(
+        (search: string, status: EntityStatus | undefined, size: number) => {
+          handlePageChange(INITIAL_PAGING_VALUE);
+          fetchMetrics({ page: INITIAL_PAGING_VALUE, search, status, size });
+        },
+        METRIC_SEARCH_DEBOUNCE_MS
+      ),
+    [fetchMetrics, handlePageChange]
+  );
+
+  useEffect(() => () => debouncedSearchFetch.cancel(), [debouncedSearchFetch]);
+
+  const handleStatusFilterChange = useCallback(
+    (status?: EntityStatus) => {
+      setStatusFilter(status);
+      handlePageChange(INITIAL_PAGING_VALUE);
+      fetchMetrics({
+        page: INITIAL_PAGING_VALUE,
+        search: searchText,
+        status,
+        size: pageSize,
+      });
+    },
+    [fetchMetrics, handlePageChange, pageSize, searchText]
+  );
+
+  const onPageChange = useCallback(
+    ({ currentPage: page }: PagingHandlerParams) => {
+      handlePageChange(page);
+      fetchMetrics({
+        page,
+        search: searchText,
+        status: statusFilter,
+        size: pageSize,
+      });
+    },
+    [fetchMetrics, handlePageChange, pageSize, searchText, statusFilter]
+  );
+
+  const onShowSizeChange = useCallback(
+    (size: number) => {
+      handlePageSizeChange(size);
+      fetchMetrics({
+        page: INITIAL_PAGING_VALUE,
+        search: searchText,
+        status: statusFilter,
+        size,
+      });
+    },
+    [fetchMetrics, handlePageSizeChange, searchText, statusFilter]
+  );
 
   const glossaryTerms = useCallback(
     (tags?: TagLabel[]) =>
@@ -333,52 +381,6 @@ const MetricListPage = () => {
     []
   );
 
-  const filteredMetrics = useMemo(
-    () =>
-      metrics.filter((metric) => {
-        const searchValue = searchText.trim().toLowerCase();
-        const matchesSearch = searchValue
-          ? [
-              metric.name,
-              metric.displayName,
-              metric.fullyQualifiedName,
-              metric.description,
-            ]
-              .filter(Boolean)
-              .some((value) => value?.toLowerCase().includes(searchValue))
-          : true;
-        const matchesStatus = statusFilter
-          ? metric.entityStatus === statusFilter
-          : true;
-
-        return matchesSearch && matchesStatus;
-      }),
-    [metrics, searchText, statusFilter]
-  );
-
-  const paginatedMetrics = useMemo(
-    () =>
-      filteredMetrics.slice(
-        (currentPage - 1) * pageSize,
-        currentPage * pageSize
-      ),
-    [filteredMetrics, currentPage, pageSize]
-  );
-
-  // Reset to the first page when the active filters change. Skip the initial
-  // mount so a deep-linked page number from the URL is preserved, and keep
-  // handlePageChange out of the deps (its identity changes with currentPage,
-  // which would otherwise reset the page on every navigation).
-  const isFilterInitialMount = useRef(true);
-  useEffect(() => {
-    if (isFilterInitialMount.current) {
-      isFilterInitialMount.current = false;
-
-      return;
-    }
-    handlePageChange(INITIAL_PAGING_VALUE);
-  }, [searchText, statusFilter]);
-
   const selectedMetrics = useMemo(
     () => metrics.filter((metric) => selectedMetricIds.includes(metric.id)),
     [metrics, selectedMetricIds]
@@ -435,9 +437,12 @@ const MetricListPage = () => {
   }, [navigate, searchText, selectedMetricIds, selectedMetrics, statusFilter]);
 
   const handleSearchTextChange = useCallback(
-    (value: string | ChangeEvent<HTMLInputElement>) =>
-      setSearchText(getInputChangeValue(value)),
-    []
+    (value: string | ChangeEvent<HTMLInputElement>) => {
+      const text = getInputChangeValue(value);
+      setSearchText(text);
+      debouncedSearchFetch(text, statusFilter, pageSize);
+    },
+    [debouncedSearchFetch, pageSize, statusFilter]
   );
 
   const handleDeleteConfirmationChange = useCallback(
@@ -463,13 +468,26 @@ const MetricListPage = () => {
       // Deletion can shrink the result set below the current page; return to the
       // first page so the user never lands on an empty page.
       handlePageChange(INITIAL_PAGING_VALUE);
-      fetchMetrics();
+      fetchMetrics({
+        page: INITIAL_PAGING_VALUE,
+        search: searchText,
+        status: statusFilter,
+        size: pageSize,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [fetchMetrics, handlePageChange, selectedMetrics, t]);
+  }, [
+    fetchMetrics,
+    handlePageChange,
+    pageSize,
+    searchText,
+    selectedMetrics,
+    statusFilter,
+    t,
+  ]);
 
   const columns = useMemo(() => {
     const emptyDash = (
@@ -838,7 +856,7 @@ const MetricListPage = () => {
                     <Dropdown.Popover>
                       <Dropdown.Menu
                         onAction={(key) =>
-                          setStatusFilter(
+                          handleStatusFilterChange(
                             key === 'all' ? undefined : (key as EntityStatus)
                           )
                         }>
@@ -924,17 +942,16 @@ const MetricListPage = () => {
             <Table
               columns={columns}
               customPaginationProps={{
-                showPagination: filteredMetrics.length > pageSize,
+                showPagination,
                 currentPage,
                 isLoading: loadingMore,
                 isNumberBased: true,
                 pageSize,
-                paging: { total: filteredMetrics.length },
-                pagingHandler: ({ currentPage: page }: PagingHandlerParams) =>
-                  handlePageChange(page),
-                onShowSizeChange: handlePageSizeChange,
+                paging,
+                pagingHandler: onPageChange,
+                onShowSizeChange,
               }}
-              dataSource={paginatedMetrics}
+              dataSource={metrics}
               loading={loadingMore}
               locale={{
                 emptyText: (

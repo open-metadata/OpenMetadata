@@ -15,11 +15,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityStatus } from '../../../generated/entity/data/metric';
 import { getEntityBulkEditPath } from '../../../utils/EntityPureUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 
 import MetricListPage from './MetricListPage';
 
 const mockNavigate = jest.fn();
+
+const buildSearchResponse = (metrics: Array<Record<string, unknown>>) => ({
+  hits: {
+    hits: metrics.map((metric) => ({ _source: metric })),
+    total: { value: metrics.length },
+  },
+});
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Avatar: jest
@@ -116,14 +125,14 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-// Mock metrics API to return an empty list
 jest.mock('../../../rest/metricsAPI', () => ({
-  getMetrics: jest.fn().mockResolvedValue({
-    data: [],
-    paging: {},
-  }),
   exportMetricDetailsInCSV: jest.fn().mockResolvedValue({}),
   deleteMetricAsync: jest.fn().mockResolvedValue({}),
+}));
+
+// Metrics list is driven by the search API (server-side filter + pagination).
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -208,11 +217,8 @@ jest.mock('../../../hoc/LimitWrapper', () => ({
 describe('MetricListPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    getMetrics.mockResolvedValue({
-      data: [],
-      paging: {},
-    });
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(buildSearchResponse([]));
   });
 
   it('renders the docs link with correct URL when empty state is shown', async () => {
@@ -261,17 +267,12 @@ describe('MetricListPage', () => {
   });
 
   it('passes selected metric scope when selected rows are bulk edited', async () => {
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    getMetrics.mockResolvedValue({
-      data: [
-        {
-          id: 'metric-id',
-          name: 'net_sales',
-          displayName: 'Net Sales',
-        },
-      ],
-      paging: {},
-    });
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(
+      buildSearchResponse([
+        { id: 'metric-id', name: 'net_sales', displayName: 'Net Sales' },
+      ])
+    );
 
     render(
       <MemoryRouter>
@@ -324,72 +325,23 @@ describe('MetricListPage', () => {
     dispatchEventSpy.mockRestore();
   });
 
-  it('filters the listing by status across every page of metrics', async () => {
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    // Approved metric on page 1, Draft metric on page 2. The listing must load
-    // every page so the Status filter sees metrics beyond the first page.
-    getMetrics.mockImplementation((params: { after?: string }) =>
-      Promise.resolve(
-        params?.after
-          ? {
-              data: [
-                {
-                  id: 'd1',
-                  name: 'draft_metric_two',
-                  fullyQualifiedName: 'd2',
-                  entityStatus: 'Draft',
-                },
-              ],
-              paging: { total: 2 },
-            }
-          : {
-              data: [
-                {
-                  id: 'a1',
-                  name: 'approved_metric',
-                  fullyQualifiedName: 'a1',
-                  entityStatus: 'Approved',
-                },
-              ],
-              paging: { after: 'cursor-2', total: 2 },
-            }
-      )
-    );
+  it('filters the listing by status via a server-side search query', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockImplementation((req: { queryFilter?: unknown }) => {
+      const isDraftFilter = JSON.stringify(req.queryFilter ?? {}).includes(
+        EntityStatus.Draft
+      );
 
-    render(
-      <MemoryRouter>
-        <MetricListPage />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('approved_metric')).toBeInTheDocument();
-    expect(screen.getByText('draft_metric_two')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('status-option-Draft'));
-
-    expect(screen.getByText('draft_metric_two')).toBeInTheDocument();
-    expect(screen.queryByText('approved_metric')).not.toBeInTheDocument();
-  });
-
-  it('warns when the metric list exceeds the fetch cap', async () => {
-    const { getMetrics } = require('../../../rest/metricsAPI');
-    const { showWarningToast } = require('../../../utils/ToastUtils');
-    let page = 0;
-    // Always return another page so the fetch loop hits its page cap.
-    getMetrics.mockImplementation(() => {
-      page += 1;
-
-      return Promise.resolve({
-        data: [
-          {
-            id: `m-${page}`,
-            name: `metric-${page}`,
-            fullyQualifiedName: `m-${page}`,
-            entityStatus: 'Draft',
-          },
-        ],
-        paging: { after: `cursor-${page}` },
-      });
+      return Promise.resolve(
+        buildSearchResponse(
+          isDraftFilter
+            ? [{ id: 'd1', name: 'draft_metric', entityStatus: 'Draft' }]
+            : [
+                { id: 'a1', name: 'approved_metric', entityStatus: 'Approved' },
+                { id: 'd1', name: 'draft_metric', entityStatus: 'Draft' },
+              ]
+        )
+      );
     });
 
     render(
@@ -398,6 +350,20 @@ describe('MetricListPage', () => {
       </MemoryRouter>
     );
 
-    await waitFor(() => expect(showWarningToast).toHaveBeenCalled());
+    expect(await screen.findByText('approved_metric')).toBeInTheDocument();
+    expect(screen.getByText('draft_metric')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
+
+    await waitFor(() =>
+      expect(screen.queryByText('approved_metric')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByText('draft_metric')).toBeInTheDocument();
+    expect(searchQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+      })
+    );
   });
 });
