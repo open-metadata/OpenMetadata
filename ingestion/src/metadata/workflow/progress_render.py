@@ -124,7 +124,7 @@ class ProgressReporter:
         if driver is not None:
             _, done, total = driver
             elapsed = self._registry.elapsed_seconds()
-            if done > 0 and done < total and elapsed is not None and elapsed > 0:
+            if done > 0 and total is not None and done < total and elapsed is not None and elapsed > 0:
                 result = round(elapsed * (total - done) / done)
         return result
 
@@ -136,9 +136,10 @@ class ProgressReporter:
         result = None
         if snapshot is not None:
             tree = snapshot_to_progress_payload(snapshot)
-            tree["processed"] = self._registry.assets_ingested()
-            tree["expected"] = None
-            result = tree
+            if tree is not None:
+                tree["processed"] = self._registry.assets_ingested()
+                tree["expected"] = None
+                result = tree
         return result
 
 

@@ -181,7 +181,7 @@ class WorkflowStatusMixin:
         the backing attribute so we never create an empty registry on a step
         that never tracked progress."""
         reporter = None
-        for step in self.workflow_steps():
+        for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
             registry = getattr(step, "_progress_registry", None)
             if registry is not None:
                 reporter = ProgressReporter(registry)
@@ -213,6 +213,9 @@ class WorkflowStatusMixin:
                         {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
                     ],
                     estimatedSecondsRemaining=eta_seconds,
+                    stepName=None,
+                    currentEntity=None,
+                    message=None,
                 )
 
                 self.metadata.send_progress_update(
