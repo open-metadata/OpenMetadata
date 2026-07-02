@@ -74,9 +74,6 @@ public class FolderRepository extends EntityRepository<Folder> {
 
     if (fields.contains("childrenCount")) {
       List<String> ids = entities.stream().map(f -> f.getId().toString()).toList();
-      if (ids.isEmpty()) {
-        return;
-      }
       Map<UUID, Integer> countMap =
           daoCollection
               .relationshipDAO()
