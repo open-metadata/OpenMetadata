@@ -21,9 +21,11 @@ export interface FolderOption {
 export interface DocumentsViewProps {
   canDelete?: boolean;
   canEdit?: boolean;
+  totalFileCount: number;
   data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
+  isLoadingMore?: boolean;
   previewFileId?: string;
   selectedIds?: Set<string>;
   onDownload?: (file: ContextFile) => void;
@@ -34,6 +36,7 @@ export interface DocumentsViewProps {
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
+  onScrollEnd?: () => void;
 }
 
 export interface MetaRowProps {
@@ -63,7 +66,7 @@ export interface FileActionsProps {
 export interface ListHeaderProps {
   canDelete?: boolean;
   canEdit?: boolean;
-  count: number;
+  totalFileCount: number;
   folders?: FolderOption[];
   selectedCount: number;
   onClear?: () => void;
