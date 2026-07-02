@@ -56,9 +56,12 @@ jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
   default: {
     isEmbeddedMode: jest.fn(() => false),
+    getContextCenterRootBreadcrumb: jest.fn(() => ({
+      label: 'label.context-center',
+      href: '/context-center',
+    })),
     isBreadcrumbInsideCard: jest.fn(() => false),
-    getCardStyle: jest.fn(() => ({})),
-    getBreadcrumbClassName: jest.fn(() => ''),
+    getHeaderCardClassName: jest.fn(() => ({})),
     getContextCenterPath: jest.fn(() => '/context-center'),
     getArticlesListPath: jest.fn(() => '/context-center/articles'),
     getArticleVersionPath: jest.fn(
