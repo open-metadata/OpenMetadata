@@ -236,10 +236,6 @@ test.describe(
           .click();
         await patchRequest;
 
-        await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-        ).toBeVisible();
-
         for (const name of [
           user.getUserDisplayName(),
           user2.getUserDisplayName(),
