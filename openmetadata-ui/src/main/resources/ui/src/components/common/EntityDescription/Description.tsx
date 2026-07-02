@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import {
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Edit02,
+  MessageChatSquare,
+  MessagePlusSquare,
+} from '@untitledui/icons';
 import classNames from 'classnames';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -31,16 +41,10 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
-import {
-  CommentIconButton,
-  EditIconButton,
-  RequestIconButton,
-} from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
-import './description-v1.less';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
+
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
@@ -53,9 +57,7 @@ const SuggestionsAlert = withSuspenseFallback(
   lazy(() => import('../../Suggestions/SuggestionsAlert/SuggestionsAlert'))
 );
 
-const { Text } = Typography;
-
-const DescriptionV1 = ({
+const Description = ({
   hasEditAccess,
   description = '',
   className,
@@ -73,15 +75,16 @@ const DescriptionV1 = ({
   entityFullyQualifiedName,
 }: DescriptionProps) => {
   const navigate = useNavigate();
-  const { isVersionView, changeSummary } = useGenericContext<Domain>();
+  const { isVersionView, changeSummary, onThreadLinkSelect } =
+    useGenericContext<Domain>();
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
-  const { onThreadLinkSelect } = useGenericContext();
 
-  const entityFqn = useMemo(() => {
-    return entityFullyQualifiedName ?? fqn;
-  }, [entityFullyQualifiedName, fqn]);
+  const entityFqn = useMemo(
+    () => entityFullyQualifiedName ?? fqn,
+    [entityFullyQualifiedName, fqn]
+  );
 
   const handleRequestDescription = useCallback(() => {
     navigate(getRequestDescriptionPath(entityType, entityFqn));
@@ -91,36 +94,30 @@ const DescriptionV1 = ({
     navigate(getUpdateDescriptionPath(entityType, entityFqn));
   }, [entityType, entityFqn]);
 
-  // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
     setIsEditDescription(true);
   }, []);
 
-  // Callback to handle the cancel button from modal
   const handleCancelEditDescription = useCallback(() => {
     setIsEditDescription(false);
   }, []);
 
-  // Callback to handle the description change from modal
   const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      await onDescriptionUpdate?.(description);
+    async (updatedDescription: string) => {
+      await onDescriptionUpdate?.(updatedDescription);
       setIsEditDescription(false);
     },
     [onDescriptionUpdate]
   );
 
   const { entityLink, entityLinkWithoutField } = useMemo(() => {
-    const entityLink = getEntityFeedLink(
-      entityType,
-      entityFqn,
-      EntityField.DESCRIPTION
-    );
-    const entityLinkWithoutField = getEntityFeedLink(entityType, entityFqn);
-
     return {
-      entityLink,
-      entityLinkWithoutField,
+      entityLink: getEntityFeedLink(
+        entityType,
+        entityFqn,
+        EntityField.DESCRIPTION
+      ),
+      entityLinkWithoutField: getEntityFeedLink(entityType, entityFqn),
     };
   }, [entityType, entityFqn]);
 
@@ -128,28 +125,32 @@ const DescriptionV1 = ({
     const hasDescription = !isDescriptionContentEmpty(
       description?.trim() ?? ''
     );
+    let button: ReactNode = null;
 
-    const isTaskEntity = TASK_ENTITIES.includes(entityType);
-
-    if (!isTaskEntity) {
-      return null;
+    if (TASK_ENTITIES.includes(entityType)) {
+      button = (
+        <Tooltip
+          title={
+            hasDescription
+              ? t('message.request-update-description')
+              : t('message.request-description')
+          }>
+          <Button
+            color="secondary"
+            data-testid="request-description"
+            iconLeading={MessagePlusSquare}
+            size="xxs"
+            onPress={
+              hasDescription
+                ? handleUpdateDescription
+                : handleRequestDescription
+            }
+          />
+        </Tooltip>
+      );
     }
 
-    return (
-      <RequestIconButton
-        newLook
-        data-testid="request-description"
-        size="small"
-        title={
-          hasDescription
-            ? t('message.request-update-description')
-            : t('message.request-description')
-        }
-        onClick={
-          hasDescription ? handleUpdateDescription : handleRequestDescription
-        }
-      />
-    );
+    return button;
   }, [
     description,
     entityType,
@@ -159,33 +160,37 @@ const DescriptionV1 = ({
 
   const actionButtons = useMemo(
     () => (
-      <Space size={12}>
+      <div className="tw:flex tw:items-center tw:gap-2">
         {!isVersionView && !isReadOnly && hasEditAccess && (
-          <EditIconButton
-            newLook
-            data-testid="edit-description"
-            size="small"
+          <Tooltip
             title={t('label.edit-entity', {
               entity: t('label.description'),
-            })}
-            onClick={handleEditDescription}
-          />
+            })}>
+            <Button
+              color="secondary"
+              data-testid="edit-description"
+              iconLeading={Edit02}
+              size="xxs"
+              onPress={handleEditDescription}
+            />
+          </Tooltip>
         )}
         {taskActionButton}
         {showCommentsIcon && (
-          <CommentIconButton
-            newLook
-            data-testid="description-thread"
-            size="small"
+          <Tooltip
             title={t('label.list-entity', {
               entity: t('label.conversation'),
-            })}
-            onClick={() => {
-              onThreadLinkSelect?.(entityLink);
-            }}
-          />
+            })}>
+            <Button
+              color="secondary"
+              data-testid="description-thread"
+              iconLeading={MessageChatSquare}
+              size="xxs"
+              onPress={() => onThreadLinkSelect?.(entityLink)}
+            />
+          </Tooltip>
         )}
-      </Space>
+      </div>
     ),
     [
       isReadOnly,
@@ -195,6 +200,7 @@ const DescriptionV1 = ({
       taskActionButton,
       showCommentsIcon,
       onThreadLinkSelect,
+      entityLink,
     ]
   );
 
@@ -202,9 +208,10 @@ const DescriptionV1 = ({
     const activeSuggestion = selectedUserSuggestions?.description.find(
       (suggestion) => suggestion.entityLink === entityLinkWithoutField
     );
+    let alert: ReactNode = null;
 
     if (activeSuggestion?.entityLink === entityLinkWithoutField) {
-      return (
+      alert = (
         <SuggestionsAlert
           hasEditAccess={hasEditAccess}
           suggestion={activeSuggestion}
@@ -212,101 +219,90 @@ const DescriptionV1 = ({
       );
     }
 
-    return null;
+    return alert;
   }, [hasEditAccess, entityLinkWithoutField, selectedUserSuggestions]);
 
   const descriptionContent = useMemo(() => {
-    if (suggestionData) {
-      return suggestionData;
-    } else {
-      return (
+    return (
+      suggestionData ?? (
         <RichTextEditorPreviewerV1
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
           isDescriptionExpanded={isDescriptionExpanded}
           markdown={description}
         />
-      );
-    }
-  }, [description, suggestionData, isDescriptionExpanded]);
+      )
+    );
+  }, [
+    description,
+    suggestionData,
+    isDescriptionExpanded,
+    reduceDescription,
+    removeBlur,
+  ]);
 
   const shouldShowDescriptionMetadata = useMemo(
     () => changeSummary?.['description']?.changeSource != null,
     [changeSummary]
   );
 
-  const header = useMemo(() => {
-    return (
-      <div
-        className={classNames(
-          'description-v1-header d-flex justify-between flex-wrap',
-          {
-            'm-t-sm': suggestions?.length > 0,
-          }
-        )}>
-        <div className="description-v1-title-row d-flex items-center gap-2">
-          <Text
-            className={classNames('description-v1-title text-sm font-medium')}>
-            {t('label.description')}
-          </Text>
-          <DescriptionSourceBadge
-            changeSummaryEntry={changeSummary?.['description']}
-            showAcceptedBy={false}
-            showTimestamp={false}
-          />
-          {showActions && actionButtons}
-        </div>
-        {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
+  const header = (
+    <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
+      <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2">
+        <Typography
+          as="span"
+          className="tw:text-text-secondary"
+          size="text-sm"
+          weight="semibold">
+          {t('label.description')}
+        </Typography>
+        <DescriptionSourceBadge
+          changeSummaryEntry={changeSummary?.['description']}
+          showAcceptedBy={false}
+          showTimestamp={false}
+        />
+        {showActions && actionButtons}
       </div>
-    );
-  }, [showActions, actionButtons, suggestions, showSuggestions, changeSummary]);
-
-  const content = (
-    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
-      <Space
-        {...(wrapInCard
-          ? {}
-          : {
-              'data-testid': 'asset-description-container',
-            })}
-        className={classNames('schema-description d-flex', className)}
-        direction="vertical"
-        size={16}>
-        {wrapInCard ? null : header}
-        <div>
-          {descriptionContent}
-          {!suggestionData && shouldShowDescriptionMetadata && (
-            <div className="description-v1-metadata">
-              <DescriptionSourceBadge
-                changeSummaryEntry={changeSummary?.['description']}
-                showBadge={false}
-              />
-            </div>
-          )}
-          <ModalWithMarkdownEditor
-            header={t('label.edit-description-for', { entityName })}
-            placeholder={t('label.enter-entity', {
-              entity: t('label.description'),
-            })}
-            value={description}
-            visible={Boolean(isEditDescription)}
-            onCancel={handleCancelEditDescription}
-            onSave={handleDescriptionChange}
-          />
-        </div>
-      </Space>
-    </EntityAttachmentProvider>
+      {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
+    </div>
   );
 
-  return wrapInCard ? (
-    <ExpandableCard
-      cardProps={{ title: header, className: 'new-description-card' }}
-      dataTestId="asset-description-container">
-      {content}
-    </ExpandableCard>
-  ) : (
-    content
+  return (
+    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
+      <div
+        className={classNames(
+          wrapInCard
+            ? 'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
+            : 'tw:flex tw:flex-col tw:gap-4',
+          className
+        )}
+        data-testid="asset-description-container">
+        {header}
+        <div className="tw:[&_.tiptap.ProseMirror]:text-xs tw:[&_.tiptap.ProseMirror]:leading-[18px]">
+          {descriptionContent}
+        </div>
+        {!suggestionData && shouldShowDescriptionMetadata && (
+          <>
+            <Divider />
+            <DescriptionSourceBadge
+              changeSummaryEntry={changeSummary?.['description']}
+              showBadge={false}
+            />
+          </>
+        )}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          value={description}
+          visible={Boolean(isEditDescription)}
+          onCancel={handleCancelEditDescription}
+          onSave={handleDescriptionChange}
+        />
+      </div>
+    </EntityAttachmentProvider>
   );
 };
 
-export default DescriptionV1;
+export default Description;

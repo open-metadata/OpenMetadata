@@ -24,8 +24,8 @@ import { PersonaDetailsPage } from './PersonaDetailsPage';
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('../../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1.component</div>);
+jest.mock('../../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
@@ -172,7 +172,7 @@ describe('PersonaDetailsPage', () => {
       await screen.findByText('ManageButton.component')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('DescriptionV1.component')
+      await screen.findByText('Description.component')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('add-persona-button')).toBeInTheDocument();
   });

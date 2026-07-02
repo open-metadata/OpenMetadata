@@ -77,8 +77,8 @@ const CustomPropertyTable = withSuspenseFallback(
   )
 ) as CustomPropertyTableComponent;
 
-const DescriptionV1 = withSuspenseFallback(
-  lazy(() => import('../../common/EntityDescription/DescriptionV1'))
+const Description = withSuspenseFallback(
+  lazy(() => import('../../common/EntityDescription/Description'))
 );
 
 const TierWidget = withSuspenseFallback(
@@ -426,7 +426,7 @@ export const CommonWidgets = ({
 
   const descriptionWidget = useMemo(() => {
     return (
-      <DescriptionV1
+      <Description
         showSuggestions
         wrapInCard
         description={description}
