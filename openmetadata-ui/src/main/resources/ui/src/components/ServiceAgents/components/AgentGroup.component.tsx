@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { IcChevD, IcPlus } from '../AgentIcons';
+import { ReactComponent as ChevronDownIcon } from '../../../assets/svg/agents/chevron-down.svg';
+import { ReactComponent as PlusIcon } from '../../../assets/svg/agents/plus.svg';
 import { Agent } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
@@ -48,37 +49,36 @@ const AgentGroup: FC<AgentGroupProps> = ({
 
   return (
     <Card
-      className="tw:rounded-2xl tw:border tw:border-[color:var(--border-subtle)] tw:bg-[color:var(--bg-subtle)] tw:p-[18px]"
+      className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-secondary tw:p-4.5"
       variant="ghost">
       <Box align="center" className="tw:mb-4 tw:gap-3">
-        <span className="tw:grid tw:h-10 tw:w-10 tw:place-items-center tw:rounded-[10px] tw:border tw:border-[color:var(--border-default)] tw:bg-white tw:text-[color:var(--fg-secondary)]">
+        <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary">
           {icon}
         </span>
         <div className="tw:flex-1">
-          <div className="tw:text-base tw:font-semibold tw:text-[color:var(--fg-primary)]">
+          <div className="tw:text-md tw:font-semibold tw:text-primary">
             {t(titleKey)}
           </div>
-          <div className="tw:mt-px tw:text-[12.5px] tw:text-[color:var(--fg-tertiary)]">
+          <div className="tw:mt-px tw:text-xs tw:text-tertiary">
             {t(descKey)}
           </div>
         </div>
         {runningCount > 0 && (
-          <span
-            className={
-              'tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-full' +
-              ' tw:border tw:border-[color:var(--blue-200)] tw:bg-[color:var(--blue-50)]' +
-              ' tw:px-[11px] tw:py-1 tw:text-xs tw:font-semibold tw:text-[color:var(--blue-700)]'
-            }>
-            <span className="tw:h-1.5 tw:w-1.5 tw:animate-pulse tw:rounded-full tw:bg-[color:var(--blue-500)]" />
+          <Badge
+            className="tw:gap-1.5 tw:font-semibold"
+            color="brand"
+            size="sm"
+            type="pill-color">
+            <span className="tw:size-1.5 tw:animate-pulse tw:rounded-full tw:bg-utility-brand-500" />
             {t('label.count-running', { count: runningCount })}
-          </span>
+          </Badge>
         )}
         {addAgentSlot ??
           (canCreateAgent && (
             <Button
               color="secondary"
-              iconLeading={<IcPlus />}
-              iconTrailing={<IcChevD />}
+              iconLeading={<PlusIcon height={18} width={18} />}
+              iconTrailing={<ChevronDownIcon height={18} width={18} />}
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>

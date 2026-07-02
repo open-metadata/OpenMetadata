@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Card } from '@openmetadata/ui-core-components';
+import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RunGlyph, RunIcon } from '../AgentIcons';
+import { ReactComponent as CloseIcon } from '../../../assets/svg/agents/close.svg';
+import { ReactComponent as LogsIcon } from '../../../assets/svg/agents/logs.svg';
+import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
+import RunGlyph from './RunGlyph.component';
 import RunStepRow from './RunStepRow.component';
 
 // ---- stat tile ----
@@ -27,47 +30,27 @@ interface StatTileProps {
   tone?: 'error' | 'warn' | 'ok';
 }
 
-const StatTile: FC<StatTileProps> = ({ value, label, tone }) => {
-  let color = 'var(--fg-primary)';
-
-  if (tone === 'error') {
-    color = 'var(--error-600)';
-  } else if (tone === 'warn') {
-    color = 'var(--warning-700)';
-  } else if (tone === 'ok') {
-    color = 'var(--success-700)';
-  }
-
-  return (
-    <Card
-      style={{
-        flex: 1,
-        padding: '12px 14px',
-        background: '#fff',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 10,
-      }}
-      variant="ghost">
-      <div
-        style={{
-          font: '700 20px Inter',
-          letterSpacing: '-0.02em',
-          color,
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-        {value}
-      </div>
-      <div
-        style={{
-          font: '400 11.5px Inter',
-          color: 'var(--fg-tertiary)',
-          marginTop: 2,
-        }}>
-        {label}
-      </div>
-    </Card>
-  );
+const STAT_TONE_CLASS: Record<string, string> = {
+  error: 'tw:text-error-primary',
+  warn: 'tw:text-utility-warning-700',
+  ok: 'tw:text-utility-success-700',
 };
+
+const StatTile: FC<StatTileProps> = ({ value, label, tone }) => (
+  <Card
+    className="tw:flex-1 tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:px-3.5 tw:py-3"
+    variant="ghost">
+    <div
+      className={`tw:text-xl tw:font-bold tw:leading-tight tw:tracking-tight tw:tabular-nums ${
+        (tone && STAT_TONE_CLASS[tone]) ?? 'tw:text-primary'
+      }`}>
+      {value}
+    </div>
+    <div className="tw:mt-0.5 tw:text-xs tw:leading-tight tw:text-tertiary">
+      {label}
+    </div>
+  </Card>
+);
 
 // ---- run history rail ----
 interface RunHistoryProps {
@@ -80,7 +63,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
 
   return (
-    <Box style={{ gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+    <Box className="tw:gap-2 tw:overflow-x-auto tw:pb-1">
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -88,57 +71,28 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 
         return (
           <button
+            className={`tw:relative tw:w-[132px] tw:shrink-0 tw:cursor-pointer tw:overflow-hidden tw:rounded-xl tw:border tw:px-3 tw:py-2.5 tw:text-left ${
+              isSelected
+                ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
+                : 'tw:border-secondary tw:bg-secondary'
+            }`}
             key={r.id}
-            style={{
-              flexShrink: 0,
-              width: 132,
-              textAlign: 'left',
-              cursor: 'pointer',
-              padding: '10px 12px',
-              borderRadius: 10,
-              background: isSelected ? '#fff' : 'var(--gray-25)',
-              border: `1px solid ${
-                isSelected ? 'var(--border-brand)' : 'var(--border-subtle)'
-              }`,
-              boxShadow: isSelected
-                ? '0 0 0 3px rgba(21,112,239,0.10)'
-                : 'none',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
+            type="button"
             onClick={() => onSelect(r.id)}>
             <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 3,
-                background: m.bar,
-              }}
+              className={`tw:absolute tw:bottom-0 tw:left-0 tw:top-0 tw:w-1 ${m.barClassName}`}
             />
-            <Box align="center" style={{ gap: 6, marginBottom: 6 }}>
+            <Box align="center" className="tw:mb-1.5 tw:gap-1.5">
               <RunGlyph size={14} status={r.status as RunStatus} />
-              <span style={{ font: '600 11.5px Inter', color: m.fg }}>
+              <span
+                className={`tw:whitespace-nowrap tw:text-xs tw:font-semibold tw:leading-none ${m.textClassName}`}>
                 {label}
               </span>
             </Box>
-            <div
-              style={{
-                font: '500 11px Inter',
-                color: 'var(--fg-secondary)',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}>
+            <div className="tw:truncate tw:text-xs tw:font-medium tw:leading-tight tw:text-secondary">
               {r.startedAt.split(' · ')[0]}
             </div>
-            <div
-              style={{
-                font: '400 10.5px Inter',
-                color: 'var(--fg-muted)',
-                marginTop: 1,
-              }}>
+            <div className="tw:mt-px tw:text-xs tw:leading-tight tw:text-quaternary">
               {r.startedAt.split(' · ')[1]} &middot; {r.duration}m
             </div>
           </button>
@@ -192,147 +146,57 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
 
   return (
     <Box
+      className="tw:fixed tw:inset-0 tw:z-50 tw:bg-overlay/60 tw:backdrop-blur-xs"
       justify="end"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        background: 'rgba(16,24,40,0.62)',
-        backdropFilter: 'blur(3px)',
-      }}
       onClick={onClose}>
       <Box
+        className="agents-drawer tw:h-full tw:w-[720px] tw:max-w-[94vw] tw:bg-secondary tw:shadow-2xl"
         direction="col"
-        style={{
-          width: 720,
-          maxWidth: '94vw',
-          height: '100%',
-          background: 'var(--bg-subtle)',
-          boxShadow: 'var(--shadow-2xl)',
-          animation: 'rddrawer .22s ease',
-        }}
         onClick={(e) => e.stopPropagation()}>
         {/* header */}
         <Box
           align="center"
-          style={{
-            gap: 12,
-            padding: '18px 22px',
-            background: '#fff',
-            borderBottom: '1px solid var(--border-subtle)',
-          }}>
-          <span
-            style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              flexShrink: 0,
-              display: 'grid',
-              placeItems: 'center',
-              background: 'var(--gray-50)',
-              color: 'var(--fg-secondary)',
-            }}>
-            <Icon />
+          className="tw:gap-3 tw:border-b tw:border-secondary tw:bg-primary tw:px-5.5 tw:py-4.5">
+          <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
+            <Icon height={18} width={18} />
           </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ font: '700 16px Inter', color: 'var(--fg-primary)' }}>
+          <div className="tw:flex-1">
+            <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
               {agent.name}
             </div>
-            <div style={{ font: '400 12px Inter', color: 'var(--fg-muted)' }}>
+            <div className="tw:text-xs tw:text-quaternary">
               {t('label.run-history-and-details')}
             </div>
           </div>
-          <button
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 13px',
-              borderRadius: 8,
-              border: '1px solid var(--border-default)',
-              background: '#fff',
-              cursor: 'pointer',
-              font: '600 13px Inter',
-              color: 'var(--fg-secondary)',
-              boxShadow: 'var(--shadow-btn-secondary)',
-            }}
+          <Button
+            className="tw:font-semibold tw:ring-secondary"
+            color="secondary"
+            iconLeading={<LogsIcon height={15} width={15} />}
+            size="sm"
             onClick={() => onOpenLogs(agent)}>
-            <svg
-              fill="none"
-              height="15"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.8"
-              viewBox="0 0 24 24"
-              width="15">
-              <line x1="8" x2="16" y1="8" y2="8" />
-              <line x1="8" x2="16" y1="12" y2="12" />
-              <line x1="8" x2="13" y1="16" y2="16" />
-            </svg>
             {t('label.raw-logs')}
-          </button>
-          <button
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '8px 13px',
-              borderRadius: 8,
-              border: '1px solid var(--border-default)',
-              background: '#fff',
-              cursor: 'pointer',
-              font: '600 13px Inter',
-              color: 'var(--fg-link)',
-              boxShadow: 'var(--shadow-btn-secondary)',
-            }}>
-            <RunIcon />
+          </Button>
+          <Button
+            className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
+            color="secondary"
+            iconLeading={<PlayIcon height={14} width={14} />}
+            size="sm">
             {t('label.run-now')}
-          </button>
-          <button
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              border: 0,
-              background: 'none',
-              cursor: 'pointer',
-              color: 'var(--fg-muted)',
-              display: 'grid',
-              placeItems: 'center',
-            }}
-            title={t('label.close')}
-            onClick={onClose}>
-            <svg
-              fill="none"
-              height="20"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeWidth="2"
-              viewBox="0 0 24 24"
-              width="20">
-              <line x1="6" x2="18" y1="6" y2="18" />
-              <line x1="18" x2="6" y1="6" y2="18" />
-            </svg>
-          </button>
+          </Button>
+          <Button
+            aria-label={t('label.close')}
+            className="tw:text-quaternary"
+            color="tertiary"
+            iconLeading={<CloseIcon height={20} width={20} />}
+            size="sm"
+            onClick={onClose}
+          />
         </Box>
 
         {/* scroll body */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '20px 22px 40px',
-          }}>
+        <div className="tw:flex-1 tw:overflow-y-auto tw:px-5.5 tw:pb-10 tw:pt-5 tw:bg-disabled_subtle">
           {/* run history rail */}
-          <div
-            style={{
-              font: '600 11px Inter',
-              letterSpacing: '0.06em',
-              textTransform: 'uppercase',
-              color: 'var(--fg-muted)',
-              marginBottom: 10,
-            }}>
+          <div className="tw:mb-2.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-quaternary">
             {t('label.recent-run-plural')}
           </div>
           <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
@@ -340,55 +204,38 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           {run && m && tot ? (
             <>
               {/* selected run header */}
-              <Box
-                align="center"
-                style={{
-                  gap: 10,
-                  margin: '22px 0 14px',
-                }}>
+              <Box align="center" className="tw:mb-3.5 tw:mt-5.5 tw:gap-2.5">
                 <RunGlyph size={20} status={run.status} />
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      font: '700 15px Inter',
-                      color: 'var(--fg-primary)',
-                    }}>
+                <div className="tw:flex-1">
+                  <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
                     {runLabel}
                   </div>
-                  <div
-                    style={{
-                      font: '400 12px Inter',
-                      color: 'var(--fg-tertiary)',
-                    }}>
+                  <div className="tw:text-xs tw:text-tertiary">
                     {run.startedAt} (UTC−07:00) &middot; ran for {run.duration}{' '}
                     min
                   </div>
                 </div>
-                <span
-                  style={{
-                    font: '600 11.5px Inter',
-                    color: m.fg,
-                    background: m.bg,
-                    border: `1px solid ${m.bd}`,
-                    borderRadius: 9999,
-                    padding: '4px 11px',
-                  }}>
+                <Badge
+                  className="tw:font-semibold"
+                  color={m.color}
+                  size="sm"
+                  type="pill-color">
                   {runLabel}
-                </span>
+                </Badge>
               </Box>
 
               {/* stat strip */}
-              <Box style={{ gap: 10, marginBottom: 22 }}>
+              <Box className="tw:mb-5.5 tw:gap-2.5">
                 <StatTile
                   label={t('label.records-processed')}
                   value={fmtNum(tot.records)}
                 />
                 <StatTile
-                  label={t('label.filtered')}
+                  label={t('label.filtered').toLowerCase()}
                   value={fmtNum(tot.filtered)}
                 />
                 <StatTile
-                  label={t('label.updated')}
+                  label={t('label.updated').toLowerCase()}
                   value={fmtNum(tot.updated)}
                 />
                 <StatTile
@@ -405,33 +252,16 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
 
               {/* steps card */}
               <Card
-                style={{
-                  background: '#fff',
-                  border: '1px solid var(--border-default)',
-                  borderRadius: 14,
-                  padding: '4px 18px',
-                  boxShadow: 'var(--shadow-xs)',
-                }}
+                className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
                 variant="ghost">
                 <Box
                   align="center"
-                  justify="between"
-                  style={{
-                    padding: '14px 0 10px',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}>
-                  <span
-                    style={{
-                      font: '600 13px Inter',
-                      color: 'var(--fg-secondary)',
-                    }}>
+                  className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
+                  justify="between">
+                  <span className="tw:text-sm tw:font-semibold tw:text-secondary">
                     {t('label.steps')}
                   </span>
-                  <span
-                    style={{
-                      font: '400 12px Inter',
-                      color: 'var(--fg-muted)',
-                    }}>
+                  <span className="tw:text-xs tw:text-quaternary">
                     {run.steps.length} {t('label.steps').toLowerCase()}
                   </span>
                 </Box>
@@ -445,13 +275,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               </Card>
             </>
           ) : (
-            <div
-              style={{
-                color: 'var(--fg-muted)',
-                font: '400 13px Inter',
-                padding: '40px 4px',
-                textAlign: 'center',
-              }}>
+            <div className="tw:px-1 tw:py-10 tw:text-center tw:text-sm tw:text-quaternary">
               {isLoading
                 ? `${t('label.loading')}...`
                 : t('message.no-recent-runs')}

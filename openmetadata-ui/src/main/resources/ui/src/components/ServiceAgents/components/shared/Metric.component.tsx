@@ -21,34 +21,31 @@ interface MetricProps {
   value: ReactNode;
 }
 
+const VALUE_CLASS: Record<string, string> = {
+  error: 'tw:text-utility-error-700',
+  warn: 'tw:text-utility-warning-700',
+};
+
+const ICON_CLASS: Record<string, string> = {
+  error: 'tw:text-fg-error-secondary',
+  warn: 'tw:text-fg-warning-secondary',
+};
+
 const Metric: FC<MetricProps> = ({ icon, label, tone, value }) => {
-  const valueColor =
-    tone === 'error'
-      ? 'var(--error-700)'
-      : tone === 'warn'
-      ? 'var(--warning-700)'
-      : 'var(--fg-primary)';
-  const iconColor =
-    tone === 'error'
-      ? 'var(--error-500)'
-      : tone === 'warn'
-      ? 'var(--warning-500)'
-      : 'var(--fg-muted)';
+  const valueClass = (tone && VALUE_CLASS[tone]) ?? 'tw:text-primary';
+  const iconClass = (tone && ICON_CLASS[tone]) ?? 'tw:text-quaternary';
 
   return (
     <Box align="center" className="tw:gap-1.5">
-      <span
-        className="tw:grid tw:place-items-center"
-        style={{ color: iconColor }}>
+      <span className={`tw:grid tw:place-items-center ${iconClass}`}>
         {icon}
       </span>
       <span
-        className="tw:whitespace-nowrap tw:text-sm tw:font-semibold tw:tabular-nums"
-        style={{ color: valueColor }}>
+        className={`tw:whitespace-nowrap tw:text-sm tw:font-semibold tw:tabular-nums ${valueClass}`}>
         {value}
       </span>
       {label && (
-        <span className="tw:whitespace-nowrap tw:text-xs tw:text-[color:var(--fg-tertiary)]">
+        <span className="tw:whitespace-nowrap tw:text-xs tw:text-tertiary">
           {label}
         </span>
       )}

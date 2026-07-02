@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
-import {
-  IcBook,
-  IcCode,
-  IcDb,
-  IcGrid,
-  IcLayers,
-  IcLineage,
-  IcShield,
-  IcSparkle,
-  IcZap,
-} from '../AgentIcons';
+import { ReactComponent as BookIcon } from '../../../assets/svg/agents/book.svg';
+import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
+import { ReactComponent as DatabaseIcon } from '../../../assets/svg/agents/database.svg';
+import { ReactComponent as GridIcon } from '../../../assets/svg/agents/grid.svg';
+import { ReactComponent as LayersIcon } from '../../../assets/svg/agents/layers.svg';
+import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
+import { ReactComponent as ShieldIcon } from '../../../assets/svg/agents/shield.svg';
+import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
+import { ReactComponent as ZapIcon } from '../../../assets/svg/agents/zap.svg';
 import { AgentStatus, RunStatus } from '../AgentsPage.interface';
 
 export const fmtNum = (n: number): string => n.toLocaleString();
@@ -42,97 +39,74 @@ export const fmtEta = (s: number | null): string => {
   return result;
 };
 
-export const AGENT_TYPE_ICON: Record<string, FC> = {
-  Metadata: IcDb,
-  Usage: IcZap,
-  Profiler: IcGrid,
-  Lineage: IcLineage,
-  'Auto Classification': IcSparkle,
-  dbt: IcCode,
-  Tier: IcLayers,
-  Documentation: IcBook,
-  'Data Quality': IcShield,
+export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {
+  Metadata: DatabaseIcon,
+  Usage: ZapIcon,
+  Profiler: GridIcon,
+  Lineage: LineageIcon,
+  'Auto Classification': SparkleIcon,
+  dbt: CodeIcon,
+  Tier: LayersIcon,
+  Documentation: BookIcon,
+  'Data Quality': ShieldIcon,
 };
 
+export type AgentBadgeColor =
+  | 'brand'
+  | 'error'
+  | 'gray'
+  | 'success'
+  | 'warning';
+
 export interface PillMeta {
-  bg: string;
-  fg: string;
-  bd: string;
-  dot: string;
+  color: AgentBadgeColor;
   pulse?: boolean;
 }
 
 export const STATUS_PILL_META: Record<AgentStatus, PillMeta> = {
-  running: {
-    bg: 'var(--blue-50)',
-    fg: 'var(--blue-700)',
-    bd: 'var(--blue-200)',
-    dot: 'var(--blue-500)',
-    pulse: true,
-  },
-  success: {
-    bg: 'var(--success-50)',
-    fg: 'var(--success-700)',
-    bd: 'var(--success-200)',
-    dot: 'var(--success-500)',
-  },
-  failed: {
-    bg: 'var(--error-50)',
-    fg: 'var(--error-700)',
-    bd: 'var(--error-200)',
-    dot: 'var(--error-500)',
-  },
-  queued: {
-    bg: 'var(--gray-50)',
-    fg: 'var(--fg-tertiary)',
-    bd: 'var(--border-default)',
-    dot: 'var(--gray-400)',
-  },
+  running: { color: 'brand', pulse: true },
+  success: { color: 'success' },
+  failed: { color: 'error' },
+  queued: { color: 'gray' },
 };
 
 export interface RunMeta {
   labelKey: string;
-  fg: string;
-  bg: string;
-  bd: string;
-  bar: string;
+  color: AgentBadgeColor;
+  barClassName: string;
+  textClassName: string;
 }
 
 export const RUN_META: Record<RunStatus, RunMeta> = {
   success: {
     labelKey: 'label.success',
-    fg: 'var(--success-700)',
-    bg: 'var(--success-50)',
-    bd: 'var(--success-200)',
-    bar: 'var(--success-500)',
+    color: 'success',
+    barClassName: 'tw:bg-utility-success-500',
+    textClassName: 'tw:text-utility-success-700',
   },
   partial: {
     labelKey: 'label.partial-success',
-    fg: 'var(--warning-700)',
-    bg: 'var(--warning-50)',
-    bd: 'var(--warning-200)',
-    bar: 'var(--warning-500)',
+    color: 'warning',
+    barClassName: 'tw:bg-utility-warning-500',
+    textClassName: 'tw:text-utility-warning-700',
   },
   failed: {
     labelKey: 'label.failed',
-    fg: 'var(--error-700)',
-    bg: 'var(--error-50)',
-    bd: 'var(--error-200)',
-    bar: 'var(--error-500)',
+    color: 'error',
+    barClassName: 'tw:bg-utility-error-500',
+    textClassName: 'tw:text-utility-error-700',
   },
   running: {
     labelKey: 'label.running',
-    fg: 'var(--blue-700)',
-    bg: 'var(--blue-50)',
-    bd: 'var(--blue-200)',
-    bar: 'var(--blue-500)',
+    color: 'brand',
+    barClassName: 'tw:bg-utility-brand-500',
+    textClassName: 'tw:text-utility-brand-700',
   },
   skipped: {
     labelKey: 'label.did-not-run',
-    fg: 'var(--fg-muted)',
-    bg: 'var(--gray-50)',
-    bd: 'var(--border-default)',
-    bar: 'var(--gray-300)',
+    color: 'gray',
+    barClassName: 'tw:bg-utility-gray-300',
+    textClassName: 'tw:text-quaternary',
   },
 };
 
@@ -143,13 +117,15 @@ export const RECENT_RUN_STATUSES: Record<AgentStatus, RunStatus[]> = {
   queued: ['success', 'success', 'success', 'partial', 'success'],
 };
 
-export const agentAccentColor = (status: AgentStatus): string => {
-  const map: Record<AgentStatus, string> = {
-    running: 'var(--blue-600)',
-    failed: 'var(--error-600)',
-    success: 'var(--success-600)',
-    queued: 'var(--gray-400)',
-  };
+export const RUN_DOT_CLASS: Record<string, string> = {
+  failed: 'tw:bg-utility-error-500',
+  partial: 'tw:bg-utility-warning-500',
+  success: 'tw:bg-utility-success-500',
+};
 
-  return map[status];
+export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
+  running: 'tw:text-fg-brand-primary',
+  failed: 'tw:text-fg-error-primary',
+  success: 'tw:text-fg-success-primary',
+  queued: 'tw:text-fg-quaternary',
 };

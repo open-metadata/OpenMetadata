@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ProgressBarBase } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { AgentStatus } from '../../AgentsPage.interface';
 
@@ -19,25 +20,19 @@ interface ProgressBarProps {
   status: AgentStatus;
 }
 
-const ProgressBar: FC<ProgressBarProps> = ({ pct, status }) => {
-  const color =
-    status === 'failed'
-      ? 'var(--error-500)'
-      : status === 'success'
-      ? 'var(--success-500)'
-      : 'var(--blue-600)';
-
-  return (
-    <div className="tw:h-1.5 tw:overflow-hidden tw:rounded-full tw:bg-[color:var(--gray-100)]">
-      <div
-        className="tw:h-full tw:rounded-full tw:transition-[width] tw:duration-700"
-        style={{
-          background: color,
-          width: `${Math.max(2, Math.min(100, pct))}%`,
-        }}
-      />
-    </div>
-  );
+const FILL_CLASS: Record<string, string> = {
+  failed: 'tw:bg-utility-error-500',
+  success: 'tw:bg-utility-success-500',
 };
+
+const ProgressBar: FC<ProgressBarProps> = ({ pct, status }) => (
+  <ProgressBarBase
+    className="tw:h-1.5 tw:rounded-full tw:bg-tertiary"
+    progressClassName={`tw:rounded-full tw:duration-700 ${
+      FILL_CLASS[status] ?? 'tw:bg-brand-solid'
+    }`}
+    value={Math.max(2, Math.min(100, pct))}
+  />
+);
 
 export default ProgressBar;

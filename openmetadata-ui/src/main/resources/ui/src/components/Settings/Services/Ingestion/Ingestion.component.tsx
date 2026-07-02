@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReloadOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Radio, RadioChangeEvent, Typography } from 'antd';
 import { isUndefined } from 'lodash';
 import { ComponentType, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,7 +58,10 @@ const Ingestion: React.FC<IngestionProps> = ({
   }>();
   const { permissions } = usePermissionProvider();
 
-  const { agents } = useMetadataAgents(ingestionPipelineList);
+  const { agents } = useMetadataAgents(
+    ingestionPipelineList,
+    serviceDetails?.name
+  );
 
   const isDBService = useMemo(
     () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
@@ -164,35 +158,18 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
-      <Row justify="space-between">
-        <Col>
-          {isCollateAIWidgetSupported && (
-            <Radio.Group
-              buttonStyle="solid"
-              className="agents-sub-tabs-switch"
-              data-testid="agents-sub-tabs-switch"
-              optionType="button"
-              options={subTabOptions}
-              size="large"
-              value={subTab}
-              onChange={handleSubTabChange}
-            />
-          )}
-        </Col>
-        <Col className="flex items-center gap-2">
-          <Tooltip
-            title={t('label.refresh-entity', {
-              entity: t('label.agent-plural'),
-            })}>
-            <Button
-              className="reload-button"
-              icon={<ReloadOutlined className="reload-button-icon" />}
-              size="large"
-              onClick={handleRefresh}
-            />
-          </Tooltip>
-        </Col>
-      </Row>
+      {isCollateAIWidgetSupported && (
+        <Radio.Group
+          buttonStyle="solid"
+          className="agents-sub-tabs-switch"
+          data-testid="agents-sub-tabs-switch"
+          optionType="button"
+          options={subTabOptions}
+          size="large"
+          value={subTab}
+          onChange={handleSubTabChange}
+        />
+      )}
 
       {isCollateSubTabSelected ? (
         <CollateAgentsWidget

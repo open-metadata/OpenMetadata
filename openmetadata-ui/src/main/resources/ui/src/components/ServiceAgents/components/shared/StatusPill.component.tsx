@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Badge } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AgentStatus } from '../../AgentsPage.interface';
@@ -27,22 +28,30 @@ const STATUS_LABEL_KEY: Record<AgentStatus, string> = {
   success: 'label.success',
 };
 
+const DOT_CLASS: Record<AgentStatus, string> = {
+  failed: 'tw:bg-utility-error-500',
+  queued: 'tw:bg-utility-gray-400',
+  running: 'tw:bg-utility-brand-500',
+  success: 'tw:bg-utility-success-500',
+};
+
 const StatusPill: FC<StatusPillProps> = ({ status }) => {
   const { t } = useTranslation();
   const meta = STATUS_PILL_META[status];
 
   return (
-    <span
-      className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:px-2.5 tw:py-0.5 tw:text-[11.5px] tw:font-semibold"
-      style={{ background: meta.bg, borderColor: meta.bd, color: meta.fg }}>
+    <Badge
+      className="tw:gap-1.5 tw:font-semibold"
+      color={meta.color}
+      size="sm"
+      type="pill-color">
       <span
-        className={`tw:h-1.5 tw:w-1.5 tw:rounded-full${
+        className={`tw:size-1.5 tw:rounded-full ${DOT_CLASS[status]}${
           meta.pulse ? ' tw:animate-pulse' : ''
         }`}
-        style={{ background: meta.dot }}
       />
       {t(STATUS_LABEL_KEY[status])}
-    </span>
+    </Badge>
   );
 };
 

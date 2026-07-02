@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   IngestionPipeline,
@@ -27,7 +28,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
-import { IcCode } from '../AgentIcons';
 import '../agents-preview.css';
 import { Agent } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
@@ -186,14 +186,14 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   );
 
   return (
-    <div className="agents-preview-root">
+    <div data-testid="metadata-agents-view">
       <DeploymentSummaryCard agents={agents} />
       <AgentGroup
         addAgentSlot={addAgentSlot}
         agents={agents}
         canCreateAgent={showAddAgent}
         descKey="message.metadata-agents-description"
-        icon={<IcCode />}
+        icon={<CodeIcon height={18} width={18} />}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}

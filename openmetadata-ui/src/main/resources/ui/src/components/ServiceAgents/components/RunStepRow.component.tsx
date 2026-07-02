@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Badge, Box } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RunGlyph } from '../AgentIcons';
+import { ReactComponent as AlertTriangleIcon } from '../../../assets/svg/agents/alert-triangle.svg';
+import { ReactComponent as BulbIcon } from '../../../assets/svg/agents/bulb.svg';
+import { ReactComponent as ChevronRightIcon } from '../../../assets/svg/agents/chevron-right.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/agents/copy.svg';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
 import { fmtNum } from '../utils/agents.utils';
+import RunGlyph from './RunGlyph.component';
 
 interface AttentionCardProps {
   att: RunAttention;
@@ -28,9 +32,18 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const [showLog, setShowLog] = useState(false);
   const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
   const isError = att.severity === 'error';
-  const bg = isError ? 'var(--error-50)' : 'var(--warning-50)';
-  const bd = isError ? 'var(--error-200)' : 'var(--warning-200)';
-  const fg = isError ? 'var(--error-700)' : 'var(--warning-700)';
+  const surfaceClass = isError
+    ? 'tw:bg-error-primary tw:border-utility-error-200'
+    : 'tw:bg-warning-primary tw:border-utility-warning-200';
+  const dividerClass = isError
+    ? 'tw:border-utility-error-200'
+    : 'tw:border-utility-warning-200';
+  const accentClass = isError
+    ? 'tw:text-utility-error-700'
+    : 'tw:text-utility-warning-700';
+  const accentIconClass = isError
+    ? 'tw:text-fg-error-primary'
+    : 'tw:text-fg-warning-primary';
 
   const handleCopy = () => {
     try {
@@ -46,110 +59,40 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
 
   return (
     <div
-      style={{
-        marginTop: 12,
-        borderRadius: 10,
-        background: bg,
-        border: `1px solid ${bd}`,
-        overflow: 'hidden',
-      }}>
+      className={`tw:mt-3 tw:overflow-hidden tw:rounded-xl tw:border ${surfaceClass}`}>
       <Box
         align="center"
-        style={{
-          gap: 8,
-          padding: '10px 12px',
-          borderBottom: `1px solid ${bd}`,
-        }}>
-        <svg
-          fill="none"
-          height="15"
-          stroke={fg}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.9"
-          viewBox="0 0 24 24"
-          width="15">
-          <path d="M10.3 3.8 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.8a2 2 0 0 0-3.4 0z" />
-          <path d="M12 9v4M12 17h.01" />
-        </svg>
-        <span style={{ font: '600 12.5px Inter', color: 'var(--fg-primary)' }}>
+        className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
+        <AlertTriangleIcon className={accentIconClass} height={15} width={15} />
+        <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
         <span
-          style={{
-            font: '600 10.5px Inter',
-            color: fg,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            marginLeft: 2,
-          }}>
+          className={`tw:ml-0.5 tw:text-[10px] tw:font-semibold tw:uppercase tw:tracking-wide ${accentClass}`}>
           {isError ? t('label.error') : t('label.warning')}
         </span>
-        <span style={{ flex: 1 }} />
+        <span className="tw:flex-1" />
         <button
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            border: 0,
-            background: 'none',
-            cursor: 'pointer',
-            color: 'var(--fg-tertiary)',
-            font: '500 11.5px Inter',
-          }}
+          className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
+          type="button"
           onClick={handleCopy}>
-          <svg
-            fill="none"
-            height="13"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-            viewBox="0 0 24 24"
-            width="13">
-            <rect height="11" rx="2" width="11" x="9" y="9" />
-            <path d="M5 15V5a2 2 0 0 1 2-2h10" />
-          </svg>
+          <CopyIcon height={13} width={13} />
           {copied ? t('label.copied') : t('label.copy')}
         </button>
       </Box>
-      <div style={{ padding: '12px' }}>
-        <div
-          style={{
-            font: '400 12.5px/1.6 var(--font-mono)',
-            color: 'var(--fg-secondary)',
-            wordBreak: 'break-word',
-          }}>
+      <div className="tw:p-3">
+        <div className="tw:break-words tw:font-mono tw:text-xs tw:leading-relaxed tw:text-secondary">
           {att.message}
         </div>
         {att.hint && (
-          <Box
-            style={{
-              gap: 7,
-              marginTop: 10,
-              padding: '9px 11px',
-              background: '#fff',
-              borderRadius: 8,
-              border: '1px solid var(--border-subtle)',
-            }}>
-            <svg
-              fill="none"
-              height="14"
-              stroke="var(--blue-600)"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="1.9"
-              style={{ flexShrink: 0, marginTop: 1 }}
-              viewBox="0 0 24 24"
-              width="14">
-              <path d="M9.7 17h4.6M12 3a6 6 0 0 0-3.6 10.8c.5.4.8 1 .9 1.6h5.4c.1-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z" />
-            </svg>
-            <span
-              style={{
-                font: '400 12px/1.5 Inter',
-                color: 'var(--fg-secondary)',
-              }}>
-              <strong style={{ color: 'var(--fg-primary)', fontWeight: 600 }}>
+          <Box className="tw:mt-2.5 tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2">
+            <BulbIcon
+              className="tw:mt-px tw:shrink-0 tw:text-fg-brand-primary"
+              height={14}
+              width={14}
+            />
+            <span className="tw:text-xs tw:leading-normal tw:text-secondary">
+              <strong className="tw:font-semibold tw:text-primary">
                 {t('label.how-to-fix')} &middot;{' '}
               </strong>
               {att.hint}
@@ -159,54 +102,28 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         {stackLines.length > 0 && (
           <>
             <button
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                marginTop: 10,
-                border: 0,
-                background: 'none',
-                cursor: 'pointer',
-                color: 'var(--fg-link)',
-                font: '600 12px Inter',
-                padding: 0,
-              }}
+              className="tw:mt-2.5 tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-semibold tw:text-brand-tertiary"
+              type="button"
               onClick={toggleLog}>
-              <svg
-                fill="none"
-                height="13"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                style={{
-                  transform: showLog ? 'rotate(90deg)' : 'none',
-                  transition: 'transform .15s',
-                }}
-                viewBox="0 0 24 24"
-                width="13">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+              <ChevronRightIcon
+                className={`tw:transition-transform ${
+                  showLog ? 'tw:rotate-90' : ''
+                }`}
+                height={13}
+                width={13}
+              />
               {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
             </button>
             {showLog && (
-              <div
-                style={{
-                  marginTop: 8,
-                  background: 'var(--gray-950)',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                  maxHeight: 160,
-                  overflowY: 'auto',
-                }}>
+              <div className="tw:mt-2 tw:max-h-40 tw:overflow-y-auto tw:rounded-lg tw:bg-primary-solid tw:px-3 tw:py-2.5">
                 {stackLines.map((line, idx) => (
                   <div
-                    key={idx}
-                    style={{
-                      font: '400 11.5px/1.7 var(--font-mono)',
-                      color: line.includes('ERROR') ? '#FDA29B' : '#A6F4C5',
-                      whiteSpace: 'pre-wrap',
-                    }}>
+                    className={`tw:whitespace-pre-wrap tw:font-mono tw:text-xs tw:leading-relaxed ${
+                      line.includes('ERROR')
+                        ? 'tw:text-utility-error-300'
+                        : 'tw:text-utility-success-200'
+                    }`}
+                    key={idx}>
                     {line}
                   </div>
                 ))}
@@ -246,63 +163,43 @@ const RunStepRow: FC<RunStepRowProps> = ({ step, isLast }) => {
 
   return (
     <div
-      style={{
-        padding: '14px 0',
-        borderBottom: isLast ? 0 : '1px solid var(--border-subtle)',
-      }}>
-      <Box align="center" style={{ gap: 12 }}>
+      className={`tw:py-3.5 ${
+        isLast ? '' : 'tw:border-b tw:border-secondary'
+      }`}>
+      <Box align="center" className="tw:gap-3">
         <RunGlyph size={18} status={step.status} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ font: '600 13.5px Inter', color: 'var(--fg-primary)' }}>
+        <div className="tw:min-w-0 tw:flex-1">
+          <div className="tw:text-sm tw:font-semibold tw:text-primary tw:leading-none">
             {step.name}
           </div>
           {secondary.length > 0 && (
-            <div
-              style={{
-                font: '400 11.5px Inter',
-                color: 'var(--fg-muted)',
-                marginTop: 1,
-              }}>
+            <div className="tw:mt-px tw:text-xs tw:text-quaternary">
               {secondary.join(' · ')}
             </div>
           )}
         </div>
         {step.status === 'skipped' ? (
-          <span style={{ font: '500 12px Inter', color: 'var(--fg-muted)' }}>
+          <span className="tw:text-xs tw:font-medium tw:text-quaternary">
             {t('label.did-not-run')}
           </span>
         ) : (
-          <div style={{ textAlign: 'right' }}>
-            <div
-              style={{
-                font: '700 15px Inter',
-                color: 'var(--fg-primary)',
-                fontVariantNumeric: 'tabular-nums',
-              }}>
+          <div className="tw:text-right">
+            <div className="tw:text-md tw:font-bold tw:tabular-nums tw:text-primary tw:leading-none">
               {fmtNum(step.records)}
             </div>
-            <div
-              style={{ font: '400 10.5px Inter', color: 'var(--fg-tertiary)' }}>
+            <div className="tw:text-xs tw:text-tertiary">
               {t('label.records')}
             </div>
           </div>
         )}
         {step.errors > 0 && (
-          <span
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              font: '600 11.5px Inter',
-              color: 'var(--error-700)',
-              background: 'var(--error-50)',
-              border: '1px solid var(--error-200)',
-              borderRadius: 9999,
-              padding: '3px 9px',
-              marginLeft: 4,
-            }}>
+          <Badge
+            className="tw:ml-1 tw:font-semibold"
+            color="error"
+            size="sm"
+            type="pill-color">
             {step.errors} {t('label.error-plural-lowercase')}
-          </span>
+          </Badge>
         )}
       </Box>
       {step.attention && <AttentionCard att={step.attention} />}

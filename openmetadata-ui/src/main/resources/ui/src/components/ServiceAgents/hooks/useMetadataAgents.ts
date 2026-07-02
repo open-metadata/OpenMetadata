@@ -11,23 +11,39 @@
  *  limitations under the License.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { SOCKET_EVENTS } from '../../../constants/constants';
+import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
+import { AgentsLiveInfo } from '../../ServiceInsights/ServiceInsightsTab.interface';
 import { Agent } from '../AgentsPage.interface';
 import { mapPipelineToAgent } from '../utils/agentsDataMapper';
 
 const POLL_MS = 5000;
 
+interface AgentsLiveStreamPayload {
+  serviceName?: string;
+  ingestionPipelineStatus?: AgentsLiveInfo[];
+}
+
 /**
  * Derives the Agent view-model from the ingestion pipelines and keeps running
- * agents live by polling their latest status every ~5s. Polling is skipped
- * entirely while no agent is running.
+ * agents live via two channels:
+ *
+ * 1. A websocket subscription on `agentsLiveStream` — same push pattern the
+ *    Service Insights tab uses for `chartDataStream`. The backend does not
+ *    emit this event yet; the handler is placeholder wiring so agents refresh
+ *    the moment the backend lands.
+ * 2. A ~5s polling fallback that re-fetches only the running agents. Polling
+ *    is skipped entirely while no agent is running.
  */
 export const useMetadataAgents = (
-  pipelines: IngestionPipeline[]
+  pipelines: IngestionPipeline[],
+  serviceName?: string
 ): { agents: Agent[] } => {
+  const { socket } = useWebSocketConnector();
   const [agents, setAgents] = useState<Agent[]>(() =>
     pipelines.map(mapPipelineToAgent)
   );
@@ -38,30 +54,63 @@ export const useMetadataAgents = (
     setAgents(pipelines.map(mapPipelineToAgent));
   }, [pipelines]);
 
+  const refetchAgent = useCallback(async (fqn: string) => {
+    try {
+      const fresh = await getIngestionPipelineByFqn(fqn, {
+        fields: TabSpecificField.PIPELINE_STATUSES,
+      });
+      const mapped = mapPipelineToAgent(fresh);
+      setAgents((prev) => prev.map((a) => (a.id === mapped.id ? mapped : a)));
+    } catch {
+      // A transient status fetch failure must not disrupt the list.
+    }
+  }, []);
+
   useEffect(() => {
-    const pollAgent = async (agent: Agent) => {
+    if (!socket) {
+      return;
+    }
+
+    const handleLiveUpdate = (rawPayload: string) => {
       try {
-        const fresh = await getIngestionPipelineByFqn(agent.fqn, {
-          fields: TabSpecificField.PIPELINE_STATUSES,
+        const payload = JSON.parse(rawPayload) as AgentsLiveStreamPayload;
+        if (serviceName && payload.serviceName !== serviceName) {
+          return;
+        }
+        payload.ingestionPipelineStatus?.forEach((pipelineStatus) => {
+          const agent = agentsRef.current.find(
+            (a) =>
+              a.id === pipelineStatus.id ||
+              a.fqn === pipelineStatus.fullyQualifiedName
+          );
+          if (agent) {
+            void refetchAgent(agent.fqn);
+          }
         });
-        const mapped = mapPipelineToAgent(fresh);
-        setAgents((prev) => prev.map((a) => (a.id === mapped.id ? mapped : a)));
       } catch {
-        // A transient status-poll failure must not disrupt the list.
+        // Malformed live payloads are ignored; polling remains the fallback.
       }
     };
 
+    socket.on(SOCKET_EVENTS.AGENTS_LIVE_STREAM, handleLiveUpdate);
+
+    return () => {
+      socket.off(SOCKET_EVENTS.AGENTS_LIVE_STREAM, handleLiveUpdate);
+    };
+  }, [socket, serviceName, refetchAgent]);
+
+  useEffect(() => {
     const intervalId = setInterval(() => {
       const runningAgents = agentsRef.current.filter(
         (agent) => agent.status === 'running'
       );
       runningAgents.forEach((agent) => {
-        void pollAgent(agent);
+        void refetchAgent(agent.fqn);
       });
     }, POLL_MS);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [refetchAgent]);
 
   return { agents };
 };

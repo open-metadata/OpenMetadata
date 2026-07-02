@@ -15,7 +15,7 @@ import { Dropdown } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { IcMore } from '../AgentIcons';
+import { ReactComponent as MoreVerticalIcon } from '../../../assets/svg/agents/more-vertical.svg';
 import { AgentStatus } from '../AgentsPage.interface';
 
 interface AgentOverflowMenuProps {
@@ -45,7 +45,7 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
       ]
     : [
         { id: 'run', label: t('label.run-now') },
-        { id: 'redeploy', label: t('label.re-deploy') },
+        { id: 'redeploy', label: t('label.re-deploy-sentence') },
         { id: 'edit', label: t('label.edit-configuration') },
         { danger: true, id: 'delete', label: t('label.delete-agent') },
       ];
@@ -55,18 +55,17 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
       <AriaButton
         aria-label={t('label.more-action-plural')}
         className={
-          'tw:grid tw:h-[34px] tw:w-[34px] tw:cursor-pointer tw:place-items-center' +
-          ' tw:rounded-lg tw:border tw:border-[color:var(--border-default)]' +
-          ' tw:bg-white tw:text-[color:var(--fg-tertiary)] tw:shadow-xs tw:outline-none'
+          'tw:grid tw:size-8.5 tw:cursor-pointer tw:place-items-center' +
+          ' tw:rounded-lg tw:border tw:border-secondary' +
+          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none'
         }>
-        <IcMore />
+        <MoreVerticalIcon height={18} width={18} />
       </AriaButton>
       <Dropdown.Popover>
         <Dropdown.Menu onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
             <Dropdown.Item id={item.id} key={item.id} textValue={item.label}>
-              <span
-                style={item.danger ? { color: 'var(--error-600)' } : undefined}>
+              <span className={item.danger ? 'tw:text-error-primary' : ''}>
                 {item.label}
               </span>
             </Dropdown.Item>

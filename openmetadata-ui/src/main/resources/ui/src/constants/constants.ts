@@ -367,6 +367,7 @@ export const SOCKET_EVENTS = {
   MOVE_GLOSSARY_TERM_CHANNEL: 'moveGlossaryTermChannel',
   CHART_DATA_STREAM: 'chartDataStream',
   QUERY_RUNNER_CHANNEL: 'queryRunnerChannel',
+  AGENTS_LIVE_STREAM: 'agentsLiveStream',
 };
 
 export const CACHE_WARMUP_APPLICATION_NAME = 'CacheWarmupApplication';

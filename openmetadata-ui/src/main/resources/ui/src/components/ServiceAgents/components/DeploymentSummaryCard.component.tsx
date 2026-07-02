@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CheckIcon } from '../../../assets/svg/agents/check.svg';
+import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { Agent } from '../AgentsPage.interface';
 import { fmtEta, fmtNum } from '../utils/agents.utils';
 
@@ -27,41 +29,25 @@ interface SummaryStatProps {
   value: string;
 }
 
+const STAT_VALUE_CLASS: Record<string, string> = {
+  error: 'tw:text-error-primary',
+  ok: 'tw:text-success-primary',
+  neutral: 'tw:text-primary',
+};
+
 const SummaryStat: FC<SummaryStatProps> = ({
   label,
   tone = 'neutral',
   value,
-}) => {
-  const valueColor =
-    tone === 'error'
-      ? 'var(--error-600)'
-      : tone === 'ok'
-      ? 'var(--success-700)'
-      : 'var(--fg-primary)';
-
-  return (
-    <div className="tw:text-right">
-      <div
-        style={{
-          color: valueColor,
-          fontVariantNumeric: 'tabular-nums',
-          fontSize: 22,
-          fontWeight: 700,
-          letterSpacing: '-0.02em',
-        }}>
-        {value}
-      </div>
-      <div
-        style={{
-          color: 'var(--fg-tertiary)',
-          fontSize: 11.5,
-          fontWeight: 400,
-        }}>
-        {label}
-      </div>
+}) => (
+  <div className="tw:text-right">
+    <div
+      className={`tw:text-[22px] tw:font-bold tw:tracking-tight tw:tabular-nums ${STAT_VALUE_CLASS[tone]}`}>
+      {value}
     </div>
-  );
-};
+    <div className="tw:text-xs tw:text-tertiary">{label}</div>
+  </div>
+);
 
 const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   const { t } = useTranslation();
@@ -84,6 +70,10 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
       : 0;
   const allDone = running === 0 && done + failed === total;
 
+  if (total === 0) {
+    return null;
+  }
+
   const etaDisplay = maxEta
     ? fmtEta(maxEta).replace('~', '').replace(' left', '')
     : '—';
@@ -92,7 +82,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
     failed > 0 ? ` · ${failed} ${t('label.failed').toLowerCase()}` : '';
   const attentionSuffix =
     failed > 0
-      ? ` · ${failed} ${t('label.needs-attention').toLowerCase()}`
+      ? ` · ${failed} ${t('label.need-attention')}`
       : ` · ${t('message.everything-healthy')}`;
 
   const subtitle = allDone
@@ -106,78 +96,34 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
 
   return (
     <div
-      className="tw:mb-5 tw:rounded-2xl tw:border tw:p-5"
-      style={{
-        background: allDone
-          ? 'var(--success-50)'
-          : 'linear-gradient(180deg, var(--blue-25), #fff)',
-        borderColor: allDone ? 'var(--success-200)' : 'var(--blue-200)',
-      }}>
+      className={`tw:mb-5 tw:rounded-2xl tw:border tw:p-5 ${
+        allDone
+          ? 'tw:border-utility-success-200 tw:bg-success-primary'
+          : 'tw:border-utility-brand-200 tw:bg-linear-to-b tw:from-brand-25 tw:to-bg-primary tw:dark:from-bg-brand-primary_alt'
+      }`}>
       <Box align="center" className="tw:gap-3.5">
         <span
-          className="tw:grid tw:shrink-0 tw:place-items-center tw:rounded-xl"
-          style={{
-            background: allDone ? 'var(--success-500)' : 'var(--blue-600)',
-            color: '#fff',
-            height: 44,
-            width: 44,
-          }}>
+          className={`tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:text-fg-white ${
+            allDone ? 'tw:bg-utility-success-500' : 'tw:bg-brand-solid'
+          }`}>
           {allDone ? (
-            <svg
-              fill="none"
-              height="22"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2.4"
-              viewBox="0 0 24 24"
-              width="22">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <CheckIcon height={22} width={22} />
           ) : (
-            <svg
-              className="tw:animate-spin"
-              height="22"
-              viewBox="0 0 24 24"
-              width="22">
-              <circle
-                cx="12"
-                cy="12"
-                fill="none"
-                r="9"
-                stroke="rgba(255,255,255,0.35)"
-                strokeWidth="3"
-              />
-              <path
-                d="M12 3a9 9 0 0 1 9 9"
-                fill="none"
-                stroke="#fff"
-                strokeLinecap="round"
-                strokeWidth="3"
-              />
-            </svg>
+            <RunRunningIcon
+              className="tw:animate-spin tw:text-fg-white"
+              height={22}
+              width={22}
+            />
           )}
         </span>
 
         <div className="tw:flex-1">
-          <div
-            className="tw:font-bold"
-            style={{
-              color: 'var(--fg-primary)',
-              fontSize: 17,
-              letterSpacing: '-0.01em',
-            }}>
+          <div className="tw:text-lg tw:font-bold tw:tracking-tight tw:text-primary">
             {allDone
-              ? t('message.metadata-agents-up-to-date')
+              ? t('label.deployment-complete')
               : t('message.agents-deploying-ingesting')}
           </div>
-          <div
-            className="tw:mt-0.5"
-            style={{
-              color: 'var(--fg-tertiary)',
-              fontSize: 13,
-              fontWeight: 400,
-            }}>
+          <div className="tw:mt-0.5 tw:text-sm tw:text-tertiary">
             {subtitle}
           </div>
         </div>
@@ -200,22 +146,14 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
 
       {!allDone && (
         <div className="tw:mt-4">
-          <div
-            className="tw:h-2 tw:overflow-hidden tw:rounded-full"
-            style={{ background: 'var(--gray-100)' }}>
-            <div
-              className="tw:h-full tw:rounded-full tw:transition-[width] tw:duration-700"
-              style={{ background: 'var(--blue-600)', width: `${overall}%` }}
-            />
-          </div>
+          <ProgressBarBase
+            className="tw:h-2 tw:rounded-full tw:bg-tertiary"
+            progressClassName="tw:rounded-full tw:bg-brand-solid tw:duration-700"
+            value={overall}
+          />
           <Box
-            className="tw:mt-[7px]"
-            justify="between"
-            style={{
-              color: 'var(--fg-muted)',
-              fontSize: 11.5,
-              fontWeight: 500,
-            }}>
+            className="tw:mt-2 tw:text-xs tw:font-medium tw:text-quaternary"
+            justify="between">
             <span>
               {t('message.percent-complete-all-agents', { percent: overall })}
             </span>
