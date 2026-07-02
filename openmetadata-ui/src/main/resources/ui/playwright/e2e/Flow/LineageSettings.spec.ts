@@ -12,6 +12,7 @@
  */
 import { expect, Request } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -47,347 +48,356 @@ import {
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
-test.describe.serial('Lineage Settings Tests', () => {
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
-  const mlModel = new MlModelClass();
-  const searchIndex = new SearchIndexClass();
-  const container = new ContainerClass();
-  const metric = new MetricClass();
-  const pipeline = new PipelineClass();
+test.describe.serial(
+  'Lineage Settings Tests',
+  PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+  () => {
+    const table = new TableClass();
+    const topic = new TopicClass();
+    const dashboard = new DashboardClass();
+    const mlModel = new MlModelClass();
+    const searchIndex = new SearchIndexClass();
+    const container = new ContainerClass();
+    const metric = new MetricClass();
+    const pipeline = new PipelineClass();
 
-  test.beforeAll('setup lineage settings', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll('setup lineage settings', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    await Promise.all([
-      table.create(apiContext),
-      topic.create(apiContext),
-      dashboard.create(apiContext),
-      mlModel.create(apiContext),
-      searchIndex.create(apiContext),
-      container.create(apiContext),
-      metric.create(apiContext),
-      pipeline.create(apiContext),
-    ]);
-
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: table.entityResponseData.id, type: 'table' },
-      { id: topic.entityResponseData.id, type: 'topic' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: topic.entityResponseData.id, type: 'topic' },
-      { id: dashboard.entityResponseData.id, type: 'dashboard' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: dashboard.entityResponseData.id, type: 'dashboard' },
-      { id: mlModel.entityResponseData.id, type: 'mlmodel' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: mlModel.entityResponseData.id, type: 'mlmodel' },
-      { id: searchIndex.entityResponseData.id, type: 'searchIndex' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: searchIndex.entityResponseData.id, type: 'searchIndex' },
-      { id: container.entityResponseData.id, type: 'container' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: container.entityResponseData.id, type: 'container' },
-      { id: metric.entityResponseData.id, type: 'metric' }
-    );
-    await connectEdgeBetweenNodesViaAPI(
-      apiContext,
-      { id: metric.entityResponseData.id, type: 'metric' },
-      { id: pipeline.entityResponseData.id, type: 'pipeline' }
-    );
-
-    await afterAction();
-  });
-
-  test.afterAll('cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await Promise.all([
-      table.delete(apiContext),
-      topic.delete(apiContext),
-      dashboard.delete(apiContext),
-      mlModel.delete(apiContext),
-      searchIndex.delete(apiContext),
-      container.delete(apiContext),
-      metric.delete(apiContext),
-      pipeline.delete(apiContext),
-    ]);
-
-    await afterAction();
-  });
-
-  test.beforeEach(async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
-  test('Verify global lineage config', async ({ page }) => {
-    test.slow(true);
-
-    await test.step('Lineage config should throw error if upstream depth is less than 0', async () => {
-      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-
-      await page.getByTestId('field-upstream').fill('-1');
-      await page.getByTestId('field-downstream').fill('-1');
-      await page.getByTestId('save-button').click();
-
-      await expect(
-        page.getByText('Upstream Depth size cannot be less than 0')
-      ).toBeVisible();
-      await expect(
-        page.getByText('Downstream Depth size cannot be less than 0')
-      ).toBeVisible();
-
-      await page.getByTestId('field-upstream').fill('0');
-      await page.getByTestId('field-downstream').fill('0');
-
-      const saveRes = page.waitForResponse('/api/v1/system/settings');
-      await page.getByTestId('save-button').click();
-      await saveRes;
-
-      await toastNotification(page, /Lineage Config updated successfully/);
-    });
-
-    await test.step('Update global lineage config and verify lineage for column layer', async () => {
-      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-      await fillLineageConfigForm(page, {
-        upstreamDepth: 1,
-        downstreamDepth: 1,
-        layer: 'Column Level Lineage',
-      });
-
-      await topic.visitEntityPage(page);
-      await visitLineageTab(page);
-      await performZoomOut(page);
-      await verifyNodePresent(page, table);
-      await verifyNodePresent(page, dashboard);
-      const mlModelFqn = get(mlModel, 'entityResponseData.fullyQualifiedName');
-      const mlModelNode = page.locator(
-        `[data-testid="lineage-node-${mlModelFqn}"]`
-      );
-
-      await expect(mlModelNode).not.toBeVisible();
-
-      await verifyColumnLayerActive(page);
-    });
-
-    await test.step('Update global lineage config and verify lineage for entity layer', async () => {
-      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-      await fillLineageConfigForm(page, {
-        upstreamDepth: 1,
-        downstreamDepth: 1,
-        layer: 'Entity Lineage',
-      });
-
-      await dashboard.visitEntityPage(page);
-      await visitLineageTab(page);
-      await performZoomOut(page);
-      await verifyNodePresent(page, dashboard);
-      await verifyNodePresent(page, mlModel);
-      await verifyNodePresent(page, topic);
-
-      const tableNode = page.locator(
-        `[data-testid="lineage-node-${get(
-          table,
-          'entityResponseData.fullyQualifiedName'
-        )}"]`
-      );
-
-      const searchIndexNode = page.locator(
-        `[data-testid="lineage-node-${get(
-          searchIndex,
-          'entityResponseData.fullyQualifiedName'
-        )}"]`
-      );
-
-      await expect(tableNode).not.toBeVisible();
-      await expect(searchIndexNode).not.toBeVisible();
-    });
-
-    await test.step('Verify Upstream and Downstream expand collapse buttons', async () => {
-      await redirectToHomePage(page);
-      await dashboard.visitEntityPage(page);
-      await visitLineageTab(page);
-      const closeIcon = page.getByTestId('entity-panel-close-icon');
-      if (await closeIcon.isVisible()) {
-        await closeIcon.click();
-      }
-      await performZoomOut(page);
-      await verifyNodePresent(page, topic);
-      await verifyNodePresent(page, mlModel);
-
-      await verifyExpandHandleHover(page, mlModel, false);
-      await clickOutside(page);
-      await verifyExpandHandleHover(page, topic, true);
-
-      await performExpand(page, mlModel, false, searchIndex);
-      await performExpand(page, searchIndex, false, container);
-      await performExpand(page, container, false, metric);
-      await performExpand(page, topic, true, table);
-
-      await performZoomOut(page);
-
-      await performCollapse(page, mlModel, false, [
-        searchIndex,
-        container,
-        metric,
+      await Promise.all([
+        table.create(apiContext),
+        topic.create(apiContext),
+        dashboard.create(apiContext),
+        mlModel.create(apiContext),
+        searchIndex.create(apiContext),
+        container.create(apiContext),
+        metric.create(apiContext),
+        pipeline.create(apiContext),
       ]);
-      await performZoomOut(page);
-      await performCollapse(page, dashboard, true, [table, topic]);
+
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: table.entityResponseData.id, type: 'table' },
+        { id: topic.entityResponseData.id, type: 'topic' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: topic.entityResponseData.id, type: 'topic' },
+        { id: dashboard.entityResponseData.id, type: 'dashboard' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: dashboard.entityResponseData.id, type: 'dashboard' },
+        { id: mlModel.entityResponseData.id, type: 'mlmodel' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: mlModel.entityResponseData.id, type: 'mlmodel' },
+        { id: searchIndex.entityResponseData.id, type: 'searchIndex' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: searchIndex.entityResponseData.id, type: 'searchIndex' },
+        { id: container.entityResponseData.id, type: 'container' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: container.entityResponseData.id, type: 'container' },
+        { id: metric.entityResponseData.id, type: 'metric' }
+      );
+      await connectEdgeBetweenNodesViaAPI(
+        apiContext,
+        { id: metric.entityResponseData.id, type: 'metric' },
+        { id: pipeline.entityResponseData.id, type: 'pipeline' }
+      );
+
+      await afterAction();
     });
 
-    await test.step('Reset global lineage config and verify lineage', async () => {
-      await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-      await fillLineageConfigForm(page, {
-        upstreamDepth: 2,
-        downstreamDepth: 2,
-        layer: 'Entity Lineage',
+    test.afterAll('cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await Promise.all([
+        table.delete(apiContext),
+        topic.delete(apiContext),
+        dashboard.delete(apiContext),
+        mlModel.delete(apiContext),
+        searchIndex.delete(apiContext),
+        container.delete(apiContext),
+        metric.delete(apiContext),
+        pipeline.delete(apiContext),
+      ]);
+
+      await afterAction();
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
+    });
+
+    test('Verify global lineage config', async ({ page }) => {
+      test.slow(true);
+
+      await test.step('Lineage config should throw error if upstream depth is less than 0', async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+
+        await page.getByTestId('field-upstream').fill('-1');
+        await page.getByTestId('field-downstream').fill('-1');
+        await page.getByTestId('save-button').click();
+
+        await expect(
+          page.getByText('Upstream Depth size cannot be less than 0')
+        ).toBeVisible();
+        await expect(
+          page.getByText('Downstream Depth size cannot be less than 0')
+        ).toBeVisible();
+
+        await page.getByTestId('field-upstream').fill('0');
+        await page.getByTestId('field-downstream').fill('0');
+
+        const saveRes = page.waitForResponse('/api/v1/system/settings');
+        await page.getByTestId('save-button').click();
+        await saveRes;
+
+        await toastNotification(page, /Lineage Config updated successfully/);
       });
 
-      await dashboard.visitEntityPage(page);
+      await test.step('Update global lineage config and verify lineage for column layer', async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 1,
+          downstreamDepth: 1,
+          layer: 'Column Level Lineage',
+        });
+
+        await topic.visitEntityPage(page);
+        await visitLineageTab(page);
+        await performZoomOut(page);
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        const mlModelFqn = get(
+          mlModel,
+          'entityResponseData.fullyQualifiedName'
+        );
+        const mlModelNode = page.locator(
+          `[data-testid="lineage-node-${mlModelFqn}"]`
+        );
+
+        await expect(mlModelNode).not.toBeVisible();
+
+        await verifyColumnLayerActive(page);
+      });
+
+      await test.step('Update global lineage config and verify lineage for entity layer', async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 1,
+          downstreamDepth: 1,
+          layer: 'Entity Lineage',
+        });
+
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+        await performZoomOut(page);
+        await verifyNodePresent(page, dashboard);
+        await verifyNodePresent(page, mlModel);
+        await verifyNodePresent(page, topic);
+
+        const tableNode = page.locator(
+          `[data-testid="lineage-node-${get(
+            table,
+            'entityResponseData.fullyQualifiedName'
+          )}"]`
+        );
+
+        const searchIndexNode = page.locator(
+          `[data-testid="lineage-node-${get(
+            searchIndex,
+            'entityResponseData.fullyQualifiedName'
+          )}"]`
+        );
+
+        await expect(tableNode).not.toBeVisible();
+        await expect(searchIndexNode).not.toBeVisible();
+      });
+
+      await test.step('Verify Upstream and Downstream expand collapse buttons', async () => {
+        await redirectToHomePage(page);
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+        const closeIcon = page.getByTestId('entity-panel-close-icon');
+        if (await closeIcon.isVisible()) {
+          await closeIcon.click();
+        }
+        await performZoomOut(page);
+        await verifyNodePresent(page, topic);
+        await verifyNodePresent(page, mlModel);
+
+        await verifyExpandHandleHover(page, mlModel, false);
+        await clickOutside(page);
+        await verifyExpandHandleHover(page, topic, true);
+
+        await performExpand(page, mlModel, false, searchIndex);
+        await performExpand(page, searchIndex, false, container);
+        await performExpand(page, container, false, metric);
+        await performExpand(page, topic, true, table);
+
+        await performZoomOut(page);
+
+        await performCollapse(page, mlModel, false, [
+          searchIndex,
+          container,
+          metric,
+        ]);
+        await performZoomOut(page);
+        await performCollapse(page, dashboard, true, [table, topic]);
+      });
+
+      await test.step('Reset global lineage config and verify lineage', async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          layer: 'Entity Lineage',
+        });
+
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+        await performZoomOut(page);
+
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        await verifyNodePresent(page, mlModel);
+        await verifyNodePresent(page, searchIndex);
+        await verifyNodePresent(page, topic);
+      });
+    });
+
+    test('Verify lineage time filter and tab switch reuse loaded graph', async ({
+      page,
+    }) => {
+      await table.visitEntityPage(page);
       await visitLineageTab(page);
-      await performZoomOut(page);
-
       await verifyNodePresent(page, table);
-      await verifyNodePresent(page, dashboard);
-      await verifyNodePresent(page, mlModel);
-      await verifyNodePresent(page, searchIndex);
-      await verifyNodePresent(page, topic);
-    });
-  });
 
-  test('Verify lineage time filter and tab switch reuse loaded graph', async ({
-    page,
-  }) => {
-    await table.visitEntityPage(page);
-    await visitLineageTab(page);
-    await verifyNodePresent(page, table);
+      const lineageTimeFilteredResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
 
-    const lineageTimeFilteredResponse = page.waitForResponse((response) => {
-      const url = new URL(response.url());
+        return (
+          url.pathname.endsWith('/api/v1/lineage/getLineage') &&
+          url.searchParams.has('startTime') &&
+          url.searchParams.has('endTime')
+        );
+      });
 
-      return (
-        url.pathname.endsWith('/api/v1/lineage/getLineage') &&
-        url.searchParams.has('startTime') &&
-        url.searchParams.has('endTime')
+      await page.getByTestId('lineage-time-filter').click();
+      await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
+
+      const response = await lineageTimeFilteredResponse;
+      const responseUrl = new URL(response.url());
+      const startTime = responseUrl.searchParams.get('startTime');
+      const endTime = responseUrl.searchParams.get('endTime');
+
+      expect(Number(startTime)).toBeLessThan(Number(endTime));
+      await expect(page.getByTestId('lineage-time-filter')).toContainText(
+        'Last 7 days'
       );
+
+      const isLineageFetchRequest = (request: Request) => {
+        const url = new URL(request.url());
+
+        return url.pathname.endsWith('/api/v1/lineage/getLineage');
+      };
+
+      const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
+
+      await lineageTabPanel
+        .getByRole('tab', { name: 'Impact Analysis' })
+        .click();
+      await expect(page).toHaveURL(/mode=impact_analysis/);
+      await waitForAllLoadersToDisappear(page);
+
+      const lineageFetchAfterViewSwitch = page
+        .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
+        .then(() => true)
+        .catch(() => false);
+
+      await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
+      await expect(page).not.toHaveURL(/mode=impact_analysis/);
+      expect(await lineageFetchAfterViewSwitch).toBe(false);
     });
 
-    await page.getByTestId('lineage-time-filter').click();
-    await page.getByRole('menuitemradio', { name: 'Last 7 days' }).click();
-
-    const response = await lineageTimeFilteredResponse;
-    const responseUrl = new URL(response.url());
-    const startTime = responseUrl.searchParams.get('startTime');
-    const endTime = responseUrl.searchParams.get('endTime');
-
-    expect(Number(startTime)).toBeLessThan(Number(endTime));
-    await expect(page.getByTestId('lineage-time-filter')).toContainText(
-      'Last 7 days'
-    );
-
-    const isLineageFetchRequest = (request: Request) => {
-      const url = new URL(request.url());
-
-      return url.pathname.endsWith('/api/v1/lineage/getLineage');
-    };
-
-    const lineageTabPanel = page.getByRole('tabpanel', { name: 'Lineage' });
-
-    await lineageTabPanel.getByRole('tab', { name: 'Impact Analysis' }).click();
-    await expect(page).toHaveURL(/mode=impact_analysis/);
-    await waitForAllLoadersToDisappear(page);
-
-    const lineageFetchAfterViewSwitch = page
-      .waitForRequest(isLineageFetchRequest, { timeout: 1000 })
-      .then(() => true)
-      .catch(() => false);
-
-    await lineageTabPanel.getByRole('tab', { name: 'Lineage' }).click();
-    await expect(page).not.toHaveURL(/mode=impact_analysis/);
-    expect(await lineageFetchAfterViewSwitch).toBe(false);
-  });
-
-  test('Verify lineage settings for PipelineViewMode as Edge', async ({
-    page,
-    dataStewardPage,
-  }) => {
-    // Update setting to show pipeline as Edge
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.SETTINGS);
-    await page.getByTestId('preferences').click();
-    await page.getByTestId('preferences.lineageConfig').click();
-
-    await page.getByTestId('field-pipeline-view-mode').click();
-
-    await page.getByTitle('Edge').filter({ visible: true }).click();
-    const lineageSettingUpdate = page.waitForResponse(
-      '/api/v1/system/settings'
-    );
-    await page.getByTestId('save-button').click();
-    await lineageSettingUpdate;
-
-    await redirectToHomePage(dataStewardPage);
-
-    await table.visitEntityPage(dataStewardPage);
-    await visitLineageTab(dataStewardPage);
-    await editLineage(dataStewardPage);
-
-    // Select pipeline from Modal
-    await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
-    await editLineageClick(dataStewardPage);
-    await waitForAllLoadersToDisappear(dataStewardPage);
-    await verifyPipelineDataInDrawer(
+    test('Verify lineage settings for PipelineViewMode as Edge', async ({
+      page,
       dataStewardPage,
-      table,
-      topic,
-      pipeline,
-      true
-    );
+    }) => {
+      // Update setting to show pipeline as Edge
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.SETTINGS);
+      await page.getByTestId('preferences').click();
+      await page.getByTestId('preferences.lineageConfig').click();
 
-    await pipeline.visitEntityPage(dataStewardPage);
-    await visitLineageTab(dataStewardPage);
+      await page.getByTestId('field-pipeline-view-mode').click();
 
-    await performZoomOut(dataStewardPage, 5);
+      await page.getByTitle('Edge').filter({ visible: true }).click();
+      const lineageSettingUpdate = page.waitForResponse(
+        '/api/v1/system/settings'
+      );
+      await page.getByTestId('save-button').click();
+      await lineageSettingUpdate;
 
-    // Pipeline should be shown as Edge and not as Node
-    await expect(
-      dataStewardPage.getByTestId(
-        `pipeline-label-${table.entityResponseData.fullyQualifiedName}-${topic.entityResponseData.fullyQualifiedName}`
-      )
-    ).toBeVisible({ timeout: 10000 });
+      await redirectToHomePage(dataStewardPage);
 
-    // update pipeline view mode to Node
-    await page.getByTestId('field-pipeline-view-mode').click();
-    await page.getByTitle('Node').filter({ visible: true }).click();
-    const settingsUpdate = page.waitForResponse('/api/v1/system/settings');
-    await page.getByTestId('save-button').click();
-    await settingsUpdate;
+      await table.visitEntityPage(dataStewardPage);
+      await visitLineageTab(dataStewardPage);
+      await editLineage(dataStewardPage);
 
-    await dataStewardPage.reload();
-    await waitForAllLoadersToDisappear(dataStewardPage);
+      // Select pipeline from Modal
+      await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
+      await editLineageClick(dataStewardPage);
+      await waitForAllLoadersToDisappear(dataStewardPage);
+      await verifyPipelineDataInDrawer(
+        dataStewardPage,
+        table,
+        topic,
+        pipeline,
+        true
+      );
 
-    // Pipeline should be shown as Node and not as Edge
-    await expect(
-      dataStewardPage.getByTestId(
-        `pipeline-label-${table.entityResponseData.fullyQualifiedName}-${topic.entityResponseData.fullyQualifiedName}`
-      )
-    ).not.toBeVisible();
+      await pipeline.visitEntityPage(dataStewardPage);
+      await visitLineageTab(dataStewardPage);
 
-    await expect(
-      dataStewardPage.getByTestId(
-        `lineage-node-${pipeline.entityResponseData.fullyQualifiedName}`
-      )
-    ).toBeVisible();
-  });
-});
+      await performZoomOut(dataStewardPage, 5);
+
+      // Pipeline should be shown as Edge and not as Node
+      await expect(
+        dataStewardPage.getByTestId(
+          `pipeline-label-${table.entityResponseData.fullyQualifiedName}-${topic.entityResponseData.fullyQualifiedName}`
+        )
+      ).toBeVisible({ timeout: 10000 });
+
+      // update pipeline view mode to Node
+      await page.getByTestId('field-pipeline-view-mode').click();
+      await page.getByTitle('Node').filter({ visible: true }).click();
+      const settingsUpdate = page.waitForResponse('/api/v1/system/settings');
+      await page.getByTestId('save-button').click();
+      await settingsUpdate;
+
+      await dataStewardPage.reload();
+      await waitForAllLoadersToDisappear(dataStewardPage);
+
+      // Pipeline should be shown as Node and not as Edge
+      await expect(
+        dataStewardPage.getByTestId(
+          `pipeline-label-${table.entityResponseData.fullyQualifiedName}-${topic.entityResponseData.fullyQualifiedName}`
+        )
+      ).not.toBeVisible();
+
+      await expect(
+        dataStewardPage.getByTestId(
+          `lineage-node-${pipeline.entityResponseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+    });
+  }
+);

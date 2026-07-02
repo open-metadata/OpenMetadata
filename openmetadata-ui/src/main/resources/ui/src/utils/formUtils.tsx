@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
-import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
+import {
+  Input as UTInput,
+  Select as UTSelect,
+  SelectItemType,
+  Toggle,
+  ToggleProps,
+} from '@openmetadata/ui-core-components';
 import {
   Alert,
   Checkbox,
@@ -30,7 +36,7 @@ import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
@@ -167,6 +173,56 @@ export const getField = (field: FieldProp) => {
             required={isRequired}
             {...muiProps}
           />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.UT_TEXT: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+      const { 'data-testid': dataTestId, ...inputRest } = props;
+
+      return (
+        <Form.Item
+          {...formProps}
+          getValueProps={(value) => ({ value: (value as string) ?? '' })}>
+          <UTInput
+            {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
+            id={id}
+            inputDataTestId={dataTestId as string}
+            isRequired={isRequired}
+            label={isString(label) ? label : undefined}
+            placeholder={placeholder}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.UT_SELECT: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+      const { items = [], ...selectRest } = props as {
+        items?: SelectItemType[];
+      } & Record<string, unknown>;
+
+      return (
+        <Form.Item
+          {...formProps}
+          getValueProps={(value) => ({ selectedKey: value ?? null })}
+          trigger="onSelectionChange"
+          validateTrigger="onSelectionChange"
+          valuePropName="selectedKey">
+          <UTSelect
+            {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
+            id={id}
+            isRequired={isRequired}
+            items={items}
+            label={isString(label) ? label : undefined}
+            placeholder={placeholder}>
+            {(item: SelectItemType) => <UTSelect.Item {...item} />}
+          </UTSelect>
         </Form.Item>
       );
     }
