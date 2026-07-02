@@ -9,7 +9,6 @@ import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexN
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.service.Entity;
@@ -24,24 +23,6 @@ import org.openmetadata.service.Entity;
  * <F> The FunctionScoreQueryBuilder type
  */
 public interface SearchSourceBuilderFactory<S, Q, H, F> {
-
-  Pattern QUERY_SYNTAX_PATTERN =
-      Pattern.compile(
-          "\\w+\\s*:\\s*\\w+|"
-              + // Field queries (field:value)
-              "\\b(?:AND|OR|NOT)\\b|"
-              + // Boolean operators (uppercase only)
-              "[*?]|"
-              + // Wildcards
-              "[()]|"
-              + // Parentheses
-              "\"|"
-              + // Quotes
-              "\\[.+\\s+TO\\s+.+\\]|"
-              + // Range queries
-              "[+\\-~\\^]" // Special operators
-          );
-
   Set<String> FUZZY_FIELDS =
       Set.of(
           "name",
@@ -207,7 +188,126 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       return false;
     }
     query = query.replace("%20", " ").trim();
-    return QUERY_SYNTAX_PATTERN.matcher(query).find();
+    if (query.isEmpty()) {
+      return false;
+    }
+    if (containsRangeQuery(query)) {
+      return true;
+    }
+    for (int i = 0; i < query.length(); i++) {
+      char current = query.charAt(i);
+      if (isSingleCharacterSyntax(current)
+          || isFieldQuerySeparator(query, i)
+          || isBooleanOperatorAt(query, i)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isSingleCharacterSyntax(char current) {
+    return switch (current) {
+      case '*', '?', '(', ')', '"', '+', '-', '~', '^' -> true;
+      default -> false;
+    };
+  }
+
+  private static boolean isFieldQuerySeparator(String query, int index) {
+    if (query.charAt(index) != ':') {
+      return false;
+    }
+    int before = previousNonWhitespace(query, index - 1);
+    int after = nextNonWhitespace(query, index + 1);
+    return before >= 0
+        && after < query.length()
+        && isQueryWordChar(query.charAt(before))
+        && isQueryWordChar(query.charAt(after));
+  }
+
+  private static int previousNonWhitespace(String query, int index) {
+    for (int i = index; i >= 0; i--) {
+      if (!Character.isWhitespace(query.charAt(i))) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  private static int nextNonWhitespace(String query, int index) {
+    for (int i = index; i < query.length(); i++) {
+      if (!Character.isWhitespace(query.charAt(i))) {
+        return i;
+      }
+    }
+    return query.length();
+  }
+
+  private static boolean isBooleanOperatorAt(String query, int index) {
+    return isOperatorToken(query, index, "AND")
+        || isOperatorToken(query, index, "OR")
+        || isOperatorToken(query, index, "NOT");
+  }
+
+  private static boolean isOperatorToken(String query, int index, String operator) {
+    int end = index + operator.length();
+    return end <= query.length()
+        && query.startsWith(operator, index)
+        && (index == 0 || !isQueryWordChar(query.charAt(index - 1)))
+        && (end == query.length() || !isQueryWordChar(query.charAt(end)));
+  }
+
+  private static boolean containsRangeQuery(String query) {
+    int openIndex = -1;
+    boolean hasValueBeforeTo = false;
+    boolean sawTo = false;
+    boolean hasValueAfterTo = false;
+
+    for (int i = 0; i < query.length(); i++) {
+      char current = query.charAt(i);
+      if (openIndex < 0) {
+        if (current == '[') {
+          openIndex = i;
+          hasValueBeforeTo = false;
+          sawTo = false;
+          hasValueAfterTo = false;
+        }
+        continue;
+      }
+      if (current == ']') {
+        if (sawTo && hasValueBeforeTo && hasValueAfterTo) {
+          return true;
+        }
+        openIndex = -1;
+        continue;
+      }
+      if (!sawTo) {
+        if (isRangeToToken(query, i, openIndex, hasValueBeforeTo)) {
+          sawTo = true;
+          i++;
+        } else if (!Character.isWhitespace(current)) {
+          hasValueBeforeTo = true;
+        }
+      } else if (!Character.isWhitespace(current)) {
+        hasValueAfterTo = true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isRangeToToken(
+      String query, int index, int openIndex, boolean hasValueBeforeTo) {
+    int after = index + 2;
+    return hasValueBeforeTo
+        && index > openIndex + 1
+        && after < query.length()
+        && query.charAt(index) == 'T'
+        && query.charAt(index + 1) == 'O'
+        && Character.isWhitespace(query.charAt(index - 1))
+        && Character.isWhitespace(query.charAt(after));
+  }
+
+  private static boolean isQueryWordChar(char current) {
+    return Character.isLetterOrDigit(current) || current == '_';
   }
 
   default boolean isFuzzyField(String key) {
