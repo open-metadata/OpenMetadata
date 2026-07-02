@@ -145,7 +145,8 @@
         "type": "keyword"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "path": {
         "type": "keyword"

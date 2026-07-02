@@ -340,7 +340,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "path": {
         "type": "text",

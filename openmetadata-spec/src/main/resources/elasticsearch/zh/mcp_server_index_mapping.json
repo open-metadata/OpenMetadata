@@ -71,6 +71,10 @@
   "mappings": {
     "dynamic": false,
     "properties": {
+      "extension": {
+        "type": "object",
+        "enabled": false
+      },
       "id": {
         "type": "text",
         "fields": {

@@ -36,7 +36,12 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SearchReindexLockDAO;
 @Slf4j
 public class JobRecoveryManager {
 
-  /** Grace period before considering a lock as abandoned (should be > LOCK_TIMEOUT_MS) */
+  /**
+   * Grace period before a job's stale {@code updatedAt} marks it abandoned. Deliberately larger
+   * than the coordinator's lock TTL ({@code LOCK_TIMEOUT_MS} = 5 min) so orphan detection can trust
+   * a still-unexpired lock as proof of a live coordinator: a crashed coordinator's lock always
+   * expires before {@code updatedAt} can reach this threshold. See {@link #isJobOrphaned}.
+   */
   private static final long ABANDONED_LOCK_THRESHOLD_MS = TimeUnit.MINUTES.toMillis(10);
 
   /** Maximum time a job can stay in STOPPING state before being force-completed */
@@ -44,6 +49,9 @@ public class JobRecoveryManager {
 
   /** Maximum age for a job to be considered for recovery vs marking as failed */
   private static final long RECOVERY_WINDOW_MS = TimeUnit.HOURS.toMillis(1);
+
+  /** Key of the exclusive reindex lock held and refreshed by the coordinator. */
+  private static final String REINDEX_LOCK_KEY = "SEARCH_REINDEX_LOCK";
 
   private static final String SEARCH_INDEX_APP_NAME = "SearchIndexingApplication";
 
@@ -233,33 +241,44 @@ public class JobRecoveryManager {
    */
   private boolean isJobOrphaned(SearchIndexJob job) {
     long now = System.currentTimeMillis();
+    boolean orphaned;
 
     // Primary check: is job.updatedAt recent? Partition workers touch this every 2 min
     // via completePartition → touchJobThrottled. If it's fresh, the job is alive
     // regardless of lock state (covers the recovery case where lock was released).
     long lastUpdateThreshold = now - ABANDONED_LOCK_THRESHOLD_MS;
     if (job.getUpdatedAt() >= lastUpdateThreshold) {
-      return false;
-    }
-
-    // Secondary check: does a valid lock exist for this job?
-    SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
-    SearchReindexLockDAO.LockInfo lockInfo = lockDAO.getLockInfo("SEARCH_REINDEX_LOCK");
-
-    if (lockInfo != null
-        && lockInfo.jobId().equals(job.getId().toString())
-        && lockInfo.expiresAt() >= now) {
-      // Lock is valid but updatedAt is stale — coordinator may have crashed
-      // while holding the lock. Consider orphaned.
+      orphaned = false;
+    } else if (hasLiveCoordinatorLock(job, now)) {
+      // updatedAt is stale, but a still-unexpired lock proves a coordinator is alive and refreshing
+      // it. Because the lock TTL (5 min) is shorter than ABANDONED_LOCK_THRESHOLD_MS (10 min), a
+      // crashed coordinator's lock would already have expired by the time updatedAt is this stale —
+      // so a valid lock here means the coordinator is live but its updatedAt write lagged (e.g.
+      // touchJob failing while refreshReindexLock succeeds, or a long single-partition batch).
+      // Failing the job here would wrongly abandon a healthy reindex with "Job abandoned...".
       LOG.debug(
-          "Job {} has valid lock but updatedAt is {} ms stale, considering orphaned",
+          "Job {} has a live (unexpired) lock despite updatedAt being {} ms stale; "
+              + "treating coordinator as alive, not orphaned",
           job.getId(),
           now - job.getUpdatedAt());
-      return true;
+      orphaned = false;
+    } else {
+      orphaned = true;
     }
 
-    // No valid lock AND updatedAt is stale — orphaned
-    return true;
+    return orphaned;
+  }
+
+  /**
+   * Whether an unexpired reindex lock for this job exists — proof that a coordinator is alive and
+   * actively refreshing it (the lock is renewed well within its TTL).
+   */
+  private boolean hasLiveCoordinatorLock(SearchIndexJob job, long now) {
+    SearchReindexLockDAO lockDAO = collectionDAO.searchReindexLockDAO();
+    SearchReindexLockDAO.LockInfo lockInfo = lockDAO.getLockInfo(REINDEX_LOCK_KEY);
+    return lockInfo != null
+        && lockInfo.jobId().equals(job.getId().toString())
+        && lockInfo.expiresAt() >= now;
   }
 
   /**
@@ -423,7 +442,7 @@ public class JobRecoveryManager {
     partitionDAO.cancelPendingPartitions(job.getId().toString());
 
     // Release any lock held by this job
-    collectionDAO.searchReindexLockDAO().releaseLock("SEARCH_REINDEX_LOCK", job.getId().toString());
+    collectionDAO.searchReindexLockDAO().releaseLock(REINDEX_LOCK_KEY, job.getId().toString());
 
     // Sync app_extension_time_series so the UI reflects FAILED instead of RUNNING.
     // OmAppJobListener.jobWasExecuted() is bypassed during recovery (no Quartz context),

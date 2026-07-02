@@ -533,7 +533,8 @@
         "normalizer": "lowercase_normalizer"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "totalVotes": {
         "type": "long",

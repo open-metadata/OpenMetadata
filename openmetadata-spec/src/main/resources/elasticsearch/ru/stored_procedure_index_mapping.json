@@ -546,7 +546,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "sourceUrl": {
         "type": "keyword"

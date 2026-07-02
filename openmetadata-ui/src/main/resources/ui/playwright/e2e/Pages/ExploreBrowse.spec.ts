@@ -31,18 +31,20 @@ const dashboard = new DashboardClass();
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
-  const queryRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
-  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-  await queryRes;
+
   await waitForAllLoadersToDisappear(page);
 };
+
+const rootTreeNode = (page: Page, titleTestId: string) =>
+  page
+    .getByTestId(`explore-tree-title-${titleTestId}`)
+    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
 
 const goToExplore = async (page: Page) => {
   await redirectToHomePage(page);
@@ -247,6 +249,66 @@ test.describe(
         await expect(
           page.getByTestId('browse-chip-serviceType')
         ).not.toBeVisible();
+      });
+    });
+
+    test('service type drill-down disables unrelated roots and query-panel Clear resets it', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
+        await expandTreeNode(page, 'Databases');
+
+        // Explicit visibility wait before clicking. The expandTreeNode helper
+        // only waits for loaders to disappear, but the tree's child rows can
+        // continue to animate/reposition for a beat after that — the
+        // subsequent .click() then times out with "waiting for element to be
+        // visible, enabled and stable". toBeVisible polls until the element
+        // is stable too, which lets the click land cleanly.
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+        );
+        await expect(serviceTitle).toBeVisible();
+
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await serviceTitle.click();
+        await browseRes;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
+        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+        await expect(page.getByTestId('clear-filters')).toHaveCount(0);
+
+        await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        expect(page.url()).toContain('browsePath');
+      });
+
+      await test.step('Query-panel Clear restores the full browse estate', async () => {
+        const clearRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('clear-all-chips').click();
+        await clearRes;
+        await waitForAllLoadersToDisappear(page);
+
+        const url = new URL(page.url());
+        expect(url.searchParams.get('browsePath')).toBeNull();
+        expect(url.searchParams.get('quickFilter')).toBeNull();
+
+        await expect(
+          page.getByTestId('browse-chip-serviceType')
+        ).not.toBeVisible();
+        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
       });
     });
 

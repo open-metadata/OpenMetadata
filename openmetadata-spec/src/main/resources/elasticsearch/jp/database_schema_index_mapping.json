@@ -273,7 +273,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "owners": {
         "type": "nested",

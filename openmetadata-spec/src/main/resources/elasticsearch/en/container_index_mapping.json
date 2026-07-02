@@ -400,7 +400,8 @@
                 "type": "integer"
               },
               "extension": {
-                "type": "flattened"
+                "type": "object",
+                "enabled": false
               },
               "customPropertiesTyped": {
                 "type": "nested",
@@ -554,7 +555,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "children": {
         "properties": {

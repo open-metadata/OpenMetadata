@@ -457,7 +457,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "lifeCycle": {
         "type": "object",

@@ -11,8 +11,11 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
-import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
+import {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { TestSuites } from './TestSuites.component';
@@ -140,9 +143,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     dependencies?: unknown[];
   }) => (
     <tbody>
-      {items && items.length > 0
-        ? items.map((item) => children(item))
-        : renderEmptyState?.()}
+      {items && items.length > 0 ? (
+        items.map((item) => children(item))
+      ) : (
+        <tr>
+          <td colSpan={4}>{renderEmptyState?.()}</td>
+        </tr>
+      )}
     </tbody>
   );
 
@@ -257,6 +264,10 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
 
+jest.mock('../../../common/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>)
+);
+
 jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   __esModule: true,
   default: {
@@ -351,6 +362,10 @@ describe('TestSuites component', () => {
     jest.clearAllMocks();
     testSuitePermission.ViewAll = true;
     mockLocation.search = '';
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    });
   });
 
   it('component should render', async () => {
@@ -526,6 +541,77 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByTestId('filter-table-placeholder')
     ).toBeInTheDocument();
+  });
+
+  it('should render loader while test suites are loading', async () => {
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    render(<TestSuites />);
+
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('filter-table-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should ignore stale table suite response after switching to bundle suites', async () => {
+    let resolveTableSuites: (value: typeof mockList) => void;
+    let resolveBundleSuites: (value: typeof mockList) => void;
+    const tableSuitesResponse = new Promise<typeof mockList>((resolve) => {
+      resolveTableSuites = resolve;
+    });
+    const bundleSuitesResponse = new Promise<typeof mockList>((resolve) => {
+      resolveBundleSuites = resolve;
+    });
+    const bundleSuiteName = 'bundle.suite';
+
+    (getListTestSuitesBySearch as jest.Mock)
+      .mockImplementationOnce(() => tableSuitesResponse)
+      .mockImplementationOnce(() => bundleSuitesResponse);
+
+    const { rerender } = render(<TestSuites />);
+
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
+
+    (useParams as jest.Mock).mockReturnValue({
+      tab: DataQualityPageTabs.TEST_CASES,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
+    });
+
+    rerender(<TestSuites />);
+
+    await act(async () => {
+      resolveBundleSuites({
+        data: [
+          {
+            id: 'bundle-id',
+            name: bundleSuiteName,
+            fullyQualifiedName: bundleSuiteName,
+            basic: false,
+          },
+        ],
+        paging: {
+          offset: 0,
+          limit: 15,
+          total: 1,
+        },
+      });
+    });
+
+    expect(await screen.findByTestId(bundleSuiteName)).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTableSuites(mockList);
+    });
+
+    expect(screen.getByTestId(bundleSuiteName)).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite'
+      )
+    ).not.toBeInTheDocument();
   });
 
   it('should not render pagination when showPagination is false', async () => {

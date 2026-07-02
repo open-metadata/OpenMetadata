@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.feeds;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.POST_CREATED;
 import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
@@ -440,6 +441,9 @@ public class FeedResource {
 
   private void authorizeThreadCreate(SecurityContext securityContext, CreateThread create) {
     if (create.getType() == ThreadType.Task) {
+      if (nullOrEmpty(create.getAbout())) {
+        throw new IllegalArgumentException("Task thread requires an 'about' entity link");
+      }
       EntityLink about = EntityLink.parse(create.getAbout());
       EntityReference aboutRef = EntityUtil.validateEntityLink(about);
       ResourceContext<?> entityResourceContext =
@@ -457,7 +461,7 @@ public class FeedResource {
    * thread-resource grants). Mirrors the TestCase pattern for an EXISTING child entity.
    */
   private void authorizeThreadEdit(SecurityContext securityContext, Thread thread) {
-    if (thread.getType() == ThreadType.Task) {
+    if (thread.getType() == ThreadType.Task && !nullOrEmpty(thread.getAbout())) {
       EntityLink about = EntityLink.parse(thread.getAbout());
       EntityReference aboutRef = EntityUtil.validateEntityLink(about);
       ResourceContext<?> entityResourceContext =

@@ -21,6 +21,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillTextInputDetails, pressKeyXTimes } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { visitServiceDetailsPage } from '../../utils/service';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -39,6 +40,22 @@ test.describe('BulkEditEntity — OperationBadges and Search (all entity types)'
     await opGlossary.create(apiContext);
     await opGlossaryTerm.create(apiContext);
     await opTable.create(apiContext);
+
+    // Wait for ES indexing of both the term and the table before any test
+    // opens the bulk-edit view; the bulk-edit table reads from search and
+    // otherwise comes back empty under load, racing the test's row count
+    // assertions.
+    await waitForSearchIndexed(
+      apiContext,
+      opGlossaryTerm.responseData.fullyQualifiedName,
+      'glossary_term_search_index'
+    );
+    await waitForSearchIndexed(
+      apiContext,
+      opTable.entityResponseData.fullyQualifiedName,
+      'table_search_index'
+    );
+
     await afterAction();
   });
 

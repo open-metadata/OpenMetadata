@@ -196,12 +196,14 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
 
   @DELETE
   @Path("/{id}")
-  @Operation(operationId = "deleteDriveFolder", summary = "Delete a folder")
+  @Operation(
+      operationId = "deleteDriveFolder",
+      summary = "Delete a folder",
+      description = "Delete a folder and all contained folders and files.")
   public Response delete(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      @QueryParam("recursive") @DefaultValue("false") boolean recursive,
       @Parameter(description = "Permanently delete the folder asynchronously.")
           @QueryParam("hardDelete")
           @DefaultValue("false")
@@ -209,11 +211,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
     if (hardDelete) {
       Folder folder = getInternal(uriInfo, securityContext, id, "", Include.ALL);
       if (!Boolean.TRUE.equals(folder.getDeleted())) {
-        super.delete(uriInfo, securityContext, id, recursive, false);
+        super.delete(uriInfo, securityContext, id, true, false);
       }
-      return deleteByIdAsync(uriInfo, securityContext, id, recursive, true);
+      return deleteByIdAsync(uriInfo, securityContext, id, true, true);
     }
-    return super.delete(uriInfo, securityContext, id, recursive, false);
+    return super.delete(uriInfo, securityContext, id, true, false);
   }
 
   @PUT
