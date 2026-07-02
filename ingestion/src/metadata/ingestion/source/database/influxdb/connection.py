@@ -140,8 +140,6 @@ class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
 
         def test_get_databases():
             databases = client.list_databases()
-            if not databases:
-                raise ConnectionError("No InfluxDB databases found")
             logger.info("Found %d database(s): %s", len(databases), databases)
 
         test_fn = {
