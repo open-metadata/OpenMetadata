@@ -142,16 +142,32 @@ jest.mock(
   })
 );
 
+const mockConnectionConfigFormProps = jest.fn();
+
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
   () => {
-    return jest.fn().mockImplementation(({ onSave }) => (
-      <div>
-        <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
-          Save Connection
-        </button>
-      </div>
-    ));
+    return jest
+      .fn()
+      .mockImplementation(({ onSave, onValidateAdditionalRequiredFields }) => {
+        mockConnectionConfigFormProps({
+          onSave,
+          onValidateAdditionalRequiredFields,
+        });
+
+        return (
+          <div>
+            <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
+              Save Connection
+            </button>
+            <button
+              data-testid="trigger-additional-validation"
+              onClick={() => onValidateAdditionalRequiredFields?.()}>
+              Validate Additional Fields
+            </button>
+          </div>
+        );
+      });
   }
 );
 
@@ -634,5 +650,103 @@ describe('AddServicePage', () => {
     render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetExtraInfo).toHaveBeenCalled();
+  });
+
+  it('should set name error and block test connection when service name is empty', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+      'message.field-text-is-required'
+    );
+  });
+
+  it('should not set name error when service name is filled before test connection', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(screen.queryByTestId('service-name-error')).not.toBeInTheDocument();
+  });
+
+  it('should pass onValidateAdditionalRequiredFields to ConnectionConfigForm', async () => {
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
+
+    expect(typeof lastProps.onValidateAdditionalRequiredFields).toBe(
+      'function'
+    );
+  });
+
+  it('should focus the service name input when additional validation fails on empty name', async () => {
+    const mockFocus = jest.fn();
+    jest
+      .spyOn(document, 'getElementById')
+      .mockReturnValue({ focus: mockFocus } as unknown as HTMLElement);
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(document.getElementById).toHaveBeenCalledWith('service-name');
+    expect(mockFocus).toHaveBeenCalled();
+  });
+
+  it('should focus the service name input when next is clicked with empty name via Save Connection', async () => {
+    const mockFocus = jest.fn();
+    jest
+      .spyOn(document, 'getElementById')
+      .mockReturnValue({ focus: mockFocus } as unknown as HTMLElement);
+
+    await act(async () => {
+      render(<AddServicePage {...mockProps} />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    expect(document.getElementById).toHaveBeenCalledWith('service-name');
+    expect(mockFocus).toHaveBeenCalled();
   });
 });
