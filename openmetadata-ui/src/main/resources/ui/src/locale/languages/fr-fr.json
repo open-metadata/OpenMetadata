@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "Seuls les réviseurs peuvent Valider ou Rejeter",
     "only-show-columns-with-lineage": "Afficher uniquement les colonnes avec Lineage",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "Vous n'avez pas les autorisations nécessaires pour effectuer cette action. Veuillez contacter votre administrateur.",
     "optional-configuration-update-description-dbt": "Configuration optionnelle pour mettre à jour la description à partir de dbt ou non",
     "optional-custom-error": "Message d'erreur personnalisé facultatif affiché en cas d'échec de la validation",
     "optional-markdown-content": "Facultatif : Ajouter du contenu markdown à intégrer directement dans la ressource",

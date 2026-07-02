@@ -28,11 +28,13 @@ jest.mock('./i18next/LocalUtil', () => ({
   },
 }));
 
+import { AxiosError } from 'axios';
 import {
   decodeHtmlEntities,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
+  getPermissionErrorText,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
@@ -383,6 +385,38 @@ describe('StringUtils', () => {
 
     it('should trim surrounding whitespace', () => {
       expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
+    });
+  });
+
+  describe('getPermissionErrorText', () => {
+    it('should return the friendly permission message for a 403 error', () => {
+      const error = {
+        response: { status: 403, data: { message: "operations not allowed" } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe(
+        'message.operation-forbidden-please-contact-admin'
+      );
+    });
+
+    it('should return the backend message for a non-403 error', () => {
+      const error = {
+        response: { status: 500, data: { message: 'boom' } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('boom');
+    });
+
+    it('should return the fallback text when a non-403 error has no message', () => {
+      const error = { response: { status: 500, data: {} } } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('fallback');
+    });
+
+    it('should return a plain string error unchanged', () => {
+      expect(getPermissionErrorText('plain error', 'fallback')).toBe(
+        'plain error'
+      );
     });
   });
 });

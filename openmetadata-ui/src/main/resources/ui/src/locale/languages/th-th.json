@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "เฉพาะผู้ตรวจสอบเท่านั้นที่สามารถอนุมัติหรือปฏิเสธ",
     "only-show-columns-with-lineage": "แสดงเฉพาะคอลัมน์ที่มี Lineage",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "คุณไม่มีสิทธิ์ดำเนินการนี้ โปรดติดต่อผู้ดูแลระบบของคุณ",
     "optional-configuration-update-description-dbt": "การตั้งค่าเสริมเพื่ออัปเดตคำอธิบายจาก dbt หรือไม่",
     "optional-custom-error": "ข้อความแสดงข้อผิดพลาดที่กำหนดเองซึ่งเป็นทางเลือก แสดงเมื่อการตรวจสอบล้มเหลว",
     "optional-markdown-content": "ตัวเลือก: เพิ่มเนื้อหา markdown เพื่อฝังโดยตรงในทรัพยากร",

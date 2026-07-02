@@ -3558,6 +3558,7 @@
     "only-reviewers-can-approve-or-reject": "Apenas Revisores podem Aprovar ou Rejeitar",
     "only-show-columns-with-lineage": "Mostrar apenas colunas com Lineage",
     "openmetadata-docs-description": "Full setup guide, required privileges, and every supported field.",
+    "operation-forbidden-please-contact-admin": "Você não tem permissão para executar esta ação. Entre em contato com o administrador.",
     "optional-configuration-update-description-dbt": "Configuração opcional para atualizar a descrição do dbt ou não",
     "optional-custom-error": "Mensagem de erro personalizada opcional exibida quando a validação falha",
     "optional-markdown-content": "Opcional: Adicionar conteúdo markdown para incorporar diretamente no recurso",

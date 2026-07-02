@@ -1504,12 +1504,14 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       return;
     }
 
-    // Approved and Granted are non-terminal only for workflows that expose further
+    // Approved / Granted / ManualRevoke are non-terminal only for workflows that expose further
     // transitions out of them (Data Access Request: Approved → markAsGranted/revoke,
-    // Granted → revoke). For workflows where Approved is terminal (Glossary,
-    // DescriptionUpdate, etc.), availableTransitions is empty and the task must stay
+    // Granted → revoke, ManualRevoke → markAsRevoked). For workflows where these are terminal
+    // (Glossary, DescriptionUpdate, etc.), availableTransitions is empty and the task must stay
     // closed — re-resolving it would re-run postUpdate hooks and clobber resolution.
-    if ((status == TaskEntityStatus.Approved || status == TaskEntityStatus.Granted)
+    if ((status == TaskEntityStatus.Approved
+            || status == TaskEntityStatus.Granted
+            || status == TaskEntityStatus.ManualRevoke)
         && task.getAvailableTransitions() != null
         && !task.getAvailableTransitions().isEmpty()) {
       return;
