@@ -101,6 +101,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -1716,6 +1717,44 @@ public class IngestionPipelineResource
       throw new ServiceUnavailableException("Progress tracking is not configured");
     }
     repository.streamProgress(fqn, runId, eventSink, sse);
+  }
+
+  @GET
+  @Path("/progress/service/{serviceType}/{serviceFqn}/stream")
+  @Produces(MediaType.SERVER_SENT_EVENTS)
+  @Operation(
+      operationId = "streamServiceProgress",
+      summary = "Stream progress for all pipelines of a service",
+      description =
+          "Stream real-time progress for every live ingestion pipeline run under a service on a "
+              + "single Server-Sent Events connection",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Service progress stream",
+            content = @Content(mediaType = MediaType.SERVER_SENT_EVENTS)),
+        @ApiResponse(responseCode = "503", description = "Progress tracking is not configured")
+      })
+  public void streamServiceProgress(
+      @Context SseEventSink eventSink,
+      @Context Sse sse,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Service entity type", schema = @Schema(type = "string"))
+          @PathParam("serviceType")
+          String serviceType,
+      @Parameter(
+              description = "Fully qualified name of the service",
+              schema = @Schema(type = "string"))
+          @PathParam("serviceFqn")
+          String serviceFqn) {
+    OperationContext operationContext =
+        new OperationContext(serviceType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(serviceType, null, serviceFqn));
+    if (!repository.isProgressTrackingEnabled()) {
+      throw new ServiceUnavailableException("Progress tracking is not configured");
+    }
+    repository.streamServiceProgress(serviceFqn, eventSink, sse);
   }
 
   @PUT
