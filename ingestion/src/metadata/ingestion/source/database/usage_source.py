@@ -164,7 +164,7 @@ class UsageSource(QueryParserSource, ABC):
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
         days = max(1, (self.end - self.start).days)
-        result_limit = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
         if result_limit is not None:
             self.progress.seed_scope_total("Queries", "run", result_limit * days)
         processed = 0
