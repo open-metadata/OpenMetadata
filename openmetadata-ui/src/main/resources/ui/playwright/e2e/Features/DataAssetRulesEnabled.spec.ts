@@ -48,11 +48,11 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   assignDataProduct,
-  assignSingleSelectDomain,
   clickOutside,
   redirectToHomePage,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -174,7 +174,7 @@ test.describe(
         });
 
         // Single Domain Add Check
-        await assignSingleSelectDomain(page, domain.responseData);
+        await assignDomainWidget(page, domain.responseData);
 
         // Exclude this check at Service Level Entities
         if (!entityName.includes('Service')) {
@@ -280,7 +280,7 @@ test.describe(
         });
 
         // Assign first domain (single-select mode)
-        await assignSingleSelectDomain(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData);
 
         // Verify first domain is visible
         await expect(page.getByTestId('domain-link')).toContainText(
@@ -288,7 +288,7 @@ test.describe(
         );
 
         // Assign second domain (should REPLACE first, not add to it)
-        await assignSingleSelectDomain(page, testDomain2.responseData);
+        await assignDomainWidget(page, testDomain2.responseData);
 
         // Verify second domain is visible
         await expect(page.getByTestId('domain-link')).toContainText(

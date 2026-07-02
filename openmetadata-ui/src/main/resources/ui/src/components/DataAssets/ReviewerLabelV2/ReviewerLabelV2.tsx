@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
 export const ReviewerLabelV2 = <
@@ -64,56 +63,44 @@ export const ReviewerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
-  const header = useMemo(
-    () => (
-      <div className="d-flex items-center gap-2">
-        <Typography.Text
-          className="text-sm font-medium"
-          data-testid="heading-name">
-          {t('label.reviewer-plural')}
-        </Typography.Text>
-        {hasEditReviewerAccess && (
-          <UserTeamSelectableList
-            previewSelected
-            hasPermission={hasEditReviewerAccess}
-            label={t('label.reviewer-plural')}
-            listHeight={200}
-            multiple={{ user: true, team: false }}
-            owner={assignedReviewers ?? []}
-            popoverProps={{ placement: 'topLeft' }}
-            onUpdate={handleReviewerSave}>
-            {hasReviewers ? (
-              <EditIconButton
-                newLook
-                data-testid="edit-reviewer-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}
-              />
-            ) : (
-              <PlusIconButton
-                data-testid="Add"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}
-              />
-            )}
-          </UserTeamSelectableList>
-        )}
-      </div>
-    ),
+  const headerExtra = useMemo(
+    () =>
+      hasEditReviewerAccess ? (
+        <UserTeamSelectableList
+          previewSelected
+          hasPermission={hasEditReviewerAccess}
+          label={t('label.reviewer-plural')}
+          listHeight={200}
+          multiple={{ user: true, team: false }}
+          owner={assignedReviewers ?? []}
+          popoverProps={{ placement: 'topLeft' }}
+          onUpdate={handleReviewerSave}>
+          {hasReviewers ? (
+            <WidgetEditButton
+              data-testid="edit-reviewer-button"
+              title={t('label.edit-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+            />
+          ) : (
+            <WidgetPlusButton
+              data-testid="Add"
+              title={t('label.add-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+            />
+          )}
+        </UserTeamSelectableList>
+      ) : null,
     [data, permissions, handleReviewerSave]
   );
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
+    <WidgetCard
       dataTestId="glossary-reviewer"
-      isExpandDisabled={!hasReviewers}>
+      headerExtra={headerExtra}
+      isExpandDisabled={!hasReviewers}
+      title={t('label.reviewer-plural')}>
       {hasReviewers ? (
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
@@ -124,6 +111,6 @@ export const ReviewerLabelV2 = <
           )}
         </div>
       ) : null}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
