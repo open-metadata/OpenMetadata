@@ -15,7 +15,6 @@
 .status-card-widget-container {
   background: @grey-26;
   border-color: @grey-9;
-  // Core Card no longer pads its root (#29578); restore the prior md padding.
   padding: 12px 24px;
 }
 
@@ -30,9 +29,6 @@
   justify-content: center;
   border-radius: @border-rad-base;
 
-  // 2.0 redesign pill palette — untitled utility tokens (50 bg / 200 border /
-  // 700 text), referenced as the Tailwind-emitted CSS custom properties so the
-  // shades stay theme-aware.
   &.success {
     background-color: var(--tw-color-utility-success-50);
     border-color: var(--tw-color-utility-success-200);
