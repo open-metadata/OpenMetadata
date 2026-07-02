@@ -8,13 +8,15 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
       se.user_name "user_name",
       s.start_time "start_time",
       s.stop_time "end_time",
-      s.duration "duration"
+      s.duration "duration",
+      CASE WHEN s.success = FALSE THEN TRUE ELSE FALSE END "aborted"
     FROM EXA_STATISTICS.EXA_DBA_AUDIT_SQL s
     JOIN EXA_STATISTICS.EXA_DBA_AUDIT_SESSIONS se
     ON s.SESSION_ID = se.SESSION_ID
     WHERE s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+    AND s.success = TRUE
     AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    AND start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
+    AND s.start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
     {filters}
     LIMIT {result_limit}
     """
