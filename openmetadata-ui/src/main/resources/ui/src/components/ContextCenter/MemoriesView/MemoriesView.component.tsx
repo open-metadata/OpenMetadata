@@ -27,7 +27,11 @@ import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
@@ -59,11 +63,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
             <Box align="center" gap={2}>
               <Trash01
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
               />
               <Typography
                 ellipsis
-                className="tw:grow tw:text-error-600"
+                className="tw:grow tw:text-error-primary"
                 size="text-sm"
                 weight="medium">
                 {t('label.delete')}
@@ -90,7 +94,7 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
       <TooltipTrigger>
         <ButtonUtility
           className={classNames('tw:transition-colors tw:duration-150', {
-            'tw:bg-blue-50 tw:text-brand-600': pinned,
+            'tw:bg-utility-blue-50 tw:text-fg-brand-primary': pinned,
           })}
           color="tertiary"
           icon={
@@ -108,6 +112,8 @@ const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
 };
 
 const SKELETON_KEYS = Array.from({ length: 8 }, (_, i) => `skeleton-${i}`);
+
+const MAX_VISIBLE_LINKED_ENTITIES = 4;
 
 const MemoryRowSkeleton: FC = () => (
   <Box
@@ -134,6 +140,8 @@ interface MemoryRowProps {
   currentUserName?: string;
   isAdminUser?: boolean;
   memory: ContextMemory;
+  canEdit?: boolean;
+  canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
@@ -143,6 +151,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
   memory,
+  canEdit,
+  canDelete,
   onDeleteMemory,
   onEditMemory,
   onViewMemory,
@@ -163,6 +173,31 @@ const MemoryRow: FC<MemoryRowProps> = ({
     [memory.name]
   );
 
+  const { linkedEntities, hiddenLinkedEntitiesCount } = useMemo(() => {
+    const entities = [memory.primaryEntity, ...(memory.relatedEntities ?? [])];
+    const seenIds = new Set<string>();
+
+    const deduplicated = entities.filter(
+      (entity): entity is EntityReference => {
+        const key = entity?.id ?? entity?.fullyQualifiedName;
+        if (!entity || !key || seenIds.has(key)) {
+          return false;
+        }
+        seenIds.add(key);
+
+        return true;
+      }
+    );
+
+    return {
+      linkedEntities: deduplicated.slice(0, MAX_VISIBLE_LINKED_ENTITIES),
+      hiddenLinkedEntitiesCount: Math.max(
+        0,
+        deduplicated.length - MAX_VISIBLE_LINKED_ENTITIES
+      ),
+    };
+  }, [memory.primaryEntity, memory.relatedEntities]);
+
   return (
     <Box
       align="start"
@@ -173,7 +208,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
         pinned
           ? {
               background:
-                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-brand-50) 80%, transparent) 0%, transparent 60%)',
+                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-utility-brand-50) 80%, transparent) 0%, transparent 60%)',
             }
           : undefined
       }
@@ -181,13 +216,13 @@ const MemoryRow: FC<MemoryRowProps> = ({
       {pinned && (
         <Box
           align="start"
-          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-brand-600"
+          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-fg-brand-primary"
           justify="end"
           style={{
             width: 28,
             height: 28,
             background:
-              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-brand-100) 80%, transparent) 0%, transparent 70%)',
+              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-utility-brand-100) 80%, transparent) 0%, transparent 70%)',
             borderBottomLeftRadius: 12,
             padding: '5px 7px 0 0',
           }}>
@@ -220,10 +255,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
             )}
             {memory.updatedAt !== undefined && (
               <>
-                <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xs">
+                <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
                   &middot;
                 </span>
-                <Typography className="tw:text-gray-500" size="text-xs">
+                <Typography className="tw:text-quaternary" size="text-xs">
                   {getShortRelativeTime(memory.updatedAt)}
                 </Typography>
               </>
@@ -240,39 +275,54 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
-          {memory.tags && memory.tags.length > 0 && (
+          {linkedEntities.length > 0 && (
             <Box align="center" className="tw:mt-0.5" gap={2} wrap="wrap">
-              {memory.tags.map((tag) => (
+              {linkedEntities.map((entity) => (
                 <Badge
-                  className="tw:max-w-90 tw:min-w-0"
-                  key={String(tag.tagFQN ?? '')}
+                  className="tw:max-w-60 tw:min-w-0"
+                  key={entity.id ?? entity.fullyQualifiedName}
                   size="md"
                   type="color">
-                  {tag.style?.color && (
-                    <div className="tw:shrink-0">
-                      <Dot
-                        size="sm"
-                        style={{ color: tag.style?.color, marginRight: '6px' }}
-                      />
-                    </div>
-                  )}
+                  <div className="tw:shrink-0">
+                    <Dot
+                      className={
+                        ENTITY_ICON_MAPPER?.[entity.type]?.iconClass ??
+                        'tw:text-quaternary'
+                      }
+                      size="sm"
+                      style={{ marginRight: '6px' }}
+                    />
+                  </div>
                   <Typography
                     ellipsis
                     className="tw:text-secondary"
                     size="text-xs">
-                    {getEntityName(tag)}
+                    {getEntityName(entity)}
                   </Typography>
                 </Badge>
               ))}
+              {hiddenLinkedEntitiesCount > 0 && (
+                <Badge size="md" type="color">
+                  <Typography className="tw:text-secondary" size="text-xs">
+                    {t('label.plus-count', {
+                      count: hiddenLinkedEntitiesCount,
+                    })}
+                  </Typography>
+                </Badge>
+              )}
             </Box>
           )}
 
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
             <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock className="tw:text-gray-500" size={12} strokeWidth={1.5} />
+              <Clock
+                className="tw:text-utility-gray-500"
+                size={12}
+                strokeWidth={1.5}
+              />
               <Typography
-                className="tw:text-gray-500 tw:whitespace-nowrap"
+                className="tw:text-quaternary tw:whitespace-nowrap"
                 size="text-xs">
                 {memory.usageCount === undefined
                   ? ''
@@ -300,7 +350,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
             <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
           </CopyLinkButton>
-          {canActOnMemory && onEditMemory && (
+          {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
               <TooltipTrigger>
                 <ButtonUtility
@@ -313,7 +363,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
               </TooltipTrigger>
             </Tooltip>
           )}
-          {canActOnMemory && (
+          {canActOnMemory && canDelete && (
             <MemoryActions memory={memory} onDeleteMemory={onDeleteMemory} />
           )}
         </Box>
@@ -329,6 +379,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isLoading,
   onDeleteMemory,
   onEditMemory,
+  canEdit,
+  canDelete,
   onViewMemory,
 }) => {
   const { t } = useTranslation();
@@ -358,7 +410,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
             entity: t('label.memory-plural'),
           })}
         </Typography>
-        <Typography className="tw:text-gray-500" size="text-sm">
+        <Typography className="tw:text-quaternary" size="text-sm">
           {t('message.try-a-different-filter-or-search')}
         </Typography>
       </Box>
@@ -369,6 +421,8 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     <>
       {data.map((memory) => (
         <MemoryRow
+          canDelete={canDelete}
+          canEdit={canEdit}
           currentUserName={currentUserName}
           isAdminUser={isAdminUser}
           key={memory.id}

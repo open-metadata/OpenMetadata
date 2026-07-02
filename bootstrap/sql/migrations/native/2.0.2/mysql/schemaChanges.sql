@@ -1,3 +1,0 @@
--- Data migration only.
--- Java migration seeds default task workflows and rewrites open recognizer feedback
--- review tasks that were persisted with the DataQualityReview task type.

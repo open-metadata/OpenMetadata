@@ -198,6 +198,8 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /** Truncates the button text with an ellipsis when it overflows */
+  ellipsis?: boolean;
 }
 
 /**
@@ -247,6 +249,7 @@ export const Button = ({
   children,
   className,
   noTextPadding,
+  ellipsis,
   iconLeading: IconLeading,
   iconTrailing: IconTrailing,
   isDisabled: disabled,
@@ -290,6 +293,7 @@ export const Button = ({
         styles.sizes[size].root,
         styles.colors[color].root,
         isLinkType && styles.sizes[size].linkRoot,
+        ellipsis && 'tw:min-w-0',
         (loading || (href && (disabled || loading))) &&
           'tw:pointer-events-none',
         // If in `loading` state, hide everything except the loading icon (and text if `showTextWhileLoading` is true).
@@ -344,7 +348,8 @@ export const Button = ({
           data-text
           className={cx(
             'tw:transition-inherit-all',
-            !noTextPadding && 'tw:px-0.5'
+            !noTextPadding && 'tw:px-0.5',
+            ellipsis && 'tw:truncate tw:min-w-0'
           )}>
           {children}
         </span>

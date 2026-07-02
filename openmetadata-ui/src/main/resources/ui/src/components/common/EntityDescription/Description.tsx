@@ -35,7 +35,7 @@ import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
   TASK_ENTITIES,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
