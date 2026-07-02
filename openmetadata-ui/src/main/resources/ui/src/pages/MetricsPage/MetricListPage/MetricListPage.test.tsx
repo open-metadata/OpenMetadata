@@ -135,6 +135,27 @@ jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+// Return stable paging handlers so the debounced-search identity stays fixed;
+// this isolates the debounce-cancel behaviour from usePaging's internal churn.
+jest.mock('../../../hooks/paging/usePaging', () => {
+  const handlePageChange = jest.fn();
+  const handlePagingChange = jest.fn();
+  const handlePageSizeChange = jest.fn();
+
+  return {
+    usePaging: () => ({
+      paging: { total: 0 },
+      handlePagingChange,
+      currentPage: 1,
+      handlePageChange,
+      pageSize: 15,
+      handlePageSizeChange,
+      showPagination: false,
+      pagingCursor: {},
+    }),
+  };
+});
+
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -364,6 +385,37 @@ describe('MetricListPage', () => {
       expect.objectContaining({
         queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
       })
+    );
+  });
+
+  it('cancels a pending debounced search when the status filter changes mid-typing', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(buildSearchResponse([]));
+
+    render(
+      <MemoryRouter>
+        <MetricListPage />
+      </MemoryRouter>
+    );
+
+    const searchInput = await screen.findByPlaceholderText(
+      'label.search-entity'
+    );
+
+    jest.useFakeTimers();
+    fireEvent.change(searchInput, { target: { value: 'sales' } });
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
+    jest.advanceTimersByTime(2000);
+    jest.useRealTimers();
+
+    // The stale debounced search (captured with no status) is cancelled, so the
+    // last query still carries the Draft filter instead of resetting it.
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          queryFilter: getTermQuery({ entityStatus: EntityStatus.Draft }),
+        })
+      )
     );
   });
 });

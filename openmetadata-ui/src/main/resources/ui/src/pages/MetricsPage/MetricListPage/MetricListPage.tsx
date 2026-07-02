@@ -276,8 +276,12 @@ const MetricListPage = () => {
 
   useEffect(() => () => debouncedSearchFetch.cancel(), [debouncedSearchFetch]);
 
+  // Status/paging changes fetch immediately, so cancel any pending debounced
+  // search first — otherwise a search typed within the debounce window would
+  // fire later with its stale captured filters and clobber this result.
   const handleStatusFilterChange = useCallback(
     (status?: EntityStatus) => {
+      debouncedSearchFetch.cancel();
       setStatusFilter(status);
       handlePageChange(INITIAL_PAGING_VALUE);
       fetchMetrics({
@@ -287,11 +291,12 @@ const MetricListPage = () => {
         size: pageSize,
       });
     },
-    [fetchMetrics, handlePageChange, pageSize, searchText]
+    [debouncedSearchFetch, fetchMetrics, handlePageChange, pageSize, searchText]
   );
 
   const onPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
+      debouncedSearchFetch.cancel();
       handlePageChange(page);
       fetchMetrics({
         page,
@@ -300,11 +305,19 @@ const MetricListPage = () => {
         size: pageSize,
       });
     },
-    [fetchMetrics, handlePageChange, pageSize, searchText, statusFilter]
+    [
+      debouncedSearchFetch,
+      fetchMetrics,
+      handlePageChange,
+      pageSize,
+      searchText,
+      statusFilter,
+    ]
   );
 
   const onShowSizeChange = useCallback(
     (size: number) => {
+      debouncedSearchFetch.cancel();
       handlePageSizeChange(size);
       fetchMetrics({
         page: INITIAL_PAGING_VALUE,
@@ -313,7 +326,13 @@ const MetricListPage = () => {
         size,
       });
     },
-    [fetchMetrics, handlePageSizeChange, searchText, statusFilter]
+    [
+      debouncedSearchFetch,
+      fetchMetrics,
+      handlePageSizeChange,
+      searchText,
+      statusFilter,
+    ]
   );
 
   const glossaryTerms = useCallback(
@@ -467,6 +486,7 @@ const MetricListPage = () => {
       setIsDeleteDialogOpen(false);
       // Deletion can shrink the result set below the current page; return to the
       // first page so the user never lands on an empty page.
+      debouncedSearchFetch.cancel();
       handlePageChange(INITIAL_PAGING_VALUE);
       fetchMetrics({
         page: INITIAL_PAGING_VALUE,
@@ -480,6 +500,7 @@ const MetricListPage = () => {
       setIsDeletingMetrics(false);
     }
   }, [
+    debouncedSearchFetch,
     fetchMetrics,
     handlePageChange,
     pageSize,
