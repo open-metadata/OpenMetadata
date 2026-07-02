@@ -16,6 +16,7 @@ package org.openmetadata.service.search;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +101,15 @@ public class ColumnMetadataGrouper {
 
       gridItems.add(gridItem);
     }
+
+    // The source map is a HashMap, so entrySet iteration order is undefined. Sort by column name
+    // for a deterministic, ascending alphabetical order in the grid (case-insensitive to match the
+    // pattern-search dedup ordering). The case-sensitive tie-breaker keeps names that differ only
+    // in case (e.g. "Name" vs "name") in a stable order instead of falling back to map order.
+    // Applies to every query path since all route through here.
+    gridItems.sort(
+        Comparator.comparing(ColumnGridItem::getColumnName, String.CASE_INSENSITIVE_ORDER)
+            .thenComparing(ColumnGridItem::getColumnName));
 
     return gridItems;
   }

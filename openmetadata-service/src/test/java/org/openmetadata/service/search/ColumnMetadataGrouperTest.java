@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -336,5 +337,89 @@ class ColumnMetadataGrouperTest {
 
     assertNotNull(result);
     assertEquals(0, result.size());
+  }
+
+  @Test
+  void testGroupColumns_resultsAreSortedAscendingByColumnName() {
+    // LinkedHashMap preserves the deliberately non-sorted insertion order, so the input is
+    // guaranteed unsorted (not reliant on HashMap's JVM-dependent iteration order). Mirrors the
+    // reported case where "c_ab*" wrongly appeared below "c_adm*".
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    List<String> scrambled =
+        List.of(
+            "c_admpkg",
+            "c_addin",
+            "c_active_agent_id",
+            "c_admincare",
+            "c_address",
+            "c_admission_date",
+            "c_acasclop",
+            "c_abnorm",
+            "c_abbrevation");
+    for (String name : scrambled) {
+      columnsByName.put(name, singleOccurrence(name));
+    }
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    List<String> expected = new ArrayList<>(scrambled);
+    expected.sort(String.CASE_INSENSITIVE_ORDER);
+    assertEquals(expected, actual);
+    assertEquals("c_abbrevation", actual.get(0));
+    assertEquals("c_abnorm", actual.get(1));
+  }
+
+  @Test
+  void testGroupColumns_sortIsCaseInsensitive() {
+    // Insertion order (Zebra, apple, Mango) is non-alphabetical and preserved by LinkedHashMap.
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    for (String name : List.of("Zebra", "apple", "Mango")) {
+      columnsByName.put(name, singleOccurrence(name));
+    }
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    assertEquals(List.of("apple", "Mango", "Zebra"), actual);
+  }
+
+  @Test
+  void testGroupColumns_caseOnlyCollisionsAreDeterministic() {
+    // Names differing only in case compare equal under CASE_INSENSITIVE_ORDER; the case-sensitive
+    // tie-breaker must give them a stable order regardless of input order. Insert in reverse of the
+    // expected result to prove the sort — not the map — decides the order.
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    for (String name : List.of("name", "Name")) {
+      columnsByName.put(name, singleOccurrence(name));
+    }
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    // Natural String order: 'N' (0x4E) precedes 'n' (0x6E).
+    assertEquals(List.of("Name", "name"), actual);
+  }
+
+  private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {
+    Column column = new Column();
+    column.setName(columnName);
+    column.setDataType(ColumnDataType.STRING);
+    column.setFullyQualifiedName("sample_data.db.schema.table1." + columnName);
+
+    List<ColumnMetadataGrouper.ColumnWithContext> occurrences = new ArrayList<>();
+    occurrences.add(
+        new ColumnMetadataGrouper.ColumnWithContext(
+            column,
+            "table",
+            "sample_data.db.schema.table1",
+            "Table 1",
+            "sample_data",
+            "db",
+            "schema"));
+    return occurrences;
   }
 }
