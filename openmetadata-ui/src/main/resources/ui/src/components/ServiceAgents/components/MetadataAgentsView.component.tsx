@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
@@ -36,6 +36,7 @@ import AgentGroup from './AgentGroup.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
 interface MetadataAgentsViewProps {
+  addAgentSlot?: ReactNode;
   agents: Agent[];
   ingestionPipelineList: IngestionPipeline[];
   serviceCategory: ServiceCategory;
@@ -46,6 +47,7 @@ interface MetadataAgentsViewProps {
 }
 
 const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
+  addAgentSlot: addAgentSlotProp,
   agents,
   ingestionPipelineList,
   serviceCategory,
@@ -165,24 +167,27 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
-  const addAgentSlot = useMemo(
-    () =>
-      showAddAgent ? (
-        <AddIngestionButton
-          ingestionList={ingestionPipelineList}
-          serviceCategory={serviceCategory}
-          serviceDetails={serviceDetails}
-          serviceName={serviceName}
-        />
-      ) : undefined,
-    [
-      showAddAgent,
-      ingestionPipelineList,
-      serviceCategory,
-      serviceDetails,
-      serviceName,
-    ]
-  );
+  const addAgentSlot = useMemo(() => {
+    if (addAgentSlotProp) {
+      return addAgentSlotProp;
+    }
+
+    return showAddAgent ? (
+      <AddIngestionButton
+        ingestionList={ingestionPipelineList}
+        serviceCategory={serviceCategory}
+        serviceDetails={serviceDetails}
+        serviceName={serviceName}
+      />
+    ) : undefined;
+  }, [
+    addAgentSlotProp,
+    showAddAgent,
+    ingestionPipelineList,
+    serviceCategory,
+    serviceDetails,
+    serviceName,
+  ]);
 
   return (
     <div data-testid="metadata-agents-view">
