@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { map, startCase } from 'lodash';
+import { kebabCase, map } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -88,20 +88,23 @@ class PersonaClassBase {
   }
 
   public getCustomizePageCategories(): SettingMenuItem[] {
+    const entityIcons = this.getEntityIcons();
+
     return [
       {
         key: 'navigation',
         label: i18n.t('label.navigation'),
         isBeta: false,
-        description: 'Customize left sidebar ',
-        icon: ENTITY_ICONS['navigation'],
+        description: i18n.t('message.customize-your-navigation-subheader'),
+        icon: entityIcons['navigation'],
       },
       {
         key: PageType.LandingPage,
         label: i18n.t('label.home-page'),
-        description:
-          'Customize the My data page with widget of your preference',
-        icon: ENTITY_ICONS[PageType.LandingPage],
+        description: i18n.t('message.entity-customize-description', {
+          entity: i18n.t('label.home-page'),
+        }),
+        icon: entityIcons[PageType.LandingPage],
       },
       {
         key: PageType.DataMarketplace,
@@ -109,23 +112,25 @@ class PersonaClassBase {
         description: i18n.t('message.entity-customize-description', {
           entity: i18n.t('label.data-marketplace'),
         }),
-        icon: ENTITY_ICONS[PageType.DataMarketplace],
+        icon: entityIcons[PageType.DataMarketplace],
       },
       {
         key: 'governance',
         label: i18n.t('label.governance'),
         isBeta: false,
-        description:
-          'Customize the Govern pages with widget of your preference',
-        icon: ENTITY_ICONS['govern'],
+        description: i18n.t('message.entity-customize-description', {
+          entity: i18n.t('label.governance'),
+        }),
+        icon: entityIcons['govern'],
       },
       {
         key: 'data-assets',
         label: i18n.t('label.data-asset-plural'),
         isBeta: false,
-        description:
-          'Customize the entity detail page with widget of your preference',
-        icon: ENTITY_ICONS['dataAssets'],
+        description: i18n.t('message.entity-customize-description', {
+          entity: i18n.t('label.data-asset-plural'),
+        }),
+        icon: entityIcons['dataAssets'],
       },
     ];
   }
@@ -174,13 +179,15 @@ class PersonaClassBase {
   }
 
   protected generateSettingItems(pageType: PageType): SettingMenuItem {
+    const entityLabel = i18n.t(`label.${kebabCase(pageType)}`);
+
     return {
       key: pageType,
-      label: startCase(pageType),
+      label: entityLabel,
       description: i18n.t('message.entity-customize-description', {
-        entity: startCase(pageType),
+        entity: entityLabel,
       }),
-      icon: ENTITY_ICONS[pageType],
+      icon: this.getEntityIcons()[pageType],
     };
   }
 }
