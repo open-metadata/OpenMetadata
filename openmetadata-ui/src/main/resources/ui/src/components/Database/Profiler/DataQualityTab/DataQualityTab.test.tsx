@@ -196,8 +196,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <td className={className}>{children}</td>
   );
 
-  const MockBox = ({ children }: React.PropsWithChildren) => (
-    <div>{children}</div>
+  const MockBox = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
   );
 
   return {
@@ -570,16 +573,27 @@ describe('DataQualityTab test', () => {
     expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
   });
 
-  it('Should render incident status cell with stop-propagation wrapper', async () => {
+  it('Should stop click propagation from interactive cell wrappers', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
     });
-    const tableRows = await screen.findAllByRole('row');
-    const firstRow = tableRows[1];
 
-    const incidentStatusDiv = firstRow.querySelector('[role="presentation"]');
+    const documentClick = jest.fn();
+    document.body.addEventListener('click', documentClick);
 
-    expect(incidentStatusDiv).toBeInTheDocument();
+    // A click inside the name cell wrapper must not bubble up to the row.
+    fireEvent.click(screen.getByTestId('column_values_to_match_regex'));
+
+    expect(documentClick).not.toHaveBeenCalled();
+
+    // Sanity check: a cell without the wrapper lets the click bubble.
+    fireEvent.click(
+      screen.getByTestId('status-badge-column_values_to_match_regex')
+    );
+
+    expect(documentClick).toHaveBeenCalled();
+
+    document.body.removeEventListener('click', documentClick);
   });
 
   it('Remove functionality', async () => {
