@@ -255,7 +255,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "mlFeatures": {
         "properties": {
