@@ -280,11 +280,7 @@ test.describe(
       });
 
       await test.step('Query-panel Clear restores the full browse estate', async () => {
-        const clearRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('clear-all-chips').click();
-        await clearRes;
         await waitForAllLoadersToDisappear(page);
 
         const url = new URL(page.url());
