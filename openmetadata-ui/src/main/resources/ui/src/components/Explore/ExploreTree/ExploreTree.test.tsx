@@ -546,6 +546,16 @@ describe('ExploreTree', () => {
   const drillToServiceNode = async (
     findByText: (text: string) => Promise<HTMLElement>
   ) => {
+    // The service level loads via the service-style field-options aggregation
+    // (top hits), not searchQuery, so stub it to return the service bucket.
+    jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [
+          { key: 'bigquery_prod', doc_count: 900 },
+        ])
+      );
+
     // Databases is expanded by default and lazy-loads its service types; drill
     // one level deeper into the service so a nested level is mounted.
     const bigQueryNode = await findByText('BigQuery');
