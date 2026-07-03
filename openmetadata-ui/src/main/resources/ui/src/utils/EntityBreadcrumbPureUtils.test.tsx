@@ -14,22 +14,22 @@ import { startCase } from 'lodash';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
-    getEntityBreadcrumbs,
-    getEntityTypeForIcon,
-    isServiceBreadcrumbHref
+  getEntityBreadcrumbs,
+  getEntityTypeForIcon,
+  isServiceBreadcrumbHref,
 } from './EntityBreadcrumbPureUtils';
 import {
-    mockDatabaseUrl,
-    mockEntityForDatabase,
-    mockEntityForDatabaseSchema,
-    mockServiceUrl,
-    mockSettingUrl,
-    mockUrl
+  mockDatabaseUrl,
+  mockEntityForDatabase,
+  mockEntityForDatabaseSchema,
+  mockServiceUrl,
+  mockSettingUrl,
+  mockUrl,
 } from './mocks/EntityUtils.mock';
 import {
-    getEntityDetailsPath,
-    getServiceDetailsPath,
-    getSettingPath
+  getEntityDetailsPath,
+  getServiceDetailsPath,
+  getSettingPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
