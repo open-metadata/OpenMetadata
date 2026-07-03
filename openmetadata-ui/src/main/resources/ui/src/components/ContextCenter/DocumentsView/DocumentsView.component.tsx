@@ -458,7 +458,7 @@ const FileRow: FC<FileRowProps> = ({
             {fileName}
           </Typography>
         </Box>
-        <Box align="center" gap={2}>
+        <Box align="center" gap={2} wrap="wrap">
           <Typography
             className="tw:text-quaternary"
             data-testid="document-size"
