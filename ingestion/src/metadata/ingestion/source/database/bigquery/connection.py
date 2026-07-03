@@ -148,12 +148,14 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
         if connection.billingProjectId:
             kwargs["billing_project_id"] = connection.billingProjectId
 
-        return create_generic_db_connection(
+        engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
             **kwargs,
         )
+        self._on_close(engine.dispose)
+        return engine
 
     def test_connection(
         self,
@@ -226,7 +228,11 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
                 timeout_seconds=timeout_seconds,
             )
 
-        return test_connection_inner(engine)
+        try:
+            result = test_connection_inner(engine)
+        finally:
+            self.close()
+        return result
 
 
 def get_table_view_names(connection, schema=None):

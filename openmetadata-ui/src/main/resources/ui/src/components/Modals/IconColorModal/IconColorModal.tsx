@@ -22,7 +22,7 @@ import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
-import { MUIColorPicker } from '../../common/ColorPicker';
+import { ColorSwatchPicker } from '../../common/ColorPicker';
 import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
@@ -86,7 +86,7 @@ const IconColorModal: FC<StyleModalProps> = ({
                   name="color"
                   trigger="onChange"
                   valuePropName="value">
-                  <MUIColorPicker label={t('label.color')} />
+                  <ColorSwatchPicker label={t('label.color')} />
                 </Form.Item>
               </div>
             </Form>
