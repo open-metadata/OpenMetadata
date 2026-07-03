@@ -30,7 +30,7 @@ from metadata.core.connections.test_connection.network import (
     NetworkUnreachableError,
     tcp_probe,
 )
-from metadata.core.connections.test_connection.records import Evidence
+from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -203,18 +203,38 @@ def _enumerated(kind: str, count: int, schema: str | None, auto_selected: bool) 
     return f"{counted} in schema '{schema}'"
 
 
+def _empty_caveat(kind: str, scope: str) -> Diagnosis:
+    """A non-blocking advisory for a scope that exposes none of ``kind``.
+
+    An empty reflection never raises - the catalog filters objects the login
+    cannot see, so 'none visible' reads identically whether the scope is empty or
+    the permissions are too narrow. Surfacing it as a caveat lets the user judge.
+    Schemas and tables are the artifacts a connection must reach, so they warn; an
+    empty view list is normal, so ``list_views`` stays silent."""
+    return Diagnosis(
+        title=f"No {kind}s visible in {scope}",
+        remediation=f"Verify the login can see the {kind}s (object permissions), or confirm {scope} is not empty.",
+    )
+
+
 def list_schemas(client: Engine) -> Evidence:
     names, command = _reflect(client, lambda: inspect(client).get_schema_names())
-    return Evidence(summary=f"{_count(len(names), 'schema')} enumerated", command=command)
+    return Evidence(
+        summary=f"{_count(len(names), 'schema')} enumerated",
+        command=command,
+        caveat=None if names else _empty_caveat("schema", "the database"),
+    )
 
 
 def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[str] = frozenset()) -> Evidence:
     inspector = inspect(client)
     target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
     names, command = _reflect(client, lambda: inspector.get_table_names(target))
+    scope = f"schema '{target}'" if target else "the database"
     return Evidence(
         summary=_enumerated("table", len(names), target, auto_selected),
         command=command,
+        caveat=None if names else _empty_caveat("table", scope),
     )
 
 
