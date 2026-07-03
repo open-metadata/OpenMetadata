@@ -27,7 +27,7 @@ import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleE
 import TourProvider from '../../context/TourProvider/TourProvider';
 import WebSocketProvider from '../../context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { CsvJobsTray } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CsvJobsTrayContainer } from '../common/EntityImport/CsvJobsTray/CsvJobsTrayContainer.component';
 import { EntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
@@ -75,7 +75,7 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
                             </DndProvider>
                           </RuleEnforcementProvider>
                         </AirflowStatusProvider>
-                        <CsvJobsTray />
+                        <CsvJobsTrayContainer />
                       </EntityExportModalProvider>
                     </AsyncDeleteProvider>
                   </ApplicationsProvider>

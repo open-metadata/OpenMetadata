@@ -207,14 +207,6 @@ jest.mock('../../../components/common/Table/TableV2', () => ({
   ),
 }));
 
-jest.mock(
-  '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component',
-  () => ({
-    CSV_JOBS_REFRESH_EVENT: 'csv-jobs-refresh',
-    CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
-  })
-);
-
 // Mock PageLayoutV1 to simply render children without layout logic
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,

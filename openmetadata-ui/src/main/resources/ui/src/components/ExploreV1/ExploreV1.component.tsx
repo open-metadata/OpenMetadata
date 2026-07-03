@@ -62,7 +62,7 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
-import { CSV_JOBS_REFRESH_EVENT } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
