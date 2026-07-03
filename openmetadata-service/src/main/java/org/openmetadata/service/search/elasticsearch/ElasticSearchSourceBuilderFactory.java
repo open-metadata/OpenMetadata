@@ -32,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -352,6 +353,8 @@ public class ElasticSearchSourceBuilderFactory
           "user",
           "team_search_index",
           "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      case "context_memory_search_index", "contextMemory" -> buildContextMemorySearchBuilderV2(
+          searchQuery, fromOffset, size);
       default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
@@ -395,6 +398,15 @@ public class ElasticSearchSourceBuilderFactory
         buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
     es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
         buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, hb, from, size);
+  }
+
+  public ElasticSearchRequestBuilder buildContextMemorySearchBuilderV2(
+      String query, int from, int size) {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, ContextMemoryIndex.getFields());
+    es.co.elastic.clients.elasticsearch.core.search.Highlight hb =
+        buildHighlightsV2(List.of("title", "summary", "question", "answer"));
     return searchBuilderV2(queryBuilder, hb, from, size);
   }
 
