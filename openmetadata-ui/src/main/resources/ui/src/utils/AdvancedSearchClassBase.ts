@@ -46,7 +46,7 @@ import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import { getCustomPropertyAdvanceSearchEnumOptions } from './AdvancedSearchPureUtils';
+import EnumAsyncSelectWidget from '../components/Explore/EnumAsyncSelectWidget/EnumAsyncSelectWidget.component';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
@@ -54,6 +54,8 @@ import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
+const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
+
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
@@ -108,6 +110,26 @@ class AdvancedSearchClassBase {
       useLoadMore: false,
       customProps: {
         popupClassName: 'w-max-600',
+      },
+      factory: (props: any, ctx: any) => {
+        if (props.useScrollLoad && props.asyncFetch) {
+          return ctx.RCE(EnumAsyncSelectWidget, {
+            asyncFetch: props.asyncFetch,
+            disabled: props.readonly,
+            multiple: true,
+            placeholder: props.placeholder,
+            setValue: props.setValue,
+            value: props.value,
+          });
+        }
+        const {
+          RCE,
+          W: { AutocompleteWidget, MultiSelectWidget },
+        } = ctx;
+
+        return props.asyncFetch || props.showSearch
+          ? RCE(AutocompleteWidget, { ...props, multiple: true })
+          : RCE(MultiSelectWidget, props);
       },
     },
     select: {
@@ -802,6 +824,23 @@ class AdvancedSearchClassBase {
     };
   };
 
+  public buildEnumAsyncFetch(
+    values: string[]
+  ): SelectFieldSettings['asyncFetch'] {
+    return async (search, offset = 0) => {
+      const query = (typeof search === 'string' ? search : '').toLowerCase();
+      const filtered = query
+        ? values.filter((v) => v.toLowerCase().includes(query))
+        : values;
+      const page = filtered.slice(offset, offset + ENUM_ASYNC_FETCH_PAGE_SIZE);
+
+      return {
+        values: page.map((v) => ({ value: v, title: v })) as ListItem[],
+        hasMore: offset + ENUM_ASYNC_FETCH_PAGE_SIZE < filtered.length,
+      } as AsyncFetchListValuesResult;
+    };
+  }
+
   public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
   }): Fields {
@@ -1385,7 +1424,11 @@ class AdvancedSearchClassBase {
           },
         };
 
-      case 'enum':
+      case 'enum': {
+        const enumValues =
+          (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
+            .values ?? [];
+
         return {
           subfieldsKey,
           dataObject: {
@@ -1393,15 +1436,14 @@ class AdvancedSearchClassBase {
             label,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: getCustomPropertyAdvanceSearchEnumOptions(
-                (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
-                  .values
-              ),
+              asyncFetch: this.buildEnumAsyncFetch(enumValues),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useScrollLoad: true,
             },
           },
         };
+      }
 
       case 'date-cp':
       case 'dateTime-cp': {

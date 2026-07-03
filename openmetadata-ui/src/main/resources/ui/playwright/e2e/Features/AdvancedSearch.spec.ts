@@ -1564,3 +1564,147 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  'Custom property enum lazy load in Advanced Search',
+  { tag: ['@advanced-search'] },
+  () => {
+    // 150 values: initial asyncFetch returns items 0-99, scroll triggers items 100-149
+    const ENUM_VALUES = Array.from({ length: 150 }, (_, i) =>
+      `enum_val_${String(i).padStart(3, '0')}`
+    );
+    const FIRST_PAGE_VALUE = 'enum_val_000';
+    const SECOND_PAGE_VALUE = 'enum_val_100';
+
+    let enumCPName: string;
+    let lazyLoadTable: TableClass;
+
+    test.beforeAll(
+      'Setup enum custom property with 150 values on table',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          lazyLoadTable = new TableClass();
+          await lazyLoadTable.create(apiContext);
+
+          const cpMetadataTypeRes = await apiContext.get(
+            '/api/v1/metadata/types/name/table?fields=customProperties'
+          );
+          const cpMetadataType = await cpMetadataTypeRes.json();
+
+          const typesRes = await apiContext.get(
+            '/api/v1/metadata/types?category=field&limit=20'
+          );
+          const types = (await typesRes.json()).data as {
+            name: string;
+            id: string;
+          }[];
+          const enumTypeId =
+            types.find((t: { name: string }) => t.name === 'enum')?.id ?? '';
+
+          enumCPName = `enum-lazy-${uuid()}`;
+
+          await apiContext.put(
+            `/api/v1/metadata/types/${cpMetadataType.id}`,
+            {
+              data: {
+                name: enumCPName,
+                description: 'Enum CP for lazy load test',
+                propertyType: { name: 'enum', type: 'type', id: enumTypeId },
+                customPropertyConfig: {
+                  config: { values: ENUM_VALUES, multiSelect: true },
+                },
+              },
+            }
+          );
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    test.afterAll(
+      'Cleanup enum custom property and table',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        try {
+          await lazyLoadTable.delete(apiContext);
+        } finally {
+          await afterAction();
+        }
+      }
+    );
+
+    test(
+      'should lazy-load enum options on scroll in the advanced filter value dropdown',
+      async ({ page }) => {
+        test.slow();
+
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.EXPLORE);
+        await showAdvancedSearchDialog(page);
+
+        const ruleLocator = page.locator('.rule').nth(0);
+
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--field .ant-select'),
+          'Custom Properties',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--field .ant-select'),
+          'Table',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--field .ant-select'),
+          enumCPName,
+          true
+        );
+        await selectOption(
+            page,
+            ruleLocator.locator('.rule--operator .ant-select'),
+            'Equals',
+          );
+
+        // Wait for the value widget to mount after field selection
+        const valueSelector = ruleLocator.locator(
+          '.ant-select-selection-overflow'
+        );
+
+        await expect(valueSelector).toBeVisible({ timeout: 15000 });
+
+        // Open the value dropdown
+        await valueSelector.click();
+
+        const dropdown = page.locator('.ant-select-dropdown:visible');
+
+        await expect(dropdown).toBeVisible();
+
+        // First page items (0-99) must be present; second page item (100) must not yet appear
+        await expect(
+          dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+        ).toBeVisible({ timeout: 10000 });
+        await expect(
+          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        ).not.toBeVisible();
+
+        // Scroll to the bottom of the virtual list to trigger second page load
+        const holder = dropdown.locator('.rc-virtual-list-holder').last();
+
+await holder.evaluate((el: HTMLElement) => {
+  el.scrollTop = el.scrollHeight;
+  el.dispatchEvent(new Event('scroll'));
+});
+
+        // After scroll, second page item must now appear
+        await expect(
+          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        ).toBeVisible({ timeout: 10000 });
+      }
+    );
+  }
+);

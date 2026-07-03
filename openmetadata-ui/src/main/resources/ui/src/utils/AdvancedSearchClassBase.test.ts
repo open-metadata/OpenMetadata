@@ -322,7 +322,7 @@ describe('getCustomPropertiesSubFields', () => {
     jest.clearAllMocks();
   });
 
-  it('should return correct configuration for enum type custom property with keyword suffix', () => {
+  it('should return asyncFetch configuration for enum type custom property with keyword suffix', () => {
     const mockField = {
       name: 'statusField',
       type: 'enum',
@@ -334,16 +334,7 @@ describe('getCustomPropertiesSubFields', () => {
     };
 
     const mockLabel = 'Status Field';
-    const mockEnumOptions = [
-      { value: 'ACTIVE', title: 'Active' },
-      { value: 'INACTIVE', title: 'Inactive' },
-      { value: 'PENDING', title: 'Pending' },
-    ];
-
     mockGetEntityName.mockReturnValue(mockLabel);
-    mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-      mockEnumOptions
-    );
 
     const result = advancedSearchClassBase.getCustomPropertiesSubFields(
       mockField as CustomPropertySummary,
@@ -351,11 +342,9 @@ describe('getCustomPropertiesSubFields', () => {
     );
 
     expect(mockGetEntityName).toHaveBeenCalledWith(mockField);
-    expect(mockGetCustomPropertyAdvanceSearchEnumOptions).toHaveBeenCalledWith([
-      'ACTIVE',
-      'INACTIVE',
-      'PENDING',
-    ]);
+    expect(
+      mockGetCustomPropertyAdvanceSearchEnumOptions
+    ).not.toHaveBeenCalled();
 
     expect(result).toEqual({
       subfieldsKey: 'statusField.keyword',
@@ -365,9 +354,10 @@ describe('getCustomPropertiesSubFields', () => {
         label: mockLabel,
         operators: MULTISELECT_FIELD_OPERATORS,
         fieldSettings: {
-          listValues: mockEnumOptions,
+          asyncFetch: expect.any(Function),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
+          useScrollLoad: true,
         },
       },
     });
@@ -858,7 +848,7 @@ describe('getCustomPropertiesSubFields', () => {
         });
       });
 
-      it('should use .keyword suffix for enum type with ElasticSearch output', () => {
+      it('should use asyncFetch with .keyword suffix for enum type with ElasticSearch output', () => {
         const mockField = {
           name: 'statusField',
           type: 'enum',
@@ -869,11 +859,7 @@ describe('getCustomPropertiesSubFields', () => {
           },
         };
         const mockLabel = 'Status Field';
-        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
         mockGetEntityName.mockReturnValue(mockLabel);
-        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-          mockEnumOptions
-        );
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
           mockField as CustomPropertySummary,
@@ -888,15 +874,20 @@ describe('getCustomPropertiesSubFields', () => {
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: mockEnumOptions,
+              asyncFetch: expect.any(Function),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useScrollLoad: true,
             },
           },
         });
+
+        expect(
+          mockGetCustomPropertyAdvanceSearchEnumOptions
+        ).not.toHaveBeenCalled();
       });
 
-      it('should use base field name for enum type with JSONLogic output', () => {
+      it('should use asyncFetch with base field name for enum type with JSONLogic output', () => {
         const mockField = {
           name: 'statusField',
           type: 'enum',
@@ -907,11 +898,7 @@ describe('getCustomPropertiesSubFields', () => {
           },
         };
         const mockLabel = 'Status Field';
-        const mockEnumOptions = { ACTIVE: 'ACTIVE', INACTIVE: 'INACTIVE' };
         mockGetEntityName.mockReturnValue(mockLabel);
-        mockGetCustomPropertyAdvanceSearchEnumOptions.mockReturnValue(
-          mockEnumOptions
-        );
 
         const result = advancedSearchClassBase.getCustomPropertiesSubFields(
           mockField as CustomPropertySummary,
@@ -926,12 +913,17 @@ describe('getCustomPropertiesSubFields', () => {
             label: mockLabel,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: mockEnumOptions,
+              asyncFetch: expect.any(Function),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useScrollLoad: true,
             },
           },
         });
+
+        expect(
+          mockGetCustomPropertyAdvanceSearchEnumOptions
+        ).not.toHaveBeenCalled();
       });
     });
 
@@ -1190,5 +1182,67 @@ describe('getCustomPropertiesSubFields', () => {
         });
       });
     });
+  });
+});
+
+describe('buildEnumAsyncFetch', () => {
+  let advancedSearchClassBase: AdvancedSearchClassBase;
+
+  beforeEach(() => {
+    advancedSearchClassBase = new AdvancedSearchClassBase();
+  });
+
+  it('should return first 100 values when search is empty (offset 0)', async () => {
+    const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await fetchFn!('');
+
+    expect(result.values).toHaveLength(100);
+    expect(result.values[0]).toEqual({ value: 'VAL_0', title: 'VAL_0' });
+    expect(result.hasMore).toBe(true);
+  });
+
+  it('should return next page when offset is provided', async () => {
+    const values = Array.from({ length: 150 }, (_, i) => `VAL_${i}`);
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await fetchFn!('', 100);
+
+    expect(result.values).toHaveLength(50);
+    expect(result.values[0]).toEqual({ value: 'VAL_100', title: 'VAL_100' });
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should return all matching values when search filters below page size', async () => {
+    const values = ['ALPHA', 'BETA', 'GAMMA', 'ALPHABET'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await fetchFn!('alpha');
+
+    expect(result.values).toEqual([
+      { value: 'ALPHA', title: 'ALPHA' },
+      { value: 'ALPHABET', title: 'ALPHABET' },
+    ]);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should return all values when list is smaller than page size', async () => {
+    const values = ['A', 'B', 'C'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await fetchFn!('');
+
+    expect(result.values).toEqual([
+      { value: 'A', title: 'A' },
+      { value: 'B', title: 'B' },
+      { value: 'C', title: 'C' },
+    ]);
+    expect(result.hasMore).toBe(false);
+  });
+
+  it('should be case-insensitive when filtering', async () => {
+    const values = ['Active', 'ACTIVE', 'inactive'];
+    const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
+    const result = await fetchFn!('active');
+
+    expect(result.values).toHaveLength(2);
+    expect(result.values.map((v) => v.value)).toEqual(['Active', 'ACTIVE']);
   });
 });
