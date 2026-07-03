@@ -341,9 +341,8 @@ class ColumnMetadataGrouperTest {
 
   @Test
   void testGroupColumns_resultsAreSortedAscendingByColumnName() {
-    // LinkedHashMap preserves the deliberately non-sorted insertion order, so the input is
-    // guaranteed unsorted (not reliant on HashMap's JVM-dependent iteration order). Mirrors the
-    // reported case where "c_ab*" wrongly appeared below "c_adm*".
+    // Feed columns in a non-alphabetical order (LinkedHashMap keeps the input order deterministic)
+    // and verify the grid is returned sorted ascending by column name.
     Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
         new LinkedHashMap<>();
     List<String> scrambled =
@@ -388,9 +387,9 @@ class ColumnMetadataGrouperTest {
 
   @Test
   void testGroupColumns_caseOnlyCollisionsAreDeterministic() {
-    // Names differing only in case compare equal under CASE_INSENSITIVE_ORDER; the case-sensitive
-    // tie-breaker must give them a stable order regardless of input order. Insert in reverse of the
-    // expected result to prove the sort — not the map — decides the order.
+    // Names differing only in case are equal under CASE_INSENSITIVE_ORDER, so the case-sensitive
+    // tie-breaker decides their order. Insert in reverse of the expected result to prove the sort,
+    // not the map, determines it.
     Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
         new LinkedHashMap<>();
     for (String name : List.of("name", "Name")) {
