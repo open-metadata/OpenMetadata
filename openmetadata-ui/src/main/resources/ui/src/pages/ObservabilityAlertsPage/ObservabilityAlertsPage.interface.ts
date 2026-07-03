@@ -23,12 +23,19 @@ export interface AlertPermission {
   delete: boolean;
 }
 
+export interface UseObservabilityAlertsOptions {
+  getAlertDetailsPath?: (fqn: string) => string;
+  onAddAlert?: () => void;
+  onViewAlert?: (alert: EventSubscription) => void;
+}
+
 export interface UseObservabilityAlertsReturn {
   alertPermissions?: AlertPermission[];
   alertResourcePermission?: OperationPermission;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
+  getAlertDetailsPath: (fqn: string) => string;
   handleAddAlert: () => void;
   handleAlertDelete: () => Promise<void>;
   handlePageSizeChange: (page: number) => void;
@@ -36,6 +43,7 @@ export interface UseObservabilityAlertsReturn {
   loading: boolean;
   loadingCount: number;
   onPageChange: (params: PagingHandlerParams) => void;
+  onViewAlert?: (alert: EventSubscription) => void;
   paging: Paging;
   pageSize: number;
   selectedAlert?: EventSubscription;
@@ -61,10 +69,12 @@ export interface ObservabilityAlertsTableProps {
   currentPage: number;
   loading: boolean;
   loadingCount: number;
+  getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
   onPageChange: (params: PagingHandlerParams) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSelectAlert: (alert: EventSubscription) => void;
+  onViewAlert?: (alert: EventSubscription) => void;
   paging: Paging;
   pageSize: number;
   showPagination: boolean;

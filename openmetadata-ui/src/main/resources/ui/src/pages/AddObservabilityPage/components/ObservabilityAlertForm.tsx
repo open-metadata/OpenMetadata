@@ -11,26 +11,18 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
-import { isEmpty, isUndefined } from 'lodash';
-import { ComponentProps, Fragment } from 'react';
+import { Button, Col, Form, Row, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { ProviderType } from '../../../generated/entity/events/notificationTemplate';
-import { AlertType } from '../../../generated/events/eventSubscription';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   ModifiedCreateEventSubscription,
   ObservabilityAlertFormProps,
 } from '../AddObservabilityPage.interface';
+import ObservabilityAlertFormFields from './ObservabilityAlertFormFields';
 
 function ObservabilityAlertForm({
   alert,
@@ -54,10 +46,6 @@ function ObservabilityAlertForm({
   templates,
 }: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
-  const observabilityFormFiltersItemProps = {
-    containerEntities,
-    supportedFilters,
-  } as ComponentProps<typeof ObservabilityFormFiltersItem>;
 
   return (
     <Row gutter={[16, 16]}>
@@ -85,96 +73,19 @@ function ObservabilityAlertForm({
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleSave}>
           <Row gutter={[20, 20]}>
-            <Col span={24}>
-              <Form.Item
-                label={t('label.name')}
-                labelCol={{ span: 24 }}
-                name="displayName"
-                rules={NAME_FIELD_RULES}>
-                <Input placeholder={t('label.name')} />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Form.Item
-                label={t('label.description')}
-                labelCol={{ span: 24 }}
-                name="description"
-                trigger="onTextChange">
-                <RichTextEditor
-                  data-testid="description"
-                  initialValue={alert?.description}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={24}>
-              <Row justify="center">
-                <Col span={24}>
-                  <AlertFormSourceItem filterResources={filterResources} />
-                </Col>
-                {shouldShowFiltersSection && (
-                  <>
-                    <Col>
-                      <Divider dashed type="vertical" />
-                    </Col>
-                    <Col span={24}>
-                      <ObservabilityFormFiltersItem
-                        {...observabilityFormFiltersItemProps}
-                      />
-                    </Col>
-                  </>
-                )}
-                {shouldShowActionsSection && (
-                  <>
-                    <Col>
-                      <Divider dashed type="vertical" />
-                    </Col>
-                    <Col span={24}>
-                      <ObservabilityFormTriggerItem
-                        supportedTriggers={supportedTriggers}
-                      />
-                    </Col>
-                  </>
-                )}
-                <Col>
-                  <Divider dashed type="vertical" />
-                </Col>
-                <Col span={24}>
-                  <DestinationFormItem />
-                </Col>
-
-                {!isEmpty(extraFormWidgets) && (
-                  <>
-                    {Object.entries(extraFormWidgets).map(([name, Widget]) => (
-                      <Fragment key={name}>
-                        <Col>
-                          <Divider dashed type="vertical" />
-                        </Col>
-                        <Col span={24}>
-                          <Widget
-                            alertDetails={alert}
-                            formRef={form}
-                            loading={isLoading}
-                            templateResourcePermission={
-                              templateResourcePermission
-                            }
-                            templates={templates}
-                          />
-                        </Col>
-                      </Fragment>
-                    ))}
-                  </>
-                )}
-              </Row>
-            </Col>
-            <Form.Item
-              hidden
-              initialValue={AlertType.Observability}
-              name="alertType"
-            />
-            <Form.Item
-              hidden
-              initialValue={ProviderType.User}
-              name="provider"
+            <ObservabilityAlertFormFields
+              alert={alert}
+              containerEntities={containerEntities}
+              extraFormWidgets={extraFormWidgets}
+              filterResources={filterResources}
+              form={form}
+              isLoading={isLoading}
+              shouldShowActionsSection={shouldShowActionsSection}
+              shouldShowFiltersSection={shouldShowFiltersSection}
+              supportedFilters={supportedFilters}
+              supportedTriggers={supportedTriggers}
+              templateResourcePermission={templateResourcePermission}
+              templates={templates}
             />
 
             {!isUndefined(inlineAlertDetails) && (

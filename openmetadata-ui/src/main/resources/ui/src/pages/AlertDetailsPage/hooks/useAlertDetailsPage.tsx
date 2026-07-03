@@ -26,11 +26,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { EventsRecord } from '../../../generated/events/api/eventsRecord';
@@ -49,7 +44,6 @@ import {
 import { getAlertExtraInfo } from '../../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getNotificationAlertDetailsPath,
   getNotificationAlertsEditPath,
@@ -62,13 +56,20 @@ import {
   AlertDetailsPageProps,
   UseAlertDetailsPageReturn,
 } from '../AlertDetailsPage.interface';
+import { useAlertDetailsPermissions } from './useAlertDetailsPermissions';
 
 export function useAlertDetailsPage({
+  afterDeleteAction,
+  fqn: fqnProp,
   isNotificationAlert,
+  onEditAlert,
+  onTabChange,
+  tab: tabProp,
 }: Readonly<AlertDetailsPageProps>): UseAlertDetailsPageReturn {
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { tab } = useRequiredParams<{ tab: AlertDetailTabs }>();
-  const { fqn } = useFqn();
+  const { tab: routeTab } = useRequiredParams<{ tab: AlertDetailTabs }>();
+  const { fqn: routeFqn } = useFqn();
+  const fqn = fqnProp ?? routeFqn;
+  const tab = tabProp ?? routeTab ?? AlertDetailTabs.CONFIGURATION;
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
@@ -77,9 +78,6 @@ export function useAlertDetailsPage({
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [alertPermission, setAlertPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
   const [isSyncing, setIsSyncing] = useState(false);
 
   const {
@@ -88,34 +86,8 @@ export function useAlertDetailsPage({
     editDescriptionPermission,
     editPermission,
     deletePermission,
-  } = useMemo(
-    () => ({
-      viewPermission: alertPermission.ViewAll || alertPermission.ViewBasic,
-      editPermission: alertPermission.EditAll,
-      editOwnersPermission:
-        alertPermission.EditAll || alertPermission.EditOwners,
-      editDescriptionPermission:
-        alertPermission.EditAll || alertPermission.EditDescription,
-      deletePermission: alertPermission.Delete,
-    }),
-    [alertPermission]
-  );
-
-  const fetchResourcePermission = useCallback(async () => {
-    try {
-      setLoadingCount((count) => count + 1);
-      if (fqn) {
-        const searchIndexPermission = await getEntityPermissionByFqn(
-          ResourceEntity.EVENT_SUBSCRIPTION,
-          fqn
-        );
-
-        setAlertPermission(searchIndexPermission);
-      }
-    } finally {
-      setLoadingCount((count) => count - 1);
-    }
-  }, [fqn, getEntityPermissionByFqn]);
+    loading: permissionLoading,
+  } = useAlertDetailsPermissions(fqn);
 
   const alertIcon = useMemo(
     () => searchClassBase.getEntityIcon(EntityType.ALERT, 'h-9'),
@@ -195,18 +167,30 @@ export function useAlertDetailsPage({
   );
 
   const handleAlertDelete = useCallback(async () => {
+    if (afterDeleteAction) {
+      await afterDeleteAction();
+
+      return;
+    }
+
     isNotificationAlert
       ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
       : navigate(observabilityRouterClassBase.getObservabilityAlertsListPath());
-  }, [isNotificationAlert, navigate]);
+  }, [afterDeleteAction, isNotificationAlert, navigate]);
 
   const handleAlertEdit = useCallback(async () => {
+    if (onEditAlert) {
+      onEditAlert(fqn);
+
+      return;
+    }
+
     navigate(
       isNotificationAlert
         ? getNotificationAlertsEditPath(fqn)
         : observabilityRouterClassBase.getObservabilityAlertsEditPath(fqn)
     );
-  }, [fqn, isNotificationAlert, navigate]);
+  }, [fqn, isNotificationAlert, navigate, onEditAlert]);
 
   const handleAlertSync = useCallback(async () => {
     try {
@@ -295,6 +279,12 @@ export function useAlertDetailsPage({
 
   const handleTabChange = useCallback(
     (activeKey: string) => {
+      if (onTabChange) {
+        onTabChange(activeKey as AlertDetailTabs);
+
+        return;
+      }
+
       navigate(
         isNotificationAlert
           ? getNotificationAlertDetailsPath(fqn, activeKey)
@@ -305,15 +295,11 @@ export function useAlertDetailsPage({
         { replace: true }
       );
     },
-    [fqn, isNotificationAlert, navigate]
+    [fqn, isNotificationAlert, navigate, onTabChange]
   );
 
   const hideDeleteModal = useCallback(() => {
     setShowDeleteModal(false);
-  }, []);
-
-  useEffect(() => {
-    fetchResourcePermission();
   }, []);
 
   useEffect(() => {
@@ -343,7 +329,7 @@ export function useAlertDetailsPage({
     handleTabChange,
     hideDeleteModal,
     isSyncing,
-    loadingCount,
+    loadingCount: loadingCount + (permissionLoading ? 1 : 0),
     onDescriptionUpdate,
     onOwnerUpdate,
     ownerLoading,

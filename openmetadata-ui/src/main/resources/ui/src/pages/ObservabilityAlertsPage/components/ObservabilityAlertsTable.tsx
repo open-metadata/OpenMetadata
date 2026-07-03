@@ -12,6 +12,7 @@
  */
 
 import { Table, TableCard } from '@openmetadata/ui-core-components';
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -21,7 +22,6 @@ import { ALERTS_DOCS } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { ALERT_TABLE_COLUMN_IDS } from '../ObservabilityAlertsPage.constants';
 import { ObservabilityAlertsTableProps } from '../ObservabilityAlertsPage.interface';
 import {
@@ -35,12 +35,14 @@ function ObservabilityAlertsTable({
   alerts,
   columnList,
   currentPage,
+  getAlertDetailsPath,
   loading,
   loadingCount,
   onAddAlert,
   onPageChange,
   onPageSizeChange,
   onSelectAlert,
+  onViewAlert,
   paging,
   pageSize,
   showPagination,
@@ -51,6 +53,8 @@ function ObservabilityAlertsTable({
     const alertPermission = alertPermissions?.find(
       (alert) => alert.id === record.id
     );
+    const alertName = getEntityName(record);
+    const alertFqn = record.fullyQualifiedName ?? '';
 
     return (
       <Table.Row data-row-key={record.id} id={record.id} key={record.id}>
@@ -58,13 +62,19 @@ function ObservabilityAlertsTable({
           className={getAlertTableCellLayoutClassName(
             ALERT_TABLE_COLUMN_IDS.NAME
           )}>
-          <Link
-            data-testid="alert-name"
-            to={observabilityRouterClassBase.getObservabilityAlertDetailsPath(
-              record.fullyQualifiedName ?? ''
-            )}>
-            {getEntityName(record)}
-          </Link>
+          {onViewAlert ? (
+            <Button
+              className="tw:h-auto tw:p-0"
+              data-testid="alert-name"
+              type="link"
+              onClick={() => onViewAlert(record)}>
+              {alertName}
+            </Button>
+          ) : (
+            <Link data-testid="alert-name" to={getAlertDetailsPath(alertFqn)}>
+              {alertName}
+            </Link>
+          )}
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

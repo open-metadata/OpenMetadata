@@ -14,7 +14,10 @@
 import type { FormInstance } from 'antd';
 import type { ComponentType } from 'react';
 import type { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
-import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import type {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../generated/entity/events/notificationTemplate';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
@@ -33,6 +36,36 @@ export interface ObservabilityFilterResourceDescriptor {
   name?: string;
   supportedActions?: EventFilterRule[];
   supportedFilters?: EventFilterRule[];
+}
+
+export interface UseObservabilityAlertFormOptions {
+  afterSaveAction?: (fqn: string) => Promise<void> | void;
+  form?: FormInstance<ModifiedCreateEventSubscription>;
+  fqn?: string;
+  onCancel?: () => void;
+}
+
+export interface UseObservabilityAlertResourcesReturn {
+  containerEntities?: string[];
+  filterResources: ObservabilityFilterResourceDescriptor[];
+  loading: boolean;
+  shouldShowActionsSection: boolean;
+  shouldShowFiltersSection: boolean;
+  supportedFilters?: EventFilterRule[];
+  supportedTriggers?: EventFilterRule[];
+}
+
+export interface UseObservabilityAlertTemplatesReturn {
+  loading: boolean;
+  templateResourcePermission: OperationPermission;
+  templates: NotificationTemplate[];
+}
+
+export interface UseObservabilityAlertTemplatesOptions {
+  extraFormWidgets: Record<string, ComponentType<AddAlertFormWidgetProps>>;
+  getResourcePermission: (
+    resourceEntity: ResourceEntity
+  ) => Promise<OperationPermission>;
 }
 
 export interface ModifiedWebhookConfig extends Webhook {
@@ -91,6 +124,22 @@ export interface UseObservabilityAlertFormReturn {
 }
 
 export type ObservabilityAlertFormProps = UseObservabilityAlertFormReturn;
+
+export type ObservabilityAlertFormFieldsProps = Pick<
+  ObservabilityAlertFormProps,
+  | 'alert'
+  | 'containerEntities'
+  | 'extraFormWidgets'
+  | 'filterResources'
+  | 'form'
+  | 'isLoading'
+  | 'shouldShowActionsSection'
+  | 'shouldShowFiltersSection'
+  | 'supportedFilters'
+  | 'supportedTriggers'
+  | 'templateResourcePermission'
+  | 'templates'
+>;
 
 export interface AddObservabilityPageProps {
   pageTitle: string;

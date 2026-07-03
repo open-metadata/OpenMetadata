@@ -38,10 +38,16 @@ import {
 } from '../ObservabilityAlertsPage.constants';
 import {
   AlertPermission,
+  UseObservabilityAlertsOptions,
   UseObservabilityAlertsReturn,
 } from '../ObservabilityAlertsPage.interface';
 
-export function useObservabilityAlerts(): UseObservabilityAlertsReturn {
+export function useObservabilityAlerts({
+  getAlertDetailsPath = (fqn: string) =>
+    observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn),
+  onAddAlert,
+  onViewAlert,
+}: UseObservabilityAlertsOptions = {}): UseObservabilityAlertsReturn {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -202,8 +208,14 @@ export function useObservabilityAlerts(): UseObservabilityAlertsReturn {
   );
 
   const handleAddAlert = useCallback(() => {
+    if (onAddAlert) {
+      onAddAlert();
+
+      return;
+    }
+
     navigate(observabilityRouterClassBase.getAddObservabilityAlertsPath());
-  }, [navigate]);
+  }, [navigate, onAddAlert]);
 
   const handleSelectAlert = useCallback((alert?: EventSubscription) => {
     setSelectedAlert(alert);
@@ -215,6 +227,7 @@ export function useObservabilityAlerts(): UseObservabilityAlertsReturn {
     alerts,
     columnList,
     currentPage,
+    getAlertDetailsPath,
     handleAddAlert,
     handleAlertDelete,
     handlePageSizeChange,
@@ -222,6 +235,7 @@ export function useObservabilityAlerts(): UseObservabilityAlertsReturn {
     loading,
     loadingCount,
     onPageChange,
+    onViewAlert,
     paging,
     pageSize,
     selectedAlert,

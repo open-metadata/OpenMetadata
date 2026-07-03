@@ -23,10 +23,22 @@ import AlertDetailsContent from './components/AlertDetailsContent';
 import { useAlertDetailsPage } from './hooks/useAlertDetailsPage';
 
 function AlertDetailsPage({
+  afterDeleteAction,
+  fqn,
   isNotificationAlert = false,
+  onEditAlert,
+  onTabChange,
+  tab,
 }: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
-  const detailsState = useAlertDetailsPage({ isNotificationAlert });
+  const detailsState = useAlertDetailsPage({
+    afterDeleteAction,
+    fqn,
+    isNotificationAlert,
+    onEditAlert,
+    onTabChange,
+    tab,
+  });
   const { alertDetails, loadingCount, viewPermission } = detailsState;
 
   if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {

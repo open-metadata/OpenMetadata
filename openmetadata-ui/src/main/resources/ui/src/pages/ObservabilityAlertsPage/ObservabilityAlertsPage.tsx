@@ -29,6 +29,7 @@ const ObservabilityAlertsPage = () => {
     columnList,
     pageSize,
     currentPage,
+    getAlertDetailsPath,
     handlePageSizeChange,
     showPagination,
     paging,
@@ -38,6 +39,7 @@ const ObservabilityAlertsPage = () => {
     handleAddAlert,
     handleAlertDelete,
     handleSelectAlert,
+    onViewAlert,
     onPageChange,
   } = useObservabilityAlerts();
 
@@ -58,6 +60,7 @@ const ObservabilityAlertsPage = () => {
             alerts={alerts}
             columnList={columnList}
             currentPage={currentPage}
+            getAlertDetailsPath={getAlertDetailsPath}
             loading={loading}
             loadingCount={loadingCount}
             pageSize={pageSize}
@@ -67,6 +70,7 @@ const ObservabilityAlertsPage = () => {
             onPageChange={onPageChange}
             onPageSizeChange={handlePageSizeChange}
             onSelectAlert={handleSelectAlert}
+            onViewAlert={onViewAlert}
           />
         </Col>
         <Col span={24}>

@@ -20,7 +20,12 @@ import {
 } from '../../generated/events/eventSubscription';
 
 export interface AlertDetailsPageProps {
+  afterDeleteAction?: () => Promise<void> | void;
+  fqn?: string;
   isNotificationAlert?: boolean;
+  onEditAlert?: (fqn: string) => void;
+  onTabChange?: (tab: AlertDetailTabs) => void;
+  tab?: AlertDetailTabs;
 }
 
 export interface AlertDetailsPermissions {

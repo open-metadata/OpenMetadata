@@ -11,135 +11,50 @@
  *  limitations under the License.
  */
 
-import { Form } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  NotificationTemplate,
-  ProviderType,
-} from '../../../generated/entity/events/notificationTemplate';
-import { Operation } from '../../../generated/entity/policies/policy';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import {
-  Effect,
-  EventFilterRule,
-  EventSubscription,
-  InputType,
-  PrefixCondition,
-} from '../../../generated/events/eventSubscription';
-import {
-  Effect as ResourceEffect,
-  EventFilterRule as ResourceEventFilterRule,
-  FilterResourceDescriptor,
-  InputType as ResourceInputType,
-  PrefixCondition as ResourcePrefixCondition,
-} from '../../../generated/events/filterResourceDescriptor';
+import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
-import { getAllNotificationTemplates } from '../../../rest/notificationtemplateAPI';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
-  getResourceFunctions,
   updateObservabilityAlert,
 } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { AddAlertPageLoadingState } from '../../AddNotificationPage/AddNotificationPage.interface';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-  ObservabilityFilterResourceDescriptor,
+  UseObservabilityAlertFormOptions,
   UseObservabilityAlertFormReturn,
 } from '../AddObservabilityPage.interface';
+import { useObservabilityAlertResources } from './useObservabilityAlertResources';
+import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
-const getEventFilterRuleEffect = (
-  effect: ResourceEventFilterRule['effect']
-): EventFilterRule['effect'] =>
-  effect === ResourceEffect.Include ? Effect.Include : Effect.Exclude;
-
-const getEventFilterRuleInputType = (
-  inputType?: ResourceEventFilterRule['inputType']
-): EventFilterRule['inputType'] | undefined => {
-  switch (inputType) {
-    case ResourceInputType.None:
-      return InputType.None;
-    case ResourceInputType.Runtime:
-      return InputType.Runtime;
-    case ResourceInputType.Static:
-      return InputType.Static;
-    default:
-      return undefined;
-  }
-};
-
-const getEventFilterRulePrefixCondition = (
-  prefixCondition?: ResourceEventFilterRule['prefixCondition']
-): EventFilterRule['prefixCondition'] | undefined => {
-  switch (prefixCondition) {
-    case ResourcePrefixCondition.And:
-      return PrefixCondition.And;
-    case ResourcePrefixCondition.Or:
-      return PrefixCondition.Or;
-    default:
-      return undefined;
-  }
-};
-
-const toEventFilterRule = (rule: ResourceEventFilterRule): EventFilterRule => ({
-  arguments: rule.arguments,
-  condition: rule.condition,
-  description: rule.description,
-  displayName: rule.displayName,
-  effect: getEventFilterRuleEffect(rule.effect),
-  fullyQualifiedName: rule.fullyQualifiedName,
-  inputType: getEventFilterRuleInputType(rule.inputType),
-  name: rule.name,
-  prefixCondition: getEventFilterRulePrefixCondition(rule.prefixCondition),
-});
-
-const toEventFilterRules = (rules?: ResourceEventFilterRule[]) =>
-  rules?.map(toEventFilterRule);
-
-const toObservabilityFilterResourceDescriptor = (
-  resource: FilterResourceDescriptor
-): ObservabilityFilterResourceDescriptor => {
-  return {
-    containerEntities: resource.containerEntities,
-    name: resource.name,
-    supportedActions: toEventFilterRules(resource.supportedActions),
-    supportedFilters: toEventFilterRules(resource.supportedFilters),
-  };
-};
-
-export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
+export function useObservabilityAlertForm({
+  afterSaveAction,
+  form: providedForm,
+  fqn: fqnProp,
+  onCancel,
+}: UseObservabilityAlertFormOptions = {}): UseObservabilityAlertFormReturn {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [form] = useForm<ModifiedCreateEventSubscription>();
+  const [internalForm] = useForm<ModifiedCreateEventSubscription>();
+  const form = providedForm ?? internalForm;
   const { getResourcePermission } = usePermissionProvider();
-  const { fqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const fqn = fqnProp ?? routeFqn;
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
 
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [loadingState, setLoadingState] = useState<AddAlertPageLoadingState>({
@@ -148,13 +63,23 @@ export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
     templates: false,
   });
   const [saving, setSaving] = useState(false);
-  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [templateResourcePermission, setTemplateResourcePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const extraFormWidgets = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraWidgets(),
+    []
+  );
+  const extraFormButtons = useMemo(
+    () => alertsClassBase.getAddAlertFormExtraButtons(),
+    []
+  );
+  const alertResources = useObservabilityAlertResources(form);
+  const alertTemplates = useObservabilityAlertTemplates({
+    extraFormWidgets,
+    getResourcePermission,
+  });
 
-  const fetchAlert = async () => {
+  const fetchAlert = useCallback(async () => {
     try {
       setLoadingState((state) => ({ ...state, alerts: true }));
 
@@ -169,32 +94,14 @@ export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
     } finally {
       setLoadingState((state) => ({ ...state, alerts: false }));
     }
-  };
-
-  const fetchFunctions = async () => {
-    try {
-      setLoadingState((state) => ({ ...state, functions: true }));
-      const filterResources = await getResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoadingState((state) => ({ ...state, functions: false }));
-    }
-  };
+  }, [fqn]);
 
   useEffect(() => {
-    fetchFunctions();
     if (!fqn) {
       return;
     }
     fetchAlert();
-  }, [fqn]);
+  }, [fetchAlert, fqn]);
 
   const breadcrumb = useMemo(
     () => [
@@ -228,10 +135,21 @@ export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
           currentUser,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlert,
-          afterSaveAction: async (fqn: string) => {
-            !fqn && (await getResourceLimit('eventsubscription', true, true));
+          afterSaveAction: async (savedFqn: string) => {
+            if (afterSaveAction) {
+              await afterSaveAction(savedFqn);
+
+              return;
+            }
+
+            if (!isEditMode) {
+              await getResourceLimit('eventsubscription', true, true);
+            }
+
             navigate(
-              observabilityRouterClassBase.getObservabilityAlertDetailsPath(fqn)
+              observabilityRouterClassBase.getObservabilityAlertDetailsPath(
+                savedFqn
+              )
             );
           },
           setInlineAlertDetails,
@@ -243,123 +161,59 @@ export function useObservabilityAlertForm(): UseObservabilityAlertFormReturn {
       }
     },
     [
+      afterSaveAction,
       currentUser,
       fqn,
       getResourceLimit,
       initialData,
+      isEditMode,
       navigate,
       setInlineAlertDetails,
     ]
   );
 
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
-  const supportedFilters = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.supportedFilters,
-    [filterResources, selectedTrigger]
-  );
-
-  const containerEntities = useMemo<
-    UseObservabilityAlertFormReturn['containerEntities']
-  >(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.containerEntities,
-    [filterResources, selectedTrigger]
-  );
-
-  const supportedTriggers = useMemo(
-    () =>
-      filterResources.find((resource) => resource.name === selectedTrigger)
-        ?.supportedActions,
-    [filterResources, selectedTrigger]
-  );
-
-  const shouldShowFiltersSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedFilters) : true),
-    [selectedTrigger, supportedFilters]
-  );
-
-  const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
-    [selectedTrigger, supportedTriggers]
-  );
-
-  const extraFormWidgets = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraWidgets(),
-    []
-  );
-
-  const extraFormButtons = useMemo(
-    () => alertsClassBase.getAddAlertFormExtraButtons(),
-    []
-  );
-
-  const fetchTemplates = useCallback(async () => {
-    setLoadingState((state) => ({ ...state, templates: true }));
-    try {
-      const permission = await getResourcePermission(
-        ResourceEntity.NOTIFICATION_TEMPLATE
-      );
-
-      setTemplateResourcePermission(permission);
-
-      if (getPrioritizedViewPermission(permission, Operation.ViewAll)) {
-        const { data } = await getAllNotificationTemplates({
-          limit: PAGE_SIZE_LARGE,
-          provider: ProviderType.User,
-        });
-
-        setTemplates(data);
-      }
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.template-plural') })
-      );
-    } finally {
-      setLoadingState((state) => ({ ...state, templates: false }));
-    }
-  }, [getResourcePermission, t]);
-
-  useEffect(() => {
-    if (!isEmpty(extraFormWidgets)) {
-      fetchTemplates();
-    }
-  }, [extraFormWidgets]);
-
   const isLoading = useMemo(
-    () => Object.values(loadingState).some((val) => val),
-    [loadingState]
+    () =>
+      Object.values(loadingState).some((val) => val) ||
+      alertResources.loading ||
+      alertTemplates.loading,
+    [alertResources.loading, alertTemplates.loading, loadingState]
   );
 
   const handleCancel = useCallback(() => {
+    if (onCancel) {
+      onCancel();
+
+      return;
+    }
+
     navigate(-1);
-  }, [navigate]);
+  }, [navigate, onCancel]);
 
   return {
     alert,
     breadcrumb,
-    containerEntities,
+    containerEntities: alertResources.containerEntities,
     extraFormButtons,
     extraFormWidgets,
-    filterResources,
+    filterResources: alertResources.filterResources,
     form,
     handleCancel,
     handleSave,
     inlineAlertDetails,
     isEditMode,
     isLoading,
-    loadingState,
+    loadingState: {
+      ...loadingState,
+      functions: alertResources.loading,
+      templates: alertTemplates.loading,
+    },
     saving,
-    shouldShowActionsSection,
-    shouldShowFiltersSection,
-    supportedFilters,
-    supportedTriggers,
-    templateResourcePermission,
-    templates,
+    shouldShowActionsSection: alertResources.shouldShowActionsSection,
+    shouldShowFiltersSection: alertResources.shouldShowFiltersSection,
+    supportedFilters: alertResources.supportedFilters,
+    supportedTriggers: alertResources.supportedTriggers,
+    templateResourcePermission: alertTemplates.templateResourcePermission,
+    templates: alertTemplates.templates,
   };
 }
