@@ -234,7 +234,8 @@ export const removeCertificationFromWidget = async (
 
 export const assignDomainWidget = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  multiSelect = false,
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
@@ -256,16 +257,27 @@ export const assignDomainWidget = async (
   const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
   await domainTag.waitFor({ state: 'visible' });
 
-  const patchReq = page.waitForResponse(
-    (req) => req.request().method() === 'PATCH'
-  );
-  await domainTag.click();
-  await patchReq;
+  if(multiSelect){
+    await domainTag.click();
+     const patchReq = page.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+    await page.getByTestId('saveAssociatedTag').click();
+    await patchReq;
+  }
+  else {
+    const patchReq = page.waitForResponse(
+      (req) => req.request().method() === 'PATCH'
+    );
+    await domainTag.click();
+    await patchReq;
+  }
+ 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('domain-link')).toContainText(
-    domain.displayName
-  );
+  await expect(
+    page.getByTestId('domain-link').filter({ hasText: domain.displayName })
+  ).toBeVisible();
 };
 
 export const removeDomainWidget = async (

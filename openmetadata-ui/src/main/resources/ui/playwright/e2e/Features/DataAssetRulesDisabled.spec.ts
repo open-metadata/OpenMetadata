@@ -796,10 +796,10 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomainWidget(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData, true);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomainWidget(page, testDomain2.responseData);
+        await assignDomainWidget(page, testDomain2.responseData, true);
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
