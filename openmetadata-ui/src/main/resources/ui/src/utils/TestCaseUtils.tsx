@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
+import { Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { lowerCase } from 'lodash';
+import type { ReactNode } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
@@ -20,10 +23,26 @@ import { ManageButtonItemLabel } from '../components/common/ManageButtonContentI
 import { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseStatus } from '../generated/entity/feed/thread';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
-import { getEntityBulkEditPath, getEntityImportPath } from './EntityUtils';
+import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
+
+export const getTestCaseResultCount = (
+  count: number,
+  status: TestCaseStatus
+): ReactNode => (
+  <div
+    className={`test-result-container ${lowerCase(status)}`}
+    data-testid={`test-${status}`}>
+    <Typography.Text
+      className="font-medium text-md"
+      data-testid={`test-${status}-value`}>
+      {count}
+    </Typography.Text>
+  </div>
+);
 
 interface TestCasePermission {
   ViewAll: boolean;

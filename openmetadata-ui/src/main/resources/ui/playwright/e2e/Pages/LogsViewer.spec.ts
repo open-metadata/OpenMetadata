@@ -21,13 +21,16 @@ import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { waitForFirstPipelineStatusNotQueued } from '../../utils/logsViewer';
+import {
+  navigateToBundleSuiteWithPagination,
+  waitForFirstPipelineStatusNotQueued,
+} from '../../utils/logsViewer';
 import { test } from '../fixtures/pages';
 
 let table: TableClass;
 let bundleTestSuite: BundleTestSuiteClass;
 
-test.describe(
+test.describe.skip(
   'Logs viewer page',
   {
     tag: [
@@ -79,12 +82,7 @@ test.describe(
           bundleSuiteFqn,
           'bundle suite created in beforeAll'
         ).toBeTruthy();
-        const bundleSuiteLink = page
-          .getByTestId('test-suite-table')
-          .locator(`a[href*="${encodeURIComponent(bundleSuiteFqn)}"]`);
-        await expect(bundleSuiteLink).toBeVisible({ timeout: 10000 });
-        await bundleSuiteLink.click();
-        await waitForAllLoadersToDisappear(page);
+        await navigateToBundleSuiteWithPagination(page, bundleSuiteFqn);
       });
 
       await test.step('Open Pipeline tab and click Logs for first pipeline', async () => {

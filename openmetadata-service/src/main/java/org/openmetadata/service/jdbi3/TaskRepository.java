@@ -24,16 +24,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.Period;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeParseException;
-import java.time.temporal.TemporalAmount;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -48,7 +41,9 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
@@ -64,6 +59,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -94,6 +90,7 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String COLLECTION_PATH = "/v1/tasks";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
   public static final String FIELD_ASSIGNEES = "assignees";
+
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
@@ -105,14 +102,48 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
+  /**
+   * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
+   * Granted are intermediate stages in multi-stage approval/grant workflows, not terminal states.
+   * ManualRevoke means access was granted at the source and the workflow is parked waiting for a
+   * human to confirm the revoke — the access is still live, so a new DAR against the same entity
+   * must be blocked. Every other status — Rejected, Revoked, Completed, Cancelled, Failed,
+   * Expired — is terminal and frees the creator to file a new Data Access Request for the same
+   * entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus} predicate
+   * and the {@code active} status group in {@link ListFilter}.
+   */
+  public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
+      List.of(
+          TaskEntityStatus.Open,
+          TaskEntityStatus.InProgress,
+          TaskEntityStatus.Pending,
+          TaskEntityStatus.Approved,
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke);
+
+  /**
+   * Set view of {@link #NON_TERMINAL_TASK_STATUSES} for O(1) membership checks. Derived from the
+   * canonical list so the two cannot drift — the DAR duplicate-check test guards the list, and this
+   * inherits that guarantee automatically.
+   */
+  public static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      Set.copyOf(NON_TERMINAL_TASK_STATUSES);
+
+  public static boolean isTerminalStatus(TaskEntityStatus status) {
+    return status != null && !NON_TERMINAL_STATUSES.contains(status);
+  }
+
+  private static final List<String> NON_TERMINAL_TASK_STATUS_VALUES =
+      NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+
   public TaskRepository() {
     super(
         COLLECTION_PATH,
         Entity.TASK,
         Task.class,
         Entity.getCollectionDAO().taskDAO(),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -132,8 +163,8 @@ public class TaskRepository extends EntityRepository<Task> {
         Entity.TASK,
         Task.class,
         initializeTaskDao(jdbi),
-        "assignees,reviewers,watchers,about,createdBy",
-        "assignees,reviewers,watchers,about,createdBy");
+        "assignees,reviewers,watchers,about,createdBy,comments",
+        "assignees,reviewers,watchers,about,createdBy,comments");
     supportsSearch = true;
     quoteFqn = false;
     this.allowedFields.add(FIELD_ASSIGNEES);
@@ -322,6 +353,11 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateAssignees(task.getAssignees());
     TaskFieldValidator.validateReviewers(task.getReviewers());
     TaskFieldValidator.validatePayloadAgainstFormSchema(task);
+    TaskFieldValidator.validateDataAccessCapabilities(task);
+
+    if (!update) {
+      validateNoDuplicateActiveDataAccessRequest(task);
+    }
 
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
@@ -345,6 +381,45 @@ public class TaskRepository extends EntityRepository<Task> {
     }
     String fqnHash = FullyQualifiedName.buildHash(about.getFullyQualifiedName());
     task.setAboutFqnHash(fqnHash);
+  }
+
+  /**
+   * Enforce the business rule that a user may have only one active Data Access Request per target
+   * entity. A request is "active" while it is non-terminal
+   * ({@link #NON_TERMINAL_TASK_STATUS_VALUES}); creation is rejected when the same creator already has an
+   * active request for the same entity, regardless of the entry point used to submit it.
+   */
+  private void validateNoDuplicateActiveDataAccessRequest(Task task) {
+    if (isDuplicateDataAccessRequestCheckable(task)) {
+      String entityFqn = task.getAbout().getFullyQualifiedName();
+      Task existing = findActiveDataAccessRequestByCreator(entityFqn, task.getCreatedBy().getId());
+      if (existing != null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "An active data access request (%s) already exists for '%s'. "
+                    + "Resolve or cancel the existing request before submitting another.",
+                existing.getTaskId(), entityFqn));
+      }
+    }
+  }
+
+  private boolean isDuplicateDataAccessRequestCheckable(Task task) {
+    return task.getType() == TaskEntityType.DataAccessRequest
+        && task.getAbout() != null
+        && !nullOrEmpty(task.getAbout().getFullyQualifiedName())
+        && task.getCreatedBy() != null
+        && task.getCreatedBy().getId() != null;
+  }
+
+  private Task findActiveDataAccessRequestByCreator(String entityFqn, UUID createdById) {
+    String json =
+        ((CollectionDAO.TaskDAO) dao)
+            .findActiveByAboutTypeAndCreator(
+                entityFqn,
+                TaskEntityType.DataAccessRequest.value(),
+                createdById.toString(),
+                NON_TERMINAL_TASK_STATUS_VALUES);
+    return json == null ? null : JsonUtils.readValue(json, Task.class);
   }
 
   /**
@@ -579,16 +654,36 @@ public class TaskRepository extends EntityRepository<Task> {
    * Anyone who can view the task can add comments.
    */
   public Task addComment(Task task, org.openmetadata.schema.type.TaskComment comment) {
+    Task original = JsonUtils.deepCopy(task, Task.class);
     List<org.openmetadata.schema.type.TaskComment> comments =
         new java.util.ArrayList<>(listOrEmpty(task.getComments()));
     comments.add(comment);
     task.setComments(comments);
     task.setCommentCount(comments.size());
     task.setUpdatedAt(System.currentTimeMillis());
+    if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
+      task.setUpdatedBy(comment.getAuthor().getName());
+    }
+    // Record the new comment in the change delta so the event is self-describing: the notification
+    // pipeline resolves mentions from this comment only, and the email template renders it as a
+    // reply rather than treating every task update as a comment.
+    task.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(task.getVersion())
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName(FIELD_COMMENTS)
+                        .withNewValue(comment.getMessage()))));
     storeEntity(task, true);
 
     // Store mentions from the comment message
     storeMentions(task, comment.getMessage());
+
+    // storeEntity is the raw persistence path; fire postUpdate so search/lifecycle
+    // handlers stay consistent. The task/entityUpdated change event that drives
+    // mention notifications is emitted from the resource response header.
+    postUpdate(original, task);
 
     return task;
   }
@@ -997,76 +1092,6 @@ public class TaskRepository extends EntityRepository<Task> {
     return updated;
   }
 
-  public Task persistExpirationDate(UUID taskId, String updatedBy) {
-    Task original = get(null, taskId, getFields("*"));
-    Map<String, Object> payload = mutablePayloadMap(original);
-    if (payload == null) {
-      return original;
-    }
-    String durationStr = stringValue(payload.get("duration"));
-    if (durationStr == null) {
-      return original;
-    }
-    long grantedAtMillis = System.currentTimeMillis();
-    Long expirationMillis = computeExpirationMillis(grantedAtMillis, durationStr);
-    if (expirationMillis == null) {
-      LOG.warn(
-          "[TaskRepository] Cannot parse DAR duration '{}' for task '{}'; skipping expirationDate",
-          durationStr,
-          taskId);
-      return original;
-    }
-    Task updated = JsonUtils.deepCopy(original, Task.class);
-    Map<String, Object> updatedPayload = mutablePayloadMap(updated);
-    updatedPayload.put("expirationDate", expirationMillis);
-    updated.setPayload(updatedPayload);
-    updated.setUpdatedBy(updatedBy);
-    updated.setUpdatedAt(grantedAtMillis);
-    storeEntity(updated, true);
-    postUpdate(original, updated);
-    return updated;
-  }
-
-  private static Map<String, Object> mutablePayloadMap(Task task) {
-    Object rawPayload = task.getPayload();
-    if (rawPayload == null) {
-      return null;
-    }
-    return JsonUtils.convertValue(rawPayload, new TypeReference<Map<String, Object>>() {});
-  }
-
-  private static String stringValue(Object obj) {
-    if (!(obj instanceof String str) || str.isBlank()) {
-      return null;
-    }
-    return str;
-  }
-
-  private static Long computeExpirationMillis(long grantedAtMillis, String durationStr) {
-    TemporalAmount amount = parseIsoDuration(durationStr);
-    if (amount == null) {
-      return null;
-    }
-    if (amount instanceof Duration d) {
-      return grantedAtMillis + d.toMillis();
-    }
-    LocalDateTime grantedAt =
-        LocalDateTime.ofEpochSecond(grantedAtMillis / 1000, 0, ZoneOffset.UTC);
-    return grantedAt.plus(amount).toInstant(ZoneOffset.UTC).toEpochMilli();
-  }
-
-  private static TemporalAmount parseIsoDuration(String durationStr) {
-    try {
-      return Duration.parse(durationStr);
-    } catch (DateTimeParseException ignored) {
-      try {
-        return Period.parse(durationStr);
-      } catch (DateTimeParseException ignored2) {
-        return null;
-      }
-    }
-  }
-
   public Task resolveTask(Task task, TaskResolution resolution, String updatedBy) {
     if (resolution == null) {
       throw new IllegalArgumentException("Resolution cannot be null");
@@ -1104,6 +1129,7 @@ public class TaskRepository extends EntityRepository<Task> {
       case Cancelled -> TaskEntityStatus.Cancelled;
       case Revoked -> TaskEntityStatus.Revoked;
       case TimedOut -> TaskEntityStatus.Failed;
+      case Expired -> TaskEntityStatus.Expired;
     };
   }
 
@@ -1177,6 +1203,30 @@ public class TaskRepository extends EntityRepository<Task> {
       return null;
     }
     return hydrateStoredTask(JsonUtils.readValue(json, Task.class));
+  }
+
+  /**
+   * Reads the task straight from the database (bypassing the entity cache) so callers observe the
+   * latest committed state rather than a possibly-stale cached snapshot. Returns null if the task
+   * does not exist.
+   */
+  public Task findCommittedTask(UUID taskId) {
+    try {
+      return dao.findEntityById(taskId, Include.ALL);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
+  }
+
+  public List<Task> listNonTerminalTasksByEntityAndCategory(
+      String entityFqn, TaskCategory category) {
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndCategoryAndStatuses(
+            entityFqn, category.value(), NON_TERMINAL_TASK_STATUS_VALUES)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task hydrateStoredTask(Task task) {
@@ -1451,6 +1501,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      preserveComments();
       updateAssignees();
       updateTaskReviewers();
       updateWorkflowMetadata();
@@ -1459,6 +1510,12 @@ public class TaskRepository extends EntityRepository<Task> {
       updatePayload();
       updateResolution();
       updateWorkflowFields();
+    }
+
+    // Comments are mutated only via the comment endpoints; a generic PATCH/PUT must preserve them.
+    private void preserveComments() {
+      updated.setComments(original.getComments());
+      updated.setCommentCount(original.getCommentCount());
     }
 
     private void updateAssignees() {
@@ -1539,9 +1596,12 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
-        if (updated.getStatus() != TaskEntityStatus.Open
-            && updated.getStatus() != TaskEntityStatus.InProgress
-            && updated.getStatus() != TaskEntityStatus.Pending) {
+        // Only stamp a fallback Completed resolution when the task is actually moving to a
+        // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
+        // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)
+        // are still in-flight — a Completed resolution at that point misrepresents the lifecycle
+        // and leaks into downstream consumers / reporting.
+        if (isTerminalStatus(updated.getStatus())) {
           updated.setResolution(
               updated.getResolution() != null
                   ? updated.getResolution()

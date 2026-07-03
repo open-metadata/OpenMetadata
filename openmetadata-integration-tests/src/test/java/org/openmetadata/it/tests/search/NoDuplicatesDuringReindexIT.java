@@ -18,7 +18,8 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
-import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchClusterResetExtension;
@@ -29,6 +30,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.fluent.Apps;
+import org.openmetadata.service.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,15 +38,13 @@ import org.slf4j.LoggerFactory;
  * Verifies that during an active recreate reindex the table alias always:
  * <ul>
  *   <li>resolves to some backing index (no read-side gap);
- *   <li>contains no duplicate {@code _id}s (the cardinality aggregation equals
- *       the total doc count);
+ *   <li>contains no duplicate {@code _id}s (no id is indexed in two documents at once);
  *   <li>does not drop below the pre-reindex doc count (no visible window
  *       where docs are missing).
  * </ul>
  *
- * <p>The pre-reindex baseline gives us "the read-side never goes blank";
- * cardinality(_id) == count gives us "no double-indexing while two backing
- * indices coexist."
+ * <p>The pre-reindex baseline gives us "the read-side never goes blank"; the exact
+ * duplicate-id check gives us "no double-indexing while two backing indices coexist."
  */
 @ExtendWith({TestNamespaceExtension.class, SearchClusterResetExtension.class})
 @Execution(ExecutionMode.SAME_THREAD)
@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 class NoDuplicatesDuringReindexIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(NoDuplicatesDuringReindexIT.class);
-  private static final String TABLE_ALIAS = "table_search_index";
   private static final int SEED_TABLES = 2_000;
   private static final int COLUMNS_PER_TABLE = 3;
   private static final int PARALLEL_LOAD_WORKERS = 8;
@@ -61,26 +60,29 @@ class NoDuplicatesDuringReindexIT {
 
   private static ServerHandle server;
   private static SearchAssertions search;
+  private static String tableAlias;
 
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
   }
 
   @Test
   void aliasIsAlwaysReadableAndDeduplicatedDuringReindex(final TestNamespace ns) throws Exception {
-    EntityLoader.load(
+    SeedData.provision(
         EntityLoadSpec.builder()
             .count(EntityKind.TABLE, SEED_TABLES)
             .columnsPerTable(COLUMNS_PER_TABLE)
             .parallelWorkers(PARALLEL_LOAD_WORKERS)
             .build(),
-        ns);
+        ns,
+        server);
 
     ReindexHelpers.triggerSearchIndexAndWait(server);
-    final long baseline = search.count(TABLE_ALIAS);
+    final long baseline = search.count(tableAlias);
     assertThat(baseline).as("baseline doc count after pre-warm reindex").isGreaterThan(0);
 
     final ExecutorService probeExecutor = Executors.newSingleThreadExecutor();
@@ -119,26 +121,29 @@ class NoDuplicatesDuringReindexIT {
       assertThat(sample.count)
           .as(
               "alias %s must always resolve to a non-empty index (probe @ %d ms)",
-              TABLE_ALIAS, sample.atMillis)
+              tableAlias, sample.atMillis)
           .isGreaterThan(0);
-      assertThat(sample.distinctIds)
+      assertThat(sample.hasDuplicates)
           .as(
               "no duplicate _ids in alias %s at probe %d ms (count=%d)",
-              TABLE_ALIAS, sample.atMillis, sample.count)
-          .isEqualTo(sample.count);
+              tableAlias, sample.atMillis, sample.count)
+          .isFalse();
     }
 
-    final long finalCount = search.count(TABLE_ALIAS);
-    final long finalDistinct = search.distinctIds(TABLE_ALIAS);
-    assertThat(finalCount).isEqualTo(finalDistinct);
-    assertThat(finalCount).isGreaterThanOrEqualTo(baseline);
+    final long finalCount = search.count(tableAlias);
+    assertThat(search.hasDuplicateIds(tableAlias))
+        .as("no duplicate _ids in alias %s after reindex", tableAlias)
+        .isFalse();
+    assertThat(finalCount)
+        .as("final doc count must not drop below pre-reindex baseline")
+        .isGreaterThanOrEqualTo(baseline);
   }
 
   private ProbeResult probeOnce() {
-    final long count = search.count(TABLE_ALIAS);
-    final long distinct = search.distinctIds(TABLE_ALIAS);
-    return new ProbeResult(System.currentTimeMillis(), count, distinct);
+    final long count = search.count(tableAlias);
+    final boolean hasDuplicates = search.hasDuplicateIds(tableAlias);
+    return new ProbeResult(System.currentTimeMillis(), count, hasDuplicates);
   }
 
-  private record ProbeResult(long atMillis, long count, long distinctIds) {}
+  private record ProbeResult(long atMillis, long count, boolean hasDuplicates) {}
 }

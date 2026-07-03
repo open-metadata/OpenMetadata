@@ -64,7 +64,7 @@ import {
   patchRole,
 } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getAddPolicyRulePath,
   getEditPolicyRulePath,

@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -72,6 +73,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -88,6 +90,8 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class CreateTask implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
+  private static final String SUPERSEDED_BY_NEWER_RUN =
+      "Superseded by a newer approval workflow run for the same entity";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
   private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
   private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
@@ -511,6 +515,7 @@ public class CreateTask implements TaskListener {
       if (effectiveDueDate != null) {
         updatedTask.setDueDate(effectiveDueDate);
       }
+      updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -572,6 +577,7 @@ public class CreateTask implements TaskListener {
     if (effectiveDueDate != null) {
       task.setDueDate(effectiveDueDate);
     }
+    task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -603,7 +609,112 @@ public class CreateTask implements TaskListener {
     // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(task);
 
+    // Supersede any approval task still open from an earlier run of the same workflow, AFTER the
+    // new
+    // task has been created, so a rollback of the new-task transaction can't leave the prior run's
+    // Flowable process terminated behind a still-open OM task. One live approval per (entity,
+    // workflow) is the invariant.
+    supersedePriorApprovalTask(
+        delegateTask,
+        taskRepository,
+        entity,
+        taskCategory,
+        resolvedWorkflowDefinitionId,
+        workflowInstanceId,
+        updatedBy);
+
     return task;
+  }
+
+  private void supersedePriorApprovalTask(
+      DelegateTask delegateTask,
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId,
+      String updatedBy) {
+    // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
+    // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
+    if (taskCategory == TaskCategory.Approval) {
+      try {
+        taskRepository
+            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
+            .stream()
+            .filter(
+                prior ->
+                    isSupersedablePriorApprovalTask(
+                        prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+            .forEach(
+                prior ->
+                    cancelAndTerminatePriorApproval(
+                        delegateTask, taskRepository, prior, updatedBy));
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to supersede prior approval task(s) for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+  }
+
+  static boolean isSupersedablePriorApprovalTask(
+      Task prior, UUID currentWorkflowDefinitionId, UUID currentWorkflowInstanceId) {
+    return prior != null
+        && currentWorkflowInstanceId != null
+        && currentWorkflowDefinitionId != null
+        && prior.getWorkflowInstanceId() != null
+        && !isTerminalTaskStatus(prior.getStatus())
+        && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
+        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+  }
+
+  private void cancelAndTerminatePriorApproval(
+      DelegateTask delegateTask, TaskRepository taskRepository, Task prior, String updatedBy) {
+    LOG.info(
+        "[CreateTask] Superseding prior approval task '{}' (workflowInstance '{}') with a newer run",
+        prior.getId(),
+        prior.getWorkflowInstanceId());
+    taskRepository.closeTask(prior, updatedBy, SUPERSEDED_BY_NEWER_RUN);
+    dispatchPriorInstanceTermination(
+        inferWorkflowDefinitionRef(delegateTask), prior.getId(), prior.getWorkflowInstanceId());
+  }
+
+  private void dispatchPriorInstanceTermination(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
+    // process can never poison the current task-creation transaction. Flowable runs as a standalone
+    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
+    // transaction before this dispatch. The worker reads the prior task straight from the database
+    // (not the entity cache) to observe that committed status, and only terminates the process when
+    // the task is actually terminal — so a still-live approval is never orphaned.
+    CompletableFuture.runAsync(
+            () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
+            AsyncService.getInstance().getExecutorService())
+        .exceptionally(
+            ex -> {
+              LOG.error(
+                  "[CreateTask] Failed to terminate superseded workflow instance '{}'",
+                  priorInstanceId,
+                  ex);
+              return null;
+            });
+  }
+
+  private void terminateSupersededInstance(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task prior = taskRepository.findCommittedTask(priorTaskId);
+    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
+      WorkflowHandler.getInstance()
+          .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
+    } else {
+      LOG.debug(
+          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
+              + "process intact",
+          priorTaskId,
+          prior == null ? null : prior.getStatus());
+    }
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(
@@ -632,13 +743,12 @@ public class CreateTask implements TaskListener {
     return existingAssignees;
   }
 
+  // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
+  // TaskEntityStatus value is added — the canonical NON_TERMINAL_TASK_STATUSES list on
+  // TaskRepository is the single source of truth. Kept as a static wrapper here for call-site
+  // readability at the workflow-lifecycle guards below.
   static boolean isTerminalTaskStatus(TaskEntityStatus status) {
-    return status != null
-        && status != TaskEntityStatus.Open
-        && status != TaskEntityStatus.InProgress
-        && status != TaskEntityStatus.Pending
-        && status != TaskEntityStatus.Approved
-        && status != TaskEntityStatus.Granted;
+    return TaskRepository.isTerminalStatus(status);
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(
@@ -736,6 +846,54 @@ public class CreateTask implements TaskListener {
     return parseMillisFromIso8601Duration(duration, requestedDueDate);
   }
 
+  /**
+   * Compute {@code payload.expirationDate} when the workflow enters the Granted stage.
+   *
+   * <p>Anchoring this on stage entry (instead of on the user-invoked transition) makes
+   * both the manual path (Approved → markAsGranted → Granted) and the automated PolicyAgent
+   * path (Review → approve → PolicyAgent[granted] → Granted) populate expirationDate, since
+   * both routes funnel through this listener.
+   *
+   * <p>Returns null when the stage isn't Granted or the payload doesn't carry a parseable
+   * duration. When the payload already carries a numeric {@code expirationDate} (re-entry into
+   * the Granted stage, or upstream-set value), returns that existing value unchanged — silent
+   * overwrites would extend access on every workflow listener fire.
+   */
+  static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
+    if (stageStatus != TaskEntityStatus.Granted || !(payload instanceof Map<?, ?> rawMap)) {
+      return null;
+    }
+    Object existing = rawMap.get("expirationDate");
+    if (existing instanceof Number existingNum) {
+      return existingNum.longValue();
+    }
+    Object durationValue = rawMap.get("duration");
+    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+      return null;
+    }
+    return parseMillisFromIso8601Duration(duration, null);
+  }
+
+  /**
+   * Returns the payload with {@code expirationDate} merged in when the task enters
+   * Granted. Returns the original reference unchanged when there's nothing to add, so
+   * non-DAR workflows that target Granted aren't penalised and the input map is never
+   * mutated.
+   */
+  static Object withGrantExpirationDate(TaskEntityStatus stageStatus, Object payload) {
+    Long expiration = resolveEffectiveExpirationDate(stageStatus, payload);
+    if (expiration == null || !(payload instanceof Map<?, ?> rawMap)) {
+      return payload;
+    }
+    if (rawMap.get("expirationDate") instanceof Number) {
+      return payload;
+    }
+    Map<String, Object> merged = new LinkedHashMap<>();
+    rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
+    merged.put("expirationDate", expiration);
+    return merged;
+  }
+
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
     try {
       return System.currentTimeMillis() + Duration.parse(duration).toMillis();
@@ -748,7 +906,9 @@ public class CreateTask implements TaskListener {
           .toInstant()
           .toEpochMilli();
     } catch (DateTimeParseException e) {
-      LOG.warn("[CreateTask] Could not parse duration '{}'; using taskDueDate", duration);
+      LOG.warn(
+          "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
+          duration);
       return fallback;
     }
   }
@@ -826,7 +986,9 @@ public class CreateTask implements TaskListener {
       TaskEntityType taskType,
       Map<String, String> inputNamespaceMap,
       WorkflowVariableHandler varHandler) {
-    if (taskType != TaskEntityType.DataQualityReview || inputNamespaceMap == null) {
+    if ((taskType != TaskEntityType.RecognizerFeedbackApproval
+            && taskType != TaskEntityType.DataQualityReview)
+        || inputNamespaceMap == null) {
       return null;
     }
 

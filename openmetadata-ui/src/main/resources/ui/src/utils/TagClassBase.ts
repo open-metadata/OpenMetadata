@@ -13,9 +13,6 @@
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { PAGE_SIZE } from '../constants/constants';
 import {
   DESCRIPTION_WIDGET,
@@ -31,10 +28,15 @@ import { Tab } from '../generated/system/ui/uiCustomization';
 import { TagLabel } from '../generated/type/tagLabel';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../rest/searchAPI';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
-import { getTermQuery } from './SearchUtils';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import {
+  LazyCommonWidgets,
+  LazyDomainLabelV2,
+  LazyOwnerLabelV2,
+} from './LazyTagComponents';
+import { getTermQuery } from './SearchPureUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;
@@ -124,12 +126,12 @@ class TagClassBase {
     return React.createElement(
       'div',
       { className: 'd-flex flex-column gap-5' },
-      React.createElement(DomainLabelV2, {
+      React.createElement(LazyDomainLabelV2, {
         multiple: true,
         showDomainHeading: true,
         hasPermission: editDomainPermission,
       }),
-      React.createElement(OwnerLabelV2, {
+      React.createElement(LazyOwnerLabelV2, {
         dataTestId: 'tag-owner-name',
         hasPermission: editOwnerPermission,
       })
@@ -217,7 +219,7 @@ class TagClassBase {
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig): React.ReactElement {
-    return React.createElement(CommonWidgets, {
+    return React.createElement(LazyCommonWidgets, {
       entityType: EntityType.TAG,
       showTaskHandler: false,
       widgetConfig,

@@ -28,7 +28,7 @@ import {
   getConstraintChanges,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -42,7 +42,6 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { FileVersionProps } from './FileVersion.interface';
-
 const FileVersion = ({
   version,
   currentVersionData,

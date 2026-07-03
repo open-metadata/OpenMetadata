@@ -141,11 +141,11 @@ jest.mock('../../../rest/tasksAPI', () => ({
   closeTask: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Admin User'),
 }));
 
@@ -165,12 +165,16 @@ jest.mock('../../../utils/EntityLink', () => ({
   },
 }));
 
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
-  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
+jest.mock('../../../utils/TaskActionUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskActionUtils'),
   isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
+  getTaskDetailPathFromTask: jest.fn().mockReturnValue('/tasks/1'),
 }));
 
 describe('TaskFeedCardFromTask', () => {

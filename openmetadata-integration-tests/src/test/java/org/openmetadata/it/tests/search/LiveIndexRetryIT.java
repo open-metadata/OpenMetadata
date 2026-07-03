@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.search.EsOutageInjector;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.search.SearchClusterResetExtension;
 import org.openmetadata.it.server.ServerHandle;
@@ -44,7 +46,6 @@ import org.openmetadata.service.Entity;
 @ResourceLock(value = "SEARCH_INDEX_RETRY", mode = ResourceAccessMode.READ_WRITE)
 class LiveIndexRetryIT {
 
-  private static final String TABLE_ALIAS = "table_search_index";
   // A *paused* engine doesn't refuse writes — the live-index call blocks until the client's
   // response timeout (socketTimeoutSecs, 60s) elapses and only then fails, and the failure is
   // what enqueues a retry row. So the outage must outlast that timeout: keep the engine paused
@@ -56,12 +57,18 @@ class LiveIndexRetryIT {
 
   private static ServerHandle server;
   private static SearchAssertions search;
+  private static String tableAlias;
 
   @BeforeAll
   static void setup() {
+    Assumptions.assumeTrue(
+        !OssTestServer.isExternalMode(),
+        "LiveIndexRetryIT pauses the ES container (EsOutageInjector) and reads the retry queue via "
+            + "the in-JVM DAO — both require the embedded stack, so it is skipped in external mode");
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());
+    tableAlias = new IndexAliasInspector(server).indexNameFor(Entity.TABLE);
   }
 
   @Test
@@ -86,7 +93,7 @@ class LiveIndexRetryIT {
         .untilAsserted(
             () -> {
               assertThat(pendingRetryCount()).as("retry queue must drain to zero pending").isZero();
-              search.assertEntityIndexed(TABLE_ALIAS, "table", table.getFullyQualifiedName());
+              search.assertEntityIndexed(tableAlias, Entity.TABLE, table.getFullyQualifiedName());
             });
   }
 

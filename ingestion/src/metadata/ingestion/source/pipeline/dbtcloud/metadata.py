@@ -478,18 +478,16 @@ class DbtcloudSource(PipelineServiceSource):
         Get Pipeline Status
         """
         try:
-            # Use stored FQN from context instead of reconstructing
-            # This ensures exact match with database format, especially for special characters
+            # Build the FQN from the per-pipeline context every time. The cached
+            # ctx.pipeline_fqn is written by yield_pipeline_lineage_details, which
+            # runs *after* this stage, so reusing it here would attach the current
+            # pipeline's task statuses to the previous pipeline's FQN.
             ctx = self.context.get()
-            pipeline_fqn = (
-                ctx.pipeline_fqn
-                if hasattr(ctx, "pipeline_fqn") and ctx.pipeline_fqn
-                else fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Pipeline,
-                    service_name=ctx.pipeline_service,
-                    pipeline_name=ctx.pipeline,
-                )
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=ctx.pipeline_service,  # pyright: ignore[reportAttributeAccessIssue]
+                pipeline_name=ctx.pipeline,  # pyright: ignore[reportAttributeAccessIssue]
             )
 
             # using cached runs from context instead of making another API call
@@ -498,17 +496,26 @@ class DbtcloudSource(PipelineServiceSource):
                 runs = self.client.get_runs(job_id=pipeline_details.id)
 
             for task in runs or []:
+                task_name = str(task.id)
                 task_status = TaskStatus(
-                    name=str(task.id),
+                    name=task_name,
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
                     startTime=self._parse_timestamp(task.started_at) if task.started_at else None,
                     endTime=self._parse_timestamp(task.finished_at) if task.finished_at else None,
                 )
 
+                status_timestamp = task_status.endTime if task_status.endTime else task_status.startTime
+                if status_timestamp is None:
+                    logger.debug(
+                        f"Skipping pipeline status for task '{task_name}' in pipeline {pipeline_fqn}: "
+                        f"run has no start or finish timestamp"
+                    )
+                    continue
+
                 pipeline_status = PipelineStatus(
                     executionStatus=task_status.executionStatus,
                     taskStatus=[task_status],
-                    timestamp=task_status.endTime if task_status.endTime else task_status.startTime,
+                    timestamp=status_timestamp,
                 )
 
                 yield Either(

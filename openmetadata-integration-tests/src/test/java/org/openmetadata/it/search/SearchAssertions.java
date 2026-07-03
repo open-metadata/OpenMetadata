@@ -23,22 +23,36 @@ public final class SearchAssertions {
   }
 
   public boolean indexExists(final String indexOrAlias) {
-    return search.exists("/" + indexOrAlias);
+    return search.indexExists(indexOrAlias);
   }
 
   public long count(final String indexOrAlias) {
-    final JsonNode body = search.get("/" + indexOrAlias + "/_count");
+    final JsonNode body = search.count(indexOrAlias);
     return body.path("count").asLong();
   }
 
   public long countByEntityType(final String alias, final String entityType) {
     final String body = "{\"query\":{\"term\":{\"entityType\":\"" + entityType + "\"}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
+    return response.path("count").asLong();
+  }
+
+  /**
+   * Exact count of docs whose {@code name} starts with {@code namePrefix}. Scopes a count to a
+   * single test run's entities (named {@code <unique-prefix>_<n>}) regardless of what else lives on
+   * the cluster — unlike the relevance-ranked Explore search, which fuzzy-matches across the whole
+   * index. {@code name.keyword} carries a {@code lowercase_normalizer}, so the prefix is lowercased
+   * to match the indexed (lowercased) value.
+   */
+  public long countByNamePrefix(final String indexOrAlias, final String namePrefix) {
+    final String prefix = escape(namePrefix.toLowerCase(java.util.Locale.ROOT));
+    final String body = "{\"query\":{\"prefix\":{\"name.keyword\":\"" + prefix + "\"}}}";
+    final JsonNode response = search.count(indexOrAlias, body);
     return response.path("count").asLong();
   }
 
   public List<String> indicesForAlias(final String alias) {
-    final JsonNode body = search.get("/_alias/" + alias);
+    final JsonNode body = search.alias(alias);
     final List<String> indices = new ArrayList<>();
     final Iterator<Map.Entry<String, JsonNode>> fields = body.fields();
     while (fields.hasNext()) {
@@ -48,27 +62,31 @@ public final class SearchAssertions {
   }
 
   public List<String> listIndices(final String pattern) {
-    final JsonNode body = search.get("/_cat/indices/" + pattern + "?format=json&h=index");
+    final JsonNode body = search.indices(pattern);
     final List<String> result = new ArrayList<>();
     body.forEach(node -> result.add(node.path("index").asText()));
     return result;
   }
 
   /**
-   * Cardinality of the OM entity id ({@code id.keyword}) on the alias — i.e., the count
-   * of distinct entities regardless of how many backing indices the alias spans. Used by
-   * the no-duplicates invariant: during reindex, {@code count(alias) == distinctIds(alias)}
-   * must always hold, otherwise two backing indices are returning the same logical entity.
+   * Whether any OM entity id appears in more than one document under the alias — the exact
+   * duplicate check behind the no-duplicates-during-reindex invariant. A non-atomic alias swap
+   * leaves the alias transiently spanning both the old and new backing index, so the same
+   * logical entity is returned twice; a {@code terms} aggregation on {@code id.keyword} with
+   * {@code min_doc_count=2} surfaces exactly that.
    *
    * <p>Aggregating on {@code id.keyword} rather than {@code _id} works without enabling
-   * fielddata; OM sets the doc {@code _id} equal to the entity id so the two values match.
+   * fielddata; OM sets the doc {@code _id} equal to the entity id so the two values match. This
+   * is exact on a single-shard index (the OM test indices are created single-shard from the
+   * static mapping), unlike an approximate {@code cardinality} aggregation, which can differ
+   * from the doc count by a handful purely from HyperLogLog error and produce false positives.
    */
-  public long distinctIds(final String alias) {
+  public boolean hasDuplicateIds(final String alias) {
     final String body =
-        "{\"size\":0,\"aggs\":{\"distinct_ids\":{\"cardinality\":{\"field\":\"id.keyword\","
-            + "\"precision_threshold\":40000}}}}";
-    final JsonNode response = search.post("/" + alias + "/_search", body);
-    return response.path("aggregations").path("distinct_ids").path("value").asLong();
+        "{\"size\":0,\"aggs\":{\"dupes\":{\"terms\":{\"field\":\"id.keyword\","
+            + "\"min_doc_count\":2,\"size\":1}}}}";
+    final JsonNode response = search.search(alias, body);
+    return !response.path("aggregations").path("dupes").path("buckets").isEmpty();
   }
 
   public void assertCountAtLeast(final String indexOrAlias, final long minimum) {
@@ -91,11 +109,11 @@ public final class SearchAssertions {
             + "{\"term\":{\"entityType\":\""
             + entityType
             + "\"}},"
-            + "{\"term\":{\"fullyQualifiedName.keyword\":\""
+            + "{\"term\":{\"fullyQualifiedName\":\""
             + escape(fqn)
             + "\"}}"
             + "]}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
     final long count = response.path("count").asLong();
     assertThat(count).as("%s '%s' should be indexed in %s", entityType, fqn, alias).isEqualTo(1);
   }
@@ -107,11 +125,11 @@ public final class SearchAssertions {
             + "{\"term\":{\"entityType\":\""
             + entityType
             + "\"}},"
-            + "{\"term\":{\"fullyQualifiedName.keyword\":\""
+            + "{\"term\":{\"fullyQualifiedName\":\""
             + escape(fqn)
             + "\"}}"
             + "]}}}";
-    final JsonNode response = search.post("/" + alias + "/_count", body);
+    final JsonNode response = search.count(alias, body);
     final long count = response.path("count").asLong();
     assertThat(count).as("%s '%s' should NOT be indexed in %s", entityType, fqn, alias).isZero();
   }

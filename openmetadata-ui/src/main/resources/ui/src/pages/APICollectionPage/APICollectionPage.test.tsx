@@ -20,9 +20,8 @@ import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import APICollectionPage from './APICollectionPage';
-
 jest.mock('../../rest/apiCollectionsAPI', () => ({
   getApiCollectionByFQN: jest.fn().mockResolvedValue({}),
   restoreApiCollection: jest.fn().mockResolvedValue({ version: 1 }),
@@ -34,14 +33,18 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
   getApiEndPoints: jest.fn().mockResolvedValue({ paging: { total: 0 } }),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
+  getEntityMissingError: jest.fn(),
+  getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
+}));
+jest.mock('../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('test-api-collection'),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
-  getEntityMissingError: jest.fn(),
   getFeedCounts: jest.fn(),
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({

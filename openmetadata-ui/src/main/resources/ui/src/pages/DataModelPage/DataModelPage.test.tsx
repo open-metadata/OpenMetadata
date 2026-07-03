@@ -126,22 +126,25 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../utils/DataModelsUtils', () => ({
   getSortedDataModelColumnTags: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/TableUtils', () => {
+jest.mock('../../utils/TablePureUtils', () => {
   return {
     getTierTags: jest.fn().mockImplementation((tags) => tags),
   };
 });
 
-jest.mock('../../utils/TagsUtils', () => ({
+jest.mock('../../utils/TagsPureUtils', () => ({
   updateTierTag: () => mockUpdateTierTag(),
 }));
 
@@ -154,7 +157,7 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
 }));
 

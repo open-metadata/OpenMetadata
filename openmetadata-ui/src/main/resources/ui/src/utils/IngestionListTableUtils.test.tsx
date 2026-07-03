@@ -19,8 +19,10 @@ import {
   renderTypeField,
 } from './IngestionListTableUtils';
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.name || ''),
+}));
+jest.mock('./EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text, searchText) => {
     if (searchText) {
       return text.replace(
@@ -34,7 +36,7 @@ jest.mock('./EntityUtils', () => ({
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 

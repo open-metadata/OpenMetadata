@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -183,6 +184,7 @@ class CreateTaskTest {
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Failed));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Revoked));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Expired));
   }
 
   @Test
@@ -190,6 +192,9 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Open));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.InProgress));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    // ManualRevoke is a live substate — access is still granted at the source and the workflow
+    // is parked waiting for a human to confirm the revoke — so it must classify as non-terminal.
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.ManualRevoke));
     // Approved and Granted are non-terminal so the next-stage CreateTask listener
     // (e.g. Data Access Request's ApprovedAccess → GrantedAccess advancement) can
     // update status/workflowStageId/availableTransitions instead of preserving
@@ -197,6 +202,21 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Approved));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Granted));
     assertFalse(CreateTask.isTerminalTaskStatus(null));
+  }
+
+  @Test
+  void testTaskRepositoryActiveStatusesMatchTerminalPredicate() {
+    List<TaskEntityStatus> expected =
+        java.util.Arrays.stream(TaskEntityStatus.values())
+            .filter(s -> !CreateTask.isTerminalTaskStatus(s))
+            .toList();
+    assertEquals(
+        expected,
+        TaskRepository.NON_TERMINAL_TASK_STATUSES,
+        () ->
+            "TaskRepository.NON_TERMINAL_TASK_STATUSES drifted from CreateTask.isTerminalTaskStatus. "
+                + "Add the new non-terminal status to NON_TERMINAL_TASK_STATUSES so the duplicate-DAR "
+                + "guard keeps treating it as active.");
   }
 
   // ---- resolveEffectiveDueDate ----
@@ -357,6 +377,153 @@ class CreateTaskTest {
             TaskEntityStatus.Granted, Map.of("duration", "not-a-duration"), requested));
   }
 
+  // ---- resolveEffectiveExpirationDate ----
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonGrantedStatus() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Approved, Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Open, Map.of("duration", "P14D")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Revoked, Map.of("duration", "P14D")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNullPayload() {
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, null));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonMapPayload() {
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, "plain"));
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, 42));
+    assertNull(CreateTask.resolveEffectiveExpirationDate(TaskEntityStatus.Granted, List.of("a")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullWhenDurationMissingOrBlank() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("accessType", "FullAccess")));
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "  ")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForNonStringDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", 14)));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForUnparseableDuration() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "not-a-duration")));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesDayDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "P14D"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long fourteenDays = 14L * 24 * 60 * 60 * 1000;
+    assertTrue(result >= before + fourteenDays);
+    assertTrue(result <= after + fourteenDays);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateComputesHourDuration() {
+    long before = System.currentTimeMillis();
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "PT2H"));
+    long after = System.currentTimeMillis();
+
+    assertNotNull(result);
+    long twoHours = 2L * 60 * 60 * 1000;
+    assertTrue(result >= before + twoHours);
+    assertTrue(result <= after + twoHours);
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateIsIdempotentWhenPayloadAlreadyHasIt() {
+    // Re-entry into the Granted stage (or upstream-set value) must not overwrite the
+    // existing expirationDate — that would silently extend access on every reload.
+    Long existing = 1700000000000L;
+    Long result =
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, Map.of("duration", "P14D", "expirationDate", existing));
+    assertEquals(existing, result);
+  }
+
+  // ---- withGrantExpirationDate ----
+
+  @Test
+  void testWithGrantExpirationDateMergesIntoPayloadOnGranted() {
+    Map<String, Object> payload =
+        Map.of("accessType", "Masked", "duration", "P14D", "reason", "audit");
+    Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
+
+    assertTrue(result instanceof Map<?, ?>);
+    Map<?, ?> mergedMap = (Map<?, ?>) result;
+    assertEquals("Masked", mergedMap.get("accessType"));
+    assertEquals("P14D", mergedMap.get("duration"));
+    assertEquals("audit", mergedMap.get("reason"));
+    Object expiration = mergedMap.get("expirationDate");
+    assertNotNull(expiration);
+    assertTrue(expiration instanceof Long);
+    long expirationMillis = (Long) expiration;
+    assertTrue(expirationMillis > System.currentTimeMillis());
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNotGranted() {
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Approved, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenNoDuration() {
+    Map<String, Object> payload = Map.of("accessType", "FullAccess");
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenPayloadAlreadyHasExpirationDate() {
+    Map<String, Object> payload = Map.of("duration", "P14D", "expirationDate", 1700000000000L);
+    assertSame(payload, CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload));
+  }
+
+  @Test
+  void testWithGrantExpirationDateReturnsSameRefWhenPayloadNotMap() {
+    assertSame("string", CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, "string"));
+    assertNull(CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, null));
+  }
+
+  @Test
+  void testWithGrantExpirationDateDoesNotMutateOriginalPayload() {
+    // The payload comes in from the workflow runtime; mutating it could leak state into
+    // subsequent listeners. Confirm we produce a fresh map and leave the input alone.
+    Map<String, Object> payload = new java.util.HashMap<>();
+    payload.put("duration", "P14D");
+    Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
+
+    assertFalse(payload.containsKey("expirationDate"));
+    assertTrue(result instanceof Map<?, ?>);
+    assertTrue(((Map<?, ?>) result).containsKey("expirationDate"));
+  }
+
   @Test
   void testResolveEffectiveDueDateWithNullRequestedDueDateAndValidDurationReturnsComputedValue() {
     Long result =
@@ -436,5 +603,114 @@ class CreateTaskTest {
   @Test
   void testParseMillisFromIso8601DurationReturnsFallbackForNullFallback() {
     assertNull(CreateTask.parseMillisFromIso8601Duration("garbage", null));
+  }
+
+  // ---- isSupersedablePriorApprovalTask ----
+
+  @Test
+  void testIsSupersedableWhenPriorBelongsToEarlierRunOfSameWorkflow() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenNoPriorTaskExists() {
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(null, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorHasNoWorkflowInstance() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task().withId(UUID.randomUUID()).withWorkflowDefinitionId(workflowDefinitionId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorIsTheSameRun() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    UUID workflowInstanceId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(workflowInstanceId);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, workflowInstanceId));
+  }
+
+  @Test
+  void testIsNotSupersedableAcrossDifferentWorkflowDefinitions() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowDefinitionUnknown() {
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(UUID.randomUUID())
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, null, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenCurrentWorkflowInstanceUnknown() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID());
+
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, null));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenPriorTaskIsTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Cancelled);
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+  }
+
+  @Test
+  void testIsSupersedableWhenPriorTaskIsApprovedButNotYetTerminal() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task prior =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Approved);
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
 }

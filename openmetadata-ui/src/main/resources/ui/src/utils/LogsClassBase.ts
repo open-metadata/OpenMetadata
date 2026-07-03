@@ -17,11 +17,11 @@ import { OPEN_METADATA } from '../constants/service-guide.constant';
 import { Pipeline } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { getNameFromFQN, getTableFQNFromColumnFQN } from './CommonUtils';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import Fqn from './Fqn';
+import { getNameFromFQN, getTableFQNFromColumnFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
-import { getSettingsPathFromPipelineType } from './IngestionUtils';
+import { getSettingsPathFromPipelineType } from './IngestionConfigUtils';
 import {
   getApplicationDetailsPath,
   getDataQualityPagePath,

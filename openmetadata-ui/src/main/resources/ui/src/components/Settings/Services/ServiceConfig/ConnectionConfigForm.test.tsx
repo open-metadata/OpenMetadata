@@ -10,15 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act, forwardRef } from 'react';
+import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { MOCK_ATHENA_SERVICE } from '../../../../mocks/Service.mock';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
 import * as LocalUtils from '../../../../utils/i18next/LocalUtil';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { loadConnectionSchema } from '../../../../utils/ServiceConnectionUtils';
+import {
+  buildValidConfig,
+  flattenAuthTypeIntoConfig,
+  getFilteredSchema,
+  getMissingRequiredFieldsCount,
+  getSchemaWithSynthesizedAuthType,
+  loadConnectionSchema,
+  wrapFlatCredentialsIntoAuthType,
+} from '../../../../utils/ServiceConnectionUtils';
 import ConnectionConfigForm from './ConnectionConfigForm';
 
 const mockServicesData = {
@@ -72,6 +81,45 @@ const formData = {
   supportsQueryComment: true,
 };
 
+const ambiguousAuthSchema = {
+  type: 'object',
+  required: ['username'],
+  properties: {
+    username: {
+      type: 'string',
+    },
+    authType: {
+      oneOf: [
+        {
+          title: 'Basic Auth',
+          type: 'object',
+          properties: {
+            password: {
+              type: 'string',
+            },
+          },
+          additionalProperties: false,
+        },
+        {
+          title: 'Cloud SQL Auth',
+          type: 'object',
+          properties: {
+            password: {
+              type: 'string',
+            },
+            gcpConfig: {
+              type: 'object',
+            },
+          },
+          additionalProperties: false,
+        },
+      ],
+    },
+  },
+};
+
+const mockTestConnectionProps = jest.fn();
+
 jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
   getDatabaseConfig: jest.fn().mockResolvedValue({
     schema: MOCK_ATHENA_SERVICE,
@@ -115,6 +163,7 @@ jest.mock('../../../../utils/SearchServiceUtils', () => ({
 }));
 
 jest.mock('../../../../utils/JSONSchemaFormUtils', () => ({
+  formatFormDataForRender: jest.fn((data) => data),
   formatFormDataForSubmit: jest.fn(),
 }));
 
@@ -122,10 +171,16 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
   buildValidConfig: jest.fn().mockReturnValue({}),
   loadConnectionSchema: jest
     .fn()
-    .mockResolvedValue({ schema: { name: 'test' }, uiSchema: {} }),
+    .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
+  getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
+  hasMissingRequiredFlatCredential: jest.fn().mockReturnValue(false),
+  getSchemaWithSynthesizedAuthType: jest.fn((schema) => schema),
+  wrapFlatCredentialsIntoAuthType: jest.fn((config) => config),
+  flattenAuthTypeIntoConfig: jest.fn((config) => config),
 }));
 
 jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
@@ -136,35 +191,68 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
-jest.mock('../../../../utils/BrandData/BrandClassBase', () => ({
-  __esModule: true,
-  default: {
-    getPageTitle: jest.fn().mockReturnValue('OpenMetadata'),
-  },
-}));
-
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   forwardRef(
-    jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (
-      <div data-testid="form-builder">
-        {children}
-        <button
-          data-testid="submit-button"
-          onClick={() => onSubmit({ formData })}>
-          Submit FormBuilder
-        </button>
-        <button onClick={onCancel}>Cancel FormBuilder</button>
-      </div>
-    ))
+    jest
+      .fn()
+      .mockImplementation(
+        ({
+          children,
+          isSubmitDisabled,
+          noValidate,
+          onChange,
+          onSubmit,
+          onCancel,
+        }) => (
+          <div
+            data-no-validate={String(Boolean(noValidate))}
+            data-testid="form-builder">
+            {children}
+            <button
+              data-testid="change-valid-form"
+              onClick={() => onChange({ formData })}>
+              Change FormBuilder
+            </button>
+            <button
+              data-testid="change-edited-form"
+              onClick={() =>
+                onChange({
+                  formData: {
+                    ...formData,
+                    username: 'changed-admin',
+                  },
+                })
+              }>
+              Change FormBuilder With Edits
+            </button>
+            <button
+              data-testid="submit-button"
+              disabled={isSubmitDisabled}
+              onClick={() => onSubmit({ formData })}>
+              Submit FormBuilder
+            </button>
+            <button onClick={onCancel}>Cancel FormBuilder</button>
+          </div>
+        )
+      )
   )
 );
 
 jest.mock('../../../common/TestConnection/TestConnection', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <p data-testid="test-connection">TestConnection</p>
-    ))
+  jest.fn().mockImplementation((props) => {
+    mockTestConnectionProps(props);
+
+    return (
+      <div>
+        <p data-testid="test-connection">TestConnection</p>
+        <button
+          data-testid="mark-test-connection-success"
+          onClick={() => props.onTestConnectionStatusChange?.(true)}>
+          Success
+        </button>
+      </div>
+    );
+  })
 );
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -209,6 +297,13 @@ const mockProps = {
 
 describe('ServiceConfig', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+      platform: 'Argo',
+    });
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
     jest
       .spyOn(LocalUtils, 'Transi18next')
       .mockImplementation(() => <>message.airflow-host-ip-address</>);
@@ -258,12 +353,33 @@ describe('ServiceConfig', () => {
     ).toBeInTheDocument();
   });
 
+  it('should render no config available if schema loading fails', async () => {
+    (loadConnectionSchema as jest.Mock).mockRejectedValueOnce(
+      new Error('schema failed')
+    );
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(
+      await screen.findByText('message.no-config-available')
+    ).toBeInTheDocument();
+  });
+
   it('should call onSubmit when submit button is clicked', async () => {
-    const mockSubmit = (
-      formatFormDataForSubmit as jest.Mock
-    ).mockImplementation(() => ({
+    const flattenedFormData = {
       ...formData,
-    }));
+      password: 'secret',
+    };
+
+    (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValueOnce(
+      flattenedFormData
+    );
+    const mockSubmit = (formatFormDataForSubmit as jest.Mock).mockReturnValue({
+      ...flattenedFormData,
+    });
+
     await act(async () => {
       render(<ConnectionConfigForm {...mockProps} />);
     });
@@ -271,11 +387,258 @@ describe('ServiceConfig', () => {
 
     fireEvent.click(submitButton);
 
-    expect(mockSubmit).toHaveBeenCalledWith(formData);
+    expect(flattenAuthTypeIntoConfig).toHaveBeenCalledWith(formData, {
+      type: 'object',
+    });
+    expect(mockSubmit).toHaveBeenCalledWith(flattenedFormData);
+  });
+
+  it('should wrap flat credentials into authType for rendering', async () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        password: {
+          type: 'string',
+          format: 'password',
+        },
+        privateKey: {
+          type: 'string',
+          format: 'password',
+        },
+      },
+    };
+    const rawConfig = {
+      password: 'secret',
+    };
+    const wrappedConfig = {
+      authType: {
+        password: 'secret',
+      },
+    };
+
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema,
+      uiSchema: {},
+    });
+    (buildValidConfig as jest.Mock).mockReturnValueOnce(rawConfig);
+    (wrapFlatCredentialsIntoAuthType as jest.Mock).mockReturnValueOnce(
+      wrappedConfig
+    );
+    (getSchemaWithSynthesizedAuthType as jest.Mock).mockReturnValueOnce(schema);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(wrapFlatCredentialsIntoAuthType).toHaveBeenCalledWith(
+      rawConfig,
+      schema
+    );
+    expect(getSchemaWithSynthesizedAuthType).toHaveBeenCalledWith(
+      schema,
+      expect.any(Function)
+    );
+  });
+
+  it('should disable next until required schema fields are filled', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(1);
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: {
+        type: 'object',
+        required: ['username'],
+        properties: {
+          username: {
+            type: 'string',
+          },
+        },
+      },
+      uiSchema: {},
+    });
+    (getFilteredSchema as jest.Mock).mockReturnValueOnce({
+      username: {
+        type: 'string',
+      },
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).toBeDisabled();
+    });
+
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(0);
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should respect the parent submit disabled state', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} isSubmitDisabled />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).toBeDisabled();
+  });
+
+  it('should not gate the submit button on test connection results', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    expect(await screen.findByTestId('submit-button')).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should pass backend-ready flattened config to test connection', async () => {
+    const flattenedFormData = {
+      ...formData,
+      password: 'secret',
+    };
+
+    (flattenAuthTypeIntoConfig as jest.Mock).mockReturnValue(flattenedFormData);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.getData()).toEqual(flattenedFormData);
+    expect(flattenAuthTypeIntoConfig).toHaveBeenCalledWith(formData, {
+      type: 'object',
+    });
+  });
+
+  it('should expose required-field validation to the test connection component', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
+  it('should use selected ingestion runner when deciding whether to show the IP alert', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: true,
+      platform: 'Hybrid',
+    });
+    (buildValidConfig as jest.Mock).mockReturnValueOnce({
+      ingestionRunner: 'CollateSaaS',
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('ip-address')).toBeInTheDocument();
+    });
+  });
+
+  it('should enable next after a required test succeeds when auth schema validation is ambiguous', async () => {
+    (loadConnectionSchema as jest.Mock).mockResolvedValueOnce({
+      schema: ambiguousAuthSchema,
+      uiSchema: {},
+    });
+    (getFilteredSchema as jest.Mock).mockReturnValueOnce(
+      ambiguousAuthSchema.properties
+    );
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should not submit or move to the next step when the test connection succeeds', async () => {
+    const onSave = jest.fn();
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          requireTestConnection
+          onSave={onSave}
+        />
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('should keep next enabled when the form emits an equivalent change after test succeeds', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+    fireEvent.click(screen.getByTestId('mark-test-connection-success'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByTestId('change-valid-form'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).not.toBeDisabled();
+    });
+  });
+
+  it('should disable next when required fields are missing', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('submit-button')).toBeDisabled();
+    });
+  });
+
+  it('should render test connection even when airflow status is unavailable', async () => {
+    (useAirflowStatus as jest.Mock).mockReturnValue({
+      reason: 'reason message',
+      isAirflowAvailable: false,
+      platform: 'Argo',
+    });
+
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    expect(await screen.findByTestId('test-connection')).toBeInTheDocument();
   });
 
   it('should not display host ip if unable to fetch', async () => {
-    (getPipelineServiceHostIp as jest.Mock).mockRejectedValue(new Error());
+    (getPipelineServiceHostIp as jest.Mock).mockRejectedValueOnce(new Error());
     render(<ConnectionConfigForm {...mockProps} />);
     await act(async () => {
       expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
@@ -295,11 +658,63 @@ describe('ServiceConfig', () => {
     });
   });
 
-  it('should render with correct brandName (OpenMetadata or Collate)', async () => {
+  it('should add additionalMissingFieldsCount to the count passed to TestConnection', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm {...mockProps} additionalMissingFieldsCount={1} />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
+  });
+
+  it('should call onValidateAdditionalRequiredFields when validating for test connection', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+    testConnectionProps.onValidateFormRequiredFields();
+
+    expect(onValidateAdditionalRequiredFields).toHaveBeenCalled();
+  });
+
+  it('should return false from form validation when onValidateAdditionalRequiredFields returns false', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
+  it('should render with correct brandName keys', async () => {
     const mockTransi18next = jest.fn(({ values }) => (
       <div data-testid="transi18next-mock">
         {values?.hostIp && `Host IP: ${values.hostIp}`}
-        {values?.brandName && ` Brand: ${values.brandName}`}
       </div>
     ));
 
@@ -313,14 +728,11 @@ describe('ServiceConfig', () => {
 
     expect(ipAddress).toBeInTheDocument();
 
-    expect(ipAddress.textContent).toMatch(/OpenMetadata|Collate/);
-    expect(ipAddress.textContent).not.toContain('{{brandName}}');
-
     expect(mockTransi18next).toHaveBeenCalledWith(
       expect.objectContaining({
         i18nKey: 'message.airflow-host-ip-address',
         values: expect.objectContaining({
-          brandName: 'OpenMetadata',
+          hostIp: '192.168.0.1',
         }),
       }),
       expect.anything()

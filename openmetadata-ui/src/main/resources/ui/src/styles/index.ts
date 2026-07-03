@@ -11,10 +11,6 @@
  *  limitations under the License.
  */
 
-import '@fontsource/poppins'; // Font 400
-import '@fontsource/poppins/300.css'; // Font 300
-import '@fontsource/poppins/500.css'; // Font 500
-import '@fontsource/poppins/600.css'; // Font 600
 import '@fontsource/source-code-pro'; // Font 400
 
 // Variable Inter aliased under the "Inter" family name. Loads one woff2 per
@@ -23,7 +19,6 @@ import '@fontsource/source-code-pro'; // Font 400
 // header in {@link ./inter-variable.css} for context.
 import './inter-variable.css';
 
-import '@react-awesome-query-builder/antd/css/styles.css';
 // reactflow CSS is co-located with the runtime in LineageProvider so it only
 // loads when the lineage canvas mounts. Previously imported here, which kept
 // `vendor-reactflow` in the entry chunk's modulepreload list even after the

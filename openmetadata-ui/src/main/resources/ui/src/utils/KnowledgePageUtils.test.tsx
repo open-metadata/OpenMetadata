@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import {
+  Article,
   KnowledgePage,
   PageHierarchy,
   PageType,
@@ -23,10 +24,50 @@ import {
   extractKnowledgePageParentFQN,
   findPageAndParentInTreeData,
   findPageInTreeData,
-  getLink,
+  getKnowledgePageName,
   getUpdatePageHierarchy,
   integrateNodesIntoHierarchy,
-} from './KnowledgePageUtils';
+} from './KnowledgePagePureUtils';
+import { getLink } from './KnowledgePageUtils';
+
+describe('getKnowledgePageName', () => {
+  it('returns displayName when present', () => {
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' })
+    ).toBe('My Page');
+  });
+
+  it('returns name when displayName is absent', () => {
+    expect(getKnowledgePageName({ name: 'my-page' })).toBe('my-page');
+  });
+
+  it('returns fallback via default t when both name and displayName are absent', () => {
+    expect(getKnowledgePageName({})).toBe('label.untitled');
+  });
+
+  it('returns fallback via custom tFn when both name and displayName are absent', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName({}, tFn)).toBe('translated:label.untitled');
+  });
+
+  it('uses custom tFn fallback when knowledgePage is undefined', () => {
+    const tFn = (key: string) => `translated:${key}`;
+
+    expect(getKnowledgePageName(undefined, tFn)).toBe(
+      'translated:label.untitled'
+    );
+  });
+
+  it('prefers displayName over name even when tFn is provided', () => {
+    const tFn = jest.fn();
+
+    expect(
+      getKnowledgePageName({ name: 'my-page', displayName: 'My Page' }, tFn)
+    ).toBe('My Page');
+    expect(tFn).not.toHaveBeenCalled();
+  });
+});
 
 describe('KnowledgePageUtils', () => {
   it('findPageAndParentInTreeData should return the correct value', () => {
@@ -188,7 +229,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/456',
         deleted: false,
       };
@@ -219,7 +260,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };
@@ -232,7 +273,7 @@ describe('KnowledgePageUtils', () => {
       );
 
       expect(link).toBeInTheDocument();
-      expect(link.textContent).toContain('label.untitled');
+      expect(link.textContent).toContain('Knowledge No Name');
     });
 
     it('should use fullyQualifiedName in test ID when displayName is not provided', () => {
@@ -245,7 +286,7 @@ describe('KnowledgePageUtils', () => {
         version: 1,
         updatedAt: 123456789,
         updatedBy: 'test-user',
-        page: {} as any,
+        page: {} as unknown as Article,
         href: '/api/v1/knowledgePages/789',
         deleted: false,
       };

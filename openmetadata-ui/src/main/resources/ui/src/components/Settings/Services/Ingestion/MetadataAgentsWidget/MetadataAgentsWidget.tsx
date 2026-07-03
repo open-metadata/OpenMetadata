@@ -13,7 +13,7 @@
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
@@ -31,11 +31,18 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import AddIngestionButton from '../AddIngestionButton.component';
-import IngestionListTable from '../IngestionListTable/IngestionListTable';
 import './metadata-agents-widget.less';
 import { MetadataAgentsWidgetProps } from './MetadataAgentsWidget.interface';
+
+const IngestionListTable = withSuspenseFallback(
+  lazy(() => import('../IngestionListTable/IngestionListTable'))
+);
+
+const AddIngestionButton = withSuspenseFallback(
+  lazy(() => import('../AddIngestionButton.component'))
+);
 
 function MetadataAgentsWidget({
   serviceName,
@@ -80,9 +87,10 @@ function MetadataAgentsWidget({
       serviceUtilClassBase.getExtraIngestionMenuItems(
         serviceCategory as ServiceCategory,
         serviceName,
-        navigate
+        navigate,
+        serviceDetails
       ),
-    [navigate, serviceCategory, serviceName]
+    [navigate, serviceCategory, serviceDetails, serviceName]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {

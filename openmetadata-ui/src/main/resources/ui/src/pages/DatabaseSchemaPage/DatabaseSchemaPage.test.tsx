@@ -18,7 +18,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
-import { fetchEntityTaskCountsInto } from '../../utils/CommonUtils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
@@ -26,7 +26,6 @@ import {
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
-
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
@@ -99,7 +98,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <p>{children}</p>)
 );
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
 }));
 
@@ -119,11 +118,17 @@ jest.mock('../../rest/tableAPI', () => ({
     ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation((error) => error),
+}));
+
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation((error) => error),
   getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
+}));
+
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn(),
 }));
 
@@ -131,7 +136,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getTierTags: jest.fn(),
   getTagsWithoutTier: jest.fn(),
   extractColumnsFromData: jest.fn().mockReturnValue([]),
@@ -259,6 +264,14 @@ jest.mock(
         .mockImplementation(({ children }) =>
           React.createElement('div', null, children)
         ),
+    };
+  }
+);
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericContext',
+  () => {
+    return {
       useGenericContext: jest.fn().mockReturnValue({
         data: {},
         permissions: DEFAULT_ENTITY_PERMISSION,

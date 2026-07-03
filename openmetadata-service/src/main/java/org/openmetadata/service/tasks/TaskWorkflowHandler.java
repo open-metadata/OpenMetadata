@@ -209,8 +209,7 @@ public class TaskWorkflowHandler {
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
-        if (task.getStatus() != TaskEntityStatus.Open
-            && task.getStatus() != TaskEntityStatus.InProgress) {
+        if (TaskRepository.isTerminalStatus(task.getStatus())) {
           throw new IllegalStateException(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
@@ -235,8 +234,6 @@ public class TaskWorkflowHandler {
           taskId);
       if (isApproveTransition(selectedTransition)) {
         captureApprover(taskRepository, taskId, user);
-      } else if (isGrantTransition(selectedTransition)) {
-        captureGrant(taskRepository, taskId, user);
       }
       return refreshTask(taskId);
     }
@@ -285,14 +282,6 @@ public class TaskWorkflowHandler {
     }
   }
 
-  private void captureGrant(TaskRepository taskRepository, UUID taskId, String user) {
-    try {
-      taskRepository.persistExpirationDate(taskId, user);
-    } catch (Exception e) {
-      LOG.warn("[TaskWorkflowHandler] Failed to compute expirationDate for task '{}'", taskId, e);
-    }
-  }
-
   /**
    * Identify an approval transition by its target status rather than its `id` string. Every
    * approve transition in our seeded workflows has `targetTaskStatus=Approved`, so this avoids
@@ -301,15 +290,6 @@ public class TaskWorkflowHandler {
   private static boolean isApproveTransition(TaskAvailableTransition selectedTransition) {
     return selectedTransition != null
         && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Approved;
-  }
-
-  /**
-   * Identify a grant transition by its target status (Granted). Matches the {@code markAsGranted}
-   * edge in the Data Access Request workflow without coupling to the transition id.
-   */
-  private static boolean isGrantTransition(TaskAvailableTransition selectedTransition) {
-    return selectedTransition != null
-        && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Granted;
   }
 
   /**
@@ -1193,6 +1173,7 @@ public class TaskWorkflowHandler {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
@@ -1213,7 +1194,9 @@ public class TaskWorkflowHandler {
       return defaultTransitionId;
     }
 
-    if (task != null && TaskEntityType.DataQualityReview == task.getType()) {
+    if (task != null
+        && (TaskEntityType.RecognizerFeedbackApproval == task.getType()
+            || TaskEntityType.DataQualityReview == task.getType())) {
       return isPositiveResolution(resolutionType) ? "true" : "false";
     }
 
@@ -1260,7 +1243,8 @@ public class TaskWorkflowHandler {
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
-        case Open, InProgress, Pending, Approved, Granted -> null;
+        case Expired -> TaskResolutionType.Expired;
+        case Open, InProgress, Pending, Approved, Granted, ManualRevoke -> null;
       };
     }
 

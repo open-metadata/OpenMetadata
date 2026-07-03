@@ -11,20 +11,31 @@
  *  limitations under the License.
  */
 import {
-  Badge,
+  Box,
   Button,
   Card,
   Dropdown,
+  Input,
   PaginationCardMinimal,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, FilterLines, Home02, Plus } from '@untitledui/icons';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Database01,
+  FilterFunnel02,
+  Plus,
+  SearchLg,
+  User03,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import AlertBar from '../../../components/AlertBar/AlertBar';
+import { useSearchParams } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -32,30 +43,42 @@ import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryMod
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
 import {
   MemoryFilterTab,
-  MemoryItem,
   MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
-import { MemoryStatus } from '../../../generated/entity/context/contextMemory';
-import { useAlertStore } from '../../../hooks/useAlertStore';
+import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import {
+  FILTER_TABS,
+  MEMORIES_PER_PAGE,
+  MEMORY_FIELDS,
+} from '../../../constants/ContextCenter.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
+  ContextMemoryListParams,
   deleteContextMemory,
+  getContextMemoryById,
+  getContextMemoryByName,
   getListContextMemories,
+  pinContextMemory,
+  unpinContextMemory,
 } from '../../../rest/contextMemoryAPI';
+import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
+import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-const MEMORIES_PER_PAGE = 10;
-const MEMORY_FIELDS = 'owners,tags,domains,relatedEntities';
-
-const FILTER_TABS = [
-  { id: 'all', label: 'label.all' },
-  { id: 'created-by-me', label: 'label.created-by-me' },
-  // { id: 'pinned', label: 'label.pinned' },
-  // { id: 'needs-review', label: 'label.needs-review' },
-] as const;
+import {
+  MemoryCounts,
+  MemoryFilterOption,
+  SearchOptionSource,
+} from './ContextCenterMemoriesPage.interface';
 
 const FILTER_BUTTON_BASE_CLS =
   'tw:flex tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-3' +
@@ -64,200 +87,232 @@ const FILTER_BUTTON_BASE_CLS =
   ' tw:ease-linear hover:tw:ring-brand tw:outline-hidden tw:whitespace-nowrap';
 
 const FILTER_BUTTON_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-primary tw:ring-primary`;
-const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-brand-50 tw:ring-brand-100`;
+const FILTER_BUTTON_ACTIVE_CLS = `${FILTER_BUTTON_BASE_CLS} tw:bg-utility-brand-50 tw:ring-utility-brand-100`;
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const currentUserName = getEntityName(currentUser);
-  const { alert } = useAlertStore();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { getResourcePermission } = usePermissionProvider();
 
-  const [memories, setMemories] = useState<MemoryItem[]>([]);
-  const [isMemoriesLoading, setIsMemoriesLoading] = useState(false);
+  const [memories, setMemories] = useState<ContextMemory[]>([]);
+  const [totalMemories, setTotalMemories] = useState(0);
+  const [memoryCounts, setMemoryCounts] = useState<MemoryCounts>({
+    totalVisible: 0,
+    pinnedVisible: 0,
+    createdByMeVisible: 0,
+  });
+  const [permissions, setPermissions] = useState<OperationPermission>(
+    DEFAULT_ENTITY_PERMISSION
+  );
+  const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
-  const [memoryToDelete, setMemoryToDelete] = useState<MemoryItem>();
-  const [memoryToEdit, setMemoryToEdit] = useState<MemoryItem>();
-  const [memoryToView, setMemoryToView] = useState<MemoryItem>();
+  const [isPinningMemoryId, setIsPinningMemoryId] = useState<string>();
+  const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
+  const [memoryToEdit, setMemoryToEdit] = useState<ContextMemory>();
+  const [memoryToView, setMemoryToView] = useState<ContextMemory>();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedAsset, setSelectedAsset] = useState<string>('');
-  const [selectedAuthor, setSelectedAuthor] = useState<string>('');
+  const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
+  const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
+  const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
+  const [authorSearch, setAuthorSearch] = useState('');
+  const [isAuthorOptionsLoading, setIsAuthorOptionsLoading] = useState(false);
   const [sortBy, setSortBy] = useState<MemorySortBy>('updated');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
+  const isAuthorSearchMounted = useRef(false);
 
   const SORT_OPTIONS = useMemo(
     () => [
       { id: 'updated', label: t('label.recently-updated') },
       { id: 'usage', label: t('label.most-used') },
-      { id: 'author', label: t('label.author-a-z') },
+      { id: 'updatedBy', label: t('label.updated-by') },
     ],
     [t]
   );
 
-  const fetchMemories = useCallback(async () => {
-    setIsMemoriesLoading(true);
-    try {
+  const { hasCreatePermission, hasDeletePermission, hasEditPermission } =
+    useMemo(
+      () => ({
+        hasCreatePermission: permissions.Create,
+        hasDeletePermission: permissions.Delete,
+        hasEditPermission: permissions.EditAll,
+      }),
+      [permissions.Create, permissions.Delete, permissions.EditAll]
+    );
+
+  const canDeleteMemory = useMemo(() => {
+    const memory = memoryToEdit ?? memoryToView;
+
+    const isOwner =
+      memory?.owners?.some((o) => o.name === currentUser?.name) ?? false;
+
+    return hasDeletePermission && (isOwner || Boolean(currentUser?.isAdmin));
+  }, [
+    hasDeletePermission,
+    memoryToEdit,
+    memoryToView,
+    currentUser?.name,
+    currentUser?.isAdmin,
+  ]);
+
+  const fetchMemories = useCallback(
+    async (showLoader = true) => {
+      if (showLoader) {
+        setIsMemoriesLoading(true);
+      }
+      try {
+        const sortConfig = getSortConfig(sortBy);
+        const authorFilter =
+          activeFilter === 'created-by-me'
+            ? currentUser?.id ?? currentUser?.name
+            : selectedAuthor?.id;
+        const response = await getListContextMemories({
+          limit: MEMORIES_PER_PAGE,
+          offset: (currentPage - 1) * MEMORIES_PER_PAGE,
+          fields: MEMORY_FIELDS,
+          q: debouncedSearch.trim() || undefined,
+          assets: selectedAsset?.id,
+          author: authorFilter,
+          pinned: activeFilter === 'pinned' ? true : undefined,
+          sortBy: sortConfig.sortBy,
+          sortOrder: sortConfig.sortOrder,
+        });
+        setMemories(response.data ?? []);
+        setTotalMemories(response.paging?.total ?? 0);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsMemoriesLoading(false);
+      }
+    },
+    [
+      activeFilter,
+      currentPage,
+      currentUser?.id,
+      currentUser?.name,
+      debouncedSearch,
+      selectedAsset?.id,
+      selectedAuthor?.id,
+      sortBy,
+    ]
+  );
+
+  const getVisibleMemoryCount = useCallback(
+    async (params?: ContextMemoryListParams) => {
       const response = await getListContextMemories({
-        limit: 1000,
-        fields: MEMORY_FIELDS,
+        ...params,
+        limit: 0,
+        offset: 0,
       });
-      const items: MemoryItem[] = (response.data ?? []).map((m) => ({
-        id: m.id,
-        name: m.name,
-        title: m.title,
-        summary: m.summary,
-        question: m.question ?? '',
-        answer: m.answer ?? '',
-        memoryType: m.memoryType,
-        status: m.status,
-        updatedBy: m.updatedBy,
-        updatedAt: m.updatedAt,
-        tags: m.tags,
-        usageCount: m.usageCount,
-        lastUsedAt: m.lastUsedAt,
-        relatedEntities: m.relatedEntities,
-      }));
-      setMemories(items);
+
+      return response.paging?.total ?? 0;
+    },
+    []
+  );
+
+  const fetchMemoryCounts = useCallback(async () => {
+    try {
+      const authorFilter = currentUser?.id ?? currentUser?.name;
+      const [totalVisible, pinnedVisible, createdByMeVisible] =
+        await Promise.all([
+          getVisibleMemoryCount(),
+          getVisibleMemoryCount({ pinned: true }),
+          authorFilter
+            ? getVisibleMemoryCount({ author: authorFilter })
+            : Promise.resolve(0),
+        ]);
+      setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [currentUser?.id, currentUser?.name, getVisibleMemoryCount]);
+
+  const fetchAuthorOptions = useCallback(async (query: string) => {
+    setIsAuthorOptionsLoading(true);
+    try {
+      const response = await getUserAndTeamSearch(query, true, 25);
+      const options = response.data.hits.hits
+        .map((hit): MemoryFilterOption | undefined => {
+          const source = hit._source as SearchOptionSource;
+          const id = source.name ?? source.id ?? hit._id;
+          if (!id) {
+            return undefined;
+          }
+
+          return {
+            id,
+            label: getEntityName(source),
+            displayName: source.displayName,
+            name: source.name,
+            type: source.entityType ?? source.type,
+          };
+        })
+        .filter((option): option is MemoryFilterOption => Boolean(option));
+      setAuthorOptions(options);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
-      setIsMemoriesLoading(false);
+      setIsAuthorOptionsLoading(false);
     }
   }, []);
+
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getResourcePermission(
+        ResourceEntity.CONTEXT_MEMORY
+      );
+      setPermissions(response);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, [getResourcePermission]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(searchValue), 300);
+
+    return () => clearTimeout(id);
+  }, [searchValue]);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedAuthorSearch(authorSearch), 300);
+
+    return () => clearTimeout(id);
+  }, [authorSearch]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (!isAuthorSearchMounted.current) {
+      isAuthorSearchMounted.current = true;
+
+      return;
+    }
+    fetchAuthorOptions(debouncedAuthorSearch);
+  }, [debouncedAuthorSearch, fetchAuthorOptions]);
 
   useEffect(() => {
     fetchMemories();
   }, [fetchMemories]);
 
-  const assetOptions = useMemo(() => {
-    const seen = new Map<
-      string,
-      { name: string; displayName: string; type: string }
-    >();
-    memories.forEach((m) =>
-      m.relatedEntities?.forEach((ref) => {
-        const fqn = ref.fullyQualifiedName ?? ref.id;
-        if (fqn && !seen.has(fqn)) {
-          seen.set(fqn, {
-            name: ref.name ?? fqn,
-            displayName: ref.displayName ?? ref.name ?? fqn,
-            type: ref.type ?? '',
-          });
-        }
-      })
-    );
+  useEffect(() => {
+    fetchPermission();
+    fetchMemoryCounts();
+  }, [fetchPermission, fetchMemoryCounts]);
 
-    return [
-      {
-        id: '',
-        label: t('label.all-entity', { entity: t('label.asset-plural') }),
-        displayName: '',
-        type: '',
-      },
-      ...Array.from(seen.entries())
-        .sort(([, a], [, b]) => a.displayName.localeCompare(b.displayName))
-        .map(([fqn, meta]) => ({
-          id: fqn,
-          label: meta.displayName,
-          displayName: meta.displayName,
-          type: meta.type,
-        })),
-    ];
-  }, [memories, t]);
-
-  const authorOptions = useMemo(() => {
-    const authors = new Set<string>();
-    memories.forEach((m) => {
-      if (m.updatedBy) {
-        authors.add(m.updatedBy);
-      }
-    });
-
-    return [
-      { id: '', label: t('label.all-entity', { entity: t('label.author') }) },
-      ...Array.from(authors)
-        .sort()
-        .map((name) => ({ id: name, label: name })),
-    ];
-  }, [memories, t]);
-
-  const filteredMemories = useMemo(() => {
-    let list = memories;
-
-    if (activeFilter === 'created-by-me') {
-      list = list.filter((m) => m.updatedBy === currentUser?.name);
-    } else if (activeFilter === 'pinned') {
-      list = list.filter(
-        (m) => m.status === MemoryStatus.Active && (m.usageCount ?? 0) > 0
-      );
-    } else if (activeFilter === 'needs-review') {
-      list = list.filter((m) => m.status === MemoryStatus.Draft);
-    }
-
-    if (selectedAsset) {
-      list = list.filter((m) =>
-        m.relatedEntities?.some(
-          (ref) => (ref.fullyQualifiedName ?? ref.id) === selectedAsset
-        )
-      );
-    }
-
-    if (selectedAuthor) {
-      list = list.filter((m) => m.updatedBy === selectedAuthor);
-    }
-
-    if (searchValue.trim()) {
-      const q = searchValue.toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.title?.toLowerCase().includes(q) ||
-          m.summary?.toLowerCase().includes(q) ||
-          m.question.toLowerCase().includes(q) ||
-          m.answer.toLowerCase().includes(q)
-      );
-    }
-
-    // Client-side sort
-    const sorted = [...list];
-    if (sortBy === 'updated') {
-      sorted.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-    } else if (sortBy === 'usage') {
-      sorted.sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0));
-    } else if (sortBy === 'author') {
-      sorted.sort((a, b) =>
-        (a.updatedBy ?? '').localeCompare(b.updatedBy ?? '')
-      );
-    }
-
-    return sorted;
-  }, [
-    memories,
-    activeFilter,
-    selectedAsset,
-    selectedAuthor,
-    searchValue,
-    sortBy,
-    currentUser,
-  ]);
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredMemories.length / MEMORIES_PER_PAGE)
-  );
-
-  const pagedMemories = useMemo(() => {
-    const start = (currentPage - 1) * MEMORIES_PER_PAGE;
-
-    return filteredMemories.slice(start, start + MEMORIES_PER_PAGE);
-  }, [filteredMemories, currentPage]);
+  const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
   const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
 
   const handleClearFilters = useCallback(() => {
-    setSelectedAsset('');
-    setSelectedAuthor('');
+    setSelectedAsset(undefined);
+    setSelectedAuthor(undefined);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -265,8 +320,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleFilterChange = useCallback((key: MemoryFilterTab) => {
     setActiveFilter(key);
     if (key === 'all') {
-      setSelectedAsset('');
-      setSelectedAuthor('');
+      setSelectedAsset(undefined);
+      setSelectedAuthor(undefined);
     }
     setCurrentPage(1);
   }, []);
@@ -276,13 +331,33 @@ const ContextCenterMemoriesPage: FC = () => {
     setCurrentPage(1);
   }, []);
 
-  const handleDeleteMemory = useCallback((memory: MemoryItem) => {
+  const handleDeleteMemory = useCallback((memory: ContextMemory) => {
     setMemoryToDelete(memory);
   }, []);
 
   const handleCancelDelete = useCallback(() => {
     setMemoryToDelete(undefined);
   }, []);
+
+  const handleTogglePin = useCallback(
+    async (memory: ContextMemory) => {
+      setIsPinningMemoryId(memory.id);
+      try {
+        if (memory.pinned) {
+          await unpinContextMemory(memory.id);
+        } else {
+          await pinContextMemory(memory.id);
+        }
+        await fetchMemories(false);
+        await fetchMemoryCounts();
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        setIsPinningMemoryId(undefined);
+      }
+    },
+    [fetchMemories, fetchMemoryCounts]
+  );
 
   const handleConfirmDelete = useCallback(async () => {
     if (!memoryToDelete) {
@@ -292,28 +367,54 @@ const ContextCenterMemoriesPage: FC = () => {
     try {
       await deleteContextMemory(memoryToDelete.id);
       showSuccessToast(
-        t('server.entity-deleted-successfully', { entity: t('label.memory') })
+        t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
-      fetchMemories();
+      await fetchMemories();
+      await fetchMemoryCounts();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeletingMemory(false);
     }
-  }, [memoryToDelete, fetchMemories, t]);
+  }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
 
-  const handleEditMemory = useCallback((memory: MemoryItem) => {
-    setMemoryToEdit(memory);
-    setIsViewModalOpen(false);
-    setMemoryToView(undefined);
-    setIsCreateModalOpen(true);
+  const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
+    try {
+      return await getContextMemoryById(memory.id, MEMORY_FIELDS);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+
+      return memory;
+    }
   }, []);
 
-  const handleViewMemory = useCallback((memory: MemoryItem) => {
-    setMemoryToView(memory);
-    setIsViewModalOpen(true);
-  }, []);
+  const handleEditMemory = useCallback(
+    async (memory: ContextMemory) => {
+      const completeMemory = await fetchCompleteMemory(memory);
+      setMemoryToEdit(completeMemory);
+      setIsViewModalOpen(false);
+      setMemoryToView(undefined);
+      setIsCreateModalOpen(true);
+    },
+    [fetchCompleteMemory]
+  );
+
+  const handleViewMemory = useCallback(
+    async (memory: ContextMemory) => {
+      const completeMemory = await fetchCompleteMemory(memory);
+      setMemoryToView(completeMemory);
+      setIsViewModalOpen(true);
+      setSearchParams((prev) => {
+        if (completeMemory.name) {
+          prev.set('memory', completeMemory.name);
+        }
+
+        return prev;
+      });
+    },
+    [fetchCompleteMemory, setSearchParams]
+  );
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
@@ -323,22 +424,53 @@ const ContextCenterMemoriesPage: FC = () => {
   const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-  }, []);
+    setSearchParams((prev) => {
+      prev.delete('memory');
+
+      return prev;
+    });
+  }, [setSearchParams]);
+
+  useEffect(() => {
+    const memoryName = searchParams.get('memory');
+    if (!memoryName || isViewModalOpen) {
+      return;
+    }
+
+    getContextMemoryByName(memoryName, MEMORY_FIELDS)
+      .then((memory) => handleViewMemory(memory))
+      .catch((err: AxiosError) => {
+        showErrorToast(err);
+        setSearchParams((prev) => {
+          prev.delete('memory');
+
+          return prev;
+        });
+      });
+  }, [isViewModalOpen, searchParams, handleViewMemory, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
     fetchMemories();
-  }, [handleModalClose, fetchMemories]);
+    fetchMemoryCounts();
+  }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
-  const sharedCount = memories.filter(
-    (m) => m.status === MemoryStatus.Active
-  ).length;
-  const createdByMeCount = memories.filter(
-    (m) => m.updatedBy === currentUser?.name
-  ).length;
-  const totalUsageCount = memories.reduce(
-    (sum, m) => sum + (m.usageCount ?? 0),
-    0
+  const countCards = useMemo(
+    () => [
+      {
+        filterKey: 'all' as const,
+        label: t('label.total-memory-plural'),
+        value: memoryCounts.totalVisible,
+        icon: null,
+      },
+      {
+        filterKey: 'created-by-me' as const,
+        label: t('label.created-by-me'),
+        value: memoryCounts.createdByMeVisible,
+        icon: null,
+      },
+    ],
+    [memoryCounts, t]
   );
 
   const headerActions = (
@@ -353,29 +485,18 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   return (
-    <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
-      data-testid="context-center-memories-page">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
+    <Box
+      className={`tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      data-testid="context-center-memories-page"
+      direction="col">
       <ContextCenterHeader
         actionsSlot={headerActions}
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
-          },
-          {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.memory-plural'),
-            url: '',
+            label: t('label.memory-plural'),
           },
         ]}
+        hasPermission={hasCreatePermission}
         searchPlaceholder={t('label.search-memories')}
         searchQuery={searchValue}
         subtitle={t('message.context-center-memories-subtitle')}
@@ -383,258 +504,293 @@ const ContextCenterMemoriesPage: FC = () => {
         onSearch={handleSearchChange}
       />
 
-      {/* Stats cards */}
-      <div className="tw:grid tw:grid-cols-4 tw:gap-6 tw:mb-5">
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
-            {t('label.total-memory-plural')}
-          </Typography>
-          <Typography size="display-sm" weight="semibold">
-            {memories.length}
-          </Typography>
-        </Card>
+      <div className="tw:grid tw:grid-cols-3 tw:gap-6">
+        {countCards.map(({ filterKey, label, value, icon }) => {
+          const isActive = activeFilter === filterKey;
 
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
-            {t('label.created-by-me')}
-          </Typography>
-          <Typography size="display-sm" weight="semibold">
-            {createdByMeCount}
-          </Typography>
-        </Card>
-
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
-            {t('label.shared-with-workspace')}
-          </Typography>
-          <Typography size="display-sm" weight="semibold">
-            {sharedCount}
-          </Typography>
-        </Card>
-
-        <Card className="tw:p-4 tw:flex tw:flex-col tw:gap-1">
-          <Typography className="tw:text-tertiary" weight="medium">
-            {t('label.times-used-in-chats')}
-          </Typography>
-          <Typography size="display-sm" weight="semibold">
-            {totalUsageCount}
-          </Typography>
-        </Card>
+          return (
+            <Card
+              className={classNames(
+                'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
+                'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
+                { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
+              )}
+              key={filterKey}
+              onClick={() => handleFilterChange(filterKey)}>
+              <ChevronRight
+                className={classNames(
+                  'tw:absolute tw:top-3 tw:right-3 tw:text-brand-600 tw:transition-opacity tw:duration-150',
+                  {
+                    'tw:opacity-100': isActive,
+                    'tw:opacity-0 tw:group-hover:opacity-100': !isActive,
+                  }
+                )}
+                size={14}
+                strokeWidth={2}
+              />
+              <Box align="center" className="tw:mb-1" gap={2}>
+                {icon}
+                <Typography className="tw:text-tertiary" size="text-xs">
+                  {label}
+                </Typography>
+              </Box>
+              <Typography size="display-xs" weight="semibold">
+                {value}
+              </Typography>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Memories card with tabs */}
-      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-115">
-        <div className="tw:px-6 tw:py-5">
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Typography size="text-md" weight="medium">
-              {t('label.memory-plural')}
-            </Typography>
-            <Badge color="brand" type="pill-color">
-              {filteredMemories.length}
-            </Badge>
-          </div>
-          <Typography className="tw:text-gray-600" size="text-sm">
-            {t('label.signed-in-as')} <strong>{currentUserName}</strong>.{' '}
-            {t('message.you-can-edit-memories-you-created')}.
-          </Typography>
-        </div>
+      <Box align="center" className="tw:py-5" gap={3} wrap="wrap">
+        <Tabs
+          className="tw:w-max"
+          selectedKey={activeFilter}
+          onSelectionChange={(key) =>
+            handleFilterChange(key as MemoryFilterTab)
+          }>
+          <Tabs.List
+            className="tw:gap-2"
+            items={FILTER_TABS.map((tab) => ({
+              id: tab.id,
+              label: <div className="tw:leading-4.5">{t(tab.label)}</div>,
+            }))}
+            type="button-brand">
+            {(tab) => (
+              <Tabs.Item
+                {...tab}
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                    {
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                        isSelected,
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
+                        !isSelected,
+                    }
+                  )
+                }
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
 
-        <div className="tw:px-5 tw:py-3 tw:bg-tertiary tw:flex tw:items-center tw:gap-3 tw:flex-wrap">
-          <Tabs
-            className="tw:w-max"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) =>
-              handleFilterChange(key as MemoryFilterTab)
-            }>
-            <Tabs.List
-              className="tw:gap-2"
-              items={FILTER_TABS.map((tab) => ({
-                id: tab.id,
-                label: t(tab.label),
-              }))}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    isSelected
-                      ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white' +
-                        ' tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold' +
-                        ' tw:text-quaternary tw:cursor-pointer'
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Dropdown.Root>
+        <Box align="center" gap={2}>
+          <DataAssetSelectList
+            allowAllOption
+            placeholder={t('label.search-assets-by-name-or-path')}
+            popoverPlacement="bottom"
+            renderTrigger={({ open }) => (
               <AriaButton
-                className={
+                className={classNames(
                   selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {assetOptions.find((o) => o.id === selectedAsset)?.label ??
-                    t('label.all-entity', { entity: t('label.asset-plural') })}
-                </Typography>
+                )}
+                onPress={open}>
+                <Database01
+                  className={classNames('tw:shrink-0', {
+                    'tw:text-brand-secondary': selectedAsset,
+                    'tw:text-secondary': !selectedAsset,
+                  })}
+                  size={14}
+                />
+                <div className="tw:max-w-50">
+                  <Typography
+                    ellipsis
+                    className={
+                      selectedAsset
+                        ? 'tw:text-utility-brand-700'
+                        : 'tw:text-secondary'
+                    }
+                    weight="medium">
+                    {selectedAsset?.label ??
+                      t('label.all-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                  </Typography>
+                </div>
                 <ChevronDown
                   className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
                   size={16}
                   strokeWidth={2.5}
                 />
               </AriaButton>
-              <Dropdown.Popover className="tw:w-100">
-                <Dropdown.Menu
-                  selectedKeys={selectedAsset ? [selectedAsset] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAsset ? '' : next;
-                    setSelectedAsset(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
-                    }
-                    setCurrentPage(1);
-                  }}>
-                  {assetOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      {opt.type ? (
-                        <div className="tw:flex tw:items-center tw:gap-2 tw:min-w-0">
-                          <div className="tw:shrink-0">
-                            {searchClassBase.getEntityIcon(
-                              opt.type,
-                              'tw:w-6 tw:h-6 tw:text-gray-500'
-                            )}
-                          </div>
-                          <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center">
-                            <div className="tw:max-w-55">
-                              <Typography
-                                ellipsis
-                                className="tw:truncate tw:text-gray-800"
-                                size="text-sm"
-                                weight="medium">
-                                {opt.displayName}
-                              </Typography>
-                              <Typography
-                                ellipsis
-                                className="tw:text-gray-400 tw:truncate"
-                                size="text-xs">
-                                {opt.id}
-                              </Typography>
-                            </div>
-                            <Badge
-                              className="tw:shrink-0 tw:uppercase"
-                              color="gray"
-                              size="sm"
-                              type="color">
-                              {opt.type}
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : (
-                        <span>{opt.label}</span>
-                      )}
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
+            )}
+            selectionMode="single"
+            value={selectedAsset}
+            onChange={(value) => {
+              setSelectedAsset(value as DataAssetOption);
+              if (activeFilter === 'all') {
+                setActiveFilter('');
+              }
+              setCurrentPage(1);
+            }}
+          />
 
-            <Dropdown.Root>
-              <AriaButton
-                className={
-                  selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
-                }>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {authorOptions.find((o) => o.id === selectedAuthor)?.label ??
+          <Dropdown.Root
+            onOpenChange={(isOpen) => {
+              if (isOpen) {
+                setAuthorSearch('');
+                fetchAuthorOptions('');
+              }
+            }}>
+            <AriaButton
+              className={
+                selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
+              }>
+              <User03
+                className={classNames('tw:shrink-0', {
+                  'tw:text-brand-secondary': selectedAuthor,
+                  'tw:text-secondary': !selectedAuthor,
+                })}
+                size={14}
+              />
+              <div className="tw:max-w-50">
+                <Typography
+                  ellipsis
+                  className={
+                    selectedAuthor
+                      ? 'tw:text-brand-secondary'
+                      : 'tw:text-secondary'
+                  }
+                  weight="medium">
+                  {selectedAuthor?.label ??
                     t('label.all-entity', { entity: t('label.author') })}
                 </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
+              </div>
+              <ChevronDown
+                className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
+                size={16}
+                strokeWidth={2.5}
+              />
+            </AriaButton>
+            <Dropdown.Popover>
+              <div className="tw:p-2 tw:border-b tw:border-secondary">
+                <Input
+                  autoFocus
+                  className="tw:w-full"
+                  icon={SearchLg}
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.author'),
+                  })}
+                  value={authorSearch}
+                  onChange={(value) => {
+                    setAuthorSearch(value);
+                  }}
                 />
-              </AriaButton>
-              <Dropdown.Popover>
-                <Dropdown.Menu
-                  selectedKeys={selectedAuthor ? [selectedAuthor] : []}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    const next = String(key);
-                    const value = next === selectedAuthor ? '' : next;
-                    setSelectedAuthor(value);
-                    if (activeFilter === 'all') {
-                      setActiveFilter('');
-                    }
-                    setCurrentPage(1);
-                  }}>
-                  {authorOptions.map((opt) => (
-                    <Dropdown.Item
-                      id={opt.id}
-                      key={opt.id}
-                      textValue={opt.label}>
-                      <div className="tw:flex tw:items-center tw:gap-2">
-                        {opt.id && <ProfilePicture name={opt.id} size={20} />}
-                        <span>{opt.label}</span>
-                      </div>
-                    </Dropdown.Item>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </div>
+              </div>
+              <Dropdown.Menu
+                selectedKeys={selectedAuthor ? [selectedAuthor.id] : []}
+                selectionMode="single"
+                onAction={(key) => {
+                  const next = String(key);
+                  if (next === 'all-authors') {
+                    setSelectedAuthor(undefined);
+                  } else {
+                    const option = authorOptions.find((opt) => opt.id === next);
+                    setSelectedAuthor(
+                      next === selectedAuthor?.id ? undefined : option
+                    );
+                  }
+                  if (activeFilter === 'all') {
+                    setActiveFilter('');
+                  }
+                  setCurrentPage(1);
+                }}>
+                <Dropdown.Item
+                  id="all-authors"
+                  key="all-authors"
+                  textValue={t('label.all-entity', {
+                    entity: t('label.author'),
+                  })}>
+                  <span>
+                    {t('label.all-entity', { entity: t('label.author') })}
+                  </span>
+                </Dropdown.Item>
+                {isAuthorOptionsLoading && (
+                  <Dropdown.Item
+                    id="loading-authors"
+                    textValue={t('label.loading')}>
+                    <span>{t('label.loading')}</span>
+                  </Dropdown.Item>
+                )}
+                {authorOptions.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} textValue={opt.label}>
+                    <Box align="center" gap={2} justify="between">
+                      {opt.id && <ProfilePicture name={opt.id} size={20} />}
+                      <span className="tw:flex-1">{opt.label}</span>
+                      {selectedAuthor?.id === opt.id && (
+                        <Check
+                          className="tw:shrink-0 tw:text-brand-600"
+                          size={14}
+                          strokeWidth={2.5}
+                        />
+                      )}
+                    </Box>
+                  </Dropdown.Item>
+                ))}
+              </Dropdown.Menu>
+              {authorOptions.length === 0 && (
+                <Box
+                  align="center"
+                  className="tw:pb-4 tw:pt-1.5"
+                  justify="center">
+                  <Typography className="tw:text-quaternary" size="text-xs">
+                    {t('label.no-data-found')}
+                  </Typography>
+                </Box>
+              )}
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
 
-          <div className="tw:ml-auto tw:flex tw:items-center tw:gap-4">
-            {hasActiveFilters && (
-              <Button color="link-color" size="sm" onClick={handleClearFilters}>
-                {t('label.clear-entity', { entity: t('label.all') })}
-              </Button>
-            )}
-            <Dropdown.Root>
-              <AriaButton className={FILTER_BUTTON_CLS}>
-                <FilterLines size={18} />
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {t('label.sort')}:
-                </Typography>
-                <Typography className="tw:text-gray-700" weight="medium">
-                  {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
-                </Typography>
-                <ChevronDown
-                  className="tw:ml-1 tw:text-fg-quaternary tw:shrink-0"
-                  size={16}
-                  strokeWidth={2.5}
-                />
-              </AriaButton>
-              <Dropdown.Popover className="tw:w-56">
-                <Dropdown.Menu
-                  selectedKeys={[sortBy]}
-                  selectionMode="single"
-                  onAction={(key) => {
-                    setSortBy((key as MemorySortBy) ?? 'updated');
-                    setCurrentPage(1);
-                  }}>
-                  {SORT_OPTIONS.map((opt) => (
-                    <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown.Popover>
-            </Dropdown.Root>
-          </div>
-        </div>
-
-        <div className="tw:flex-1 tw:overflow-y-auto">
+        <Box align="center" className="tw:ml-auto" gap={4}>
+          {hasActiveFilters && (
+            <Button color="link-color" size="sm" onClick={handleClearFilters}>
+              {t('label.clear-entity', { entity: t('label.all') })}
+            </Button>
+          )}
+          <Dropdown.Root>
+            <AriaButton className={FILTER_BUTTON_CLS}>
+              <FilterFunnel02 size={16} />
+              <Typography className="tw:text-secondary" weight="medium">
+                {t('label.sort')}:
+              </Typography>
+              <Typography className="tw:text-secondary" weight="medium">
+                {SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? ''}
+              </Typography>
+            </AriaButton>
+            <Dropdown.Popover className="tw:w-56">
+              <Dropdown.Menu
+                selectedKeys={[sortBy]}
+                selectionMode="single"
+                onAction={(key) => {
+                  setSortBy((key as MemorySortBy) ?? 'updated');
+                  setCurrentPage(1);
+                }}>
+                {SORT_OPTIONS.map((opt) => (
+                  <Dropdown.Item id={opt.id} key={opt.id} label={opt.label} />
+                ))}
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown.Root>
+        </Box>
+      </Box>
+      {/* Memories card with tabs */}
+      <Card
+        className="tw:flex tw:flex-col tw:h-auto"
+        style={{ overflow: 'unset' }}>
+        <div>
           <MemoriesView
-            canDelete
-            data={pagedMemories}
+            canDelete={hasDeletePermission}
+            canEdit={hasEditPermission}
+            currentUserName={currentUser?.name}
+            data={memories}
+            isAdminUser={currentUser?.isAdmin}
             isLoading={isMemoriesLoading}
+            isPinningMemoryId={isPinningMemoryId}
             onDeleteMemory={handleDeleteMemory}
             onEditMemory={handleEditMemory}
+            onTogglePin={handleTogglePin}
             onViewMemory={handleViewMemory}
           />
         </div>
@@ -648,6 +804,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
       {/* Edit / Create modal */}
       <CreateMemoryModal
+        canCreate={hasCreatePermission}
+        canDelete={canDeleteMemory}
+        canEdit={hasEditPermission}
+        currentUserName={currentUser?.name}
+        isAdminUser={currentUser?.isAdmin}
         isOpen={isCreateModalOpen}
         memoryToEdit={memoryToEdit}
         onClose={handleModalClose}
@@ -660,26 +821,33 @@ const ContextCenterMemoriesPage: FC = () => {
       {memoryToView && (
         <CreateMemoryModal
           viewOnly
+          canDelete={canDeleteMemory}
+          canEdit={hasEditPermission}
+          currentUserName={currentUser?.name}
+          isAdminUser={currentUser?.isAdmin}
           isOpen={isViewModalOpen}
           memoryToEdit={memoryToView}
           onClose={handleViewModalClose}
           onCreated={handleViewModalClose}
+          onDeleted={handleModalSuccess}
+          onEditMemory={handleEditMemory}
+          onUpdated={handleModalSuccess}
         />
       )}
 
       {memoryToDelete && (
         <DeleteModal
-          entityTitle={memoryToDelete.title ?? memoryToDelete.question}
+          entityTitle={memoryToDelete.title ?? memoryToDelete.question ?? ''}
           isDeleting={isDeletingMemory}
-          message={t('message.delete-entity-message', {
-            entity: memoryToDelete.title ?? memoryToDelete.question,
+          message={t('message.delete-entity-permanently', {
+            entityType: t('label.memory-lowercase'),
           })}
           open={Boolean(memoryToDelete)}
           onCancel={handleCancelDelete}
           onDelete={handleConfirmDelete}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

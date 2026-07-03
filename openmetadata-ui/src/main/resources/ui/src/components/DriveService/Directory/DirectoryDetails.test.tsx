@@ -38,14 +38,15 @@ const mockGetFeedCounts = jest.fn();
 const mockFetchEntityTaskCountsInto = jest.fn();
 const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn(),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: (
     ...args: [EntityType, string, (data: FeedCounts) => void]
   ) => mockFetchEntityActivityCountInto(...args),
   fetchEntityTaskCountsInto: (...args: [string, (data: FeedCounts) => void]) =>
     mockFetchEntityTaskCountsInto(...args),
-  getEntityMissingError: jest.fn(),
   getFeedCounts: (...args: [EntityType, string, (data: FeedCounts) => void]) =>
     mockGetFeedCounts(...args),
 }));

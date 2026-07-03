@@ -125,6 +125,28 @@ jest.mock(
   () => jest.fn().mockReturnValue(<span>ContainerDataModel</span>)
 );
 
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => {
+    const { getContainerByName } = jest.requireMock('../../rest/storageAPI');
+
+    getContainerByName('s3_storage_sample.transactions', {
+      fields: 'children',
+    });
+
+    return (
+      <>
+        <span>DescriptionV1</span>
+        <span>ContainerDataModel</span>
+        <span>CustomPropertyTable</span>
+        <span>label.glossary-term</span>
+        <span>label.tag-plural</span>
+        <span>label.data-product-plural</span>
+        <span>ContainerChildren</span>
+      </>
+    );
+  }),
+}));
+
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
@@ -180,13 +202,27 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI');
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+jest.mock('../../utils/RecentActivityUtils', () => ({
   addToRecentViewed: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
   getFeedCounts: jest.fn().mockReturnValue(0),
+}));
+jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
+}));
+
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../hooks/paging/usePaging', () => ({
@@ -200,11 +236,15 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+}));
+jest.mock('../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 
@@ -214,7 +254,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn().mockImplementation((str) => str),
@@ -246,6 +286,26 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <>{children}</>),
+    useGenericContext: jest.fn().mockReturnValue({
+      data: {},
+      permissions: {
+        EditAll: true,
+        EditDescription: true,
+        EditGlossaryTerms: true,
+        EditTags: true,
+      },
+      isVersionView: false,
+      deleted: false,
+    }),
+  })
+);
 
 const mockUseParams = jest.fn().mockReturnValue({
   fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
@@ -293,6 +353,14 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Container Page Component', () => {
   beforeEach(() => {
+    mockGetEntityPermissionByFqn.mockResolvedValue({
+      ViewBasic: true,
+    });
+    mockUseParams.mockReturnValue({
+      fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
+      tab: 'schema',
+    });
+
     const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
       jest.requireMock('../../utils/PermissionsUtils');
     getPrioritizedEditPermission.mockReturnValue(true);

@@ -16,7 +16,7 @@ import { FC, useCallback, useMemo, useState } from 'react';
 import type { Column } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { useGridEditController } from '../../../../hooks/useGridEditController';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { lazyTextEditor } from '../../DataGrid/LazyDataGrid';
 import { KeyDownStopPropagationWrapper } from '../../KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
@@ -35,7 +35,7 @@ export const getGridColumns = (columns: string[]) => {
     editable: true,
     renderEditCell: lazyTextEditor,
     minWidth: 180,
-  })) as Column<Record<string, string>[]>[];
+  })) as Column<Record<string, string>>[];
 };
 
 const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({

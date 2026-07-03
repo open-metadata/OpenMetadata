@@ -13,7 +13,6 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,13 +47,12 @@ import {
   PageType,
 } from '../../interface/knowledge-center.interface';
 import { postKnowledgePage } from '../../rest/knowledgeCenterAPI';
-import { getKnowledgePagePath } from '../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../utils/KnowledgePagePureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../KnowledgePageVersionPage/KnowledgePageVersionPage';
 import './knowledge-center-page.less';
-
 const KnowledgeCenterPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -267,15 +265,16 @@ const KnowledgeCenterPage = () => {
   }, [version, renderVersionPage, renderDetailOrListPage]);
 
   return (
-    <PageLayoutV1 pageTitle={t('label.knowledge-center')}>
+    <PageLayoutV1
+      fullHeight
+      mainContainerClassName="knowledge-center-page-main"
+      pageTitle={t('label.knowledge-center')}>
       {page.header}
       <KnowledgeCenterLayout
-        className={classNames({ 'knowledge-details-page': fqn })}
         leftSidebar={
           <KnowledgePagesHierarchy
             activeKey={fqn}
             activePage={page.data}
-            isPageHeaderAvailable={Boolean(page.header)}
             permissions={permissions}
             ref={knowledgePagesHierarchyRef}
             onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}

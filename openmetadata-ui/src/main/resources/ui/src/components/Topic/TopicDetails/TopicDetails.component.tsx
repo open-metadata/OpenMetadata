@@ -12,70 +12,139 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { AxiosError } from 'axios';
-import { EntityTags } from 'Models';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import type { AxiosError } from 'axios';
+import type { EntityTags } from 'Models';
+import type { ComponentType } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { Tag } from '../../../generated/entity/classification/tag';
-import { Topic } from '../../../generated/entity/data/topic';
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import type { Tag } from '../../../generated/entity/classification/tag';
+import type { Topic } from '../../../generated/entity/data/topic';
+import type { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../../generated/system/ui/page';
-import { TagLabel } from '../../../generated/type/schema';
+import type { TagLabel } from '../../../generated/type/schema';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
-import { FeedCounts } from '../../../interface/feed.interface';
+import type { FeedCounts } from '../../../interface/feed.interface';
 import { restoreTopic } from '../../../rest/topicsAPI';
-import {
-  fetchEntityActivityCountInto,
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import topicClassBase from '../../../utils/TopicClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import QueryViewer from '../../common/QueryViewer/QueryViewer.component';
-import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
-import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import SampleDataWithMessages from '../../Database/SampleDataWithMessages/SampleDataWithMessages';
-import { EntityLineageTab } from '../../Lineage/EntityLineageTab/EntityLineageTab';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import type { GenericProviderProps } from '../../Customization/GenericProvider/GenericProvider.interface';
+import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
-import { TopicDetailsProps } from './TopicDetails.interface';
+import type { SourceType } from '../../SearchedData/SearchedData.interface';
+import type { TopicDetailsProps } from './TopicDetails.interface';
+
+type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+type GenericProviderComponent = <T extends Topic>(
+  props: GenericProviderProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component').then(
+      (module) => ({ default: module.ActivityFeedTab })
+    )
+  )
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as CustomPropertyTableComponent;
+
+const ErrorPlaceHolder = withSuspenseFallback(
+  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
+);
+
+const GenericProvider = withSuspenseFallback(
+  lazy(() =>
+    import('../../Customization/GenericProvider/GenericProvider').then(
+      (module) => ({ default: module.GenericProvider })
+    )
+  )
+) as GenericProviderComponent;
+
+const DataAssetsHeader = withSuspenseFallback(
+  lazy(() =>
+    import('../../DataAssets/DataAssetsHeader/DataAssetsHeader.component').then(
+      (module) => ({ default: module.DataAssetsHeader })
+    )
+  )
+);
+
+const SampleDataWithMessages = withSuspenseFallback(
+  lazy(
+    () => import('../../Database/SampleDataWithMessages/SampleDataWithMessages')
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({
+        default: module.EntityLineageTab,
+      })
+    )
+  )
+);
+
+const QueryViewer = withSuspenseFallback(
+  lazy(() => import('../../common/QueryViewer/QueryViewer.component'))
+);
+
+const AlignRightIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.AlignRightIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
@@ -368,14 +437,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={topicDetails as SourceType}
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={topicDetails as SourceType}
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>

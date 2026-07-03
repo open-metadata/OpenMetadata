@@ -23,8 +23,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock EntityUtils
-jest.mock('../../../utils/EntityUtils', () => {
+jest.mock('../../../utils/EntityPermissionUtils', () => {
   const LINEAGE_TABS_SET = new Set([
     'apiEndpoint',
     'chart',

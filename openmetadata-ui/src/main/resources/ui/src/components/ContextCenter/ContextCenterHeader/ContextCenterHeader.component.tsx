@@ -18,16 +18,18 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
 
 const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   breadcrumbs,
   title,
   subtitle,
+  className = '',
   hasPermission = true,
   onCreateArticle,
   onUploadFile,
@@ -38,8 +40,13 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  const resolvedBreadcrumbs = [
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
+    ...breadcrumbs,
+  ];
 
   const defaultActions = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
@@ -64,35 +71,28 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     </div>
   );
 
-  return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-3"
-      data-testid="context-center-header">
-      {!breadcrumbInsideCard && (
-        <TitleBreadcrumb
-          useCustomArrow
-          className={breadcrumbClassName}
-          titleLinks={breadcrumbs}
-        />
-      )}
+  const breadcrumbEl = (
+    <HeaderBreadcrumb items={resolvedBreadcrumbs} showHome={!isEmbedded} />
+  );
 
-      <Card className="tw:mb-5 tw:p-5" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">
-            <TitleBreadcrumb
-              useCustomArrow
-              className={breadcrumbClassName}
-              titleLinks={breadcrumbs}
-            />
-          </div>
-        )}
+  return (
+    <div className="tw:flex tw:flex-col" data-testid="context-center-header">
+      {!breadcrumbInsideCard && breadcrumbEl}
+
+      <Card
+        className={classNames(
+          'tw:mb-5 tw:p-5',
+          className,
+          headerCardClassName
+        )}>
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>
             <div className="tw:mb-0.5 tw:flex tw:items-center tw:gap-2">
               <Typography as="h3">{title}</Typography>
             </div>
             {subtitle && (
-              <Typography className="tw:text-gray-700">{subtitle}</Typography>
+              <Typography className="tw:text-secondary">{subtitle}</Typography>
             )}
           </div>
           <div className="tw:flex tw:items-center tw:gap-3 tw:ml-auto tw:shrink-0">
