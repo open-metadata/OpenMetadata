@@ -80,7 +80,11 @@ const IncidentTypeAreaChartWidget = ({
 
   if (isChartLoading) {
     return (
-      <Card className="custom-chart-background">
+      <Card
+        className={classNames('custom-chart-background', {
+          'chart-widget-link-no-underline': !isUndefined(redirectPath),
+        })}
+        data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
         <Skeleton height={120} width="100%" />
       </Card>
     );

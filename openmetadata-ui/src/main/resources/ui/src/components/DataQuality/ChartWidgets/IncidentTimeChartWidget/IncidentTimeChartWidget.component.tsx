@@ -87,7 +87,9 @@ const IncidentTimeChartWidget = ({
 
   if (isChartLoading) {
     return (
-      <Card className="custom-chart-background">
+      <Card
+        className="custom-chart-background"
+        data-testid={`incident-${incidentMetricType}-time-chart-widget`}>
         <Skeleton height={120} width="100%" />
       </Card>
     );
