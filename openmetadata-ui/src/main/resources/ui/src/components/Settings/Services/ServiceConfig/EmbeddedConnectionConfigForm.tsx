@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
   AIRFLOW_HYBRID,
@@ -45,6 +46,8 @@ import {
   ConnectionSchemaResult,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
+  getFieldSchemaForId,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -80,12 +83,15 @@ const EmbeddedConnectionConfigForm = forwardRef<
       serviceType,
       serviceCategory,
       status,
+      onBlur,
       onCancel,
       onSave,
       onFocus,
       disableTestConnection = false,
       isSubmitDisabled: isSubmitDisabledFromParent = false,
+      additionalMissingFieldsCount = 0,
       onTestConnectionStatusChange,
+      onValidateAdditionalRequiredFields,
     }: Readonly<ConnectionConfigFormProps>,
     ref
   ) => {
@@ -158,7 +164,18 @@ const EmbeddedConnectionConfigForm = forwardRef<
     }, [serviceCategory, serviceType]);
 
     const handleRequiredFieldsValidation = () => {
-      return Boolean(formRef.current?.validateForm());
+      let isRjsfValid = true;
+      // flushSync commits RJSF's error setState to the DOM before
+      // onValidateAdditionalRequiredFields runs its own state update
+      // (setNameError). Without this, both setState calls batch together
+      // and RJSF's getSnapshotBeforeUpdate may see an empty
+      // schemaValidationErrors, clearing the field error highlights.
+      flushSync(() => {
+        isRjsfValid = Boolean(formRef.current?.validateForm());
+      });
+      const isAdditionalValid = onValidateAdditionalRequiredFields?.() ?? true;
+
+      return isRjsfValid && isAdditionalValid;
     };
 
     const handleSave = async (data: IChangeEvent<ConfigData>) => {
@@ -322,7 +339,6 @@ const EmbeddedConnectionConfigForm = forwardRef<
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
-          noValidate={!isEmpty(connSch.schema)}
           okText={okText ?? ''}
           ref={formRef}
           schema={schemaWithoutDefaultFilterPatternFields}
@@ -331,9 +347,20 @@ const EmbeddedConnectionConfigForm = forwardRef<
             ObjectFieldTemplate: ConnectionObjectFieldTemplate,
           }}
           uiSchema={uiSchema}
+          onBlur={() => onBlur?.()}
           onCancel={onCancel}
           onChange={handleFormChange}
-          onFocus={onFocus}
+          onFocus={(id: string) => {
+            const schemaMeta = getFieldSchemaForId(
+              schemaWithoutDefaultFilterPatternFields,
+              id
+            );
+            const section = getConnectionFieldSection(
+              schemaWithoutDefaultFilterPatternFields,
+              id
+            );
+            onFocus(id, { ...schemaMeta, section });
+          }}
           onSubmit={handleSave}>
           <>
             {isEmpty(connSch.schema) && (
@@ -364,7 +391,9 @@ const EmbeddedConnectionConfigForm = forwardRef<
                 }
                 hostIp={hostIp}
                 isTestingDisabled={disableTestConnection}
-                missingRequiredFieldsCount={missingRequiredFieldsCount}
+                missingRequiredFieldsCount={
+                  missingRequiredFieldsCount + additionalMissingFieldsCount
+                }
                 serviceCategory={serviceCategory}
                 serviceName={data?.name}
                 onTestConnectionStatusChange={handleTestConnectionStatusChange}
