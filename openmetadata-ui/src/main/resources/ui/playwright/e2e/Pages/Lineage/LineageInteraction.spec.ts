@@ -12,7 +12,6 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { TableClass } from '../../../support/entity/TableClass';
@@ -39,7 +38,7 @@ import {
 } from '../../../utils/lineage';
 import { test } from '../../fixtures/pages';
 
-test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.describe('Lineage Interactions', () => {
   const table1 = new TableClass();
   const table2 = new TableClass();
   const topic = new TopicClass();

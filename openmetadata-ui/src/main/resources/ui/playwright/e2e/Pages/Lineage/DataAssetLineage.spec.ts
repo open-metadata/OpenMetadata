@@ -12,7 +12,6 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -107,7 +106,7 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
-test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.describe('Data asset lineage', () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 
