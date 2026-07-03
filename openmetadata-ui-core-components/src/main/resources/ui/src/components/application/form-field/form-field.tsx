@@ -61,18 +61,18 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
               />
 
               {renderFieldElement(controller, field)}
-            </Box>
 
-            {fieldState.error && (
-              <HintText isInvalid>{fieldState.error.message}</HintText>
-            )}
+              {fieldState.error && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
 
             {helperTextType === HelperTextType.ALERT && helperText && (
               <Alert
                 data-testid="form-item-alert"
                 title={typeof helperText === 'string' ? helperText : ''}
                 variant="warning">
-                {typeof helperText !== 'string' ? helperText : undefined}
+                {typeof helperText === 'string' ? undefined : helperText}
               </Alert>
             )}
 
