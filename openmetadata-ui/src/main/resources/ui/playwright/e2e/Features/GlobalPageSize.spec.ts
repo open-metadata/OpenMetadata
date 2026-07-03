@@ -38,10 +38,11 @@ test.describe('Table & Data Model columns table pagination', () => {
 
     await waitForAllLoadersToDisappear(page);
 
-    await expect(page.getByTestId('rows-per-page-dropdown')).toHaveText('25');
+    const rowsPerPageDropdown = page.getByTestId('rows-per-page-dropdown');
+    await expect(rowsPerPageDropdown.locator('p').first()).toHaveText('25');
 
     // Change page size to 50
-    await page.getByTestId('rows-per-page-dropdown').click();
+    await rowsPerPageDropdown.click();
     await page.getByTestId('rows-per-page-option-50').click();
     await waitForAllLoadersToDisappear(page);
 

@@ -274,7 +274,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         state: 'visible',
       });
 
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -544,7 +547,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('stored_procedure').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -683,7 +689,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('data-model').click();
       await page.waitForLoadState('domcontentloaded');
-      const paginationText = page.locator('[data-testid="page-indicator"]');
+      const paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       const paginationTextContent = await paginationText.textContent();
@@ -830,13 +839,19 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.goto(`/service/driveServices/${serviceFqn}/files?pageSize=15`);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      let paginationText = page.locator('[data-testid="page-indicator"]');
+      let paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       let paginationTextContent = await paginationText.textContent();
       expect(paginationTextContent).toMatch(/1\s*of\s*\d+/);
 
-      const nextButton = page.locator('[data-testid="next"]');
+      const nextButton = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('next');
       await expect(nextButton).toBeEnabled();
 
       const filesResponsePromise = page.waitForResponse((response) =>
@@ -870,7 +885,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       expect(filesTabResponse.status()).toBe(200);
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
@@ -912,7 +930,10 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
       await page.locator('table').first().waitFor({ state: 'visible' });
 
-      paginationText = page.locator('[data-testid="page-indicator"]');
+      paginationText = page
+        .locator('[role="tabpanel"][aria-hidden="false"]')
+        .getByTestId('pagination')
+        .getByTestId('page-indicator');
       await expect(paginationText).toBeVisible();
 
       paginationTextContent = await paginationText.textContent();
