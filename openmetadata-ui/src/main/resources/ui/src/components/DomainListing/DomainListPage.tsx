@@ -51,9 +51,10 @@ import AddDomainForm, {
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
+import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
-const DomainListPage = () => {
+const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
@@ -310,20 +311,28 @@ const DomainListPage = () => {
     <Box
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      <HeaderBreadcrumb
-        items={[
-          ...(isMarketplace
-            ? [
-                {
-                  label: t('label.data-marketplace'),
-                  href: ROUTES.DATA_MARKETPLACE,
-                },
-              ]
-            : []),
-          { label: t('label.domain-plural'), href: domainBasePath },
-        ]}
-      />
-      {pageHeader}
+      {!renderPageHeader && (
+        <HeaderBreadcrumb
+          items={[
+            ...(isMarketplace
+              ? [
+                  {
+                    label: t('label.data-marketplace'),
+                    href: ROUTES.DATA_MARKETPLACE,
+                  },
+                ]
+              : []),
+            { label: t('label.domain-plural'), href: domainBasePath },
+          ]}
+        />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.domain?.Create || false,
+            count: domainListing.totalEntities,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
