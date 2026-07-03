@@ -225,13 +225,9 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
-        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -239,11 +235,7 @@ test.describe(
       });
 
       await test.step('Removing the service-type chip clears the browse', async () => {
-        const removeRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('remove-browse-chip-serviceType').click();
-        await removeRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -271,11 +263,7 @@ test.describe(
         );
         await expect(serviceTitle).toBeVisible();
 
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await serviceTitle.click();
-        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
