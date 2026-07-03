@@ -306,9 +306,9 @@ export const EntityExportModalProvider = ({
                     isDisabled={exportData.exportTypes.length === 1}
                     items={exportTypeItems}
                     label={`${t('label.export-type')}:`}
-                    value={selectedExportType}
-                    onChange={(value) =>
-                      value && setSelectedExportType(value as ExportTypes)
+                    selectedKey={selectedExportType}
+                    onSelectionChange={(key) =>
+                      key && setSelectedExportType(key as ExportTypes)
                     }>
                     {(item) => (
                       <Select.Item id={item.id} textValue={item.label}>
