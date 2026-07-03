@@ -101,13 +101,15 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .waitFor({ state: 'detached' });
 
     await page.getByText('Name', { exact: true }).click();
-    await page.getByTestId('searchbar').click();
+    await page.locator('[data-testid="searchbar-component"] input').click();
 
     const testSearchResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/search/list?*q=%2Atemp-test-case%2A*`
     );
 
-    await page.getByTestId('searchbar').fill('temp-test-case');
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill('temp-test-case');
 
     await testSearchResponse;
     await page
