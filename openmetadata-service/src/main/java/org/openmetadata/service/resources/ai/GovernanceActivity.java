@@ -113,7 +113,7 @@ final class GovernanceActivity {
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
     Map<String, Object> json =
         (Map<String, Object>) JsonUtils.getObjectMapper().convertValue(entity, Map.class);
-    Map<String, Object> governance = governance(entityType, json);
+    Map<String, Object> governance = governance(entityType, entity, json);
 
     if (governance != null) {
       Map<String, Object> detection = asMap(governance.get("detection"));
@@ -244,25 +244,15 @@ final class GovernanceActivity {
     return result;
   }
 
-  private static Map<String, Object> governance(String entityType, Map<String, Object> entityJson) {
+  private static Map<String, Object> governance(
+      String entityType, EntityInterface entity, Map<String, Object> entityJson) {
     Map<String, Object> result = null;
     if (Entity.LLM_MODEL.equals(entityType)) {
       Map<String, Object> shim = new LinkedHashMap<>();
       if (entityJson.get("detection") != null) {
         shim.put("detection", entityJson.get("detection"));
       }
-      Object status = entityJson.get("governanceStatus");
-      Object updatedAt = entityJson.get("updatedAt");
-      Object updatedBy = entityJson.get("updatedBy");
-      if (status != null && updatedAt instanceof Number) {
-        if ("PendingReview".equals(status.toString())) {
-          shim.put("registeredAt", updatedAt);
-          putIfNotNull(shim, "registeredBy", updatedBy);
-        } else if ("Approved".equals(status.toString())) {
-          shim.put("approvedAt", updatedAt);
-          putIfNotNull(shim, "approvedBy", updatedBy);
-        }
-      }
+      addLlmGovernanceTimeline(entity, entityJson, shim);
       if (!shim.isEmpty()) {
         result = shim;
       }
@@ -272,10 +262,65 @@ final class GovernanceActivity {
     return result;
   }
 
+  private static void addLlmGovernanceTimeline(
+      EntityInterface entity, Map<String, Object> entityJson, Map<String, Object> shim) {
+    Object status = entityJson.get("governanceStatus");
+    Object updatedAt = entityJson.get("updatedAt");
+    Object updatedBy = entityJson.get("updatedBy");
+    if (status != null && updatedAt instanceof Number) {
+      if ("PendingReview".equals(status.toString())) {
+        shim.put("registeredAt", updatedAt);
+        putIfNotNull(shim, "registeredBy", updatedBy);
+      } else if ("Approved".equals(status.toString())) {
+        shim.put("approvedAt", updatedAt);
+        putIfNotNull(shim, "approvedBy", updatedBy);
+        addLlmSubmissionFromHistory(entity, shim);
+      }
+    }
+  }
+
+  private static void addLlmSubmissionFromHistory(
+      EntityInterface entity, Map<String, Object> shim) {
+    if (entity == null || entity.getId() == null || shim.containsKey("registeredAt")) {
+      return;
+    }
+    try {
+      EntityRepository<? extends EntityInterface> repository =
+          Entity.getEntityRepository(Entity.LLM_MODEL);
+      List<Object> versions = repository.listVersions(entity.getId()).getVersions();
+      if (versions == null) {
+        return;
+      }
+      for (Object version : versions) {
+        Map<String, Object> versionJson = asVersionMap(version);
+        if (versionJson != null
+            && "PendingReview".equals(asString(versionJson.get("governanceStatus")))
+            && versionJson.get("updatedAt") instanceof Number) {
+          shim.put("registeredAt", versionJson.get("updatedAt"));
+          putIfNotNull(shim, "registeredBy", versionJson.get("updatedBy"));
+          return;
+        }
+      }
+    } catch (Exception error) {
+      LOG.debug(
+          "Activity feed: unable to reconstruct LLM submission history for {}",
+          entity.getId(),
+          error);
+    }
+  }
+
   private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
     if (value != null) {
       map.put(key, value);
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> asVersionMap(Object value) {
+    if (value instanceof String json) {
+      return (Map<String, Object>) JsonUtils.readValue(json, Map.class);
+    }
+    return asMap(value);
   }
 
   private static Map<String, Object> asMap(Object value) {
@@ -288,5 +333,9 @@ final class GovernanceActivity {
 
   private static Long numberToLong(Object value) {
     return value instanceof Number n ? n.longValue() : null;
+  }
+
+  private static String asString(Object value) {
+    return value == null ? null : value.toString();
   }
 }
