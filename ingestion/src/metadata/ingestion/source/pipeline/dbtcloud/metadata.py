@@ -17,6 +17,8 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
+from cachetools import LRUCache
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -97,8 +99,8 @@ class DbtcloudSource(PipelineServiceSource):
         self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}  # noqa: UP006
         # Cache for table entity lookups to avoid redundant API calls
         self._table_entity_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
-        # Cache for resolved SQL dialects keyed by database service name
-        self._dialect_cache: Dict[str, Dialect] = {}  # noqa: UP006
+        # Bounded cache for resolved SQL dialects keyed by database service name
+        self._dialect_cache: LRUCache = LRUCache(maxsize=128)
 
     def _get_table_entity(self, table_fqn: str) -> Optional[Table]:  # noqa: UP045
         """

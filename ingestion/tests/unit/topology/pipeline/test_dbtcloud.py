@@ -19,6 +19,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -1008,6 +1009,17 @@ class DBTCloudUnitTest(TestCase):
             details.columnsLineage[0].toColumn.root,
             "local_redshift.dev.dbt_test_new.model_32.id",
         )
+
+        # Column lineage augments, not replaces, the existing table-level pipeline edge.
+        table_edges = [
+            result.right
+            for result in results
+            if result.right is not None
+            and isinstance(result.right, AddLineageRequest)
+            and result.right.edge.lineageDetails is not None
+            and result.right.edge.lineageDetails.pipeline is not None
+        ]
+        self.assertEqual(len(table_edges), 1)
 
     def test_no_column_lineage_without_compiled_code(self):
         """

@@ -23,7 +23,6 @@ query Query($jobId: BigInt!, $runId: BigInt) {
       dependsOn
       runGeneratedAt
       compiledCode
-      rawCode
     }
     seeds {
       uniqueId
