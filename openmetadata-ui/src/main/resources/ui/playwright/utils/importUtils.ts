@@ -1335,7 +1335,12 @@ export const pressKeyXTimes = async (
   for (let i = 0; i < length; i++) {
     const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
     if (!(await activeCell.isVisible())) {
-      await page.locator('.rdg-row').last().locator('.rdg-cell').first().click();
+      await page
+        .locator('.rdg-row')
+        .last()
+        .locator('.rdg-cell')
+        .first()
+        .click();
     }
 
     if (key === 'ArrowLeft') {
