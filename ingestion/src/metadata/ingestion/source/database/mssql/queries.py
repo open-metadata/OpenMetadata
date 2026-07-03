@@ -46,6 +46,9 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
 # inside stored procedures are left to the stored-procedure lineage path and are
 # not double-counted here. The inner query is aliased `t` and exposes `text` so the
 # same {filters} (which reference t.text) apply unchanged.
+# end_time is an aggregate estimate (max last_execution_time + avg duration), not a
+# measured per-execution end. It is used only for ordering and lineage, never for
+# precise per-execution timing.
 MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
     """
       SELECT TOP {result_limit}
