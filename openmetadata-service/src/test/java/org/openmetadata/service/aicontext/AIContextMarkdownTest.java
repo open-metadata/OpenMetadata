@@ -138,6 +138,27 @@ class AIContextMarkdownTest {
   }
 
   @Test
+  void render_marksTruncatedKnowledgeWithFetchHint() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withArticles(
+                List.of(
+                    new KnowledgeItem()
+                        .withType(KnowledgeItem.Type.PAGE)
+                        .withName("Revenue Rules")
+                        .withFullyQualifiedName("kb.revenue_rules")
+                        .withContent("Exclude refunded orders.")
+                        .withContentTruncated(true)));
+    String markdown = AIContextMarkdown.render(context);
+    assertTrue(markdown.contains("Exclude refunded orders."), "excerpt body should render");
+    assertTrue(
+        markdown.contains("get_knowledge_content(type=`page`, fqn=`kb.revenue_rules`)"),
+        "truncated item must carry the retrieval hint");
+  }
+
+  @Test
   void render_emitsBusinessDefinitionsAndLineage() {
     String markdown = render();
     assertTrue(markdown.contains("# Business Definitions"), "missing business definitions heading");

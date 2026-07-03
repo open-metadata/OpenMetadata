@@ -24,6 +24,7 @@ import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.type.TestSummary;
+import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
+import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 
@@ -101,6 +103,61 @@ class AIContextBuilderTest {
                 new TagLabel()
                     .withSource(TagLabel.TagSource.CLASSIFICATION)
                     .withTagFQN("PII.None")));
+  }
+
+  private KnowledgeItem knowledgeItem(String name, String content) {
+    return new KnowledgeItem()
+        .withType(KnowledgeItem.Type.PAGE)
+        .withName(name)
+        .withFullyQualifiedName("kb." + name)
+        .withContent(content);
+  }
+
+  @Test
+  void excerpt_boundsOnWordBoundaryAndLeavesShortContentAlone() {
+    assertEquals("short body", AIContextBuilder.excerpt("short body", 100));
+    String lead = AIContextBuilder.excerpt("alpha beta gamma delta epsilon", 12);
+    assertTrue(lead.endsWith("…"), "excerpt must be marked with an ellipsis");
+    assertTrue(lead.length() <= 13, "excerpt must respect the char bound");
+    assertTrue(!lead.contains("epsilon"), "excerpt must drop the tail");
+  }
+
+  @Test
+  void applyKnowledgeBudget_keepsShortItemsFullAndExcerptsOversized() {
+    KnowledgeItem term = knowledgeItem("term", "x".repeat(100));
+    KnowledgeItem metric = knowledgeItem("metric", "y".repeat(100));
+    KnowledgeItem article = knowledgeItem("article", "z".repeat(4000));
+    AIContext context =
+        new AIContext()
+            .withGlossaryTerms(List.of(term))
+            .withMetrics(List.of(metric))
+            .withArticles(List.of(article));
+
+    new AIContextBuilder("table", "svc.db.sch.orders").applyKnowledgeBudget(context);
+
+    assertTrue(
+        term.getContentTruncated() == null || !term.getContentTruncated(), "term stays full");
+    assertEquals(100, term.getContent().length());
+    assertTrue(Boolean.TRUE.equals(article.getContentTruncated()), "oversized article excerpted");
+    assertTrue(
+        article.getContent().length() <= AIContextBuilder.EXCERPT_CHARS + 1,
+        "excerpted article bounded to the excerpt length");
+  }
+
+  @Test
+  void applyKnowledgeBudget_omitsContentWhenBudgetExhausted() {
+    KnowledgeItem first = knowledgeItem("a1", "z".repeat(4000));
+    KnowledgeItem second = knowledgeItem("a2", "z".repeat(4000));
+    AIContext context = new AIContext().withArticles(List.of(first, second));
+
+    new AIContextBuilder("table", "svc.db.sch.orders")
+        .withKnowledgeBudget(AIContextBuilder.EXCERPT_CHARS)
+        .applyKnowledgeBudget(context);
+
+    assertTrue(Boolean.TRUE.equals(first.getContentTruncated()), "first article excerpted");
+    assertTrue(
+        Boolean.TRUE.equals(second.getContentTruncated()), "second article marked truncated");
+    assertTrue(second.getContent() == null, "second article content omitted (reference-only)");
   }
 
   @Test

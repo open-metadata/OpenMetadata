@@ -48,10 +48,20 @@ class AIContextMcpIT extends McpTestBase {
   private static final String ARTICLE_BODY =
       "Revenue reporting rule: exclude cancelled and refunded orders from all revenue metrics.";
   private static final String METRIC_CODE = "SUM(amount) WHERE status = 'completed'";
+  private static final String LONG_ARTICLE_LEAD = "Revenue recognition handbook";
+  private static final String LONG_ARTICLE_TAIL = "REFUNDEXCLUSIONZZ";
+  private static final String LONG_ARTICLE_BODY =
+      LONG_ARTICLE_LEAD
+          + " opening section. "
+          + "detail ".repeat(400)
+          + " "
+          + LONG_ARTICLE_TAIL
+          + ".";
 
   private static Table ordersTable;
   private static Table customersTable;
   private static Metric revenueMetric;
+  private static String longArticleFqn;
   private static String suffix;
 
   @BeforeAll
@@ -62,7 +72,27 @@ class AIContextMcpIT extends McpTestBase {
     ordersTable = createOrdersTableWithForeignKey();
     applyGlossaryTermToTable();
     createLinkedArticle();
+    longArticleFqn = createLongLinkedArticle();
     revenueMetric = createMetricAppliedToTable();
+  }
+
+  private static String createLongLinkedArticle() throws Exception {
+    Map<String, Object> createPage =
+        Map.of(
+            "name",
+            "aicontext_longarticle_" + suffix,
+            "displayName",
+            "Revenue Recognition Handbook",
+            "description",
+            LONG_ARTICLE_BODY,
+            "pageType",
+            "Article",
+            "page",
+            Map.of(),
+            "relatedEntities",
+            List.of(Map.of("id", ordersTable.getId().toString(), "type", "table")));
+    JsonNode page = post("contextCenter/pages", createPage, JsonNode.class);
+    return page.get("fullyQualifiedName").asText();
   }
 
   private static Table createOrdersTableWithForeignKey() throws Exception {
@@ -220,5 +250,53 @@ class AIContextMcpIT extends McpTestBase {
     assertThat(context.path("glossaryTerms").get(0).path("content").asText())
         .isEqualTo(TERM_DEFINITION);
     assertThat(context.path("metrics").get(0).path("content").asText()).contains(METRIC_CODE);
+  }
+
+  @Test
+  void getAssetContext_excerptsLongArticleAndTruncationFlagIsSet() throws Exception {
+    Map<String, Object> toolCall =
+        McpTestUtils.createToolCallRequest(
+            "get_asset_context",
+            Map.of(
+                "entityType",
+                "table",
+                "fqn",
+                ordersTable.getFullyQualifiedName(),
+                "format",
+                "json"));
+    JsonNode response = executeMcpRequest(toolCall);
+
+    JsonNode context =
+        OBJECT_MAPPER.readTree(response.get("result").get("content").get(0).get("text").asText());
+    JsonNode longArticle = findArticle(context.path("articles"), longArticleFqn);
+    assertThat(longArticle).isNotNull();
+    assertThat(longArticle.path("contentTruncated").asBoolean()).isTrue();
+    assertThat(longArticle.path("content").asText()).contains(LONG_ARTICLE_LEAD);
+    assertThat(longArticle.path("content").asText()).doesNotContain(LONG_ARTICLE_TAIL);
+  }
+
+  @Test
+  void getKnowledgeContent_returnsFullBodyForTruncatedArticle() throws Exception {
+    Map<String, Object> toolCall =
+        McpTestUtils.createToolCallRequest(
+            "get_knowledge_content", Map.of("entityType", "page", "fqn", longArticleFqn));
+    JsonNode response = executeMcpRequest(toolCall);
+
+    String text = response.get("result").get("content").get(0).get("text").asText();
+    assertThat(text).contains(LONG_ARTICLE_LEAD);
+    assertThat(text).contains(LONG_ARTICLE_TAIL);
+  }
+
+  private static JsonNode findArticle(JsonNode articles, String fqn) {
+    JsonNode match = null;
+    if (articles.isArray()) {
+      for (JsonNode article : articles) {
+        if (fqn.equals(article.path("fullyQualifiedName").asText())) {
+          match = article;
+          break;
+        }
+      }
+    }
+    return match;
   }
 }

@@ -143,9 +143,7 @@ public final class AIContextMarkdown {
           .append(typeLabel(item))
           .append(")\n");
       appendYamlInline(markdown, item.getFullyQualifiedName());
-      if (!nullOrEmpty(item.getContent())) {
-        markdown.append('\n').append(truncate(item.getContent().strip())).append('\n');
-      }
+      appendKnowledgeContent(markdown, item);
     }
     if (!found.candidateAssets().isEmpty()) {
       markdown.append("\n# Candidate Assets\n\n");
@@ -350,9 +348,25 @@ public final class AIContextMarkdown {
     for (KnowledgeItem item : items) {
       markdown.append("\n### ").append(labelOf(item)).append('\n');
       appendYamlInline(markdown, item.getFullyQualifiedName());
-      if (!nullOrEmpty(item.getContent())) {
-        markdown.append('\n').append(truncate(item.getContent().strip())).append('\n');
-      }
+      appendKnowledgeContent(markdown, item);
+    }
+  }
+
+  /**
+   * Renders a knowledge item's body, appending a retrieval hint whenever the content was excerpted
+   * or omitted to fit the context budget, so the agent knows the full text is a fetch away.
+   */
+  private static void appendKnowledgeContent(StringBuilder markdown, KnowledgeItem item) {
+    if (!nullOrEmpty(item.getContent())) {
+      markdown.append('\n').append(truncate(item.getContent().strip())).append('\n');
+    }
+    if (Boolean.TRUE.equals(item.getContentTruncated())) {
+      markdown
+          .append("\n_Excerpt — fetch the full content with get_knowledge_content(type=`")
+          .append(item.getType() == null ? "" : item.getType().value())
+          .append("`, fqn=`")
+          .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
+          .append("`)._\n");
     }
   }
 

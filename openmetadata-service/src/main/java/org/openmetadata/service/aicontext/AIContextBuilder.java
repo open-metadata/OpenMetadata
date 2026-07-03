@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
@@ -92,14 +93,36 @@ public class AIContextBuilder {
       "columns,tableConstraints,joins,tablePartition,tags,testSuite";
   private static final String DEFAULT_FIELDS = "tags";
 
+  /** Total characters of knowledge-item content allowed in one bundle before degradation. */
+  static final int DEFAULT_KNOWLEDGE_BUDGET_CHARS = 8000;
+
+  /** Hard per-item content ceiling: a single item never inlines more than this, budget aside. */
+  static final int MAX_ITEM_CHARS = 1500;
+
+  /** Length of the lead excerpt substituted for an item that does not fit in full. */
+  static final int EXCERPT_CHARS = 500;
+
+  /** Below this remaining budget an item is emitted as a reference (content omitted). */
+  private static final int MIN_EXCERPT_CHARS = 120;
+
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
   private SecurityContext securityContext;
+  private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
 
   public AIContextBuilder(String entityType, String fqn) {
     this.entityType = entityType;
     this.fqn = fqn;
+  }
+
+  /**
+   * Override the total knowledge-content budget for this bundle. Values below one item's excerpt
+   * are floored to {@link #EXCERPT_CHARS} so at least the first item still carries a lead.
+   */
+  public AIContextBuilder withKnowledgeBudget(int budgetChars) {
+    this.knowledgeBudgetChars = Math.max(budgetChars, EXCERPT_CHARS);
+    return this;
   }
 
   /**
@@ -121,21 +144,91 @@ public class AIContextBuilder {
 
   AIContext buildForEntity(EntityInterface entity) {
     EntityLineage lineage = fetchLineage(entity);
-    return new AIContext()
-        .withFullyQualifiedName(entity.getFullyQualifiedName())
-        .withEntityType(entityType)
-        .withDisplayName(entity.getDisplayName())
-        .withDescription(entity.getDescription())
-        .withResource(entity.getHref())
-        .withTags(extractClassificationTags(entity))
-        .withGlossaryTerms(resolveGlossaryTerms(entity))
-        .withArticles(resolveArticles(entity))
-        .withMetrics(resolveMetrics(entity))
-        .withUpstream(edgeFqns(lineage, true))
-        .withDownstream(edgeFqns(lineage, false))
-        .withAssetContext(buildAssetContext(entity))
-        .withObservability(resolveObservability(entity))
-        .withGeneratedAt(System.currentTimeMillis());
+    AIContext context =
+        new AIContext()
+            .withFullyQualifiedName(entity.getFullyQualifiedName())
+            .withEntityType(entityType)
+            .withDisplayName(entity.getDisplayName())
+            .withDescription(entity.getDescription())
+            .withResource(entity.getHref())
+            .withTags(extractClassificationTags(entity))
+            .withGlossaryTerms(resolveGlossaryTerms(entity))
+            .withArticles(resolveArticles(entity))
+            .withMetrics(resolveMetrics(entity))
+            .withUpstream(edgeFqns(lineage, true))
+            .withDownstream(edgeFqns(lineage, false))
+            .withAssetContext(buildAssetContext(entity))
+            .withObservability(resolveObservability(entity))
+            .withGeneratedAt(System.currentTimeMillis());
+    applyKnowledgeBudget(context);
+    return context;
+  }
+
+  /**
+   * Bounds the total knowledge-item content so a bundle can't overwhelm an LLM context window.
+   * Definitions come first (glossary, metrics — short and high-value), then attached articles and
+   * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
+   * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
+   * reference (content omitted) once the budget is exhausted. Truncated items carry
+   * {@code contentTruncated=true} so the agent knows to fetch the full body via get_knowledge_content.
+   */
+  void applyKnowledgeBudget(AIContext context) {
+    int remaining = knowledgeBudgetChars;
+    remaining = fitItems(context.getGlossaryTerms(), remaining);
+    remaining = fitItems(context.getMetrics(), remaining);
+    remaining = fitItems(context.getArticles(), remaining);
+    logDegradation(context);
+  }
+
+  private int fitItems(List<KnowledgeItem> items, int remaining) {
+    int budget = remaining;
+    for (KnowledgeItem item : listOrEmpty(items)) {
+      budget = fitItem(item, budget);
+    }
+    return budget;
+  }
+
+  private int fitItem(KnowledgeItem item, int remaining) {
+    String content = item.getContent();
+    int budget = remaining;
+    if (!nullOrEmpty(content)) {
+      if (content.length() <= MAX_ITEM_CHARS && content.length() <= remaining) {
+        budget = remaining - content.length();
+      } else if (remaining >= MIN_EXCERPT_CHARS) {
+        String lead = excerpt(content, Math.min(EXCERPT_CHARS, remaining));
+        item.withContent(lead).withContentTruncated(true);
+        budget = remaining - lead.length();
+      } else {
+        item.withContent(null).withContentTruncated(true);
+      }
+    }
+    return budget;
+  }
+
+  /** A lead excerpt bounded to {@code limit} characters, cut on a word boundary. */
+  static String excerpt(String content, int limit) {
+    String result = content;
+    if (content != null && content.length() > limit) {
+      int boundary = content.lastIndexOf(' ', limit);
+      int cut = boundary < limit / 2 ? limit : boundary;
+      result = content.substring(0, cut).stripTrailing() + "…";
+    }
+    return result;
+  }
+
+  private void logDegradation(AIContext context) {
+    long truncated =
+        Stream.of(context.getGlossaryTerms(), context.getMetrics(), context.getArticles())
+            .flatMap(items -> listOrEmpty(items).stream())
+            .filter(item -> Boolean.TRUE.equals(item.getContentTruncated()))
+            .count();
+    if (truncated > 0) {
+      LOG.debug(
+          "AIContext {}: {} knowledge item(s) truncated/omitted to fit the {}-char budget",
+          fqn,
+          truncated,
+          knowledgeBudgetChars);
+    }
   }
 
   private Observability resolveObservability(EntityInterface entity) {
@@ -470,6 +563,23 @@ public class AIContextBuilder {
       LOG.warn("AIContext: failed to fetch metric {}: {}", ref.getName(), e.getMessage());
     }
     return item;
+  }
+
+  /**
+   * The full (un-budgeted) body of a knowledge entity, for the get_knowledge_content tool's
+   * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
+   * in one place so it matches what the bundle excerpts.
+   */
+  public static String fullContentOf(EntityInterface entity) {
+    String content;
+    if (entity instanceof Metric metric) {
+      content = metricContent(metric);
+    } else if (entity instanceof ContextMemory pill) {
+      content = pillContent(pill);
+    } else {
+      content = entity.getDescription();
+    }
+    return content;
   }
 
   static String metricContent(Metric metric) {

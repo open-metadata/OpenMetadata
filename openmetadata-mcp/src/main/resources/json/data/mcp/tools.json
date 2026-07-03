@@ -17,7 +17,9 @@
             "default": 10
           }
         },
-        "required": ["query"]
+        "required": [
+          "query"
+        ]
       }
     },
     {
@@ -32,7 +34,9 @@
             "description": "The 'fullyQualifiedName' or 'name' of the knowledge pill from a search_company_context result. Pass it verbatim; surrounding quotes are optional and handled for you."
           }
         },
-        "required": ["fqn"]
+        "required": [
+          "fqn"
+        ]
       }
     },
     {
@@ -191,7 +195,9 @@
             "default": 0.0
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "examples": [
           {
             "description": "Find tables related to customer purchases",
@@ -200,7 +206,14 @@
           {
             "description": "Find dashboards about revenue in BigQuery",
             "query": "revenue metrics dashboard",
-            "filters": {"entityType": ["dashboard"], "service": ["BigQuery"]}
+            "filters": {
+              "entityType": [
+                "dashboard"
+              ],
+              "service": [
+                "BigQuery"
+              ]
+            }
           },
           {
             "description": "High-confidence search for PII data",
@@ -210,7 +223,11 @@
           {
             "description": "Find pipeline assets processing user events",
             "query": "user event processing pipeline",
-            "filters": {"entityType": ["pipeline"]}
+            "filters": {
+              "entityType": [
+                "pipeline"
+              ]
+            }
           }
         ]
       }
@@ -255,7 +272,10 @@
           "format": {
             "type": "string",
             "description": "Output format. 'markdown' (default) returns a compact, LLM-friendly markdown document with a schema table, foreign keys, joins, and business definitions. 'json' returns the structured AIContext object.",
-            "enum": ["markdown", "json"],
+            "enum": [
+              "markdown",
+              "json"
+            ],
             "default": "markdown"
           }
         },
@@ -284,12 +304,61 @@
           "format": {
             "type": "string",
             "description": "Output format. 'markdown' (default) returns definitions and candidate assets as an LLM-friendly document. 'json' returns the structured result.",
-            "enum": ["markdown", "json"],
+            "enum": [
+              "markdown",
+              "json"
+            ],
             "default": "markdown"
           }
         },
         "required": [
           "query"
+        ]
+      }
+    },
+    {
+      "name": "get_knowledge_content",
+      "description": "Progressive disclosure for attached knowledge. get_asset_context and find_context return bounded EXCERPTS of long glossary definitions, metric definitions, and Context Center articles (each marked contentTruncated) so a bundle never overwhelms the context window. When you need the full detail of one specific item, call this with that item's type and fullyQualifiedName. Without a 'query' it returns the full body; with a 'query' it returns only the passages of a long article most relevant to that query. Returns LLM-friendly markdown by default.",
+      "parameters": {
+        "description": "Provide the knowledge item's 'entityType' and 'fqn' (as given in the get_asset_context/find_context result). Optionally pass a 'query' to retrieve only the relevant passages of a long article.",
+        "type": "object",
+        "properties": {
+          "entityType": {
+            "type": "string",
+            "description": "The knowledge item type: glossaryTerm, metric, page, or contextMemory.",
+            "enum": [
+              "glossaryTerm",
+              "metric",
+              "page",
+              "contextMemory"
+            ]
+          },
+          "fqn": {
+            "type": "string",
+            "description": "The fullyQualifiedName of the knowledge item to fetch."
+          },
+          "query": {
+            "type": "string",
+            "description": "Optional. When set, return only the passages of the item most relevant to this query instead of the full body."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of relevant passages to return when 'query' is set. Default is 3, maximum is 10.",
+            "default": 3
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format. 'markdown' (default) or 'json'.",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown"
+          }
+        },
+        "required": [
+          "entityType",
+          "fqn"
         ]
       }
     },
@@ -461,7 +530,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           },
           "toEntity": {
             "description": "Destination Entity.",
@@ -476,7 +548,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           }
         },
         "required": [
@@ -597,7 +672,13 @@
           "metricExpressionLanguage": {
             "type": "string",
             "description": "Language used to define the metric expression.",
-            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+            "enum": [
+              "SQL",
+              "Java",
+              "JavaScript",
+              "Python",
+              "External"
+            ]
           },
           "metricExpressionCode": {
             "type": "string",
@@ -606,17 +687,49 @@
           "metricType": {
             "type": "string",
             "description": "Type of the metric.",
-            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVERAGE",
+              "RATIO",
+              "PERCENTAGE",
+              "MIN",
+              "MAX",
+              "MEDIAN",
+              "MODE",
+              "STANDARD_DEVIATION",
+              "VARIANCE",
+              "OTHER"
+            ]
           },
           "granularity": {
             "type": "string",
             "description": "Time granularity at which the metric is computed.",
-            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+            "enum": [
+              "SECOND",
+              "MINUTE",
+              "HOUR",
+              "DAY",
+              "WEEK",
+              "MONTH",
+              "QUARTER",
+              "YEAR"
+            ]
           },
           "unitOfMeasurement": {
             "type": "string",
             "description": "Unit of measurement for the metric value.",
-            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+            "enum": [
+              "COUNT",
+              "DOLLARS",
+              "PERCENTAGE",
+              "TIMESTAMP",
+              "SIZE",
+              "REQUESTS",
+              "EVENTS",
+              "TRANSACTIONS",
+              "OTHER"
+            ]
           },
           "customUnitOfMeasurement": {
             "type": "string",
@@ -658,7 +771,11 @@
             }
           }
         },
-        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
+        "required": [
+          "name",
+          "metricExpressionLanguage",
+          "metricExpressionCode"
+        ]
       }
     },
     {
@@ -705,7 +822,10 @@
             }
           }
         },
-        "required": ["name", "description"]
+        "required": [
+          "name",
+          "description"
+        ]
       }
     },
     {
@@ -760,7 +880,10 @@
             }
           }
         },
-        "required": ["name", "description"]
+        "required": [
+          "name",
+          "description"
+        ]
       }
     },
     {
@@ -780,7 +903,11 @@
           "domainType": {
             "type": "string",
             "description": "Type of the domain. Defaults to 'Aggregate' if omitted.",
-            "enum": ["Source-aligned", "Consumer-aligned", "Aggregate"]
+            "enum": [
+              "Source-aligned",
+              "Consumer-aligned",
+              "Aggregate"
+            ]
           },
           "parent": {
             "type": "string",
@@ -812,7 +939,10 @@
             }
           }
         },
-        "required": ["name", "description"]
+        "required": [
+          "name",
+          "description"
+        ]
       }
     },
     {
@@ -869,7 +999,11 @@
             }
           }
         },
-        "required": ["name", "description", "domains"]
+        "required": [
+          "name",
+          "description",
+          "domains"
+        ]
       }
     },
     {
@@ -954,30 +1088,49 @@
           "memoryType": {
             "type": "string",
             "description": "Category of the memory. Defaults to 'Note' when omitted.",
-            "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"]
+            "enum": [
+              "Preference",
+              "UseCase",
+              "Note",
+              "Runbook",
+              "Faq"
+            ]
           },
           "memoryScope": {
             "type": "string",
             "description": "Scope at which the memory applies. 'UserGlobal' applies broadly; 'EntityScoped' ties it to a specific entity.",
-            "enum": ["UserGlobal", "EntityScoped"]
+            "enum": [
+              "UserGlobal",
+              "EntityScoped"
+            ]
           },
           "owners": {
             "type": "array",
             "description": "List of OpenMetadata usernames or team names to set as owners of this memory.",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "tags": {
             "type": "array",
             "description": "Tag FQNs to apply to this memory (e.g. 'Tier.Tier1', 'PII.Sensitive').",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "domains": {
             "type": "array",
             "description": "Fully qualified names of the domains this memory belongs to (e.g. 'Finance', 'Marketing').",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required": ["name", "question", "answer"]
+        "required": [
+          "name",
+          "question",
+          "answer"
+        ]
       }
     }
   ]

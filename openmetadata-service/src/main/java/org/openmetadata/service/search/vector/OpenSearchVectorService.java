@@ -282,6 +282,35 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
+   * Progressive disclosure for a single knowledge entity (the issue #4789 payoff): KNN over just
+   * this parent's chunks in the dedicated chunk index, returning the {@code textToLLMContext} of the
+   * top {@code k} chunks most relevant to {@code query}. Unlike {@link #search}, results are not
+   * collapsed by parent, so this yields several passages of one long article rather than a single
+   * representative — the mechanism that lets a get_asset_context bundle carry only excerpts.
+   */
+  public List<String> searchChunksByParent(String parentId, String query, int k) {
+    List<String> passages = new ArrayList<>();
+    try {
+      ensureChunkIndex();
+      float[] vector = embeddingClient.embed(query);
+      Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
+      String queryJson = VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0);
+      String response =
+          executeGenericRequest("POST", "/" + getChunkIndexName() + "/_search", queryJson);
+      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+      for (JsonNode hit : hits) {
+        String text = hit.path("_source").path("textToLLMContext").asText(null);
+        if (text != null && !text.isBlank()) {
+          passages.add(text);
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Chunk retrieval failed for parent {}: {}", parentId, e.getMessage());
+    }
+    return passages;
+  }
+
+  /**
    * Idempotently creates the dedicated chunk index (dynamic:false mapping with the KNN vector and
    * the filter fields the vector query uses) and attaches the {@code dataAssetEmbeddings} alias so
    * reads cover both legacy entity-doc embeddings and the new chunk docs.

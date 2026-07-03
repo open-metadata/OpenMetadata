@@ -26,8 +26,13 @@
                     "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
                 },
                 "content": {
-                    "description": "The definition, business rule, metric expression, or article body for this item.",
+                    "description": "The definition, business rule, metric expression, or article body for this item. May be a bounded lead excerpt when contentTruncated is true, or null when omitted to stay within the context budget.",
                     "type": "string"
+                },
+                "contentTruncated": {
+                    "description": "True when content is a lead excerpt or has been omitted to fit the context budget; fetch the full body via the get_knowledge_content tool using this item's fullyQualifiedName.",
+                    "type": "boolean",
+                    "default": false
                 }
             },
             "additionalProperties": false

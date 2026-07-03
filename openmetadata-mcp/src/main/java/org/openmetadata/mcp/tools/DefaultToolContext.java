@@ -91,6 +91,9 @@ public class DefaultToolContext {
         case "find_context":
           result = new FindContextTool().execute(authorizer, securityContext, params);
           break;
+        case "get_knowledge_content":
+          result = new GetKnowledgeContentTool().execute(authorizer, securityContext, params);
+          break;
         case "search_company_context":
           result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
           break;
