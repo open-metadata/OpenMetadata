@@ -26,6 +26,11 @@ export type AgentTab = 'metadata' | 'ai';
 
 export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
+export interface AgentRecentRun {
+  id: string;
+  status: RunStatus;
+}
+
 export interface Agent {
   id: string;
   fqn: string;
@@ -41,6 +46,7 @@ export interface Agent {
   target: number;
   errors: number;
   warnings: number;
+  recentRuns: AgentRecentRun[];
   after?: string;
   finishedAt?: string;
   failStep?: string;

@@ -252,6 +252,93 @@ describe('agentsDataMapper', () => {
       expect(agent.eta).toBeNull();
       expect(agent.errors).toBe(0);
       expect(agent.warnings).toBe(0);
+      expect(agent.recentRuns).toEqual([]);
+    });
+
+    it('should build recentRuns latest-first from pipeline statuses', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          { pipelineState: PipelineState.Failed, runId: 'run-a' },
+          { pipelineState: PipelineState.Success, runId: 'run-b' },
+          { pipelineState: PipelineState.PartialSuccess, runId: 'run-c' },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.recentRuns).toEqual([
+        { id: 'run-a', status: 'failed' },
+        { id: 'run-b', status: 'success' },
+        { id: 'run-c', status: 'partial' },
+      ]);
+    });
+
+    it('should exclude in-flight queued and running statuses from recentRuns', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          { pipelineState: PipelineState.Queued, runId: 'run-q' },
+          { pipelineState: PipelineState.Running, runId: 'run-x' },
+          { pipelineState: PipelineState.Success, runId: 'run-y' },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.status).toBe('queued');
+      expect(agent.recentRuns).toEqual([{ id: 'run-y', status: 'success' }]);
+    });
+
+    it('should keep stopped runs in recentRuns as skipped', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          { pipelineState: PipelineState.Stopped, runId: 'run-s' },
+          { pipelineState: PipelineState.Success, runId: 'run-t' },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.recentRuns).toEqual([
+        { id: 'run-s', status: 'skipped' },
+        { id: 'run-t', status: 'success' },
+      ]);
+    });
+
+    it('should fall back to the timestamp for recentRuns ids when runId is missing', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            pipelineState: PipelineState.Success,
+            timestamp: 1_700_000_000_000,
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.recentRuns).toEqual([
+        { id: '1700000000000', status: 'success' },
+      ]);
+    });
+
+    it('should cap recentRuns at five entries', () => {
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: Array.from({ length: 7 }, (_, index) => ({
+          pipelineState: PipelineState.Success,
+          runId: `run-${index}`,
+        })),
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.recentRuns).toHaveLength(5);
+      expect(agent.recentRuns[0].id).toBe('run-0');
+      expect(agent.recentRuns[4].id).toBe('run-4');
     });
 
     it('should sum errors and warnings across steps and set failStep on failure', () => {

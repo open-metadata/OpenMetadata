@@ -29,7 +29,7 @@ interface AgentGroupProps {
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
-  onRunDetails: (agent: Agent, index: number) => void;
+  onRunDetails: (agent: Agent, runId?: string) => void;
 }
 
 const AgentGroup: FC<AgentGroupProps> = ({

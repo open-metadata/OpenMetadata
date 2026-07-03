@@ -27,6 +27,7 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import {
   Agent,
+  AgentRecentRun,
   AgentRun,
   AgentStatus as UiAgentStatus,
   LogLevel,
@@ -72,6 +73,15 @@ const AGENT_STATUS_TO_UI_STATUS: Record<AgentStatus, UiAgentStatus> = {
   [AgentStatus.Failed]: 'failed',
   [AgentStatus.Pending]: 'queued',
 };
+
+const COMPLETED_PIPELINE_STATES = new Set<PipelineState>([
+  PipelineState.Success,
+  PipelineState.PartialSuccess,
+  PipelineState.Failed,
+  PipelineState.Stopped,
+]);
+
+const RECENT_RUNS_LIMIT = 5;
 
 const PIPELINE_STATE_TO_RUN_STATUS: Record<PipelineState, RunStatus> = {
   [PipelineState.Success]: 'success',
@@ -211,6 +221,19 @@ const emptyAgentProgressFields = (): Pick<
   eta: null,
 });
 
+const buildRecentRuns = (statuses: PipelineStatus[]): AgentRecentRun[] =>
+  statuses
+    .filter(
+      (status) =>
+        status.pipelineState &&
+        COMPLETED_PIPELINE_STATES.has(status.pipelineState)
+    )
+    .slice(0, RECENT_RUNS_LIMIT)
+    .map((status) => ({
+      id: status.runId ?? String(status.timestamp),
+      status: toRunStatus(status.pipelineState),
+    }));
+
 export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
   const agentType = getAgentTypeFromPipelineType(pipeline.pipelineType);
   const { unit, verb } = getAgentUnitVerb(pipeline.pipelineType);
@@ -258,6 +281,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     errors,
     warnings,
     failStep,
+    recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     ...progressFields,
   };
 };

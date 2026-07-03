@@ -105,14 +105,14 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 // ---- drawer ----
 interface RunHistoryDrawerProps {
   agent: Agent;
-  initialIndex: number;
+  initialRunId?: string;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
-  initialIndex,
+  initialRunId,
   onClose,
   onOpenLogs,
 }) => {
@@ -123,10 +123,12 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
 
   useEffect(() => {
     if (runs.length > 0 && !runs.some((r) => r.id === selId)) {
-      const safeIndex = Math.min(initialIndex, runs.length - 1);
-      setSelId(runs[safeIndex].id);
+      const initialRun = initialRunId
+        ? runs.find((r) => r.id === initialRunId)
+        : undefined;
+      setSelId((initialRun ?? runs[0]).id);
     }
-  }, [runs, initialIndex, selId]);
+  }, [runs, initialRunId, selId]);
 
   const run = runs.find((r) => r.id === selId) ?? runs[0];
   const m = run ? RUN_META[run.status] : undefined;

@@ -27,7 +27,6 @@ import {
   AGENT_TYPE_ICON,
   fmtEta,
   fmtNum,
-  RECENT_RUN_STATUSES,
   RUN_DOT_CLASS,
   RUN_META,
 } from '../utils/agents.utils';
@@ -41,7 +40,7 @@ interface AgentCardProps {
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
-  onRunDetails: (agent: Agent, index: number) => void;
+  onRunDetails: (agent: Agent, runId?: string) => void;
 }
 
 const AgentCard: FC<AgentCardProps> = ({
@@ -57,7 +56,6 @@ const AgentCard: FC<AgentCardProps> = ({
   const isFailed = agent.status === 'failed';
   const isQueued = agent.status === 'queued';
   const isSuccess = agent.status === 'success';
-  const recent = RECENT_RUN_STATUSES[agent.status];
   const unitIcon =
     agent.unit === 'queries' ? (
       <TerminalIcon height={15} width={15} />
@@ -129,7 +127,7 @@ const AgentCard: FC<AgentCardProps> = ({
                 </strong>
               </span>
             )}
-            {isFailed && (
+            {isFailed && agent.failStep && (
               <Metric
                 icon={<AlertCircleIcon height={15} width={15} />}
                 label={`· ${fmtNum(agent.assets)} ${agent.unit} ${t(
@@ -158,23 +156,23 @@ const AgentCard: FC<AgentCardProps> = ({
             )}
           </Box>
           {isRunning && <ProgressBar pct={agent.pct} status={agent.status} />}
-          {!isRunning && !isQueued && (
+          {!isRunning && agent.recentRuns.length > 0 && (
             <Box align="center" className="tw:mt-2 tw:gap-2">
               <span className="tw:text-xs tw:text-quaternary">
                 {t('label.recent-runs-sentence')}
               </span>
               <Box className="tw:gap-1">
-                {recent.map((rs, index) => (
+                {agent.recentRuns.map((run, index) => (
                   <button
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
-                      RUN_DOT_CLASS[rs] ?? 'tw:bg-utility-gray-300'
+                      RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
                     }${index === 0 ? '' : ' tw:opacity-[0.55]'}`}
-                    key={`${agent.id}-${index}`}
+                    key={run.id}
                     title={t('message.run-status-click-details', {
-                      status: t(RUN_META[rs].labelKey),
+                      status: t(RUN_META[run.status].labelKey),
                     })}
                     type="button"
-                    onClick={() => onRunDetails(agent, index)}
+                    onClick={() => onRunDetails(agent, run.id)}
                   />
                 ))}
               </Box>
@@ -182,7 +180,7 @@ const AgentCard: FC<AgentCardProps> = ({
                 className="tw:text-xs tw:font-semibold tw:text-brand-tertiary"
                 color="link-color"
                 size="sm"
-                onClick={() => onRunDetails(agent, 0)}>
+                onClick={() => onRunDetails(agent)}>
                 {t('label.view-run-history')}
               </Button>
             </Box>
@@ -197,7 +195,7 @@ const AgentCard: FC<AgentCardProps> = ({
               color="primary"
               iconLeading={<AlertTriangleIcon height={15} width={15} />}
               size="sm"
-              onClick={() => onRunDetails(agent, 0)}>
+              onClick={() => onRunDetails(agent)}>
               {t('label.diagnose')}
             </Button>
           ) : (

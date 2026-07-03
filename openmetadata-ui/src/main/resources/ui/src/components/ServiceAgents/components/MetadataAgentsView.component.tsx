@@ -61,7 +61,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     useAgentActions(onRefresh);
   const [runsFor, setRunsFor] = useState<{
     agent: Agent;
-    index: number;
+    runId?: string;
   } | null>(null);
   const [logsFor, setLogsFor] = useState<Agent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
@@ -81,7 +81,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [runAgent]
   );
   const onRunDetails = useCallback(
-    (agent: Agent, index: number) => setRunsFor({ agent, index }),
+    (agent: Agent, runId?: string) => setRunsFor({ agent, runId }),
     []
   );
 
@@ -203,7 +203,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       {runsFor && (
         <RunHistoryDrawer
           agent={runsFor.agent}
-          initialIndex={runsFor.index}
+          initialRunId={runsFor.runId}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
             setRunsFor(null);

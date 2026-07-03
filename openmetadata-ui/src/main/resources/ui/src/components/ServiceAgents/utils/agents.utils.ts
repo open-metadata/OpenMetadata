@@ -110,17 +110,11 @@ export const RUN_META: Record<RunStatus, RunMeta> = {
   },
 };
 
-export const RECENT_RUN_STATUSES: Record<AgentStatus, RunStatus[]> = {
-  success: ['success', 'success', 'partial', 'success', 'success'],
-  failed: ['failed', 'partial', 'success', 'success', 'failed'],
-  running: ['success', 'success', 'partial', 'success', 'success'],
-  queued: ['success', 'success', 'success', 'partial', 'success'],
-};
-
 export const RUN_DOT_CLASS: Record<string, string> = {
   failed: 'tw:bg-utility-error-500',
   partial: 'tw:bg-utility-warning-500',
   success: 'tw:bg-utility-success-500',
+  skipped: 'tw:bg-utility-gray-300',
 };
 
 export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
