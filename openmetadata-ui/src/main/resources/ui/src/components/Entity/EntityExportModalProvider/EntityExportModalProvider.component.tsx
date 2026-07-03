@@ -337,7 +337,7 @@ export const EntityExportModalProvider = ({
                     }
                     value={fileName}
                     onChange={setFileName}>
-                    <InputBase data-testid="file-name-input" />
+                    <InputBase inputDataTestId="file-name-input" />
                   </InputGroup>
 
                   {csvExportJob?.jobId && (
