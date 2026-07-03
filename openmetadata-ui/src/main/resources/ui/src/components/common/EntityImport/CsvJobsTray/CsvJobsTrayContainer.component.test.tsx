@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 import { CsvJobsTrayContainer } from './CsvJobsTrayContainer.component';
 
@@ -19,7 +19,15 @@ jest.mock('./CsvJobsTray.component', () => ({
   CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
 }));
 
+const renderTray = () => <div data-testid="csv-jobs-tray" />;
+
 describe('CsvJobsTrayContainer', () => {
+  beforeEach(() => {
+    const { CsvJobsTray } = require('./CsvJobsTray.component');
+    CsvJobsTray.mockReset();
+    CsvJobsTray.mockImplementation(renderTray);
+  });
+
   it('renders nothing and does not load the tray before any CSV job starts', () => {
     const { CsvJobsTray } = require('./CsvJobsTray.component');
     render(<CsvJobsTrayContainer />);
@@ -36,5 +44,27 @@ describe('CsvJobsTrayContainer', () => {
     });
 
     expect(await screen.findByTestId('csv-jobs-tray')).toBeInTheDocument();
+  });
+
+  it('renders nothing (does not crash) when the lazy tray fails to load', async () => {
+    const { CsvJobsTray } = require('./CsvJobsTray.component');
+    CsvJobsTray.mockImplementation(() => {
+      throw new Error('chunk load failed');
+    });
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    render(<CsvJobsTrayContainer />);
+
+    act(() => {
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+    });
+
+    await waitFor(() => expect(CsvJobsTray).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('csv-jobs-tray')).not.toBeInTheDocument();
+
+    consoleErrorSpy.mockRestore();
   });
 });

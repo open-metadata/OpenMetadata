@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
 const CsvJobsTray = lazy(() =>
@@ -37,9 +38,14 @@ export const CsvJobsTrayContainer: FC = () => {
       window.removeEventListener(CSV_JOBS_REFRESH_EVENT, activateTray);
   }, []);
 
+  // The tray is non-critical, on-demand UI; if the lazy chunk fails to load
+  // (transient network error or a stale chunk after a deploy) degrade to
+  // rendering nothing instead of crashing the surrounding subtree.
   return isTrayActivated ? (
-    <Suspense fallback={null}>
-      <CsvJobsTray />
-    </Suspense>
+    <ErrorBoundary fallback={<></>}>
+      <Suspense fallback={null}>
+        <CsvJobsTray />
+      </Suspense>
+    </ErrorBoundary>
   ) : null;
 };

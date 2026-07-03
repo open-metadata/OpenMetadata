@@ -47,6 +47,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import {
@@ -737,6 +738,9 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(initialLoadJobData);
       activeAsyncImportJobRef.current = initialLoadJobData;
+      // Activate the lazily mounted background-jobs tray so import progress
+      // surfaces there even if the user navigates away from this page.
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
 
       await validateCsvString(
         selectedCsvFile.content,
