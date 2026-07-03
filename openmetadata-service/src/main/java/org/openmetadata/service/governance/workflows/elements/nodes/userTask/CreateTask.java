@@ -21,7 +21,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.type.TypeReference;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -31,9 +30,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -112,8 +109,6 @@ public class CreateTask implements TaskListener {
           .retryOnResult(task -> task == null)
           .failAfterMaxAttempts(false)
           .build();
-  private static final TypeReference<Map<String, Object>> PAYLOAD_MAP_TYPE =
-      new TypeReference<>() {};
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
   private Expression approvalThresholdExpr;
@@ -899,12 +894,6 @@ public class CreateTask implements TaskListener {
     DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
     if (darPayload == null || darPayload.getExpirationDate() != null) {
       return payload;
-    }
-    if (payload instanceof Map<?, ?>) {
-      Map<String, Object> merged = JsonUtils.convertValue(payload, PAYLOAD_MAP_TYPE);
-      merged = new LinkedHashMap<>(merged);
-      merged.put("expirationDate", expiration);
-      return merged;
     }
     return darPayload.withExpirationDate(expiration);
   }
