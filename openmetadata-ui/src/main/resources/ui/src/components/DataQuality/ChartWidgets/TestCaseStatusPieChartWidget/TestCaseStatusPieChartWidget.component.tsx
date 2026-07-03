@@ -99,7 +99,9 @@ const TestCaseStatusPieChartWidget = ({
 
   if (isTestCaseSummaryLoading) {
     return (
-      <Card className={className} data-testid="test-case-status-pie-chart-widget">
+      <Card
+        className={className}
+        data-testid="test-case-status-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
     );

@@ -124,8 +124,8 @@ const DataAssetsCoveragePieChartWidget = ({
   if (isLoading) {
     return (
       <Card
-      className={className}
-      data-testid="data-assets-coverage-pie-chart-widget">
+        className={className}
+        data-testid="data-assets-coverage-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
     );
