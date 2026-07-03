@@ -235,7 +235,7 @@ export const removeCertificationFromWidget = async (
 export const assignDomainWidget = async (
   page: Page,
   domain: { name: string; displayName: string; fullyQualifiedName?: string },
-  multiSelect = false,
+  multiSelect = false
 ) => {
   const addBtn = page.getByTestId('add-domain');
   const editBtn = page.getByTestId('edit-domain');
@@ -257,22 +257,21 @@ export const assignDomainWidget = async (
   const domainTag = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
   await domainTag.waitFor({ state: 'visible' });
 
-  if(multiSelect){
+  if (multiSelect) {
     await domainTag.click();
-     const patchReq = page.waitForResponse(
+    const patchReq = page.waitForResponse(
       (req) => req.request().method() === 'PATCH'
     );
     await page.getByTestId('saveAssociatedTag').click();
     await patchReq;
-  }
-  else {
+  } else {
     const patchReq = page.waitForResponse(
       (req) => req.request().method() === 'PATCH'
     );
     await domainTag.click();
     await patchReq;
   }
- 
+
   await waitForAllLoadersToDisappear(page);
 
   await expect(
