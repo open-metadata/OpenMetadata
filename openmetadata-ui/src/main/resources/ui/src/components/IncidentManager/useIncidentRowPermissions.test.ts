@@ -53,9 +53,7 @@ describe('useIncidentRowPermissions', () => {
       })
     );
 
-    await waitFor(() =>
-      expect(result.current.isPermissionLoading).toBe(false)
-    );
+    await waitFor(() => expect(result.current.isPermissionLoading).toBe(false));
 
     expect(mockGetPermission).toHaveBeenCalledTimes(2);
     expect(mockGetPermission).toHaveBeenCalledWith(
@@ -80,9 +78,7 @@ describe('useIncidentRowPermissions', () => {
       })
     );
 
-    await waitFor(() =>
-      expect(result.current.isPermissionLoading).toBe(false)
-    );
+    await waitFor(() => expect(result.current.isPermissionLoading).toBe(false));
 
     expect(result.current.testCasePermissions).toEqual([
       { ViewAll: true, fullyQualifiedName: 'fqn1' },
@@ -100,9 +96,7 @@ describe('useIncidentRowPermissions', () => {
 
     expect(result.current.isPermissionLoading).toBe(true);
 
-    await waitFor(() =>
-      expect(result.current.isPermissionLoading).toBe(false)
-    );
+    await waitFor(() => expect(result.current.isPermissionLoading).toBe(false));
   });
 
   it('should fall back to an empty fqn for a row without a test-case reference', async () => {
@@ -117,11 +111,12 @@ describe('useIncidentRowPermissions', () => {
       })
     );
 
-    await waitFor(() =>
-      expect(result.current.isPermissionLoading).toBe(false)
-    );
+    await waitFor(() => expect(result.current.isPermissionLoading).toBe(false));
 
-    expect(mockGetPermission).toHaveBeenCalledWith(ResourceEntity.TEST_CASE, '');
+    expect(mockGetPermission).toHaveBeenCalledWith(
+      ResourceEntity.TEST_CASE,
+      ''
+    );
     expect(result.current.testCasePermissions).toEqual([
       { ViewAll: true, fullyQualifiedName: '' },
     ]);
@@ -137,9 +132,7 @@ describe('useIncidentRowPermissions', () => {
       { initialProps: { testCaseListData: listWithFqns('fqn1') } }
     );
 
-    await waitFor(() =>
-      expect(result.current.isPermissionLoading).toBe(false)
-    );
+    await waitFor(() => expect(result.current.isPermissionLoading).toBe(false));
 
     mockGetPermission.mockClear();
     rerender({ testCaseListData: listWithFqns('fqn2') });

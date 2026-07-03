@@ -151,7 +151,9 @@ describe('useTestSuitesData', () => {
   it('should gate the fetch on the injected testSuite permission for ViewBasic', async () => {
     renderData();
 
-    await waitFor(() => expect(getPrioritizedViewPermission).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(getPrioritizedViewPermission).toHaveBeenCalled()
+    );
 
     expect(getPrioritizedViewPermission).toHaveBeenCalledWith(
       testSuitePermission,

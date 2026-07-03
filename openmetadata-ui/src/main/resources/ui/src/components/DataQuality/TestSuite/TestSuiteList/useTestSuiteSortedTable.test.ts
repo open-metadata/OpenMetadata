@@ -57,9 +57,9 @@ describe('useTestSuiteSortedTable', () => {
     const { result } = renderSorted(rows);
 
     expect(result.current.sortedData).toBe(rows);
-    expect(result.current.sortedData.map((item) => item.fullyQualifiedName)).toEqual(
-      ['b', 'a', 'c']
-    );
+    expect(
+      result.current.sortedData.map((item) => item.fullyQualifiedName)
+    ).toEqual(['b', 'a', 'c']);
   });
 
   it('should set the sortDescriptor and sort by name ascending', () => {
@@ -76,9 +76,9 @@ describe('useTestSuiteSortedTable', () => {
       column: 'name',
       direction: 'ascending',
     });
-    expect(result.current.sortedData.map((item) => item.fullyQualifiedName)).toEqual(
-      ['a', 'b', 'c']
-    );
+    expect(
+      result.current.sortedData.map((item) => item.fullyQualifiedName)
+    ).toEqual(['a', 'b', 'c']);
   });
 
   it('should sort by name descending when the descriptor direction is descending', () => {
@@ -91,9 +91,9 @@ describe('useTestSuiteSortedTable', () => {
       });
     });
 
-    expect(result.current.sortedData.map((item) => item.fullyQualifiedName)).toEqual(
-      ['c', 'b', 'a']
-    );
+    expect(
+      result.current.sortedData.map((item) => item.fullyQualifiedName)
+    ).toEqual(['c', 'b', 'a']);
   });
 
   it('should not mutate the injected rows while producing the sorted view', () => {
@@ -109,7 +109,11 @@ describe('useTestSuiteSortedTable', () => {
     });
 
     expect(result.current.sortedData).not.toBe(rows);
-    expect(rows.map((item) => item.fullyQualifiedName)).toEqual(['b', 'a', 'c']);
+    expect(rows.map((item) => item.fullyQualifiedName)).toEqual([
+      'b',
+      'a',
+      'c',
+    ]);
   });
 
   it('should leave row order unchanged when sorting by a non-name column', () => {
@@ -122,9 +126,9 @@ describe('useTestSuiteSortedTable', () => {
       });
     });
 
-    expect(result.current.sortedData.map((item) => item.fullyQualifiedName)).toEqual(
-      ['b', 'a', 'c']
-    );
+    expect(
+      result.current.sortedData.map((item) => item.fullyQualifiedName)
+    ).toEqual(['b', 'a', 'c']);
   });
 
   it('should sort a basic suite by basicEntityReference.fullyQualifiedName, not the top-level fqn', () => {

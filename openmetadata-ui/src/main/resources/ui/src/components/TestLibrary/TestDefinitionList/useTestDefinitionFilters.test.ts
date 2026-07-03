@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { useTestDefinitionFilters } from './useTestDefinitionFilters';
 import { act } from 'react';
+import { useTestDefinitionFilters } from './useTestDefinitionFilters';
 
 const mockHandlePageChange = jest.fn();
 const mockUpdateUrlParams = jest.fn();

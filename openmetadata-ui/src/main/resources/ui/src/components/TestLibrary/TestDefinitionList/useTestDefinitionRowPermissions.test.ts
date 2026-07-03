@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { act } from 'react';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { useTestDefinitionRowPermissions } from './useTestDefinitionRowPermissions';

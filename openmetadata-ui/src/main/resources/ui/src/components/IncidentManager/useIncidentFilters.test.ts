@@ -13,7 +13,10 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
-import { UseIncidentFiltersProps, useIncidentFilters } from './useIncidentFilters';
+import {
+  useIncidentFilters,
+  UseIncidentFiltersProps,
+} from './useIncidentFilters';
 
 const mockNavigate = jest.fn();
 const mockFetchTestCaseFilterOptions = jest.fn();
@@ -37,7 +40,9 @@ const renderFiltersHook = (overrides: Partial<UseIncidentFiltersProps> = {}) =>
   );
 
 const findDescriptor = (
-  descriptors: ReturnType<typeof renderFiltersHook>['result']['current']['filterDescriptors'],
+  descriptors: ReturnType<
+    typeof renderFiltersHook
+  >['result']['current']['filterDescriptors'],
   key: string
 ) => descriptors.find((descriptor) => descriptor.key === key);
 
@@ -61,7 +66,9 @@ describe('useIncidentFilters', () => {
   });
 
   it('should reflect the injected dateField in selectedDateFilterKey/Option', () => {
-    const { result } = renderFiltersHook({ filters: { dateField: 'updatedAt' } });
+    const { result } = renderFiltersHook({
+      filters: { dateField: 'updatedAt' },
+    });
 
     expect(result.current.selectedDateFilterKey).toBe('updatedAt');
     expect(result.current.selectedDateFilterOption).toEqual({
@@ -97,6 +104,7 @@ describe('useIncidentFilters', () => {
       }),
       { replace: true }
     );
+
     const [firstCallArg] = mockNavigate.mock.calls[0];
 
     expect(firstCallArg.search).toContain('existing=y');
@@ -233,6 +241,7 @@ describe('useIncidentFilters', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalled();
+
     const [firstCallArg] = mockNavigate.mock.calls[0];
 
     expect(firstCallArg.search).not.toContain('testCaseFQN');
@@ -315,7 +324,9 @@ describe('useIncidentFilters', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({
-        search: expect.stringContaining('testCaseResolutionStatusType=Resolved'),
+        search: expect.stringContaining(
+          'testCaseResolutionStatusType=Resolved'
+        ),
       }),
       { replace: true }
     );
@@ -348,7 +359,9 @@ describe('useIncidentFilters', () => {
   });
 
   it('should carry numeric bounds on the date-range descriptor and navigate on change', () => {
-    const { result } = renderFiltersHook({ filters: { startTs: 9, endTs: 10 } });
+    const { result } = renderFiltersHook({
+      filters: { startTs: 9, endTs: 10 },
+    });
 
     const descriptor = findDescriptor(
       result.current.filterDescriptors,
@@ -398,9 +411,7 @@ describe('useIncidentFilters', () => {
     );
 
     act(() => {
-      descriptor?.onOwnerChange?.([
-        { id: 'o1', name: 'other', type: 'user' },
-      ]);
+      descriptor?.onOwnerChange?.([{ id: 'o1', name: 'other', type: 'user' }]);
     });
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -429,9 +440,7 @@ describe('useIncidentFilters', () => {
     );
 
     act(() => {
-      descriptor?.onOwnerChange?.([
-        { id: 'o1', name: 'other', type: 'user' },
-      ]);
+      descriptor?.onOwnerChange?.([{ id: 'o1', name: 'other', type: 'user' }]);
     });
 
     const updated = findDescriptor(

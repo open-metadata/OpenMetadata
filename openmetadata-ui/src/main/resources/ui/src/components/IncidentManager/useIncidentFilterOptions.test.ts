@@ -39,7 +39,9 @@ type TestCaseOption = { label: string; value?: string };
 
 describe('useIncidentFilterOptions', () => {
   beforeEach(() => {
-    mockGetUserAndTeamSearch.mockResolvedValue({ data: { hits: { hits: [] } } });
+    mockGetUserAndTeamSearch.mockResolvedValue({
+      data: { hits: { hits: [] } },
+    });
     mockSearchQuery.mockResolvedValue({ hits: { hits: [] } });
   });
 
@@ -261,6 +263,7 @@ describe('useIncidentFilterOptions', () => {
     await waitFor(() =>
       expect(result.current.isTestCaseOptionsLoading).toBe(false)
     );
+
     expect(result.current.testCaseFilterOptions).toEqual([
       { value: 'svc.db.tc', label: 'TC' },
     ]);

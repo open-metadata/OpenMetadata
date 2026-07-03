@@ -17,7 +17,7 @@ import { Include } from '../../generated/type/include';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { UseIncidentListProps, useIncidentList } from './useIncidentList';
+import { useIncidentList, UseIncidentListProps } from './useIncidentList';
 
 const mockHandlePageChange = jest.fn();
 const mockHandlePagingChange = jest.fn();

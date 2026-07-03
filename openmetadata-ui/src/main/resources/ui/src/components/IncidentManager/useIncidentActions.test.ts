@@ -197,7 +197,9 @@ describe('useIncidentActions', () => {
       stateId: 'task-2',
       testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
     } as TestCaseResolutionStatus;
-    const assignee = [{ id: 'a1', type: 'user', name: 'ua' }] as EntityReference[];
+    const assignee = [
+      { id: 'a1', type: 'user', name: 'ua' },
+    ] as EntityReference[];
     const { result } = renderActions();
 
     await act(async () => {

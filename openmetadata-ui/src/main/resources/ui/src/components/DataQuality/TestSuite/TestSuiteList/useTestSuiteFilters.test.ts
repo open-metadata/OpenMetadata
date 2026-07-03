@@ -96,7 +96,10 @@ describe('useTestSuiteFilters', () => {
     const { result } = renderFilters();
 
     expect(result.current.selectedOwner).toEqual(owner);
-    expect(result.current.ownerFilterValue).toEqual({ key: 'u1', label: 'Owner' });
+    expect(result.current.ownerFilterValue).toEqual({
+      key: 'u1',
+      label: 'Owner',
+    });
     expect(getEntityName).toHaveBeenCalledWith(owner);
   });
 
@@ -162,8 +165,16 @@ describe('useTestSuiteFilters', () => {
   });
 
   it('should stringify only the first owner and write it to the URL on handleOwnerSelect', () => {
-    const owner1 = { id: 'user-1', type: 'user', name: 'user1' } as EntityReference;
-    const owner2 = { id: 'user-2', type: 'user', name: 'user2' } as EntityReference;
+    const owner1 = {
+      id: 'user-1',
+      type: 'user',
+      name: 'user1',
+    } as EntityReference;
+    const owner2 = {
+      id: 'user-2',
+      type: 'user',
+      name: 'user2',
+    } as EntityReference;
 
     const { result } = renderFilters();
 
