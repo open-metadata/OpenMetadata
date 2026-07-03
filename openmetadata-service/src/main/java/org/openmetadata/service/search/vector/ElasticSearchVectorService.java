@@ -345,6 +345,43 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
+  @Override
+  public Map<String, JsonNode> fetchSourceByIds(
+      String indexName, List<String> ids, List<String> sourceFields) {
+    Map<String, JsonNode> result = new HashMap<>();
+    try {
+      String query =
+          "{\"size\":"
+              + ids.size()
+              + ",\"_source\":"
+              + toJsonArray(sourceFields, false)
+              + ",\"query\":{\"ids\":{\"values\":"
+              + toJsonArray(ids, true)
+              + "}}}";
+      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
+      JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+      for (JsonNode hit : hits) {
+        result.put(hit.path("_id").asText(), hit.path("_source"));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to fetch _source by ids in index={}: {}", indexName, e.getMessage(), e);
+    }
+    return result;
+  }
+
+  private static String toJsonArray(List<String> values, boolean escapeForQuery) {
+    StringBuilder array = new StringBuilder("[");
+    for (int i = 0; i < values.size(); i++) {
+      if (i > 0) {
+        array.append(',');
+      }
+      String value =
+          escapeForQuery ? VectorSearchQueryBuilder.escape(values.get(i)) : values.get(i);
+      array.append("\"").append(value).append("\"");
+    }
+    return array.append("]").toString();
+  }
+
   public void partialUpdateEntity(
       String indexName, String entityId, Map<String, Object> embeddingFields) {
     try {

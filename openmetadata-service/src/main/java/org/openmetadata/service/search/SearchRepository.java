@@ -971,9 +971,9 @@ public class SearchRepository {
     if (getSearchType() != ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
       return mappingContent;
     }
-    return mappingContent != null
-        ? EsUtils.enrichIndexMappingForElasticsearch(mappingContent)
-        : null;
+    return nullOrEmpty(mappingContent)
+        ? mappingContent
+        : EsUtils.enrichIndexMappingForElasticsearch(mappingContent);
   }
 
   private String getStoredMapping(IndexMapping indexMapping) {
