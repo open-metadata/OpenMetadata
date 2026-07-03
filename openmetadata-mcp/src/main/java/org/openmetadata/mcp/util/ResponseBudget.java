@@ -37,6 +37,35 @@ public final class ResponseBudget {
 
   private ResponseBudget() {}
 
+  /** How many leading items fit and how many chars they consumed. */
+  public record Fit(int count, long usedChars) {}
+
+  /**
+   * Fits leading items of {@code items} within {@code budgetChars}, measuring each item's real
+   * serialized size, and returns both the count and the chars consumed. Guarantees forward progress:
+   * when the first item alone exceeds a positive budget, one item is still returned. Callers with two
+   * lists sharing one budget (e.g. upstream/downstream edges) use the returned {@code usedChars} to
+   * hand the remainder to the second list.
+   */
+  public static Fit fitWithin(List<?> items, long budgetChars) {
+    long used = 0;
+    int fit = 0;
+    for (int i = 0; i < items.size(); i++) {
+      long next = used + McpResponseTrim.serializedLength(items.get(i)) + 1;
+      if (next > budgetChars) {
+        break;
+      }
+      used = next;
+      fit = i + 1;
+    }
+    boolean firstItemOverflows = fit == 0 && !items.isEmpty() && budgetChars > 0;
+    if (firstItemOverflows) {
+      fit = 1;
+      used = McpResponseTrim.serializedLength(items.getFirst()) + 1;
+    }
+    return new Fit(fit, used);
+  }
+
   /** Default item budget: {@link #DEFAULT_BUDGET_FACTOR} of the dispatch-level cap. */
   public static long defaultBudgetChars() {
     return (long) (McpResponseTrim.MAX_RESPONSE_CHARS * DEFAULT_BUDGET_FACTOR);
@@ -55,20 +84,7 @@ public final class ResponseBudget {
    * more is reachable).
    */
   public static int fitCount(List<?> items, long overheadChars, long budgetChars) {
-    long available = budgetChars - overheadChars;
-    long used = 0;
-    int fit = 0;
-    for (int i = 0; i < items.size() && used <= available; i++) {
-      used += McpResponseTrim.serializedLength(items.get(i)) + 1;
-      if (used <= available) {
-        fit = i + 1;
-      }
-    }
-    boolean firstItemOverflows = fit == 0 && !items.isEmpty() && available > 0;
-    if (firstItemOverflows) {
-      fit = 1;
-    }
-    return fit;
+    return fitWithin(items, budgetChars - overheadChars).count();
   }
 
   /** Convenience overload using {@link #defaultBudgetChars()}. */
