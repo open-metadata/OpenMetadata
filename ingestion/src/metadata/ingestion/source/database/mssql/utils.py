@@ -35,10 +35,12 @@ from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 
+from metadata.ingestion.source.database.mssql.models import QueryStoreState
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -486,3 +488,15 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
     return  # noqa: RET502
+
+
+def is_query_store_enabled(engine: Engine) -> bool:
+    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    enabled = False
+    try:
+        with engine.connect() as conn:
+            actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
+        enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+    except Exception as exc:
+        logger.debug(f"Query Store availability probe failed, using plan-cache DMVs: {exc}")
+    return enabled
