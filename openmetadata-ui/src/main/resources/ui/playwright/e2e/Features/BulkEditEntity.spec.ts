@@ -168,7 +168,7 @@ test.describe('Bulk Edit Entity', () => {
 
       const databaseNameCell = page
         .locator('.rdg-cell-name')
-        .filter({ hasText: table.database.name });
+        .getByText(table.database.name, { exact: true });
       // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
       await databaseNameCell.click({ force: true });
       await fillRowDetails(
@@ -475,7 +475,7 @@ test.describe('Bulk Edit Entity', () => {
 
       const tableNameCell = page
         .locator('.rdg-cell-name')
-        .filter({ hasText: table.entity.name });
+        .getByText(table.entity.name, { exact: true });
       // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
       await tableNameCell.click({ force: true });
       await fillRowDetails(
