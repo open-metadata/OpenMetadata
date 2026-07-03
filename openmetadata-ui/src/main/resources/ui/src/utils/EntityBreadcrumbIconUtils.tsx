@@ -34,7 +34,9 @@ export const getBreadcrumbIcon = (
 ): BreadcrumbIconFC | undefined =>
   entityType
     ? ({ className }) => (
-        <>{getEntityIcon(entityType, classNames(className, 'text-grey-500'))}</>
+        <>
+          {getEntityIcon(entityType, classNames(className, 'tw:text-gray-500'))}
+        </>
       )
     : undefined;
 
