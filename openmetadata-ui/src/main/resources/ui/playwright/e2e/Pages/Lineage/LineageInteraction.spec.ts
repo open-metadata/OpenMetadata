@@ -108,6 +108,10 @@ test.describe('Lineage Interactions', () => {
     await redirectToHomePage(page);
   });
 
+  test.afterEach(async ({ page }) => {
+    await page.goto('about:blank');
+  });
+
   test.describe('Lineage Layers Toggle', () => {
     test('Verify multiple non-platform layers can be active simultaneously', async ({
       page,

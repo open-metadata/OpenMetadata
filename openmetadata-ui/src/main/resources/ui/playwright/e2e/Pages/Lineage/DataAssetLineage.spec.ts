@@ -106,6 +106,10 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 test.describe('Data asset lineage', () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
