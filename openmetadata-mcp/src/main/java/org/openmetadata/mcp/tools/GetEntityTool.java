@@ -65,6 +65,7 @@ public class GetEntityTool implements McpTool {
   private static final String COLUMNS_TRUNCATED_KEY = "columnsTruncated";
   private static final String HAS_MORE_COLUMNS_KEY = "hasMoreColumns";
   private static final String COLUMNS_MESSAGE_KEY = "columnsMessage";
+  private static final String OVERSIZED_COLUMN_OFFSET_KEY = "oversizedColumnOffset";
 
   private static final int DEFAULT_COLUMN_OFFSET = 0;
   private static final int NO_COLUMN_LIMIT = -1;
@@ -79,6 +80,15 @@ public class GetEntityTool implements McpTool {
    * does trip on machine-generated bloat the response flags it and stays retrievable.
    */
   private static final int SCHEMA_SQL_MAX_LENGTH = 30_000;
+
+  /**
+   * Combined ceiling shared across {@code schemaDefinition}, {@code dataModel.sql} and {@code
+   * dataModel.rawSql}. All three are entity-level, un-paginable text, so three independent {@link
+   * #SCHEMA_SQL_MAX_LENGTH} caps could sum close to the {@link McpResponseTrim#MAX_RESPONSE_CHARS}
+   * dispatch cap and still nuke the payload. A shared budget keeps their combined size bounded while
+   * the common single-field case still gets the full per-field valve.
+   */
+  private static final int SCHEMA_SQL_COMBINED_MAX = 60_000;
 
   /**
    * Fraction of {@link McpResponseTrim#MAX_RESPONSE_CHARS} the windowed columns may occupy. Leaves
@@ -134,10 +144,23 @@ public class GetEntityTool implements McpTool {
     int total = columns.size();
     int start = Math.min(columnOffset, total);
     int requestedEnd = columnLimit >= 0 ? Math.min(start + columnLimit, total) : total;
-    int end = fitToBudget(overheadChars(cleaned), columns, start, requestedEnd);
+    int overhead = overheadChars(cleaned);
+    int end = fitToBudget(overhead, columns, start, requestedEnd);
+    boolean forcedOversized = end - start == 1 && columnExceedsBudget(overhead, columns.get(start));
     cleaned.put(COLUMNS_KEY, new ArrayList<>(columns.subList(start, end)));
-    annotateWindow(cleaned, total, start, end);
+    annotateWindow(cleaned, total, start, end, forcedOversized);
     return cleaned;
+  }
+
+  /**
+   * True when a single column plus the entity overhead does not fit the column budget. Used to flag
+   * the force-advanced page: the column is still returned in full (content is never cut), but the
+   * caller is warned that it may trip the dispatch-level cap so an agent knows to skip past it. The
+   * durable fix for genuinely un-representable columns is index-backed sub-column paging.
+   */
+  private static boolean columnExceedsBudget(int overhead, Object column) {
+    long available = (long) (McpResponseTrim.MAX_RESPONSE_CHARS * COLUMN_BUDGET_FACTOR) - overhead;
+    return McpResponseTrim.serializedLength(column) + 1 > available;
   }
 
   /** Serialized length of the response with the columns array excluded. */
@@ -173,8 +196,9 @@ public class GetEntityTool implements McpTool {
     return fitEnd;
   }
 
-  private static void annotateWindow(Map<String, Object> cleaned, int total, int start, int end) {
-    boolean windowed = start > 0 || end < total;
+  private static void annotateWindow(
+      Map<String, Object> cleaned, int total, int start, int end, boolean forcedOversized) {
+    boolean windowed = start > 0 || end < total || forcedOversized;
     if (windowed) {
       int returned = end - start;
       boolean hasMore = end < total && returned > 0;
@@ -183,20 +207,34 @@ public class GetEntityTool implements McpTool {
       cleaned.put(COLUMN_OFFSET_KEY, start);
       cleaned.put(COLUMNS_TRUNCATED_KEY, Boolean.TRUE);
       cleaned.put(HAS_MORE_COLUMNS_KEY, hasMore);
-      cleaned.put(COLUMNS_MESSAGE_KEY, columnsMessage(total, start, returned, end, hasMore));
+      cleaned.put(
+          COLUMNS_MESSAGE_KEY,
+          columnsMessage(total, start, returned, end, hasMore, forcedOversized));
+      if (forcedOversized) {
+        cleaned.put(OVERSIZED_COLUMN_OFFSET_KEY, start);
+      }
     }
   }
 
   /**
    * Human/LLM-readable window summary. Uses the {@code returnedColumns}/{@code columnOffset} counts
    * rather than an inclusive-vs-exclusive index range so it cannot be misread, and only advertises a
-   * next page when one is actually reachable.
+   * next page when one is actually reachable. When a single over-budget column was force-emitted to
+   * keep paging moving, warns that the response may hit the size limit and how to skip past it.
    */
   private static String columnsMessage(
-      int total, int start, int returned, int end, boolean hasMore) {
+      int total, int start, int returned, int end, boolean hasMore, boolean forcedOversized) {
     String message =
         String.format(
             "Returning %d of %d columns starting at columnOffset %d.", returned, total, start);
+    if (forcedOversized) {
+      message +=
+          String.format(
+              " The column at columnOffset %d is very large and may exceed the response size limit;"
+                  + " if this response was replaced by a size-limit notice, skip it with"
+                  + " columnOffset=%d.",
+              start, end);
+    }
     if (hasMore) {
       message += String.format(" Fetch the next page with columnOffset=%d.", end);
     }
@@ -217,38 +255,53 @@ public class GetEntityTool implements McpTool {
       cleaned = new HashMap<>(entityData);
       EXCLUDE_FIELDS.forEach(cleaned::remove);
       McpResponseTrim.VECTOR_NOISE_FIELDS.forEach(cleaned::remove);
-      trimSchemaDefinition(cleaned);
-      trimDataModelSql(cleaned);
+      trimEntityText(cleaned);
     }
     return cleaned;
   }
 
-  private static void trimSchemaDefinition(Map<String, Object> entity) {
-    if (entity.get(SCHEMA_DEFINITION_KEY) instanceof String ddl
-        && ddl.length() > SCHEMA_SQL_MAX_LENGTH) {
-      entity.put(SCHEMA_DEFINITION_KEY, McpResponseTrim.truncate(ddl, SCHEMA_SQL_MAX_LENGTH));
-      entity.put(SCHEMA_DEFINITION_TRUNCATED_KEY, Boolean.TRUE);
+  /**
+   * Applies the anti-nuke safety valve to the entity-level DDL and dbt model SQL under a single
+   * shared budget. schemaDefinition is trimmed first, then dataModel.sql/rawSql draw from whatever
+   * budget remains, so the three fields combined can never approach the dispatch cap.
+   */
+  private static void trimEntityText(Map<String, Object> entity) {
+    int remaining = trimSchemaDefinition(entity, SCHEMA_SQL_COMBINED_MAX);
+    trimDataModelSql(entity, remaining);
+  }
+
+  private static int trimSchemaDefinition(Map<String, Object> entity, int budget) {
+    int cap = Math.min(SCHEMA_SQL_MAX_LENGTH, budget);
+    int used = 0;
+    if (entity.get(SCHEMA_DEFINITION_KEY) instanceof String ddl) {
+      used = Math.min(ddl.length(), cap);
+      if (ddl.length() > cap) {
+        entity.put(SCHEMA_DEFINITION_KEY, McpResponseTrim.truncate(ddl, cap));
+        entity.put(SCHEMA_DEFINITION_TRUNCATED_KEY, Boolean.TRUE);
+      }
+    }
+    return budget - used;
+  }
+
+  private static void trimDataModelSql(Map<String, Object> entity, int budget) {
+    if (entity.get(DATA_MODEL_KEY) instanceof Map) {
+      Map<String, Object> dataModel = castMap(entity.get(DATA_MODEL_KEY));
+      int remaining = trimSqlField(dataModel, SQL_KEY, budget);
+      trimSqlField(dataModel, RAW_SQL_KEY, remaining);
     }
   }
 
-  private static void trimDataModelSql(Map<String, Object> entity) {
-    if (entity.get(DATA_MODEL_KEY) instanceof Map) {
-      Map<String, Object> dataModel = castMap(entity.get(DATA_MODEL_KEY));
-      // Non-short-circuit | : both sql and rawSql must be trimmed regardless of the other.
-      boolean truncated = trimSqlField(dataModel, SQL_KEY) | trimSqlField(dataModel, RAW_SQL_KEY);
-      if (truncated) {
+  private static int trimSqlField(Map<String, Object> dataModel, String key, int budget) {
+    int cap = Math.min(SCHEMA_SQL_MAX_LENGTH, budget);
+    int used = 0;
+    if (dataModel.get(key) instanceof String sql) {
+      used = Math.min(sql.length(), cap);
+      if (sql.length() > cap) {
+        dataModel.put(key, McpResponseTrim.truncate(sql, cap));
         dataModel.put(SQL_TRUNCATED_KEY, Boolean.TRUE);
       }
     }
-  }
-
-  private static boolean trimSqlField(Map<String, Object> dataModel, String key) {
-    boolean truncated = false;
-    if (dataModel.get(key) instanceof String sql && sql.length() > SCHEMA_SQL_MAX_LENGTH) {
-      dataModel.put(key, McpResponseTrim.truncate(sql, SCHEMA_SQL_MAX_LENGTH));
-      truncated = true;
-    }
-    return truncated;
+    return budget - used;
   }
 
   @SuppressWarnings("unchecked")

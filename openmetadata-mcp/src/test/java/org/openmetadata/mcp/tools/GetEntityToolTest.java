@@ -166,6 +166,61 @@ class GetEntityToolTest {
   }
 
   @Test
+  void schemaAndModelSqlShareOneBudgetSoTheirCombinedSizeStaysBounded() {
+    Map<String, Object> dataModel = new HashMap<>();
+    dataModel.put("sql", "SELECT 1 FROM t ".repeat(4_000));
+    dataModel.put("rawSql", "SELECT 2 FROM t ".repeat(4_000));
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("schemaDefinition", "CREATE TABLE orders (".repeat(3_000));
+    entity.put("dataModel", dataModel);
+
+    Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
+
+    String schema = (String) cleaned.get("schemaDefinition");
+    Map<String, Object> model = castMap(cleaned.get("dataModel"));
+    String sql = (String) model.get("sql");
+    String rawSql = (String) model.get("rawSql");
+    assertThat(schema).hasSize(30_003);
+    assertThat(sql).hasSize(30_003);
+    assertThat(rawSql).isEqualTo("...");
+    assertThat(schema.length() + sql.length() + rawSql.length()).isLessThanOrEqualTo(61_000);
+    assertThat(cleaned.get("schemaDefinitionTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(model.get("sqlTruncated")).isEqualTo(Boolean.TRUE);
+  }
+
+  @Test
+  void forcedOversizedColumnIsFlaggedWithOffsetAndSkipHint() {
+    Map<String, Object> bigColumn = column("big_struct", "x");
+    bigColumn.put("blob", "z".repeat((int) (McpResponseTrim.MAX_RESPONSE_CHARS * 0.85)));
+    List<Map<String, Object>> columns = new ArrayList<>();
+    columns.add(bigColumn);
+    columns.add(column("normal", "y"));
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("name", "wide_table");
+    entity.put("columns", columns);
+
+    Map<String, Object> firstPage = GetEntityTool.applyColumnWindow(entity, 0, -1);
+
+    assertThat(firstPage.get("oversizedColumnOffset")).isEqualTo(0);
+    assertThat(firstPage.get("returnedColumns")).isEqualTo(1);
+    assertThat(firstPage.get("hasMoreColumns")).isEqualTo(Boolean.TRUE);
+    assertThat((String) firstPage.get("columnsMessage"))
+        .contains("very large")
+        .contains("columnOffset=1");
+  }
+
+  @Test
+  void normalSingleColumnPageIsNotFlaggedOversized() {
+    Map<String, Object> entity = wideEntity(5, 10);
+
+    Map<String, Object> page = GetEntityTool.applyColumnWindow(entity, 4, 1);
+
+    assertThat(page.get("returnedColumns")).isEqualTo(1);
+    assertThat(page).doesNotContainKey("oversizedColumnOffset");
+    assertThat((String) page.get("columnsMessage")).doesNotContain("very large");
+  }
+
+  @Test
   void shortSchemaAndModelSqlAreUntouched() {
     Map<String, Object> dataModel = new HashMap<>();
     dataModel.put("sql", "SELECT 1");
