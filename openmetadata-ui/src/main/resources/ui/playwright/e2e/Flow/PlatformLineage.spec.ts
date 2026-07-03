@@ -21,8 +21,11 @@ test(
   'Verify Platform Lineage View',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   async ({ page }) => {
-    // Need to add more time for AUT and not for PR checks
-    test.slow(!process.env.PLAYWRIGHT_IS_OSS);
+    // Slow unconditionally: verifyExportLineagePNG waits up to 120s for the
+    // download event, so the outer test timeout must exceed that. The base
+    // 60s left PR runs (where PLAYWRIGHT_IS_OSS is set) unable to ever reach
+    // the download event — the test timed out mid-render every time.
+    test.slow();
 
     // Limit MAX_NODES to get PNG export in time
     const MAX_NODES = 200;
