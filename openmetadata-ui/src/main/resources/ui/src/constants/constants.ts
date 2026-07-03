@@ -348,13 +348,6 @@ export const ROUTES = {
 
   // Settings
   SETTINGS_SSO: '/settings/sso',
-
-  // AI Governance Studio
-  AI_GOVERNANCE: '/governance/ai-governance',
-  AI_GOVERNANCE_WITH_TAB: `/governance/ai-governance/${PLACEHOLDER_ROUTE_TAB}`,
-  AI_GOVERNANCE_ASSET_DETAILS: `/governance/ai-governance/registry/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
-  AI_GOVERNANCE_ASSET_DETAILS_WITH_TAB: `/governance/ai-governance/registry/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  AI_GOVERNANCE_FRAMEWORK_DETAILS: `/governance/ai-governance/frameworks/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
@@ -421,7 +414,6 @@ export const ENTITY_PATH = {
   agentExecutions: 'agentExecution',
   mcpExecutions: 'mcpExecution',
   promptTemplates: 'promptTemplate',
-  aiGovernancePolicies: 'aiGovernancePolicy',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =

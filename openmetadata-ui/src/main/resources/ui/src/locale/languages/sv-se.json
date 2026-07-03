@@ -3278,7 +3278,6 @@
     "intake-form-enabled-help": "When disabled, the intake form is saved but not enforced at the API layer.",
     "intake-form-native-fields-help": "Schema-required fields (name, description, etc.) are always enforced and are not shown here. Only fields that are optional at the schema level can be promoted by this intake form.",
     "intake-form-one-per-type-help": "Only one intake form can exist per entity type. This is the intake form for {{entityType}}.",
-    "intake-form-plural-description": "Define governance-policy required fields for Data Products, Domains, and Glossary Terms. Enforced at both the API and UI layers.",
     "intake-form-required-fields-help": "Each required field needs a user-friendly label and a field path. Native paths use the attribute name (e.g., 'dataProductType'); custom property paths use 'extension.<propertyName>'.",
     "intake-form-updated-successfully": "Intake form updated successfully",
     "integration-description": "Konfigurera applikationer och botar för att öka produktiviteten.",

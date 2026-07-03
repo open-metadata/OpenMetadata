@@ -38,7 +38,6 @@ export enum SidebarItem {
   KNOWLEDGE_CENTER = 'knowledge-center',
   CONTEXT_CENTER = 'context-center',
   WORKFLOWS = 'workflows',
-  AI_GOVERNANCE = 'ai-governance',
   ARTICLES = 'articles',
   DOCUMENTS = 'documents',
   DASHBOARD = 'dashboard',
