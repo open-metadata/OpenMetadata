@@ -80,6 +80,10 @@ export interface ContextMemory {
      */
     parentMemory?: EntityReference;
     /**
+     * Whether this memory is globally pinned in Context Center.
+     */
+    pinned?: boolean;
+    /**
      * Primary entity this memory should attach to for reuse.
      */
     primaryEntity?: EntityReference;

@@ -22,7 +22,10 @@ import {
   getQuickFilterMust,
   hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
+  isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  reconcilePresentRoots,
+  refreshRootCounts,
   truncateBrowsePath,
 } from './ExplorePureUtils';
 
@@ -635,5 +638,228 @@ describe('findTreeNodeKeyByBrowsePath', () => {
 
   it('returns null for an empty path', () => {
     expect(findTreeNodeKeyByBrowsePath(nodes, [])).toBeNull();
+  });
+});
+
+describe('refreshRootCounts', () => {
+  const serviceField: ExploreQuickFilterField = {
+    key: 'serviceType',
+    label: 'serviceType',
+    value: [{ key: 'BigQuery', label: 'BigQuery' }],
+  };
+  const buildTree = () =>
+    [
+      {
+        key: 'database_root',
+        title: 'Databases',
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.TABLE, EntityType.TABLE_COLUMN],
+        },
+        children: [
+          {
+            key: 'service-uuid',
+            title: 'BigQuery',
+            count: 1687,
+            data: { filterField: [serviceField] },
+            children: [
+              {
+                key: 'tables-uuid',
+                title: 'Tables',
+                count: 24,
+                isLeaf: true,
+                data: { filterField: [serviceField] },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        key: 'governance_root',
+        title: 'Governance',
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+        },
+        children: [
+          {
+            key: EntityType.GLOSSARY_TERM,
+            title: 'Glossaries',
+            isLeaf: true,
+            data: { entityType: EntityType.GLOSSARY_TERM, isStatic: true },
+          },
+          {
+            key: EntityType.TAG,
+            title: 'Tags',
+            isLeaf: true,
+            data: { entityType: EntityType.TAG, isStatic: true },
+          },
+        ],
+      },
+    ] as unknown as ExploreTreeNode[];
+
+  it('recomputes the root totalCount from the childEntities buckets', () => {
+    const result = refreshRootCounts(buildTree(), [
+      { key: 'table', doc_count: 5 },
+      { key: 'glossaryTerm', doc_count: 9 },
+    ]);
+
+    expect(result[0].totalCount).toBe(5);
+    expect(result[1].totalCount).toBe(9);
+  });
+
+  it('preserves lazily-loaded hierarchical children, their counts and subtree', () => {
+    const result = refreshRootCounts(buildTree(), [
+      { key: 'table', doc_count: 5 },
+    ]);
+    const serviceNode = result[0].children?.[0];
+
+    expect(serviceNode?.key).toBe('service-uuid');
+    expect(serviceNode?.count).toBe(1687);
+    expect(serviceNode?.children?.[0].key).toBe('tables-uuid');
+    expect(serviceNode?.children?.[0].count).toBe(24);
+  });
+
+  it('refreshes static governance leaves, defaulting to 0 when absent', () => {
+    const result = refreshRootCounts(buildTree(), [
+      { key: 'glossaryTerm', doc_count: 9 },
+    ]);
+    const [glossaries, tags] = result[1].children ?? [];
+
+    expect(glossaries.count).toBe(9);
+    expect(tags.count).toBe(0);
+  });
+
+  it('does not mutate the input nodes', () => {
+    const tree = buildTree();
+    refreshRootCounts(tree, [{ key: 'table', doc_count: 5 }]);
+
+    expect(tree[0].totalCount).toBeUndefined();
+  });
+});
+
+describe('reconcilePresentRoots', () => {
+  const liveDatabases = {
+    key: 'Database',
+    title: 'Databases',
+    data: { isRoot: true, childEntities: [EntityType.TABLE] },
+    children: [{ key: 'service-uuid', title: 'mysql', count: 12 }],
+  } as unknown as ExploreTreeNode;
+  const staticDatabases = {
+    key: 'Database',
+    title: 'Databases',
+    data: { isRoot: true, childEntities: [EntityType.TABLE] },
+  } as unknown as ExploreTreeNode;
+  const staticDashboards = {
+    key: 'Dashboard',
+    title: 'Dashboards',
+    data: { isRoot: true, childEntities: [EntityType.DASHBOARD] },
+  } as unknown as ExploreTreeNode;
+
+  it('reuses the live root so its expanded children survive', () => {
+    const result = reconcilePresentRoots([staticDatabases], [liveDatabases]);
+
+    expect(result[0]).toBe(liveDatabases);
+    expect(result[0].children?.[0].key).toBe('service-uuid');
+  });
+
+  it('re-adds a present root that is no longer in the live tree', () => {
+    // Databases is the only live root, but the presence set now also has
+    // Dashboards — it must come back rather than stay dropped.
+    const result = reconcilePresentRoots(
+      [staticDatabases, staticDashboards],
+      [liveDatabases]
+    );
+
+    expect(result.map((node) => node.key)).toEqual(['Database', 'Dashboard']);
+    expect(result[0]).toBe(liveDatabases);
+    expect(result[1]).toBe(staticDashboards);
+  });
+});
+
+describe('isSelectionWithinBrowsePath', () => {
+  const field = (key: string, value: string): ExploreQuickFilterField => ({
+    key,
+    label: key,
+    value: [{ key: value, label: value }],
+  });
+  const serviceType = field('serviceType', 'BigQuery');
+  const service = field('service.name.keyword', 'bigquery');
+  const database = field('database.displayName.keyword', 'modified-leaf');
+  const schema = field('databaseSchema.displayName.keyword', 'Bronze');
+  const entityType = field('entityType', 'table');
+  const schemaPath = [serviceType, service, database, schema];
+
+  const tree = [
+    {
+      key: 'database_root',
+      data: { isRoot: true, childEntities: [EntityType.TABLE] },
+      children: [
+        {
+          key: 'schema-node',
+          data: { filterField: schemaPath },
+          children: [
+            {
+              key: 'tables-leaf',
+              isLeaf: true,
+              data: { filterField: [...schemaPath, entityType] },
+            },
+          ],
+        },
+      ],
+    },
+  ] as unknown as ExploreTreeNode[];
+
+  it('matches when the selected node is the browsed node itself', () => {
+    expect(isSelectionWithinBrowsePath(tree, ['schema-node'], schemaPath)).toBe(
+      true
+    );
+  });
+
+  it('matches an entity-type leaf whose parent levels are the browse path', () => {
+    expect(isSelectionWithinBrowsePath(tree, ['tables-leaf'], schemaPath)).toBe(
+      true
+    );
+  });
+
+  it('does not match after a chip removal shortens the path', () => {
+    expect(
+      isSelectionWithinBrowsePath(
+        tree,
+        ['schema-node'],
+        [serviceType, service, database]
+      )
+    ).toBe(false);
+  });
+
+  it('returns false for an empty selection or empty path', () => {
+    expect(isSelectionWithinBrowsePath(tree, [], schemaPath)).toBe(false);
+    expect(isSelectionWithinBrowsePath(tree, ['schema-node'], [])).toBe(false);
+  });
+
+  it('returns false when the selected key is not in the tree', () => {
+    expect(isSelectionWithinBrowsePath(tree, ['missing'], schemaPath)).toBe(
+      false
+    );
+  });
+
+  it('matches a selected category root by its entity-type set', () => {
+    expect(
+      isSelectionWithinBrowsePath(
+        tree,
+        ['database_root'],
+        [field('entityType', EntityType.TABLE)]
+      )
+    ).toBe(true);
+  });
+
+  it('does not match a category root whose entity types differ', () => {
+    expect(
+      isSelectionWithinBrowsePath(
+        tree,
+        ['database_root'],
+        [field('entityType', EntityType.DASHBOARD)]
+      )
+    ).toBe(false);
   });
 });
