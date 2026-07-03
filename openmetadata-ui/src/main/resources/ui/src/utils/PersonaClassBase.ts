@@ -96,15 +96,14 @@ class PersonaClassBase {
         key: 'navigation',
         label: i18n.t('label.navigation'),
         isBeta: false,
-        description: i18n.t('message.customize-your-navigation-subheader'),
+        description: 'Customize left sidebar ',
         icon: entityIcons['navigation'],
       },
       {
         key: PageType.LandingPage,
         label: i18n.t('label.home-page'),
-        description: i18n.t('message.entity-customize-description', {
-          entity: i18n.t('label.home-page'),
-        }),
+        description:
+          'Customize the My data page with widget of your preference',
         icon: entityIcons[PageType.LandingPage],
       },
       {
@@ -119,18 +118,16 @@ class PersonaClassBase {
         key: 'governance',
         label: i18n.t('label.governance'),
         isBeta: false,
-        description: i18n.t('message.entity-customize-description', {
-          entity: i18n.t('label.governance'),
-        }),
+        description:
+          'Customize the Govern pages with widget of your preference',
         icon: entityIcons['govern'],
       },
       {
         key: 'data-assets',
         label: i18n.t('label.data-asset-plural'),
         isBeta: false,
-        description: i18n.t('message.entity-customize-description', {
-          entity: i18n.t('label.data-asset-plural'),
-        }),
+        description:
+          'Customize the entity detail page with widget of your preference',
         icon: entityIcons['dataAssets'],
       },
     ];
