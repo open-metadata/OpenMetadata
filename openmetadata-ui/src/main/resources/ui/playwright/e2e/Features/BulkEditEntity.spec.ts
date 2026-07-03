@@ -359,6 +359,12 @@ test.describe('Bulk Edit Entity', () => {
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
+      await waitForSearchIndexed(
+        apiContext,
+        table.schemaResponseData.fullyQualifiedName,
+        'database_schema_search_index'
+      );
+
       // Verify Details updated. See sibling-row note in the Database step.
       await expect(
         page.getByTestId('column-name').filter({ hasText: table.schema.name })
@@ -499,6 +505,12 @@ test.describe('Bulk Edit Entity', () => {
       await updateButtonResponse;
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
+
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table_search_index'
+      );
 
       // Verify Details updated. See sibling-row note in the Database step —
       // the schema listing can render 15+ table rows on redirect (each with a
