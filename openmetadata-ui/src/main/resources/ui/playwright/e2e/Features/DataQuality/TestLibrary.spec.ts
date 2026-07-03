@@ -493,8 +493,9 @@ test.describe(
       await expect(deleteButton).toBeDisabled();
 
       // Verify enabled switch still exists and is functional
-      const row = page.locator(`[data-row-key="${systemTestDef.id}"]`);
-      const enabledSwitch = row.getByRole('switch');
+      const enabledSwitch = page.getByTestId(
+        `enable-switch-${systemTestDef.name}`
+      );
 
       await expect(enabledSwitch).toBeVisible();
     });
