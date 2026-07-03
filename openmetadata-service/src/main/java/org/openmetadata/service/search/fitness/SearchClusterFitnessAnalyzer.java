@@ -971,6 +971,11 @@ public class SearchClusterFitnessAnalyzer {
       double used = node.getDiskUsedPercent();
       FitnessSeverity severity = FitnessSeverity.PASS;
       String recommendation = null;
+      double proximityFloor =
+          lowWatermark * (1 - SearchClusterFitnessRules.WATERMARK_PROXIMITY_FRACTION);
+      // All FAIL conditions are evaluated before any WARN condition so a soft/proximity WARN can
+      // never downgrade a genuine overload — e.g. an admin who raises the low watermark above the
+      // absolute fail threshold must not hide a node that is already past DISK_USAGE_FAIL_PERCENT.
       if (used >= floodWatermark) {
         severity = FitnessSeverity.FAIL;
         recommendation =
@@ -980,25 +985,24 @@ public class SearchClusterFitnessAnalyzer {
         severity = FitnessSeverity.FAIL;
         recommendation =
             "Past high watermark — cluster will move shards off this node. Add disk or delete old data.";
-      } else if (used >= lowWatermark) {
-        severity = FitnessSeverity.WARN;
-        recommendation =
-            "Past low watermark — no new shards will be allocated here. Plan to add disk before reindex.";
-      } else if (used
-          >= lowWatermark * (1 - SearchClusterFitnessRules.WATERMARK_PROXIMITY_FRACTION)) {
-        severity = FitnessSeverity.WARN;
-        recommendation =
-            "Approaching low watermark. Provision more disk during the next maintenance window.";
       } else if (used >= SearchClusterFitnessRules.DISK_USAGE_FAIL_PERCENT) {
         severity = FitnessSeverity.FAIL;
         recommendation =
             "Disk usage is critically high. Free disk or add storage capacity to stay below the "
                 + "ES/OS allocation watermarks and avoid indices going read-only.";
+      } else if (used >= lowWatermark) {
+        severity = FitnessSeverity.WARN;
+        recommendation =
+            "Past low watermark — no new shards will be allocated here. Plan to add disk before reindex.";
       } else if (used >= SearchClusterFitnessRules.DISK_USAGE_WARN_PERCENT) {
         severity = FitnessSeverity.WARN;
         recommendation =
             "Disk usage is elevated. Plan to free disk or add storage before it reaches the "
                 + "ES/OS allocation watermarks.";
+      } else if (used >= proximityFloor) {
+        severity = FitnessSeverity.WARN;
+        recommendation =
+            "Approaching low watermark. Provision more disk during the next maintenance window.";
       }
       if (severity != FitnessSeverity.PASS) {
         signals.add(
