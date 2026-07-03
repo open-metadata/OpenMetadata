@@ -119,9 +119,9 @@ export interface PolicyAgentConfiguration {
      */
     batchWorkerThreads?: number;
     /**
-     * Server-wide default for how often (seconds) to poll a Policy Agent batch run for
-     * completion. Overridden per-node by
-     * PolicyAgentTaskDefinition.config.pollingIntervalSeconds.
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
      */
     pollingIntervalSeconds?: number;
 }
