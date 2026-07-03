@@ -126,12 +126,11 @@ class Summary(StepSummary):
             # (report_all_failures=True) when downstream logic needs the COMPLETE list — e.g. the
             # Policy Agent, where the coordinator decides per-policy grant vs manual from exactly
             # which policy ids failed; a truncated list would silently (and unsafely) grant the rest.
-            failures=(
-                (
-                    step.status.failures
-                    if step.report_all_failures
-                    else step.status.failures[0:10]
-                )
+            # Status stores TruncatedStackTraceError; StepSummary.failures is typed as
+            # StackTraceError (invariance mismatch, pre-existing) — safe, the truncated form is a
+            # drop-in for display.
+            failures=(  # pyright: ignore[reportArgumentType]
+                (step.status.failures if step.report_all_failures else step.status.failures[0:10])
                 if step.status.failures
                 else None
             ),
