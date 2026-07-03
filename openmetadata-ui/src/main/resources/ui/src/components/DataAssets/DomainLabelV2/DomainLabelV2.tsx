@@ -14,7 +14,7 @@ import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
@@ -27,8 +27,8 @@ import {
 import { renderDomainLink } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { DomainLabelProps } from '../../common/DomainLabel/DomainLabel.interface';
-import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import {
   WidgetEditButton,
   WidgetPlusButton,
@@ -37,6 +37,14 @@ import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { AssetsUnion } from '../AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../DataAssetsHeader/DataAssetsHeader.interface';
+
+const DomainSelectableList = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../common/DomainSelectableList/DomainSelectableList.component')
+  ),
+  null
+);
 
 export const DomainLabelV2 = <
   T extends {

@@ -23,18 +23,27 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
   WidgetEditButton,
   WidgetPlusButton,
 } from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const UserTeamSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
+  ),
+  null
+);
 interface OwnerLabelV2Props {
   dataTestId?: string;
   hasPermission?: boolean;
