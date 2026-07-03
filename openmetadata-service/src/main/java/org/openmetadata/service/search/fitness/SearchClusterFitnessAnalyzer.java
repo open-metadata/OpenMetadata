@@ -67,7 +67,10 @@ public class SearchClusterFitnessAnalyzer {
     s.rootInfo = probe.get("/");
     s.clusterHealth = probe.get("/_cluster/health");
     s.clusterStats = probe.get("/_cluster/stats");
-    s.nodesStats = probe.get("/_nodes/stats");
+    // Limit to only the metric groups collectNodeFootprints reads — the unfiltered /_nodes/stats
+    // can be large and this diagnostic is often run during an incident when the cluster is already
+    // under load. Node identity fields (name/host/roles) are always included regardless of filter.
+    s.nodesStats = probe.get("/_nodes/stats/os,jvm,fs,thread_pool,breakers");
     s.catIndices = probe.get("/_cat/indices?format=json&bytes=b");
     s.catAliases = probe.get("/_cat/aliases?format=json");
     s.clusterSettings = probe.get("/_cluster/settings?include_defaults=true&flat_settings=false");
@@ -285,6 +288,12 @@ public class SearchClusterFitnessAnalyzer {
     if (catIndices == null || !catIndices.isArray()) {
       inaccessible.add("/_cat/indices");
       return result;
+    }
+    if (catAliases == null || !catAliases.isArray()) {
+      // Alias-based matching is a fallback for indices whose physical name doesn't match the
+      // canonical/prefix rules; note when it's unavailable so a false "indices_missing" diagnosis
+      // is attributable rather than silent.
+      inaccessible.add("/_cat/aliases");
     }
     Set<String> canonicalNames = openMetadataCanonicalNames(clusterAlias);
     Set<String> openMetadataAliases = openMetadataAliases(clusterAlias);
@@ -951,6 +960,11 @@ public class SearchClusterFitnessAnalyzer {
       List<NodeFootprint> nodes,
       JsonNode clusterSettings,
       List<String> inaccessible) {
+    if (!isUsable(clusterSettings) && !inaccessible.contains("/_cluster/settings")) {
+      // Managed clusters (AWS OpenSearch) commonly block this; surface it so operators know the
+      // watermark/shard-budget checks are running against defaults rather than real settings.
+      inaccessible.add("/_cluster/settings");
+    }
     double lowWatermark =
         readWatermarkPercent(
             clusterSettings, "cluster.routing.allocation.disk.watermark.low", 85.0, inaccessible);
@@ -1023,13 +1037,17 @@ public class SearchClusterFitnessAnalyzer {
                 .threshold(
                     String.format(
                         Locale.ROOT,
-                        "low=%.0f%%, high=%.0f%%, flood=%.0f%%",
+                        "watermarks low=%.0f%%, high=%.0f%%, flood=%.0f%%; absolute warn=%.0f%%, fail=%.0f%%",
                         lowWatermark,
                         highWatermark,
-                        floodWatermark))
+                        floodWatermark,
+                        SearchClusterFitnessRules.DISK_USAGE_WARN_PERCENT,
+                        SearchClusterFitnessRules.DISK_USAGE_FAIL_PERCENT))
                 .thresholdRationale(
                     "ES/OS allocation watermarks block new shards (low), relocate shards off (high), "
-                        + "and flip indices read-only (flood). Crossing low is already a search-reindex blocker.")
+                        + "and flip indices read-only (flood). Independently, OpenMetadata warns at "
+                        + "75% and fails at 85% absolute usage so a raised low watermark can't mask a "
+                        + "genuinely full disk. Crossing low is already a search-reindex blocker.")
                 .recommendation(recommendation)
                 .build());
       }

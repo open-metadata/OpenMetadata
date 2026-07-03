@@ -34,6 +34,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -45,6 +46,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -93,6 +100,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.SearchIndexMappingsSeeder;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -117,6 +126,14 @@ public class SystemResource {
   private static final String MAPPINGS_KEY = "mappings";
   private static final String PROPERTIES_KEY = "properties";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
+      Executors.newFixedThreadPool(
+          2,
+          runnable -> {
+            Thread thread = new Thread(runnable, "search-fitness-analyzer");
+            thread.setDaemon(true);
+            return thread;
+          });
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -451,50 +468,36 @@ public class SystemResource {
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema =
-                        @Schema(
-                            implementation =
-                                org.openmetadata.service.search.fitness.SearchClusterFitnessReport
-                                    .class)))
+                    schema = @Schema(implementation = SearchClusterFitnessReport.class)))
       })
   public Response getSearchClusterFitness(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer =
-        new org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer(
-            Entity.getSearchRepository());
-    org.openmetadata.service.search.fitness.SearchClusterFitnessReport report =
-        computeFitnessWithTimeout(analyzer);
+    SearchClusterFitnessAnalyzer analyzer =
+        new SearchClusterFitnessAnalyzer(Entity.getSearchRepository());
+    SearchClusterFitnessReport report = computeFitnessWithTimeout(analyzer);
     return Response.ok().entity(report).build();
   }
 
-  private org.openmetadata.service.search.fitness.SearchClusterFitnessReport
-      computeFitnessWithTimeout(
-          org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer) {
-    java.util.concurrent.ExecutorService executor =
-        java.util.concurrent.Executors.newSingleThreadExecutor(
-            r -> {
-              Thread thread = new Thread(r, "search-fitness-analyzer");
-              thread.setDaemon(true);
-              return thread;
-            });
+  private SearchClusterFitnessReport computeFitnessWithTimeout(
+      SearchClusterFitnessAnalyzer analyzer) {
+    Future<SearchClusterFitnessReport> future = SEARCH_FITNESS_EXECUTOR.submit(analyzer::analyze);
     try {
-      return executor
-          .submit(analyzer::analyze)
-          .get(SEARCH_FITNESS_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
-    } catch (java.util.concurrent.TimeoutException e) {
-      throw new jakarta.ws.rs.ServiceUnavailableException(
+      return future.get(SEARCH_FITNESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      throw new ServiceUnavailableException(
           "Search cluster fitness analysis exceeded "
               + SEARCH_FITNESS_TIMEOUT_SECONDS
               + "s — the cluster is slow or unreachable. Try again or inspect the cluster directly.");
     } catch (InterruptedException e) {
+      future.cancel(true);
       Thread.currentThread().interrupt();
       throw new UnhandledServerException("Search cluster fitness analysis was interrupted");
-    } catch (java.util.concurrent.ExecutionException e) {
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
       throw new UnhandledServerException(
-          "Search cluster fitness analysis failed: " + e.getCause().getMessage());
-    } finally {
-      executor.shutdownNow();
+          "Search cluster fitness analysis failed: " + cause.getMessage(), cause);
     }
   }
 

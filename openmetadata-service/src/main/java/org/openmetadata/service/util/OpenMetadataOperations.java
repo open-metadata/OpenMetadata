@@ -130,6 +130,9 @@ import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.fitness.FitnessVerdict;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -268,28 +271,21 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean jsonOutput) {
     try {
       parseConfig();
-      org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer =
-          new org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer(
-              searchRepository);
-      org.openmetadata.service.search.fitness.SearchClusterFitnessReport report =
-          analyzer.analyze();
+      SearchClusterFitnessAnalyzer analyzer = new SearchClusterFitnessAnalyzer(searchRepository);
+      SearchClusterFitnessReport report = analyzer.analyze();
       if (jsonOutput) {
         System.out.println(JsonUtils.pojoToJson(report, true));
       } else {
         printSearchFitnessReport(report);
       }
-      return report.getOverallVerdict()
-              == org.openmetadata.service.search.fitness.FitnessVerdict.OVERLOADED
-          ? 2
-          : 0;
+      return report.getOverallVerdict() == FitnessVerdict.OVERLOADED ? 2 : 0;
     } catch (Exception e) {
       LOG.error("Failed to compute search fitness due to ", e);
       return 1;
     }
   }
 
-  private void printSearchFitnessReport(
-      org.openmetadata.service.search.fitness.SearchClusterFitnessReport report) {
+  private void printSearchFitnessReport(SearchClusterFitnessReport report) {
     LOG.info("=== Search Cluster Fitness ===");
     LOG.info(
         "Verdict: {} — {}",
@@ -327,7 +323,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         indexRows.add(
             List.of(
                 idx.getIndexName(),
-                String.valueOf(idx.getDocsCount() == null ? 0 : idx.getDocsCount()),
+                idx.getDocsCount() == null ? "-" : String.valueOf(idx.getDocsCount()),
                 idx.getPrimarySizeBytes() == null
                     ? "-"
                     : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
@@ -366,7 +362,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         otherRows.add(
             List.of(
                 idx.getIndexName(),
-                String.valueOf(idx.getDocsCount() == null ? 0 : idx.getDocsCount()),
+                idx.getDocsCount() == null ? "-" : String.valueOf(idx.getDocsCount()),
                 idx.getPrimarySizeBytes() == null
                     ? "-"
                     : (idx.getPrimarySizeBytes() / (1024 * 1024)) + " MB",
