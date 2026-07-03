@@ -326,4 +326,36 @@ class ListFilterTest {
     String delCond = delFilter.getCondition("storage_container_entity");
     assertTrue(delCond.contains("storage_container_entity.deleted = TRUE"), delCond);
   }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_bothBounds() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskStartTs", "1000");
+    filter.addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_startOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStartTs", "1000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertFalse(condition.contains("createdAt <="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_endOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+    assertFalse(condition.contains("createdAt >="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_absentWhenNoParams() {
+    String condition = new ListFilter().getCondition("task_entity");
+    assertFalse(condition.contains("createdAt"), condition);
+  }
 }

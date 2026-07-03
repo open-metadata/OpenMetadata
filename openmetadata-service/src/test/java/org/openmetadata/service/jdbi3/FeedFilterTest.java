@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -56,5 +57,34 @@ class FeedFilterTest {
     assertTrue(condition.contains("EXISTS"), "should be an EXISTS membership check");
     assertTrue(condition.contains("combined.domains"), "should reference the provided column");
     assertTrue(condition.contains(domainId.toString()), "should inline the user's domain id");
+  }
+
+  @Test
+  @DisplayName("startTs and endTs bound the thread query on createdAt")
+  void testTimeRangeBothBounds() {
+    FeedFilter filter = FeedFilter.builder().startTs(1000L).endTs(2000L).build();
+    assertEquals("WHERE createdAt >= 1000 AND createdAt <= 2000", filter.getCondition(false));
+  }
+
+  @Test
+  @DisplayName("startTs alone lower-bounds createdAt")
+  void testTimeRangeStartOnly() {
+    String condition = FeedFilter.builder().startTs(1000L).build().getCondition(false);
+    assertTrue(condition.contains("createdAt >= 1000"), condition);
+    assertFalse(condition.contains("createdAt <="), condition);
+  }
+
+  @Test
+  @DisplayName("endTs alone upper-bounds createdAt")
+  void testTimeRangeEndOnly() {
+    String condition = FeedFilter.builder().endTs(2000L).build().getCondition(false);
+    assertTrue(condition.contains("createdAt <= 2000"), condition);
+    assertFalse(condition.contains("createdAt >="), condition);
+  }
+
+  @Test
+  @DisplayName("no time range leaves the thread query unfiltered")
+  void testTimeRangeAbsent() {
+    assertEquals("WHERE TRUE", FeedFilter.builder().build().getCondition(false));
   }
 }
