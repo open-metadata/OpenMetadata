@@ -14,9 +14,7 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import type { FC } from 'react';
-import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { EntityType } from '../enums/entity.enum';
-import { ServiceCategory } from '../enums/service.enum';
 import type { SearchSourceAlias } from '../interface/search.interface';
 import {
   getBreadcrumbHref,
@@ -25,7 +23,6 @@ import {
   isServiceBreadcrumbHref,
 } from './EntityBreadcrumbPureUtils';
 import { getEntityName } from './EntityNameUtils';
-import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { getEntityIcon } from './TableUtils';
 
@@ -45,29 +42,22 @@ export const getBreadcrumbIcon = (
  * Returns the icon for the service instance breadcrumb.
  * Service instance URL shape: /service/<category>/<name>
  *
- * Prefers the connector-specific logo (e.g. Snowflake, Glue) from
+ * Uses connector-specific logos (e.g. Snowflake, Glue) from
  * serviceUtilClassBase.getServiceTypeLogo — these are URL assets rendered via
- * <img> because they are not available as React SVG components. Falls back to
- * the generic service entity type SVG icon when no specific logo exists.
+ * <img> because they are not available as React SVG components.
  */
 const getServiceBreadcrumbIcon = (
-  breadcrumbs: TitleLink[],
   serviceBreadcrumbIndex: number,
   source: SearchSourceAlias
 ): BreadcrumbIconFC | undefined => {
   if (serviceBreadcrumbIndex < 0) {
     return undefined;
   }
-  const specificLogoUrl = serviceUtilClassBase.getServiceTypeLogo(source);
-  if (specificLogoUrl) {
-    return ({ className }) => (
-      <img alt="service-icon" className={className} src={specificLogoUrl} />
-    );
-  }
-  const href = getBreadcrumbHref(breadcrumbs[serviceBreadcrumbIndex].url);
-  const serviceCategory = href.split('/').filter(Boolean)[1] as ServiceCategory;
+  const logoUrl = serviceUtilClassBase.getServiceTypeLogo(source);
 
-  return getBreadcrumbIcon(getEntityTypeFromServiceCategory(serviceCategory));
+  return ({ className }) => (
+    <img alt="service-icon" className={className} src={logoUrl} />
+  );
 };
 
 export const getEntityBreadcrumbItems = (
@@ -86,7 +76,6 @@ export const getEntityBreadcrumbItems = (
   // Resolve the service icon once before mapping; it requires the full source object
   // to look up the connector-specific logo (e.g. Snowflake, Glue).
   const ServiceBreadcrumbIcon = getServiceBreadcrumbIcon(
-    breadcrumbs,
     serviceBreadcrumbIndex,
     source
   );

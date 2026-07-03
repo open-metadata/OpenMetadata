@@ -13,19 +13,23 @@
 import { startCase } from 'lodash';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
-import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
-  mockDatabaseUrl,
-  mockEntityForDatabase,
-  mockEntityForDatabaseSchema,
-  mockServiceUrl,
-  mockSettingUrl,
-  mockUrl,
+    getEntityBreadcrumbs,
+    getEntityTypeForIcon,
+    isServiceBreadcrumbHref
+} from './EntityBreadcrumbPureUtils';
+import {
+    mockDatabaseUrl,
+    mockEntityForDatabase,
+    mockEntityForDatabaseSchema,
+    mockServiceUrl,
+    mockSettingUrl,
+    mockUrl
 } from './mocks/EntityUtils.mock';
 import {
-  getEntityDetailsPath,
-  getServiceDetailsPath,
-  getSettingPath,
+    getEntityDetailsPath,
+    getServiceDetailsPath,
+    getSettingPath
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 
@@ -42,6 +46,36 @@ jest.mock('./ServicePureUtils', () => ({
 }));
 
 describe('EntityBreadcrumbPureUtils unit tests', () => {
+  describe('isServiceBreadcrumbHref', () => {
+    it('should match only service instance breadcrumb hrefs', () => {
+      expect(
+        isServiceBreadcrumbHref('/service/databaseServices/mysql_sample')
+      ).toBe(true);
+      expect(
+        isServiceBreadcrumbHref('/settings/services/databaseServices')
+      ).toBe(false);
+      expect(isServiceBreadcrumbHref('/domain/engineering')).toBe(false);
+      expect(isServiceBreadcrumbHref('/dataProduct/customer_360')).toBe(false);
+      expect(isServiceBreadcrumbHref('/glossary/business')).toBe(false);
+      expect(isServiceBreadcrumbHref('/tags/PII')).toBe(false);
+    });
+  });
+
+  describe('getEntityTypeForIcon', () => {
+    it('should resolve serviceless entity breadcrumb hrefs to their entity icon types', () => {
+      expect(getEntityTypeForIcon('/domain/engineering')).toBe(
+        EntityType.DOMAIN
+      );
+      expect(getEntityTypeForIcon('/dataProduct/customer_360')).toBe(
+        EntityType.DATA_PRODUCT
+      );
+      expect(getEntityTypeForIcon('/glossary/business')).toBe(
+        EntityType.GLOSSARY
+      );
+      expect(getEntityTypeForIcon('/tags/PII')).toBe(EntityType.CLASSIFICATION);
+    });
+  });
+
   describe('getEntityBreadcrumbs', () => {
     beforeEach(() => {
       jest.clearAllMocks();

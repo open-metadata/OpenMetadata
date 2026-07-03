@@ -12,7 +12,6 @@
  */
 
 import { isUndefined } from 'lodash';
-import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -77,23 +76,10 @@ import {
   getServiceCategoryBreadcrumb,
 } from './EntityServiceBreadcrumbUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-
-const BREADCRUMB_ENTITY_TYPES = [
-  EntityType.DATABASE_SCHEMA,
-  EntityType.DATABASE,
-  EntityType.TABLE,
-] as const;
-
-export const getBreadcrumbEntityTypeFromHref = (href?: string) =>
-  BREADCRUMB_ENTITY_TYPES.find((entityType) =>
-    Boolean(href?.includes(`/${entityType}/`))
-  );
+import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 
 export const isServiceBreadcrumbHref = (href?: string) =>
-  href
-    ? !getBreadcrumbEntityTypeFromHref(href) &&
-      !/^\/settings\/services\/[^/]+\/?$/.test(href)
-    : false;
+  href ? /^\/service\/[^/]+\/[^/]+/.test(href) : false;
 
 /** Normalises a breadcrumb url (string or pathname object) to a plain href string. */
 export const getBreadcrumbHref = (

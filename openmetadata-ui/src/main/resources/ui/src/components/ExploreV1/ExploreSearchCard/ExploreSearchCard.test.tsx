@@ -144,7 +144,8 @@ const defaultProps: Omit<ExploreSearchCardProps, 'source'> = {
 };
 
 const renderCard = (
-  sourceOverrides: Partial<ExploreSearchCardProps['source']>
+  sourceOverrides: Partial<ExploreSearchCardProps['source']>,
+  propsOverrides: Partial<Omit<ExploreSearchCardProps, 'source'>> = {}
 ) => {
   const source = {
     ...baseSource,
@@ -153,7 +154,11 @@ const renderCard = (
 
   return renderWithQueryClient(
     <MemoryRouter>
-      <ExploreSearchCard {...defaultProps} source={source} />
+      <ExploreSearchCard
+        {...defaultProps}
+        {...propsOverrides}
+        source={source}
+      />
     </MemoryRouter>
   );
 };
@@ -265,6 +270,35 @@ describe('ExploreSearchCard - Type badge', () => {
       'tw:break-words',
       'tw:whitespace-normal'
     );
+  });
+});
+
+describe('ExploreSearchCard - Entity icon', () => {
+  it('renders glossary term custom icon URL when provided', () => {
+    renderCard(
+      {
+        entityType: 'glossaryTerm',
+        style: {
+          iconURL: '/icon.svg',
+        },
+      },
+      { showEntityIcon: true }
+    );
+
+    expect(screen.getByTestId('icon')).toHaveAttribute('src', '/icon.svg');
+    expect(screen.queryByText('glossaryTerm-icon')).not.toBeInTheDocument();
+  });
+
+  it('does not render generic icon for glossary term without custom icon URL', () => {
+    renderCard(
+      {
+        entityType: 'glossaryTerm',
+      },
+      { showEntityIcon: true }
+    );
+
+    expect(screen.queryByTestId('icon')).not.toBeInTheDocument();
+    expect(screen.queryByText('glossaryTerm-icon')).not.toBeInTheDocument();
   });
 });
 

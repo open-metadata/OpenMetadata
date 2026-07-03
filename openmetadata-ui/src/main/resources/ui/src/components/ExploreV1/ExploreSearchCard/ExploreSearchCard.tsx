@@ -269,6 +269,23 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
+        if (source.entityType === EntityType.GLOSSARY_TERM) {
+          if (source.style?.iconURL) {
+            return (
+              <img
+                alt={source.entityType}
+                className="align-middle m-r-xs object-contain"
+                data-testid="icon"
+                height={24}
+                src={source.style.iconURL}
+                width={24}
+              />
+            );
+          }
+
+          return null;
+        }
+
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
             {searchClassBase.getEntityIcon(
