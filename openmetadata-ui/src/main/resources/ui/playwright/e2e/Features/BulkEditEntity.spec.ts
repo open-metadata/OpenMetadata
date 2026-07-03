@@ -166,9 +166,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-
-      await page.click('.rdg-cell[role="gridcell"]');
+      const databaseNameCell = page
+        .locator('.rdg-cell-name')
+        .filter({ hasText: table.database.name });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await databaseNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -182,7 +184,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
@@ -471,8 +473,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+      const tableNameCell = page
+        .locator('.rdg-cell-name')
+        .filter({ hasText: table.entity.name });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await tableNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -485,7 +490,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
