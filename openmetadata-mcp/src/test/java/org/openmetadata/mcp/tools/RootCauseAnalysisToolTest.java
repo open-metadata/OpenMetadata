@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -55,14 +56,13 @@ class RootCauseAnalysisToolTest {
   }
 
   @Test
-  void slimEdgeTruncatesLongSqlAndFlagsIt() {
+  void slimEdgeReturnsLongSqlInFull() {
     String longSql = "SELECT * FROM orders WHERE ".repeat(80);
 
     Map<String, Object> slim = RootCauseAnalysisTool.slimEdge(edgeWithSql(longSql), false);
 
-    String sql = (String) slim.get("sqlQuery");
-    assertThat(sql).hasSize(503).endsWith("...");
-    assertThat(slim.get("sqlTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(slim.get("sqlQuery")).isEqualTo(longSql);
+    assertThat(slim).doesNotContainKey("sqlTruncated");
   }
 
   @Test
@@ -105,7 +105,7 @@ class RootCauseAnalysisToolTest {
   }
 
   @Test
-  void slimNodeEntityRemovesColumnsAndTruncatesDescription() {
+  void slimNodeEntityRemovesColumnsAndKeepsFullDescription() {
     Map<String, Object> node = new HashMap<>();
     node.put("name", "orders");
     node.put("fullyQualifiedName", "svc.db.orders");
@@ -118,7 +118,8 @@ class RootCauseAnalysisToolTest {
     node.put("fingerprint", "abc123");
     node.put("chunkCount", 4);
     node.put("chunkIndex", 0);
-    node.put("description", "x".repeat(900));
+    String description = "x".repeat(900);
+    node.put("description", description);
 
     Map<String, Object> slim = RootCauseAnalysisTool.slimNodeEntity(node);
 
@@ -133,7 +134,7 @@ class RootCauseAnalysisToolTest {
             "chunkCount",
             "chunkIndex");
     assertThat(slim).containsKeys("name", "fullyQualifiedName", "entityType");
-    assertThat((String) slim.get("description")).hasSize(503).endsWith("...");
+    assertThat(slim.get("description")).isEqualTo(description);
   }
 
   @Test
@@ -175,8 +176,8 @@ class RootCauseAnalysisToolTest {
 
     Map<String, Object> slim = RootCauseAnalysisTool.slimEdge(edgeMap, false);
     assertThat(slim.get("relationshipType")).isEqualTo("pipeline:daily_etl");
-    assertThat((String) slim.get("sqlQuery")).hasSize(503).endsWith("...");
-    assertThat(slim.get("sqlTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(slim.get("sqlQuery")).isEqualTo("SELECT * FROM raw ".repeat(60));
+    assertThat(slim).doesNotContainKey("sqlTruncated");
     assertThat(slim.get("source")).isEqualTo("QueryLineage");
     assertThat(asMap(slim.get("fromEntity")).get("fullyQualifiedName")).isEqualTo("svc.db.raw");
     assertThat(slim).doesNotContainKeys("docId", "columns");
@@ -240,5 +241,34 @@ class RootCauseAnalysisToolTest {
     assertThat(output)
         .containsKeys("fqn", "upstreamDepth", "downstreamDepth", "status", "summary", "message");
     assertThat(output).doesNotContainKey("downstreamAnalysis");
+  }
+
+  @Test
+  void enforceSizeBudgetFitsEdgesKeepingPartialDataNotJustAHint() {
+    List<Map<String, Object>> edges = new java.util.ArrayList<>();
+    for (int i = 0; i < 200; i++) {
+      edges.add(Map.of("fromFQN", "svc.db.up_" + i, "sqlQuery", "SELECT " + "x".repeat(600)));
+    }
+    Map<String, Object> upstream = new LinkedHashMap<>();
+    upstream.put("failingUpstreamNodesCount", 0);
+    upstream.put("failingUpstreamEdgesCount", 200);
+    upstream.put("failingUpstreamEdges", edges);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("fqn", "svc.db.orders");
+    result.put("status", "failed");
+    result.put("summary", "Found upstream failures.");
+    result.put("upstreamAnalysis", upstream);
+    result.put("downstreamAnalysis", Map.of("reason", "n/a"));
+
+    Map<String, Object> output = RootCauseAnalysisTool.enforceSizeBudget(result);
+
+    assertThat(output.get("truncated")).isEqualTo(Boolean.TRUE);
+    Map<String, Object> outUpstream = asMap(output.get("upstreamAnalysis"));
+    List<?> keptEdges = (List<?>) outUpstream.get("failingUpstreamEdges");
+    assertThat(keptEdges).isNotEmpty().hasSizeLessThan(200);
+    assertThat(outUpstream.get("failingUpstreamEdgesReturned")).isEqualTo(keptEdges.size());
+    assertThat(outUpstream.get("failingUpstreamEdgesCount")).isEqualTo(200);
+    assertThat(JsonUtils.pojoToJson(output).length())
+        .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
   }
 }

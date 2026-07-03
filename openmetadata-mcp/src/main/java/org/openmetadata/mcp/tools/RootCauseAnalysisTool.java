@@ -17,6 +17,7 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -235,14 +236,12 @@ public class RootCauseAnalysisTool implements McpTool {
   /**
    * Cleans an entity document the same way upstream nodes are cleaned ({@link
    * SearchMetadataTool#cleanSearchResponseObject} drops {@code columns}, {@code schemaDefinition},
-   * {@code queries} and other verbose keys) and additionally truncates the markdown description
-   * that the cleaner leaves untouched.
+   * {@code queries} and other verbose keys). The description is left in full; overall size is bounded
+   * by fitting fewer edges in {@link #enforceSizeBudget}, not by cutting field content.
    */
   @VisibleForTesting
   static Map<String, Object> slimNodeEntity(Map<String, Object> node) {
-    Map<String, Object> cleaned = cleanSearchResponseObject(node);
-    truncateDescriptionInPlace(cleaned);
-    return cleaned;
+    return cleanSearchResponseObject(node);
   }
 
   @VisibleForTesting
@@ -316,33 +315,100 @@ public class RootCauseAnalysisTool implements McpTool {
 
   private static void applyDescription(Map<String, Object> slim, Object description) {
     if (description instanceof String text && !text.isEmpty()) {
-      slim.put("description", McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH));
+      slim.put("description", text);
     }
   }
 
   private static void applySqlQuery(Map<String, Object> slim, Object sqlQuery) {
     if (sqlQuery instanceof String sql && !sql.isEmpty()) {
-      slim.put("sqlQuery", McpResponseTrim.truncate(sql, McpResponseTrim.SQL_MAX_LENGTH));
-      if (sql.length() > McpResponseTrim.SQL_MAX_LENGTH) {
-        slim.put("sqlTruncated", Boolean.TRUE);
-      }
+      slim.put("sqlQuery", sql);
     }
   }
 
-  private static void truncateDescriptionInPlace(Map<String, Object> map) {
-    Object description = map.get("description");
-    if (description instanceof String text && text.length() > McpResponseTrim.TEXT_MAX_LENGTH) {
-      map.put("description", McpResponseTrim.truncate(text, McpResponseTrim.TEXT_MAX_LENGTH));
-    }
-  }
+  private static final String UPSTREAM_ANALYSIS = "upstreamAnalysis";
+  private static final String DOWNSTREAM_ANALYSIS = "downstreamAnalysis";
+  private static final String UPSTREAM_EDGES = "failingUpstreamEdges";
+  private static final String DOWNSTREAM_EDGES = "downstreamEdges";
 
+  /**
+   * Keeps RCA under the dispatch cap by returning fewer <em>edges</em> (the SQL-bearing, heaviest
+   * part) in each direction, never by cutting an edge's SQL or dropping the whole analysis to a bare
+   * hint. Nodes, counts and summary are preserved, and a per-direction "...Returned" marker records
+   * how many edges were withheld. Only when the non-edge content alone already exceeds the budget
+   * does it fall back to the minimal identity hint.
+   */
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(Map<String, Object> result) {
     Map<String, Object> output = result;
     if (McpResponseTrim.serializedLength(result) > McpResponseTrim.MAX_RESPONSE_CHARS) {
-      output = oversizedHint(result);
+      output = fitAnalysisToBudget(result);
     }
     return output;
+  }
+
+  private static Map<String, Object> fitAnalysisToBudget(Map<String, Object> result) {
+    Map<String, Object> upstream = mapAt(result, UPSTREAM_ANALYSIS);
+    Map<String, Object> downstream = mapAt(result, DOWNSTREAM_ANALYSIS);
+    long available =
+        ResponseBudget.defaultBudgetChars() - edgeFreeOverhead(result, upstream, downstream);
+    Map<String, Object> output;
+    if (available <= 0) {
+      output = oversizedHint(result);
+    } else {
+      fitEdgeLists(upstream, downstream, available);
+      result.put("truncated", Boolean.TRUE);
+      output = result;
+    }
+    return output;
+  }
+
+  private static void fitEdgeLists(
+      Map<String, Object> upstream, Map<String, Object> downstream, long available) {
+    List<?> upEdges = edgeList(upstream, UPSTREAM_EDGES);
+    List<?> downEdges = edgeList(downstream, DOWNSTREAM_EDGES);
+    long half = available / 2;
+    ResponseBudget.Fit up = ResponseBudget.fitWithin(upEdges, half);
+    ResponseBudget.Fit down = ResponseBudget.fitWithin(downEdges, available - up.usedChars());
+    trimEdgeList(upstream, UPSTREAM_EDGES, up.count());
+    trimEdgeList(downstream, DOWNSTREAM_EDGES, down.count());
+  }
+
+  /** Serialized size of the result with both edge lists detached, i.e. the fixed non-edge cost. */
+  private static long edgeFreeOverhead(
+      Map<String, Object> result, Map<String, Object> upstream, Map<String, Object> downstream) {
+    List<?> up = detachEdges(upstream, UPSTREAM_EDGES);
+    List<?> down = detachEdges(downstream, DOWNSTREAM_EDGES);
+    long overhead = McpResponseTrim.serializedLength(result);
+    reattachEdges(upstream, UPSTREAM_EDGES, up);
+    reattachEdges(downstream, DOWNSTREAM_EDGES, down);
+    return overhead;
+  }
+
+  private static Map<String, Object> mapAt(Map<String, Object> map, String key) {
+    return map.get(key) instanceof Map ? castMap(map.get(key)) : null;
+  }
+
+  private static List<?> edgeList(Map<String, Object> analysis, String key) {
+    return analysis != null && analysis.get(key) instanceof List<?> edges ? edges : List.of();
+  }
+
+  private static List<?> detachEdges(Map<String, Object> analysis, String key) {
+    return analysis != null && analysis.get(key) instanceof List<?>
+        ? (List<?>) analysis.remove(key)
+        : null;
+  }
+
+  private static void reattachEdges(Map<String, Object> analysis, String key, List<?> edges) {
+    if (edges != null) {
+      analysis.put(key, edges);
+    }
+  }
+
+  private static void trimEdgeList(Map<String, Object> analysis, String key, int count) {
+    if (analysis != null && analysis.get(key) instanceof List<?> edges && count < edges.size()) {
+      analysis.put(key, new ArrayList<>(edges.subList(0, count)));
+      analysis.put(key + "Returned", count);
+    }
   }
 
   private static Map<String, Object> oversizedHint(Map<String, Object> result) {
