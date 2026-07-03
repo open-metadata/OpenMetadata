@@ -46,28 +46,6 @@ const DataQualityPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/DataQuality/DataQualityPage'))
 );
 
-const AIGovernancePage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AIGovernance/AIGovernancePage.component')
-  )
-);
-
-const AIGovernanceAssetDetailPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/AIGovernance/AssetDetail/AssetDetailPage.component')
-  )
-);
-
-const AIGovernanceFrameworkDetailPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../pages/AIGovernance/FrameworkDetail/FrameworkDetailPage.component'
-      )
-  )
-);
-
 const ForbiddenPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/ForbiddenPage/ForbiddenPage'))
 );
@@ -428,42 +406,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
           </AdminProtectedRoute>
         }
         path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
-      />
-      <Route
-        element={
-          <AIGovernanceAssetDetailPage
-            pageTitle={t('label.ai-governance-studio')}
-          />
-        }
-        path={ROUTES.AI_GOVERNANCE_ASSET_DETAILS_WITH_TAB}
-      />
-      <Route
-        element={
-          <AIGovernanceAssetDetailPage
-            pageTitle={t('label.ai-governance-studio')}
-          />
-        }
-        path={ROUTES.AI_GOVERNANCE_ASSET_DETAILS}
-      />
-      <Route
-        element={
-          <AIGovernanceFrameworkDetailPage
-            pageTitle={t('label.ai-governance-studio')}
-          />
-        }
-        path={ROUTES.AI_GOVERNANCE_FRAMEWORK_DETAILS}
-      />
-      <Route
-        element={
-          <AIGovernancePage pageTitle={t('label.ai-governance-studio')} />
-        }
-        path={ROUTES.AI_GOVERNANCE_WITH_TAB}
-      />
-      <Route
-        element={
-          <AIGovernancePage pageTitle={t('label.ai-governance-studio')} />
-        }
-        path={ROUTES.AI_GOVERNANCE}
       />
       <Route
         element={

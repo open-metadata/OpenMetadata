@@ -16,7 +16,6 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AIApplication } from '../generated/entity/ai/aiApplication';
-import { AIGovernancePolicy } from '../generated/entity/ai/aiGovernancePolicy';
 import { LlmModel } from '../generated/entity/ai/llmModel';
 import { MCPServer } from '../generated/entity/ai/mcpServer';
 import { Tag } from '../generated/entity/classification/tag';
@@ -133,32 +132,6 @@ export interface LlmModelSearchSource extends SearchSourceBase, LlmModel {
 
 export interface McpServerSearchSource extends SearchSourceBase, MCPServer {
   entityType: SearchIndex.MCP_SERVER;
-}
-
-export interface AIGovernancePolicySearchSource
-  extends SearchSourceBase,
-    AIGovernancePolicy {
-  entityType: SearchIndex.AI_GOVERNANCE_POLICY;
-}
-
-export interface AIGovernanceFrameworkSearchSource extends SearchSourceBase {
-  id?: string;
-  name: string;
-  fullyQualifiedName?: string;
-  displayName?: string;
-  description?: string;
-  enabled?: boolean;
-  entityType: SearchIndex.AI_GOVERNANCE_FRAMEWORK;
-}
-
-export interface AIFrameworkControlSearchSource extends SearchSourceBase {
-  id?: string;
-  name: string;
-  fullyQualifiedName?: string;
-  displayName?: string;
-  description?: string;
-  code?: string;
-  entityType: SearchIndex.AI_FRAMEWORK_CONTROL;
 }
 
 export interface AuditReportSearchSource extends SearchSourceBase {
@@ -349,9 +322,6 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.AI_APPLICATION]: AIApplicationSearchSource;
   [SearchIndex.LLM_MODEL]: LlmModelSearchSource;
   [SearchIndex.MCP_SERVER]: McpServerSearchSource;
-  [SearchIndex.AI_GOVERNANCE_POLICY]: AIGovernancePolicySearchSource;
-  [SearchIndex.AI_GOVERNANCE_FRAMEWORK]: AIGovernanceFrameworkSearchSource;
-  [SearchIndex.AI_FRAMEWORK_CONTROL]: AIFrameworkControlSearchSource;
   [SearchIndex.AUDIT_REPORT]: AuditReportSearchSource;
   [SearchIndex.PIPELINE]: PipelineSearchSource;
   [SearchIndex.DASHBOARD]: DashboardSearchSource;
