@@ -37,6 +37,7 @@ import {
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -108,12 +109,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
   const breadcrumbItems = useMemo(
     () => [
-      {
-        label: t('label.context-center'),
-        href: contextCenterClassBase.getContextCenterPath(),
-      },
+      contextCenterClassBase.getContextCenterRootBreadcrumb(t),
       {
         label: t('label.article-plural'),
         href: contextCenterClassBase.getArticlesListPath(),
@@ -296,15 +296,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       permissions.EditDisplayName);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      showHome
-      className={breadcrumbClassName}
-      items={breadcrumbItems}
-    />
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   if (!knowledgePage && !tabs) {
@@ -334,7 +329,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
+      <Card
+        className={classNames(
+          'tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3',
+          headerCardClassName
+        )}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">

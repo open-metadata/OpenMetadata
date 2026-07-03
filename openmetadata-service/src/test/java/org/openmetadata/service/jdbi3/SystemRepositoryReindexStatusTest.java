@@ -79,7 +79,8 @@ class SystemRepositoryReindexStatusTest {
     SearchReindexStatus status =
         new SearchReindexStatus(List.of(), 0, List.of(), List.of(), true, true);
     String message = SystemRepository.buildReindexStatusMessage(status);
-    assertTrue(message.contains("All deployed indexes were built from the current code mappings."));
+    assertTrue(
+        message.contains("All deployed indexes were built from the current index mappings."));
     assertTrue(message.toLowerCase().contains("no orphan indexes"));
     assertTrue(message.toLowerCase().contains("cluster healthy"));
   }
@@ -114,7 +115,7 @@ class SystemRepositoryReindexStatusTest {
     String message = SystemRepository.buildReindexStatusMessage(status);
     assertTrue(message.toLowerCase().contains("could not determine reindex status"));
     assertFalse(
-        message.contains("All deployed indexes were built from the current code mappings."));
+        message.contains("All deployed indexes were built from the current index mappings."));
   }
 
   @Test

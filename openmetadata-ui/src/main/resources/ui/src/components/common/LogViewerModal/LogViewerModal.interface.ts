@@ -17,11 +17,10 @@ export interface LogViewerStatus {
   tone?: LogViewerStatusTone; // default 'muted'
 }
 
-export interface LogViewerModalProps {
+export interface LogViewerModalBaseProps {
   open: boolean;
   onClose: () => void;
   title: string;
-  logs: string;
   loading?: boolean;
   theme?: 'dark' | 'light';
   follow?: boolean;
@@ -29,9 +28,14 @@ export interface LogViewerModalProps {
   enableCopy?: boolean;
   colorize?: boolean;
   onDownload?: () => void;
-  // Footer status bar — the component renders it from these explicit fields.
   status?: LogViewerStatus;
   totalLines?: number;
   runId?: string;
   lastRun?: string;
 }
+
+export type LogViewerModalProps = LogViewerModalBaseProps &
+  (
+    | { mode?: 'static'; logs: string; fqn?: never }
+    | { mode: 'stream'; fqn: string; runId: string; logs?: string }
+  );
