@@ -170,7 +170,7 @@ const TestDefinitionTable = ({
   };
 
   const renderRow = (record: TestDefinition) => (
-    <Table.Row id={record.id ?? ''} key={record.id}>
+    <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
         <Typography.Text data-testid={record.name}>
           {getEntityName(record)}

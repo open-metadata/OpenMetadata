@@ -123,14 +123,18 @@ const DataAssetsCoveragePieChartWidget = ({
 
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card
+      className={className}
+      data-testid="data-assets-coverage-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
     );
   }
 
   return (
-    <Card className={className}>
+    <Card
+      className={className}
+      data-testid="data-assets-coverage-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">

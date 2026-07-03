@@ -59,16 +59,17 @@ const CustomAreaChart = ({
   const gradientId = `${name}-splitColor`;
 
   const gradientArea = useMemo(() => {
-    const fillColor =
+    const startColor =
       colorScheme?.strokeColor ??
       colorScheme?.gradientStartColor ??
       DQ_CHART_BLUE_COLOR;
+    const endColor = colorScheme?.gradientEndColor ?? startColor;
 
     return (
       <defs>
         <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={fillColor} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={fillColor} stopOpacity="0" />
+          <stop offset="0%" stopColor={startColor} stopOpacity="0.18" />
+          <stop offset="100%" stopColor={endColor} stopOpacity="0" />
         </linearGradient>
       </defs>
     );

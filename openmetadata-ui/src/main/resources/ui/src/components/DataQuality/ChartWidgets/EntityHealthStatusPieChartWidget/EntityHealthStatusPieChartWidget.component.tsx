@@ -107,7 +107,7 @@ const EntityHealthStatusPieChartWidget = ({
 
   if (isLoading) {
     return (
-      <Card className={className}>
+      <Card className={className} data-testid="entity-health-pie-chart-widget">
         <Skeleton height={200} width="100%" />
       </Card>
     );
