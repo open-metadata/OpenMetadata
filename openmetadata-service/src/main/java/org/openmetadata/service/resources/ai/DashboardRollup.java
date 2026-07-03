@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.ai;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -305,18 +306,17 @@ final class DashboardRollup {
     return asset.name() == null ? "" : asset.name();
   }
 
-  private static List<Map<String, Object>> topByStatus(
+  static List<Map<String, Object>> topByStatus(
       List<RolledAsset> assets, String registrationStatus) {
-    List<Map<String, Object>> result = new ArrayList<>();
-    for (RolledAsset asset : assets) {
-      if (result.size() >= TOP_N) {
-        break;
-      }
-      if (registrationStatus.equals(asset.registrationStatus())) {
-        result.add(asset.toSummary());
-      }
-    }
-    return result;
+    return assets.stream()
+        .filter(asset -> registrationStatus.equals(asset.registrationStatus()))
+        .sorted(
+            Comparator.comparingInt(RolledAsset::affectedUsers)
+                .reversed()
+                .thenComparing(DashboardRollup::safeName))
+        .limit(TOP_N)
+        .map(RolledAsset::toSummary)
+        .toList();
   }
 
   /** Normalized rolled-up view of an AI asset for rollup math. */

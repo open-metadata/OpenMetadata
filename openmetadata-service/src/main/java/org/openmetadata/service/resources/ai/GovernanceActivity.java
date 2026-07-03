@@ -107,7 +107,7 @@ final class GovernanceActivity {
         : "owners,governanceMetadata";
   }
 
-  private static List<Map<String, Object>> eventsFor(EntityInterface entity) {
+  static List<Map<String, Object>> eventsFor(EntityInterface entity) {
     List<Map<String, Object>> events = new ArrayList<>();
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
@@ -251,6 +251,18 @@ final class GovernanceActivity {
       if (entityJson.get("detection") != null) {
         shim.put("detection", entityJson.get("detection"));
       }
+      Object status = entityJson.get("governanceStatus");
+      Object updatedAt = entityJson.get("updatedAt");
+      Object updatedBy = entityJson.get("updatedBy");
+      if (status != null && updatedAt instanceof Number) {
+        if ("PendingReview".equals(status.toString())) {
+          shim.put("registeredAt", updatedAt);
+          putIfNotNull(shim, "registeredBy", updatedBy);
+        } else if ("Approved".equals(status.toString())) {
+          shim.put("approvedAt", updatedAt);
+          putIfNotNull(shim, "approvedBy", updatedBy);
+        }
+      }
       if (!shim.isEmpty()) {
         result = shim;
       }
@@ -258,6 +270,12 @@ final class GovernanceActivity {
       result = asMap(entityJson.get("governanceMetadata"));
     }
     return result;
+  }
+
+  private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
+    if (value != null) {
+      map.put(key, value);
+    }
   }
 
   private static Map<String, Object> asMap(Object value) {
