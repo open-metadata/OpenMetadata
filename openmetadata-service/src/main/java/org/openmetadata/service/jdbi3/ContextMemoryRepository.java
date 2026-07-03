@@ -522,7 +522,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postUpdate(ContextMemory original, ContextMemory updated) {
     super.postUpdate(original, updated);
-    scheduleMemory(updated);
+    if (extractionManagedFieldChanged(original, updated)) {
+      scheduleMemory(updated);
+    }
   }
 
   private void scheduleMemory(final ContextMemory entity) {
@@ -635,6 +637,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       recordChange("memoryType", original.getMemoryType(), updated.getMemoryType());
       recordChange("memoryScope", original.getMemoryScope(), updated.getMemoryScope());
       recordChange("sourceType", original.getSourceType(), updated.getSourceType());
+      recordChange("pinned", original.getPinned(), updated.getPinned());
       recordChange(
           "sourceConversation", original.getSourceConversation(), updated.getSourceConversation());
       recordChange(
@@ -752,11 +755,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     /** True when a PATCH edited a field the extraction reconciler would otherwise overwrite. */
     private boolean extractionManagedFieldChanged() {
-      return !Objects.equals(original.getTitle(), updated.getTitle())
-          || !Objects.equals(original.getQuestion(), updated.getQuestion())
-          || !Objects.equals(original.getAnswer(), updated.getAnswer())
-          || !Objects.equals(original.getSummary(), updated.getSummary())
-          || !Objects.equals(original.getMemoryType(), updated.getMemoryType());
+      return ContextMemoryRepository.extractionManagedFieldChanged(original, updated);
     }
 
     private void updateSourceEntityRelationship() {
@@ -787,6 +786,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   private static boolean isAutomatedSource(ContextMemorySourceType type) {
     return type == ContextMemorySourceType.FILE_EXTRACTION
         || type == ContextMemorySourceType.PAGE_EXTRACTION;
+  }
+
+  private static boolean extractionManagedFieldChanged(
+      ContextMemory original, ContextMemory updated) {
+    return !Objects.equals(original.getTitle(), updated.getTitle())
+        || !Objects.equals(original.getQuestion(), updated.getQuestion())
+        || !Objects.equals(original.getAnswer(), updated.getAnswer())
+        || !Objects.equals(original.getSummary(), updated.getSummary())
+        || !Objects.equals(original.getMemoryType(), updated.getMemoryType());
   }
 
   /** Loads the knowledge pills currently linked to a Context Center source (file or page). */
