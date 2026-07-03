@@ -362,7 +362,7 @@ public final class AIContextMarkdown {
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(type=`")
+          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
           .append(item.getType() == null ? "" : item.getType().value())
           .append("`, fqn=`")
           .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())

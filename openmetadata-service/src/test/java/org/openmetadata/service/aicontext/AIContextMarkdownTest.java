@@ -154,7 +154,7 @@ class AIContextMarkdownTest {
     String markdown = AIContextMarkdown.render(context);
     assertTrue(markdown.contains("Exclude refunded orders."), "excerpt body should render");
     assertTrue(
-        markdown.contains("get_knowledge_content(type=`page`, fqn=`kb.revenue_rules`)"),
+        markdown.contains("get_knowledge_content(entityType=`page`, fqn=`kb.revenue_rules`)"),
         "truncated item must carry the retrieval hint");
   }
 

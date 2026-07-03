@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -250,17 +251,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    return listInternalFromSearch(
-        uriInfo,
-        securityContext,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        null,
-        getAuthRequestsForListOps());
+    ResultList<ContextMemory> memories =
+        listInternalFromSearch(
+            uriInfo,
+            securityContext,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            null,
+            getAuthRequestsForListOps());
+    // The search index does not enforce shareConfig visibility, so a non-admin could otherwise
+    // read another user's PRIVATE memory by adding any search param. Apply the same per-memory
+    // filter the non-search branch uses.
+    List<ContextMemory> visible =
+        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
+    return visible.size() == memories.getData().size() ? memories : new ResultList<>(visible);
   }
 
   private static boolean hasSearchBackedListParams(
@@ -322,12 +330,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   private String resolveAuthorId(String author) {
     String trimmed = author.trim();
+    String result;
     try {
-      return UUID.fromString(trimmed).toString();
+      result = UUID.fromString(trimmed).toString();
     } catch (IllegalArgumentException ignored) {
-      User user = Entity.getEntityByName(Entity.USER, trimmed, "", Include.NON_DELETED);
-      return user.getId().toString();
+      result = resolveAuthorByName(trimmed);
     }
+    return result;
+  }
+
+  private String resolveAuthorByName(String name) {
+    String result;
+    try {
+      User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
+      result = user.getId().toString();
+    } catch (EntityNotFoundException e) {
+      throw new BadRequestException("Unknown author '" + name + "'. Expected a user name or UUID.");
+    }
+    return result;
   }
 
   private static String resolveSortField(String sortBy) {
