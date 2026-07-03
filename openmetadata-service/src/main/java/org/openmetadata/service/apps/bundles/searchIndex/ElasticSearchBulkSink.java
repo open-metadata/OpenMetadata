@@ -6,7 +6,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARG
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
@@ -18,7 +17,6 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,8 +58,6 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
-import org.openmetadata.service.search.vector.VectorDocBuilder;
-import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
@@ -324,20 +320,18 @@ public class ElasticSearchBulkSink implements BulkSink {
 
         // Pre-fetch cached embeddings for entities whose state is unchanged so we can splice them
         // into the staged doc instead of regenerating (avoids expensive embedding-provider calls).
-        // Mirrors the OpenSearch sink: the doc is always re-indexed via a full index op, so the
-        // embedding must be carried on it — skipping it would strip the stored vector.
+        // The doc is always re-indexed via a full index op, so the embedding must be carried on it
+        // —
+        // skipping it would strip the stored vector (see VectorEmbeddingBulkHelper).
         Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
         if (embeddingsEnabled) {
-          Map<String, VectorIndexService.EntityFingerprintInput> currentById =
-              new HashMap<>(entityInterfaces.size());
-          for (EntityInterface e : entityInterfaces) {
-            currentById.put(
-                e.getId().toString(),
-                new VectorIndexService.EntityFingerprintInput(
-                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
-          }
           existingEmbeddingsById =
-              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
+              VectorEmbeddingBulkHelper.fetchExistingEmbeddings(
+                  ElasticSearchVectorService.getInstance(),
+                  entityInterfaces,
+                  VectorEmbeddingBulkHelper.buildCurrentById(entityInterfaces),
+                  indexName,
+                  reindexContext);
         }
         Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
 
@@ -425,7 +419,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        json = applyEmbedding(entity, json, existingEmbeddingsById, tracker);
       }
 
       String docId = entity.getId().toString();
@@ -899,78 +893,34 @@ public class ElasticSearchBulkSink implements BulkSink {
         && searchRepository.getIndexMapping(entityType) != null;
   }
 
-  private String enrichWithEmbedding(
+  private String applyEmbedding(
       EntityInterface entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker) {
-    try {
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null) {
-        return json;
-      }
+    VectorEmbeddingBulkHelper.EnrichmentResult result =
+        VectorEmbeddingBulkHelper.enrichWithEmbedding(
+            ElasticSearchVectorService.getInstance(),
+            entity,
+            json,
+            existingEmbeddingsById,
+            OBJECT_MAPPER);
+    recordVectorOutcome(result.outcome(), tracker);
+    return result.json();
+  }
 
-      JsonNode parsed = OBJECT_MAPPER.readTree(json);
-      if (!(parsed instanceof ObjectNode doc)) {
-        LOG.warn(
-            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
-            entity.getId());
-        return json;
-      }
-
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
-      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (VectorIndexService.canReuseCachedEmbedding(cached, expectedDimension)) {
-        // Splice the cached embedding (+ chunk metadata) so the full index op carries the vector
-        // instead of stripping it; the service-layer pre-filter only admits state-matched entries.
-        doc.setAll((ObjectNode) cached);
-      } else {
-        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
-      }
-
+  private void recordVectorOutcome(
+      VectorEmbeddingBulkHelper.EmbeddingOutcome outcome, StageStatsTracker tracker) {
+    if (outcome == VectorEmbeddingBulkHelper.EmbeddingOutcome.ENRICHED) {
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);
       }
-      return OBJECT_MAPPER.writeValueAsString(doc);
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+    } else if (outcome == VectorEmbeddingBulkHelper.EmbeddingOutcome.FAILED) {
       vectorFailed.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.FAILED);
       }
-      return json;
-    }
-  }
-
-  private Map<String, JsonNode> fetchExistingEmbeddings(
-      List<EntityInterface> entities,
-      Map<String, VectorIndexService.EntityFingerprintInput> currentById,
-      String indexName,
-      ReindexContext reindexContext) {
-    try {
-      ElasticSearchVectorService vectorService = ElasticSearchVectorService.getInstance();
-      if (vectorService == null) {
-        return Collections.emptyMap();
-      }
-
-      String entityType = entities.getFirst().getEntityReference().getType();
-      // During a recreate, read embeddings from the pre-recreate live index (the staged index is
-      // empty by definition). Outside a recreate, read from the canonical index passed in.
-      String targetIndex =
-          reindexContext != null
-              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
-              : indexName;
-
-      return vectorService.getExistingEmbeddingsBatch(targetIndex, currentById);
-    } catch (Exception e) {
-      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
-      return Collections.emptyMap();
     }
   }
 

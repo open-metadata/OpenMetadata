@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ public interface VectorIndexService {
           "parentId");
 
   Map<String, Object> generateEmbeddingFields(EntityInterface entity);
+
+  EmbeddingClient getEmbeddingClient();
 
   void updateEntityEmbedding(EntityInterface entity, String entityIndexName);
 
