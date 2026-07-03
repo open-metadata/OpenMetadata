@@ -52,7 +52,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
       className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-secondary tw:p-4.5"
       variant="ghost">
       <Box align="center" className="tw:mb-4 tw:gap-3">
-        <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary">
+        <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary">
           {icon}
         </span>
         <div className="tw:flex-1">
