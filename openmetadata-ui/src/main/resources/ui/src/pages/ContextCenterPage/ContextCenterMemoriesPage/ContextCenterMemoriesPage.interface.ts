@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,18 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export interface MemoryFilterOption {
+  id: string;
+  label: string;
+  displayName?: string;
+  name?: string;
+  type?: string;
+  fullyQualifiedName?: string;
+}
 
-export interface NavigationBlockerProps {
-  children: React.ReactNode;
-  enabled?: boolean;
-  onConfirm?: () => Promise<void>;
-  onCancel?: () => void;
-  // When set, a confirmed browser-back navigation goes to this path instead of
-  // the default `history.go(-2)`.
-  leaveTo?: string;
-  renderModal?: (props: {
-    isOpen: boolean;
-    onLeave: () => void;
-    onStay: () => void;
-  }) => React.ReactNode;
+export interface SearchOptionSource {
+  id?: string;
+  name?: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+  entityType?: string;
+  type?: string;
+}
+
+export interface MemoryCounts {
+  totalVisible: number;
+  pinnedVisible: number;
+  createdByMeVisible: number;
 }

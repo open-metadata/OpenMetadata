@@ -3378,6 +3378,7 @@
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
     "metrics-rename-collection-description": "Rename the name and display name for the metrics collection.",
+    "minimum-count-error": "至少必須選擇 {{count}} 個 {{field}}。",
     "minimum-value-error": "最小值應小於最大值。",
     "minute": "分鐘",
     "missing-config-value": "缺少組態值：{{field}}",
