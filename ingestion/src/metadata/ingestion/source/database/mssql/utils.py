@@ -499,5 +499,5 @@ def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
                 actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
             enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
         except Exception as exc:
-            logger.debug(f"Query Store availability probe failed, using plan-cache DMVs: {exc}")
+            logger.debug("Query Store availability probe failed, using plan-cache DMVs: %s", exc)
     return enabled
