@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Radio, RadioChangeEvent, Typography } from 'antd';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { ComponentType, useCallback, useMemo } from 'react';
+import { ComponentType, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
@@ -25,12 +25,12 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
-import { getCountBadge } from '../../../../utils/EntityDisplayPureUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
+import DeploymentSummaryCard from '../../../ServiceAgents/components/DeploymentSummaryCard.component';
 import MetadataAgentsView from '../../../ServiceAgents/components/MetadataAgentsView.component';
 import { useMetadataAgents } from '../../../ServiceAgents/hooks/useMetadataAgents';
 import { IngestionProps } from './ingestion.interface';
@@ -104,14 +104,14 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const handleSubTabChange = useCallback(
-    (e: RadioChangeEvent) => {
+    (key: Key) => {
       navigate(
         {
           pathname: getServiceDetailsPath(
             decodedServiceFQN,
             serviceCategory,
             tab,
-            e.target.value
+            String(key)
           ),
         },
         { replace: true }
@@ -125,7 +125,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     [refreshAgentsList, subTab]
   );
 
-  const subTabOptions = useMemo(() => {
+  const subTabItems = useMemo(() => {
     return Object.values(ServiceAgentSubTabs).map((tabName) => {
       const Icon =
         tabName === ServiceAgentSubTabs.COLLATE_AI
@@ -136,22 +136,18 @@ const Ingestion: React.FC<IngestionProps> = ({
           ? t('label.collate-ai')
           : t('label.metadata');
 
-      return {
-        label: (
-          <div className="tab-label" data-testid={`${tabName}-sub-tab`}>
-            <Icon height={14} width={14} />
-            <Typography.Text>{label}</Typography.Text>
-            {getCountBadge(
-              agentCounts?.[tabName],
-              'flex-center h-5',
-              subTab === tabName
-            )}
-          </div>
-        ),
-        value: tabName,
-      };
+      return (
+        <Tabs.Item
+          badge={String(agentCounts?.[tabName] ?? 0)}
+          data-testid={`${tabName}-sub-tab`}
+          id={tabName}
+          key={tabName}>
+          <Icon height={16} width={16} />
+          {label}
+        </Tabs.Item>
+      );
     });
-  }, [subTab, agentCounts, t]);
+  }, [agentCounts, t]);
 
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
@@ -159,17 +155,16 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   return (
     <div className="agents-tab" data-testid="ingestion-details-container">
+      <DeploymentSummaryCard agents={agents} />
+
       {isCollateAIWidgetSupported && (
-        <Radio.Group
-          buttonStyle="solid"
-          className="agents-sub-tabs-switch"
+        <Tabs
+          className="tw:w-full"
           data-testid="agents-sub-tabs-switch"
-          optionType="button"
-          options={subTabOptions}
-          size="large"
-          value={subTab}
-          onChange={handleSubTabChange}
-        />
+          selectedKey={subTab}
+          onSelectionChange={handleSubTabChange}>
+          <Tabs.List type="underline">{subTabItems}</Tabs.List>
+        </Tabs>
       )}
 
       {isCollateSubTabSelected ? (

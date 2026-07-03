@@ -33,7 +33,6 @@ import { Agent } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { useAgentLogs } from '../hooks/useAgentLogs';
 import AgentGroup from './AgentGroup.component';
-import DeploymentSummaryCard from './DeploymentSummaryCard.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
 interface MetadataAgentsViewProps {
@@ -187,7 +186,6 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 
   return (
     <div data-testid="metadata-agents-view">
-      <DeploymentSummaryCard agents={agents} />
       <AgentGroup
         addAgentSlot={addAgentSlot}
         agents={agents}

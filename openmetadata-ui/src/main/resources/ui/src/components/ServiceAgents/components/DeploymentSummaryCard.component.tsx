@@ -96,7 +96,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
 
   return (
     <div
-      className={`tw:mb-5 tw:rounded-2xl tw:border tw:p-5 ${
+      className={`tw:rounded-2xl tw:border tw:p-5 ${
         allDone
           ? 'tw:border-utility-success-200 tw:bg-success-primary'
           : 'tw:border-utility-brand-200 tw:bg-linear-to-b tw:from-brand-25 tw:to-bg-primary tw:dark:from-bg-brand-primary_alt'
