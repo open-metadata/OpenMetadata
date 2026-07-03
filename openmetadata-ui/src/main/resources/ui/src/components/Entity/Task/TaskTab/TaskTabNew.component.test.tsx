@@ -1092,6 +1092,79 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
+  const buildAssignees = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `assignee-${index}`,
+      type: 'user',
+      name: `assignee-${index}`,
+      displayName: `Assignee ${index}`,
+      deleted: false,
+    }));
+
+  const renderDataAccessTaskWithAssignees = async (assigneeCount: number) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', title: 'Reason' },
+        },
+      },
+      uiSchema: {},
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      assignees: buildAssignees(assigneeCount),
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should not render the show-more toggle when assignees fit the collapsed view', async () => {
+    await renderDataAccessTaskWithAssignees(5);
+
+    expect(screen.getByText('label.assignee-plural')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+  });
+
+  it('should clamp assignees and toggle the full list via show-more/show-less', async () => {
+    await renderDataAccessTaskWithAssignees(8);
+
+    const collapsedChips = screen.getAllByText('ProfilePicture').length;
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-more'));
+    });
+
+    expect(screen.getByText('label.show-less')).toBeInTheDocument();
+    expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(
+      collapsedChips + 3
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.show-less'));
+    });
+
+    expect(screen.getByText('label.show-more')).toBeInTheDocument();
+    expect(screen.getAllByText('ProfilePicture').length).toBe(collapsedChips);
+  });
+
   it('resolves workflow-driven tasks using transition ids', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
     const {
