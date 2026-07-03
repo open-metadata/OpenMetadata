@@ -215,6 +215,7 @@ describe('NavigationBlocker component', () => {
 
   describe('confirmed browser-back navigation', () => {
     beforeEach(() => jest.useFakeTimers());
+
     afterEach(() => jest.useRealTimers());
 
     it('navigates to leaveTo when set', async () => {
