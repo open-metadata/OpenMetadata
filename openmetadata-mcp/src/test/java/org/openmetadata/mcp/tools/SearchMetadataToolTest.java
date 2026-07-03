@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -373,6 +375,32 @@ class SearchMetadataToolTest {
     @SuppressWarnings("unchecked")
     Map<String, Object> full = (Map<String, Object>) result.get("testCaseResult");
     assertEquals(testCaseResult, full);
+  }
+
+  @Test
+  void trimMessageUsesAbsoluteNextOffsetWhenPaging() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 5000; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", hits.size()));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    int from = 20;
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "tables", 5000, from, List.of(), false, 0);
+
+    int returnedCount = (int) result.get("returnedCount");
+    assertTrue(returnedCount < 5000, "results should have been trimmed to fit the budget");
+    assertEquals(true, result.get("hasMore"));
+    String message = (String) result.get("message");
+    assertTrue(
+        message.contains("'from'=" + (from + returnedCount)),
+        "next-page hint must be absolute (from + returnedCount): " + message);
   }
 
   private Map<String, Object> buildHit(double score, String fqn) {

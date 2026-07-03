@@ -46,6 +46,14 @@ public final class ResponseBudget {
    * when the first item alone exceeds a positive budget, one item is still returned. Callers with two
    * lists sharing one budget (e.g. upstream/downstream edges) use the returned {@code usedChars} to
    * hand the remainder to the second list.
+   *
+   * <p>Residual: a single item whose serialized size exceeds {@link
+   * McpResponseTrim#MAX_RESPONSE_CHARS} is inherently un-pageable without truncating its content
+   * (which this design refuses to do). Forward progress still returns that one item, so the assembled
+   * response can exceed the cap; the dispatch floor ({@code
+   * DefaultToolContext.serializeWithinBudget}) then replaces it with an actionable {@code truncated}
+   * envelope (tool name, size, cap, advice) rather than a silent empty stub. See {@code
+   * ResponseBudgetTest#singleItemOverMaxResponseCharsStillReturnsOne}.
    */
   public static Fit fitWithin(List<?> items, long budgetChars) {
     long used = 0;

@@ -84,4 +84,18 @@ class ResponseBudgetTest {
   void emptyListReturnsZero() {
     assertThat(ResponseBudget.fitCount(List.of(), 0, 5_000)).isZero();
   }
+
+  @Test
+  void singleItemOverMaxResponseCharsStillReturnsOne() {
+    List<Map<String, Object>> items = items(1, McpResponseTrim.MAX_RESPONSE_CHARS + 1_000);
+
+    int fit = ResponseBudget.fitCount(items, 0, ResponseBudget.defaultBudgetChars());
+
+    assertThat(fit)
+        .as(
+            "un-pageable single item returns one (forward progress); the dispatch floor envelopes it")
+        .isEqualTo(1);
+    assertThat(McpResponseTrim.serializedLength(items.getFirst()))
+        .isGreaterThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
 }

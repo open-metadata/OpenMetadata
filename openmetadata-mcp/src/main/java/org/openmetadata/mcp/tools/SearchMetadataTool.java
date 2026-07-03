@@ -263,7 +263,13 @@ public class SearchMetadataTool implements McpTool {
     }
 
     return buildEnhancedSearchResponse(
-        searchResponse, query, size, requestedFields, includeAggregations, maxAggregationBuckets);
+        searchResponse,
+        query,
+        size,
+        from,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
   }
 
   @Override
@@ -281,6 +287,24 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
+      List<String> requestedFields,
+      boolean includeAggregations,
+      int maxAggregationBuckets) {
+    return buildEnhancedSearchResponse(
+        searchResponse,
+        query,
+        requestedLimit,
+        0,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
+  }
+
+  static Map<String, Object> buildEnhancedSearchResponse(
+      Map<String, Object> searchResponse,
+      String query,
+      int requestedLimit,
+      int from,
       List<String> requestedFields,
       boolean includeAggregations,
       int maxAggregationBuckets) {
@@ -361,7 +385,7 @@ public class SearchMetadataTool implements McpTool {
       result.put("hasMore", true);
     }
 
-    fitResultsToBudget(result, cleanedResults, totalResults, query);
+    fitResultsToBudget(result, cleanedResults, totalResults, from, query);
 
     return result;
   }
@@ -377,6 +401,7 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result,
       List<Map<String, Object>> cleanedResults,
       long totalResults,
+      int from,
       String query) {
     long overhead = overheadWithoutResults(result);
     int fit = ResponseBudget.fitCount(cleanedResults, overhead);
@@ -395,7 +420,7 @@ public class SearchMetadataTool implements McpTool {
           String.format(
               "Returning %d of %d results to stay within the response size budget. "
                   + "Fetch more with 'from'=%d, or narrow the query with a service, schema, or name.",
-              trimmed.size(), totalResults, trimmed.size()));
+              trimmed.size(), totalResults, from + trimmed.size()));
     }
   }
 

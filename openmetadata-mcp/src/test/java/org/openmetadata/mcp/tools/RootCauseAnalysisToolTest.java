@@ -271,4 +271,37 @@ class RootCauseAnalysisToolTest {
     assertThat(JsonUtils.pojoToJson(output).length())
         .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
   }
+
+  @Test
+  void enforceSizeBudgetTrimsDownstreamEdgeMapAndWritesMarker() {
+    Map<String, Object> downstreamEdges = new LinkedHashMap<>();
+    for (int i = 0; i < 200; i++) {
+      downstreamEdges.put(
+          "edge_" + i,
+          Map.of("toFQN", "svc.db.down_" + i, "sqlQuery", "SELECT " + "y".repeat(600)));
+    }
+    Map<String, Object> downstream = new LinkedHashMap<>();
+    downstream.put("downstreamImpactedEdgesCount", 200);
+    downstream.put("downstreamEdges", downstreamEdges);
+    Map<String, Object> upstream = new LinkedHashMap<>();
+    upstream.put("failingUpstreamNodesCount", 0);
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("fqn", "svc.db.orders");
+    result.put("status", "failed");
+    result.put("summary", "Found upstream failures.");
+    result.put("upstreamAnalysis", upstream);
+    result.put("downstreamAnalysis", downstream);
+
+    Map<String, Object> output = RootCauseAnalysisTool.enforceSizeBudget(result);
+
+    assertThat(output.get("truncated")).isEqualTo(Boolean.TRUE);
+    Map<String, Object> outDownstream = asMap(output.get("downstreamAnalysis"));
+    Map<String, Object> keptEdges = asMap(outDownstream.get("downstreamEdges"));
+    assertThat(keptEdges).isNotEmpty();
+    assertThat(keptEdges.size()).isLessThan(200);
+    assertThat(outDownstream.get("downstreamEdgesReturned")).isEqualTo(keptEdges.size());
+    assertThat(outDownstream.get("downstreamImpactedEdgesCount")).isEqualTo(200);
+    assertThat(JsonUtils.pojoToJson(output).length())
+        .isLessThan(McpResponseTrim.MAX_RESPONSE_CHARS);
+  }
 }

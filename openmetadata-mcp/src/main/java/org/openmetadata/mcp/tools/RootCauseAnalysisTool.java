@@ -362,22 +362,31 @@ public class RootCauseAnalysisTool implements McpTool {
     return output;
   }
 
+  /**
+   * Splits the budget across the two directions and, mirroring {@link GetLineageTool}, reclaims the
+   * other direction's unused budget so an asymmetric analysis (RCA commonly has only upstream
+   * failing edges) can use the whole budget instead of being capped at half.
+   */
   private static void fitEdgeLists(
       Map<String, Object> upstream, Map<String, Object> downstream, long available) {
-    List<?> upEdges = edgeList(upstream, UPSTREAM_EDGES);
-    List<?> downEdges = edgeList(downstream, DOWNSTREAM_EDGES);
+    List<?> upEdges = edgeValues(upstream, UPSTREAM_EDGES);
+    List<?> downEdges = edgeValues(downstream, DOWNSTREAM_EDGES);
     long half = available / 2;
     ResponseBudget.Fit up = ResponseBudget.fitWithin(upEdges, half);
     ResponseBudget.Fit down = ResponseBudget.fitWithin(downEdges, available - up.usedChars());
-    trimEdgeList(upstream, UPSTREAM_EDGES, up.count());
-    trimEdgeList(downstream, DOWNSTREAM_EDGES, down.count());
+    boolean downstreamLeftRoom = down.usedChars() < half && up.count() < upEdges.size();
+    if (downstreamLeftRoom) {
+      up = ResponseBudget.fitWithin(upEdges, available - down.usedChars());
+    }
+    trimEdges(upstream, UPSTREAM_EDGES, up.count());
+    trimEdges(downstream, DOWNSTREAM_EDGES, down.count());
   }
 
-  /** Serialized size of the result with both edge lists detached, i.e. the fixed non-edge cost. */
+  /** Serialized size of the result with both edge collections detached, i.e. the non-edge cost. */
   private static long edgeFreeOverhead(
       Map<String, Object> result, Map<String, Object> upstream, Map<String, Object> downstream) {
-    List<?> up = detachEdges(upstream, UPSTREAM_EDGES);
-    List<?> down = detachEdges(downstream, DOWNSTREAM_EDGES);
+    Object up = detachEdges(upstream, UPSTREAM_EDGES);
+    Object down = detachEdges(downstream, DOWNSTREAM_EDGES);
     long overhead = McpResponseTrim.serializedLength(result);
     reattachEdges(upstream, UPSTREAM_EDGES, up);
     reattachEdges(downstream, DOWNSTREAM_EDGES, down);
@@ -388,27 +397,61 @@ public class RootCauseAnalysisTool implements McpTool {
     return map.get(key) instanceof Map ? castMap(map.get(key)) : null;
   }
 
-  private static List<?> edgeList(Map<String, Object> analysis, String key) {
-    return analysis != null && analysis.get(key) instanceof List<?> edges ? edges : List.of();
+  /**
+   * Edges are a {@code List} on the upstream side ({@link #slimEdges}) but a {@code Map} keyed by
+   * entity id on the downstream side ({@link #slimEdgeMap}). Both shapes are reduced to a list of
+   * edge values so {@link ResponseBudget} can measure and count them uniformly.
+   */
+  private static List<?> edgeValues(Map<String, Object> analysis, String key) {
+    Object edges = analysis == null ? null : analysis.get(key);
+    List<?> values = List.of();
+    if (edges instanceof List<?> list) {
+      values = list;
+    } else if (edges instanceof Map<?, ?> map) {
+      values = new ArrayList<>(map.values());
+    }
+    return values;
   }
 
-  private static List<?> detachEdges(Map<String, Object> analysis, String key) {
-    return analysis != null && analysis.get(key) instanceof List<?>
-        ? (List<?>) analysis.remove(key)
-        : null;
+  private static Object detachEdges(Map<String, Object> analysis, String key) {
+    Object edges = null;
+    if (analysis != null
+        && (analysis.get(key) instanceof List || analysis.get(key) instanceof Map)) {
+      edges = analysis.remove(key);
+    }
+    return edges;
   }
 
-  private static void reattachEdges(Map<String, Object> analysis, String key, List<?> edges) {
+  private static void reattachEdges(Map<String, Object> analysis, String key, Object edges) {
     if (edges != null) {
       analysis.put(key, edges);
     }
   }
 
-  private static void trimEdgeList(Map<String, Object> analysis, String key, int count) {
-    if (analysis != null && analysis.get(key) instanceof List<?> edges && count < edges.size()) {
-      analysis.put(key, new ArrayList<>(edges.subList(0, count)));
-      analysis.put(key + "Returned", count);
+  private static void trimEdges(Map<String, Object> analysis, String key, int count) {
+    if (analysis != null) {
+      Object edges = analysis.get(key);
+      if (edges instanceof List<?> list && count < list.size()) {
+        analysis.put(key, new ArrayList<>(list.subList(0, count)));
+        analysis.put(key + "Returned", count);
+      } else if (edges instanceof Map<?, ?> map && count < map.size()) {
+        analysis.put(key, firstEntries(map, count));
+        analysis.put(key + "Returned", count);
+      }
     }
+  }
+
+  private static Map<String, Object> firstEntries(Map<?, ?> map, int count) {
+    Map<String, Object> kept = new LinkedHashMap<>();
+    int index = 0;
+    for (Map.Entry<?, ?> entry : map.entrySet()) {
+      if (index >= count) {
+        break;
+      }
+      kept.put(String.valueOf(entry.getKey()), entry.getValue());
+      index++;
+    }
+    return kept;
   }
 
   private static Map<String, Object> oversizedHint(Map<String, Object> result) {
