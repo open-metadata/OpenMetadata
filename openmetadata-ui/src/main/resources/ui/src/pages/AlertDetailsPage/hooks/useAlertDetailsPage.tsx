@@ -94,7 +94,7 @@ export function useAlertDetailsPage({
     []
   );
 
-  const fetchAlertDetails = async () => {
+  const fetchAlertDetails = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
@@ -107,9 +107,9 @@ export function useAlertDetailsPage({
     } finally {
       setLoadingCount((count) => count - 1);
     }
-  };
+  }, [fqn]);
 
-  const fetchAlertEventDiagnosticCounts = async () => {
+  const fetchAlertEventDiagnosticCounts = useCallback(async () => {
     try {
       setAlertEventCountsLoading(true);
       const alertCounts = await getAlertEventsDiagnosticsInfo({
@@ -123,7 +123,7 @@ export function useAlertDetailsPage({
     } finally {
       setAlertEventCountsLoading(false);
     }
-  };
+  }, [fqn]);
 
   const breadcrumb = useMemo(
     () =>
@@ -307,7 +307,7 @@ export function useAlertDetailsPage({
       fetchAlertDetails();
       fetchAlertEventDiagnosticCounts();
     }
-  }, [viewPermission]);
+  }, [fetchAlertDetails, fetchAlertEventDiagnosticCounts, viewPermission]);
 
   const extraInfo = useMemo(
     () => getAlertExtraInfo(alertEventCountsLoading, alertEventCounts),
