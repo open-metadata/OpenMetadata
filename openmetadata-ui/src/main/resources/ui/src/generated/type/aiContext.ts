@@ -84,9 +84,16 @@ export interface AIContext {
  */
 export interface KnowledgeItem {
     /**
-     * The definition, business rule, metric expression, or article body for this item.
+     * The definition, business rule, metric expression, or article body for this item. May be a
+     * bounded lead excerpt when contentTruncated is true, or null when omitted to stay within
+     * the context budget.
      */
-    content?:            string;
+    content?: string;
+    /**
+     * True when content is a lead excerpt or has been omitted to fit the context budget; fetch
+     * the full body via the get_knowledge_content tool using this item's fullyQualifiedName.
+     */
+    contentTruncated?:   boolean;
     displayName?:        string;
     fullyQualifiedName?: string;
     name?:               string;
