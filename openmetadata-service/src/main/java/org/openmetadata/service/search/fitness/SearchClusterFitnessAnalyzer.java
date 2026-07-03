@@ -108,8 +108,7 @@ public class SearchClusterFitnessAnalyzer {
     checkClusterStatus(signals, s.clusterHealth, inaccessible);
     checkPendingTasks(signals, s.clusterHealth, inaccessible);
     checkUnassignedShards(signals, s.clusterHealth, dataNodes, inaccessible);
-    checkShardBudget(
-        signals, s.clusterStats, s.clusterSettings, s.nodeFootprints.size(), inaccessible);
+    checkShardBudget(signals, s.clusterStats, s.clusterSettings, dataNodes, inaccessible);
     checkShardsPerHeapGb(signals, report.getTotalShards(), s.nodeFootprints);
     checkDedicatedMaster(signals, s.clusterHealth, s.nodeFootprints);
     checkDocSizeAndShards(signals, s.indexFootprints);
@@ -954,13 +953,16 @@ public class SearchClusterFitnessAnalyzer {
       List<String> inaccessible) {
     double lowWatermark =
         readWatermarkPercent(
-            clusterSettings, "cluster.routing.allocation.disk.watermark.low", 85.0);
+            clusterSettings, "cluster.routing.allocation.disk.watermark.low", 85.0, inaccessible);
     double highWatermark =
         readWatermarkPercent(
-            clusterSettings, "cluster.routing.allocation.disk.watermark.high", 90.0);
+            clusterSettings, "cluster.routing.allocation.disk.watermark.high", 90.0, inaccessible);
     double floodWatermark =
         readWatermarkPercent(
-            clusterSettings, "cluster.routing.allocation.disk.watermark.flood_stage", 95.0);
+            clusterSettings,
+            "cluster.routing.allocation.disk.watermark.flood_stage",
+            95.0,
+            inaccessible);
 
     for (NodeFootprint node : nodes) {
       if (node.getDiskUsedPercent() == null) {
@@ -989,8 +991,14 @@ public class SearchClusterFitnessAnalyzer {
             "Approaching low watermark. Provision more disk during the next maintenance window.";
       } else if (used >= SearchClusterFitnessRules.DISK_USAGE_FAIL_PERCENT) {
         severity = FitnessSeverity.FAIL;
+        recommendation =
+            "Disk usage is critically high. Free disk or add storage capacity to stay below the "
+                + "ES/OS allocation watermarks and avoid indices going read-only.";
       } else if (used >= SearchClusterFitnessRules.DISK_USAGE_WARN_PERCENT) {
         severity = FitnessSeverity.WARN;
+        recommendation =
+            "Disk usage is elevated. Plan to free disk or add storage before it reaches the "
+                + "ES/OS allocation watermarks.";
       }
       if (severity != FitnessSeverity.PASS) {
         signals.add(
@@ -1024,13 +1032,22 @@ public class SearchClusterFitnessAnalyzer {
     }
   }
 
-  private double readWatermarkPercent(JsonNode settings, String key, double fallback) {
+  private double readWatermarkPercent(
+      JsonNode settings, String key, double fallback, List<String> inaccessible) {
     double result = fallback;
     if (settings != null) {
       String raw = readSettingString(settings, key);
       Double parsed = parseWatermark(raw);
       if (parsed != null) {
         result = parsed;
+      } else if (raw != null && !raw.isBlank()) {
+        // Byte-form watermarks (e.g. "50gb") can't be turned into a percent without per-node disk
+        // size context, so we fall back to the default percentage. Record it so the report is
+        // self-describing rather than silently masking a low byte-based threshold.
+        String note = key + "=" + raw + " (byte-form watermark; using " + fallback + "% fallback)";
+        if (!inaccessible.contains(note)) {
+          inaccessible.add(note);
+        }
       }
     }
     return result;

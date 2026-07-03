@@ -116,6 +116,7 @@ public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final String MAPPINGS_KEY = "mappings";
   private static final String PROPERTIES_KEY = "properties";
+  private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -462,8 +463,39 @@ public class SystemResource {
     org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer =
         new org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer(
             Entity.getSearchRepository());
-    org.openmetadata.service.search.fitness.SearchClusterFitnessReport report = analyzer.analyze();
+    org.openmetadata.service.search.fitness.SearchClusterFitnessReport report =
+        computeFitnessWithTimeout(analyzer);
     return Response.ok().entity(report).build();
+  }
+
+  private org.openmetadata.service.search.fitness.SearchClusterFitnessReport
+      computeFitnessWithTimeout(
+          org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer analyzer) {
+    java.util.concurrent.ExecutorService executor =
+        java.util.concurrent.Executors.newSingleThreadExecutor(
+            r -> {
+              Thread thread = new Thread(r, "search-fitness-analyzer");
+              thread.setDaemon(true);
+              return thread;
+            });
+    try {
+      return executor
+          .submit(analyzer::analyze)
+          .get(SEARCH_FITNESS_TIMEOUT_SECONDS, java.util.concurrent.TimeUnit.SECONDS);
+    } catch (java.util.concurrent.TimeoutException e) {
+      throw new jakarta.ws.rs.ServiceUnavailableException(
+          "Search cluster fitness analysis exceeded "
+              + SEARCH_FITNESS_TIMEOUT_SECONDS
+              + "s — the cluster is slow or unreachable. Try again or inspect the cluster directly.");
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new UnhandledServerException("Search cluster fitness analysis was interrupted");
+    } catch (java.util.concurrent.ExecutionException e) {
+      throw new UnhandledServerException(
+          "Search cluster fitness analysis failed: " + e.getCause().getMessage());
+    } finally {
+      executor.shutdownNow();
+    }
   }
 
   @GET
