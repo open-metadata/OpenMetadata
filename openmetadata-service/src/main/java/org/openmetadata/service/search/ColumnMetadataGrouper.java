@@ -102,10 +102,10 @@ public class ColumnMetadataGrouper {
       gridItems.add(gridItem);
     }
 
-    // The source map is unordered and every query path funnels through here, so this single sort
-    // gives the grid a stable alphabetical order everywhere. Case-insensitive for natural listing,
-    // with a case-sensitive tie-breaker so names differing only in case (e.g. "Name"/"name") stay
-    // stable instead of falling back to the map's arbitrary order.
+    // groupColumns is the single sink for every query path. The input map's iteration order is not
+    // guaranteed (current callers build it as a HashMap), so sort here for a stable alphabetical
+    // order. Case-insensitive for natural listing, with a case-sensitive tie-breaker so names that
+    // differ only in case (e.g. "Name"/"name") stay stable instead of relying on map order.
     gridItems.sort(
         Comparator.comparing(ColumnGridItem::getColumnName, String.CASE_INSENSITIVE_ORDER)
             .thenComparing(ColumnGridItem::getColumnName));
