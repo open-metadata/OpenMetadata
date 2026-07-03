@@ -26,6 +26,7 @@ const STATUS_LABEL_KEY: Record<AgentStatus, string> = {
   queued: 'label.queued',
   running: 'label.running',
   success: 'label.success',
+  none: 'label.no-status',
 };
 
 const DOT_CLASS: Record<AgentStatus, string> = {
@@ -33,6 +34,7 @@ const DOT_CLASS: Record<AgentStatus, string> = {
   queued: 'tw:bg-utility-gray-400',
   running: 'tw:bg-utility-brand-500',
   success: 'tw:bg-utility-success-500',
+  none: 'tw:bg-utility-gray-400',
 };
 
 const StatusPill: FC<StatusPillProps> = ({ status }) => {

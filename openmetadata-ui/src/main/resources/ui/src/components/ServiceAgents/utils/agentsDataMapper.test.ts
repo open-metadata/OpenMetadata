@@ -242,10 +242,10 @@ describe('agentsDataMapper', () => {
       expect(agent.finishedAt).toBeTruthy();
     });
 
-    it('should return queued status with zeros when there are no runs', () => {
+    it('should return none status with zeros when there are no runs', () => {
       const agent = mapPipelineToAgent(basePipeline);
 
-      expect(agent.status).toBe('queued');
+      expect(agent.status).toBe('none');
       expect(agent.pct).toBe(0);
       expect(agent.assets).toBe(0);
       expect(agent.target).toBe(0);
@@ -253,6 +253,34 @@ describe('agentsDataMapper', () => {
       expect(agent.errors).toBe(0);
       expect(agent.warnings).toBe(0);
       expect(agent.recentRuns).toEqual([]);
+    });
+
+    it('should return none status but keep last-run data when the state is missing', () => {
+      const now = Date.now();
+      const pipeline: IngestionPipeline = {
+        ...basePipeline,
+        pipelineStatuses: [
+          {
+            runId: 'run-3',
+            startDate: now - 60000,
+            endDate: now,
+            status: [
+              {
+                name: 'Source',
+                records: 75,
+                errors: 0,
+                warnings: 0,
+              },
+            ],
+          },
+        ],
+      };
+
+      const agent = mapPipelineToAgent(pipeline);
+
+      expect(agent.status).toBe('none');
+      expect(agent.assets).toBe(75);
+      expect(agent.finishedAt).toBeTruthy();
     });
 
     it('should build recentRuns latest-first from pipeline statuses', () => {

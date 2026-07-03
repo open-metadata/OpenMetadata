@@ -56,6 +56,12 @@ const AgentCard: FC<AgentCardProps> = ({
   const isFailed = agent.status === 'failed';
   const isQueued = agent.status === 'queued';
   const isSuccess = agent.status === 'success';
+  const isNone = agent.status === 'none';
+  const showLastRunMetric =
+    isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
+  const finishedSuffix = agent.finishedAt
+    ? ` · ${t('label.finished-lowercase')} ${agent.finishedAt}`
+    : '';
   const unitIcon =
     agent.unit === 'queries' ? (
       <TerminalIcon height={15} width={15} />
@@ -110,12 +116,10 @@ const AgentCard: FC<AgentCardProps> = ({
                 value={fmtEta(agent.eta)}
               />
             )}
-            {isSuccess && (
+            {showLastRunMetric && (
               <Metric
                 icon={unitIcon}
-                label={`${agent.unit} · ${t('label.finished-lowercase')} ${
-                  agent.finishedAt
-                }`}
+                label={`${agent.unit}${finishedSuffix}`}
                 value={fmtNum(agent.assets)}
               />
             )}

@@ -1619,6 +1619,7 @@
     "no-records": "レコードなし",
     "no-result-found": "結果が見つかりません",
     "no-reviewer": "レビュワーがいません",
+    "no-status": "No status",
     "no-tags-added": "タグは追加されていません",
     "no-tasks-yet": "タスクはまだありません",
     "no-tests-run": "テスト未実行",

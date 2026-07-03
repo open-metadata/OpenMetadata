@@ -68,6 +68,7 @@ export const STATUS_PILL_META: Record<AgentStatus, PillMeta> = {
   success: { color: 'success' },
   failed: { color: 'error' },
   queued: { color: 'gray' },
+  none: { color: 'gray' },
 };
 
 export interface RunMeta {
@@ -122,4 +123,5 @@ export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
   failed: 'tw:text-fg-error-primary',
   success: 'tw:text-fg-success-primary',
   queued: 'tw:text-fg-quaternary',
+  none: 'tw:text-fg-quaternary',
 };

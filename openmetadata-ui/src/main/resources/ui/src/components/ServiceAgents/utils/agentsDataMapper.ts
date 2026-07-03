@@ -241,7 +241,9 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
   const agentStatus = getAgentStatusLabelFromStatus(
     latestStatus?.pipelineState
   );
-  const uiStatus = toUiAgentStatus(agentStatus);
+  const uiStatus: UiAgentStatus = latestStatus?.pipelineState
+    ? toUiAgentStatus(agentStatus)
+    : 'none';
   const steps = latestStatus?.status ?? [];
 
   let progressFields: Pick<

@@ -107,6 +107,30 @@ describe('AgentCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should show the last-run metric for a successful agent with zero assets', () => {
+    renderCard({ ...baseAgent, unit: 'queries', assets: 0 });
+
+    expect(screen.getByText('Metric')).toBeInTheDocument();
+  });
+
+  it('should show the last-run metric for a none agent that has run data', () => {
+    renderCard({ ...baseAgent, status: 'none', unit: 'queries', assets: 0 });
+
+    expect(screen.getByText('Metric')).toBeInTheDocument();
+  });
+
+  it('should hide the last-run metric for a none agent without run data', () => {
+    renderCard({
+      ...baseAgent,
+      status: 'none',
+      assets: 0,
+      recentRuns: [],
+      finishedAt: undefined,
+    });
+
+    expect(screen.queryByText('Metric')).not.toBeInTheDocument();
+  });
+
   it('should pass the clicked run id to onRunDetails', () => {
     renderCard(baseAgent);
 
