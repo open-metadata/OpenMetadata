@@ -175,6 +175,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           serviceDetails={serviceDetails}
           workflowStartAt={workflowStartAt}
           onCollateAgentPageChange={onCollateAgentPageChange}
+          onRefresh={handleRefresh}
         />
       ) : (
         <MetadataAgentsView
