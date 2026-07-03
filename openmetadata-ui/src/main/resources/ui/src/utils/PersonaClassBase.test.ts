@@ -122,12 +122,12 @@ describe('PersonaClassBase', () => {
       expect(instance.getCustomizePageOptions('unknown-category')).toEqual([]);
     });
 
-    it('builds each option label/description/icon via i18n.t() and getEntityIcons()', () => {
+    it('builds each option label via startCase, plus description/icon', () => {
       const [tableOption] = instance
         .getCustomizePageOptions('data-assets')
         .filter((option) => option.key === PageType.Table);
 
-      expect(tableOption.label).toBe('label.table');
+      expect(tableOption.label).toBe('Table');
       expect(tableOption.description).toBe(
         'message.entity-customize-description'
       );

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { kebabCase, map } from 'lodash';
+import { map, startCase } from 'lodash';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -177,7 +177,7 @@ class PersonaClassBase {
   }
 
   protected generateSettingItems(pageType: PageType): SettingMenuItem {
-    const entityLabel = i18n.t(`label.${kebabCase(pageType)}`);
+    const entityLabel = startCase(pageType);
 
     return {
       key: pageType,

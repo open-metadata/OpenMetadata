@@ -59,22 +59,22 @@ describe('PersonaUtils', () => {
       expect(options).toEqual([
         expect.objectContaining({
           key: PageType.DataProduct,
-          label: 'label.data-product',
+          label: 'Data Product',
           icon: 'svg-mock',
         }),
         expect.objectContaining({
           key: PageType.Domain,
-          label: 'label.domain',
+          label: 'Domain',
           icon: 'svg-mock',
         }),
         expect.objectContaining({
           key: PageType.Glossary,
-          label: 'label.glossary',
+          label: 'Glossary',
           icon: 'svg-mock',
         }),
         expect.objectContaining({
           key: PageType.GlossaryTerm,
-          label: 'label.glossary-term',
+          label: 'Glossary Term',
           icon: 'svg-mock',
         }),
       ]);
@@ -100,27 +100,27 @@ describe('PersonaUtils', () => {
         expect.arrayContaining([
           expect.objectContaining({
             key: PageType.Dashboard,
-            label: 'label.dashboard',
+            label: 'Dashboard',
             icon: 'svg-mock',
           }),
           expect.objectContaining({
             key: PageType.Database,
-            label: 'label.database',
+            label: 'Database',
             icon: 'svg-mock',
           }),
           expect.objectContaining({
             key: PageType.Pipeline,
-            label: 'label.pipeline',
+            label: 'Pipeline',
             icon: 'svg-mock',
           }),
           expect.objectContaining({
             key: PageType.Table,
-            label: 'label.table',
+            label: 'Table',
             icon: 'svg-mock',
           }),
           expect.objectContaining({
             key: PageType.Container,
-            label: 'label.container',
+            label: 'Container',
             icon: 'svg-mock',
           }),
         ])
