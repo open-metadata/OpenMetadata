@@ -12,6 +12,7 @@
  */
 
 import { isUndefined } from 'lodash';
+import { getEntityTypeFromServiceCategory } from './ServicePureUtils';
 import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
@@ -93,6 +94,42 @@ export const isServiceBreadcrumbHref = (href?: string) =>
     ? !getBreadcrumbEntityTypeFromHref(href) &&
       !/^\/settings\/services\/[^/]+\/?$/.test(href)
     : false;
+
+/** Normalises a breadcrumb url (string or pathname object) to a plain href string. */
+export const getBreadcrumbHref = (
+  url: string | { pathname?: string }
+): string => (typeof url === 'string' ? url : url.pathname ?? '');
+
+/**
+ * Derives the entity type from a breadcrumb href for icon lookup.
+ *
+ * URL shapes produced by the breadcrumb utilities:
+ *   /<entityType>/<fqn>            – getEntityDetailsPath; first segment = EntityType value
+ *   /service/<category>/<name>     – getServiceDetailsPath; service instance crumb handled
+ *                                    separately in getServiceBreadcrumbIcon, not here
+ *   /settings/services/<category>  – category listing page; third segment = ServiceCategory value
+ *
+ * Special case: "/tags/<fqn>" uses "tags" as the route prefix but the enum value is
+ * "classification", so we map it explicitly instead of relying on the segment check.
+ */
+export const getEntityTypeForIcon = (href: string): EntityType | undefined => {
+  const segments = href.split('/').filter(Boolean);
+
+  // /settings/services/<category> → resolve to the corresponding service EntityType
+  if (segments[0] === 'settings' && segments[1] === 'services' && segments[2]) {
+    return getEntityTypeFromServiceCategory(segments[2] as ServiceCategory);
+  }
+
+  // Route prefix "tags" does not match EntityType.CLASSIFICATION ("classification")
+  if (segments[0] === 'tags') {
+    return EntityType.CLASSIFICATION;
+  }
+
+  // For all other paths the first segment equals the EntityType enum value directly
+  const segment = segments[0] as EntityType;
+
+  return Object.values(EntityType).includes(segment) ? segment : undefined;
+};
 
 export const getEntityBreadcrumbs = (
   entity:
