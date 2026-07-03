@@ -128,7 +128,7 @@ const DataProductsContainer = ({
 
     if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
       return (
-        <Typography className="tw:text-gray-500" size="text-xs">
+        <Typography className="tw:text-quaternary" size="text-xs">
           {t('message.select-domain-to-add-data-product')}
         </Typography>
       );

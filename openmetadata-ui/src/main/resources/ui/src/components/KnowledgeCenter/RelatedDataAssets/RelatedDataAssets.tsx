@@ -117,11 +117,13 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
 
   const getDataAssetListing = useCallback((dataAssets: EntityReference[]) => {
     return dataAssets.map((item) => (
-      <div
-        className="right-panel-list-item flex items-center justify-between tw:min-w-0"
+      <Box
+        align='center'
+        className="right-panel-list-item tw:min-w-0"
         data-testid={getEntityName(item)}
+        justify='between'
         key={item.id}>
-        <div className="flex items-center tw:min-w-0 tw:w-full">
+        <Box align='center' className="tw:min-w-0 tw:w-full">
           <Tooltip title={getEntityName(item)}>
             <Link
               className="font-medium tw:min-w-0 tw:w-full tw:block"
@@ -148,8 +150,8 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
               </Button>
             </Link>
           </Tooltip>
-        </div>
-      </div>
+        </Box>
+      </Box>
     ));
   }, []);
 

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -70,11 +71,12 @@ export const DomainTypeWidget = () => {
   const content = (
     <>
       {!editDomainType && (
-        <div
-          className="tw:flex tw:flex-wrap tw:gap-1.5"
-          data-testid="domain-type-label">
+        <Box
+          data-testid="domain-type-label"
+          gap={2}
+          wrap='wrap'>
           {domain?.domainType}
-        </div>
+        </Box>
       )}
 
       {editDomainType && (
