@@ -118,12 +118,12 @@ const RelatedDataAssets: FC<RelatedDataAssetsProps> = ({
   const getDataAssetListing = useCallback((dataAssets: EntityReference[]) => {
     return dataAssets.map((item) => (
       <Box
-        align='center'
+        align="center"
         className="right-panel-list-item tw:min-w-0"
         data-testid={getEntityName(item)}
-        justify='between'
+        justify="between"
         key={item.id}>
-        <Box align='center' className="tw:min-w-0 tw:w-full">
+        <Box align="center" className="tw:min-w-0 tw:w-full">
           <Tooltip title={getEntityName(item)}>
             <Link
               className="font-medium tw:min-w-0 tw:w-full tw:block"

@@ -71,10 +71,7 @@ export const DomainTypeWidget = () => {
   const content = (
     <>
       {!editDomainType && (
-        <Box
-          data-testid="domain-type-label"
-          gap={2}
-          wrap='wrap'>
+        <Box data-testid="domain-type-label" gap={2} wrap="wrap">
           {domain?.domainType}
         </Box>
       )}
