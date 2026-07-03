@@ -11,6 +11,26 @@
  *  limitations under the License.
  */
 /**
+ * One pipeline's progress update multiplexed onto a service-scoped SSE stream.
+ */
+export interface ServiceProgressEvent {
+    /**
+     * The per-run progress update
+     */
+    event: ProgressUpdate;
+    /**
+     * Fully qualified name of the ingestion pipeline this event belongs to
+     */
+    pipelineFqn: string;
+    /**
+     * Pipeline run ID
+     */
+    runId: string;
+}
+
+/**
+ * The per-run progress update
+ *
  * Real-time progress update for SSE streaming during ingestion pipeline execution
  */
 export interface ProgressUpdate {
