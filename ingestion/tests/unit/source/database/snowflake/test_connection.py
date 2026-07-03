@@ -10,10 +10,9 @@
 #  limitations under the License.
 """Unit tests for Snowflake test-connection checks and error classification.
 
-The error-pack matchers (errnos and message tokens) were confirmed against a live
-Snowflake account. These tests use the real captured messages as fixtures and pin
-the wiring (steps resolve to checks, the network pack is folded in, nothing
-connects at construction) and the intended mapping.
+Cover the wiring (steps resolve to checks, the network pack is folded in, nothing
+connects at construction) and the error-pack mapping (each scenario classifies to
+the intended diagnosis).
 """
 
 from unittest.mock import MagicMock, patch
@@ -71,7 +70,6 @@ def test_auth_failure_message_is_classified():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Authentication failed"
 
 
-# Real messages captured live against a Snowflake account (Tier-3).
 def test_bad_account_login_404_is_classified():
     error = _SqlAlchemyError(
         _SnowflakeError(
@@ -149,7 +147,7 @@ def test_object_not_found_errno_is_classified():
 
 
 def test_missing_database_use_is_classified():
-    # Real capture: USE DATABASE on a missing DB -> errno 2043, a different message
+    # USE DATABASE on a missing DB -> errno 2043 with a different message
     # ("Object does not exist, or operation cannot be performed") than the 2003 form.
     error = _SqlAlchemyError(
         _SnowflakeError(

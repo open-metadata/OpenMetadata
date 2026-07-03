@@ -192,10 +192,9 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
     Rule order matters (first match wins). The connect-phase errno 250001 is
     overloaded - a bad password, a missing role, and an MFA requirement all raise
     it - so the specific message-token rules (MFA, role) are placed BEFORE the
-    250001 catch-all. Errnos and tokens below were confirmed against a live
-    Snowflake account. Bad host / port on a custom endpoint raise before the
-    driver and are caught by the TCP preflight in CheckAccess via NETWORK_ERRORS;
-    a wrong *account* is not - Snowflake's wildcard DNS resolves any
+    250001 catch-all. Bad host / port on a custom endpoint raise before the driver
+    and are caught by the TCP preflight in CheckAccess via NETWORK_ERRORS; a wrong
+    *account* is not - Snowflake's wildcard DNS resolves any
     ``<account>.snowflakecomputing.com`` and accepts TCP on 443, so it is only
     rejected at the HTTP login layer (errno 290404), handled here."""
     return ErrorPack(
@@ -276,9 +275,7 @@ def _count_summary(rows: Sequence[Row], noun: str) -> str:
     The ``+`` marks a capped sample so the figure is not read as an exact total.
     The table/view probes exclude INFORMATION_SCHEMA (its objects are always
     present regardless of grants), so their empty result is a real signal - the
-    connection works but there is nothing to ingest. Surfacing that empty case as
-    a Warning caveat depends on shared ``Evidence`` caveat support; until then it
-    is reported in the summary."""
+    connection works but there is nothing to ingest."""
     if not rows:
         return f"no {noun}s enumerated"
     count = len(rows)
