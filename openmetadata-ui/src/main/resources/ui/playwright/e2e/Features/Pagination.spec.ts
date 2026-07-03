@@ -31,6 +31,7 @@ import {
   getApiContext,
   testClientSidePaginationNavigation,
   testCompletePaginationWithSearch,
+  testMetricsPaginationNavigation,
   testPaginationNavigation,
   uuid,
 } from '../../utils/common';
@@ -345,8 +346,7 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     });
 
     test('should test pagination on Metrics page', async ({ page }) => {
-      await page.goto('/metrics');
-      await testPaginationNavigation(page, '/api/v1/metrics', 'table');
+      await testMetricsPaginationNavigation(page);
     });
   });
 
