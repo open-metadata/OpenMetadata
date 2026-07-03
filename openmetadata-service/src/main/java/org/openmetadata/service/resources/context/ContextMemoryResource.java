@@ -251,24 +251,23 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    ResultList<ContextMemory> memories =
-        listInternalFromSearch(
-            uriInfo,
-            securityContext,
-            fields,
-            searchListFilter,
-            limit,
-            offset,
-            searchSortFilter,
-            q,
-            null,
-            getAuthRequestsForListOps());
-    // The search index does not enforce shareConfig visibility, so a non-admin could otherwise
-    // read another user's PRIVATE memory by adding any search param. Apply the same per-memory
-    // filter the non-search branch uses.
-    List<ContextMemory> visible =
-        ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    return visible.size() == memories.getData().size() ? memories : new ResultList<>(visible);
+    // shareConfig visibility is enforced at query time by ContextMemorySearchVisibility (see
+    // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
+    // already excludes memories the caller may not see. Post-filtering here would be redundant and
+    // would break offset pagination — it truncates a page below the requested limit and drops the
+    // engine's paging metadata (total count, cursors), so a client paging by offset silently stops
+    // short of the real result set.
+    return listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        q,
+        null,
+        getAuthRequestsForListOps());
   }
 
   private static boolean hasSearchBackedListParams(
