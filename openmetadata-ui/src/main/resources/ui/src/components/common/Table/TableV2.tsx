@@ -742,7 +742,7 @@ const TableV2 = <T extends object>(
                         <ColumnResizer
                           className="tw:absolute tw:right-0 tw:top-1/4 tw:h-1/2 tw:w-2 tw:cursor-col-resize 
                         tw:touch-none tw:after:absolute tw:after:left-1/2 tw:after:h-full tw:after:w-px tw:after:-translate-x-1/2 tw:after:content-[''] 
-                        tw:after:bg-[--color-border-secondary] tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-[--color-border-brand]"
+                        tw:after:bg-border-secondary tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-border-brand"
                         />
                       )}
                     </UntitledTable.Head>
