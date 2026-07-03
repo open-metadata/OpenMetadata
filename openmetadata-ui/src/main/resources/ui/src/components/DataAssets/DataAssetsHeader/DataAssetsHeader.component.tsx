@@ -878,7 +878,7 @@ export const DataAssetsHeader = ({
             className="header-owner-heading"
             hasPermission={editOwnerPermission}
             isCompactView={false}
-            maxVisibleOwners={4}
+            maxVisibleOwners={3}
             multiple={{
               user: entityRules.canAddMultipleUserOwners,
               team: entityRules.canAddMultipleTeamOwner,
