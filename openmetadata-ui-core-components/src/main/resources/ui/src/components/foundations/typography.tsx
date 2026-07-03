@@ -111,7 +111,10 @@ export const Typography = (props: TypographyProps) => {
   const ellipsisConfig = typeof ellipsis === 'object' ? ellipsis : undefined;
   const isEllipsis = !!ellipsis;
   const ellipsisRows = ellipsisConfig?.rows ?? 1;
-  const ellipsisTooltip = ellipsisConfig?.tooltip;
+  // `tooltip: true` means "show the text content on hover"; resolve it to
+  // the children — rendering the boolean itself produces an empty tooltip.
+  const ellipsisTooltip =
+    ellipsisConfig?.tooltip === true ? children : ellipsisConfig?.tooltip;
 
   const getEllipsisClassName = () => {
     if (ellipsisRows <= 1) {

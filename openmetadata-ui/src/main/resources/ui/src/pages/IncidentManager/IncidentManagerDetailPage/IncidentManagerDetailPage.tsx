@@ -10,71 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, Col, Row, Tabs, TabsProps, Tooltip, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
-import { AxiosError } from 'axios';
+import {
+  Box,
+  Button as CoreButton,
+  Tabs,
+  Tooltip as CoreTooltip,
+  TooltipTrigger,
+  Typography as CoreTypography,
+} from '@openmetadata/ui-core-components';
+import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
-import { compare, Operation as PatchOperation } from 'fast-json-patch';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as DimensionIcon } from '../../../assets/svg/data-observability/dimension.svg';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
 import Loader from '../../../components/common/Loader/Loader';
-import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import EditTestCaseModal from '../../../components/DataQuality/AddDataQualityTest/EditTestCaseModal';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
-import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityField } from '../../../constants/Feeds.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  EntityReference,
-  TestCase,
-} from '../../../generated/tests/testCase';
-import { EntityHistory } from '../../../generated/type/entityHistory';
-import { useFqn } from '../../../hooks/useFqn';
-import { FeedCounts } from '../../../interface/feed.interface';
-import {
-  testCaseQueryFn,
-  testCaseQueryKey,
-} from '../../../rest/queries/incidentManagerQuery';
-import {
-  getTestCaseVersionDetails,
-  getTestCaseVersionList,
-  updateTestCaseById,
-} from '../../../rest/testAPI';
+import { EntityType } from '../../../enums/entity.enum';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
-import {
-  fetchEntityTaskCountsInto,
-  getFeedCounts,
-} from '../../../utils/FeedUtilsPure';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
-import testCaseClassBase from './TestCaseClassBase';
-import { useTestCaseStore } from './useTestCase.store';
+import { useTestCaseDetailPage } from './useTestCaseDetailPage';
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
@@ -83,172 +54,47 @@ const IncidentManagerDetailPage = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
 
   const {
-    tab: activeTab = TestCasePageTabs.TEST_CASE_RESULTS,
-    version,
-    dimensionKey,
-  } = useRequiredParams<{
-    tab: EntityTabs;
-    version: string;
-    dimensionKey?: string;
-  }>();
-
-  const { fqn: testCaseFQN } = useFqn();
-  const isDimensionPage = Boolean(dimensionKey);
-
-  const {
-    setIsLoading,
-    setTestCase,
     testCase,
-    reset,
-    isPermissionLoading,
-    testCasePermission,
-    setTestCasePermission,
-    setIsPermissionLoading,
-    isTabExpanded,
-    setIsTabExpanded,
-  } = useTestCaseStore();
-  const [feedCount, setFeedCount] = useState<FeedCounts>(
-    FEED_COUNT_INITIAL_DATA
-  );
-  const [versionList, setVersionList] = useState<EntityHistory>({
-    entityType: EntityType.TEST_CASE,
-    versions: [],
-  });
-  const [isDimensionEdit, setIsDimensionEdit] = useState<boolean>(false);
-
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
+    testCaseFQN,
+    isLoading,
     hasViewPermission,
-    editDisplayNamePermission,
     hasDeletePermission,
-    hasEditPermission,
-  } = useMemo(() => {
-    return {
-      hasViewPermission:
-        testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
-      editDisplayNamePermission:
-        testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
-      hasDeletePermission: testCasePermission?.Delete,
-      hasEditPermission: testCasePermission?.EditAll,
-    };
-  }, [testCasePermission]);
+    editDisplayNamePermission,
+    displayName,
+    tabs,
+    activeTab,
+    handleTabChange,
+    isExpandViewSupported,
+    isTabExpanded,
+    toggleTabExpanded,
+    version,
+    versionList,
+    versionHandler,
+    onVersionClick,
+    isDimensionPage,
+    dimensionKey,
+    isDimensionEdit,
+    handleCancelDimension,
+    extraDropdownContent,
+    handleDisplayNameChange,
+    handleOwnerChange,
+    getEntityFeedCount,
+    setTestCase,
+  } = useTestCaseDetailPage({ isVersionPage });
 
-  const testCaseFields = useMemo(() => testCaseClassBase.getFields(), []);
+  const activeTabContent = useMemo(() => {
+    const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
 
-  const testCaseCacheKey = useMemo(
-    () => testCaseQueryKey(testCaseFQN, testCaseFields),
-    [testCaseFQN, testCaseFields]
-  );
-
-  const {
-    data: testCaseData,
-    isLoading: testCaseLoading,
-    error: testCaseError,
-  } = useQuery({
-    queryKey: testCaseCacheKey,
-    queryFn: testCaseQueryFn(testCaseFQN, testCaseFields),
-    enabled: Boolean(testCaseFQN && hasViewPermission && !isPermissionLoading),
-  });
-
-  const setEntityDetails = useCallback(
-    (
-      updater:
-        | TestCase
-        | undefined
-        | ((prev: TestCase | undefined) => TestCase | undefined)
-    ) => {
-      queryClient.setQueryData<TestCase | undefined>(testCaseCacheKey, updater);
-    },
-    [queryClient, testCaseCacheKey]
-  );
-
-  // Mirror query data into the Zustand store so child components
-  // (TestCaseResultTab, IncidentTab, page header) — which read directly from
-  // {@code useTestCaseStore} — continue to receive updates without having to
-  // be migrated to React Query themselves.
-  useEffect(() => {
-    if (testCaseData) {
-      testCaseClassBase.setShowSqlQueryTab(
-        !isUndefined(testCaseData.inspectionQuery)
-      );
-      setTestCase(testCaseData);
+    if (!currentTab) {
+      return null;
     }
-  }, [testCaseData, setTestCase]);
 
-  useEffect(() => {
-    setIsLoading(testCaseLoading);
-  }, [testCaseLoading, setIsLoading]);
+    const { Tab } = currentTab;
 
-  useEffect(() => {
-    if (testCaseError) {
-      showErrorToast(
-        testCaseError as AxiosError,
-        t('server.entity-fetch-error', { entity: t('label.test-case') })
-      );
-    }
-  }, [testCaseError, t]);
-
-  useEffect(() => {
-    if (!isVersionPage || !testCaseData?.id) {
-      return;
-    }
-    getTestCaseVersionList(testCaseData.id)
-      .then(setVersionList)
-      .catch((error) => showErrorToast(error as AxiosError));
-  }, [isVersionPage, testCaseData?.id]);
-
-  const isExpandViewSupported = useMemo(
-    () => activeTab === TestCasePageTabs.TEST_CASE_RESULTS,
-    [activeTab]
-  );
-
-  const toggleTabExpanded = useCallback(() => {
-    setIsTabExpanded(!isTabExpanded);
-  }, [isTabExpanded, setIsTabExpanded]);
-
-  const tabDetails: TabsProps['items'] = useMemo(() => {
-    const isDimensionalityTabVisible =
-      testCase?.dimensionColumns && testCase.dimensionColumns.length > 0;
-    const tabs = testCaseClassBase.getTab(
-      feedCount.openTaskCount,
-      isVersionPage,
-      isDimensionalityTabVisible
-    );
-
-    return tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
-      key,
-      label: (
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <LabelComponent {...labelProps} />
-          {isBeta && <BetaBadge />}
-        </div>
-      ),
-      children: <Tab />,
-    }));
-  }, [
-    feedCount.openTaskCount,
-    testCaseClassBase.showSqlQueryTab,
-    testCase?.dimensionColumns,
-  ]);
-
-  const fetchTestCasePermission = async () => {
-    setIsPermissionLoading(true);
-    try {
-      const response = await getEntityPermissionByFqn(
-        ResourceEntity.TEST_CASE,
-        testCaseFQN
-      );
-
-      setTestCasePermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPermissionLoading(false);
-    }
-  };
+    return <Tab showSidePanel={isTabExpanded} />;
+  }, [tabs, activeTab, isTabExpanded]);
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = location.state
@@ -290,187 +136,22 @@ const IncidentManagerDetailPage = ({
     ];
   }, [testCase, location.state, isDimensionPage, dimensionKey]);
 
-  const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab) {
-      const testCaseDetailsPath = isDimensionPage
-        ? observabilityRouterClassBase.getTestCaseDimensionsDetailPagePath(
-            testCaseFQN,
-            dimensionKey || '',
-            activeKey as TestCasePageTabs
-          )
-        : observabilityRouterClassBase.getTestCaseDetailPagePath(
-            testCaseFQN,
-            activeKey as TestCasePageTabs
-          );
-
-      navigate(
-        isVersionPage
-          ? observabilityRouterClassBase.getTestCaseVersionPath(
-              testCaseFQN,
-              version,
-              activeKey as TestCasePageTabs
-            )
-          : testCaseDetailsPath
-      );
-    }
-  };
-  const updateTestCase = useCallback(
-    async (id: string, patch: PatchOperation[]) => {
-      try {
-        const res = await updateTestCaseById(id, patch);
-        setEntityDetails(res);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [setEntityDetails]
-  );
-  const handleOwnerChange = async (owners?: EntityReference[]) => {
-    if (testCase) {
-      const updatedTestCase = {
-        ...testCase,
-        owners,
-      };
-      const jsonPatch = compare(testCase, updatedTestCase);
-
-      if (jsonPatch.length && testCase.id) {
-        await updateTestCase(testCase.id, jsonPatch);
-      }
-    }
-  };
-
-  const handleDisplayNameChange = async (entityName?: EntityName) => {
-    try {
-      if (testCase) {
-        const updatedTestCase = {
-          ...testCase,
-          ...entityName,
-        };
-        const jsonPatch = compare(testCase, updatedTestCase);
-
-        if (jsonPatch.length && testCase.id) {
-          await updateTestCase(testCase.id, jsonPatch);
-        }
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleFeedCount = useCallback((data: FeedCounts) => {
-    setFeedCount(data);
-  }, []);
-
-  const getEntityFeedCount = useCallback(() => {
-    getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
-  }, [testCaseFQN]);
-
-  // P2-A: only `feedCount.openTaskCount` is consumed by this page (drives the tabs' open-task
-  // badge in `tabDetails` useMemo). The activity-events fetch that {@link getFeedCounts}
-  // bundles in is wasted here, so we skip it entirely — there's no Activity Feed tab on
-  // incidents (TestCasePageTabs).
-  const fetchTaskCounts = useCallback(() => {
-    if (testCaseFQN) {
-      fetchEntityTaskCountsInto(testCaseFQN, setFeedCount);
-    }
-  }, [testCaseFQN]);
-
-  const handleCancelDimension = useCallback(
-    () => setIsDimensionEdit(false),
-    []
+  const breadcrumbItems = useMemo(
+    () =>
+      breadcrumb.map((link) => ({
+        label: link.name,
+        href: link.url ? String(link.url) : undefined,
+      })),
+    [breadcrumb]
   );
 
-  const onVersionClick = () => {
-    navigate(
-      isVersionPage
-        ? observabilityRouterClassBase.getTestCaseDetailPagePath(testCaseFQN)
-        : observabilityRouterClassBase.getTestCaseVersionPath(
-            testCaseFQN,
-            toString(testCase?.version) ?? '',
-            activeTab
-          )
-    );
-  };
+  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
 
-  // version related methods
-  const versionHandler = useCallback(
-    (newVersion = version) => {
-      navigate(
-        observabilityRouterClassBase.getTestCaseVersionPath(
-          testCaseFQN,
-          toString(newVersion),
-          activeTab
-        )
-      );
-    },
-    [testCaseFQN, activeTab]
-  );
-  const fetchCurrentVersion = async (id: string) => {
-    try {
-      const response = await getTestCaseVersionDetails(id, version);
-      setTestCase(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  const handleCopyEntityUrl = useCallback(async () => {
+    await onCopyToClipBoard(globalThis.location.href);
+  }, [onCopyToClipBoard]);
 
-  const displayName = useMemo(() => {
-    return isVersionPage
-      ? getEntityVersionByField(
-          testCase?.changeDescription as ChangeDescription,
-          EntityField.DISPLAYNAME,
-          testCase?.displayName
-        )
-      : testCase?.displayName;
-  }, [testCase?.changeDescription, testCase?.displayName, isVersionPage]);
-
-  useEffect(() => {
-    if (testCaseFQN) {
-      fetchTestCasePermission();
-    }
-  }, [testCaseFQN]);
-
-  useEffect(() => {
-    if (hasViewPermission && testCaseFQN) {
-      fetchTaskCounts();
-    }
-
-    return () => {
-      reset();
-      testCaseClassBase.setShowSqlQueryTab(false);
-    };
-  }, [testCaseFQN, hasViewPermission]);
-
-  useEffect(() => {
-    if (testCase?.id && isVersionPage) {
-      fetchCurrentVersion(testCase.id);
-    }
-  }, [version, testCase?.id, isVersionPage]);
-
-  const extraDropdownContent = useMemo(() => {
-    const isColumn = testCase?.entityLink.includes('::columns::');
-
-    if (!hasEditPermission || isVersionPage || !isColumn) {
-      return [];
-    }
-
-    return [
-      {
-        key: 'edit-dimensions',
-        label: (
-          <ManageButtonItemLabel
-            description={t('message.edit-dimension-description')}
-            icon={DimensionIcon}
-            id="profiler-setting-button"
-            name={t('label.dimension-plural')}
-          />
-        ),
-        onClick: () => setIsDimensionEdit(true),
-      },
-    ];
-  }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
-
-  if (isPermissionLoading || testCaseLoading) {
+  if (isLoading) {
     return <Loader />;
   }
 
@@ -500,97 +181,191 @@ const IncidentManagerDetailPage = ({
           entity: getEntityName(testCase) || t('label.test-case'),
         }
       )}>
-      <Row
+      <Box
         className={classNames({
           'version-data': isVersionPage,
         })}
         data-testid="incident-manager-details-page-container"
-        gutter={[0, 12]}>
-        <Col span={24}>
-          <TitleBreadcrumb className="m-b-sm" titleLinks={breadcrumb} />
-        </Col>
-        <Col data-testid="entity-page-header" span={24}>
-          <Row gutter={16}>
-            <Col span={23}>
-              <EntityHeaderTitle
-                className="w-max-full-45"
-                displayName={displayName}
-                icon={<TestCaseIcon className="h-9" />}
-                name={testCase?.name ?? ''}
-                serviceName="testCase"
+        direction="col"
+        gap={5}>
+        <Box
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:p-5 data-assets-header-container"
+          data-testid="test-case-header-container"
+          direction="col"
+          gap={5}>
+          <Box align="center" gap={4} justify="between" wrap="wrap">
+            <div className="tw:min-w-0 tw:flex-1">
+              <HeaderBreadcrumb
+                className="tw:mb-0"
+                items={breadcrumbItems}
+                showHome={false}
+                size="sm"
               />
-            </Col>
-
-            <Col className="d-flex justify-end" span={1}>
-              <ButtonGroup
-                className="data-asset-button-group spaced"
-                data-testid="asset-header-btn-group"
-                size="small">
-                {!isDimensionPage && (
-                  <Tooltip title={t('label.version-plural-history')}>
-                    <Button
-                      className="version-button"
-                      data-testid="version-button"
-                      icon={<Icon component={VersionIcon} />}
-                      onClick={onVersionClick}>
-                      <Typography.Text>{testCase?.version}</Typography.Text>
-                    </Button>
-                  </Tooltip>
+            </div>
+            <Box align="center" gap={4}>
+              {!isDimensionPage && (
+                <StatItem
+                  count={testCase?.version}
+                  icon={RefreshCcw01}
+                  testId="version-button"
+                  tooltip={t('label.version-plural-history')}
+                  onClick={onVersionClick}
+                />
+              )}
+            </Box>
+          </Box>
+          <Box
+            align="center"
+            data-testid="entity-page-header"
+            gap={4}
+            wrap="wrap">
+            <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
+              <Box
+                align="center"
+                className={classNames(
+                  'tw:relative tw:size-9 tw:shrink-0',
+                  'tw:overflow-hidden tw:rounded-full',
+                  'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                 )}
-                {!isVersionPage && (
-                  <ManageButton
-                    isRecursiveDelete
-                    afterDeleteAction={() =>
-                      navigate(
-                        observabilityRouterClassBase.getIncidentManagerPath()
-                      )
-                    }
-                    allowSoftDelete={false}
-                    canDelete={hasDeletePermission}
-                    displayName={testCase.displayName}
-                    editDisplayNamePermission={editDisplayNamePermission}
-                    entityFQN={testCase.fullyQualifiedName}
-                    entityId={testCase.id}
-                    entityName={testCase.name}
-                    entityType={EntityType.TEST_CASE}
-                    extraDropdownContent={extraDropdownContent}
-                    onEditDisplayName={handleDisplayNameChange}
-                  />
-                )}
-              </ButtonGroup>
-            </Col>
-          </Row>
-        </Col>
-        <Col className="w-full">
+                justify="center">
+                <TestCaseIcon className="tw:size-5" />
+              </Box>
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                data-testid="entity-header-title"
+                gap={3}>
+                <Box className="tw:min-w-0" direction="col">
+                  {displayName && (
+                    <CoreTypography
+                      as="h2"
+                      className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
+                      data-testid="entity-header-display-name"
+                      ellipsis={{ tooltip: displayName }}
+                      size="text-lg"
+                      weight="bold">
+                      {displayName}
+                    </CoreTypography>
+                  )}
+                  <CoreTypography
+                    as={displayName ? 'span' : 'h2'}
+                    className={classNames(
+                      'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
+                      {
+                        'tw:text-primary': !displayName,
+                        'tw:text-tertiary': displayName,
+                      }
+                    )}
+                    data-testid="entity-header-name"
+                    ellipsis={{ tooltip: testCase?.name }}
+                    size={displayName ? 'text-sm' : 'text-lg'}
+                    weight={displayName ? 'medium' : 'bold'}>
+                    {testCase?.name}
+                  </CoreTypography>
+                </Box>
+                <CoreTooltip
+                  placement="top"
+                  title={
+                    hasCopied
+                      ? t('message.link-copy-to-clipboard')
+                      : t('label.copy-item', {
+                          item: t('label.url-uppercase'),
+                        })
+                  }>
+                  <TooltipTrigger className="tw:flex tw:items-center">
+                    <CoreButton
+                      aria-label={t('label.copy-item', {
+                        item: t('label.url-uppercase'),
+                      })}
+                      color="tertiary"
+                      data-testid="entity-header-copy-button"
+                      iconLeading={Copy01}
+                      size="xs"
+                      type="button"
+                      onClick={handleCopyEntityUrl}
+                    />
+                  </TooltipTrigger>
+                </CoreTooltip>
+              </Box>
+            </Box>
+            <Box align="center" className="tw:shrink-0" gap={2}>
+              {!isVersionPage && (
+                <ManageButton
+                  isRecursiveDelete
+                  afterDeleteAction={() =>
+                    navigate(
+                      observabilityRouterClassBase.getIncidentManagerPath()
+                    )
+                  }
+                  allowSoftDelete={false}
+                  canDelete={hasDeletePermission}
+                  displayName={testCase.displayName}
+                  editDisplayNamePermission={editDisplayNamePermission}
+                  entityFQN={testCase.fullyQualifiedName}
+                  entityId={testCase.id}
+                  entityName={testCase.name}
+                  entityType={EntityType.TEST_CASE}
+                  extraDropdownContent={extraDropdownContent}
+                  onEditDisplayName={handleDisplayNameChange}
+                />
+              )}
+            </Box>
+          </Box>
           <IncidentManagerPageHeader
             fetchTaskCount={getEntityFeedCount}
             isVersionPage={isVersionPage}
             testCaseData={testCase}
             onOwnerUpdate={handleOwnerChange}
           />
-        </Col>
-        <Col className="incident-manager-details-tabs" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
-            data-testid="tabs"
-            items={tabDetails}
-            tabBarExtraContent={
-              isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
-                    isTabExpanded ? t('label.collapse') : t('label.expand')
-                  }
-                  onClick={toggleTabExpanded}
-                />
-              )
-            }
-            onChange={handleTabChange}
-          />
-        </Col>
-      </Row>
+        </Box>
+        <div className="incident-manager-details-tabs">
+          <Box
+            align="end"
+            // Reserve the expand button's height (40px + border) so the strip
+            // doesn't collapse and shift the tab body when the button unmounts
+            // on non-result tabs.
+            className="tw:min-h-[41px] tw:border-b tw:border-secondary"
+            gap={2}
+            justify="between">
+            <Tabs
+              className="tw:w-fit"
+              data-testid="tabs"
+              selectedKey={activeTab}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List size="sm" type="underline">
+                {tabs.map(({ labelProps, key, isBeta }) => (
+                  <Tabs.Item
+                    badge={toString(labelProps.count) || undefined}
+                    data-testid={labelProps.id}
+                    id={key}
+                    key={key}
+                    label={
+                      isBeta ? (
+                        <Box inline align="center" gap={1}>
+                          {labelProps.name}
+                          <BetaBadge />
+                        </Box>
+                      ) : (
+                        labelProps.name
+                      )
+                    }
+                  />
+                ))}
+              </Tabs.List>
+            </Tabs>
+            {isExpandViewSupported && (
+              <AlignRightIconButton
+                className={isTabExpanded ? 'rotate-180' : ''}
+                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+                onClick={toggleTabExpanded}
+              />
+            )}
+          </Box>
+          <div className="incident-manager-details-tab-panel">
+            {activeTabContent}
+          </div>
+        </div>
+      </Box>
       {isVersionPage && (
         <EntityVersionTimeLine
           currentVersion={toString(version)}

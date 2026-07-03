@@ -13,17 +13,37 @@
 
 @import (reference) '../../../../styles/fonts.less';
 
+// Mirrors the data-asset header metadata row. The color overrides are
+// copied from data-asset-header.less, which only loads with
+// DataAssetsHeader and therefore can't be relied on here.
 .incident-manager-header {
   display: flex;
-  border-radius: 12px;
-  border: 1px solid @grey-15;
-  padding: 16px 20px;
-  gap: 16px;
-  background-color: @background-color;
-  justify-content: space-evenly;
+  align-items: flex-start;
+  gap: 18px;
+  justify-content: flex-start;
   flex-wrap: wrap;
 
-  .ant-divider {
-    height: 50px;
+  .owner-label-container,
+  .domain-label-container {
+    max-width: 220px;
+  }
+
+  .domain-link-container {
+    max-width: 148px;
+
+    .domain-link-text.render-domain-lebel-style {
+      color: var(--tw-color-gray-700);
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 148px;
+    }
+  }
+
+  .domain-link.ant-typography,
+  span.header-owner-heading,
+  .ant-typography.no-owner-heading {
+    color: var(--tw-color-gray-700);
   }
 }

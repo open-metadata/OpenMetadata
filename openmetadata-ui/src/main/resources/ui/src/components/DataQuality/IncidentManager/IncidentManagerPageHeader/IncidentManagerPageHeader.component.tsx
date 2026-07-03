@@ -10,48 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Divider, Skeleton, Space, Tooltip } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { first, isEmpty, isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  Skeleton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { Operation } from '../../../../generated/entity/policies/policy';
-import {
-  ChangeDescription,
-  EntityReference,
-} from '../../../../generated/tests/testCase';
-import {
-  Severities,
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
-} from '../../../../generated/tests/testCaseResolutionStatus';
-import { useEntityRules } from '../../../../hooks/useEntityRules';
-import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import {
-  getIncidentTaskByStateId,
-  getListTestCaseIncidentByStateId,
-  Task,
-  transitionIncident,
-  updateTestCaseIncidentById,
-} from '../../../../rest/incidentManagerAPI';
-import { updateTestCaseById } from '../../../../rest/testAPI';
+import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
-import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
-import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
-import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import { useRequiredParams } from '../../../../utils/useRequiredParams';
-import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -59,289 +33,119 @@ import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import './incident-manager.less';
 import { IncidentManagerPageHeaderProps } from './IncidentManagerPageHeader.interface';
+import { useTestCaseIncidentHeader } from './useTestCaseIncidentHeader';
+
+const HeaderField = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <div className="tw:flex tw:flex-col tw:gap-1.5">
+    <Typography
+      as="span"
+      className="tw:whitespace-nowrap tw:text-secondary"
+      size="text-sm"
+      weight="medium">
+      {label}
+    </Typography>
+    {children}
+  </div>
+);
+
+const HeaderFieldValue = ({
+  dataTestId,
+  children,
+}: {
+  dataTestId?: string;
+  children: React.ReactNode;
+}) => (
+  <Typography
+    as="span"
+    className="tw:whitespace-nowrap tw:text-primary"
+    data-testid={dataTestId}
+    size="text-sm"
+    weight="medium">
+    {children}
+  </Typography>
+);
+
 const IncidentManagerPageHeader = ({
   onOwnerUpdate,
   fetchTaskCount,
   isVersionPage = false,
 }: IncidentManagerPageHeaderProps) => {
   const { t } = useTranslation();
-  const { entityRules } = useEntityRules(EntityType.TABLE);
-  const [incidentTask, setIncidentTask] = useState<Task | null>(null);
-  const [testCaseStatusData, setTestCaseStatusData] =
-    useState<TestCaseResolutionStatus>();
-  const [isLoading, setIsLoading] = useState(true);
   const {
-    testCase: testCaseData,
-    testCasePermission,
-    setTestCase,
-  } = useTestCaseStore();
-
-  const { dimensionKey } = useRequiredParams<{
-    fqn: string;
-    dimensionKey?: string;
-  }>();
-  const { testCaseResolutionStatus, updateTestCaseIncidentStatus } =
-    useActivityFeedProvider();
-
-  const { ownerDisplayName, ownerRef } = useMemo(() => {
-    return getCommonExtraInfoForVersionDetails(
-      testCaseData?.changeDescription as ChangeDescription,
-      testCaseData?.owners
-    );
-  }, [testCaseData?.changeDescription, testCaseData?.owners]);
-
-  const columnName = useMemo(() => {
-    const isColumn = testCaseData?.entityLink.includes('::columns::');
-    if (isColumn) {
-      const name = getColumnNameFromEntityLink(testCaseData?.entityLink ?? '');
-
-      return name;
-    }
-
-    return null;
-  }, [testCaseData]);
-
-  const tableFqn = useMemo(
-    () => getEntityFQN(testCaseData?.entityLink ?? ''),
-    [testCaseData]
-  );
-
-  const handleSeverityUpdate = async (severity?: Severities) => {
-    if (isUndefined(testCaseStatusData)) {
-      return;
-    }
-
-    const updatedData = { ...testCaseStatusData, severity };
-    const patch = compare(testCaseStatusData, updatedData);
-    try {
-      await updateTestCaseIncidentById(testCaseStatusData.id ?? '', patch);
-      setTestCaseStatusData(updatedData);
-      updateTestCaseIncidentStatus([
-        ...testCaseResolutionStatus.slice(0, -1),
-        updatedData,
-      ]);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const onIncidentStatusUpdate = (data: TestCaseResolutionStatus) => {
-    setTestCaseStatusData(data);
-    updateTestCaseIncidentStatus([...testCaseResolutionStatus, data]);
-  };
-
-  const handleAssigneeUpdate = async (assignee?: EntityReference[]) => {
-    if (isUndefined(testCaseStatusData)) {
-      return;
-    }
-
-    const taskId = testCaseStatusData.stateId;
-    if (!taskId) {
-      return;
-    }
-
-    const assigneeData = assignee?.[0];
-    const transitionId =
-      testCaseStatusData.testCaseResolutionStatusType ===
-      TestCaseResolutionStatusTypes.Assigned
-        ? 'reassign'
-        : 'assign';
-
-    try {
-      await transitionIncident(taskId, {
-        transitionId,
-        payload: assigneeData
-          ? {
-              assignees: [
-                {
-                  id: assigneeData.id,
-                  type: assigneeData.type ?? 'user',
-                  name: assigneeData.name,
-                  fullyQualifiedName:
-                    assigneeData.fullyQualifiedName ?? assigneeData.name,
-                  displayName: assigneeData.displayName,
-                },
-              ],
-            }
-          : undefined,
-      });
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
-      const latest = refreshed?.data?.[0];
-      if (latest) {
-        onIncidentStatusUpdate(latest);
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchTestCaseResolution = async (id: string) => {
-    try {
-      const { data } = await getListTestCaseIncidentByStateId(id);
-
-      setTestCaseStatusData(first(data));
-    } catch {
-      setTestCaseStatusData(undefined);
-    }
-  };
-
-  const fetchIncidentTask = async (stateId: string) => {
-    try {
-      const task = await getIncidentTaskByStateId(stateId);
-      setIncidentTask(task);
-    } catch {
-      setIncidentTask(null);
-    }
-  };
-
-  // In task-first mode, stateId equals the task UUID (see
-  // IncidentTcrsSyncHandler). The pre-task-first code read from
-  // payload.testCaseResolutionStatusId, but that field doesn't exist
-  // in the new task system.
-  const incidentStateId = useMemo(() => incidentTask?.id, [incidentTask]);
-
-  useEffect(() => {
-    const status = last(testCaseResolutionStatus);
-
-    if (status?.stateId === incidentStateId) {
-      setTestCaseStatusData(status);
-      if (
-        status?.testCaseResolutionStatusType ===
-        TestCaseResolutionStatusTypes.Resolved
-      ) {
-        fetchTaskCount();
-      }
-    }
-  }, [testCaseResolutionStatus, incidentStateId, fetchTaskCount]);
-
-  useEffect(() => {
-    if (testCaseData?.incidentId) {
-      setIsLoading(true);
-      Promise.allSettled([
-        fetchTestCaseResolution(testCaseData.incidentId),
-        fetchIncidentTask(testCaseData.incidentId),
-      ]).finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, [testCaseData]);
-
-  const handleDomainUpdate = async (
-    selectedDomain: EntityReference | EntityReference[]
-  ) => {
-    if (!testCaseData) {
-      return;
-    }
-
-    const domains = Array.isArray(selectedDomain)
-      ? selectedDomain
-      : isEmpty(selectedDomain)
-      ? []
-      : [selectedDomain];
-
-    const patch = compare(testCaseData, { ...testCaseData, domains });
-    if (patch.length && testCaseData.id) {
-      try {
-        const updated = await updateTestCaseById(testCaseData.id, patch);
-        setTestCase(updated);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  };
-
-  const { hasEditStatusPermission, hasEditOwnerPermission } = useMemo(() => {
-    return isVersionPage
-      ? {
-          hasEditStatusPermission: false,
-          hasEditOwnerPermission: false,
-        }
-      : {
-          hasEditStatusPermission:
-            testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditStatus
-            ),
-          hasEditOwnerPermission:
-            testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditOwners
-            ),
-        };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+    testCaseData,
+    testCaseStatusData,
+    isLoading,
+    taskLinkInfo,
+    ownerDisplayName,
+    ownerRef,
+    columnName,
+    tableFqn,
+    dimensionKey,
+    hasEditStatusPermission,
+    hasEditOwnerPermission,
+    hasEditDomainPermission,
+    canAddMultipleUserOwners,
+    canAddMultipleTeamOwner,
+    handleSeverityUpdate,
+    handleAssigneeUpdate,
+    handleDomainUpdate,
+    onIncidentStatusUpdate,
+  } = useTestCaseIncidentHeader({ fetchTaskCount, isVersionPage });
 
   const statusDetails = useMemo(() => {
     if (isLoading) {
-      return <Skeleton.Input size="small" />;
+      return <Skeleton height={24} variant="rounded" width={160} />;
     }
 
     if (isUndefined(testCaseStatusData)) {
       return (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography
-            as="span"
-            className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
-            <Typography as="span" className="text-blue font-medium text-sm">
-              {t('label.incident-status')}
-            </Typography>
-
-            <Typography as="span">
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.incident-status')}>
+            <HeaderFieldValue>
               {t('label.no-entity', { entity: t('label.incident') })}
-            </Typography>
-          </Typography>
+            </HeaderFieldValue>
+          </HeaderField>
         </>
       );
     }
 
     const details = testCaseStatusData?.testCaseResolutionStatusDetails;
 
-    const taskLinkInfo = incidentTask
-      ? {
-          path: getNewTaskDetailPath(incidentTask),
-          label: `#${getTaskDisplayId(incidentTask.taskId)}`,
-        }
-      : null;
-
     return (
       <>
         {taskLinkInfo && (
           <>
-            <Divider className="self-center m-x-sm" type="vertical" />
-            <Typography
-              as="span"
-              className="d-flex flex-col gap-3 text-xs whitespace-nowrap">
-              <Typography as="span" className="text-blue text-sm font-medium">
-                {t('label.incident')}
-              </Typography>
-
+            <HeaderDotSeparator />
+            <HeaderField label={t('label.incident')}>
               <Link
-                className="font-medium flex items-center gap-2"
+                className="no-underline domain-link-text tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
                 data-testid="incident-task-link"
                 to={taskLinkInfo.path}>
                 {taskLinkInfo.label}
                 <InternalLinkIcon className="text-grey-muted" width="14px" />
               </Link>
-            </Typography>
+            </HeaderField>
           </>
         )}
-        <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography
-          as="span"
-          className="d-flex flex-col gap-2 text-xs whitespace-nowrap">
-          <TestCaseIncidentManagerStatus
-            newLook
-            data={testCaseStatusData}
-            hasPermission={hasEditStatusPermission}
-            headerName={t('label.incident-status')}
-            onSubmit={onIncidentStatusUpdate}
-          />
-        </Typography>
-        <Divider className="self-center m-x-sm" type="vertical" />
-        <div className="tw:w-full" data-testid="assignee">
+        <HeaderDotSeparator />
+        <TestCaseIncidentManagerStatus
+          newLook
+          data={testCaseStatusData}
+          hasPermission={hasEditStatusPermission}
+          headerName={t('label.incident-status')}
+          onSubmit={onIncidentStatusUpdate}
+        />
+        <HeaderDotSeparator />
+        <div className="tw:min-w-0" data-testid="assignee">
           <OwnerLabel
+            className="header-owner-heading"
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
             multiple={{
@@ -356,24 +160,20 @@ const IncidentManagerPageHeader = ({
             onUpdate={handleAssigneeUpdate}
           />
         </div>
-        <Divider className="self-center m-x-sm" type="vertical" />
-        <Typography
-          as="span"
-          className="d-flex flex-col gap-2 whitespace-nowrap">
-          <Severity
-            newLook
-            hasPermission={hasEditStatusPermission}
-            headerName={t('label.severity')}
-            severity={testCaseStatusData.severity}
-            onSubmit={handleSeverityUpdate}
-          />
-        </Typography>
+        <HeaderDotSeparator />
+        <Severity
+          newLook
+          hasPermission={hasEditStatusPermission}
+          headerName={t('label.severity')}
+          severity={testCaseStatusData.severity}
+          onSubmit={handleSeverityUpdate}
+        />
       </>
     );
-  }, [testCaseStatusData, isLoading, incidentTask, hasEditStatusPermission]);
+  }, [testCaseStatusData, isLoading, taskLinkInfo, hasEditStatusPermission]);
 
   return (
-    <Space wrap align="center" className="incident-manager-header w-full ">
+    <div className="incident-manager-header w-full">
       <DomainLabel
         headerLayout
         showDashPlaceholder
@@ -381,18 +181,22 @@ const IncidentManagerPageHeader = ({
         entityFqn={testCaseData?.fullyQualifiedName ?? ''}
         entityId={testCaseData?.id ?? ''}
         entityType={EntityType.TEST_CASE}
-        hasPermission={!isVersionPage && Boolean(testCasePermission?.EditAll)}
+        hasPermission={hasEditDomainPermission}
         multiple={false}
         textClassName="render-domain-lebel-style"
         onUpdate={handleDomainUpdate}
       />
-      <Divider className="self-center m-x-sm" type="vertical" />
+      <HeaderDotSeparator />
       <OwnerLabel
+        showDashPlaceholder
+        avatarSize={24}
+        className="header-owner-heading"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
+        maxVisibleOwners={3}
         multiple={{
-          user: entityRules.canAddMultipleUserOwners,
-          team: entityRules.canAddMultipleTeamOwner,
+          user: canAddMultipleUserOwners,
+          team: canAddMultipleTeamOwner,
         }}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
@@ -401,16 +205,10 @@ const IncidentManagerPageHeader = ({
       {!isVersionPage && statusDetails}
       {tableFqn && (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography
-            as="span"
-            className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <Typography as="span" className="text-blue text-sm font-medium">
-              {t('label.table')}
-            </Typography>
-
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.table')}>
             <Link
-              className="font-medium flex-center gap-2"
+              className="no-underline domain-link-text tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
               data-testid="table-name"
               to={getEntityDetailsPath(
                 EntityType.TABLE,
@@ -421,64 +219,43 @@ const IncidentManagerPageHeader = ({
               {getNameFromFQN(tableFqn)}
               <InternalLinkIcon className="text-grey-muted" width="14px" />
             </Link>
-          </Typography>
+          </HeaderField>
         </>
       )}
       {dimensionKey && (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography
-            as="span"
-            className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <Typography as="span" className="text-blue text-sm font-medium">
-              {t('label.dimension')}
-            </Typography>
-            <Typography
-              as="span"
-              className="font-medium"
-              data-testid="dimension-key">
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.dimension')}>
+            <HeaderFieldValue dataTestId="dimension-key">
               {dimensionKey}
-            </Typography>
-          </Typography>
+            </HeaderFieldValue>
+          </HeaderField>
         </>
       )}
       {columnName && (
         <>
-          <Divider className="self-center m-x-sm" type="vertical" />
-          <Typography
-            as="span"
-            className="flex flex-col gap-3 text-xs whitespace-nowrap">
-            <Typography as="span" className="text-blue text-sm font-medium">
-              {t('label.column')}
-            </Typography>
-            <Typography
-              as="span"
-              className="font-medium"
-              data-testid="test-column-name">
+          <HeaderDotSeparator />
+          <HeaderField label={t('label.column')}>
+            <HeaderFieldValue dataTestId="test-column-name">
               {columnName}
-            </Typography>
-          </Typography>
+            </HeaderFieldValue>
+          </HeaderField>
         </>
       )}
-      <Divider className="self-center m-x-sm" type="vertical" />
-      <Typography
-        as="span"
-        className="flex flex-col gap-3 text-xs whitespace-nowrap">
-        <Typography as="span" className="text-blue text-sm font-medium">
-          {t('label.test-type')}
-        </Typography>
+      <HeaderDotSeparator />
+      <HeaderField label={t('label.test-type')}>
         <Tooltip
+          isDisabled={!testCaseData?.testDefinition?.description}
           placement="bottom"
-          title={testCaseData?.testDefinition.description}>
-          <Typography
-            as="span"
-            className="font-medium"
-            data-testid="test-definition-name">
-            {getEntityName(testCaseData?.testDefinition)}
-          </Typography>
+          title={testCaseData?.testDefinition?.description}>
+          <TooltipTrigger className="tw:w-fit">
+            <HeaderFieldValue dataTestId="test-definition-name">
+              {getEntityName(testCaseData?.testDefinition)}
+            </HeaderFieldValue>
+          </TooltipTrigger>
         </Tooltip>
-      </Typography>
-    </Space>
+      </HeaderField>
+    </div>
   );
 };
 
