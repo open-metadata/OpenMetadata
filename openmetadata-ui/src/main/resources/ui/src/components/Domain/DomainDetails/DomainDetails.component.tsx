@@ -651,13 +651,13 @@ const DomainDetails = ({
       } catch (error) {
         showNotistackError(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
-            <p className="tw:m-0 tw:text-sm tw:font-semibold">
+            <span className="tw:m-0 tw:text-sm tw:font-semibold">
               {t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
                 entityPlural: t('label.sub-domain-lowercase-plural'),
                 name: data.name,
               })}
-            </p>
+            </span>
           ) : (
             (error as AxiosError)
           ),
