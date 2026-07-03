@@ -3377,6 +3377,7 @@
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
     "metrics-rename-collection-description": "Rename the name and display name for the metrics collection.",
+    "minimum-count-error": "حداقل {{count}} {{field}} باید انتخاب شود.",
     "minimum-value-error": "مقدار حداقل باید کوچکتر از مقدار حداکثر باشد.",
     "minute": "دقیقه",
     "missing-config-value": "مقدار پیکربندی گم شده: {{field}}",

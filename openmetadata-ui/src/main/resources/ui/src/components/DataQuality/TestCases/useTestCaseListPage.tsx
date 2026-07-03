@@ -10,66 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormProps, Space, Typography } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { DefaultOptionType } from 'antd/lib/select';
-import { AxiosError } from 'axios';
-import { debounce, entries, isEmpty, isUndefined, uniq, values } from 'lodash';
-import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  TIER_CATEGORY,
-} from '../../../constants/constants';
-import {
-  DEFAULT_SORT_ORDER,
-  TEST_CASE_DIMENSIONS_OPTION,
-  TEST_CASE_FILTERS,
-  TEST_CASE_FILTERS_LABELS,
-  TEST_CASE_PLATFORM_OPTION,
-  TEST_CASE_STATUS_OPTION,
-  TEST_CASE_TYPE_OPTION,
-} from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { TabSpecificField } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import DataQualityClassBase from '../../../pages/DataQuality/DataQualityClassBase';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
-import { searchQuery } from '../../../rest/searchAPI';
-import { getTags } from '../../../rest/tagAPI';
-import {
-  getListTestCaseBySearch,
-  ListTestCaseParamsBySearch,
-} from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  checkPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
-import tagClassBase from '../../../utils/TagClassBase';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTestCaseManageMenuItems } from '../../../utils/TestCaseUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
-import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
-import { TestCaseSearchParams } from '../DataQuality.interface';
-import {
-  FilterControlType,
-  FilterDescriptor,
-  FilterOptionData,
-  FilterValue,
-} from './FilterChip.interface';
+import { useTestCaseActions } from './useTestCaseActions';
+import { useTestCaseFilterOptions } from './useTestCaseFilterOptions';
+import { useTestCaseFilters } from './useTestCaseFilters';
+import { useTestCaseList } from './useTestCaseList';
 
 /**
  * Back-compat aliases for existing importers. The descriptor the hook emits is
@@ -82,480 +39,85 @@ export type {
   FilterValue as TestCaseFilterValue,
 } from './FilterChip.interface';
 
-interface FetchedOption extends DefaultOptionType {
-  /** Plain name kept alongside the rich antd JSX label for renderer reuse. */
-  name?: string;
-  subLabel?: string;
-}
-
-const DEFAULT_SELECTED_FILTERS = [
-  TEST_CASE_FILTERS.status,
-  TEST_CASE_FILTERS.type,
-  TEST_CASE_FILTERS.table,
-  TEST_CASE_FILTERS.tags,
-];
-
-const STATIC_OPTIONS: Record<string, DefaultOptionType[]> = {
-  [TEST_CASE_FILTERS.platform]: TEST_CASE_PLATFORM_OPTION,
-  [TEST_CASE_FILTERS.type]: TEST_CASE_TYPE_OPTION,
-  [TEST_CASE_FILTERS.status]: TEST_CASE_STATUS_OPTION,
-  [TEST_CASE_FILTERS.dimension]: TEST_CASE_DIMENSIONS_OPTION,
-};
-
-const MULTI_SELECT_FILTERS = new Set<string>([
-  TEST_CASE_FILTERS.platform,
-  TEST_CASE_FILTERS.tags,
-]);
-
-const SEARCHABLE_FILTERS = new Set<string>([
-  TEST_CASE_FILTERS.table,
-  TEST_CASE_FILTERS.tags,
-  TEST_CASE_FILTERS.service,
-  TEST_CASE_FILTERS.dataProduct,
-]);
-
-// TEST_CASE_FILTERS_LABELS is keyed by filter name (e.g. "table"); descriptors
-// key by the param value (e.g. "tableFqn"), so map value -> label once here.
-const FILTER_LABEL_BY_KEY: Record<string, string> = Object.fromEntries(
-  entries(TEST_CASE_FILTERS).map(([name, value]) => [
-    value,
-    TEST_CASE_FILTERS_LABELS[name],
-  ])
-);
-
-const getControlType = (key: string): FilterControlType => {
-  let controlType: FilterControlType = 'select';
-  if (key === TEST_CASE_FILTERS.lastRun) {
-    controlType = 'date';
-  } else if (MULTI_SELECT_FILTERS.has(key)) {
-    controlType = 'multiselect';
-  }
-
-  return controlType;
-};
-
-const optionLabel = (name: string, fqn?: string, testId?: string) => (
-  <Space data-testid={testId ?? fqn} direction="vertical" size={0}>
-    {fqn && (
-      <Typography.Text className="text-xs text-grey-muted">
-        {fqn}
-      </Typography.Text>
-    )}
-    <Typography.Text className="text-sm">{name}</Typography.Text>
-  </Space>
-);
-
 export const useTestCaseListPage = () => {
   const { tab = DataQualityClassBase.getDefaultActiveTab() } = useParams<{
     tab: DataQualityPageTabs;
   }>();
   const navigate = useNavigate();
-  const location = useCustomLocation();
   const { permissions } = usePermissionProvider();
   const { isTestCaseSummaryLoading, testCaseSummary } =
     useDataQualityProvider();
   const { testCase: testCasePermission, testSuite: testSuitePermission } =
     permissions;
   const { showModal } = useEntityExportModalProvider();
-  const [form] = useForm();
 
-  const params = useMemo(() => {
-    const search = location.search;
-    const parsed = QueryString.parse(
-      search.startsWith('?') ? search.substring(1) : search
-    ) as TestCaseSearchParams;
-
-    return parsed;
-  }, [location.search]);
-
-  const { searchValue = '' } = params;
-
-  const [tableOptions, setTableOptions] = useState<FetchedOption[]>([]);
-  const [tagOptions, setTagOptions] = useState<FetchedOption[]>([]);
-  const [tierOptions, setTierOptions] = useState<FetchedOption[]>([]);
-  const [serviceOptions, setServiceOptions] = useState<FetchedOption[]>([]);
-  const [dataProductOptions, setDataProductOptions] = useState<FetchedOption[]>(
-    []
-  );
-  const [isOptionsLoading, setIsOptionsLoading] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<string[]>(
-    DEFAULT_SELECTED_FILTERS
-  );
-
-  const [testCase, setTestCase] = useState<TestCase[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [sortOptions, setSortOptions] =
-    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const paging = usePaging();
 
   const {
-    currentPage,
-    handlePageChange,
-    pageSize,
-    handlePageSizeChange,
-    paging,
-    handlePagingChange,
+    getInitialOptions,
+    isOptionsLoading,
+    asyncOptionsByKey,
+    onSearchByKey,
+    tableOptions,
+    tagOptions,
+    tierOptions,
+    serviceOptions,
+    dataProductOptions,
+    debounceFetchTableData,
+    debounceFetchTagOptions,
+    debounceFetchServiceOptions,
+    debounceFetchDataProductOptions,
+  } = useTestCaseFilterOptions();
+
+  const {
+    params,
+    searchValue,
+    selectedFilter,
+    setSelectedFilter,
+    form,
+    handleMenuClick,
+    handleSearchParam,
+    handleFilterChange,
+    filterMenu,
+    filters,
+    hasActiveFilters,
+    clearAll,
+  } = useTestCaseFilters({
+    getInitialOptions,
+    isOptionsLoading,
+    asyncOptionsByKey,
+    onSearchByKey,
+  });
+
+  const {
+    testCase,
+    setTestCase,
+    isLoading,
+    fetchTestCases,
+    sortTestCase,
+    pagingData,
     showPagination,
-  } = usePaging();
+  } = useTestCaseList({
+    params,
+    selectedFilter,
+    setSelectedFilter,
+    searchValue,
+    form,
+    getInitialOptions,
+    tab,
+    testCasePermission,
+    currentPage: paging.currentPage,
+    pageSize: paging.pageSize,
+    paging: paging.paging,
+    handlePageChange: paging.handlePageChange,
+    handlePageSizeChange: paging.handlePageSizeChange,
+    handlePagingChange: paging.handlePagingChange,
+    showPagination: paging.showPagination,
+  });
 
-  const handleSearchParam = useCallback(
-    <K extends keyof TestCaseSearchParams>(
-      key: K,
-      value?: TestCaseSearchParams[K]
-    ) => {
-      navigate({
-        search: QueryString.stringify(
-          { ...params, [key]: value || undefined },
-          { arrayFormat: 'brackets' }
-        ),
-      });
-    },
-    [navigate, params]
-  );
-
-  const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
-    (value?: TestCaseSearchParams) => {
-      if (!isUndefined(value)) {
-        const [data] = Object.entries(value);
-        handleSearchParam(data[0] as keyof TestCaseSearchParams, data[1]);
-      }
-    };
-
-  const fetchTierOptions = async () => {
-    try {
-      setIsOptionsLoading(true);
-      const { data } = await getTags({
-        parent: 'Tier',
-        limit: PAGE_SIZE_LARGE,
-      });
-      setTierOptions(
-        data.map((hit) => ({
-          label: optionLabel(getEntityName(hit), hit.fullyQualifiedName),
-          name: getEntityName(hit),
-          subLabel: hit.fullyQualifiedName,
-          value: hit.fullyQualifiedName,
-        }))
-      );
-    } catch {
-      setTierOptions([]);
-    } finally {
-      setIsOptionsLoading(false);
-    }
-  };
-
-  const fetchTagOptions = async (search?: string) => {
-    setIsOptionsLoading(true);
-    try {
-      const { data } = await tagClassBase.getTags(search ?? '', 1);
-      setTagOptions(
-        data
-          .filter(
-            ({ data: { classification } }) =>
-              classification?.name !== TIER_CATEGORY
-          )
-          .map(({ label, value }) => ({
-            label: optionLabel(label, value, value),
-            name: label,
-            subLabel: value,
-            value,
-          }))
-      );
-    } catch {
-      setTagOptions([]);
-    } finally {
-      setIsOptionsLoading(false);
-    }
-  };
-
-  const fetchSearchOptions = async (
-    searchIndex: SearchIndex,
-    setter: (options: FetchedOption[]) => void,
-    valueKey: 'name' | 'fullyQualifiedName',
-    query: string
-  ) => {
-    setIsOptionsLoading(true);
-    try {
-      const response = await searchQuery({
-        query,
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_BASE,
-        searchIndex,
-        fetchSource: true,
-        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
-      });
-      setter(
-        response.hits.hits.map((hit) => ({
-          label: optionLabel(
-            getEntityName(hit._source),
-            hit._source.fullyQualifiedName,
-            valueKey === 'name'
-              ? hit._source.name
-              : hit._source.fullyQualifiedName
-          ),
-          name: getEntityName(hit._source),
-          subLabel: hit._source.fullyQualifiedName,
-          value: hit._source[valueKey] ?? hit._source.name,
-        }))
-      );
-    } catch {
-      setter([]);
-    } finally {
-      setIsOptionsLoading(false);
-    }
-  };
-
-  const fetchTableData = (search = WILD_CARD_CHAR) =>
-    fetchSearchOptions(
-      SearchIndex.TABLE,
-      setTableOptions,
-      'fullyQualifiedName',
-      `*${search}*`
-    );
-
-  const fetchServiceOptions = (search = WILD_CARD_CHAR) =>
-    fetchSearchOptions(
-      SearchIndex.DATABASE_SERVICE,
-      setServiceOptions,
-      'name',
-      `*${search}*`
-    );
-
-  const fetchDataProductOptions = (search = WILD_CARD_CHAR) =>
-    fetchSearchOptions(
-      SearchIndex.DATA_PRODUCT,
-      setDataProductOptions,
-      'fullyQualifiedName',
-      search === WILD_CARD_CHAR ? search : `*${search}*`
-    );
-
-  const getInitialOptions = (key: string, isLengthCheck = false) => {
-    switch (key) {
-      case TEST_CASE_FILTERS.tier:
-        (isEmpty(tierOptions) || !isLengthCheck) && fetchTierOptions();
-
-        break;
-      case TEST_CASE_FILTERS.table:
-        (isEmpty(tableOptions) || !isLengthCheck) && fetchTableData();
-
-        break;
-      case TEST_CASE_FILTERS.tags:
-        (isEmpty(tagOptions) || !isLengthCheck) && fetchTagOptions();
-
-        break;
-      case TEST_CASE_FILTERS.service:
-        (isEmpty(serviceOptions) || !isLengthCheck) && fetchServiceOptions();
-
-        break;
-      case TEST_CASE_FILTERS.dataProduct:
-        (isEmpty(dataProductOptions) || !isLengthCheck) &&
-          fetchDataProductOptions();
-
-        break;
-      default:
-        break;
-    }
-  };
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    setSelectedFilter((prevSelected) => {
-      if (prevSelected.includes(key)) {
-        const updatedValue = prevSelected.filter(
-          (selected) => selected !== key
-        );
-        form.setFieldsValue({ [key]: undefined });
-
-        return updatedValue;
-      }
-
-      return uniq([...prevSelected, key]);
-    });
-    getInitialOptions(key);
-    handleSearchParam(key as keyof TestCaseSearchParams);
-  };
-
-  const filterMenu: ItemType[] = useMemo(
-    () =>
-      entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
-        key: filter,
-        label: TEST_CASE_FILTERS_LABELS[name],
-        value: filter,
-      })),
-    []
-  );
-
-  const debounceFetchTableData = useCallback(
-    debounce(fetchTableData, 1000),
-    []
-  );
-  const debounceFetchTagOptions = useCallback(
-    debounce(fetchTagOptions, 1000),
-    []
-  );
-  const debounceFetchServiceOptions = useCallback(
-    debounce(fetchServiceOptions, 1000),
-    []
-  );
-  const debounceFetchDataProductOptions = useCallback(
-    debounce(fetchDataProductOptions, 1000),
-    []
-  );
-
-  const asyncOptionsByKey = useMemo<Record<string, FetchedOption[]>>(
-    () => ({
-      [TEST_CASE_FILTERS.table]: tableOptions,
-      [TEST_CASE_FILTERS.tags]: tagOptions,
-      [TEST_CASE_FILTERS.tier]: tierOptions,
-      [TEST_CASE_FILTERS.service]: serviceOptions,
-      [TEST_CASE_FILTERS.dataProduct]: dataProductOptions,
-    }),
-    [tableOptions, tagOptions, tierOptions, serviceOptions, dataProductOptions]
-  );
-
-  const onSearchByKey: Record<string, (search: string) => void> = {
-    [TEST_CASE_FILTERS.table]: debounceFetchTableData,
-    [TEST_CASE_FILTERS.tags]: debounceFetchTagOptions,
-    [TEST_CASE_FILTERS.service]: debounceFetchServiceOptions,
-    [TEST_CASE_FILTERS.dataProduct]: debounceFetchDataProductOptions,
-  };
-
-  const toPlainOptions = (options: DefaultOptionType[]): FilterOptionData[] =>
-    options.map((option) => ({
-      value: String(option.value),
-      label:
-        (option as FetchedOption).name ??
-        (typeof option.label === 'string'
-          ? option.label
-          : String(option.value)),
-      subLabel: (option as FetchedOption).subLabel,
-    }));
-
-  const filters = useMemo<FilterDescriptor[]>(() => {
-    const keys = entries(TEST_CASE_FILTERS)
-      .map(([, filter]) => filter)
-      .filter((filter) => selectedFilter.includes(filter));
-
-    return keys.map((key) => {
-      const paramKey = key;
-      const options = STATIC_OPTIONS[key] ?? asyncOptionsByKey[key] ?? [];
-
-      return {
-        key,
-        paramKey,
-        label: FILTER_LABEL_BY_KEY[key],
-        controlType: getControlType(key),
-        searchable: SEARCHABLE_FILTERS.has(key),
-        value: params[paramKey] as FilterValue,
-        options: toPlainOptions(options),
-        isLoading: isOptionsLoading,
-        onGetInitialOptions: () => getInitialOptions(key),
-        onSearch: onSearchByKey[key],
-        onChange: (value?: FilterValue) =>
-          handleSearchParam(
-            paramKey,
-            value as TestCaseSearchParams[typeof paramKey]
-          ),
-      };
-    });
-  }, [selectedFilter, params, isOptionsLoading, asyncOptionsByKey]);
-
-  // True when any filter (table/type/status/tags/…) currently has a value; the
-  // table-header search is intentionally excluded so it survives a clear-all.
-  const hasActiveFilters = useMemo(
-    () =>
-      values(TEST_CASE_FILTERS).some((paramKey) => !isEmpty(params[paramKey])),
-    [params]
-  );
-
-  const clearAll = useCallback(() => {
-    setSelectedFilter(DEFAULT_SELECTED_FILTERS);
-    form.resetFields();
-    navigate({
-      search: QueryString.stringify(searchValue ? { searchValue } : {}, {
-        arrayFormat: 'brackets',
-      }),
-    });
-  }, [form, navigate, searchValue]);
-
-  const fetchTestCases = useCallback(
-    async (
-      page = INITIAL_PAGING_VALUE,
-      activeFilters?: string[],
-      apiParams?: ListTestCaseParamsBySearch
-    ) => {
-      const updatedParams = getTestCaseFiltersValue(
-        params,
-        activeFilters ?? selectedFilter
-      );
-
-      setIsLoading(true);
-      try {
-        const { data, paging: pagingResponse } = await getListTestCaseBySearch({
-          ...updatedParams,
-          ...sortOptions,
-          ...apiParams,
-          testCaseStatus: isEmpty(params?.testCaseStatus)
-            ? undefined
-            : params?.testCaseStatus,
-          limit: pageSize,
-          includeAllTests: true,
-          fields: [
-            TabSpecificField.TEST_CASE_RESULT,
-            TabSpecificField.TESTSUITE,
-            TabSpecificField.INCIDENT_ID,
-          ],
-          q: searchValue ? `*${searchValue}*` : undefined,
-          offset: (page - 1) * pageSize,
-        });
-        setTestCase(data);
-        handlePagingChange(pagingResponse);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [
-      params,
-      selectedFilter,
-      sortOptions,
-      pageSize,
-      searchValue,
-      handlePagingChange,
-    ]
-  );
-
-  const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
-    const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
-    await fetchTestCases(
-      INITIAL_PAGING_VALUE,
-      updatedValue,
-      apiParams ?? DEFAULT_SORT_ORDER
-    );
-    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
-  };
-
-  const handleTestCaseUpdate = (data?: TestCase) => {
-    if (data) {
-      setTestCase((prev) =>
-        prev.map((test) => (test.id === data.id ? { ...test, ...data } : test))
-      );
-    }
-  };
-
-  const handleStatusSubmit = (updated: TestCase) => {
-    setTestCase((prev) =>
-      prev.map((test) =>
-        test.fullyQualifiedName === updated.fullyQualifiedName ? updated : test
-      )
-    );
-  };
-
-  const handlePagingClick = useCallback(
-    ({ currentPage: page }: PagingHandlerParams) => {
-      handlePageChange(page);
-      fetchTestCases(page);
-    },
-    [handlePageChange, fetchTestCases]
-  );
+  const { handleTestCaseUpdate, handleStatusSubmit } = useTestCaseActions({
+    setTestCase,
+  });
 
   const extraDropdownContent = useMemo(
     () =>
@@ -580,43 +142,6 @@ export const useTestCaseListPage = () => {
         showModal
       ),
     [permissions, navigate, showModal]
-  );
-
-  const getTestCases = () => {
-    if (!isEmpty(params) || !isEmpty(selectedFilter)) {
-      const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
-      for (const key of updatedValue) {
-        getInitialOptions(key, true);
-      }
-      setSelectedFilter(updatedValue);
-      fetchTestCases(currentPage, updatedValue);
-      form.setFieldsValue(params);
-    } else {
-      fetchTestCases(currentPage);
-    }
-  };
-
-  useEffect(() => {
-    if (
-      getPrioritizedViewPermission(testCasePermission, Operation.ViewBasic) &&
-      tab === DataQualityPageTabs.TEST_CASES
-    ) {
-      getTestCases();
-    } else {
-      setIsLoading(false);
-    }
-  }, [tab, testCasePermission, pageSize, params, currentPage]);
-
-  const pagingData = useMemo(
-    () => ({
-      paging,
-      currentPage,
-      pagingHandler: handlePagingClick,
-      pageSize,
-      onShowSizeChange: handlePageSizeChange,
-      isNumberBased: true,
-    }),
-    [paging, currentPage, handlePagingClick, pageSize, handlePageSizeChange]
   );
 
   return {

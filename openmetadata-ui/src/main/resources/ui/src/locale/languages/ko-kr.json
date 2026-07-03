@@ -3377,6 +3377,7 @@
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
     "metrics-rename-collection-description": "Rename the name and display name for the metrics collection.",
+    "minimum-count-error": "최소 {{count}} 개의 {{field}}를 선택해야 합니다.",
     "minimum-value-error": "최소값은 최대값보다 작아야 합니다.",
     "minute": "분",
     "missing-config-value": "누락된 구성 값: {{field}}",
