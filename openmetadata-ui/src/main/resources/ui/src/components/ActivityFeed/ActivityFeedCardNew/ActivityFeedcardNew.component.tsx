@@ -187,8 +187,8 @@ const ActivityFeedCardNew = ({
               'max-one-line': !showThread,
             })}>
             {searchClassBase.getEntityIcon(entityType ?? '') && (
-              <span className="w-4 h-4 d-inline-flex align-middle">
-                {searchClassBase.getEntityIcon(entityType ?? '')}
+              <span className="d-inline-flex align-middle">
+                {searchClassBase.getEntityIcon(entityType ?? '', 'tw:h-4 tw:w-4')}
               </span>
             )}
             <Link

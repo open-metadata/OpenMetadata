@@ -347,6 +347,16 @@ const entityIconMapping: Record<string, ElementType> = {
   [EntityType.SEARCH_SERVICE]:
     ENTITY_ICON_MAPPER[EntityType.SEARCH_SERVICE].icon,
   Governance: GovernanceIcon,
+  contextFile: ENTITY_ICON_MAPPER['contextFile'].icon,
+  contextMemory: ENTITY_ICON_MAPPER['contextMemory'].icon,
+  aiAutomation: ENTITY_ICON_MAPPER['aiAutomation'].icon,
+  folder: ENTITY_ICON_MAPPER['folder'].icon,
+  contextPlugin: ENTITY_ICON_MAPPER['contextPlugin'].icon,
+  marketplace: ENTITY_ICON_MAPPER['marketplace'].icon,
+  dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
+  dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
+  report: ENTITY_ICON_MAPPER['report'].icon,
+  testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon
 };
 
 export const getEntityIcon = (

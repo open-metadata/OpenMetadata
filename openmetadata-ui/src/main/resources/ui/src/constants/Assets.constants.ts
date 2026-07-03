@@ -243,6 +243,18 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.POLICY,
   EntityType.KPI,
   EntityType.METRIC,
+  EntityType.KNOWLEDGE_PAGE,
+  EntityType.KNOWLEDGE_CENTER,
+  'folder',
+  'contextFile',
+  'contextMemory',
+  'aiAutomation',
+  'contextPlugin',
+  'marketplace',
+  'dynamicAgent',
+  'dataObservability',
+  'report',
+  'testDefinition'
 ];
 
 export const ENTITY_ICON_MAPPER: Record<
