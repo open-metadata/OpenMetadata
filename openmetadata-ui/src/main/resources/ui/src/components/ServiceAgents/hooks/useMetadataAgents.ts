@@ -12,46 +12,70 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { SOCKET_EVENTS } from '../../../constants/constants';
-import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { ServiceProgressEvent } from '../../../generated/entity/services/ingestionPipelines/serviceProgressEvent';
 import { getIngestionPipelineByFqn } from '../../../rest/ingestionPipelineAPI';
-import { AgentsLiveInfo } from '../../ServiceInsights/ServiceInsightsTab.interface';
+import {
+  applyProgressToAgent,
+  isTerminalProgressUpdate,
+  resetAgentProgress,
+} from '../../../utils/AgentsProgressPureUtils';
 import { Agent } from '../AgentsPage.interface';
 import { mapPipelineToAgent } from '../utils/agentsDataMapper';
+import { useServiceProgressStream } from './useServiceProgressStream';
 
-const POLL_MS = 5000;
-
-interface AgentsLiveStreamPayload {
-  serviceName?: string;
-  ingestionPipelineStatus?: AgentsLiveInfo[];
+interface LastRunEvent {
+  runId: string;
+  timestamp: number;
 }
 
 /**
  * Derives the Agent view-model from the ingestion pipelines and keeps running
- * agents live via two channels:
+ * agents live via one service-scoped SSE connection
+ * (`/services/ingestionPipelines/progress/service/{serviceType}/{serviceFqn}/stream`).
+ * The backend replays active-run snapshots on connect and pushes every
+ * subsequent ProgressUpdate, so no polling is needed.
  *
- * 1. A websocket subscription on `agentsLiveStream` — same push pattern the
- *    Service Insights tab uses for `chartDataStream`. The backend does not
- *    emit this event yet; the handler is placeholder wiring so agents refresh
- *    the moment the backend lands.
- * 2. A ~5s polling fallback that re-fetches only the running agents. Polling
- *    is skipped entirely while no agent is running.
+ * Progress events carry no error/warning counts, so once the LAST running
+ * agent reaches a terminal event, every agent that completed during the
+ * session is refetched once to reconcile errors/warnings/finishedAt from
+ * pipelineStatuses.
  */
 export const useMetadataAgents = (
   pipelines: IngestionPipeline[],
-  serviceName?: string
+  serviceCategory: ServiceCategory,
+  serviceFqn?: string
 ): { agents: Agent[] } => {
-  const { socket } = useWebSocketConnector();
   const [agents, setAgents] = useState<Agent[]>(() =>
     pipelines.map(mapPipelineToAgent)
   );
   const agentsRef = useRef(agents);
   agentsRef.current = agents;
 
+  const liveOverridesRef = useRef<Map<string, Agent>>(new Map());
+  const lastRunEventRef = useRef<Map<string, LastRunEvent>>(new Map());
+  const completedThisSessionRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    setAgents(pipelines.map(mapPipelineToAgent));
+    setAgents(
+      pipelines.map((pipeline) => {
+        const base = mapPipelineToAgent(pipeline);
+        const live = liveOverridesRef.current.get(base.fqn);
+
+        return live?.status === 'running'
+          ? {
+              ...base,
+              status: live.status,
+              pct: live.pct,
+              assets: live.assets,
+              target: live.target,
+              eta: live.eta,
+            }
+          : base;
+      })
+    );
   }, [pipelines]);
 
   const refetchAgent = useCallback(async (fqn: string) => {
@@ -66,51 +90,76 @@ export const useMetadataAgents = (
     }
   }, []);
 
-  useEffect(() => {
-    if (!socket) {
-      return;
-    }
-
-    const handleLiveUpdate = (rawPayload: string) => {
-      try {
-        const payload = JSON.parse(rawPayload) as AgentsLiveStreamPayload;
-        if (serviceName && payload.serviceName !== serviceName) {
-          return;
-        }
-        payload.ingestionPipelineStatus?.forEach((pipelineStatus) => {
-          const agent = agentsRef.current.find(
-            (a) =>
-              a.id === pipelineStatus.id ||
-              a.fqn === pipelineStatus.fullyQualifiedName
-          );
-          if (agent) {
-            void refetchAgent(agent.fqn);
-          }
-        });
-      } catch {
-        // Malformed live payloads are ignored; polling remains the fallback.
-      }
-    };
-
-    socket.on(SOCKET_EVENTS.AGENTS_LIVE_STREAM, handleLiveUpdate);
-
-    return () => {
-      socket.off(SOCKET_EVENTS.AGENTS_LIVE_STREAM, handleLiveUpdate);
-    };
-  }, [socket, serviceName, refetchAgent]);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      const runningAgents = agentsRef.current.filter(
-        (agent) => agent.status === 'running'
-      );
-      runningAgents.forEach((agent) => {
-        void refetchAgent(agent.fqn);
-      });
-    }, POLL_MS);
-
-    return () => clearInterval(intervalId);
+  const syncCompletedAgents = useCallback(() => {
+    const completedFqns = Array.from(completedThisSessionRef.current);
+    completedThisSessionRef.current.clear();
+    completedFqns.forEach((fqn) => {
+      void refetchAgent(fqn);
+    });
   }, [refetchAgent]);
+
+  const isStaleEvent = useCallback((event: ServiceProgressEvent): boolean => {
+    const lastEvent = lastRunEventRef.current.get(event.pipelineFqn);
+
+    return Boolean(
+      lastEvent?.runId === event.runId &&
+        event.event.timestamp <= lastEvent.timestamp
+    );
+  }, []);
+
+  const handleProgressEvent = useCallback(
+    (event: ServiceProgressEvent) => {
+      const known = agentsRef.current.some(
+        (agent) => agent.fqn === event.pipelineFqn
+      );
+      if (!known || isStaleEvent(event)) {
+        return;
+      }
+
+      const lastEvent = lastRunEventRef.current.get(event.pipelineFqn);
+      const isNewRun = lastEvent?.runId !== event.runId;
+      lastRunEventRef.current.set(event.pipelineFqn, {
+        runId: event.runId,
+        timestamp: event.event.timestamp,
+      });
+
+      const isTerminal = isTerminalProgressUpdate(event.event.updateType);
+      const nextAgents = agentsRef.current.map((agent) => {
+        if (agent.fqn !== event.pipelineFqn) {
+          return agent;
+        }
+        const base = isNewRun ? resetAgentProgress(agent) : agent;
+        const next = applyProgressToAgent(base, event.event);
+        if (isTerminal) {
+          liveOverridesRef.current.delete(agent.fqn);
+        } else {
+          liveOverridesRef.current.set(agent.fqn, next);
+        }
+
+        return next;
+      });
+
+      agentsRef.current = nextAgents;
+      setAgents(nextAgents);
+
+      if (isTerminal) {
+        completedThisSessionRef.current.add(event.pipelineFqn);
+        const anyRunning = nextAgents.some(
+          (agent) => agent.status === 'running'
+        );
+        if (!anyRunning) {
+          syncCompletedAgents();
+        }
+      }
+    },
+    [isStaleEvent, syncCompletedAgents]
+  );
+
+  useServiceProgressStream({
+    serviceCategory,
+    serviceFqn,
+    onEvent: handleProgressEvent,
+  });
 
   return { agents };
 };

@@ -60,7 +60,8 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const { agents } = useMetadataAgents(
     ingestionPipelineList,
-    serviceDetails?.name
+    serviceCategory,
+    decodedServiceFQN
   );
 
   const isDBService = useMemo(
