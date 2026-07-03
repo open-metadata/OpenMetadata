@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +44,7 @@ const LineageControlButtons: FC<{
   const navigate = useNavigate();
   const location = useCustomLocation();
   const [fitViewOpen, setFitViewOpen] = useState(false);
+  const fitScreenRef = useRef<HTMLButtonElement>(null);
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -135,11 +136,13 @@ const LineageControlButtons: FC<{
           data-testid="fit-screen"
           iconLeading={FitViewOptionsIcon as FC<{ className?: string }>}
           id="fit-view"
+          ref={fitScreenRef}
           onPress={() => setFitViewOpen(true)}
         />
-        <Dropdown.Popover placement="top right">
+        <Dropdown.Popover placement="top right" triggerRef={fitScreenRef}>
           <Dropdown.Menu
             aria-label={t('label.lineage-view-option-plural')}
+            selectionMode="none"
             onAction={handleMenuAction}>
             <Dropdown.Item
               icon={FitScreenIcon as FC<{ className?: string }>}
