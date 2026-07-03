@@ -15,7 +15,7 @@ DBTcloud source to extract metadata from OM UI
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -53,6 +53,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel
@@ -258,7 +259,9 @@ class DbtcloudSource(PipelineServiceSource):
                         self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
 
                     if model.compiledCode and to_entity_fqn:
-                        yield from self._yield_column_lineage(
+                        # get_lineage_by_query is typed to return the LineageRequest union;
+                        # on this create-table path it only yields AddLineageRequest edges.
+                        yield from self._yield_column_lineage(  # pyright: ignore[reportReturnType]
                             model=model,
                             to_entity_fqn=to_entity_fqn,
                             db_service_name=dbservicename,
@@ -352,7 +355,7 @@ class DbtcloudSource(PipelineServiceSource):
 
     def _yield_column_lineage(
         self, model: DBTModel, to_entity_fqn: str, db_service_name: str
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[LineageRequest]]:
         """
         Parse the compiled dbt model SQL to build column-level lineage from the
         model's upstream tables to the model table.
@@ -362,7 +365,7 @@ class DbtcloudSource(PipelineServiceSource):
             query_fqn = fqn._build(*source_elements[-3:])  # pylint: disable=protected-access
             query_fqn = ".".join([f'"{element}"' for element in query_fqn.split(".")])
             query = f"create table {query_fqn} as {model.compiledCode}"
-            for lineage in get_lineage_by_query(
+            yield from get_lineage_by_query(
                 self.metadata,
                 query=query,
                 service_names=source_elements[0],
@@ -371,8 +374,7 @@ class DbtcloudSource(PipelineServiceSource):
                 dialect=self._resolve_dialect(db_service_name),
                 timeout_seconds=LINEAGE_PARSING_TIMEOUT,
                 lineage_source=LineageSource.DbtLineage,
-            ):
-                yield cast("Either[AddLineageRequest]", lineage)
+            )
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")
