@@ -18,6 +18,7 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored-new.svg';
 import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/dashboard-data-models-colored.svg';
 import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colored-new.svg';
+import { ReactComponent as DataMarketplaceIcon } from '../assets/svg/data-marketplace-colored.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colored.svg';
@@ -79,7 +80,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Classification]: ClassificationIcon,
   [PageType.Tag]: TagIcon,
   [PageType.DataProduct]: DataProductIcon,
-  [PageType.DataMarketplace]: DataProductIcon,
+  [PageType.DataMarketplace]: DataMarketplaceIcon,
 };
 
 class PersonaClassBase {
