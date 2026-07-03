@@ -406,14 +406,14 @@ const DocumentFolderView = ({
                         </Button>
 
                         <div className="tw:relative tw:shrink-0 tw:h-5 tw:w-8 tw:flex tw:items-center tw:justify-end">
-                          <div className={
-                                canDelete
-                                  ? 'tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-0'
-                                  : 'tw:absolute tw:right-0'
-                              }  data-testid={`folder-file-count-badge-${folder.id}`}>
-                            <Badge
-                              size="sm"
-                              type="color">
+                          <div
+                            className={
+                              canDelete
+                                ? 'tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-0'
+                                : 'tw:absolute tw:right-0'
+                            }
+                            data-testid={`folder-file-count-badge-${folder.id}`}>
+                            <Badge size="sm" type="color">
                               {folder.childrenCount ?? 0}
                             </Badge>
                           </div>

@@ -23,7 +23,6 @@ export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const FOLDER_FILES_PAGE_SIZE = 10;
 
-
 export const PILLAR_TONE_TEXT_CLASS: Record<string, string> = {
   info: 'tw:text-utility-brand-700',
   warning: 'tw:text-utility-warning-700',
