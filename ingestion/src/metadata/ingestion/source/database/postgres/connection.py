@@ -52,6 +52,8 @@ from metadata.ingestion.source.database.postgres.utils import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
@@ -164,7 +166,7 @@ class PostgresChecks:
         return run_sql(self.client, POSTGRES_GET_DATABASE, self._summarize_databases)
 
     @staticmethod
-    def _summarize_databases(rows: list) -> str:
+    def _summarize_databases(rows: Sequence[object]) -> str:
         # run_sql fetches at most DEFAULT_SAMPLE_ROWS; at the cap the exact total is
         # unknown, so report "N+" rather than implying a complete enumeration.
         count = len(rows)
