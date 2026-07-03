@@ -188,7 +188,10 @@ const ActivityFeedCardNew = ({
             })}>
             {searchClassBase.getEntityIcon(entityType ?? '') && (
               <span className="d-inline-flex align-middle">
-                {searchClassBase.getEntityIcon(entityType ?? '', 'tw:h-4 tw:w-4')}
+                {searchClassBase.getEntityIcon(
+                  entityType ?? '',
+                  'tw:h-4 tw:w-4'
+                )}
               </span>
             )}
             <Link

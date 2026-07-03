@@ -254,7 +254,7 @@ export const NON_SERVICE_TYPE_ASSETS = [
   'dynamicAgent',
   'dataObservability',
   'report',
-  'testDefinition'
+  'testDefinition',
 ];
 
 export const ENTITY_ICON_MAPPER: Record<

@@ -356,7 +356,7 @@ const entityIconMapping: Record<string, ElementType> = {
   dynamicAgent: ENTITY_ICON_MAPPER['dynamicAgent'].icon,
   dataObservability: ENTITY_ICON_MAPPER['dataObservability'].icon,
   report: ENTITY_ICON_MAPPER['report'].icon,
-  testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon
+  testDefinition: ENTITY_ICON_MAPPER['testDefinition'].icon,
 };
 
 export const getEntityIcon = (
