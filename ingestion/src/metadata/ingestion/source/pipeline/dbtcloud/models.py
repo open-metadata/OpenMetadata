@@ -81,6 +81,8 @@ class DBTModel(BaseModel):
     database: Optional[str] = None  # noqa: UP045
     runGeneratedAt: Optional[str] = None  # noqa: N815, UP045
     dependsOn: Optional[List[str]] = None  # noqa: N815, UP006, UP045
+    compiledCode: Optional[str] = None  # noqa: N815, UP045
+    rawCode: Optional[str] = None  # noqa: N815, UP045
 
 
 class DBTModelList(BaseModel):

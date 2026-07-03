@@ -15,7 +15,7 @@ DBTcloud source to extract metadata from OM UI
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -49,9 +50,12 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
+from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob
+from metadata.ingestion.source.pipeline.dbtcloud.models import DBTJob, DBTModel
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri, datetime_to_ts
@@ -92,6 +96,8 @@ class DbtcloudSource(PipelineServiceSource):
         self.observability_cache: Dict[Tuple[int, str], Dict[str, Any]] = {}  # noqa: UP006
         # Cache for table entity lookups to avoid redundant API calls
         self._table_entity_cache: Dict[str, Optional[Table]] = {}  # noqa: UP006, UP045
+        # Cache for resolved SQL dialects keyed by database service name
+        self._dialect_cache: Dict[str, Dialect] = {}  # noqa: UP006
 
     def _get_table_entity(self, table_fqn: str) -> Optional[Table]:  # noqa: UP045
         """
@@ -251,6 +257,13 @@ class DbtcloudSource(PipelineServiceSource):
                     if cache_key and cache_key in self.observability_cache:
                         self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
 
+                    if model.compiledCode and to_entity_fqn:
+                        yield from self._yield_column_lineage(
+                            model=model,
+                            to_entity_fqn=to_entity_fqn,
+                            db_service_name=dbservicename,
+                        )
+
                     for unique_id in model.dependsOn or []:
                         # Use dict lookup instead of list comprehension
                         parent = parent_by_unique_id.get(unique_id)
@@ -323,6 +336,46 @@ class DbtcloudSource(PipelineServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _resolve_dialect(self, db_service_name: str) -> Dialect:
+        """
+        Resolve the SQL dialect for a configured database service so the compiled
+        dbt model SQL can be parsed for column-level lineage.
+        """
+        if db_service_name not in self._dialect_cache:
+            dialect = Dialect.ANSI
+            db_service = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+            if db_service and db_service.serviceType:
+                dialect = ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value)
+            self._dialect_cache[db_service_name] = dialect
+        return self._dialect_cache[db_service_name]
+
+    def _yield_column_lineage(
+        self, model: DBTModel, to_entity_fqn: str, db_service_name: str
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Parse the compiled dbt model SQL to build column-level lineage from the
+        model's upstream tables to the model table.
+        """
+        try:
+            source_elements = fqn.split(to_entity_fqn)
+            query_fqn = fqn._build(*source_elements[-3:])  # pylint: disable=protected-access
+            query_fqn = ".".join([f'"{element}"' for element in query_fqn.split(".")])
+            query = f"create table {query_fqn} as {model.compiledCode}"
+            for lineage in get_lineage_by_query(
+                self.metadata,
+                query=query,
+                service_names=source_elements[0],
+                database_name=source_elements[1],
+                schema_name=source_elements[2],
+                dialect=self._resolve_dialect(db_service_name),
+                timeout_seconds=LINEAGE_PARSING_TIMEOUT,
+                lineage_source=LineageSource.DbtLineage,
+            ):
+                yield cast("Either[AddLineageRequest]", lineage)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to parse compiled SQL for column lineage of model {model.name}: {exc}")
 
     def get_pipelines_list(self) -> Iterable[DBTJob]:
         """

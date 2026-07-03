@@ -16,14 +16,16 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -38,10 +40,17 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.pipelineObservability import PipelineObservability
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import DbtcloudSource
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
@@ -861,6 +870,201 @@ class DBTCloudUnitTest(TestCase):
                 # Verify we can call the method without errors
                 # Note: Lineage edges may or may not be generated depending on entity resolution
                 self.assertIsInstance(lineage_details, list)
+
+    def _build_lineage_mocks(self):
+        """
+        Prime the lineage context/config and return the pipeline, source table,
+        target table and a get_by_name side effect shared by column-lineage tests.
+        """
+        self.dbtcloud.context.get().__dict__["latest_run_id"] = 70403110257794
+        self.dbtcloud.context.get().__dict__["pipeline"] = "New job"
+        self.dbtcloud.context.get().__dict__["pipeline_service"] = "dbtcloud_pipeline_test"
+        self.dbtcloud.context.get().__dict__["current_runs"] = []
+        self.dbtcloud.source_config.lineageInformation = type("obj", (object,), {"dbServiceNames": ["local_redshift"]})
+        # fqn.build resolves tables via ES; stub it so it falls back to the
+        # concatenated FQN instead of making a real search call.
+        self.dbtcloud.metadata.es_search_from_fqn = lambda *args, **kwargs: None
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="New job",
+            fullyQualifiedName="dbtcloud_pipeline_test.New job",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+        mock_source_table = Table(
+            id=uuid.uuid4(),
+            name="model_15",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_15",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            columns=[],
+        )
+        mock_target_table = Table(
+            id=uuid.uuid4(),
+            name="model_32",
+            fullyQualifiedName="local_redshift.dev.dbt_test_new.model_32",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+            columns=[],
+        )
+
+        def get_by_name_side_effect(entity, fqn):
+            if entity == Pipeline:
+                return mock_pipeline
+            if entity == DatabaseService:
+                service = MagicMock()
+                service.serviceType.value = "Redshift"
+                return service
+            if entity == Table:
+                fqn_str = str(fqn)
+                if "model_15" in fqn_str:
+                    return mock_source_table
+                if "model_32" in fqn_str:
+                    return mock_target_table
+            return None
+
+        return mock_pipeline, mock_source_table, mock_target_table, get_by_name_side_effect
+
+    def test_yield_pipeline_column_lineage_from_compiled_code(self):
+        """
+        Models exposing compiledCode should produce column-level lineage by
+        parsing the compiled SQL through get_lineage_by_query, using the dialect
+        resolved from the configured database service.
+        """
+        (
+            _,
+            mock_source_table,
+            mock_target_table,
+            get_by_name_side_effect,
+        ) = self._build_lineage_mocks()
+
+        compiled_sql = "select id from dbt_test_new.model_15"
+        column_lineage_edge = AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=mock_source_table.id, type="table"),
+                toEntity=EntityReference(id=mock_target_table.id, type="table"),
+                lineageDetails=LineageDetails(
+                    columnsLineage=[
+                        ColumnLineage(
+                            fromColumns=["local_redshift.dev.dbt_test_new.model_15.id"],
+                            toColumn="local_redshift.dev.dbt_test_new.model_32.id",
+                        )
+                    ],
+                ),
+            )
+        )
+
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", side_effect=get_by_name_side_effect),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_models,
+            patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.get_lineage_by_query") as mock_parser,
+        ):
+            mock_models.return_value = (
+                [
+                    DBTModel.model_validate(
+                        {
+                            "uniqueId": "model.dbt_test_new.model_32",
+                            "name": "model_32",
+                            "schema": "dbt_test_new",
+                            "database": "dev",
+                            "runGeneratedAt": "2024-05-27T10:42:20.621788+00:00",
+                            "dependsOn": ["model.dbt_test_new.model_15"],
+                            "compiledCode": compiled_sql,
+                        }
+                    ),
+                    DBTModel.model_validate(
+                        {
+                            "uniqueId": "model.dbt_test_new.model_15",
+                            "name": "model_15",
+                            "schema": "dbt_test_new",
+                            "database": "dev",
+                            "runGeneratedAt": "2024-05-27T10:42:20.621788+00:00",
+                            "dependsOn": None,
+                        }
+                    ),
+                ],
+                [],
+                [],
+            )
+            mock_parser.return_value = iter([Either(right=column_lineage_edge)])
+
+            results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        mock_parser.assert_called_once()
+        call_kwargs = mock_parser.call_args.kwargs
+        self.assertIn(compiled_sql, call_kwargs["query"])
+        self.assertTrue(call_kwargs["query"].startswith("create table"))
+        self.assertEqual(call_kwargs["service_names"], "local_redshift")
+        self.assertEqual(call_kwargs["database_name"], "dev")
+        self.assertEqual(call_kwargs["schema_name"], "dbt_test_new")
+        self.assertEqual(call_kwargs["dialect"], Dialect.REDSHIFT)
+
+        column_edges = [
+            result.right
+            for result in results
+            if result.right is not None
+            and isinstance(result.right, AddLineageRequest)
+            and result.right.edge.lineageDetails is not None
+            and result.right.edge.lineageDetails.columnsLineage
+        ]
+        self.assertEqual(len(column_edges), 1)
+        details = column_edges[0].edge.lineageDetails
+        self.assertEqual(
+            details.columnsLineage[0].toColumn.root,
+            "local_redshift.dev.dbt_test_new.model_32.id",
+        )
+
+    def test_no_column_lineage_without_compiled_code(self):
+        """
+        Models without compiledCode must fall back to table-level lineage only
+        and never invoke the SQL parser.
+        """
+        _, _, _, get_by_name_side_effect = self._build_lineage_mocks()
+
+        with (
+            patch.object(self.dbtcloud.metadata, "get_by_name", side_effect=get_by_name_side_effect),
+            patch.object(self.dbtcloud.client, "get_models_with_lineage") as mock_models,
+            patch("metadata.ingestion.source.pipeline.dbtcloud.metadata.get_lineage_by_query") as mock_parser,
+        ):
+            mock_models.return_value = (
+                [
+                    DBTModel.model_validate(
+                        {
+                            "uniqueId": "model.dbt_test_new.model_32",
+                            "name": "model_32",
+                            "schema": "dbt_test_new",
+                            "database": "dev",
+                            "runGeneratedAt": "2024-05-27T10:42:20.621788+00:00",
+                            "dependsOn": ["model.dbt_test_new.model_15"],
+                        }
+                    ),
+                    DBTModel.model_validate(
+                        {
+                            "uniqueId": "model.dbt_test_new.model_15",
+                            "name": "model_15",
+                            "schema": "dbt_test_new",
+                            "database": "dev",
+                            "runGeneratedAt": "2024-05-27T10:42:20.621788+00:00",
+                            "dependsOn": None,
+                        }
+                    ),
+                ],
+                [],
+                [],
+            )
+
+            results = list(self.dbtcloud.yield_pipeline_lineage_details(EXPECTED_JOB_DETAILS))
+
+        mock_parser.assert_not_called()
+        column_edges = [
+            result.right
+            for result in results
+            if result.right is not None
+            and isinstance(result.right, AddLineageRequest)
+            and result.right.edge.lineageDetails is not None
+            and result.right.edge.lineageDetails.columnsLineage
+        ]
+        self.assertEqual(len(column_edges), 0)
 
     def test_yield_pipeline_status_uses_current_pipeline_fqn(self):
         """
