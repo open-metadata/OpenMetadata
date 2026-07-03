@@ -36,7 +36,7 @@ export const NavigationGuardModal = ({
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onStay()}>
       <Modal>
-        <Dialog showCloseButton width={480}>
+        <Dialog showCloseButton width={480} onClose={onStay}>
           <Dialog.Header>
             <div className="tw:relative tw:w-max">
               <FeaturedIcon
