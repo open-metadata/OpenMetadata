@@ -15,6 +15,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { NavigationBlocker } from './NavigationBlocker';
 
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
@@ -204,5 +211,64 @@ describe('NavigationBlocker component', () => {
     expect(
       screen.getByRole('button', { name: 'Save changes' })
     ).toBeInTheDocument();
+  });
+
+  describe('confirmed browser-back navigation', () => {
+    beforeEach(() => jest.useFakeTimers());
+
+    afterEach(() => jest.useRealTimers());
+
+    it('navigates to leaveTo when set', async () => {
+      render(
+        <NavigationBlocker enabled leaveTo="/home">
+          <div>content</div>
+        </NavigationBlocker>,
+        { wrapper: MemoryRouter }
+      );
+
+      act(() => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      });
+      act(() => {
+        jest.advanceTimersByTime(50);
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/home');
+    });
+
+    it('falls back to history.go(-2) when leaveTo is not provided', async () => {
+      const goSpy = jest
+        .spyOn(globalThis.history, 'go')
+        .mockImplementation(() => undefined);
+
+      render(
+        <NavigationBlocker enabled>
+          <div>content</div>
+        </NavigationBlocker>,
+        { wrapper: MemoryRouter }
+      );
+
+      act(() => {
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      act(() => {
+        fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+      });
+      act(() => {
+        jest.advanceTimersByTime(50);
+      });
+
+      expect(goSpy).toHaveBeenCalledWith(-2);
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      goSpy.mockRestore();
+    });
   });
 });

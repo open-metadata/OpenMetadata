@@ -335,7 +335,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const isSubmitDisabled = memory.trim() === '';
 
   const handleAssetChange = useCallback(
-    (option: DataAssetOption | DataAssetOption[]) => {
+    (option?: DataAssetOption | DataAssetOption[]) => {
+      if (!option) {
+        setLinkedAssets([]);
+
+        return;
+      }
       const options = Array.isArray(option) ? option : [option];
       setLinkedAssets(options);
     },
