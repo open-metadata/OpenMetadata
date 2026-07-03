@@ -41,6 +41,7 @@ import {
 } from '../../../../utils/Alerts/AlertsUtilPure';
 import {
   checkIfDestinationIsInternal,
+  getAlertDestinationCategoryIcons,
   getConfigFieldFromDestinationType,
 } from '../../../../utils/ObservabilityUtils';
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
@@ -52,9 +53,17 @@ function buildGroupedOptions(
 ): SelectItemType[] {
   return [
     { id: 'header-internal', label: internalLabel, isDisabled: true },
-    ...INTERNAL_CATEGORY_OPTIONS.map((o) => ({ id: o.value, label: o.value })),
+    ...INTERNAL_CATEGORY_OPTIONS.map((o) => ({
+      id: o.value,
+      label: o.value,
+      icon: getAlertDestinationCategoryIcons(o.value),
+    })),
     { id: 'header-external', label: externalLabel, isDisabled: true },
-    ...EXTERNAL_CATEGORY_OPTIONS.map((o) => ({ id: o.value, label: o.value })),
+    ...EXTERNAL_CATEGORY_OPTIONS.map((o) => ({
+      id: o.value,
+      label: o.value,
+      icon: getAlertDestinationCategoryIcons(o.value),
+    })),
   ];
 }
 
@@ -149,25 +158,28 @@ function DestinationSelectItemV2({
       data-testid={`destination-${id}`}
       key={selectorKey}>
       <div className="tw:min-w-0 tw:flex-1">
-        <Grid colGap="2" rowGap="2">
-          <Grid.Item span={12}>
+        <Grid colGap="2" rowGap="4">
+          <Grid.Item span={24}>
             <Select.ComboBox
               data-testid={`destination-category-select-${id}`}
+              fontSize="sm"
               items={groupedOptions}
               placeholder={t('label.select-field', {
                 field: t('label.destination'),
               })}
-              selectedKey={destinationType ?? null}
-              onSelectionChange={(key) =>
-                handleDestinationTypeSelect(key as string)
-              }>
+              shortcut={false}
+              showSearchIcon={false}
+              size="sm"
+              value={destinationType ?? null}
+              onChange={(key) => handleDestinationTypeSelect(key as string)}>
               {(item) => (
                 <Select.Item
                   className={
                     item.isDisabled
-                      ? 'tw:cursor-default tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-tertiary'
-                      : undefined
+                      ? 'tw:cursor-default tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-secondary tw:opacity-50 '
+                      : 'tw:pl-3.5'
                   }
+                  icon={item.icon}
                   id={item.id}
                   textValue={item.label ?? ''}>
                   {item.label}
@@ -205,8 +217,8 @@ function DestinationSelectItemV2({
                         placeholder={t('label.select-field', {
                           field: t('label.destination'),
                         })}
-                        selectedKey={field.value ?? null}
-                        onSelectionChange={(key) => field.onChange(key)}>
+                        value={field.value ?? null}
+                        onChange={(key) => field.onChange(key)}>
                         {getSubscriptionTypeOptions(destinationType).map(
                           (option) => (
                             <Select.Item

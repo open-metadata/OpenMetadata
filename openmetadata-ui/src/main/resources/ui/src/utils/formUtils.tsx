@@ -71,9 +71,6 @@ import { UserSelectableListProps } from '../components/common/UserSelectableList
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
-import MUIAutocomplete, {
-  MUIAutocompleteProps,
-} from '../components/form/MUIAutocomplete';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -493,18 +490,6 @@ export const getField = (field: FieldProp) => {
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
             toolTip={helperText}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.AUTOCOMPLETE_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIAutocomplete
-            label={muiLabel as string}
-            placeholder={placeholder}
-            {...(props as MUIAutocompleteProps)}
           />
         </Form.Item>
       );
