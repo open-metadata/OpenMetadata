@@ -1210,10 +1210,7 @@ export const fillRowDetails = async (
   isBulkEdit?: boolean
 ) => {
   if (!isFirstCellClick) {
-    // Click the active cell (cursor is on the new row's first column after add-row-btn)
-    // to restore keyboard focus before selectActiveRowCellByColumn navigates to 'name'.
-    // eslint-disable-next-line playwright/no-force-option -- RDG fixed-column overlay can intercept clicks on the active cell.
-    await page.locator(RDG_ACTIVE_CELL_SELECTOR).first().click({ force: true });
+    await page.locator('.rdg-cell-name').last().click();
   }
 
   await selectActiveRowCellByColumn(page, 'name');
@@ -1336,13 +1333,17 @@ export const pressKeyXTimes = async (
   key: string
 ) => {
   for (let i = 0; i < length; i++) {
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+    if (!(await activeCell.isVisible())) {
+      await page.locator('.rdg-row').last().locator('.rdg-cell').first().click();
+    }
+
     if (key === 'ArrowLeft') {
       await moveToPrevColumnWithVerification(page);
     } else if (key === 'ArrowRight') {
       await moveToNextColumnWithVerification(page);
     } else {
-      // Fallback for non-arrow keys (e.g. Backspace, Enter) — no column-change verification needed.
-      await page.locator(RDG_ACTIVE_CELL_SELECTOR).press(key, { delay: 200 });
+      await activeCell.press(key, { delay: 200 });
     }
   }
 };

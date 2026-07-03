@@ -109,32 +109,13 @@ const expectImportRowStatusesToContain = async (
   // The result grid populates cells asynchronously after Next-click. Without
   // first waiting for the row count to match, the toContainText assertion
   // can run mid-render against 0 or partial cells, fail under retry too,
-  // and never recover.
-  //
-  // Use the processed-row count from the import status header (already set by
-  // validateSuccessfulImportStatus) as the authoritative total. Service-level
-  // imports include pre-existing child entities in the result (they appear as
-  // "Entity updated"), so the actual row count can exceed rowStatus.length.
-  const processedText = await page
-    .getByTestId('processed-row')
-    .textContent();
-  const totalCount =
-    Number.parseInt(processedText?.trim() ?? '', 10) || rowStatus.length;
-
-  await expect(page.locator('.rdg-cell-details')).toHaveCount(totalCount, {
-    timeout: 60_000,
-  });
-
-  const allTexts = await page.locator('.rdg-cell-details').allTextContents();
-  const pool = [...allTexts];
-  for (const expected of rowStatus) {
-    const idx = pool.findIndex((t) => t.includes(expected));
-    expect(
-      idx,
-      `Expected status "${expected}" not found in import result rows: ${JSON.stringify(allTexts)}`
-    ).toBeGreaterThanOrEqual(0);
-    pool.splice(idx, 1);
-  }
+  // and never recover. Wait for the expected number of detail cells before
+  // checking text.
+  await expect(page.locator('.rdg-cell-details')).toHaveCount(
+    rowStatus.length,
+    { timeout: 60_000 }
+  );
+  await expect(page.locator('.rdg-cell-details')).toContainText(rowStatus);
 };
 
 const tableDetails1 = {
