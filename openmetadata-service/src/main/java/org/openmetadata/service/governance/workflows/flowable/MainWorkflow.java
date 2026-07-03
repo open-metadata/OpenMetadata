@@ -19,7 +19,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
@@ -107,15 +107,9 @@ public class MainWorkflow {
     }
 
     private void validateNode(WorkflowNodeDefinitionInterface nodeDefinition) {
-      Map<String, String> inputNamespaceMap =
-          (Map<String, String>)
-              JsonUtils.readOrConvertValue(nodeDefinition.getInputNamespaceMap(), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.read(nodeDefinition.getInputNamespaceMap());
 
-      if (inputNamespaceMap == null) {
-        return;
-      }
-
-      for (Map.Entry<String, String> entry : inputNamespaceMap.entrySet()) {
+      for (Map.Entry<String, String> entry : inputNamespaces.namespaces().entrySet()) {
         String variable = entry.getKey();
         String namespace = entry.getValue();
 

@@ -5,14 +5,17 @@ import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VAR
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.flowable.variable.api.delegate.VariableScope;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -22,6 +25,29 @@ public class WorkflowVariableHandler {
 
   public WorkflowVariableHandler(VariableScope varScope) {
     this.varScope = varScope;
+  }
+
+  public static record InputNamespaces(Map<String, String> namespaces) {
+    public InputNamespaces {
+      namespaces = namespaces != null ? Map.copyOf(namespaces) : Map.of();
+    }
+
+    public String namespaceFor(String variable) {
+      return namespaces.get(variable);
+    }
+
+    public String namespaceForOrDefault(String variable, String defaultNamespace) {
+      return namespaces.getOrDefault(variable, defaultNamespace);
+    }
+
+    public static InputNamespaces from(Expression expr, DelegateExecution execution) {
+      return read(expr.getValue(execution));
+    }
+
+    public static InputNamespaces read(Object rawValue) {
+      Map<String, String> map = JsonUtils.readOrConvertValue(rawValue, Map.class);
+      return new InputNamespaces(map);
+    }
   }
 
   public static String getNamespacedVariableName(String namespace, String varName) {

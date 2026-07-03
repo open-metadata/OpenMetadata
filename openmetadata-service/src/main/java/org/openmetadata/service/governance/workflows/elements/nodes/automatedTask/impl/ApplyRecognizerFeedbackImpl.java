@@ -6,7 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -17,6 +16,7 @@ import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 
 @Slf4j
@@ -28,16 +28,15 @@ public class ApplyRecognizerFeedbackImpl implements JavaDelegate {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
       @SuppressWarnings("unchecked")
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
 
       String feedbackJson =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+                  inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
-      String updatedByNamespace = inputNamespaceMap.get(UPDATED_BY_VARIABLE);
+      String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";
       if (updatedByNamespace != null) {
         String actualUser =

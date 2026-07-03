@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +36,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.resources.feeds.FeedMapper;
@@ -57,20 +57,20 @@ public class CreateRecognizerFeedbackApprovalTaskImpl implements TaskListener {
         delegateTask.getId());
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
+      InputNamespaces inputNamespaces =
+          InputNamespaces.read(inputNamespaceMapExpr.getValue(delegateTask));
       List<EntityReference> assignees = getAssignees(delegateTask);
 
       String feedbackJson =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
+                  inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
 
       String tagEntityLink =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
+                  inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
       MessageParser.EntityLink tagLink = MessageParser.EntityLink.parse(tagEntityLink);
       Tag tag =
           Entity.getEntityByName(

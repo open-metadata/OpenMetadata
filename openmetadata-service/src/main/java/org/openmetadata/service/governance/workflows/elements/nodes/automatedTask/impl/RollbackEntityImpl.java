@@ -6,7 +6,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_IN
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
@@ -20,6 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -37,8 +37,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     try {
       WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
 
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
 
       Object workflowInstanceExecutionIdObj =
           execution.getVariable(WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
@@ -51,12 +50,13 @@ public class RollbackEntityImpl implements JavaDelegate {
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
 
       String updatedBy =
           (String)
               varHandler.getNamespacedVariable(
-                  inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE);
+                  inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE);
       if (updatedBy == null || updatedBy.isEmpty()) {
         updatedBy = "governance-bot";
       }

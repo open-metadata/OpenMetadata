@@ -34,6 +34,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -475,12 +476,12 @@ class CreateTaskTest {
         Map.of("accessType", "Masked", "duration", "P14D", "reason", "audit");
     Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
 
-    assertTrue(result instanceof Map<?, ?>);
-    Map<?, ?> mergedMap = (Map<?, ?>) result;
-    assertEquals("Masked", mergedMap.get("accessType"));
-    assertEquals("P14D", mergedMap.get("duration"));
-    assertEquals("audit", mergedMap.get("reason"));
-    Object expiration = mergedMap.get("expirationDate");
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload mergedPayload = (DataAccessRequestPayload) result;
+    assertEquals("Masked", mergedPayload.getAccessType().value());
+    assertEquals("P14D", mergedPayload.getDuration());
+    assertEquals("audit", mergedPayload.getReason());
+    Object expiration = mergedPayload.getExpirationDate();
     assertNotNull(expiration);
     assertTrue(expiration instanceof Long);
     long expirationMillis = (Long) expiration;
@@ -520,8 +521,8 @@ class CreateTaskTest {
     Object result = CreateTask.withGrantExpirationDate(TaskEntityStatus.Granted, payload);
 
     assertFalse(payload.containsKey("expirationDate"));
-    assertTrue(result instanceof Map<?, ?>);
-    assertTrue(((Map<?, ?>) result).containsKey("expirationDate"));
+    assertTrue(result instanceof DataAccessRequestPayload);
+    assertNotNull(((DataAccessRequestPayload) result).getExpirationDate());
   }
 
   @Test

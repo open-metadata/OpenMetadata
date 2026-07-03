@@ -29,9 +29,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -50,6 +48,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -67,6 +66,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -123,14 +123,15 @@ public class CreateTask implements TaskListener {
   public void notify(DelegateTask delegateTask) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(delegateTask);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(delegateTask), Map.class);
+      InputNamespaces inputNamespaces =
+          InputNamespaces.read(inputNamespaceMapExpr.getValue(delegateTask));
       List<EntityReference> assignees = getAssignees(delegateTask);
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                      inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                      RELATED_ENTITY_VARIABLE));
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
       // Get approval threshold, default to 1 if not set
@@ -147,7 +148,7 @@ public class CreateTask implements TaskListener {
       UUID workflowInstanceId = getWorkflowInstanceId(delegateTask);
 
       // Build workflow-specific payload for task types that need richer context.
-      Object payload = buildWorkflowPayload(taskType, inputNamespaceMap, varHandler);
+      Object payload = buildWorkflowPayload(taskType, inputNamespaces, varHandler);
 
       // Create or update the Task entity for the current workflow stage
       Task task =
@@ -836,11 +837,12 @@ public class CreateTask implements TaskListener {
     if (stageStatus != TaskEntityStatus.Granted || payload == null) {
       return requestedDueDate;
     }
-    if (!(payload instanceof Map<?, ?> rawMap)) {
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload == null) {
       return requestedDueDate;
     }
-    Object durationValue = rawMap.get("duration");
-    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+    String duration = darPayload.getDuration();
+    if (duration == null || duration.isBlank()) {
       return requestedDueDate;
     }
     return parseMillisFromIso8601Duration(duration, requestedDueDate);
@@ -860,15 +862,18 @@ public class CreateTask implements TaskListener {
    * overwrites would extend access on every workflow listener fire.
    */
   static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
-    if (stageStatus != TaskEntityStatus.Granted || !(payload instanceof Map<?, ?> rawMap)) {
+    if (stageStatus != TaskEntityStatus.Granted) {
       return null;
     }
-    Object existing = rawMap.get("expirationDate");
-    if (existing instanceof Number existingNum) {
-      return existingNum.longValue();
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload == null) {
+      return null;
     }
-    Object durationValue = rawMap.get("duration");
-    if (!(durationValue instanceof String duration) || duration.isBlank()) {
+    if (darPayload.getExpirationDate() != null) {
+      return darPayload.getExpirationDate();
+    }
+    String duration = darPayload.getDuration();
+    if (duration == null || duration.isBlank()) {
       return null;
     }
     return parseMillisFromIso8601Duration(duration, null);
@@ -882,16 +887,25 @@ public class CreateTask implements TaskListener {
    */
   static Object withGrantExpirationDate(TaskEntityStatus stageStatus, Object payload) {
     Long expiration = resolveEffectiveExpirationDate(stageStatus, payload);
-    if (expiration == null || !(payload instanceof Map<?, ?> rawMap)) {
+    if (expiration == null) {
       return payload;
     }
-    if (rawMap.get("expirationDate") instanceof Number) {
+    DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
+    if (darPayload == null || darPayload.getExpirationDate() != null) {
       return payload;
     }
-    Map<String, Object> merged = new LinkedHashMap<>();
-    rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
-    merged.put("expirationDate", expiration);
-    return merged;
+    DataAccessRequestPayload merged =
+        JsonUtils.convertValue(darPayload, DataAccessRequestPayload.class);
+    return merged.withExpirationDate(expiration);
+  }
+
+  private static DataAccessRequestPayload readDataAccessRequestPayload(Object payload) {
+    try {
+      return JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
+      return null;
+    }
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
@@ -949,23 +963,23 @@ public class CreateTask implements TaskListener {
   }
 
   private EntityReference extractPayloadCreatedBy(Object payload) {
-    if (!(payload instanceof Map<?, ?> payloadMap)) {
+    RecognizerFeedbackTaskPayload feedbackPayload = readRecognizerFeedbackTaskPayload(payload);
+    RecognizerFeedback recognizerFeedback =
+        feedbackPayload != null ? feedbackPayload.feedback() : null;
+    if (recognizerFeedback == null || recognizerFeedback.getCreatedBy() == null) {
       return null;
     }
+    return recognizerFeedback.getCreatedBy();
+  }
 
-    Object feedback = payloadMap.get("feedback");
-    if (feedback == null) {
-      return null;
-    }
-
+  private RecognizerFeedbackTaskPayload readRecognizerFeedbackTaskPayload(Object payload) {
     try {
-      RecognizerFeedback recognizerFeedback =
-          JsonUtils.convertValue(feedback, RecognizerFeedback.class);
-      if (recognizerFeedback == null || recognizerFeedback.getCreatedBy() == null) {
-        return null;
+      if (payload instanceof RecognizerFeedbackTaskPayload feedbackPayload) {
+        return feedbackPayload;
       }
-      return recognizerFeedback.getCreatedBy();
-    } catch (Exception e) {
+      return JsonUtils.convertValue(payload, RecognizerFeedbackTaskPayload.class);
+    } catch (RuntimeException invalidPayload) {
+      LOG.trace("[CreateTask] Payload is not a RecognizerFeedbackTaskPayload", invalidPayload);
       return null;
     }
   }
@@ -984,16 +998,16 @@ public class CreateTask implements TaskListener {
 
   private Object buildWorkflowPayload(
       TaskEntityType taskType,
-      Map<String, String> inputNamespaceMap,
+      InputNamespaces inputNamespaces,
       WorkflowVariableHandler varHandler) {
     if ((taskType != TaskEntityType.RecognizerFeedbackApproval
             && taskType != TaskEntityType.DataQualityReview)
-        || inputNamespaceMap == null) {
+        || inputNamespaces == null) {
       return null;
     }
 
     String recognizerNamespace =
-        inputNamespaceMap.getOrDefault(RECOGNIZER_FEEDBACK, GLOBAL_NAMESPACE);
+        inputNamespaces.namespaceForOrDefault(RECOGNIZER_FEEDBACK, GLOBAL_NAMESPACE);
 
     try {
       String feedbackJson =
@@ -1003,19 +1017,15 @@ public class CreateTask implements TaskListener {
       }
 
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
-      Map<String, Object> payload = new LinkedHashMap<>();
-      payload.put("feedback", feedback);
-
-      TagLabelRecognizerMetadata recognizer = resolveRecognizerMetadata(feedback);
-      if (recognizer != null) {
-        payload.put("recognizer", recognizer);
-      }
-      return payload;
+      return new RecognizerFeedbackTaskPayload(feedback, resolveRecognizerMetadata(feedback));
     } catch (Exception e) {
       LOG.warn("Failed to build recognizer feedback payload for task: {}", e.getMessage());
       return null;
     }
   }
+
+  private static record RecognizerFeedbackTaskPayload(
+      RecognizerFeedback feedback, TagLabelRecognizerMetadata recognizer) {}
 
   private void terminateDeletedWorkflowManagedDraftTask(
       DelegateTask delegateTask, UUID requestedTaskId) {
