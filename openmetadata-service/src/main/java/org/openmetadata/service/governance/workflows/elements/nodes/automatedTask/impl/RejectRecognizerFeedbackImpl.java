@@ -28,7 +28,6 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      @SuppressWarnings("unchecked")
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
 
       String feedbackJson =

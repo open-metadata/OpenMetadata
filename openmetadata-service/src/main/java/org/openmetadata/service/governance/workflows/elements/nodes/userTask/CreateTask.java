@@ -20,6 +20,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -29,7 +31,9 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -108,6 +112,8 @@ public class CreateTask implements TaskListener {
           .retryOnResult(task -> task == null)
           .failAfterMaxAttempts(false)
           .build();
+  private static final TypeReference<Map<String, Object>> PAYLOAD_MAP_TYPE =
+      new TypeReference<>() {};
   private Expression inputNamespaceMapExpr;
   private Expression assigneesVarNameExpr;
   private Expression approvalThresholdExpr;
@@ -894,14 +900,18 @@ public class CreateTask implements TaskListener {
     if (darPayload == null || darPayload.getExpirationDate() != null) {
       return payload;
     }
-    DataAccessRequestPayload merged =
-        JsonUtils.convertValue(darPayload, DataAccessRequestPayload.class);
-    return merged.withExpirationDate(expiration);
+    if (payload instanceof Map<?, ?>) {
+      Map<String, Object> merged = JsonUtils.convertValue(payload, PAYLOAD_MAP_TYPE);
+      merged = new LinkedHashMap<>(merged);
+      merged.put("expirationDate", expiration);
+      return merged;
+    }
+    return darPayload.withExpirationDate(expiration);
   }
 
   private static DataAccessRequestPayload readDataAccessRequestPayload(Object payload) {
     try {
-      return JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+      return JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
     } catch (RuntimeException invalidPayload) {
       LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
       return null;
@@ -1000,9 +1010,8 @@ public class CreateTask implements TaskListener {
       TaskEntityType taskType,
       InputNamespaces inputNamespaces,
       WorkflowVariableHandler varHandler) {
-    if ((taskType != TaskEntityType.RecognizerFeedbackApproval
-            && taskType != TaskEntityType.DataQualityReview)
-        || inputNamespaces == null) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
       return null;
     }
 
@@ -1024,6 +1033,7 @@ public class CreateTask implements TaskListener {
     }
   }
 
+  @JsonInclude(JsonInclude.Include.NON_NULL)
   private static record RecognizerFeedbackTaskPayload(
       RecognizerFeedback feedback, TagLabelRecognizerMetadata recognizer) {}
 

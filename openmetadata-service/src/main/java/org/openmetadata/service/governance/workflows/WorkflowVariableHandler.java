@@ -5,6 +5,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VAR
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +25,8 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @Slf4j
 public class WorkflowVariableHandler {
   private final VariableScope varScope;
+  private static final TypeReference<Map<String, String>> INPUT_NAMESPACE_TYPE =
+      new TypeReference<>() {};
 
   public WorkflowVariableHandler(VariableScope varScope) {
     this.varScope = varScope;
@@ -29,7 +34,10 @@ public class WorkflowVariableHandler {
 
   public static record InputNamespaces(Map<String, String> namespaces) {
     public InputNamespaces {
-      namespaces = namespaces != null ? Map.copyOf(namespaces) : Map.of();
+      namespaces =
+          namespaces != null
+              ? Collections.unmodifiableMap(new LinkedHashMap<>(namespaces))
+              : Map.of();
     }
 
     public String namespaceFor(String variable) {
@@ -45,7 +53,10 @@ public class WorkflowVariableHandler {
     }
 
     public static InputNamespaces read(Object rawValue) {
-      Map<String, String> map = JsonUtils.readOrConvertValue(rawValue, Map.class);
+      Map<String, String> map =
+          rawValue instanceof String str
+              ? JsonUtils.readValue(str, INPUT_NAMESPACE_TYPE)
+              : JsonUtils.convertValue(rawValue, INPUT_NAMESPACE_TYPE);
       return new InputNamespaces(map);
     }
   }

@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
 import java.util.Map;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -48,6 +49,16 @@ class WorkflowVariableHandlerInputNamespacesTest {
   @Test
   void readTreatsMissingExtensionAsEmpty() {
     InputNamespaces namespaces = InputNamespaces.read(null);
+
+    assertNull(namespaces.namespaceFor("relatedEntity"));
+  }
+
+  @Test
+  void readToleratesNullNamespaceValues() {
+    Map<String, String> rawNamespaces = new HashMap<>();
+    rawNamespaces.put("relatedEntity", null);
+
+    InputNamespaces namespaces = InputNamespaces.read(rawNamespaces);
 
     assertNull(namespaces.namespaceFor("relatedEntity"));
   }
