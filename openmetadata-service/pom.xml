@@ -957,7 +957,7 @@
     <dependency>
       <groupId>org.flowable</groupId>
       <artifactId>flowable-engine</artifactId>
-      <version>7.2.0</version>
+      <version>8.0.0</version>
     </dependency>
     <dependency>
       <groupId>io.github.jamsesso</groupId>

@@ -139,10 +139,10 @@
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
     <micrometer.version>1.15.12</micrometer.version>
-    <json-schema-validator.version>2.0.1</json-schema-validator.version>
+    <json-schema-validator.version>3.0.0</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
-    <jjwt.version>0.9.1</jjwt.version>
+    <jjwt.version>0.12.0</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <freemarker.version>2.3.33</freemarker.version>
     <passay.version>1.6.6</passay.version>
@@ -166,7 +166,7 @@
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
-    <flyway.version>9.22.3</flyway.version>
+    <flyway.version>11.8.1</flyway.version>
     <angus-mail.version>2.0.4</angus-mail.version>
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
@@ -685,7 +685,7 @@
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
-        <version>1.22.0</version>
+        <version>1.23.0</version>
         <exclusions>
           <exclusion>
             <groupId>net.minidev</groupId>
