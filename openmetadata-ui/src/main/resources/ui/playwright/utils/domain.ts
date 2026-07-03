@@ -659,9 +659,9 @@ export const verifyDomain = async (
     ).toContainText(domain.owners[0].name);
   }
 
-  await expect(
-    page.getByTestId('domain-type-label').locator('div')
-  ).toContainText(domain.domainType);
+  await expect(page.getByTestId('domain-type-label')).toContainText(
+    domain.domainType
+  );
 
   // Check breadcrumbs
   if (!isDomain && parentDomain) {
