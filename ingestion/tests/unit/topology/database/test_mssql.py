@@ -57,6 +57,9 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
 )
 from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    StoredProcedureLineageMixin,
+)
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
@@ -584,3 +587,64 @@ class TestMssqlQueryStoreSelection:
             statement = source.get_stored_procedure_sql_statement()
 
         assert "sys.dm_exec_procedure_stats" in statement
+
+
+class TestMssqlPerDatabaseQueryStore:
+    """Per-database Query Store engine iteration for ingest-all-databases runs."""
+
+    @staticmethod
+    def _source(query_store_enabled, ingest_all_databases):
+        source = MssqlLineageSource.__new__(MssqlLineageSource)
+        source._query_store_enabled = query_store_enabled
+        source.engine = MagicMock()
+        source.service_connection = MagicMock(ingestAllDatabases=ingest_all_databases)
+        return source
+
+    def test_single_engine_when_not_ingest_all_databases(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=False)
+
+        assert list(source.get_engine()) == [source.engine]
+
+    def test_single_engine_when_query_store_disabled(self):
+        source = self._source(query_store_enabled=False, ingest_all_databases=True)
+
+        assert list(source.get_engine()) == [source.engine]
+
+    def test_per_database_engines_when_query_store_and_ingest_all(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        db_engines = {"SalesDW": MagicMock(), "Inventory": MagicMock()}
+        source._databases_to_scan = lambda: iter(["SalesDW", "Inventory"])
+        source._engine_for_database = lambda database: db_engines[database]
+
+        engines = list(source.get_engine())
+
+        assert engines == [db_engines["SalesDW"], db_engines["Inventory"]]
+        db_engines["SalesDW"].dispose.assert_called_once()
+        db_engines["Inventory"].dispose.assert_called_once()
+
+    def test_databases_to_scan_skips_system_databases(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.source_config = MagicMock(databaseFilterPattern=None)
+        conn = source.engine.connect.return_value.__enter__.return_value
+        conn.execute.return_value.fetchall.return_value = [
+            ("master",),
+            ("tempdb",),
+            ("model",),
+            ("msdb",),
+            ("SalesDW",),
+            ("Inventory",),
+        ]
+
+        assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
+
+    def test_stored_procedure_engines_follow_get_engine(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=False)
+
+        assert list(source.get_stored_procedure_engines()) == [source.engine]
+
+    def test_mixin_default_stored_procedure_engines_is_single(self):
+        fake_source = types.SimpleNamespace(engine=MagicMock())
+
+        engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
+
+        assert engines == [fake_source.engine]

@@ -77,29 +77,39 @@ class StoredProcedureLineageMixin(ABC):
         Return the SQL statement to get the stored procedure queries
         """
 
+    def get_stored_procedure_engines(self) -> Iterator[Engine]:
+        """
+        Engines to read stored-procedure query history from. Defaults to the single
+        source connection. Sources whose query history is per-database (such as MSSQL
+        Query Store) override this to yield one engine per database.
+        """
+        yield self.engine
+
     def yield_stored_procedure_queries(self) -> Iterator[QueryByProcedure]:
         """
         Yield query and stored procedure object for lineage processing.
         """
         query = self.get_stored_procedure_sql_statement()
-        with self.engine.connect() as conn:
-            results = conn.execute(text(query)).all()
+        for engine in self.get_stored_procedure_engines():
+            with engine.connect() as conn:
+                results = conn.execute(text(query)).all()
 
-        for row in results:
-            try:
-                query_by_procedure = QueryByProcedure.model_validate(row._asdict())
-                query_by_procedure.procedure_name = query_by_procedure.procedure_name or get_procedure_name_from_call(
-                    query_text=query_by_procedure.procedure_text,
-                )
-                yield query_by_procedure
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error trying to get procedure name due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
+            for row in results:
+                try:
+                    query_by_procedure = QueryByProcedure.model_validate(row._asdict())
+                    query_by_procedure.procedure_name = (
+                        query_by_procedure.procedure_name
+                        or get_procedure_name_from_call(query_text=query_by_procedure.procedure_text)
                     )
-                )
+                    yield query_by_procedure
+                except Exception as exc:
+                    self.status.failed(
+                        StackTraceError(
+                            name="Stored Procedure",
+                            error=f"Error trying to get procedure name due to [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def procedure_lineage_producer(self) -> Iterator[ProcedureAndQuery]:
         """

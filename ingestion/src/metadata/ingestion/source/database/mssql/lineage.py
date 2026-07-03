@@ -13,6 +13,9 @@ MSSQL lineage module
 """
 
 from datetime import datetime
+from typing import Iterator  # noqa: UP035
+
+from sqlalchemy.engine import Engine
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mssql.constants import (
@@ -80,3 +83,10 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
             else MSSQL_GET_STORED_PROCEDURE_QUERIES
         )
         return template.format(start_date=start)
+
+    def get_stored_procedure_engines(self) -> Iterator[Engine]:
+        """
+        Read stored-procedure query history per database, mirroring get_engine so
+        Query Store coverage spans every database on an ingest-all-databases run.
+        """
+        yield from self.get_engine()
