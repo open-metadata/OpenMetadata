@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -47,15 +47,15 @@ class VectorSearchResourceTest {
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(mockSearchRepository);
-      when(mockSearchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
 
-      try {
-        resource.getFingerprint(mockSecurityContext, UUID.randomUUID().toString());
-      } catch (AuthorizationException e) {
-        verify(mockVectorService, never()).getExistingFingerprint(any(), any());
-        return;
-      }
-      throw new AssertionError("Expected AuthorizationException");
+      assertThrows(
+          AuthorizationException.class,
+          () -> resource.getFingerprint(mockSecurityContext, UUID.randomUUID().toString()));
+
+      // Admin authorization is the gate: it must be invoked, and no vector work is done when it
+      // fails (the search repository is never consulted for the vector service).
+      verify(mockAuthorizer).authorizeAdmin(mockSecurityContext);
+      verify(mockSearchRepository, never()).getVectorIndexService();
     }
   }
 
