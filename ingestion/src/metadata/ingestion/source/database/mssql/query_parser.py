@@ -61,8 +61,8 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
                 logger.info("MSSQL query history: Query Store is enabled, using it (durable).")
             else:
                 logger.info(
-                    "MSSQL query history: Query Store is not enabled, using plan-cache DMVs "
-                    "which are volatile. Enable Query Store for durable history."
+                    "MSSQL query history: Query Store is not enabled or not accessible, using "
+                    "plan-cache DMVs which are volatile. Enable Query Store for durable history."
                 )
         return self._query_store_enabled
 
