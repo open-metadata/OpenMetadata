@@ -65,6 +65,16 @@ class Matchers:
 
         return match
 
+    @staticmethod
+    def exception(*types: type[BaseException]) -> Matcher:
+        """Match when the error, or anything in its cause chain, is one of ``types``.
+
+        The signal is the exception type, not its message - the right matcher for
+        driver-agnostic failures (e.g. Python socket errors) whose text varies by
+        platform but whose class does not.
+        """
+        return lambda error: any(isinstance(current, types) for current in exception_chain(error))
+
 
 @dataclass(frozen=True)
 class Rule:
@@ -87,6 +97,12 @@ class ErrorPack:
 
     def __init__(self, *rules: Rule) -> None:
         self._rules = rules
+
+    def including(self, other: ErrorPack) -> ErrorPack:
+        """Return a new pack with ``other``'s rules appended as a lower-precedence
+        fallback layer: this pack's rules still match first, so a connector can
+        always override a shared diagnosis (e.g. network) with a sharper one."""
+        return ErrorPack(*self._rules, *other._rules)
 
     def classify(self, error: BaseException) -> Diagnosis | None:
         """Return the first matching diagnosis, or ``None`` if nothing matches."""

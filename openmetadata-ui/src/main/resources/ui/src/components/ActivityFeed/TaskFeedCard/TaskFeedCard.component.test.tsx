@@ -54,7 +54,7 @@ jest.mock('../Shared/ActivityFeedActions', () => {
   return jest.fn().mockImplementation(() => <p>ActivityFeedActions</p>);
 });
 
-jest.mock('../../../utils/TasksUtils', () => ({
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));
 
