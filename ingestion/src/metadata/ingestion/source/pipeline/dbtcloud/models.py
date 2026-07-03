@@ -81,6 +81,7 @@ class DBTModel(BaseModel):
     database: Optional[str] = None
     runGeneratedAt: Optional[str] = None
     dependsOn: Optional[List[str]] = None
+    compiledCode: Optional[str] = None
 
 
 class DBTModelList(BaseModel):
