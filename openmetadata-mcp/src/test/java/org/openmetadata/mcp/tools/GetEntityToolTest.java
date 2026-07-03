@@ -55,33 +55,21 @@ class GetEntityToolTest {
   }
 
   @Test
-  void longColumnDescriptionIsTruncatedWithTopLevelFlag() {
+  void longColumnDescriptionsAreReturnedInFull() {
     Map<String, Object> entity = new HashMap<>();
-    List<Map<String, Object>> columns = new ArrayList<>();
-    columns.add(column("a", "x".repeat(900)));
-    columns.add(column("b", "short"));
-    entity.put("columns", columns);
-
-    Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
-
-    assertThat((String) columns.get(0).get("description")).hasSize(503).endsWith("...");
-    assertThat(columns.get(1).get("description")).isEqualTo("short");
-    assertThat(cleaned.get("columnDescriptionsTruncated")).isEqualTo(Boolean.TRUE);
-  }
-
-  @Test
-  void shortColumnDescriptionsProduceNoFlag() {
-    Map<String, Object> entity = new HashMap<>();
-    entity.put("columns", List.of(column("a", "short"), column("b", null)));
+    String longDescription = "x".repeat(5_000);
+    entity.put("columns", List.of(column("a", longDescription), column("b", "short")));
 
     Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
 
     assertThat(cleaned).doesNotContainKey("columnDescriptionsTruncated");
+    assertThat(castMap(columnsOf(cleaned).get(0)).get("description")).isEqualTo(longDescription);
   }
 
   @Test
-  void nestedChildColumnDescriptionsAreTruncatedRecursively() {
-    Map<String, Object> child = column("inner", "y".repeat(700));
+  void nestedChildColumnDescriptionsAreReturnedInFull() {
+    String longDescription = "y".repeat(4_000);
+    Map<String, Object> child = column("inner", longDescription);
     Map<String, Object> parent = column("outer", "short");
     parent.put("children", List.of(child));
     Map<String, Object> entity = new HashMap<>();
@@ -89,8 +77,8 @@ class GetEntityToolTest {
 
     Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
 
-    assertThat((String) child.get("description")).hasSize(503).endsWith("...");
-    assertThat(cleaned.get("columnDescriptionsTruncated")).isEqualTo(Boolean.TRUE);
+    assertThat(cleaned).doesNotContainKey("columnDescriptionsTruncated");
+    assertThat(child.get("description")).isEqualTo(longDescription);
   }
 
   @Test
@@ -125,29 +113,55 @@ class GetEntityToolTest {
   }
 
   @Test
-  void schemaDefinitionIsTruncatedWithFlag() {
+  void realisticSchemaDefinitionIsReturnedInFull() {
+    String ddl = "CREATE TABLE orders (".repeat(700);
     Map<String, Object> entity = new HashMap<>();
-    entity.put("schemaDefinition", "CREATE TABLE orders (".repeat(60));
+    entity.put("schemaDefinition", ddl);
 
     Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
 
-    assertThat((String) cleaned.get("schemaDefinition")).hasSize(503).endsWith("...");
+    assertThat(cleaned.get("schemaDefinition")).isEqualTo(ddl);
+    assertThat(cleaned).doesNotContainKey("schemaDefinitionTruncated");
+  }
+
+  @Test
+  void schemaDefinitionBeyondSafetyValveIsCappedWithFlag() {
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("schemaDefinition", "CREATE TABLE orders (".repeat(1_600));
+
+    Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
+
+    assertThat((String) cleaned.get("schemaDefinition")).hasSize(30_003).endsWith("...");
     assertThat(cleaned.get("schemaDefinitionTruncated")).isEqualTo(Boolean.TRUE);
   }
 
   @Test
-  void dataModelSqlAndRawSqlAreTruncatedWithFlag() {
+  void realisticDataModelSqlIsReturnedInFull() {
     Map<String, Object> dataModel = new HashMap<>();
-    dataModel.put("sql", "SELECT 1 FROM t ".repeat(60));
-    dataModel.put("rawSql", "SELECT 2 FROM t ".repeat(60));
+    String sql = "SELECT col FROM upstream JOIN dim USING(k) ".repeat(200);
+    dataModel.put("sql", sql);
+    Map<String, Object> entity = new HashMap<>();
+    entity.put("dataModel", dataModel);
+
+    Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
+
+    assertThat(castMap(cleaned.get("dataModel")).get("sql")).isEqualTo(sql);
+    assertThat(castMap(cleaned.get("dataModel"))).doesNotContainKey("sqlTruncated");
+  }
+
+  @Test
+  void dataModelSqlBeyondSafetyValveIsCappedWithFlag() {
+    Map<String, Object> dataModel = new HashMap<>();
+    dataModel.put("sql", "SELECT 1 FROM t ".repeat(2_000));
+    dataModel.put("rawSql", "SELECT 2 FROM t ".repeat(2_000));
     Map<String, Object> entity = new HashMap<>();
     entity.put("dataModel", dataModel);
 
     Map<String, Object> cleaned = GetEntityTool.cleanEntityResponse(entity);
 
     Map<String, Object> cleanedModel = castMap(cleaned.get("dataModel"));
-    assertThat((String) cleanedModel.get("sql")).hasSize(503).endsWith("...");
-    assertThat((String) cleanedModel.get("rawSql")).hasSize(503).endsWith("...");
+    assertThat((String) cleanedModel.get("sql")).hasSize(30_003).endsWith("...");
+    assertThat((String) cleanedModel.get("rawSql")).hasSize(30_003).endsWith("...");
     assertThat(cleanedModel.get("sqlTruncated")).isEqualTo(Boolean.TRUE);
   }
 

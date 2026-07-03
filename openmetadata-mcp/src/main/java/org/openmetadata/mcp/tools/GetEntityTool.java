@@ -49,14 +49,11 @@ public class GetEntityTool implements McpTool {
           "columnDescriptionStatus",
           "descriptionStatus");
 
-  private static final String DESCRIPTION_KEY = "description";
   private static final String COLUMNS_KEY = "columns";
-  private static final String CHILDREN_KEY = "children";
   private static final String SCHEMA_DEFINITION_KEY = "schemaDefinition";
   private static final String DATA_MODEL_KEY = "dataModel";
   private static final String SQL_KEY = "sql";
   private static final String RAW_SQL_KEY = "rawSql";
-  private static final String COLUMN_DESCRIPTIONS_TRUNCATED_KEY = "columnDescriptionsTruncated";
   private static final String SCHEMA_DEFINITION_TRUNCATED_KEY = "schemaDefinitionTruncated";
   private static final String SQL_TRUNCATED_KEY = "sqlTruncated";
 
@@ -71,6 +68,17 @@ public class GetEntityTool implements McpTool {
 
   private static final int DEFAULT_COLUMN_OFFSET = 0;
   private static final int NO_COLUMN_LIMIT = -1;
+
+  /**
+   * Anti-OOM/anti-nuke safety valve for the entity-level DDL ({@code schemaDefinition}) and dbt model
+   * {@code sql}/{@code rawSql}. These are single fields returned in full — this is the detail tool, so
+   * their content is never truncated for context optimization. Unlike columns they cannot be
+   * paginated, so a runaway value could push the response past the dispatch-level {@link
+   * McpResponseTrim#MAX_RESPONSE_CHARS} cap and discard everything. The valve sits far above any
+   * human-authored SQL or realistic DDL (~600-column tables) so real content is never cut; when it
+   * does trip on machine-generated bloat the response flags it and stays retrievable.
+   */
+  private static final int SCHEMA_SQL_MAX_LENGTH = 30_000;
 
   /**
    * Fraction of {@link McpResponseTrim#MAX_RESPONSE_CHARS} the windowed columns may occupy. Leaves
@@ -196,12 +204,11 @@ public class GetEntityTool implements McpTool {
   }
 
   /**
-   * Removes verbose fields and trims the wide-table multipliers (per-column descriptions, raw
-   * schema/model SQL) so the detail response stays usable on entities with hundreds of columns.
-   * The entity-level description is deliberately left untouched — this is the one tool whose
-   * callers need the full text after search results truncated it. The map tree comes from a fresh
-   * Jackson conversion ({@code JsonUtils.getMap}), so in-place edits never touch the cached entity
-   * POJO.
+   * Removes verbose index/noise fields and applies the anti-nuke safety valve to the entity-level
+   * DDL and dbt model SQL. Column descriptions and the entity-level description are deliberately left
+   * in full — this is the detail tool, and total response size is bounded by column windowing rather
+   * than by mangling field content. The map tree comes from a fresh Jackson conversion ({@code
+   * JsonUtils.getMap}), so in-place edits never touch the cached entity POJO.
    */
   @VisibleForTesting
   static Map<String, Object> cleanEntityResponse(Map<String, Object> entityData) {
@@ -212,47 +219,14 @@ public class GetEntityTool implements McpTool {
       McpResponseTrim.VECTOR_NOISE_FIELDS.forEach(cleaned::remove);
       trimSchemaDefinition(cleaned);
       trimDataModelSql(cleaned);
-      if (trimColumnDescriptions(cleaned.get(COLUMNS_KEY))) {
-        cleaned.put(COLUMN_DESCRIPTIONS_TRUNCATED_KEY, Boolean.TRUE);
-      }
     }
     return cleaned;
   }
 
-  /**
-   * Truncates over-length column descriptions, recursing through {@code children} for nested
-   * struct/map columns. Returns whether any description was cut so the caller can surface a single
-   * top-level marker instead of per-column flag noise.
-   */
-  private static boolean trimColumnDescriptions(Object columnsValue) {
-    boolean truncated = false;
-    if (columnsValue instanceof List<?> columns) {
-      for (Object column : columns) {
-        if (column instanceof Map) {
-          truncated |= trimColumn(castMap(column));
-        }
-      }
-    }
-    return truncated;
-  }
-
-  private static boolean trimColumn(Map<String, Object> column) {
-    boolean truncated = false;
-    if (column.get(DESCRIPTION_KEY) instanceof String description
-        && description.length() > McpResponseTrim.TEXT_MAX_LENGTH) {
-      column.put(
-          DESCRIPTION_KEY, McpResponseTrim.truncate(description, McpResponseTrim.TEXT_MAX_LENGTH));
-      truncated = true;
-    }
-    // Non-short-circuit | : children must be trimmed even when this column's description was cut.
-    return truncated | trimColumnDescriptions(column.get(CHILDREN_KEY));
-  }
-
   private static void trimSchemaDefinition(Map<String, Object> entity) {
     if (entity.get(SCHEMA_DEFINITION_KEY) instanceof String ddl
-        && ddl.length() > McpResponseTrim.SQL_MAX_LENGTH) {
-      entity.put(
-          SCHEMA_DEFINITION_KEY, McpResponseTrim.truncate(ddl, McpResponseTrim.SQL_MAX_LENGTH));
+        && ddl.length() > SCHEMA_SQL_MAX_LENGTH) {
+      entity.put(SCHEMA_DEFINITION_KEY, McpResponseTrim.truncate(ddl, SCHEMA_SQL_MAX_LENGTH));
       entity.put(SCHEMA_DEFINITION_TRUNCATED_KEY, Boolean.TRUE);
     }
   }
@@ -270,8 +244,8 @@ public class GetEntityTool implements McpTool {
 
   private static boolean trimSqlField(Map<String, Object> dataModel, String key) {
     boolean truncated = false;
-    if (dataModel.get(key) instanceof String sql && sql.length() > McpResponseTrim.SQL_MAX_LENGTH) {
-      dataModel.put(key, McpResponseTrim.truncate(sql, McpResponseTrim.SQL_MAX_LENGTH));
+    if (dataModel.get(key) instanceof String sql && sql.length() > SCHEMA_SQL_MAX_LENGTH) {
+      dataModel.put(key, McpResponseTrim.truncate(sql, SCHEMA_SQL_MAX_LENGTH));
       truncated = true;
     }
     return truncated;
