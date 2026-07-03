@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -110,7 +111,7 @@ test.afterEach(async ({ page }) => {
   await page.goto('about:blank');
 });
 
-test.describe('Data asset lineage', () => {
+test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 
