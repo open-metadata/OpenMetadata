@@ -12,18 +12,18 @@
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
 import {
-    Button,
-    Col,
-    Divider,
-    Dropdown,
-    Form,
-    Input,
-    MenuProps,
-    Row,
-    Skeleton,
-    Space,
-    Tooltip,
-    Typography
+  Button,
+  Col,
+  Divider,
+  Dropdown,
+  Form,
+  Input,
+  MenuProps,
+  Row,
+  Skeleton,
+  Space,
+  Tooltip,
+  Typography,
 } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
@@ -32,22 +32,22 @@ import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, last, orderBy } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
-    lazy,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import icAssignees, {
-    ReactComponent as AssigneesIcon
+  ReactComponent as AssigneesIcon,
 } from '../../../../assets/svg/ic-assignees.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 import icUserProfile, {
-    ReactComponent as UserIcon
+  ReactComponent as UserIcon,
 } from '../../../../assets/svg/ic-user-profile.svg';
 import icAccessLevel from '../../../../assets/svg/ic_access-level.svg';
 import icAccessType from '../../../../assets/svg/ic_access-type.svg';
@@ -61,36 +61,36 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-    TaskAvailableTransition,
-    TaskCategory
+  TaskAvailableTransition,
+  TaskCategory,
 } from '../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../generated/entity/type';
 import {
-    TestCaseFailureReasonType,
-    TestCaseResolutionStatusTypes
+  TestCaseFailureReasonType,
+  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import {
-    Option,
-    TaskAction,
-    TaskActionMode
+  Option,
+  TaskAction,
+  TaskActionMode,
 } from '../../../../pages/TasksPage/TasksPage.interface';
 import {
-    getListTestCaseIncidentByStateId,
-    transitionIncident
+  getListTestCaseIncidentByStateId,
+  transitionIncident,
 } from '../../../../rest/incidentManagerAPI';
 import { TaskFormSchema } from '../../../../rest/taskFormSchemasAPI';
 import {
-    closeTask as closeTaskAPI,
-    patchTask,
-    resolveTask as resolveTaskAPI,
-    TaskEntityStatus,
-    TaskEntityType,
-    TaskPayload,
-    TaskResolutionType
+  closeTask as closeTaskAPI,
+  patchTask,
+  resolveTask as resolveTaskAPI,
+  TaskEntityStatus,
+  TaskEntityType,
+  TaskPayload,
+  TaskResolutionType,
 } from '../../../../rest/tasksAPI';
 import { formatIsoDuration } from '../../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../../utils/EntityLink';
@@ -100,32 +100,32 @@ import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
-    GLOSSARY_TASK_ACTION_LIST,
-    INCIDENT_TASK_ACTION_LIST,
-    TASK_ACTION_COMMON_ITEM,
-    TASK_ACTION_LIST
+  GLOSSARY_TASK_ACTION_LIST,
+  INCIDENT_TASK_ACTION_LIST,
+  TASK_ACTION_COMMON_ITEM,
+  TASK_ACTION_LIST,
 } from '../../../../utils/TaskActionUtils';
 import {
-    fetchOptions,
-    generateOptions
+  fetchOptions,
+  generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
 import {
-    applyTaskFormSchemaDefaults,
-    getDefaultTaskFormSchema,
-    getEditableTaskPayload,
-    getResolvedTaskFormSchema,
-    getTaskFormHandlerConfig,
-    getTaskResolutionNewValue,
-    getTaskTransitionFormSchema,
-    getTaskTransitionUiSchema,
-    hasTaskFormFields,
-    shouldRequireTaskResolutionValue
+  applyTaskFormSchemaDefaults,
+  getDefaultTaskFormSchema,
+  getEditableTaskPayload,
+  getResolvedTaskFormSchema,
+  getTaskFormHandlerConfig,
+  getTaskResolutionNewValue,
+  getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema,
+  hasTaskFormFields,
+  shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
 import {
-    getTaskDetailPathFromTask,
-    getTaskDisplayId,
-    isTaskPendingFurtherApproval,
-    isTaskTerminalStatus
+  getTaskDetailPathFromTask,
+  getTaskDisplayId,
+  isTaskPendingFurtherApproval,
+  isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
