@@ -30,7 +30,12 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ADVANCED_PROPERTIES } from '../../../../../constants/ServiceType.constant';
+import {
+  ADVANCED_PROPERTIES,
+  CONNECTION_AUTH_TYPE_PROPERTY,
+  OPTIONAL_CONNECTION_PROPERTIES,
+  OPTIONAL_SCOPE_PROPERTIES,
+} from '../../../../../constants/ServiceType.constant';
 import { Transi18next } from '../../../../../utils/i18next/LocalUtil';
 import {
   hasVisibleProperties,
@@ -59,7 +64,7 @@ const SingleCredentialNote = ({ method }: { method: string }) => {
   );
 };
 
-const AUTH_PROPERTY = 'authType';
+const AUTH_PROPERTY = CONNECTION_AUTH_TYPE_PROPERTY;
 const PASSWORD_METHOD = 'password';
 const SERVICE_TYPE_PROPERTY = 'type';
 const REQUIRED_AUTH_PROPERTIES = new Set([
@@ -70,34 +75,6 @@ const REQUIRED_AUTH_PROPERTIES = new Set([
   'secretKey',
   'token',
 ]);
-const OPTIONAL_SCOPE_PROPERTIES = new Set([
-  'apiCollectionFilterPattern',
-  'apiEndpointFilterPattern',
-  'chartFilterPattern',
-  'containerFilterPattern',
-  'dashboardFilterPattern',
-  'dataModelFilterPattern',
-  'databaseFilterPattern',
-  'databaseName',
-  'directoryFilterPattern',
-  'domainFilterPattern',
-  'fileFilterPattern',
-  'glossaryFilterPattern',
-  'mlModelFilterPattern',
-  'modelFilterPattern',
-  'pipelineFilterPattern',
-  'projectFilterPattern',
-  'schemaFilterPattern',
-  'searchIndexFilterPattern',
-  'serverFilterPattern',
-  'sobjectNames',
-  'spreadsheetFilterPattern',
-  'storedProcedureFilterPattern',
-  'supportsMetadataExtraction',
-  'tableFilterPattern',
-  'topicFilterPattern',
-  'worksheetFilterPattern',
-]);
 const PRIVATE_KEY_AUTH_PROPERTIES = new Set([
   'privateKey',
   'snowflakePrivatekeyPassphrase',
@@ -107,10 +84,6 @@ const ADVANCED_PRIMARY_PROPERTY_ORDER = [
   'useAccessHistory',
   'accessHistoryChunkSize',
 ];
-const OPTIONAL_CONNECTION_PROPERTIES = new Set([
-  'billingProjectId',
-  'hostPort',
-]);
 
 export enum LayoutType {
   GRID = 'grid',

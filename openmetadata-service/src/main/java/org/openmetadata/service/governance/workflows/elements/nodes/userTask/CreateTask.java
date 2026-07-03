@@ -743,13 +743,12 @@ public class CreateTask implements TaskListener {
     return existingAssignees;
   }
 
+  // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
+  // TaskEntityStatus value is added — the canonical NON_TERMINAL_TASK_STATUSES list on
+  // TaskRepository is the single source of truth. Kept as a static wrapper here for call-site
+  // readability at the workflow-lifecycle guards below.
   static boolean isTerminalTaskStatus(TaskEntityStatus status) {
-    return status != null
-        && status != TaskEntityStatus.Open
-        && status != TaskEntityStatus.InProgress
-        && status != TaskEntityStatus.Pending
-        && status != TaskEntityStatus.Approved
-        && status != TaskEntityStatus.Granted;
+    return TaskRepository.isTerminalStatus(status);
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(
