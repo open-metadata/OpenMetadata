@@ -27,7 +27,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as TeamsIcon } from '../../../assets/svg/ic-teams.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import {
   AVATAR_FONT_SIZE_MAP,
