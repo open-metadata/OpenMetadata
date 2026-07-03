@@ -124,6 +124,53 @@ class IndexMappingNestedFieldConsistencyTest {
             + ". RBAC nested queries will fail on these indices.");
   }
 
+  @Test
+  void allIndexMappingsMustDisableDynamic() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String entity = entry.getKey();
+      JsonNode mappings = entry.getValue().path("mappings");
+      JsonNode dynamic = mappings.path("dynamic");
+      boolean rootDisabled = dynamic.isBoolean() && !dynamic.booleanValue();
+      if (!rootDisabled) {
+        violations.add(
+            entity + " (mappings.dynamic=" + (dynamic.isMissingNode() ? "missing" : dynamic) + ")");
+      }
+      JsonNode properties = mappings.path("properties");
+      if (!properties.isMissingNode()) {
+        findNestedDynamicTrueOverrides(properties, "", violations, entity);
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every index mapping must set \"dynamic\": false at the mappings root, and no nested object "
+            + "may re-enable \"dynamic\": true. The root must be the boolean false (not missing, not "
+            + "\"strict\", not \"true\") so unexpected fields (e.g. pipelineStatuses.config.appConfig) "
+            + "are stored but never auto-typed; otherwise a string value followed by an object value "
+            + "triggers a mapper_parsing_exception at reindex time and arbitrary keys can explode the "
+            + "field count. A nested \"dynamic\": true (e.g. on testCaseResolutionStatusDetails) "
+            + "re-opens that hole for its subtree. Violations: "
+            + violations);
+  }
+
+  private static void findNestedDynamicTrueOverrides(
+      JsonNode properties, String currentPath, List<String> violations, String entity) {
+    Iterator<String> fieldNames = properties.fieldNames();
+    while (fieldNames.hasNext()) {
+      String name = fieldNames.next();
+      JsonNode fieldNode = properties.get(name);
+      String path = currentPath.isEmpty() ? name : currentPath + "." + name;
+      JsonNode dynamic = fieldNode.path("dynamic");
+      if (dynamic.isBoolean() && dynamic.booleanValue()) {
+        violations.add(entity + " (" + path + "): dynamic=true");
+      }
+      JsonNode childProps = fieldNode.path("properties");
+      if (!childProps.isMissingNode()) {
+        findNestedDynamicTrueOverrides(childProps, path, violations, entity);
+      }
+    }
+  }
+
   private static void findExtensionTypeViolations(
       JsonNode properties, String currentPath, List<String> violations, String entity) {
     Iterator<String> fieldNames = properties.fieldNames();

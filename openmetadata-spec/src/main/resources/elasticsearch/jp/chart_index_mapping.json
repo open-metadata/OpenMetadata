@@ -79,6 +79,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "extension": {
         "type": "object",

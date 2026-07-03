@@ -69,6 +69,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "changeDescription": {
         "enabled": false
@@ -111,7 +112,7 @@
       },
       "testCaseResolutionStatusDetails": {
         "type": "object",
-        "dynamic": true,
+        "dynamic": false,
         "properties": {
           "assignee": {
             "properties": {

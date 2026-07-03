@@ -54,6 +54,7 @@
     }
   },
   "mappings": {
+    "dynamic": false,
     "properties": {
       "id": {
         "type": "keyword"
