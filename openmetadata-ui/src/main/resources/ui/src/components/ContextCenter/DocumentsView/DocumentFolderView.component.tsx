@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Button,
   ButtonUtility,
   Card,
@@ -27,7 +28,7 @@ import { MouseEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
 import {
   deleteFolder,
@@ -37,22 +38,10 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
-
-export interface FileMovedEvent {
-  file: ContextFile;
-  targetFolderId: string | null;
-}
-
-export interface DocumentFolderViewProps {
-  totalFileCount?: number;
-  selectedFolderId?: string;
-  canCreate?: boolean;
-  canDelete?: boolean;
-  lastFileMoved?: FileMovedEvent;
-  lastFilesDeleted?: ContextFile[];
-  onSelectFolder: (folderId: string | undefined) => void;
-  onFoldersLoaded?: (folders: Folder[]) => void;
-}
+import {
+  DocumentFolderViewProps,
+  FolderFilesState,
+} from './DocumentsView.interface';
 
 const DocumentFolderView = ({
   totalFileCount = 0,
@@ -61,6 +50,7 @@ const DocumentFolderView = ({
   canDelete = false,
   lastFileMoved,
   lastFilesDeleted,
+  lastFilesMoved,
   onSelectFolder,
   onFoldersLoaded,
 }: DocumentFolderViewProps) => {
@@ -71,8 +61,8 @@ const DocumentFolderView = ({
   const [folderToDelete, setFolderToDelete] = useState<Folder>();
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
-  const [folderFilesCache, setFolderFilesCache] = useState<
-    Map<string, ContextFile[]>
+  const [folderFilesState, setFolderFilesState] = useState<
+    Map<string, FolderFilesState>
   >(new Map());
 
   const fetchFolders = useCallback(async () => {
@@ -94,20 +84,101 @@ const DocumentFolderView = ({
 
   const fetchFolderFilesIfNeeded = useCallback(
     async (folderId: string) => {
-      if (folderFilesCache.has(folderId)) {
+      if (folderFilesState.has(folderId)) {
         return;
       }
       try {
-        const response = await listContextFiles({ folderId });
-        setFolderFilesCache((prev) =>
-          new Map(prev).set(folderId, response.data)
+        const response = await listContextFiles({
+          folderId,
+          limit: FOLDER_FILES_PAGE_SIZE,
+        });
+        setFolderFilesState((prev) =>
+          new Map(prev).set(folderId, {
+            files: response.data,
+            after: response.paging.after,
+            isExpanded: false,
+            isLoadingMore: false,
+          })
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [folderFilesCache]
+    [folderFilesState]
   );
+
+  const handleViewMore = useCallback(
+    async (folderId: string) => {
+      const current = folderFilesState.get(folderId);
+      if (!current?.after) {
+        return;
+      }
+
+      setFolderFilesState((prev) =>
+        new Map(prev).set(folderId, { ...current, isLoadingMore: true })
+      );
+      try {
+        const response = await listContextFiles({
+          folderId,
+          limit: FOLDER_FILES_PAGE_SIZE,
+          after: current.after,
+        });
+        setFolderFilesState((prev) => {
+          const existing = prev.get(folderId) ?? current;
+
+          return new Map(prev).set(folderId, {
+            files: [...existing.files, ...response.data],
+            after: response.paging.after,
+            isExpanded: true,
+            isLoadingMore: false,
+          });
+        });
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+        setFolderFilesState((prev) => {
+          const existing = prev.get(folderId);
+          if (!existing) {
+            return prev;
+          }
+
+          return new Map(prev).set(folderId, {
+            ...existing,
+            isLoadingMore: false,
+          });
+        });
+      }
+    },
+    [folderFilesState]
+  );
+
+  const handleShowLess = useCallback((folderId: string) => {
+    setFolderFilesState((prev) => {
+      const existing = prev.get(folderId);
+      if (!existing) {
+        return prev;
+      }
+
+      return new Map(prev).set(folderId, { ...existing, isExpanded: false });
+    });
+  }, []);
+
+  const handleFolderFilesToggle = (folderId: string) => {
+    const state = folderFilesState.get(folderId);
+    if (state?.after) {
+      handleViewMore(folderId);
+    } else if (state?.isExpanded) {
+      handleShowLess(folderId);
+    } else {
+      setFolderFilesState((prev) => {
+        const existing = prev.get(folderId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(folderId, { ...existing, isExpanded: true });
+      });
+    }
+  };
 
   useEffect(() => {
     if (!lastFileMoved) {
@@ -132,20 +203,24 @@ const DocumentFolderView = ({
       })
     );
 
-    setFolderFilesCache((prev) => {
+    setFolderFilesState((prev) => {
       const next = new Map(prev);
 
       if (sourceFolderId && next.has(sourceFolderId)) {
-        next.set(
-          sourceFolderId,
-          (next.get(sourceFolderId) ?? []).filter((f) => f.id !== file.id)
-        );
+        const existing = next.get(sourceFolderId)!;
+        next.set(sourceFolderId, {
+          ...existing,
+          files: existing.files.filter((f) => f.id !== file.id),
+        });
       }
 
       if (targetFolderId && next.has(targetFolderId)) {
-        const existing = next.get(targetFolderId) ?? [];
-        if (!existing.some((f) => f.id === file.id)) {
-          next.set(targetFolderId, [file, ...existing]);
+        const existing = next.get(targetFolderId)!;
+        if (!existing.files.some((f) => f.id === file.id)) {
+          next.set(targetFolderId, {
+            ...existing,
+            files: [file, ...existing.files],
+          });
         }
       }
 
@@ -160,21 +235,31 @@ const DocumentFolderView = ({
 
     fetchFolders();
 
-    setFolderFilesCache((prev) => {
+    setFolderFilesState((prev) => {
       const next = new Map(prev);
       lastFilesDeleted.forEach((file) => {
         const folderId = file.folder?.id;
         if (folderId && next.has(folderId)) {
-          next.set(
-            folderId,
-            (next.get(folderId) ?? []).filter((f) => f.id !== file.id)
-          );
+          const existing = next.get(folderId)!;
+          next.set(folderId, {
+            ...existing,
+            files: existing.files.filter((f) => f.id !== file.id),
+          });
         }
       });
 
       return next;
     });
   }, [lastFilesDeleted, fetchFolders]);
+
+  useEffect(() => {
+    if (!lastFilesMoved?.length) {
+      return;
+    }
+
+    fetchFolders();
+    setFolderFilesState(new Map());
+  }, [lastFilesMoved, fetchFolders]);
 
   const handleFolderCreated = (folder: Folder) => {
     const updated = [...folders, folder];
@@ -280,9 +365,21 @@ const DocumentFolderView = ({
               {folders.map((folder) => {
                 const isSelected = selectedFolderId === folder.id;
                 const isExpanded = expandedKeys.has(folder.id);
-                const folderFiles = isExpanded
-                  ? folderFilesCache.get(folder.id) ?? []
+                const folderState = folderFilesState.get(folder.id);
+                const allFetchedFiles = isExpanded
+                  ? folderState?.files ?? []
                   : [];
+                const hasMore = Boolean(folderState?.after);
+                const isFolderFilesExpanded = Boolean(folderState?.isExpanded);
+                const visibleFiles = isFolderFilesExpanded
+                  ? allFetchedFiles
+                  : allFetchedFiles.slice(0, FOLDER_FILES_PAGE_SIZE);
+                const showToggle =
+                  hasMore || allFetchedFiles.length > FOLDER_FILES_PAGE_SIZE;
+                const toggleLabel =
+                  isFolderFilesExpanded && !hasMore
+                    ? t('label.show-less')
+                    : t('label.view-more');
 
                 return (
                   <Tree.Item
@@ -294,7 +391,7 @@ const DocumentFolderView = ({
                     textValue={folder.displayName ?? folder.name}>
                     <Tree.ItemContent
                       hasChildItems={(folder.childrenCount ?? 0) > 0}>
-                      <div className="custom-group tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
+                      <div className="tw:group/folder-row tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
                         <Button
                           ellipsis
                           className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
@@ -308,24 +405,38 @@ const DocumentFolderView = ({
                           {getEntityName(folder)}
                         </Button>
 
-                        {canDelete && (
-                          <ButtonUtility
-                            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0"
-                            color="tertiary"
-                            data-testid={`delete-folder-btn-${folder.id}`}
-                            icon={Trash01}
-                            size="xs"
-                            tooltip={t('label.delete')}
-                            onClick={(e: MouseEvent) => {
-                              e.stopPropagation();
-                              setFolderToDelete(folder);
-                            }}
-                          />
-                        )}
+                        <div className="tw:relative tw:shrink-0 tw:h-5 tw:w-8 tw:flex tw:items-center tw:justify-end">
+                          <div className={
+                                canDelete
+                                  ? 'tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-0'
+                                  : 'tw:absolute tw:right-0'
+                              }  data-testid={`folder-file-count-badge-${folder.id}`}>
+                            <Badge
+                              size="sm"
+                              type="color">
+                              {folder.childrenCount ?? 0}
+                            </Badge>
+                          </div>
+
+                          {canDelete && (
+                            <ButtonUtility
+                              className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
+                              color="tertiary"
+                              data-testid={`delete-folder-btn-${folder.id}`}
+                              icon={Trash01}
+                              size="xs"
+                              tooltip={t('label.delete')}
+                              onClick={(e: MouseEvent) => {
+                                e.stopPropagation();
+                                setFolderToDelete(folder);
+                              }}
+                            />
+                          )}
+                        </div>
                       </div>
                     </Tree.ItemContent>
 
-                    {folderFiles.map((file) => (
+                    {visibleFiles.map((file) => (
                       <Tree.Item
                         id={file.id}
                         key={file.id}
@@ -349,6 +460,30 @@ const DocumentFolderView = ({
                         </Tree.ItemContent>
                       </Tree.Item>
                     ))}
+
+                    {showToggle && (
+                      <Tree.Item
+                        id={`${folder.id}-view-more`}
+                        key={`${folder.id}-view-more`}
+                        textValue={toggleLabel}>
+                        <Tree.ItemContent
+                          className="tw:cursor-default tw:hover:bg-transparent"
+                          showExpandIcon={false}>
+                          <Button
+                            className="tw:font-normal tw:ml-3"
+                            color="link-color"
+                            data-testid={`folder-files-toggle-${folder.id}`}
+                            isDisabled={folderState?.isLoadingMore}
+                            type="button"
+                            onClick={(e: MouseEvent) => {
+                              e.stopPropagation();
+                              handleFolderFilesToggle(folder.id);
+                            }}>
+                            {toggleLabel}
+                          </Button>
+                        </Tree.ItemContent>
+                      </Tree.Item>
+                    )}
                   </Tree.Item>
                 );
               })}

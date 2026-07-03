@@ -20,12 +20,13 @@ import { useSearchParams } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import DocumentFolderView, {
-  FileMovedEvent,
-} from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
+import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component';
 import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
-import { FolderOption } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
+import {
+  FileMovedEvent,
+  FolderOption,
+} from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -42,6 +43,7 @@ import {
   bulkMoveFilesToFolder,
   deleteDriveFile,
   downloadDriveFiles,
+  getContextFileById,
   listContextFiles,
 } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
@@ -86,7 +88,9 @@ const ContextCenterDocumentsPage: FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastFileMoved, setLastFileMoved] = useState<FileMovedEvent>();
   const [lastFilesDeleted, setLastFilesDeleted] = useState<ContextFile[]>([]);
+  const [lastFilesMoved, setLastFilesMoved] = useState<ContextFile[]>([]);
   const fetchGenerationRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
 
   const previewFileUrl = useMemo(() => {
     if (!previewFile) {
@@ -131,6 +135,7 @@ const ContextCenterDocumentsPage: FC = () => {
     async (after?: string) => {
       if (!after) {
         fetchGenerationRef.current += 1;
+        isLoadingMoreRef.current = false;
         setIsLoadingMore(false);
       }
       const generation = fetchGenerationRef.current;
@@ -181,6 +186,7 @@ const ContextCenterDocumentsPage: FC = () => {
       } finally {
         if (generation === fetchGenerationRef.current) {
           if (after) {
+            isLoadingMoreRef.current = false;
             setIsLoadingMore(false);
           } else {
             setIsDocumentsLoading(false);
@@ -195,18 +201,13 @@ const ContextCenterDocumentsPage: FC = () => {
     if (
       paging.after &&
       !isDocumentsLoading &&
-      !isLoadingMore &&
+      !isLoadingMoreRef.current &&
       !documentSearchQuery
     ) {
+      isLoadingMoreRef.current = true;
       fetchDocuments(paging.after);
     }
-  }, [
-    paging.after,
-    isDocumentsLoading,
-    isLoadingMore,
-    documentSearchQuery,
-    fetchDocuments,
-  ]);
+  }, [paging.after, isDocumentsLoading, documentSearchQuery, fetchDocuments]);
 
   useEffect(() => {
     fetchDocuments();
@@ -235,18 +236,36 @@ const ContextCenterDocumentsPage: FC = () => {
     const match = allDocuments.find((d) => d.id === documentId);
     if (match) {
       setPreviewFile(match);
-    } else {
-      showErrorToast(
-        `${t('message.no-entity-available-with-name', {
-          entity: t('label.document'),
-        })} "${documentId}"`
-      );
-      setSearchParams((prev) => {
-        prev.delete('document');
 
-        return prev;
-      });
+      return;
     }
+
+    let isCancelled = false;
+    getContextFileById(documentId)
+      .then((file) => {
+        if (!isCancelled) {
+          setPreviewFile(file);
+        }
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return;
+        }
+        showErrorToast(
+          `${t('message.no-entity-available-with-name', {
+            entity: t('label.document'),
+          })} "${documentId}"`
+        );
+        setSearchParams((prev) => {
+          prev.delete('document');
+
+          return prev;
+        });
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [
     allDocuments,
     isDocumentsLoading,
@@ -419,6 +438,7 @@ const ContextCenterDocumentsPage: FC = () => {
         const movedIds = getSuccessfulIds(result);
         const failedCount = result.numberOfRowsFailed ?? 0;
         const targetFolder = folders.find((f) => f.id === targetFolderId);
+        const movedDocuments = allDocuments.filter((d) => movedIds.has(d.id));
 
         setAllDocuments((prev) =>
           prev.map((d) => {
@@ -438,6 +458,9 @@ const ContextCenterDocumentsPage: FC = () => {
             };
           })
         );
+        if (movedDocuments.length > 0) {
+          setLastFilesMoved(movedDocuments);
+        }
         setSelectedIds((prev) => {
           const next = new Set(prev);
           movedIds.forEach((id) => next.delete(id));
@@ -463,7 +486,7 @@ const ContextCenterDocumentsPage: FC = () => {
         showErrorToast(err as AxiosError);
       }
     },
-    [folders, selectedIds, t]
+    [folders, selectedIds, allDocuments, t]
   );
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
@@ -503,6 +526,7 @@ const ContextCenterDocumentsPage: FC = () => {
             canDelete={hasDeletePermission}
             lastFileMoved={lastFileMoved}
             lastFilesDeleted={lastFilesDeleted}
+            lastFilesMoved={lastFilesMoved}
             selectedFolderId={selectedFolderId}
             totalFileCount={globalFileCount}
             onFoldersLoaded={setFolders}

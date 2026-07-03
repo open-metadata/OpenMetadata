@@ -54,6 +54,7 @@ interface UploadMultipart {
 
 const contextFileIdsToCleanup = new Set<string>();
 const contextFolderIdsToCleanup = new Set<string>();
+let paginationFolder: ContextCenterFolder;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -132,12 +133,23 @@ test.describe('Context Center - Documents Page', () => {
       Buffer.from('Playwright seed document for documents page spec')
     );
 
+    const folderName = `pagination-folder-${uuid()}`;
+    const folderRes = await apiContext.post(
+      '/api/v1/contextCenter/drive/folders',
+      { data: { name: folderName, displayName: folderName } }
+    );
+    const folderBody = await folderRes.text();
+    expect(folderRes.status(), folderBody).toBe(201);
+    paginationFolder = parseResponseJson<ContextCenterFolder>(folderBody);
+    contextFolderIdsToCleanup.add(paginationFolder.id);
+
     await Promise.all(
-      Array.from({ length: 16 }, (_, i) =>
+      Array.from({ length: 20 }, (_, i) =>
         uploadDocument(
           apiContext,
           `pagination-doc-${uuid()}-${i}.txt`,
-          Buffer.from(`pagination test document ${i}`)
+          Buffer.from(`pagination test document ${i}`),
+          paginationFolder.fullyQualifiedName
         ).then((doc) => {
           contextFileIdsToCleanup.add(doc.id);
         })
@@ -209,6 +221,74 @@ test.describe('Context Center - Documents Page', () => {
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);
+  });
+
+  test.describe('Folder file pagination', () => {
+    test('expanding a folder shows 10 files, view more loads the rest, and show less collapses back', async ({
+      page,
+    }) => {
+      await navigateToDocuments(page);
+      await waitForAllLoadersToDisappear(page);
+
+      const tree = page.getByRole('treegrid', { name: 'Folders' });
+      const folderRow = tree.getByRole('row', {
+        name: paginationFolder.displayName,
+      });
+      await expect(folderRow).toBeVisible();
+      await folderRow.scrollIntoViewIfNeeded();
+
+      const countBadge = page.getByTestId(
+        `folder-file-count-badge-${paginationFolder.id}`
+      );
+      await expect(countBadge).toBeVisible();
+      await expect(countBadge).toHaveText('20');
+
+      const deleteButton = page.getByTestId(
+        `delete-folder-btn-${paginationFolder.id}`
+      );
+      await folderRow.hover();
+      await expect(deleteButton).toBeVisible();
+      await expect(countBadge).toHaveCSS('opacity', '0');
+
+      const firstPageResPromise = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter/drive/files') &&
+          res.url().includes(`folderId=${paginationFolder.id}`) &&
+          !res.url().includes('after=') &&
+          res.request().method() === 'GET'
+      );
+      await folderRow.getByRole('button', { name: 'Expand' }).click();
+      await firstPageResPromise;
+
+      const toggleButton = page.getByTestId(
+        `folder-files-toggle-${paginationFolder.id}`
+      );
+      await expect(toggleButton).toBeVisible();
+      await expect(toggleButton).toHaveText('View more');
+
+      const folderFileRows = tree.getByRole('row', {
+        name: /^pagination-doc-/,
+      });
+      await expect(folderFileRows).toHaveCount(10);
+
+      const viewMoreResPromise = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter/drive/files') &&
+          res.url().includes('after=') &&
+          res.request().method() === 'GET'
+      );
+      await toggleButton.click();
+      const viewMoreRes = await viewMoreResPromise;
+      expect(viewMoreRes.status()).toBe(200);
+
+      await expect(folderFileRows).toHaveCount(20);
+      await expect(toggleButton).toHaveText('Show Less');
+
+      await toggleButton.click();
+
+      await expect(folderFileRows).toHaveCount(10);
+      await expect(toggleButton).toHaveText('View more');
+    });
   });
 
   // ─── Search ───────────────────────────────────────────────────────────────
@@ -735,7 +815,6 @@ test.describe('Context Center - Documents Page', () => {
     );
     expect(clipboardText).toContain(`document=${doc.id}`);
 
-    // Open the copied link in a new tab and verify the preview panel auto-opens
     const newTab = await browser.newPage();
     await newTab.goto(clipboardText);
     await newTab

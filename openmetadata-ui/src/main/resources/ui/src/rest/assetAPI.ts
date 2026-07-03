@@ -124,6 +124,15 @@ export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   return response.data;
 };
 
+export const getContextFileById = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.get<ContextFile>(
+    `/contextCenter/drive/files/${id}`,
+    { params: { fields: 'folder,memoryCount' } }
+  );
+
+  return response.data;
+};
+
 export const moveFileToFolder = async (
   driveFileId: string,
   folderId: string

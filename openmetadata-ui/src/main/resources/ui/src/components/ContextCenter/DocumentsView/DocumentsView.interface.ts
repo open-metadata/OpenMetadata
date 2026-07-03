@@ -12,6 +12,7 @@
  */
 
 import type { ContextFile } from '../../../generated/entity/data/contextFile';
+import { Folder } from '../../../generated/entity/data/folder';
 
 export interface FolderOption {
   id: string;
@@ -87,4 +88,28 @@ export interface FileRowProps {
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
+}
+
+export interface FileMovedEvent {
+  file: ContextFile;
+  targetFolderId: string | null;
+}
+
+export interface FolderFilesState {
+  files: ContextFile[];
+  after?: string;
+  isExpanded: boolean;
+  isLoadingMore: boolean;
+}
+
+export interface DocumentFolderViewProps {
+  totalFileCount?: number;
+  selectedFolderId?: string;
+  canCreate?: boolean;
+  canDelete?: boolean;
+  lastFileMoved?: FileMovedEvent;
+  lastFilesDeleted?: ContextFile[];
+  lastFilesMoved?: ContextFile[];
+  onSelectFolder: (folderId: string | undefined) => void;
+  onFoldersLoaded?: (folders: Folder[]) => void;
 }
