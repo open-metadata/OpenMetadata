@@ -14,6 +14,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import {
   Task,
   TaskCategory,
@@ -1163,6 +1164,58 @@ describe('TaskTabNew Component', () => {
 
     expect(screen.getByText('label.show-more')).toBeInTheDocument();
     expect(screen.getAllByText('ProfilePicture').length).toBe(collapsedChips);
+  });
+
+  const renderDataAccessTaskWithAccessType = async (accessType: AccessType) => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    getResolvedTaskFormSchema.mockResolvedValue({
+      name: 'DataAccessTask',
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.DataAccess,
+      formSchema: {
+        type: 'object',
+        properties: {
+          accessType: { type: 'string', title: 'Access Type' },
+          columns: {
+            type: 'array',
+            items: { type: 'string' },
+            title: 'Columns Requested',
+          },
+        },
+      },
+      uiSchema: { 'ui:order': ['accessType', 'columns'] },
+    });
+
+    const dataAccessTask: Task = {
+      ...MOCK_WORKFLOW_TASK,
+      category: TaskCategory.DataAccess,
+      payload: {
+        accessType,
+        columns: ['sample_data.ecommerce_db.shopify."dim.shop".shop_id'],
+      },
+    };
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={dataAccessTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+  };
+
+  it('should render the columns field in the read-only form for column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.ColumnLevel);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.getByText('Columns Requested')).toBeInTheDocument();
+  });
+
+  it('should hide the columns field in the read-only form for non-column-level access', async () => {
+    await renderDataAccessTaskWithAccessType(AccessType.FullAccess);
+
+    expect(screen.getByText('Access Type')).toBeInTheDocument();
+    expect(screen.queryByText('Columns Requested')).not.toBeInTheDocument();
   });
 
   it('resolves workflow-driven tasks using transition ids', async () => {
