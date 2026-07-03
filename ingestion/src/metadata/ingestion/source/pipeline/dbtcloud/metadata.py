@@ -259,12 +259,11 @@ class DbtcloudSource(PipelineServiceSource):
                         self.observability_cache[cache_key]["table_fqns"].add(to_entity_fqn)
 
                     if model.compiledCode and to_entity_fqn:
-                        # get_lineage_by_query is typed to return the LineageRequest union;
-                        # on this create-table path it only yields AddLineageRequest edges.
+                        # dialect is resolved from the resolved table FQN's service, not the
+                        # loop value, which may be the "*" wildcard when no dbServiceNames are set.
                         yield from self._yield_column_lineage(  # pyright: ignore[reportReturnType]
                             model=model,
                             to_entity_fqn=to_entity_fqn,
-                            db_service_name=dbservicename,
                         )
 
                     for unique_id in model.dependsOn or []:
@@ -353,9 +352,7 @@ class DbtcloudSource(PipelineServiceSource):
             self._dialect_cache[db_service_name] = dialect
         return self._dialect_cache[db_service_name]
 
-    def _yield_column_lineage(
-        self, model: DBTModel, to_entity_fqn: str, db_service_name: str
-    ) -> Iterable[Either[LineageRequest]]:
+    def _yield_column_lineage(self, model: DBTModel, to_entity_fqn: str) -> Iterable[Either[LineageRequest]]:
         """
         Parse the compiled dbt model SQL to build column-level lineage from the
         model's upstream tables to the model table.
@@ -371,7 +368,7 @@ class DbtcloudSource(PipelineServiceSource):
                 service_names=source_elements[0],
                 database_name=source_elements[1],
                 schema_name=source_elements[2],
-                dialect=self._resolve_dialect(db_service_name),
+                dialect=self._resolve_dialect(source_elements[0]),
                 timeout_seconds=LINEAGE_PARSING_TIMEOUT,
                 lineage_source=LineageSource.DbtLineage,
             )

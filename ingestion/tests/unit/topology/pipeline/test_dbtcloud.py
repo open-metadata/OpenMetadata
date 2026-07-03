@@ -19,7 +19,6 @@ from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -42,7 +41,6 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
-    EntitiesEdge,
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -51,6 +49,7 @@ from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.dbtcloud.metadata import DbtcloudSource
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
@@ -931,27 +930,23 @@ class DBTCloudUnitTest(TestCase):
         parsing the compiled SQL through get_lineage_by_query, using the dialect
         resolved from the configured database service.
         """
-        (
-            _,
-            mock_source_table,
-            mock_target_table,
-            get_by_name_side_effect,
-        ) = self._build_lineage_mocks()
+        *_, get_by_name_side_effect = self._build_lineage_mocks()
 
         compiled_sql = "select id from dbt_test_new.model_15"
-        column_lineage_edge = AddLineageRequest(
-            edge=EntitiesEdge(
-                fromEntity=EntityReference(id=mock_source_table.id, type="table"),
-                toEntity=EntityReference(id=mock_target_table.id, type="table"),
-                lineageDetails=LineageDetails(
-                    columnsLineage=[
-                        ColumnLineage(
-                            fromColumns=["local_redshift.dev.dbt_test_new.model_15.id"],
-                            toColumn="local_redshift.dev.dbt_test_new.model_32.id",
-                        )
-                    ],
-                ),
-            )
+        # get_lineage_by_query yields OMetaFQNLineageRequest on the create-table path.
+        column_lineage_edge = OMetaFQNLineageRequest(
+            from_entity_fqn="local_redshift.dev.dbt_test_new.model_15",
+            from_entity_type="table",
+            to_entity_fqn="local_redshift.dev.dbt_test_new.model_32",
+            to_entity_type="table",
+            lineage_details=LineageDetails(
+                columnsLineage=[
+                    ColumnLineage(
+                        fromColumns=["local_redshift.dev.dbt_test_new.model_15.id"],
+                        toColumn="local_redshift.dev.dbt_test_new.model_32.id",
+                    )
+                ],
+            ),
         )
 
         with (
@@ -1003,12 +998,12 @@ class DBTCloudUnitTest(TestCase):
             result.right
             for result in results
             if result.right is not None
-            and isinstance(result.right, AddLineageRequest)
-            and result.right.edge.lineageDetails is not None
-            and result.right.edge.lineageDetails.columnsLineage
+            and isinstance(result.right, OMetaFQNLineageRequest)
+            and result.right.lineage_details is not None
+            and result.right.lineage_details.columnsLineage
         ]
         self.assertEqual(len(column_edges), 1)
-        details = column_edges[0].edge.lineageDetails
+        details = column_edges[0].lineage_details
         self.assertEqual(
             details.columnsLineage[0].toColumn.root,
             "local_redshift.dev.dbt_test_new.model_32.id",
@@ -1060,9 +1055,9 @@ class DBTCloudUnitTest(TestCase):
             result.right
             for result in results
             if result.right is not None
-            and isinstance(result.right, AddLineageRequest)
-            and result.right.edge.lineageDetails is not None
-            and result.right.edge.lineageDetails.columnsLineage
+            and isinstance(result.right, OMetaFQNLineageRequest)
+            and result.right.lineage_details is not None
+            and result.right.lineage_details.columnsLineage
         ]
         self.assertEqual(len(column_edges), 0)
 
