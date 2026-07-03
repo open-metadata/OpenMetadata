@@ -3376,6 +3376,7 @@
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
     "metrics-rename-collection-description": "Rename the name and display name for the metrics collection.",
+    "minimum-count-error": "ต้องเลือกอย่างน้อย {{count}} {{field}}",
     "minimum-value-error": "ค่าต่ำสุดควรน้อยกว่าค่าสูงสุด",
     "minute": "นาที",
     "missing-config-value": "ค่าการกำหนดค่าที่หายไป: {{field}}",
