@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.ai;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -311,11 +310,12 @@ final class DashboardRollup {
     return assets.stream()
         .filter(asset -> registrationStatus.equals(asset.registrationStatus()))
         .sorted(
-            Comparator.comparingInt(RolledAsset::affectedUsers)
-                .reversed()
-                .thenComparing(DashboardRollup::safeName))
+            (left, right) -> {
+              int compared = Integer.compare(right.affectedUsers(), left.affectedUsers());
+              return compared != 0 ? compared : safeName(left).compareTo(safeName(right));
+            })
         .limit(TOP_N)
-        .map(RolledAsset::toSummary)
+        .map(asset -> asset.toSummary())
         .toList();
   }
 
