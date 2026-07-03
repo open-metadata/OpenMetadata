@@ -108,12 +108,12 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
     setKeyboardFocusIndex(null);
   }, []);
 
-  // Reset keyboard focus only when the list content changes (e.g. search),
-  // not on every render. Using length + first id as a stable identity signal.
-  const optionsKey = `${options.length}:${options[0]?.id ?? ''}`;
+  // Reset keyboard focus only when the list is replaced by a new query
+  // (search text change or popover reopen), not when pagination appends
+  // more rows to the existing list.
   useEffect(() => {
     setKeyboardFocusIndex(null);
-  }, [optionsKey]);
+  }, [searchText, isOpen]);
 
   const confirmFocusedItem = useCallback(() => {
     if (keyboardFocusIndex === ALL_IDX) {

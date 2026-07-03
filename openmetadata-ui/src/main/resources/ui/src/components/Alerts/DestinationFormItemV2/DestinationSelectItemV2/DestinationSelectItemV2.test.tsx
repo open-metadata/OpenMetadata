@@ -38,20 +38,20 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => <option value={id}>{children}</option>;
 
   const ComboBox = ({
-    onSelectionChange,
-    selectedKey,
+    onChange,
+    value,
     items = [],
     'data-testid': tid,
   }: {
-    onSelectionChange?: (key: string) => void;
-    selectedKey?: string | null;
+    onChange?: (key: string) => void;
+    value?: string | null;
     items?: { id: string; label?: string; isDisabled?: boolean }[];
     'data-testid'?: string;
   }) => (
     <select
       data-testid={tid}
-      value={selectedKey ?? ''}
-      onChange={(e) => onSelectionChange?.(e.target.value)}>
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value)}>
       <option value="" />
       {items.map((item) => (
         <option disabled={item.isDisabled} key={item.id} value={item.id}>
@@ -62,15 +62,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   const SelectBase = ({
-    onSelectionChange,
-    selectedKey,
+    onChange,
+    value,
     children,
     'data-testid': tid,
     isRequired,
     placeholder,
   }: {
-    onSelectionChange?: (key: string) => void;
-    selectedKey?: string | null;
+    onChange?: (key: string) => void;
+    value?: string | null;
     children?: ReactNode;
     'data-testid'?: string;
     isRequired?: boolean;
@@ -79,8 +79,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <select
       data-testid={tid}
       required={isRequired}
-      value={selectedKey ?? ''}
-      onChange={(e) => onSelectionChange?.(e.target.value)}>
+      value={value ?? ''}
+      onChange={(e) => onChange?.(e.target.value)}>
       {placeholder && <option value="">{placeholder}</option>}
       {children}
     </select>
