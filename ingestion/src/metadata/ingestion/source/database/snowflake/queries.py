@@ -342,6 +342,10 @@ SNOWFLAKE_TEST_GET_STREAMS = """
 SHOW STREAMS IN DATABASE "{database_name}"
 """
 
+SNOWFLAKE_TEST_GET_SCHEMAS = """
+SHOW SCHEMAS IN DATABASE "{database_name}"
+"""
+
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
 # Account-wide schema listing in a single round-trip (one connection, no

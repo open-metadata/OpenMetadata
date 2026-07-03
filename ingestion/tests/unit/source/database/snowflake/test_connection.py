@@ -10,10 +10,10 @@
 #  limitations under the License.
 """Unit tests for Snowflake test-connection checks and error classification.
 
-The error-pack matchers (errnos and message tokens) are hypotheses drawn from the
-snowflake-connector-python docs/source; they are validated against a live account
-in VALIDATION.md. These tests pin the wiring (steps resolve to checks, the network
-pack is folded in, nothing connects at construction) and the intended mapping.
+The error-pack matchers (errnos and message tokens) were confirmed against a live
+Snowflake account. These tests use the real captured messages as fixtures and pin
+the wiring (steps resolve to checks, the network pack is folded in, nothing
+connects at construction) and the intended mapping.
 """
 
 from unittest.mock import MagicMock, patch
@@ -180,7 +180,8 @@ def test_count_summary_marks_empty_count_and_cap():
     assert _count_summary([], "table") == "no tables enumerated"
     assert _count_summary([object()] * 3, "database") == "3 databases enumerated"
     assert _count_summary([object()] * 3, "view") == "3 views enumerated"
-    assert _count_summary([object()] * 1, "stream") == "1 streams enumerated"
+    assert _count_summary([object()] * 1, "stream") == "1 stream enumerated"
+    assert _count_summary([object()] * 1, "table") == "1 table enumerated"
     capped = _count_summary([object()] * DEFAULT_SAMPLE_ROWS, "table")
     assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
 
@@ -298,6 +299,42 @@ def test_check_access_prefers_explicit_connection_argument_host():
     ):
         checks.check_access()
     mock_probe.assert_called_once_with("proxy.internal", SNOWFLAKE_PORT)
+
+
+def test_check_access_honors_explicit_connection_argument_port():
+    # A custom host may listen on a non-443 port; the preflight must probe that
+    # port, not the default 443, or it false-gates the whole connection test.
+    checks = SnowflakeChecks(
+        client=MagicMock(),
+        service_connection=_config(account="acc", connectionArguments={"host": "proxy.internal", "port": 8443}),
+    )
+    with (
+        patch(
+            "metadata.ingestion.source.database.snowflake.connection.tcp_probe",
+            side_effect=NetworkUnreachableError("proxy.internal:8443 is not reachable"),
+        ) as mock_probe,
+        pytest.raises(CheckError),
+    ):
+        checks.check_access()
+    mock_probe.assert_called_once_with("proxy.internal", 8443)
+
+
+def test_get_schemas_runs_show_schemas_with_command_and_count():
+    # GetSchemas goes through run_sql (like the other probes), so it reports the
+    # database-scoped SHOW SCHEMAS command and a counted summary - and a failure
+    # would surface as a CheckError carrying that command.
+    checks = SnowflakeChecks(client=MagicMock(), service_connection=_config(database="MYDB"))
+    captured = {}
+
+    def fake(client, statement, summarize, *args, **kwargs):
+        captured["statement"] = statement
+        return Evidence(summary=summarize([object(), object()]), command=statement)
+
+    with patch("metadata.ingestion.source.database.snowflake.connection.run_sql", side_effect=fake):
+        evidence = checks.get_schemas()
+    assert 'SHOW SCHEMAS IN DATABASE "MYDB"' in captured["statement"]
+    assert evidence.summary == "2 schemas enumerated"
+    assert evidence.command == captured["statement"]
 
 
 def test_account_usage_queries_built_lazily_not_at_construction():

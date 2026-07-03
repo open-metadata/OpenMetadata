@@ -24,7 +24,6 @@ from cryptography.hazmat.primitives import serialization
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
-from sqlalchemy.inspection import inspect
 
 from metadata.core.connections.test_connection import (
     Diagnosis,
@@ -63,6 +62,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_TEST_FETCH_TAG,
     SNOWFLAKE_TEST_GET_QUERIES,
+    SNOWFLAKE_TEST_GET_SCHEMAS,
     SNOWFLAKE_TEST_GET_STREAMS,
     SNOWFLAKE_TEST_GET_TABLES,
     SNOWFLAKE_TEST_GET_VIEWS,
@@ -118,20 +118,6 @@ def _init_database(engine_wrapper: SnowflakeEngineWrapper):
                 break
     else:
         engine_wrapper.database_name = engine_wrapper.service_connection.database
-
-
-def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: str):
-    """
-    Method to test connection via inspector functions,
-    this function creates the inspector object and fetches
-    the function with name `func_name` and executes it
-    """
-    _init_database(engine_wrapper)
-    with engine_wrapper.engine.connect() as conn:
-        conn.execute(text(f'USE DATABASE "{engine_wrapper.database_name}"'))
-        inspector = inspect(conn)
-        inspector_fn = getattr(inspector, func_name)
-        inspector_fn()
 
 
 def probe_access_history_available(engine: Engine, account_usage_schema: str) -> bool:
@@ -295,8 +281,10 @@ def _count_summary(rows: Sequence[Row], noun: str) -> str:
     is reported in the summary."""
     if not rows:
         return f"no {noun}s enumerated"
-    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} {noun}s enumerated"
+    count = len(rows)
+    suffix = "+" if count >= DEFAULT_SAMPLE_ROWS else ""
+    plural = noun if count == 1 else f"{noun}s"
+    return f"{count}{suffix} {plural} enumerated"
 
 
 def _no_tables_caveat(database: str | None) -> Diagnosis:
@@ -347,31 +335,31 @@ class SnowflakeChecks:
         _init_database(self._engine_wrapper)
         return self._engine_wrapper.database_name
 
-    def _probe_host(self) -> str | None:
-        """The host the driver will actually dial. An explicit ``host`` in
+    def _probe_target(self) -> tuple[str, int] | None:
+        """The host:port the driver will actually dial. An explicit ``host`` in
         connectionArguments (a proxy, load balancer, or PrivateLink endpoint) wins
-        over the synthesized account host, so the gate's reachability probe targets
-        the real endpoint instead of a public host that may be unreachable. ``None``
-        when neither is set, which skips the preflight."""
+        over the synthesized account host, and its ``port`` override is honored too
+        so a non-443 endpoint is not probed on the wrong port. ``None`` when neither
+        a host override nor an account is set, which skips the preflight."""
         arguments = self.service_connection.connectionArguments
         overrides = arguments.root if arguments else None
-        host = overrides.get("host") if overrides else None
-        if host:
-            result = str(host)
+        if overrides and overrides.get("host"):
+            result = (str(overrides["host"]), int(overrides.get("port", SNOWFLAKE_PORT)))
         elif self.service_connection.account:
-            result = _snowflake_host(self.service_connection.account)
+            result = (_snowflake_host(self.service_connection.account), SNOWFLAKE_PORT)
         else:
             result = None
         return result
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        host = self._probe_host()
-        if host:
+        target = self._probe_target()
+        if target:
+            host, port = target
             try:
-                tcp_probe(host, SNOWFLAKE_PORT)
+                tcp_probe(host, port)
             except NetworkUnreachableError as error:
-                raise CheckError(error, Evidence(command=f"TCP connect {host}:{SNOWFLAKE_PORT}")) from error
+                raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
         return ping(self.client)
 
     @check(DatabaseStep.GetDatabases)
@@ -380,8 +368,8 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        execute_inspector_func(self._engine_wrapper, "get_schema_names")
-        return Evidence(summary="schemas accessible")
+        statement = SNOWFLAKE_TEST_GET_SCHEMAS.format(database_name=self._database())
+        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "schema"))
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
