@@ -490,13 +490,14 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:  # noqa: 
     return  # noqa: RET502
 
 
-def is_query_store_enabled(engine: Engine) -> bool:
+def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
     """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
     enabled = False
-    try:
-        with engine.connect() as conn:
-            actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
-        enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
-    except Exception as exc:
-        logger.debug(f"Query Store availability probe failed, using plan-cache DMVs: {exc}")
+    if engine is not None:
+        try:
+            with engine.connect() as conn:
+                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
+            enabled = actual_state in (QueryStoreState.READ_ONLY, QueryStoreState.READ_WRITE)
+        except Exception as exc:
+            logger.debug(f"Query Store availability probe failed, using plan-cache DMVs: {exc}")
     return enabled
