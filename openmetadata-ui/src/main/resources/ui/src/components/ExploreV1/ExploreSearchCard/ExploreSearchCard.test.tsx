@@ -230,15 +230,9 @@ describe('ExploreSearchCard - Card container', () => {
   });
 });
 
-describe('ExploreSearchCard - Type badge', () => {
+describe('ExploreSearchCard - Data type badge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it('renders the entity type as the first metadata badge', () => {
-    renderCard({ entityType: 'pipeline' });
-
-    expect(screen.getByTestId('Type')).toHaveTextContent('PIPELINE');
   });
 
   it('renders the column data type as the first metadata badge for column cards', () => {
@@ -661,17 +655,17 @@ describe('ExploreSearchCard - Breadcrumbs', () => {
     expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument();
   });
 
-  it('collapses the middle crumbs by passing maxItems={2} to Breadcrumbs', () => {
+  it('auto-collapses breadcrumbs so the trail stays within the card width', () => {
     renderCard({});
 
     expect(MockBreadcrumbs).toHaveBeenCalledWith(
       expect.objectContaining({
-        maxItems: 2,
+        autoCollapse: true,
       }),
       expect.anything()
     );
     expect(MockBreadcrumbs).not.toHaveBeenCalledWith(
-      expect.objectContaining({ autoCollapse: true }),
+      expect.objectContaining({ maxItems: expect.any(Number) }),
       expect.anything()
     );
   });

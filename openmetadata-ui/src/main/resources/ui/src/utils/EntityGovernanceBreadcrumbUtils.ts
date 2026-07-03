@@ -68,12 +68,14 @@ export const getBreadcrumbForGlossaryOrTerm = (entity: GlossaryTerm) => {
     {
       name: glossary.fullyQualifiedName,
       url: getGlossaryPath(glossary.fullyQualifiedName),
+      iconType: EntityType.GLOSSARY,
     },
     ...tree.map((fqn, index, source) => ({
       name: fqn,
       url: getGlossaryPath(
         `${glossary.fullyQualifiedName}.${source.slice(0, index + 1).join('.')}`
       ),
+      iconType: EntityType.GLOSSARY,
     })),
   ];
 };
@@ -99,6 +101,7 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
         ],
       },
     },
+    iconType: EntityType.TEST_CASE,
   },
 ];
 
@@ -113,6 +116,7 @@ export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
             entity.basicEntityReference?.fullyQualifiedName ?? '',
             EntityType.TABLE
           ),
+          iconType: EntityType.TABLE,
         },
         {
           name: t('label.test-suite'),
@@ -139,6 +143,7 @@ export const getBreadCrumbForKpi = (entity: Kpi) => [
   {
     name: getEntityName(entity),
     url: getKpiPath(entity.name),
+    iconType: EntityType.KPI,
   },
 ];
 
@@ -146,6 +151,7 @@ export const getBreadcrumbForDomain = () => [
   {
     name: i18n.t('label.domain-plural'),
     url: getDomainPath(),
+    iconType: EntityType.DOMAIN,
   },
 ];
 
@@ -158,6 +164,7 @@ export const getBreadcrumbForDataProduct = (entity: DataProduct) => {
     {
       name: getEntityName(entity.domains[0]),
       url: getDomainPath(entity.domains[0].fullyQualifiedName),
+      iconType: EntityType.DOMAIN,
     },
   ];
 };
@@ -181,6 +188,7 @@ export const getBreadcrumbForEventSubscription = (
       (entitySourceType as SourceType).entityType as EntityType,
       entitySourceType
     ),
+    iconType: (entitySourceType as SourceType).entityType as EntityType,
   },
 ];
 
@@ -192,6 +200,7 @@ export const getBreadcrumbForBot = (entityName: string, fqn: string) => [
   {
     name: entityName,
     url: getBotsPath(fqn),
+    iconType: EntityType.BOT,
   },
 ];
 
@@ -199,10 +208,12 @@ export const getBreadcrumbForTeam = (entity: Team) => [
   {
     name: getEntityName(entity.parents?.[0]),
     url: getTeamsWithFqnPath(entity.parents?.[0]?.fullyQualifiedName ?? ''),
+    iconType: EntityType.TEAM,
   },
   {
     name: getEntityName(entity),
     url: getTeamsWithFqnPath(entity.fullyQualifiedName ?? ''),
+    iconType: EntityType.TEAM,
   },
 ];
 
@@ -217,6 +228,7 @@ export const getBreadcrumbForApplication = (
   {
     name: entityName,
     url: getApplicationDetailsPath(fqn),
+    iconType: EntityType.APPLICATION,
   },
 ];
 
@@ -231,6 +243,7 @@ export const getBreadcrumbForPersona = (entityName: string, fqn: string) => [
   {
     name: entityName,
     url: getPersonaDetailsPath(fqn),
+    iconType: EntityType.PERSONA,
   },
 ];
 
@@ -245,6 +258,7 @@ export const getBreadcrumbForRole = (entityName: string, fqn: string) => [
   {
     name: entityName,
     url: getRoleWithFqnPath(fqn),
+    iconType: EntityType.ROLE,
   },
 ];
 
@@ -259,6 +273,7 @@ export const getBreadcrumbForPolicy = (entityName: string, fqn: string) => [
   {
     name: entityName,
     url: getPolicyWithFqnPath(fqn),
+    iconType: EntityType.POLICY,
   },
 ];
 
@@ -271,10 +286,12 @@ export const getBreadcrumbForTag = (
   {
     name: classificationName,
     url: getTagsDetailsPath(classificationFqn),
+    iconType: EntityType.CLASSIFICATION,
   },
   {
     name: entityName,
     url: getClassificationTagPath(entityFqn),
+    iconType: EntityType.TAG,
   },
 ];
 
@@ -282,6 +299,7 @@ export const getBreadcrumbForClassification = (entityName: string) => [
   {
     name: entityName,
     url: '',
+    iconType: EntityType.CLASSIFICATION,
   },
 ];
 
@@ -293,6 +311,7 @@ export const getBreadcrumbForMetric = (entityName: string) => [
   {
     name: entityName,
     url: '',
+    iconType: EntityType.METRIC,
   },
 ];
 
@@ -308,5 +327,6 @@ export const getBreadcrumbForKnowledgePage = (
     name: entityName,
     url: '',
     activeTitle: Boolean(includeCurrent),
+    iconType: EntityType.KNOWLEDGE_PAGE,
   },
 ];

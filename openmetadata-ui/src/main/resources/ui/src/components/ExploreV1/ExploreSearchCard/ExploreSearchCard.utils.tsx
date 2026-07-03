@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 
 export const TYPE_BADGE_KEY = 'Type';
 
-const TYPE_BADGE_CLASS_NAME = [
+const TYPE_BADGE_CLASS_NAME = classNames(
   'tw:inline-flex',
   'tw:max-w-full',
   'tw:min-h-5.5',
@@ -30,8 +31,8 @@ const TYPE_BADGE_CLASS_NAME = [
   'tw:text-xs',
   'tw:font-medium',
   'tw:text-utility-gray-blue-700',
-  'tw:whitespace-normal',
-].join(' ');
+  'tw:whitespace-normal'
+);
 
 export const getTypeBadge = (label?: string, preserveFormatting = false) =>
   label ? (

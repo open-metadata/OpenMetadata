@@ -49,6 +49,7 @@ export const getBreadcrumbForTable = (
             ServiceCategory.DATABASE_SERVICES
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     {
       name: getEntityName(database),
@@ -56,6 +57,7 @@ export const getBreadcrumbForTable = (
         EntityType.DATABASE,
         database?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.DATABASE,
     },
     {
       name: getEntityName(databaseSchema),
@@ -63,6 +65,7 @@ export const getBreadcrumbForTable = (
         EntityType.DATABASE_SCHEMA,
         databaseSchema?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.DATABASE_SCHEMA,
     },
     ...(includeCurrent
       ? [
@@ -73,6 +76,9 @@ export const getBreadcrumbForTable = (
               ((entity as SourceType).entityType as EntityType) ??
                 EntityType.TABLE
             ),
+            iconType:
+              ((entity as SourceType).entityType as EntityType) ??
+              EntityType.TABLE,
           },
         ]
       : []),
@@ -91,6 +97,7 @@ export const getBreadcrumbForChart = (entity: Chart) => {
           service?.type as keyof typeof ServiceCategoryPlural
         ]
       ),
+      isServiceBreadcrumb: true,
     },
   ];
 };
@@ -105,6 +112,7 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
       ),
+      iconType: EntityType.API_SERVICE,
     },
     {
       name: getEntityName(service),
@@ -116,6 +124,7 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
   ];
 };
@@ -130,6 +139,7 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
         GlobalSettingsMenuCategory.SERVICES,
         getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
       ),
+      iconType: EntityType.API_SERVICE,
     },
     {
       name: getEntityName(service),
@@ -141,6 +151,7 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     {
       name: getEntityName(apiCollection),
@@ -148,6 +159,7 @@ export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
         EntityType.API_COLLECTION,
         apiCollection?.fullyQualifiedName ?? ''
       ),
+      iconType: EntityType.API_COLLECTION,
     },
   ];
 };
@@ -169,6 +181,7 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     ...(includeCurrent
       ? [
@@ -206,6 +219,7 @@ export function getBreadcrumbForEntityWithParent<
             ]
           )
         : '',
+      isServiceBreadcrumb: true,
     },
     ...(parents.length > 0
       ? parents.map((parent) => ({
@@ -214,6 +228,7 @@ export function getBreadcrumbForEntityWithParent<
             parent?.fullyQualifiedName ?? '',
             entityType
           ),
+          iconType: entityType,
         }))
       : []),
     ...(includeCurrent
@@ -224,6 +239,7 @@ export function getBreadcrumbForEntityWithParent<
               entity.fullyQualifiedName ?? '',
               (entity as SourceType).entityType as EntityType
             ),
+            iconType: (entity as SourceType).entityType as EntityType,
           },
         ]
       : []),
