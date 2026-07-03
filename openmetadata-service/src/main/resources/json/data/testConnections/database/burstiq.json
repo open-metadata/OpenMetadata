@@ -12,6 +12,13 @@
       "mandatory": true
     },
     {
+      "name": "ValidateSystemWallet",
+      "description": "Validate that the configured BurstIQ System Wallet ID exists and can be elevated to. Skipped when no wallet is configured.",
+      "errorMessage": "The configured BurstIQ System Wallet ID is invalid or does not exist. Please verify the 'BurstIQ System Wallet ID' (biqSystemWalletId) in the connection configuration.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
       "name": "GetDictionaries",
       "description": "Validate that we can fetch dictionaries (tables) from BurstIQ LifeGraph API.",
       "errorMessage": "Failed to fetch dictionaries from BurstIQ LifeGraph. Please validate that the user has sufficient privileges to read metadata.",

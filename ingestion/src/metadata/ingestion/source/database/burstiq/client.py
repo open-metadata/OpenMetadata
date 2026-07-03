@@ -38,6 +38,8 @@ API_TIMEOUT = (10, 120)
 AUTH_SERVER_BASE = "https://auth.burstiq.com"
 API_BASE_URL = "https://api.burstiq.com"
 
+SYSTEM_WALLET_ERROR_MARKER = "system wallet"
+
 
 class BurstIQClient:
     """
@@ -204,6 +206,49 @@ class BurstIQClient:
             logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
+
+    def validate_system_wallet(self) -> None:
+        """
+        Validate the configured BurstIQ system wallet.
+
+        BurstIQ attaches the biq_system_wallet_id header to every request and,
+        when the wallet is invalid, rejects the call with a 400 whose body reads
+        "... system wallet <id> does not exist". Without a dedicated check this
+        surfaces as a misleading "failed to fetch dictionaries" error. Exercising
+        a lightweight metadata request here lets us raise an actionable message
+        that points at the wallet configuration. Non-wallet failures are deferred
+        to the GetDictionaries step so they are not mislabelled as a wallet issue.
+        """
+        wallet_id = getattr(self.config, "biqSystemWalletId", None)
+        if wallet_id:
+            try:
+                self._make_request("GET", "/api/metadata/dictionary", params={"limit": 1})
+            except Exception as exc:
+                body = self._safe_response_body(getattr(exc, "response", None))
+                if SYSTEM_WALLET_ERROR_MARKER in body.lower():
+                    raise ConnectionError(
+                        f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "
+                        "Verify the 'BurstIQ System Wallet ID' (biqSystemWalletId) in the connection "
+                        f"configuration. BurstIQ response: {body}"
+                    ) from exc
+                logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")
+
+    @staticmethod
+    def _safe_response_body(response: Optional[requests.Response], max_length: int = 500) -> str:  # noqa: UP045
+        """
+        Extract the response body for error diagnostics.
+
+        BurstIQ returns a 400 with an empty reason phrase but an informative
+        body explaining why the request was rejected. Capturing it surfaces the
+        real cause (e.g. missing header, invalid limit, wallet not found)
+        instead of the opaque "400 Client Error:  for url".
+        """
+        body = ""
+        if response is not None:
+            text = (response.text or "").strip()
+            if text:
+                body = text if len(text) <= max_length else f"{text[:max_length]}... (truncated)"
+        return body
 
     def get_dictionaries(self, limit: Optional[int] = None) -> List[BurstIQDictionary]:  # noqa: UP006, UP045
         """
