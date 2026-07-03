@@ -13,7 +13,7 @@
 
 import { Col, Divider, Form, Input, Row } from 'antd';
 import { isEmpty } from 'lodash';
-import { ComponentProps, Fragment } from 'react';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import AlertFormSourceItem from '../../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
@@ -43,10 +43,6 @@ function ObservabilityAlertFormFields({
   templates,
 }: Readonly<ObservabilityAlertFormFieldsProps>) {
   const { t } = useTranslation();
-  const observabilityFormFiltersItemProps = {
-    containerEntities,
-    supportedFilters,
-  } as ComponentProps<typeof ObservabilityFormFiltersItem>;
 
   return (
     <>
@@ -83,7 +79,8 @@ function ObservabilityAlertFormFields({
               </Col>
               <Col span={24}>
                 <ObservabilityFormFiltersItem
-                  {...observabilityFormFiltersItemProps}
+                  containerEntities={containerEntities}
+                  supportedFilters={supportedFilters}
                 />
               </Col>
             </>
