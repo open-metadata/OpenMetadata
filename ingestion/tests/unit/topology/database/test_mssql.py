@@ -49,8 +49,14 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
+from metadata.ingestion.source.database.mssql.queries import (
+    MSSQL_SQL_STATEMENT,
+    MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
+)
+from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
@@ -488,3 +494,93 @@ class MssqlIdentityColumnTest(TestCase):
     def test_missing_seed_returns_empty_dict(self):
         assert mssql_dialet.get_identity_values(BigInteger(), None, Decimal("1")) == {}
         assert mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), None) == {}
+
+
+class TestMssqlQueryStoreSelection:
+    """Auto-detection of Query Store vs plan-cache DMVs for MSSQL lineage and usage."""
+
+    @staticmethod
+    def _engine_with_query_store_state(actual_state):
+        engine = MagicMock()
+        conn = engine.connect.return_value.__enter__.return_value
+        conn.execute.return_value.scalar.return_value = actual_state
+        return engine
+
+    def test_query_store_enabled_when_read_write(self):
+        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(2)) is True
+
+    def test_query_store_enabled_when_read_only(self):
+        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(1)) is True
+
+    def test_query_store_disabled_when_off(self):
+        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(0)) is False
+
+    def test_query_store_disabled_when_error_state(self):
+        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(3)) is False
+
+    def test_query_store_disabled_when_null_state(self):
+        assert mssql_dialet.is_query_store_enabled(self._engine_with_query_store_state(None)) is False
+
+    def test_query_store_disabled_when_engine_missing(self):
+        assert mssql_dialet.is_query_store_enabled(None) is False
+
+    def test_query_store_disabled_when_probe_errors(self):
+        engine = MagicMock()
+        engine.connect.side_effect = Exception("VIEW DATABASE STATE denied")
+
+        assert mssql_dialet.is_query_store_enabled(engine) is False
+
+    @staticmethod
+    def _lineage_source(query_store_enabled):
+        source = MssqlLineageSource.__new__(MssqlLineageSource)
+        source._query_store_enabled = query_store_enabled
+        return source
+
+    def test_uses_query_store_probes_once_and_caches(self):
+        source = self._lineage_source(None)
+        source.engine = MagicMock()
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ) as probe:
+            assert source.uses_query_store() is True
+            assert source.uses_query_store() is True
+
+        probe.assert_called_once()
+
+    def test_resolve_query_log_statement_prefers_query_store(self):
+        assert self._lineage_source(True).resolve_query_log_statement() == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+
+    def test_resolve_query_log_statement_falls_back_to_dmv(self):
+        assert self._lineage_source(False).resolve_query_log_statement() == MSSQL_SQL_STATEMENT
+
+    def test_usage_source_shares_query_store_selection(self):
+        source = MssqlUsageSource.__new__(MssqlUsageSource)
+        source._query_store_enabled = True
+
+        assert source.resolve_query_log_statement() == MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+
+    def test_stored_procedure_statement_uses_query_store(self):
+        source = self._lineage_source(True)
+        source.engine = MagicMock()
+        source.source_config = MagicMock(queryLogDuration=1)
+        with patch(
+            "metadata.ingestion.source.database.mssql.lineage.get_sqlalchemy_engine_dateformat",
+            return_value=None,
+        ):
+            statement = source.get_stored_procedure_sql_statement()
+
+        assert "sys.query_store_query" in statement
+        assert "object_id <> 0" in statement
+
+    def test_stored_procedure_statement_falls_back_to_dmv(self):
+        source = self._lineage_source(False)
+        source.engine = MagicMock()
+        source.source_config = MagicMock(queryLogDuration=1)
+        with patch(
+            "metadata.ingestion.source.database.mssql.lineage.get_sqlalchemy_engine_dateformat",
+            return_value=None,
+        ):
+            statement = source.get_stored_procedure_sql_statement()
+
+        assert "sys.dm_exec_procedure_stats" in statement
