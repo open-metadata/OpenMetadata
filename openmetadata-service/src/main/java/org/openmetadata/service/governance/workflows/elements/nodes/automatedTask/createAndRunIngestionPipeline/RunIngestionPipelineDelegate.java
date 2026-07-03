@@ -16,7 +16,6 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
-import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 
 @Slf4j
 public class RunIngestionPipelineDelegate implements JavaDelegate {
@@ -30,8 +29,6 @@ public class RunIngestionPipelineDelegate implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
-
       boolean shouldRun = Boolean.parseBoolean((String) shouldRunExpr.getValue(execution));
 
       boolean waitForCompletion =
