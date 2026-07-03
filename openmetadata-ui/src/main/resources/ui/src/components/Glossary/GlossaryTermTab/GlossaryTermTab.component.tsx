@@ -533,8 +533,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [
     paging.after,
     searchPaging.hasMore,
+    searchTerm,
     isLoadingMore,
     findScrollContainer,
+    fetchAllTerms,
     toggleExpandBtn,
     isTableLoading,
   ]);
@@ -1503,7 +1505,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         operation = 'cancel';
       } else if (target.type === 'item') {
         const record = glossaryTermByFqn.get(String(target.key));
-        operation = !record || record.isLoadMoreButton ? 'cancel' : 'move';
+        const isReparentTarget =
+          target.dropPosition === 'on' && !!record && !record.isLoadMoreButton;
+        operation = isReparentTarget ? 'move' : 'cancel';
       }
 
       return operation;
