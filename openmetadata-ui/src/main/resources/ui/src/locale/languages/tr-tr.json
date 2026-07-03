@@ -3378,6 +3378,7 @@
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
     "metrics-rename-collection-description": "Rename the name and display name for the metrics collection.",
+    "minimum-count-error": "En az {{count}} {{field}} seçilmelidir.",
     "minimum-value-error": "Minimum değer maksimum değerden küçük olmalıdır.",
     "minute": "Dakika",
     "missing-config-value": "Eksik yapılandırma değeri: {{field}}",
