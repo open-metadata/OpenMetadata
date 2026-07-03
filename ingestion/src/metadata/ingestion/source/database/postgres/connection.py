@@ -21,6 +21,7 @@ from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     list_schemas,
     list_tables,
@@ -95,6 +96,16 @@ def _database_not_found(error: BaseException) -> bool:
     return 'database "' in text and "does not exist" in text
 
 
+def _role_not_found(error: BaseException) -> bool:
+    """psycopg2 reports an unknown role at connect time as
+    ``FATAL: role "x" does not exist`` with no SQLSTATE (only under trust/peer auth;
+    password auth returns "password authentication failed" instead, to avoid role
+    enumeration). Match the quoted token ``role "`` so it is not confused with the
+    ``database "`` case, which shares the ``does not exist`` suffix."""
+    text = _message(error)
+    return 'role "' in text and "does not exist" in text
+
+
 # Connect-phase failures (auth, missing database) carry no SQLSTATE, so they are
 # matched on message text; query-phase failures are matched on the stable SQLSTATE
 # psycopg2 surfaces on ``.pgcode``. Bad host / port raise before the driver and are
@@ -103,6 +114,10 @@ POSTGRES_ERRORS = ErrorPack(
     when(Matchers.contains("password authentication failed")).diagnose(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",
+    ),
+    when(_role_not_found).diagnose(
+        "Authentication failed",
+        fix="Check the username - the configured role does not exist on the server.",
     ),
     when(Matchers.contains("no pg_hba.conf entry")).diagnose(
         "Connection not permitted by pg_hba.conf",
@@ -146,7 +161,15 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, POSTGRES_GET_DATABASE, lambda rows: f"{len(rows)} databases enumerated")
+        return run_sql(self.client, POSTGRES_GET_DATABASE, self._summarize_databases)
+
+    @staticmethod
+    def _summarize_databases(rows: list) -> str:
+        # run_sql fetches at most DEFAULT_SAMPLE_ROWS; at the cap the exact total is
+        # unknown, so report "N+" rather than implying a complete enumeration.
+        count = len(rows)
+        label = f"{count}+" if count >= DEFAULT_SAMPLE_ROWS else str(count)
+        return f"{label} databases enumerated"
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:

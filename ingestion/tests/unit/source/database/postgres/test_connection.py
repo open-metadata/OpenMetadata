@@ -19,7 +19,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+)
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
@@ -136,6 +139,14 @@ def test_database_not_found_message_is_classified():
     assert POSTGRES_ERRORS.classify(error).title == "Database not found"
 
 
+def test_unknown_role_message_is_classified_as_auth_failure():
+    # Under trust/peer auth a missing role surfaces as `role "x" does not exist`
+    # (no SQLSTATE); it must map to Authentication failed, not Database not found -
+    # both share the `does not exist` suffix.
+    error = _SqlAlchemyError(_Psycopg2Error('FATAL:  role "ghost" does not exist'))
+    assert POSTGRES_ERRORS.classify(error).title == "Authentication failed"
+
+
 def test_insufficient_privilege_sqlstate_is_classified():
     error = _SqlAlchemyError(_Psycopg2Error("permission denied for table secret_t", pgcode="42501"))
     assert POSTGRES_ERRORS.classify(error).title == "Insufficient privileges"
@@ -241,3 +252,13 @@ def test_query_statement_is_built_lazily_not_at_construction():
         engine = create_engine("sqlite://", poolclass=StaticPool)
         PostgresChecks(client=engine, query_statement_source=None)
         assert calls == []
+
+
+def test_get_databases_summary_marks_the_sample_cap():
+    # run_sql fetches at most DEFAULT_SAMPLE_ROWS; below the cap the count is exact,
+    # at the cap it is a lower bound and must be reported as "N+".
+    assert PostgresChecks._summarize_databases([1, 2, 3]) == "3 databases enumerated"
+    assert (
+        PostgresChecks._summarize_databases(list(range(DEFAULT_SAMPLE_ROWS)))
+        == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+    )
