@@ -20,19 +20,43 @@ test('Verify Platform Lineage View', async ({ page }) => {
   // Need to add more time for AUT and not for PR checks
   test.slow(!process.env.PLAYWRIGHT_IS_OSS);
 
+  const MAX_NODES = 500;
+
   await page.route('**/api/v1/lineage/getPlatformLineage**', async (route) => {
     const response = await route.fetch();
     const data = await response.json();
+    const originalNodeCount = data.nodes ? Object.keys(data.nodes).length : 0;
     const filteredData = {
       ...data,
       nodes: data.nodes
-        ? Object.fromEntries(Object.entries(data.nodes).slice(0, 500))
+        ? Object.fromEntries(Object.entries(data.nodes).slice(0, MAX_NODES))
         : data.nodes,
     };
+    const filteredNodeCount = filteredData.nodes
+      ? Object.keys(filteredData.nodes).length
+      : 0;
+
+    // Diagnostic: confirms the route handler runs and the slice is applied.
+    // Without this, header-related issues in route.fulfill (e.g. Content-
+    // Encoding mismatch when forwarding original headers verbatim) can
+    // silently corrupt the body and the test silently falls back to either
+    // the full upstream payload or cached data.
+
+    console.log(
+      `[PlatformLineage route] ${route
+        .request()
+        .url()} — nodes: ${originalNodeCount} → ${filteredNodeCount}`
+    );
+
+    // Use Playwright's { response, json } shortcut so headers stay valid
+    // after the body change. The shortcut auto-strips Content-Encoding
+    // (no longer gzip after our modification) and re-computes Content-
+    // Length. Passing headers: response.headers() verbatim — which the
+    // previous version did — keeps a stale Content-Encoding: gzip and
+    // wrong Content-Length, both of which silently break body parsing.
     await route.fulfill({
-      status: response.status(),
-      headers: response.headers(),
-      body: JSON.stringify(filteredData),
+      response,
+      json: filteredData,
     });
   });
 
