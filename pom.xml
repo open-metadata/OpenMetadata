@@ -139,7 +139,7 @@
     <testng.version>7.6.1</testng.version>
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
     <micrometer.version>1.15.12</micrometer.version>
-    <json-schema-validator.version>2.0.1</json-schema-validator.version>
+    <json-schema-validator.version>3.0.0</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
