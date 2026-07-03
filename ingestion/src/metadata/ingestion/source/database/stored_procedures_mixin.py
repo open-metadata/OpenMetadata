@@ -97,7 +97,9 @@ class StoredProcedureLineageMixin(ABC):
             for row in results:
                 try:
                     query_by_procedure = QueryByProcedure.model_validate(row._asdict())
-                    query_by_procedure.procedure_name = (
+                    # procedure_name is typed str but the model accepts None and the parser may
+                    # return None. Assigning str | None is tolerated at runtime by pydantic.
+                    query_by_procedure.procedure_name = (  # pyright: ignore[reportAttributeAccessIssue]
                         query_by_procedure.procedure_name
                         or get_procedure_name_from_call(query_text=query_by_procedure.procedure_text)
                     )
