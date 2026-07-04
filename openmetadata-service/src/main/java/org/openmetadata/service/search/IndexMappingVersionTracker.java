@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.IndexMappingHashException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
@@ -204,36 +205,45 @@ public class IndexMappingVersionTracker {
 
   private record MappingEntry(String hash, JsonNode json) {}
 
+  /**
+   * Drift is computed against the <em>effective</em> mapping each index is built from: the
+   * admin-editable mapping stored in the {@code searchIndexMappings} setting, falling back to the
+   * hardened bundled default when a slice is absent. So an admin edit (or a code default change)
+   * surfaces as a reindex-required drift until the entity is reindexed.
+   */
   private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
     Map<String, MappingEntry> mappings = new HashMap<>();
-
-    // Use IndexMappingLoader as the source of truth for entity types and their mapping file paths.
-    // This avoids constructing file paths manually and ensures all entity types are covered,
-    // including camelCase ones like glossaryTerm, databaseSchema, etc.
-    Map<String, IndexMapping> indexMappings = IndexMappingLoader.getInstance().getIndexMapping();
-
-    for (Map.Entry<String, IndexMapping> entry : indexMappings.entrySet()) {
-      MappingEntry mappingEntry = toMappingEntry(entry.getKey(), entry.getValue());
+    SearchIndexMappings storedBlob = loadStoredMappings();
+    for (String entityType : IndexMappingLoader.getInstance().getIndexMapping().keySet()) {
+      MappingEntry mappingEntry = toMappingEntry(entityType, storedBlob);
       if (mappingEntry != null) {
-        mappings.put(entry.getKey(), mappingEntry);
+        mappings.put(entityType, mappingEntry);
       }
     }
-
     return mappings;
   }
 
   private MappingEntry computeMappingForEntity(String entityType) throws IOException {
-    IndexMapping indexMapping = IndexMappingLoader.getInstance().getIndexMapping().get(entityType);
     MappingEntry result = null;
-    if (indexMapping != null) {
-      result = toMappingEntry(entityType, indexMapping);
+    if (IndexMappingLoader.getInstance().getIndexMapping().containsKey(entityType)) {
+      result = toMappingEntry(entityType, loadStoredMappings());
     }
     return result;
   }
 
-  private MappingEntry toMappingEntry(String entityType, IndexMapping indexMapping)
+  private SearchIndexMappings loadStoredMappings() {
+    SearchIndexMappings blob = null;
+    try {
+      blob = Entity.getSystemRepository().getSearchIndexMappings();
+    } catch (Exception e) {
+      LOG.debug("Could not load stored search index mappings; using bundled defaults", e);
+    }
+    return blob;
+  }
+
+  private MappingEntry toMappingEntry(String entityType, SearchIndexMappings storedBlob)
       throws IOException {
-    JsonNode mapping = loadMappingForEntity(entityType, indexMapping);
+    JsonNode mapping = loadEffectiveMapping(entityType, storedBlob);
     MappingEntry result = null;
     if (mapping != null) {
       try {
@@ -246,29 +256,44 @@ public class IndexMappingVersionTracker {
     return result;
   }
 
-  private JsonNode loadMappingForEntity(String entityType, IndexMapping indexMapping) {
+  private JsonNode loadEffectiveMapping(String entityType, SearchIndexMappings storedBlob) {
+    JsonNode result = null;
     try {
       Map<String, JsonNode> allLanguageMappings = new HashMap<>();
-      String[] languages = {"en", "jp", "ru", "zh"};
-
-      for (String lang : languages) {
-        // Use the indexMappingFile from indexMapping.json which has the correct path template
-        String mappingPath = "/" + indexMapping.getIndexMappingFile(lang);
-        try (var stream = getClass().getResourceAsStream(mappingPath)) {
-          if (stream != null) {
-            String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            allLanguageMappings.put(lang, MAPPER.readTree(mappingContent));
-          }
+      for (String language : SearchIndexMappingsSeeder.supportedLanguages()) {
+        Object mapping = effectiveMapping(entityType, language, storedBlob);
+        if (mapping != null) {
+          allLanguageMappings.put(language, MAPPER.valueToTree(mapping));
         }
       }
-
       if (!allLanguageMappings.isEmpty()) {
-        return MAPPER.valueToTree(allLanguageMappings);
+        result = MAPPER.valueToTree(allLanguageMappings);
       }
     } catch (Exception e) {
       LOG.debug("Could not load mapping for entity: {}", entityType, e);
     }
-    return null;
+    return result;
+  }
+
+  private Object effectiveMapping(
+      String entityType, String language, SearchIndexMappings storedBlob) {
+    Object mapping = storedMappingSlice(storedBlob, language, entityType);
+    if (mapping == null) {
+      mapping = SearchIndexMappingsSeeder.buildEntityMapping(language, entityType);
+    }
+    return mapping;
+  }
+
+  private Object storedMappingSlice(
+      SearchIndexMappings storedBlob, String language, String entityType) {
+    Object slice = null;
+    if (storedBlob != null && storedBlob.getLanguages() != null) {
+      Map<String, Object> byEntity = storedBlob.getLanguages().get(language);
+      if (byEntity != null) {
+        slice = byEntity.get(entityType);
+      }
+    }
+    return slice;
   }
 
   private String computeHash(JsonNode mapping) throws IOException, IndexMappingHashException {

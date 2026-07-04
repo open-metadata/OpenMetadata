@@ -19,7 +19,7 @@ export type MemoryFilterTab =
   | 'pinned'
   | 'needs-review';
 
-export type MemorySortBy = 'updated' | 'created' | 'usage' | 'author';
+export type MemorySortBy = 'updated' | 'created' | 'usage' | 'updatedBy';
 
 export interface MemoriesViewProps {
   data: ContextMemory[];
@@ -30,7 +30,9 @@ export interface MemoriesViewProps {
   canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
+  onTogglePin?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
+  isPinningMemoryId?: string;
 }
 
 export interface MemoryActionsProps {

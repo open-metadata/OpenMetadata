@@ -138,13 +138,36 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
 
     const controls = page.getByTestId('knowledge-graph-3d-controls');
 
-    // Switching the lens is a client-side filter; the caption description picks
-    // up the ontology suffix. This does not depend on the WebGL scene.
+    // Ontology mode is a client-side derivation; the caption switches to the
+    // "Ontology applied" copy. This does not depend on the WebGL scene.
     await controls.getByText('Ontology', { exact: true }).click();
 
     await expect(
       page.getByTestId('knowledge-graph-3d-caption-desc')
-    ).toContainText('ontology relations');
+    ).toContainText('blueprint');
+    await expect(
+      page.getByTestId('knowledge-graph-3d-node-count')
+    ).toContainText('derived relationships');
+  });
+
+  test('Verify the graph can be expanded to fullscreen and restored', async ({
+    page,
+  }) => {
+    await openKnowledgeGraph(page);
+
+    const container = page.getByTestId('knowledge-graph-3d');
+
+    await expect(container).not.toHaveClass(/full-screen-knowledge-graph-3d/);
+
+    await page.getByTestId('full-screen').click();
+
+    await expect(container).toHaveClass(/full-screen-knowledge-graph-3d/);
+    await expect(page.getByTestId('exit-full-screen')).toBeVisible();
+
+    await page.getByTestId('exit-full-screen').click();
+
+    await expect(container).not.toHaveClass(/full-screen-knowledge-graph-3d/);
+    await expect(page.getByTestId('full-screen')).toBeVisible();
   });
 
   test('Verify reset-view and export controls are available once the graph loads', async ({
