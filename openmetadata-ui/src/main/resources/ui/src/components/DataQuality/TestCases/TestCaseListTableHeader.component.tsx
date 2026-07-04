@@ -74,6 +74,7 @@ export const TestCaseListTableHeader = ({
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
             icon={SearchLg}
+            inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {
               entity: t('label.test-case-lowercase'),
             })}
