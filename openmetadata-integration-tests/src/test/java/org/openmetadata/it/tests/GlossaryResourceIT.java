@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -1423,6 +1424,123 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
           approvedTerm.getFullyQualifiedName(),
           createdTerm.getRelatedTerms().getFirst().getTerm().getFullyQualifiedName());
     }
+  }
+
+  /**
+   * Regression test for issue #29510: glossaryStatus column must be parsed case-insensitively.
+   * Users supplying valid status values in any casing (draft, APPROVED, drAFT, deprecated, etc.)
+   * should produce a successful import with the canonical {@link EntityStatus} stored on the term.
+   * Invalid values must still surface as a clear validation error.
+   */
+  @Test
+  void test_importCsv_glossaryStatusIsCaseInsensitive(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String header =
+        client.glossaries().exportCsv(glossary.getName()).lines().findFirst().orElse("");
+    assertTrue(header.contains("glossaryStatus"), "Exported header must include glossaryStatus");
+
+    String draftTermName = ns.prefix("statusDraft");
+    String approvedTermName = ns.prefix("statusApproved");
+    String deprecatedTermName = ns.prefix("statusDeprecated");
+    String mixedCaseTermName = ns.prefix("statusMixed");
+
+    String csv =
+        header
+            + "\n"
+            + buildStatusRow(header, draftTermName, "Lower Draft", "draft (lower)", "draft")
+            + buildStatusRow(
+                header, approvedTermName, "Upper Approved", "approved (upper)", "APPROVED")
+            + buildStatusRow(
+                header, deprecatedTermName, "Lower Deprecated", "deprecated (lower)", "deprecated")
+            + buildStatusRow(header, mixedCaseTermName, "Mixed Draft", "drAFT (mixed)", "drAFT");
+
+    String resultJson = client.glossaries().importCsv(glossary.getName(), csv, false);
+    CsvImportResult importResult = JsonUtils.readValue(resultJson, CsvImportResult.class);
+    assertEquals(
+        ApiStatus.SUCCESS,
+        importResult.getStatus(),
+        "Case-insensitive glossaryStatus import should succeed. Result: " + resultJson);
+    assertEquals(4, importResult.getNumberOfRowsPassed());
+    assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    for (String termName :
+        List.of(draftTermName, approvedTermName, deprecatedTermName, mixedCaseTermName)) {
+      GlossaryTerm term =
+          client.glossaryTerms().getByName(glossary.getFullyQualifiedName() + "." + termName);
+      assertNotNull(
+          term.getEntityStatus(),
+          "Imported term '" + termName + "' must have an entityStatus assigned");
+    }
+  }
+
+  /** Invalid glossaryStatus values must still surface as a clear validation failure. */
+  @Test
+  void test_importCsv_glossaryStatusInvalidValueFails(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String header =
+        client.glossaries().exportCsv(glossary.getName()).lines().findFirst().orElse("");
+
+    String badTermName = ns.prefix("statusBad");
+    String csv =
+        header
+            + "\n"
+            + buildStatusRow(header, badTermName, "Bad Status", "invalid status", "not-a-status");
+
+    String resultJson = client.glossaries().importCsv(glossary.getName(), csv, false);
+    assertNotNull(resultJson);
+    CsvImportResult importResult = JsonUtils.readValue(resultJson, CsvImportResult.class);
+    assertTrue(
+        importResult.getNumberOfRowsFailed() != null && importResult.getNumberOfRowsFailed() >= 1,
+        "Import should report at least one failed row. Result: " + resultJson);
+    assertTrue(
+        importResult.getImportResultsCsv() != null
+            && importResult.getImportResultsCsv().contains("not-a-status"),
+        "Failure message should reference the invalid status value. Result: " + resultJson);
+    assertTrue(
+        importResult.getImportResultsCsv().contains("is invalid"),
+        "Failure message should mark the value as invalid. Result: " + resultJson);
+  }
+
+  private static String buildStatusRow(
+      String header, String name, String displayName, String description, String status) {
+    String[] columns = header.split(",");
+    int statusIdx = -1;
+    int nameIdx = -1;
+    int displayIdx = -1;
+    int descIdx = -1;
+    for (int i = 0; i < columns.length; i++) {
+      String col = columns[i].trim();
+      if (col.equals("glossaryStatus")) {
+        statusIdx = i;
+      } else if (col.equals("name*") || col.equals("name")) {
+        nameIdx = i;
+      } else if (col.equals("displayName")) {
+        displayIdx = i;
+      } else if (col.equals("description")) {
+        descIdx = i;
+      }
+    }
+    String[] row = new String[columns.length];
+    for (int i = 0; i < row.length; i++) {
+      row[i] = "";
+    }
+    if (nameIdx >= 0) {
+      row[nameIdx] = "\"" + name + "\"";
+    }
+    if (displayIdx >= 0) {
+      row[displayIdx] = "\"" + displayName + "\"";
+    }
+    if (descIdx >= 0) {
+      row[descIdx] = "\"" + description + "\"";
+    }
+    if (statusIdx >= 0) {
+      row[statusIdx] = status;
+    }
+    return String.join(",", row) + "\n";
   }
 
   /**
