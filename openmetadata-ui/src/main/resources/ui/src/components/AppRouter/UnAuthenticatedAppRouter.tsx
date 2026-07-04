@@ -19,39 +19,39 @@ import { AuthProvider } from '../../generated/configuration/authenticationConfig
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const SigninPage = withSuspenseFallback(
+const SigninPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/LoginPage/SignInPage'))
 );
 
-const ForgotPassword = withSuspenseFallback(
+const ForgotPassword = withPageSuspenseFallback(
   lazy(() => import('../../pages/ForgotPassword/ForgotPassword.component'))
 );
 
-const ResetPassword = withSuspenseFallback(
+const ResetPassword = withPageSuspenseFallback(
   lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
 );
 
-const BasicSignupPage = withSuspenseFallback(
+const BasicSignupPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/SignUp/BasicSignup.component'))
 );
 
-const PageNotFound = withSuspenseFallback(
+const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../pages/PageNotFound/PageNotFound'))
 );
 
-const AccountActivationConfirmation = withSuspenseFallback(
+const AccountActivationConfirmation = withPageSuspenseFallback(
   lazy(
     () => import('../../pages/SignUp/account-activation-confirmation.component')
   )
 );
 
-const Auth0Callback = withSuspenseFallback(
+const Auth0Callback = withPageSuspenseFallback(
   lazy(() => import('../Auth/AppCallbacks/Auth0Callback/Auth0Callback'))
 );
 
-const LoginCallback = withSuspenseFallback(
+const LoginCallback = withPageSuspenseFallback(
   lazy(() =>
     import('@okta/okta-react').then((m) => ({ default: m.LoginCallback }))
   )

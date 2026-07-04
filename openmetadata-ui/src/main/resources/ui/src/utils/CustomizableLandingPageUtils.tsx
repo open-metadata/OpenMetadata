@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
+import WidgetWrapper from '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 
@@ -67,7 +68,7 @@ export const getWidgetFromKey = ({
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
       <Widget
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}

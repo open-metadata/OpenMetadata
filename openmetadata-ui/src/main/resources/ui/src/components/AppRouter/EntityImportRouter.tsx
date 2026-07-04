@@ -19,9 +19,9 @@ import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvi
 import { useFqn } from '../../hooks/useFqn';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const BulkEntityImportPage = withSuspenseFallback(
+const BulkEntityImportPage = withPageSuspenseFallback(
   React.lazy(
     () =>
       import(

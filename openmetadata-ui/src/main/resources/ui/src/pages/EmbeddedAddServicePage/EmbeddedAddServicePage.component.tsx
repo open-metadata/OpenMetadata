@@ -29,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -476,7 +477,7 @@ const EmbeddedAddServicePage = () => {
                 />
               )}
 
-              <Suspense fallback={null}>
+              <Suspense fallback={<Loader />}>
                 {activeServiceStep === 2 && (
                   <div className="tw:flex tw:flex-col tw:gap-4">
                     <ServiceNameCard

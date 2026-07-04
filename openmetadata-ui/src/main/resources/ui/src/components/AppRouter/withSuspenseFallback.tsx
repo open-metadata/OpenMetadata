@@ -12,10 +12,16 @@
  */
 
 import { ComponentType, forwardRef, ReactNode, Suspense } from 'react';
+import Loader from '../common/Loader/Loader';
+
+const DEFAULT_FALLBACK = (
+  <div className="ant-layout-content flex-center">
+    <Loader />
+  </div>
+);
 
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>,
-  // Default to silent loading so background chunks do not create page-level loaders.
   fallback: ReactNode = null
 ) {
   return forwardRef<unknown, T>(function DefaultFallback(props, ref) {
@@ -25,6 +31,12 @@ export function withSuspenseFallback<T extends object>(
       </Suspense>
     );
   });
+}
+
+export function withPageSuspenseFallback<T extends object>(
+  Component: ComponentType<T>
+) {
+  return withSuspenseFallback(Component, DEFAULT_FALLBACK);
 }
 
 export default withSuspenseFallback;

@@ -72,6 +72,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
 import TaskListV1 from '../ActivityFeedList/TaskListV1.component';
@@ -479,6 +480,11 @@ export const ActivityFeedTab = ({
     }
   }, [entityPaging, loading, isInView, fqn]);
 
+  const loader = useMemo(
+    () => (loading ? <Loader className="aspect-square" /> : null),
+    [loading]
+  );
+
   const handleUpdateTaskFilter = (filter: TaskStatusGroup) => {
     setTaskFilter(filter);
     getTaskData(feedFilter, undefined, entityType, fqn, filter);
@@ -851,6 +857,7 @@ export const ActivityFeedTab = ({
             onFeedClick={handleFeedClick}
           />
         )}
+        {!isFirstLoad && loader}
         {!isEmpty(
           isTaskActiveTab || isMentionTabSelected ? tasks : entityThread
         ) &&
@@ -875,7 +882,7 @@ export const ActivityFeedTab = ({
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}>
-        {(selectedThread || selectedTask || selectedActivity) && !loading
+        {selectedThread || selectedTask || selectedActivity
           ? getRightPanelContent()
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">

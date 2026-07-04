@@ -309,7 +309,7 @@ function EditConnectionFormPage() {
             steps={translatedSteps}
           />
 
-          <Suspense fallback={null}>
+          <Suspense fallback={<Loader />}>
             <div className="tw:mt-8">
               {activeServiceStep === 1 && (
                 <ConnectionConfigForm

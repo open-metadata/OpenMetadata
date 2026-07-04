@@ -13,7 +13,10 @@
 
 import { render, screen } from '@testing-library/react';
 import { lazy } from 'react';
-import { withSuspenseFallback } from './withSuspenseFallback';
+import {
+  withPageSuspenseFallback,
+  withSuspenseFallback,
+} from './withSuspenseFallback';
 
 describe('withSuspenseFallback', () => {
   const getLazyComponent = () =>
@@ -33,7 +36,14 @@ describe('withSuspenseFallback', () => {
 
     render(<WrappedComponent />);
 
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  it('does not render a loading indicator when the caller opts into a silent fallback', () => {
+    const WrappedComponent = withSuspenseFallback(getLazyComponent(), null);
+
+    render(<WrappedComponent />);
+
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
@@ -47,5 +57,13 @@ describe('withSuspenseFallback', () => {
 
     expect(screen.getByText('Loading active route')).toBeInTheDocument();
     expect(await screen.findByText('Loaded component')).toBeInTheDocument();
+  });
+
+  it('renders the page loading indicator for route-level chunks', () => {
+    const WrappedComponent = withPageSuspenseFallback(getLazyComponent());
+
+    render(<WrappedComponent />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 });
