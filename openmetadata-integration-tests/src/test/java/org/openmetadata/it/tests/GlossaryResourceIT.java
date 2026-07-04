@@ -25,7 +25,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -1442,69 +1441,66 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         client.glossaries().exportCsv(glossary.getName()).lines().findFirst().orElse("");
     assertTrue(header.contains("glossaryStatus"), "Exported header must include glossaryStatus");
 
-    String draftTermName = ns.prefix("statusDraft");
-    String approvedTermName = ns.prefix("statusApproved");
-    String deprecatedTermName = ns.prefix("statusDeprecated");
-    String mixedCaseTermName = ns.prefix("statusMixed");
+    List<StatusCase> cases =
+        List.of(
+            new StatusCase(ns.prefix("statusDraft"), "Lower Draft", "draft (lower)", "draft"),
+            new StatusCase(
+                ns.prefix("statusApproved"), "Upper Approved", "approved (upper)", "APPROVED"),
+            new StatusCase(
+                ns.prefix("statusDeprecated"),
+                "Lower Deprecated",
+                "deprecated (lower)",
+                "deprecated"),
+            new StatusCase(ns.prefix("statusMixed"), "Mixed Draft", "drAFT (mixed)", "drAFT"));
 
-    String csv =
-        header
-            + "\n"
-            + buildStatusRow(header, draftTermName, "Lower Draft", "draft (lower)", "draft")
-            + buildStatusRow(
-                header, approvedTermName, "Upper Approved", "approved (upper)", "APPROVED")
-            + buildStatusRow(
-                header, deprecatedTermName, "Lower Deprecated", "deprecated (lower)", "deprecated")
-            + buildStatusRow(header, mixedCaseTermName, "Mixed Draft", "drAFT (mixed)", "drAFT");
+    StringBuilder csvBuilder = new StringBuilder(header).append('\n');
+    for (StatusCase c : cases) {
+      csvBuilder.append(
+          buildStatusRow(header, c.termName(), c.displayName(), c.description(), c.csvCasing()));
+    }
 
-    String resultJson = client.glossaries().importCsv(glossary.getName(), csv, false);
+    String resultJson =
+        client.glossaries().importCsv(glossary.getName(), csvBuilder.toString(), false);
     CsvImportResult importResult = JsonUtils.readValue(resultJson, CsvImportResult.class);
     assertEquals(
         ApiStatus.SUCCESS,
         importResult.getStatus(),
         "Case-insensitive glossaryStatus import should succeed. Result: " + resultJson);
-    assertEquals(4, importResult.getNumberOfRowsPassed());
+    assertEquals(cases.size(), importResult.getNumberOfRowsPassed());
     assertEquals(0, importResult.getNumberOfRowsFailed());
 
     String resultsCsv = importResult.getImportResultsCsv();
     assertNotNull(resultsCsv, "Per-row import results should be present. Result: " + resultJson);
-    for (Map.Entry<String, String> entry :
-        Map.of(
-                draftTermName, "draft",
-                approvedTermName, "APPROVED",
-                deprecatedTermName, "deprecated",
-                mixedCaseTermName, "drAFT")
-            .entrySet()) {
-      String rowMarker = entry.getKey();
-      String casing = entry.getValue();
+    for (StatusCase c : cases) {
       boolean rowSucceeded =
           resultsCsv
               .lines()
               .anyMatch(
                   line ->
                       line.startsWith("success")
-                          && line.contains(rowMarker)
-                          && line.contains("," + casing + ","));
+                          && line.contains(c.termName())
+                          && line.contains("," + c.csvCasing() + ","));
       assertTrue(
           rowSucceeded,
           "Row for '"
-              + rowMarker
+              + c.termName()
               + "' with casing '"
-              + casing
-              + "' should be reported as success."
-              + " importResultsCsv="
+              + c.csvCasing()
+              + "' should be reported as success. importResultsCsv="
               + resultsCsv);
     }
 
-    for (String termName :
-        List.of(draftTermName, approvedTermName, deprecatedTermName, mixedCaseTermName)) {
+    for (StatusCase c : cases) {
       GlossaryTerm term =
-          client.glossaryTerms().getByName(glossary.getFullyQualifiedName() + "." + termName);
+          client.glossaryTerms().getByName(glossary.getFullyQualifiedName() + "." + c.termName());
       assertNotNull(
           term.getEntityStatus(),
-          "Imported term '" + termName + "' must have an entityStatus assigned");
+          "Imported term '" + c.termName() + "' must have an entityStatus assigned");
     }
   }
+
+  private record StatusCase(
+      String termName, String displayName, String description, String csvCasing) {}
 
   /** Invalid glossaryStatus values must still surface as a clear validation failure. */
   @Test
