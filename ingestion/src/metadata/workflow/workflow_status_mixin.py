@@ -16,7 +16,10 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Optional, Tuple  # noqa: UP035
+
+if TYPE_CHECKING:
+    from metadata.workflow.progress_render import ProgressReporter
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -39,6 +42,7 @@ from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
+from metadata.workflow.progress_render import ProgressReporter
 
 logger = ometa_logger()
 
@@ -172,27 +176,46 @@ class WorkflowStatusMixin:
             ]
         )
 
+    def _progress_reporter(self) -> Optional["ProgressReporter"]:
+        """Reporter for the first workflow step that ran a topology walk. Reads
+        the backing attribute so we never create an empty registry on a step
+        that never tracked progress."""
+        reporter = None
+        for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
+            registry = getattr(step, "_progress_registry", None)
+            if registry is not None:
+                reporter = ProgressReporter(registry)
+                break
+        return reporter
+
     def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
         Send a progress update to the OpenMetadata server via SSE endpoint.
         Called periodically during workflow execution.
         """
         try:
-            from metadata.utils.progress_tracker import ProgressTrackerState  # noqa: PLC0415
-
             if (
                 self.config.ingestionPipelineFQN
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                progress_tracker = ProgressTrackerState()
-                progress_data = progress_tracker.get_progress_as_dict()
+                reporter = self._progress_reporter()
+                progress_data = reporter.payload() if reporter is not None else None
+                counters = reporter.global_counters() if reporter is not None else []
+                eta_seconds = reporter.eta_seconds() if reporter is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
                     timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
                     updateType=update_type,
-                    progress=progress_data if progress_data else None,
+                    progress=progress_data if progress_data else None,  # pyright: ignore[reportArgumentType]
+                    globalCounters=[  # pyright: ignore[reportArgumentType]
+                        {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
+                    ],
+                    estimatedSecondsRemaining=eta_seconds,
+                    stepName=None,
+                    currentEntity=None,
+                    message=None,
                 )
 
                 self.metadata.send_progress_update(
@@ -202,3 +225,9 @@ class WorkflowStatusMixin:
                 )
         except Exception as err:
             logger.debug(f"Failed to send progress update: {err}")
+
+    def terminal_progress_update_type(self, pipeline_state: PipelineState) -> ProgressUpdateType:
+        if pipeline_state is PipelineState.failed:
+            return ProgressUpdateType.ERROR
+
+        return ProgressUpdateType.PIPELINE_COMPLETE
