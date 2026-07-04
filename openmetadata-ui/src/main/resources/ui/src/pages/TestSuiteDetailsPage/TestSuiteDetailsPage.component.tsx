@@ -130,12 +130,9 @@ const TestSuiteDetailsPage = () => {
 
     if (activeTab === EntityTabs.PIPELINE) {
       return (
-        <Box direction="col" gap={4}>
-          {renderDescription()}
-          <div className="tw:w-full">
-            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
-          </div>
-        </Box>
+        <div className="tw:w-full">
+          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+        </div>
       );
     }
 

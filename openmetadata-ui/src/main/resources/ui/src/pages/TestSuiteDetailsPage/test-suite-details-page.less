@@ -52,5 +52,13 @@
     // 1px horizontal inset so the table card's ring (a box-shadow drawn
     // outside its box) isn't clipped by the page column's overflow-x.
     padding: 20px 1px;
+
+    // The pipeline tab's Row brings its own vertical margins (needed in
+    // the table profiler QualityTab); the panel inset already covers it
+    // here.
+    .test-suite-pipeline-tab {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
   }
 }
