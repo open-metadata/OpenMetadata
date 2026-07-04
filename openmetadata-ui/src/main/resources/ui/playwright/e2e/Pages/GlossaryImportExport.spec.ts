@@ -129,8 +129,8 @@ test.describe('Glossary Bulk Import Export', () => {
 
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', glossary1.data.displayName);
-      await page.click('#submit-button');
+      await page.fill('[data-testid="file-name-input"]', glossary1.data.displayName);
+      await page.click('[data-testid="submit-button"]');
       const download = await downloadPromise;
 
       // Wait for the download process to complete and save the downloaded file somewhere.

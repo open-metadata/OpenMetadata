@@ -1640,12 +1640,12 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
     .waitFor({ state: 'visible' });
   await page.click('[data-testid="export-button-title"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+  await page.getByTestId('export-entity-modal').waitFor({ state: 'visible' });
 
-  await page.fill('#fileName', fileName);
-  await page.click('#submit-button');
+  await page.fill('[data-testid="file-name-input"]', fileName);
+  await page.click('[data-testid="submit-button"]');
 
-  await page.locator('.message-banner-wrapper').waitFor({ state: 'detached' });
+  await page.getByTestId('export-entity-modal').waitFor({ state: 'detached' });
   const download = await downloadPromise;
 
   // Wait for the download process to complete and save the downloaded file somewhere.

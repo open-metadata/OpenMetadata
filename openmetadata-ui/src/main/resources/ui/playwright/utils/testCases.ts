@@ -350,12 +350,12 @@ export const performTestCaseExport = async (page: Page) => {
 
   await expect(page.getByTestId('export-button')).toBeVisible();
   await page.getByTestId('export-button').click();
-  await page.locator('#export-form').waitFor({
+  await page.getByTestId('file-name-input').waitFor({
     state: 'visible',
   });
-  await expect(page.locator('#export-form')).toBeVisible();
-  await expect(page.locator('#submit-button')).not.toBeDisabled();
-  await page.locator('#submit-button').click();
+  await expect(page.getByTestId('file-name-input')).toBeVisible();
+  await expect(page.getByTestId('submit-button')).not.toBeDisabled();
+  await page.getByTestId('submit-button').click();
   const download = await downloadPromise;
 
   return download;

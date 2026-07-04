@@ -751,7 +751,7 @@ export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator('[data-testid="export-entity-modal"] [data-testid="submit-button"]')
     .waitFor({
       state: 'visible',
     });
@@ -759,7 +759,7 @@ export const getLineageCSVData = async (page: Page) => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -836,18 +836,18 @@ export const verifyExportLineagePNG = async (
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator('[data-testid="export-entity-modal"] [data-testid="submit-button"]')
     .waitFor({
       state: 'visible',
     });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
+    await page.getByRole('option', { name: 'PNG' }).click();
   }
 
   await expect(
-    page.getByTestId('export-type-select').getByText('PNGBeta')
+    page.getByTestId('export-type-select').getByText('PNG')
   ).toBeVisible();
 
   const [download] = await Promise.all([
@@ -855,7 +855,7 @@ export const verifyExportLineagePNG = async (
     // render enough headroom before the download event fires.
     page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 

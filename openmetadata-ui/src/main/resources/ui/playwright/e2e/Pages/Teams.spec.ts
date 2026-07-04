@@ -585,8 +585,8 @@ test.describe('Teams Page', () => {
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('export-details-container').click();
-      await page.fill('#fileName', team.data.name);
-      await page.click('#submit-button');
+      await page.fill('[data-testid="file-name-input"]', team.data.name);
+      await page.click('[data-testid="submit-button"]');
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
       await download.saveAs('downloads/' + download.suggestedFilename());

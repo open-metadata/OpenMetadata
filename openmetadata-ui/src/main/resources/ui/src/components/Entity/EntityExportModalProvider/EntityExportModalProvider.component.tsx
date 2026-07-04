@@ -303,6 +303,7 @@ export const EntityExportModalProvider = ({
                 </Dialog.Header>
                 <Dialog.Content>
                   <Select
+                    data-testid="export-type-select"
                     isDisabled={exportData.exportTypes.length === 1}
                     items={exportTypeItems}
                     label={`${t('label.export-type')}:`}
