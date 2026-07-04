@@ -13,22 +13,13 @@
 @import (reference) '../../../styles/variables.less';
 
 .incident-manager-details-tabs {
-  .incident-manager-details-tab-panel {
+  .ant-tabs-tabpane {
     height: @incident-manager-page-height;
     overflow-y: auto;
-    padding-top: 20px;
-    padding-bottom: 20px;
 
     .right-container,
     .left-container {
       height: 100%;
     }
-  }
-
-  // The panel above owns the 20px vertical inset; the result tab keeps
-  // only its own horizontal padding (`p-md`).
-  .test-case-result-tab {
-    padding-top: 0;
-    padding-bottom: 0;
   }
 }

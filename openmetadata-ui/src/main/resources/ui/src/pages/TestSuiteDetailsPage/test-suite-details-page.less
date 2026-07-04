@@ -48,14 +48,22 @@
 }
 
 .test-suite-details-tabs {
+  // OSS side renders antd `tabs-new` panes; the pipeline tab's Row brings
+  // its own vertical margins (needed in the table profiler QualityTab) and
+  // the pane wrapper's padding already covers it here.
+  .ant-tabs-tabpane {
+    .test-suite-pipeline-tab {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+  }
+
+  // AI-side renderer (TestSuiteDetailAi) keeps this wrapper.
   .test-suite-details-tab-panel {
     // 1px horizontal inset so the table card's ring (a box-shadow drawn
     // outside its box) isn't clipped by the page column's overflow-x.
     padding: 20px 1px;
 
-    // The pipeline tab's Row brings its own vertical margins (needed in
-    // the table profiler QualityTab); the panel inset already covers it
-    // here.
     .test-suite-pipeline-tab {
       margin-top: 0;
       margin-bottom: 0;

@@ -13,12 +13,12 @@
 import {
   Box,
   Button,
-  Tabs,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
+import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -84,17 +84,20 @@ const IncidentManagerDetailPage = ({
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
 
-  const activeTabContent = useMemo(() => {
-    const currentTab = tabs.find(({ key }) => key === activeTab) ?? tabs.at(0);
-
-    if (!currentTab) {
-      return null;
-    }
-
-    const { Tab } = currentTab;
-
-    return <Tab showSidePanel={isTabExpanded} />;
-  }, [tabs, activeTab, isTabExpanded]);
+  const tabItems: TabsProps['items'] = useMemo(
+    () =>
+      tabs.map(({ LabelComponent, labelProps, key, Tab, isBeta }) => ({
+        key,
+        label: (
+          <div className="tw:flex tw:items-center tw:gap-1">
+            <LabelComponent {...labelProps} />
+            {isBeta && <BetaBadge />}
+          </div>
+        ),
+        children: <Tab showSidePanel={isTabExpanded} />,
+      })),
+    [tabs, isTabExpanded]
+  );
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = location.state
@@ -319,51 +322,25 @@ const IncidentManagerDetailPage = ({
           />
         </Box>
         <div className="incident-manager-details-tabs">
-          <Box
-            align="end"
-            // Reserve the expand button's height (40px + border) so the strip
-            // doesn't collapse and shift the tab body when the button unmounts
-            // on non-result tabs.
-            className="tw:min-h-[41px] tw:border-b tw:border-secondary"
-            gap={2}
-            justify="between">
-            <Tabs
-              className="tw:w-fit"
-              data-testid="tabs"
-              selectedKey={activeTab}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List size="sm" type="underline">
-                {tabs.map(({ labelProps, key, isBeta }) => (
-                  <Tabs.Item
-                    badge={toString(labelProps.count) || undefined}
-                    data-testid={labelProps.id}
-                    id={key}
-                    key={key}
-                    label={
-                      isBeta ? (
-                        <Box inline align="center" gap={1}>
-                          {labelProps.name}
-                          <BetaBadge />
-                        </Box>
-                      ) : (
-                        labelProps.name
-                      )
-                    }
-                  />
-                ))}
-              </Tabs.List>
-            </Tabs>
-            {isExpandViewSupported && (
-              <AlignRightIconButton
-                className={isTabExpanded ? 'rotate-180' : ''}
-                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-                onClick={toggleTabExpanded}
-              />
-            )}
-          </Box>
-          <div className="incident-manager-details-tab-panel">
-            {activeTabContent}
-          </div>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="tabs-new"
+            data-testid="tabs"
+            items={tabItems}
+            tabBarExtraContent={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            onChange={handleTabChange}
+          />
         </div>
       </Box>
       {isVersionPage && (

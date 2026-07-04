@@ -18,14 +18,13 @@ import {
   DialogTrigger,
   Modal,
   ModalOverlay,
-  Tabs,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@untitledui/icons';
+import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +36,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../components/common/Loader/Loader';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -112,7 +112,7 @@ const TestSuiteDetailsPage = () => {
     await onCopyToClipBoard(globalThis.location.href);
   }, [onCopyToClipBoard]);
 
-  const activeTabContent = useMemo(() => {
+  const tabItems: TabsProps['items'] = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
         <DescriptionV1
@@ -128,14 +128,6 @@ const TestSuiteDetailsPage = () => {
       </div>
     );
 
-    if (activeTab === EntityTabs.PIPELINE) {
-      return (
-        <div className="tw:w-full">
-          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
-        </div>
-      );
-    }
-
     const removeFromTestSuite = testSuite
       ? {
           testSuite,
@@ -144,27 +136,53 @@ const TestSuiteDetailsPage = () => {
         }
       : undefined;
 
-    return (
-      <Box direction="col" gap={4}>
-        {renderDescription()}
-        <div className="tw:w-full">
-          <DataQualityTab
-            afterDeleteAction={fetchTestCases}
-            breadcrumbData={incidentUrlState}
-            fetchTestCases={handleSortTestCase}
-            isLoading={isLoading || isTestCaseLoading}
-            pagingData={pagingData}
-            removeFromTestSuite={removeFromTestSuite}
-            showPagination={showPagination}
-            testCases={testCaseResult}
-            onTestCaseResultUpdate={handleTestSuiteUpdate}
-            onTestUpdate={handleTestSuiteUpdate}
+    return [
+      {
+        key: EntityTabs.TEST_CASES,
+        label: (
+          <TabsLabel
+            count={pagingData.paging.total}
+            id={EntityTabs.TEST_CASES}
+            name={t('label.test-case-plural')}
           />
-        </div>
-      </Box>
-    );
+        ),
+        children: (
+          <Box className="tw:p-4" direction="col" gap={4}>
+            {renderDescription()}
+            <div className="tw:w-full">
+              <DataQualityTab
+                afterDeleteAction={fetchTestCases}
+                breadcrumbData={incidentUrlState}
+                fetchTestCases={handleSortTestCase}
+                isLoading={isLoading || isTestCaseLoading}
+                pagingData={pagingData}
+                removeFromTestSuite={removeFromTestSuite}
+                showPagination={showPagination}
+                testCases={testCaseResult}
+                onTestCaseResultUpdate={handleTestSuiteUpdate}
+                onTestUpdate={handleTestSuiteUpdate}
+              />
+            </div>
+          </Box>
+        ),
+      },
+      {
+        key: EntityTabs.PIPELINE,
+        label: (
+          <TabsLabel
+            count={ingestionPipelineCount}
+            id={EntityTabs.PIPELINE}
+            name={t('label.pipeline-plural')}
+          />
+        ),
+        children: (
+          <div className="tw:w-full tw:p-4">
+            <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+          </div>
+        ),
+      },
+    ];
   }, [
-    activeTab,
     testSuite,
     testSuiteDescription,
     descriptionChangeSummaryEntry,
@@ -180,6 +198,8 @@ const TestSuiteDetailsPage = () => {
     showPagination,
     testCaseResult,
     handleTestSuiteUpdate,
+    ingestionPipelineCount,
+    t,
   ]);
 
   if (isLoading) {
@@ -386,29 +406,14 @@ const TestSuiteDetailsPage = () => {
           </div>
         </Box>
         <div className="test-suite-details-tabs" data-testid="tabs-root">
-          <div className="tw:flex tw:items-end tw:border-b tw:border-secondary">
-            <Tabs
-              className="tw:w-fit"
-              data-testid="tabs"
-              selectedKey={activeTab}
-              onSelectionChange={(key) => setActiveTab(String(key))}>
-              <Tabs.List size="sm" type="underline">
-                <Tabs.Item
-                  badge={toString(pagingData.paging.total) || undefined}
-                  data-testid={EntityTabs.TEST_CASES}
-                  id={EntityTabs.TEST_CASES}
-                  label={t('label.test-case-plural')}
-                />
-                <Tabs.Item
-                  badge={toString(ingestionPipelineCount) || undefined}
-                  data-testid={EntityTabs.PIPELINE}
-                  id={EntityTabs.PIPELINE}
-                  label={t('label.pipeline-plural')}
-                />
-              </Tabs.List>
-            </Tabs>
-          </div>
-          <div className="test-suite-details-tab-panel">{activeTabContent}</div>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={activeTab}
+            className="tabs-new"
+            data-testid="tabs"
+            items={tabItems}
+            onChange={(key) => setActiveTab(key)}
+          />
         </div>
       </Box>
     </PageLayoutV1>
