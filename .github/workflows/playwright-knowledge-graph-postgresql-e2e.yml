@@ -37,7 +37,7 @@ on:
       - "openmetadata-spec/src/main/resources/rdf/**"
       - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts"
       - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
-      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**"
       - "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**"
       - "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts"
       - "openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts"

@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
 
-.test-suite-list-container {
-  background-color: var(--tw-color-bg-primary);
-  border-radius: @border-rad-sm;
-  border: @global-border;
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  size: number;
+  fileType: string;
+  downloadUrl?: string;
+}
 
-  .test-suite-list-header {
-    padding: @padding-md;
-  }
+export interface AttachmentWidgetProps {
+  hasPermission: boolean;
 }

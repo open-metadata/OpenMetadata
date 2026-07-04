@@ -10,19 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
 
-import { AutocompleteProps } from '@mui/material';
-
-export interface MUIAutocompleteProps
-  extends Omit<
-    AutocompleteProps<string, true, false, true>,
-    'renderInput' | 'onChange' | 'value' | 'options'
-  > {
-  value?: string[];
-  onChange?: (value: string[]) => void;
-  label?: string;
-  placeholder?: string;
-  required?: boolean;
-  options?: string[];
-  dataTestId?: string;
+export interface WidgetActionButtonProps {
+  title: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  'data-testid'?: string;
+  className?: string;
 }
