@@ -33,6 +33,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBox,
   descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
@@ -82,6 +83,10 @@ const userName = user.data.email.split('@')[0];
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
 
+type CsvExportResponse = {
+  jobId: string;
+};
+
 let teamDetails: {
   name?: string;
   displayName?: string;
@@ -94,6 +99,28 @@ let teamDetails: {
   updatedName: `updated-pw%team-${uuid()}`,
   teamType: 'Group',
   updatedEmail: `pwteamUpdated${uuid()}@example.com`,
+};
+
+const exportActiveTeamCsv = async (
+  page: Page,
+  apiContext: APIRequestContext
+) => {
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/teams/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
+
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('export-details-container').click();
+
+  const exportResponse = await exportResponsePromise;
+  expect(exportResponse.ok()).toBeTruthy();
+
+  const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+
+  return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 };
 
 const test = base.extend<{
@@ -556,7 +583,7 @@ test.describe('Teams Page', () => {
   });
 
   test('Export team', async ({ page }) => {
-    const { apiContext } = await getApiContext(page);
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
     const team = new TeamClass({
       name: `pw%team.export-${id}`,
@@ -581,17 +608,14 @@ test.describe('Teams Page', () => {
         team.data.displayName
       );
 
-      const downloadPromise = page.waitForEvent('download');
+      const csvContent = await exportActiveTeamCsv(page, apiContext);
 
-      await page.getByTestId('manage-button').click();
-      await page.getByTestId('export-details-container').click();
-      await page.fill('[data-testid="file-name-input"]', team.data.name);
-      await page.click('[data-testid="submit-button"]');
-      const download = await downloadPromise;
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      expect(csvContent).toContain(
+        'name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies'
+      );
     } finally {
       await team.delete(apiContext);
+      await afterAction();
     }
   });
 

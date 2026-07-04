@@ -50,6 +50,7 @@ import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUti
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { CSV_JOBS_REFRESH_EVENT } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import {
   CSVExportJob,
   CSVExportWebsocketResponse,
@@ -82,13 +83,29 @@ export const EntityExportModalProvider = ({
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
 
+  // Holds the in-flight export's onError so the async (websocket) failure
+  // branches can notify the caller without a stale closure over exportData.
+  const exportOnErrorRef = useRef<(() => void) | undefined>();
+
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
 
   const [csvExportData, setCSVExportData] = useState<string>();
 
+  const [csvExportError, setCSVExportError] = useState<string>();
+
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname) || exportData?.hideExportModal,
     [location, exportData?.hideExportModal]
+  );
+
+  // A plain CSV export (no image/PDF type choice) skips the modal and runs
+  // straight into the global CsvJobsTray, matching the metrics export UX.
+  const isCsvOnly = useMemo(
+    () =>
+      !isBulkEdit &&
+      exportData?.exportTypes?.length === 1 &&
+      exportData.exportTypes[0] === ExportTypes.CSV,
+    [exportData, isBulkEdit]
   );
 
   const exportTypeItems = useMemo(
@@ -106,9 +123,13 @@ export const EntityExportModalProvider = ({
     setExportData(null);
   };
 
-  const showModal = (data: ExportData) => {
+  const showModal = useCallback((data: ExportData) => {
     setExportData(data);
-  };
+  }, []);
+
+  const triggerExportForBulkEdit = useCallback((data: ExportData) => {
+    setExportData(data);
+  }, []);
 
   const handleExport = async ({
     fileName,
@@ -120,6 +141,8 @@ export const EntityExportModalProvider = ({
     if (exportData === null) {
       return;
     }
+    setCSVExportError(undefined);
+    exportOnErrorRef.current = exportData.onError;
     try {
       if (exportType !== ExportTypes.CSV) {
         // Force React to flush the loading state to the DOM before the heavy
@@ -179,6 +202,12 @@ export const EntityExportModalProvider = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
       setDownloading(false);
+      if (isBulkEdit) {
+        setCSVExportError(t('message.unexpected-error'));
+      }
+      exportData.onError?.();
+      exportOnErrorRef.current = undefined;
+      csvExportJobRef.current = undefined;
     }
   };
 
@@ -195,15 +224,18 @@ export const EntityExportModalProvider = ({
       handleCancel();
       setCSVExportJob(undefined);
       csvExportJobRef.current = undefined;
+      exportOnErrorRef.current = undefined;
     },
     [isBulkEdit]
   );
 
   const handleClearCSVExportData = useCallback(() => {
     setCSVExportData(undefined);
+    setCSVExportError(undefined);
     setCSVExportJob(undefined);
     setExportData(null);
     csvExportJobRef.current = undefined;
+    exportOnErrorRef.current = undefined;
   }, []);
 
   const handleCSVExportJobUpdate = useCallback(
@@ -238,6 +270,12 @@ export const EntityExportModalProvider = ({
             .catch((error) => {
               showErrorToast(error as AxiosError);
               setDownloading(false);
+              exportOnErrorRef.current?.();
+              exportOnErrorRef.current = undefined;
+              csvExportJobRef.current = undefined;
+              if (isBulkEdit) {
+                setCSVExportError(t('message.unexpected-error'));
+              }
             });
         } else {
           setDownloading(false);
@@ -246,11 +284,40 @@ export const EntityExportModalProvider = ({
         // Keep downloading state true during progress
         setDownloading(true);
       } else {
+        // FAILED / CANCELLED — notify the caller (mirrors the synchronous
+        // catch), drop the job ref so a late message can't re-merge, and show a
+        // generic error to the bulk-edit grid so it stops waiting on an export
+        // that will never arrive. The raw backend error is not surfaced — it can
+        // leak internal details (stack traces, SQL, entity internals).
         setDownloading(false);
+        exportOnErrorRef.current?.();
+        exportOnErrorRef.current = undefined;
+        csvExportJobRef.current = undefined;
+        if (isBulkEdit) {
+          setCSVExportError(t('message.unexpected-error'));
+        }
       }
     },
-    [isBulkEdit, handleCSVExportSuccess]
+    [isBulkEdit, handleCSVExportSuccess, t]
   );
+
+  const runTrayExport = useCallback(async (data: ExportData) => {
+    // CSV-only exports skip the modal and surface in the global CsvJobsTray
+    // (the metrics export UX). Fire the async export, then nudge the tray to
+    // pick up the new job.
+    setExportData(null);
+    try {
+      const result = await data.onExport(data.name, { recursive: true });
+      if (isString(result)) {
+        downloadFile(result, `${data.name}_${getCurrentISODate()}.csv`);
+      } else {
+        window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+      data.onError?.();
+    }
+  }, []);
 
   useEffect(() => {
     if (exportData) {
@@ -259,24 +326,32 @@ export const EntityExportModalProvider = ({
           fileName: 'bulk-edit',
           exportType: ExportTypes.CSV,
         });
+      } else if (isCsvOnly) {
+        runTrayExport(exportData);
       } else {
         setFileName(`${exportData.name}_${getCurrentISODate()}`);
         setSelectedExportType(exportData.exportTypes[0]);
       }
     }
-  }, [isBulkEdit, exportData]);
+  }, [isBulkEdit, isCsvOnly, exportData, runTrayExport]);
 
   const providerValue = useMemo(
     () => ({
       csvExportData,
+      csvExportError,
       clearCSVExportData: handleClearCSVExportData,
       showModal,
-      triggerExportForBulkEdit: (exportData: ExportData) => {
-        setExportData(exportData);
-      },
+      triggerExportForBulkEdit,
       onUpdateCSVExportJob: handleCSVExportJobUpdate,
     }),
-    [isBulkEdit, csvExportData, handleCSVExportJobUpdate]
+    [
+      csvExportData,
+      csvExportError,
+      handleClearCSVExportData,
+      showModal,
+      triggerExportForBulkEdit,
+      handleCSVExportJobUpdate,
+    ]
   );
 
   const isExportInProgress = csvExportJob?.status === 'IN_PROGRESS';
@@ -285,7 +360,7 @@ export const EntityExportModalProvider = ({
     <EntityExportModalContext.Provider value={providerValue}>
       <>
         {children}
-        {exportData && !isBulkEdit && (
+        {exportData && !isBulkEdit && !isCsvOnly && (
           <ModalOverlay isOpen>
             <Modal>
               <Dialog
