@@ -533,6 +533,14 @@ export const scrollHierarchyToNode = async (
 
   let previousLastNode = '';
   for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
+    // Registered before the scroll so it can observe the fetch the scroll
+    // triggers; only awaited below if the node list looks unchanged.
+    const hierarchyResPromise = page
+      .waitForResponse((res) => res.url().includes('/hierarchy'), {
+        timeout: 2000,
+      })
+      .catch(() => null);
+
     await hierarchy.hover();
     await page.mouse.wheel(0, 3000);
     await expect(
@@ -545,11 +553,7 @@ export const scrollHierarchyToNode = async (
       // The last node may be unchanged because a hierarchy fetch triggered
       // by this scroll is still in flight rather than the tree truly ending.
       // Give it a short window to resolve before trusting the comparison.
-      await page
-        .waitForResponse((res) => res.url().includes('/hierarchy'), {
-          timeout: 2000,
-        })
-        .catch(() => null);
+      await hierarchyResPromise;
 
       lastNode = await getLastNode();
 
@@ -624,6 +628,15 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
   let previousLastCard = '';
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
+    // Registered before the scroll so it can observe the fetch the scroll
+    // triggers; only awaited below if the card list looks unchanged.
+    const pagesResPromise = page
+      .waitForResponse(
+        (res) => res.url().includes('/api/v1/contextCenter/pages'),
+        { timeout: 2000 }
+      )
+      .catch(() => null);
+
     await listing.hover();
     await page.mouse.wheel(0, 3000);
     await expect(
@@ -636,12 +649,7 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       // The last card may be unchanged because a page fetch triggered by
       // this scroll is still in flight rather than the list truly ending.
       // Give it a short window to resolve before trusting the comparison.
-      await page
-        .waitForResponse(
-          (res) => res.url().includes('/api/v1/contextCenter/pages'),
-          { timeout: 2000 }
-        )
-        .catch(() => null);
+      await pagesResPromise;
 
       lastCard = await getLastCard();
 
