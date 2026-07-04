@@ -525,6 +525,12 @@ export const scrollHierarchyToNode = async (
 
   await hierarchy.waitFor({ state: 'visible' });
 
+  const getLastNode = () =>
+    hierarchy
+      .locator('[data-testid^="page-node-"]')
+      .last()
+      .getAttribute('data-testid');
+
   let previousLastNode = '';
   for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
     await hierarchy.hover();
@@ -533,13 +539,23 @@ export const scrollHierarchyToNode = async (
       hierarchy.locator('[data-testid^="page-node-"]').first()
     ).toBeVisible();
 
-    const lastNode = await hierarchy
-      .locator('[data-testid^="page-node-"]')
-      .last()
-      .getAttribute('data-testid');
+    let lastNode = await getLastNode();
 
     if (lastNode === previousLastNode) {
-      break;
+      // The last node may be unchanged because a hierarchy fetch triggered
+      // by this scroll is still in flight rather than the tree truly ending.
+      // Give it a short window to resolve before trusting the comparison.
+      await page
+        .waitForResponse((res) => res.url().includes('/hierarchy'), {
+          timeout: 2000,
+        })
+        .catch(() => null);
+
+      lastNode = await getLastNode();
+
+      if (lastNode === previousLastNode) {
+        break;
+      }
     }
     previousLastNode = lastNode ?? '';
   }
@@ -600,6 +616,12 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
 
   await listing.waitFor({ state: 'visible' });
 
+  const getLastCard = () =>
+    listing
+      .locator('[data-testid^="knowledge-card-"]')
+      .last()
+      .getAttribute('data-testid');
+
   let previousLastCard = '';
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     await listing.hover();
@@ -608,13 +630,24 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       listing.locator('[data-testid^="knowledge-card-"]').first()
     ).toBeVisible();
 
-    const lastCard = await listing
-      .locator('[data-testid^="knowledge-card-"]')
-      .last()
-      .getAttribute('data-testid');
+    let lastCard = await getLastCard();
 
     if (lastCard === previousLastCard) {
-      break;
+      // The last card may be unchanged because a page fetch triggered by
+      // this scroll is still in flight rather than the list truly ending.
+      // Give it a short window to resolve before trusting the comparison.
+      await page
+        .waitForResponse(
+          (res) => res.url().includes('/api/v1/contextCenter/pages'),
+          { timeout: 2000 }
+        )
+        .catch(() => null);
+
+      lastCard = await getLastCard();
+
+      if (lastCard === previousLastCard) {
+        break;
+      }
     }
     previousLastCard = lastCard ?? '';
   }
