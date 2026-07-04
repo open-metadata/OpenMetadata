@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
-  Page
+  Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -23,7 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   getApiContext,
   getDefaultAdminAPIContext,
-  uuid
+  uuid,
 } from '../../utils/common';
 import {
   buildPermissionRule,
@@ -38,7 +38,7 @@ import {
   scrollHierarchyToNode,
   scrollListingToCard,
   uploadDisposableDocument,
-  waitForDocumentInArchive
+  waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test as testWithRolesPages } from '../fixtures/pages';
@@ -2180,9 +2180,7 @@ test.describe('Context Center Permissions', () => {
     test('selecting "Updated By" actually reorders rows by updatedBy', async ({
       browser,
     }) => {
-      const { page: adminPage, afterAction } = await performAdminLogin(
-        browser
-      );
+      const { page: adminPage, afterAction } = await performAdminLogin(browser);
 
       await navigateToMemories(adminPage);
       await adminPage.getByRole('button', { name: /sort/i }).click();

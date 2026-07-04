@@ -17,12 +17,12 @@ import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
-  uuid
+  uuid,
 } from '../../utils/common';
 import {
   MEMORIES_API,
   MEMORIES_URL,
-  navigateToMemories
+  navigateToMemories,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -55,7 +55,11 @@ const getLoggedInUser = async (
   expect(res.ok()).toBeTruthy();
   const data = await res.json();
 
-  return { id: data.id, name: data.name, displayName: data.displayName ?? data.name };
+  return {
+    id: data.id,
+    name: data.name,
+    displayName: data.displayName ?? data.name,
+  };
 };
 
 const createMemoryViaApi = async (
@@ -265,7 +269,6 @@ test.describe(
       test('shows header with title, breadcrumb and Add Memory button', async ({
         page,
       }) => {
-
         await navigateToMemories(page);
 
         const header = page.getByTestId('context-center-header');
@@ -293,7 +296,9 @@ test.describe(
         await expect(
           page.getByRole('button', { name: 'Edit' })
         ).not.toBeVisible();
-        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Cancel' })
+        ).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Create Memory' })
         ).toBeVisible();
@@ -614,9 +619,13 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Delete' })
+        ).toBeVisible();
         await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Cancel' })
+        ).toBeVisible();
         await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
 
         await page.getByRole('button', { name: /cancel/i }).click();
@@ -1117,11 +1126,15 @@ test.describe(
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
         await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Delete' })
+        ).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Edit' })
         ).not.toBeVisible();
-        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Cancel' })
+        ).toBeVisible();
         await expect(
           page.getByRole('button', { name: 'Save Changes' })
         ).toBeVisible();
@@ -1772,8 +1785,7 @@ test.describe(
         // this stale request instead of the actual search.
         const initialLoadResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes('/search/query') &&
-            res.url().includes('q=*')
+            res.url().includes('/search/query') && res.url().includes('q=*')
         );
         await assetFilterButton.click();
         await initialLoadResPromise;
@@ -1807,14 +1819,14 @@ test.describe(
         // the reset option.
         const reopenLoadResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes('/search/query') &&
-            res.url().includes('q=*')
+            res.url().includes('/search/query') && res.url().includes('q=*')
         );
         await assetFilterButton.click();
         await reopenLoadResPromise;
 
-        const allAssetsOption = page
-          .getByRole('button', { name: 'All Assets' })
+        const allAssetsOption = page.getByRole('button', {
+          name: 'All Assets',
+        });
         await expect(allAssetsOption).toBeVisible();
         await allAssetsOption.click();
 
