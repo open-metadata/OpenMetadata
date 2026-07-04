@@ -162,6 +162,15 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
+MSSQL_GET_QUERY_STORE_DATABASES = """
+SELECT name
+FROM sys.databases
+WHERE state = 0
+  AND database_id > 4
+  AND HAS_DBACCESS(name) = 1
+ORDER BY name
+"""
+
 MSSQL_GET_CURRENT_DATABASE = """
 SELECT DB_NAME() AS name
 """

@@ -616,23 +616,40 @@ class TestMssqlPerDatabaseQueryStore:
         source._databases_to_scan = lambda: iter(["SalesDW", "Inventory"])
         source._engine_for_database = lambda database: db_engines[database]
 
-        engines = list(source.get_engine())
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ):
+            engines = list(source.get_engine())
 
         assert engines == [db_engines["SalesDW"], db_engines["Inventory"]]
         db_engines["SalesDW"].dispose.assert_called_once()
         db_engines["Inventory"].dispose.assert_called_once()
 
-    def test_databases_to_scan_skips_system_databases(self):
+    def test_per_database_skips_databases_without_query_store(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
-        source.source_config = MagicMock(databaseFilterPattern=None)
+        engines = {"HasQS": MagicMock(), "NoQS": MagicMock()}
+        source._databases_to_scan = lambda: iter(["HasQS", "NoQS"])
+        source._engine_for_database = lambda database: engines[database]
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            side_effect=lambda engine: engine is engines["HasQS"],
+        ):
+            yielded = list(source.get_engine())
+
+        assert yielded == [engines["HasQS"]]
+        engines["NoQS"].dispose.assert_called_once()
+        engines["HasQS"].dispose.assert_called_once()
+
+    def test_databases_to_scan_applies_database_filter(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.source_config = MagicMock(databaseFilterPattern=FilterPattern(includes=["^SalesDW$", "^Inventory$"]))
         conn = source.engine.connect.return_value.__enter__.return_value
         conn.execute.return_value.fetchall.return_value = [
-            ("master",),
-            ("tempdb",),
-            ("model",),
-            ("msdb",),
             ("SalesDW",),
             ("Inventory",),
+            ("Archive",),
         ]
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
