@@ -75,6 +75,8 @@ import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
+import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 import './glossery-header.less';
 const GlossaryHeader = ({
@@ -112,8 +114,10 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
+  const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
   const { permissions: globalPermissions } = usePermissionProvider();
+  const { refreshGlossaryTerms } = useGlossaryStore();
 
   const createGlossaryTermPermission = useMemo(
     () =>
@@ -329,6 +333,22 @@ const GlossaryHeader = ({
             onClick: (e) => {
               e.domEvent.stopPropagation();
               handleGlossaryImport();
+              setShowActions(false);
+            },
+          },
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.import-ontology-help')}
+                icon={ImportIcon}
+                id="import-ontology-button"
+                name={t('label.import-ontology')}
+              />
+            ),
+            key: 'import-ontology-button',
+            onClick: (e) => {
+              e.domEvent.stopPropagation();
+              setIsOntologyImportOpen(true);
               setShowActions(false);
             },
           },
@@ -664,6 +684,15 @@ const GlossaryHeader = ({
         <ChangeParentHierarchy
           selectedData={selectedData}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
+        />
+      )}
+
+      {isOntologyImportOpen && (
+        <ImportOntologyModal
+          glossaryName={selectedData.fullyQualifiedName ?? ''}
+          open={isOntologyImportOpen}
+          onCancel={() => setIsOntologyImportOpen(false)}
+          onSuccess={refreshGlossaryTerms}
         />
       )}
     </>
