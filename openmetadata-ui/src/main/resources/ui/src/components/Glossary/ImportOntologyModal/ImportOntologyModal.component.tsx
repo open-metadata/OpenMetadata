@@ -135,6 +135,14 @@ const ImportOntologyModal = ({
     [t, validate]
   );
 
+  const handleUnsupportedFile = useCallback(() => {
+    showErrorToast(
+      t('message.invalid-file-format', {
+        formats: '.ttl, .rdf, .owl, .nt, .xml',
+      })
+    );
+  }, [t]);
+
   const handleImport = useCallback(async () => {
     setIsImporting(true);
     try {
@@ -193,13 +201,12 @@ const ImportOntologyModal = ({
                   clickToUploadLabel={t('label.click-to-upload')}
                   hint={t('message.upload-ontology-file')}
                   input-data-testid="upload-ontology-input"
-                  isInvalid={false}
                   orDragAndDropLabel={t('label.or-drag-and-drop')}
-                  // getOntologyFormat detects the serialization from content, so a
-                  // file whose extension is outside `accept` is still importable
-                  // (defaults to Turtle) — route both buckets through one handler.
+                  // Block extensions outside `accept` (e.g. .jsonld/.json, which the backend
+                  // rejects) at the drop boundary instead of reading them and surfacing a
+                  // server-side parse error.
                   onDropFiles={handleDropFiles}
-                  onDropUnacceptedFiles={handleDropFiles}
+                  onDropUnacceptedFiles={handleUnsupportedFile}
                 />
               </div>
 

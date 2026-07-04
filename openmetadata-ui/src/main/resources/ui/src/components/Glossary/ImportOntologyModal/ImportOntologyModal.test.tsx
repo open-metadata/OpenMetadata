@@ -263,7 +263,6 @@ describe('ImportOntologyModal', () => {
       ['owl', 'turtle'],
       ['xml', 'rdfxml'],
       ['nt', 'ntriples'],
-      ['unknown', 'turtle'],
     ])(
       'should map a .%s file with Turtle content to the %s format',
       async (ext, expectedFormat) => {
@@ -298,6 +297,18 @@ describe('ImportOntologyModal', () => {
   });
 
   describe('failure scenarios', () => {
+    it('should reject an unsupported file extension at the drop boundary without calling the API', async () => {
+      renderModal();
+
+      await uploadFile('ontology.jsonld');
+
+      expect(showErrorToast).toHaveBeenCalledWith(
+        expect.stringContaining('message.invalid-file-format')
+      );
+      expect(mockImport).not.toHaveBeenCalled();
+      expect(screen.getByTestId('import-ontology-submit')).toBeDisabled();
+    });
+
     it('should show an error and keep import disabled when validation fails', async () => {
       mockImport.mockRejectedValueOnce(new Error('invalid rdf'));
       renderModal();

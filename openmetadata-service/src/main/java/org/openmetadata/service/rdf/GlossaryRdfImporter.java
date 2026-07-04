@@ -543,9 +543,12 @@ public class GlossaryRdfImporter {
 
   private void persistRelationTypes(Collection<GlossaryTermRelationType> newTypes) {
     synchronized (RELATION_TYPE_SETTINGS_LOCK) {
-      // Read the persisted document directly rather than from SettingsCache: the cache is a
-      // per-JVM Guava cache, so a concurrent import on another node could merge against a stale
-      // local copy and its createOrUpdate would drop a relation type this import just registered.
+      // Read the persisted document directly rather than from SettingsCache (a per-JVM Guava
+      // cache) so the merge sees the latest committed types. Best-effort only: the static lock
+      // serializes within a single JVM, so this narrows — but does not close — the cross-node
+      // read-modify-write window (two nodes can still read before either commits, and the later
+      // createOrUpdate wins). Full multi-node safety would need optimistic concurrency
+      // (version/ETag) or a DB-level merging upsert on the settings document.
       GlossaryTermRelationSettings settings = currentRelationSettings();
       List<GlossaryTermRelationType> merged =
           settings == null || settings.getRelationTypes() == null
