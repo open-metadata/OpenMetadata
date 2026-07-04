@@ -53,6 +53,12 @@ import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBa
 import './test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
+// Header names are dot/underscore-joined FQN segments with no spaces; let
+// them wrap inside the tooltip bubble instead of overflowing it.
+const breakableTooltipText = (text?: string) => (
+  <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
+);
+
 const TestSuiteDetailsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -269,7 +275,9 @@ const TestSuiteDetailsPage = () => {
                       as="h2"
                       className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
                       data-testid="entity-header-display-name"
-                      ellipsis={{ tooltip: testSuite.displayName }}
+                      ellipsis={{
+                        tooltip: breakableTooltipText(testSuite.displayName),
+                      }}
                       size="text-lg"
                       weight="bold">
                       {testSuite.displayName}
@@ -285,7 +293,9 @@ const TestSuiteDetailsPage = () => {
                       }
                     )}
                     data-testid="entity-header-name"
-                    ellipsis={{ tooltip: testSuite?.name }}
+                    ellipsis={{
+                      tooltip: breakableTooltipText(testSuite?.name),
+                    }}
                     size={testSuite?.displayName ? 'text-sm' : 'text-lg'}
                     weight={testSuite?.displayName ? 'medium' : 'bold'}>
                     {testSuite?.name}

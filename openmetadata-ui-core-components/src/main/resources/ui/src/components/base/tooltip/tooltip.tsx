@@ -126,12 +126,12 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:max-w-full tw:break-words tw:text-xs tw:font-semibold tw:text-white">
+              <span className="tw:text-xs tw:font-semibold tw:text-white">
                 {title}
               </span>
 
               {description && (
-                <span className="tw:max-w-full tw:break-words tw:text-xs tw:font-medium tw:text-tooltip-supporting-text">
+                <span className="tw:text-xs tw:font-medium tw:text-tooltip-supporting-text">
                   {description}
                 </span>
               )}

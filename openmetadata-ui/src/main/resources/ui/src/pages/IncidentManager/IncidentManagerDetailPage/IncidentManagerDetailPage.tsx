@@ -46,6 +46,13 @@ import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClas
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
+
+// Header names are dot/underscore-joined FQN segments with no spaces; let
+// them wrap inside the tooltip bubble instead of overflowing it.
+const breakableTooltipText = (text?: string) => (
+  <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
+);
+
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
@@ -244,7 +251,7 @@ const IncidentManagerDetailPage = ({
                       as="h2"
                       className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
                       data-testid="entity-header-display-name"
-                      ellipsis={{ tooltip: displayName }}
+                      ellipsis={{ tooltip: breakableTooltipText(displayName) }}
                       size="text-lg"
                       weight="bold">
                       {displayName}
@@ -260,7 +267,7 @@ const IncidentManagerDetailPage = ({
                       }
                     )}
                     data-testid="entity-header-name"
-                    ellipsis={{ tooltip: testCase?.name }}
+                    ellipsis={{ tooltip: breakableTooltipText(testCase?.name) }}
                     size={displayName ? 'text-sm' : 'text-lg'}
                     weight={displayName ? 'medium' : 'bold'}>
                     {testCase?.name}
