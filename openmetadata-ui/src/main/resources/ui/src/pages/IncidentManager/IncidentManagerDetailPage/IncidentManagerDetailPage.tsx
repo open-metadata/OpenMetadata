@@ -12,11 +12,11 @@
  */
 import {
   Box,
-  Button as CoreButton,
+  Button,
   Tabs,
-  Tooltip as CoreTooltip,
+  Tooltip,
   TooltipTrigger,
-  Typography as CoreTypography,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -237,7 +237,7 @@ const IncidentManagerDetailPage = ({
                 gap={3}>
                 <Box className="tw:min-w-0" direction="col">
                   {displayName && (
-                    <CoreTypography
+                    <Typography
                       as="h2"
                       className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
                       data-testid="entity-header-display-name"
@@ -245,9 +245,9 @@ const IncidentManagerDetailPage = ({
                       size="text-lg"
                       weight="bold">
                       {displayName}
-                    </CoreTypography>
+                    </Typography>
                   )}
-                  <CoreTypography
+                  <Typography
                     as={displayName ? 'span' : 'h2'}
                     className={classNames(
                       'tw:m-0 tw:block tw:min-w-0 tw:truncate tw:text-left',
@@ -261,9 +261,9 @@ const IncidentManagerDetailPage = ({
                     size={displayName ? 'text-sm' : 'text-lg'}
                     weight={displayName ? 'medium' : 'bold'}>
                     {testCase?.name}
-                  </CoreTypography>
+                  </Typography>
                 </Box>
-                <CoreTooltip
+                <Tooltip
                   placement="top"
                   title={
                     hasCopied
@@ -273,7 +273,7 @@ const IncidentManagerDetailPage = ({
                         })
                   }>
                   <TooltipTrigger className="tw:flex tw:items-center">
-                    <CoreButton
+                    <Button
                       aria-label={t('label.copy-item', {
                         item: t('label.url-uppercase'),
                       })}
@@ -285,7 +285,7 @@ const IncidentManagerDetailPage = ({
                       onClick={handleCopyEntityUrl}
                     />
                   </TooltipTrigger>
-                </CoreTooltip>
+                </Tooltip>
               </Box>
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
