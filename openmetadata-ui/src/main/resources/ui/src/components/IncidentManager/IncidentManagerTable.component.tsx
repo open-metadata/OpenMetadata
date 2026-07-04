@@ -35,6 +35,7 @@ import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePl
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
+import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import {
   ProfilerTabPath,
   TestCasePermission,
@@ -44,6 +45,9 @@ import TestCaseIncidentManagerStatus from '../DataQuality/IncidentManager/TestCa
 
 export interface IncidentManagerTableProps {
   isIncidentPage: boolean;
+  /** Origin crumbs attached to the test case link's navigation state so
+   * the detail page can render a path-aware breadcrumb. */
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
   tableDetails?: TableType;
   testCaseListData: TestCaseIncidentStatusData;
   isPermissionLoading: boolean;
@@ -63,6 +67,7 @@ export interface IncidentManagerTableProps {
 
 const IncidentManagerTable = ({
   isIncidentPage,
+  breadcrumbData,
   tableDetails,
   testCaseListData,
   isPermissionLoading,
@@ -156,6 +161,7 @@ const IncidentManagerTable = ({
           <Link
             className="tw:m-0 tw:break-all tw:text-primary"
             data-testid={`test-case-${ref?.name}`}
+            state={{ breadcrumbData }}
             to={observabilityRouterClassBase.getTestCaseDetailPagePath(
               ref?.fullyQualifiedName ?? ''
             )}>
