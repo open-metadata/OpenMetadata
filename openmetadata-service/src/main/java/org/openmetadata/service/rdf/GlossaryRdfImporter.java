@@ -607,19 +607,37 @@ public class GlossaryRdfImporter {
   /**
    * Distinct concept IRIs that share a local name (e.g. {@code ex1:Drug} and {@code ex2:Drug} from
    * blended vocabularies) collapse to the same term FQN. Without this guard the second concept's
-   * {@code createOrUpdate} would silently overwrite the first term — including its canonical IRI —
-   * so skip the collision and surface it in the import result instead.
+   * {@code createOrUpdate} would silently overwrite the first term — including its canonical IRI.
+   * The owner is checked against both this run ({@code iriByFqn}) and any already-persisted term at
+   * the FQN, so a later import cannot clobber a term an earlier import created; collisions are
+   * skipped and surfaced in the import result instead.
    */
   private boolean collidesWithExistingConcept(TermIntent intent, String fqn) {
-    String owner = iriByFqn.putIfAbsent(fqn, intent.iri);
+    String owner = iriByFqn.get(fqn);
+    if (owner == null) {
+      owner = persistedConceptIri(fqn);
+    }
     boolean collides = owner != null && !owner.equals(intent.iri);
     if (collides) {
       result.addMessage(
           String.format(
               "Skipped %s: local name '%s' collides with %s; both map to '%s'",
               intent.iri, intent.name, owner, fqn));
+    } else {
+      iriByFqn.put(fqn, intent.iri);
     }
     return collides;
+  }
+
+  private String persistedConceptIri(String fqn) {
+    String iri = null;
+    try {
+      GlossaryTerm existing = Entity.getEntityByName(GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
+      iri = existing.getIri() == null ? null : existing.getIri().toString();
+    } catch (EntityNotFoundException ex) {
+      iri = null;
+    }
+    return iri;
   }
 
   private void persistNonCollidingTerm(

@@ -281,6 +281,57 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
+  void importDoesNotOverwriteAConceptPersistedByAnEarlierImport(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String vocab1 =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix ex1:  <http://example.com/vocab1#> .
+
+        ex1:Drug a skos:Concept ;
+            skos:prefLabel "Drug One" .
+        """;
+    String vocab2 =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix ex2:  <http://example.com/vocab2#> .
+
+        ex2:Drug a skos:Concept ;
+            skos:prefLabel "Drug Two" .
+        """;
+
+    // First import persists <glossary>.Drug carrying the ex1 canonical IRI.
+    importRdfBody(glossary.getName(), vocab1);
+    GlossaryTerm first = getTerm(glossary.getName() + ".Drug");
+    assertEquals(
+        "http://example.com/vocab1#Drug",
+        first.getIri().toString(),
+        "the first import persists the ex1 concept IRI");
+
+    // A later import of a different-namespace concept with the same local name must be skipped,
+    // not applied as a silent overwrite of the already-persisted term (fresh iriByFqn per run).
+    JsonNode result = importRdfBody(glossary.getName(), vocab2);
+    String detail = " | result=" + result;
+    assertEquals(
+        0,
+        result.get("termsUpdated").asInt(),
+        "the persisted term must not be overwritten" + detail);
+    assertEquals(
+        0,
+        result.get("termsCreated").asInt(),
+        "the colliding concept is skipped, not created" + detail);
+    assertTrue(
+        result.get("messages").toString().contains("collides"),
+        "the collision with the persisted term must be surfaced" + detail);
+
+    GlossaryTerm afterSecond = getTerm(glossary.getName() + ".Drug");
+    assertEquals(
+        "http://example.com/vocab1#Drug",
+        afterSecond.getIri().toString(),
+        "the persisted term keeps its original canonical IRI, not silently replaced" + detail);
+  }
+
+  @Test
   void rejectsMalformedRdfWithBadRequest(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
 
