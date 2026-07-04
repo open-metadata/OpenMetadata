@@ -1001,9 +1001,9 @@ public class CreateTask implements TaskListener {
         return feedbackPayload;
       }
       if (payload instanceof String json) {
-        return JsonUtils.readValue(json, RecognizerFeedbackTaskPayload.class);
+        return JsonUtils.readValueLenient(json, RecognizerFeedbackTaskPayload.class);
       }
-      return JsonUtils.convertValue(payload, RecognizerFeedbackTaskPayload.class);
+      return JsonUtils.convertValueLenient(payload, RecognizerFeedbackTaskPayload.class);
     } catch (RuntimeException invalidPayload) {
       LOG.trace("[CreateTask] Payload is not a RecognizerFeedbackTaskPayload", invalidPayload);
       throw new IllegalArgumentException(
