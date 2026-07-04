@@ -248,6 +248,7 @@ export const useTestCaseDetailPage = ({
     feedCount.openTaskCount,
     testCaseClassBase.showSqlQueryTab,
     testCase?.dimensionColumns,
+    isVersionPage,
   ]);
 
   const fetchTestCasePermission = async () => {

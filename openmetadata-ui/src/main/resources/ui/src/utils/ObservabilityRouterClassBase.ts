@@ -97,13 +97,22 @@ class ObservabilityRouterClassBase {
   /**
    * Test-case incident tasks live on the test case's own Issues tab —
    * the generic entity activity-feed route has no testCase page, so
-   * `getTaskDetailPath` would land on Not Found for them.
+   * `getTaskDetailPath` would land on Not Found for them. When the task
+   * payload carries no `about` reference, `fallbackTestCaseFqn` (the test
+   * case the caller is rendering) keeps the link on the Issues tab.
    */
-  public getIncidentTaskPath(task: Task): string {
-    const entityFQN = getTaskEntityFQN(task);
+  public getIncidentTaskPath(task: Task, fallbackTestCaseFqn?: string): string {
+    const taskEntityFqn =
+      getTaskEntityType(task) === EntityType.TEST_CASE
+        ? getTaskEntityFQN(task)
+        : undefined;
+    const testCaseFqn = taskEntityFqn ?? fallbackTestCaseFqn;
 
-    if (getTaskEntityType(task) === EntityType.TEST_CASE && entityFQN) {
-      return this.getTestCaseDetailPagePath(entityFQN, TestCasePageTabs.ISSUES);
+    if (testCaseFqn) {
+      return this.getTestCaseDetailPagePath(
+        testCaseFqn,
+        TestCasePageTabs.ISSUES
+      );
     }
 
     return getTaskDetailPath(task);

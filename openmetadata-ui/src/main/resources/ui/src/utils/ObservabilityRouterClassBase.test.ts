@@ -231,6 +231,15 @@ describe('ObservabilityRouterClassBase', () => {
         } as unknown as Task)
       ).toBe('/tasks/task-uuid');
     });
+
+    it('should use the fallback test case fqn when the task has no entity reference', () => {
+      expect(
+        router.getIncidentTaskPath(
+          { id: 'task-uuid', taskId: 6 } as unknown as Task,
+          'db.schema.table.col.test_case'
+        )
+      ).toBe('/test-case/db.schema.table.col.test_case/issues');
+    });
   });
 
   describe('singleton default export', () => {

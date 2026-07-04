@@ -399,7 +399,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const onDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
-      if (testSuite?.description !== updatedHTML) {
+      if (testSuite && testSuite.description !== updatedHTML) {
         const updatedTestSuite = { ...testSuite, description: updatedHTML };
         try {
           const response = await saveAndUpdateTestSuiteData(

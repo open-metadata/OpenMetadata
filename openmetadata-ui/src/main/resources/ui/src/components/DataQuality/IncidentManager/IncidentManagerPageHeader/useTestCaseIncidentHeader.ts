@@ -305,12 +305,13 @@ export const useTestCaseIncidentHeader = ({
       incidentTask
         ? {
             path: observabilityRouterClassBase.getIncidentTaskPath(
-              incidentTask
+              incidentTask,
+              testCaseData?.fullyQualifiedName
             ),
             label: `#${getTaskDisplayId(incidentTask.taskId)}`,
           }
         : null,
-    [incidentTask]
+    [incidentTask, testCaseData?.fullyQualifiedName]
   );
 
   return {
