@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -1464,6 +1465,36 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "Case-insensitive glossaryStatus import should succeed. Result: " + resultJson);
     assertEquals(4, importResult.getNumberOfRowsPassed());
     assertEquals(0, importResult.getNumberOfRowsFailed());
+
+    String resultsCsv = importResult.getImportResultsCsv();
+    assertNotNull(resultsCsv, "Per-row import results should be present. Result: " + resultJson);
+    for (Map.Entry<String, String> entry :
+        Map.of(
+                draftTermName, "draft",
+                approvedTermName, "APPROVED",
+                deprecatedTermName, "deprecated",
+                mixedCaseTermName, "drAFT")
+            .entrySet()) {
+      String rowMarker = entry.getKey();
+      String casing = entry.getValue();
+      boolean rowSucceeded =
+          resultsCsv
+              .lines()
+              .anyMatch(
+                  line ->
+                      line.startsWith("success")
+                          && line.contains(rowMarker)
+                          && line.contains("," + casing + ","));
+      assertTrue(
+          rowSucceeded,
+          "Row for '"
+              + rowMarker
+              + "' with casing '"
+              + casing
+              + "' should be reported as success."
+              + " importResultsCsv="
+              + resultsCsv);
+    }
 
     for (String termName :
         List.of(draftTermName, approvedTermName, deprecatedTermName, mixedCaseTermName)) {

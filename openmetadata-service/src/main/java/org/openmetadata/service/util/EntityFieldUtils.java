@@ -497,16 +497,13 @@ public class EntityFieldUtils {
    * @throws IllegalArgumentException when the value does not match any enum constant
    */
   public static EntityStatus parseEntityStatus(String value) {
-    try {
-      return EntityStatus.fromValue(value);
-    } catch (IllegalArgumentException ex) {
-      for (EntityStatus status : EntityStatus.values()) {
-        if (status.value().equalsIgnoreCase(value)) {
-          return status;
-        }
+    String normalized = value == null ? "" : value.trim();
+    for (EntityStatus status : EntityStatus.values()) {
+      if (status.value().equalsIgnoreCase(normalized)) {
+        return status;
       }
-      throw ex;
     }
+    throw new IllegalArgumentException("Unknown EntityStatus value: " + value);
   }
 
   /**
