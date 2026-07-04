@@ -18,6 +18,10 @@ import applicationRoutesClassBase, {
   ApplicationRoutesClassBase,
 } from './ApplicationRoutesClassBase';
 
+jest.mock('../components/AppRouter/UnAuthenticatedAppRouter', () => ({
+  UnAuthenticatedAppRouter: jest.fn(),
+}));
+
 jest.mock('../components/AppRouter/AuthenticatedAppRouter', () => ({
   __esModule: true,
   default: function AuthenticatedAppRouter() {

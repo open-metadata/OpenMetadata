@@ -25,7 +25,7 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -1013,7 +1013,7 @@ const TableDetailsPageV1: React.FC = () => {
   // FQN just changed and the new cache slot is empty). Distinct from the permission gate
   // above so we keep the loader spinning instead of flashing the missing-entity placeholder.
   if (tableLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error

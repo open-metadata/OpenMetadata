@@ -54,7 +54,7 @@ export const getWidgetFromKey = ({
     !isUndefined(handlePlaceholderWidgetKey)
   ) {
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
         <EmptyWidgetPlaceholderV1
           handleOpenAddWidgetModal={handleOpenAddWidgetModal}
           handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
@@ -66,9 +66,14 @@ export const getWidgetFromKey = ({
   }
 
   const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
+  // Normal My Data keeps lazy widget chunks silent; edit mode preserves grid slots
+  // because disappearing cells are more disruptive while arranging widgets.
+  const fallback = isEditView ? (
+    <WidgetWrapper loading>{null}</WidgetWrapper>
+  ) : null;
 
   return (
-    <Suspense fallback={<WidgetWrapper loading>{null}</WidgetWrapper>}>
+    <Suspense fallback={fallback}>
       <Widget
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}

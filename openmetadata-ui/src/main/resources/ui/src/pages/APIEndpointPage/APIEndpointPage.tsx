@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
@@ -352,7 +352,7 @@ const APIEndpointPage = () => {
   }, [apiEndpointFqn]);
 
   if (permissionsLoading || apiEndpointLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (
@@ -373,7 +373,7 @@ const APIEndpointPage = () => {
     );
   }
   if (!apiEndpointDetails) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (

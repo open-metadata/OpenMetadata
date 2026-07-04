@@ -30,7 +30,7 @@ import ManageButton from '../../../components/common/EntityPageInfos/ManageButto
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
-import Loader from '../../../components/common/Loader/Loader';
+import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import EditTestCaseModal from '../../../components/DataQuality/AddDataQualityTest/EditTestCaseModal';
@@ -198,7 +198,7 @@ const IncidentManagerDetailPage = ({
   }, [onCopyToClipBoard]);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!hasViewPermission) {
