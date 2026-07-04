@@ -435,9 +435,17 @@ class EntityFieldUtilsTest {
   }
 
   @Test
+  void parseEntityStatusTrimsSurroundingWhitespace() {
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("  draft  "));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("Approved\t"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("\n In Review \n"));
+  }
+
+  @Test
   void parseEntityStatusThrowsForUnknownValues() {
     assertThrows(
         IllegalArgumentException.class, () -> EntityFieldUtils.parseEntityStatus("not-a-status"));
+    assertThrows(IllegalArgumentException.class, () -> EntityFieldUtils.parseEntityStatus("   "));
   }
 
   @Test
