@@ -255,7 +255,7 @@ export const useLearningResourceFilters = (
         <Box className="tw:flex-1" gap={2} wrap="wrap">
           {selectedFilters.map((filter) => (
             <Badge
-              className="tw:ring-0 tw:gap-1"
+              className="filter-selection-chip tw:ring-0 tw:gap-1"
               color="brand"
               key={filter.key}
               size="lg"
