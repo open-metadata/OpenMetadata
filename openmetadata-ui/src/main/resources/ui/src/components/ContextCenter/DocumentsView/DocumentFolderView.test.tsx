@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { createRef } from 'react';
 import {
   act,
   fireEvent,
@@ -18,11 +19,30 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { deleteFolder, listFolders } from '../../../rest/assetAPI';
+import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
 import DocumentFolderView from './DocumentFolderView.component';
+import {
+  DocumentFolderViewHandle,
+  DocumentFolderViewProps,
+} from './DocumentsView.interface';
+
+const renderFolderView = (
+  props: Partial<DocumentFolderViewProps> = {},
+  ref?: React.Ref<DocumentFolderViewHandle>
+) =>
+  render(
+    <DocumentFolderView
+      folders={[]}
+      isLoading={false}
+      ref={ref}
+      onFoldersChanged={jest.fn()}
+      onSelectFolder={jest.fn()}
+      {...props}
+    />
+  );
 
 jest.mock('rest/assetAPI', () => ({
-  listFolders: jest.fn(),
+  listContextFiles: jest.fn(),
   deleteFolder: jest.fn(),
 }));
 
@@ -132,9 +152,28 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tree: Object.assign(
-    jest.fn(({ children }: { children: React.ReactNode }) => (
-      <div data-testid="tree">{children}</div>
-    )),
+    jest.fn(
+      ({
+        children,
+        expandedKeys,
+        onExpandedChange,
+      }: {
+        children: React.ReactNode;
+        expandedKeys?: Set<string>;
+        onExpandedChange?: (keys: Set<string>) => void;
+      }) => (
+        <div data-testid="tree">
+          <button
+            data-testid="expand-folder-1"
+            onClick={() =>
+              onExpandedChange?.(new Set([...(expandedKeys ?? []), 'folder-1']))
+            }>
+            expand-folder-1
+          </button>
+          {children}
+        </div>
+      )
+    ),
     {
       Item: jest.fn(
         ({ children, id }: { children: React.ReactNode; id: string }) => (
@@ -171,137 +210,85 @@ const mockFolders = [
   },
 ];
 
+const mockFiles = [
+  { id: 'file-1', name: 'file-1', displayName: 'File One' },
+];
+
 describe('DocumentFolderView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (listFolders as jest.Mock).mockResolvedValue(mockFolders);
+    (listContextFiles as jest.Mock).mockResolvedValue({
+      data: mockFiles,
+      paging: { total: mockFiles.length },
+    });
   });
 
   it('shows skeletons while loading', () => {
-    (listFolders as jest.Mock).mockReturnValue(new Promise(() => undefined));
-    render(<DocumentFolderView onSelectFolder={jest.fn()} />);
+    renderFolderView({ isLoading: true });
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
-  it('renders folder names after loading', async () => {
-    render(<DocumentFolderView onSelectFolder={jest.fn()} />);
+  it('renders folder names from the folders prop', () => {
+    renderFolderView({ folders: mockFolders });
 
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
-
+    expect(screen.getByText('Folder One')).toBeInTheDocument();
     expect(screen.getByText('Folder Two')).toBeInTheDocument();
   });
 
-  it('calls onFoldersLoaded with fetched folders', async () => {
-    const onFoldersLoaded = jest.fn();
-    render(
-      <DocumentFolderView
-        onFoldersLoaded={onFoldersLoaded}
-        onSelectFolder={jest.fn()}
-      />
-    );
-
-    await waitFor(() =>
-      expect(onFoldersLoaded).toHaveBeenCalledWith(mockFolders)
-    );
-  });
-
-  it('shows totalFileCount in the subtitle', async () => {
-    render(
-      <DocumentFolderView totalFileCount={42} onSelectFolder={jest.fn()} />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+  it('shows totalFileCount in the subtitle', () => {
+    renderFolderView({ folders: mockFolders, totalFileCount: 42 });
 
     expect(screen.getByText('42 label.file-plural')).toBeInTheDocument();
   });
 
-  it('calls onSelectFolder with folderId when a folder is clicked', async () => {
+  it('calls onSelectFolder with folderId when a folder is clicked', () => {
     const onSelectFolder = jest.fn();
-    render(<DocumentFolderView onSelectFolder={onSelectFolder} />);
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+    renderFolderView({ folders: mockFolders, onSelectFolder });
 
     fireEvent.click(screen.getByText('Folder One'));
 
     expect(onSelectFolder).toHaveBeenCalledWith('folder-1');
   });
 
-  it('calls onSelectFolder with undefined when the selected folder is clicked again', async () => {
+  it('calls onSelectFolder with undefined when the selected folder is clicked again', () => {
     const onSelectFolder = jest.fn();
-    render(
-      <DocumentFolderView
-        selectedFolderId="folder-1"
-        onSelectFolder={onSelectFolder}
-      />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+    renderFolderView({
+      folders: mockFolders,
+      selectedFolderId: 'folder-1',
+      onSelectFolder,
+    });
 
     fireEvent.click(screen.getByText('Folder One'));
 
     expect(onSelectFolder).toHaveBeenCalledWith(undefined);
   });
 
-  it('opens the create folder modal when the add button is clicked', async () => {
-    render(
-      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+  it('opens the create folder modal when the add button is clicked', () => {
+    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
 
     fireEvent.click(screen.getByTestId('add-folder-btn'));
 
     expect(screen.getByTestId('create-folder-modal')).toBeInTheDocument();
   });
 
-  it('adds the new folder to the list after creation', async () => {
-    const onFoldersLoaded = jest.fn();
-    render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        onFoldersLoaded={onFoldersLoaded}
-        onSelectFolder={jest.fn()}
-      />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+  it('calls onFoldersChanged after a folder is created', () => {
+    const onFoldersChanged = jest.fn();
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+      onFoldersChanged,
+    });
 
     fireEvent.click(screen.getByTestId('add-folder-btn'));
     fireEvent.click(screen.getByTestId('modal-create-btn'));
 
-    await waitFor(() =>
-      expect(screen.getByText('New Folder')).toBeInTheDocument()
-    );
-
-    expect(onFoldersLoaded).toHaveBeenLastCalledWith(
-      expect.arrayContaining([
-        expect.objectContaining({ displayName: 'New Folder' }),
-      ])
-    );
+    expect(onFoldersChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('shows delete modal when delete button is clicked', async () => {
-    render(
-      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+  it('shows delete modal when delete button is clicked', () => {
+    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
 
     const deleteBtn = screen.getByTestId('delete-folder-btn-folder-1');
     fireEvent.click(deleteBtn);
@@ -309,22 +296,16 @@ describe('DocumentFolderView', () => {
     expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
   });
 
-  it('calls deleteFolder and removes the folder on confirm', async () => {
+  it('calls deleteFolder and onFoldersChanged on confirm', async () => {
     (deleteFolder as jest.Mock).mockResolvedValue(undefined);
-    const onFoldersLoaded = jest.fn();
+    const onFoldersChanged = jest.fn();
 
-    render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        onFoldersLoaded={onFoldersLoaded}
-        onSelectFolder={jest.fn()}
-      />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+      onFoldersChanged,
+    });
 
     fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
 
@@ -333,27 +314,21 @@ describe('DocumentFolderView', () => {
     });
 
     await waitFor(() => expect(deleteFolder).toHaveBeenCalledWith('folder-1'));
-    await waitFor(() =>
-      expect(screen.queryByText('Folder One')).not.toBeInTheDocument()
-    );
+
+    expect(onFoldersChanged).toHaveBeenCalled();
   });
 
   it('calls onSelectFolder(undefined) when the selected folder is deleted', async () => {
     (deleteFolder as jest.Mock).mockResolvedValue(undefined);
     const onSelectFolder = jest.fn();
 
-    render(
-      <DocumentFolderView
-        canCreate
-        canDelete
-        selectedFolderId="folder-1"
-        onSelectFolder={onSelectFolder}
-      />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+      selectedFolderId: 'folder-1',
+      onSelectFolder,
+    });
 
     fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
 
@@ -364,19 +339,60 @@ describe('DocumentFolderView', () => {
     await waitFor(() => expect(onSelectFolder).toHaveBeenCalledWith(undefined));
   });
 
-  it('closes delete modal on cancel without deleting', async () => {
-    render(
-      <DocumentFolderView canCreate canDelete onSelectFolder={jest.fn()} />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText('Folder One')).toBeInTheDocument()
-    );
+  it('closes delete modal on cancel without deleting', () => {
+    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
 
     fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
     fireEvent.click(screen.getByTestId('cancel-delete-btn'));
 
     expect(deleteFolder).not.toHaveBeenCalled();
     expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+  });
+
+  describe('refetchFolderFiles', () => {
+    it('does nothing for folders that are not expanded', async () => {
+      const ref = createRef<DocumentFolderViewHandle>();
+      renderFolderView({ folders: mockFolders }, ref);
+
+      await act(async () => {
+        await ref.current?.refetchFolderFiles(['folder-1', 'folder-2']);
+      });
+
+      expect(listContextFiles).not.toHaveBeenCalled();
+    });
+
+    it('only refetches files for folders that are both passed in and expanded', async () => {
+      const ref = createRef<DocumentFolderViewHandle>();
+      renderFolderView({ folders: mockFolders }, ref);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('expand-folder-1'));
+      });
+
+      await waitFor(() =>
+        expect(listContextFiles).toHaveBeenCalledWith(
+          expect.objectContaining({ folderId: 'folder-1' })
+        )
+      );
+
+      (listContextFiles as jest.Mock).mockClear();
+      (listContextFiles as jest.Mock).mockResolvedValue({
+        data: [{ id: 'file-2', name: 'file-2', displayName: 'File Two' }],
+        paging: { total: 1 },
+      });
+
+      await act(async () => {
+        await ref.current?.refetchFolderFiles(['folder-1', 'folder-2']);
+      });
+
+      expect(listContextFiles).toHaveBeenCalledTimes(1);
+      expect(listContextFiles).toHaveBeenCalledWith(
+        expect.objectContaining({ folderId: 'folder-1' })
+      );
+
+      await waitFor(() =>
+        expect(screen.getByText('File Two')).toBeInTheDocument()
+      );
+    });
   });
 });

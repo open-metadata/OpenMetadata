@@ -90,11 +90,6 @@ export interface FileRowProps {
   onSelectFile?: (fileId: string) => void;
 }
 
-export interface FileMovedEvent {
-  file: ContextFile;
-  targetFolderId: string | null;
-}
-
 export interface FolderFilesState {
   files: ContextFile[];
   after?: string;
@@ -103,13 +98,16 @@ export interface FolderFilesState {
 }
 
 export interface DocumentFolderViewProps {
+  folders: Folder[];
+  isLoading: boolean;
   totalFileCount?: number;
   selectedFolderId?: string;
   canCreate?: boolean;
   canDelete?: boolean;
-  lastFileMoved?: FileMovedEvent;
-  lastFilesDeleted?: ContextFile[];
-  lastFilesMoved?: ContextFile[];
   onSelectFolder: (folderId: string | undefined) => void;
-  onFoldersLoaded?: (folders: Folder[]) => void;
+  onFoldersChanged: () => void;
+}
+
+export interface DocumentFolderViewHandle {
+  refetchFolderFiles: (folderIds: string[]) => Promise<void>;
 }

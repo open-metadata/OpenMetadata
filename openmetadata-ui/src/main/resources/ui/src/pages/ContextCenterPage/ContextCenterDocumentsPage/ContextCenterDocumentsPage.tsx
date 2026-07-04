@@ -24,7 +24,7 @@ import DocumentFolderView from '../../../components/ContextCenter/DocumentsView/
 import DocumentPreviewPanel from '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component';
 import DocumentsView from '../../../components/ContextCenter/DocumentsView/DocumentsView.component';
 import {
-  FileMovedEvent,
+  DocumentFolderViewHandle,
   FolderOption,
 } from '../../../components/ContextCenter/DocumentsView/DocumentsView.interface';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
@@ -45,6 +45,7 @@ import {
   downloadDriveFiles,
   getContextFileById,
   listContextFiles,
+  listFolders,
 } from '../../../rest/assetAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -82,15 +83,28 @@ const ContextCenterDocumentsPage: FC = () => {
   );
   const [selectedFolderId, setSelectedFolderId] = useState<string>();
   const [folders, setFolders] = useState<Folder[]>([]);
+  const [isFoldersLoading, setIsFoldersLoading] = useState(true);
   const [totalFileCount, setTotalFileCount] = useState(0);
   const [globalFileCount, setGlobalFileCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<ContextFile | undefined>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [lastFileMoved, setLastFileMoved] = useState<FileMovedEvent>();
-  const [lastFilesDeleted, setLastFilesDeleted] = useState<ContextFile[]>([]);
-  const [lastFilesMoved, setLastFilesMoved] = useState<ContextFile[]>([]);
   const fetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
+  const folderViewRef = useRef<DocumentFolderViewHandle>(null);
+
+  const fetchFolders = useCallback(async () => {
+    try {
+      const data = await listFolders();
+      setFolders(data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsFoldersLoading(true);
+    fetchFolders().finally(() => setIsFoldersLoading(false));
+  }, [fetchFolders]);
 
   const previewFileUrl = useMemo(() => {
     if (!previewFile) {
@@ -296,7 +310,11 @@ const ContextCenterDocumentsPage: FC = () => {
       );
       setTotalFileCount((prev) => prev - 1);
       setGlobalFileCount((prev) => prev - 1);
-      setLastFilesDeleted([fileToDelete]);
+      fetchFolders();
+      const affectedFolderId = fileToDelete.folder?.id;
+      if (affectedFolderId) {
+        folderViewRef.current?.refetchFolderFiles([affectedFolderId]);
+      }
       showSuccessToast(
         t('server.entity-deleted-success', {
           entity: t('label.document'),
@@ -308,7 +326,7 @@ const ContextCenterDocumentsPage: FC = () => {
     } finally {
       setIsDeletingFile(false);
     }
-  }, [fileToDelete, t]);
+  }, [fileToDelete, t, fetchFolders]);
 
   const handleFileMoved = useCallback(
     (file: ContextFile, targetFolderId: string | null) => {
@@ -335,9 +353,15 @@ const ContextCenterDocumentsPage: FC = () => {
           )
         );
       }
-      setLastFileMoved({ file, targetFolderId });
+      fetchFolders();
+      const affectedFolderIds = [file.folder?.id, targetFolderId].filter(
+        (id): id is string => Boolean(id)
+      );
+      if (affectedFolderIds.length > 0) {
+        folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+      }
     },
-    [folders]
+    [folders, fetchFolders]
   );
 
   const handlePreview = useCallback(
@@ -385,7 +409,17 @@ const ContextCenterDocumentsPage: FC = () => {
       setTotalFileCount((prev) => prev - deletedIds.size);
       setGlobalFileCount((prev) => prev - deletedIds.size);
       if (deletedDocuments.length > 0) {
-        setLastFilesDeleted(deletedDocuments);
+        fetchFolders();
+        const affectedFolderIds = Array.from(
+          new Set(
+            deletedDocuments
+              .map((d) => d.folder?.id)
+              .filter((id): id is string => Boolean(id))
+          )
+        );
+        if (affectedFolderIds.length > 0) {
+          folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+        }
       }
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -416,7 +450,7 @@ const ContextCenterDocumentsPage: FC = () => {
     }
 
     setIsBulkDeleting(false);
-  }, [allDocuments, selectedIds, t]);
+  }, [allDocuments, selectedIds, t, fetchFolders]);
 
   const handleBulkDownload = useCallback(async () => {
     try {
@@ -459,7 +493,14 @@ const ContextCenterDocumentsPage: FC = () => {
           })
         );
         if (movedDocuments.length > 0) {
-          setLastFilesMoved(movedDocuments);
+          fetchFolders();
+          const sourceFolderIds = movedDocuments
+            .map((d) => d.folder?.id)
+            .filter((id): id is string => Boolean(id));
+          const affectedFolderIds = Array.from(
+            new Set([targetFolderId, ...sourceFolderIds])
+          );
+          folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
         }
         setSelectedIds((prev) => {
           const next = new Set(prev);
@@ -486,14 +527,28 @@ const ContextCenterDocumentsPage: FC = () => {
         showErrorToast(err as AxiosError);
       }
     },
-    [folders, selectedIds, allDocuments, t]
+    [folders, selectedIds, allDocuments, t, fetchFolders]
   );
 
-  const handleUploaded = useCallback((newFiles: ContextFile[]) => {
-    setAllDocuments((prev) => [...newFiles, ...prev]);
-    setTotalFileCount((prev) => prev + newFiles.length);
-    setGlobalFileCount((prev) => prev + newFiles.length);
-  }, []);
+  const handleUploaded = useCallback(
+    (newFiles: ContextFile[]) => {
+      setAllDocuments((prev) => [...newFiles, ...prev]);
+      setTotalFileCount((prev) => prev + newFiles.length);
+      setGlobalFileCount((prev) => prev + newFiles.length);
+      fetchFolders();
+      const affectedFolderIds = Array.from(
+        new Set(
+          newFiles
+            .map((f) => f.folder?.id)
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (affectedFolderIds.length > 0) {
+        folderViewRef.current?.refetchFolderFiles(affectedFolderIds);
+      }
+    },
+    [fetchFolders]
+  );
 
   return (
     <Box
@@ -524,12 +579,12 @@ const ContextCenterDocumentsPage: FC = () => {
           <DocumentFolderView
             canCreate={hasCreatePermission}
             canDelete={hasDeletePermission}
-            lastFileMoved={lastFileMoved}
-            lastFilesDeleted={lastFilesDeleted}
-            lastFilesMoved={lastFilesMoved}
+            folders={folders}
+            isLoading={isFoldersLoading}
+            ref={folderViewRef}
             selectedFolderId={selectedFolderId}
             totalFileCount={globalFileCount}
-            onFoldersLoaded={setFolders}
+            onFoldersChanged={fetchFolders}
             onSelectFolder={setSelectedFolderId}
           />
         </ReflexElement>

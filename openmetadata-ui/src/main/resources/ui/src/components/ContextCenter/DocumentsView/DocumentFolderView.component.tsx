@@ -24,39 +24,43 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { MouseEvent, useCallback, useEffect, useState } from 'react';
+import {
+  ForwardedRef,
+  forwardRef,
+  MouseEvent,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
-import {
-  deleteFolder,
-  listContextFiles,
-  listFolders,
-} from '../../../rest/assetAPI';
+import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 import {
+  DocumentFolderViewHandle,
   DocumentFolderViewProps,
   FolderFilesState,
 } from './DocumentsView.interface';
 
-const DocumentFolderView = ({
-  totalFileCount = 0,
-  selectedFolderId,
-  canCreate = false,
-  canDelete = false,
-  lastFileMoved,
-  lastFilesDeleted,
-  lastFilesMoved,
-  onSelectFolder,
-  onFoldersLoaded,
-}: DocumentFolderViewProps) => {
+const DocumentFolderView = (
+  {
+    folders,
+    isLoading,
+    totalFileCount = 0,
+    selectedFolderId,
+    canCreate = false,
+    canDelete = false,
+    onSelectFolder,
+    onFoldersChanged,
+  }: DocumentFolderViewProps,
+  ref: ForwardedRef<DocumentFolderViewHandle>
+) => {
   const { t } = useTranslation();
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [folderToDelete, setFolderToDelete] = useState<Folder>();
   const [isDeletingFolder, setIsDeletingFolder] = useState(false);
@@ -64,23 +68,6 @@ const DocumentFolderView = ({
   const [folderFilesState, setFolderFilesState] = useState<
     Map<string, FolderFilesState>
   >(new Map());
-
-  const fetchFolders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await listFolders();
-      setFolders(data);
-      onFoldersLoaded?.(data);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [onFoldersLoaded]);
-
-  useEffect(() => {
-    fetchFolders();
-  }, [fetchFolders]);
 
   const fetchFolderFilesIfNeeded = useCallback(
     async (folderId: string) => {
@@ -180,91 +167,58 @@ const DocumentFolderView = ({
     }
   };
 
-  useEffect(() => {
-    if (!lastFileMoved) {
-      return;
-    }
-    const { file, targetFolderId } = lastFileMoved;
-    const sourceFolderId = file.folder?.id;
-
-    setFolders((prev) =>
-      prev.map((f) => {
-        if (f.id === targetFolderId) {
-          return { ...f, childrenCount: (f.childrenCount ?? 0) + 1 };
-        }
-        if (sourceFolderId && f.id === sourceFolderId) {
-          return {
-            ...f,
-            childrenCount: Math.max(0, (f.childrenCount ?? 0) - 1),
-          };
-        }
-
-        return f;
-      })
-    );
-
-    setFolderFilesState((prev) => {
-      const next = new Map(prev);
-
-      if (sourceFolderId && next.has(sourceFolderId)) {
-        const existing = next.get(sourceFolderId)!;
-        next.set(sourceFolderId, {
-          ...existing,
-          files: existing.files.filter((f) => f.id !== file.id),
-        });
+  const refetchFolderFiles = useCallback(
+    async (folderIds: string[]) => {
+      const targets = folderIds.filter((id) => expandedKeys.has(id));
+      if (targets.length === 0) {
+        return;
       }
 
-      if (targetFolderId && next.has(targetFolderId)) {
-        const existing = next.get(targetFolderId)!;
-        if (!existing.files.some((f) => f.id === file.id)) {
-          next.set(targetFolderId, {
-            ...existing,
-            files: [file, ...existing.files],
-          });
-        }
-      }
+      const refreshedEntries = await Promise.all(
+        targets.map(async (folderId) => {
+          try {
+            const response = await listContextFiles({
+              folderId,
+              limit: FOLDER_FILES_PAGE_SIZE,
+            });
 
-      return next;
-    });
-  }, [lastFileMoved]);
+            return [folderId, response] as const;
+          } catch (err) {
+            showErrorToast(err as AxiosError);
 
-  useEffect(() => {
-    if (!lastFilesDeleted?.length) {
-      return;
-    }
+            return null;
+          }
+        })
+      );
 
-    fetchFolders();
-
-    setFolderFilesState((prev) => {
-      const next = new Map(prev);
-      lastFilesDeleted.forEach((file) => {
-        const folderId = file.folder?.id;
-        if (folderId && next.has(folderId)) {
-          const existing = next.get(folderId)!;
+      setFolderFilesState((prev) => {
+        const next = new Map(prev);
+        refreshedEntries.forEach((entry) => {
+          if (!entry) {
+            return;
+          }
+          const [folderId, response] = entry;
+          const existing = next.get(folderId);
           next.set(folderId, {
-            ...existing,
-            files: existing.files.filter((f) => f.id !== file.id),
+            files: response.data,
+            after: response.paging.after,
+            isExpanded: existing?.isExpanded ?? false,
+            isLoadingMore: false,
           });
-        }
+        });
+
+        return next;
       });
+    },
+    [expandedKeys]
+  );
 
-      return next;
-    });
-  }, [lastFilesDeleted, fetchFolders]);
+  useImperativeHandle(ref, () => ({ refetchFolderFiles }), [
+    refetchFolderFiles,
+  ]);
 
-  useEffect(() => {
-    if (!lastFilesMoved?.length) {
-      return;
-    }
-
-    fetchFolders();
-    setFolderFilesState(new Map());
-  }, [lastFilesMoved, fetchFolders]);
-
-  const handleFolderCreated = (folder: Folder) => {
-    const updated = [...folders, folder];
-    setFolders(updated);
-    onFoldersLoaded?.(updated);
+  const handleFolderCreated = () => {
+    onFoldersChanged();
   };
 
   const handleDeleteConfirm = async () => {
@@ -275,9 +229,7 @@ const DocumentFolderView = ({
     try {
       setIsDeletingFolder(true);
       await deleteFolder(folderToDelete.id);
-      const updated = folders.filter((f) => f.id !== folderToDelete.id);
-      setFolders(updated);
-      onFoldersLoaded?.(updated);
+      onFoldersChanged();
       if (selectedFolderId === folderToDelete.id) {
         onSelectFolder(undefined);
       }
@@ -514,4 +466,4 @@ const DocumentFolderView = ({
   );
 };
 
-export default DocumentFolderView;
+export default forwardRef(DocumentFolderView);
