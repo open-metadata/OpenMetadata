@@ -250,20 +250,24 @@ test.describe(
       test.slow();
 
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
-        await expandTreeNode(page, 'Databases');
-
-        // Explicit visibility wait before clicking. The expandTreeNode helper
-        // only waits for loaders to disappear, but the tree's child rows can
-        // continue to animate/reposition for a beat after that — the
-        // subsequent .click() then times out with "waiting for element to be
-        // visible, enabled and stable". toBeVisible polls until the element
-        // is stable too, which lets the click land cleanly.
         const serviceTitle = page.getByTestId(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
-        await expect(serviceTitle).toBeVisible();
 
-        await serviceTitle.click();
+        // The browse rebuild collapses the tree and can detach the row
+        // mid-click; retry expand → click until the chip confirms the select.
+        await expect(async () => {
+          if (!(await serviceTitle.isVisible())) {
+            await expandTreeNode(page, 'Databases');
+          }
+          await serviceTitle.click();
+          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
+            {
+              timeout: 5000,
+            }
+          );
+        }).toPass({ timeout: 60000 });
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
