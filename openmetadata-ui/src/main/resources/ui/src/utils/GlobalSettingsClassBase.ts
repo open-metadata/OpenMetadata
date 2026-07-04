@@ -650,6 +650,13 @@ class GlobalSettingsClassBase {
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
+            label: t('label.search-mapping-plural'),
+            description: t('message.page-sub-header-for-search-index-mappings'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_MAPPINGS}`,
+            icon: PreferencesSearchIcon,
+          },
+          {
             label: t('label.ai'),
             description: t('message.page-sub-header-for-ai-setting'),
             isProtected: Boolean(isAdminUser),

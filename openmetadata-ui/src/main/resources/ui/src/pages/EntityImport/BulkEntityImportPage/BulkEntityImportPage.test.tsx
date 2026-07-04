@@ -18,7 +18,11 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
+import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { Include } from '../../../generated/type/include';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
 // Mock data
@@ -63,7 +67,7 @@ const mockLocation = {
   pathname: '/table/test-table/import',
   search: '',
   hash: '',
-  state: null,
+  state: null as unknown,
 };
 
 // Mock hooks
@@ -143,6 +147,26 @@ jest.mock('../../../utils/EntityImport/EntityImportUtils');
 // Mock entity bulk edit utils
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
 
+jest.mock('../../../rest/csvAPI', () => ({
+  cancelCsvAsyncJob: jest.fn(),
+  getCsvAsyncJobs: jest.fn().mockResolvedValue([]),
+  getCsvDocumentation: jest.fn().mockResolvedValue({
+    headers: [
+      {
+        name: 'name',
+        required: true,
+      },
+      {
+        name: 'description',
+      },
+    ],
+  }),
+}));
+
+jest.mock('../../../rest/metricsAPI', () => ({
+  getMetrics: jest.fn(),
+}));
+
 // Mock toast utils
 const mockShowErrorToast = jest.fn();
 const mockShowSuccessToast = jest.fn();
@@ -177,13 +201,12 @@ jest.mock(
   })
 );
 
+// CsvJobsTray has its own test suite and subscribes to the same socket channels;
+// mock it here so the page is the only csvImportChannel listener under test.
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component',
   () => ({
-    __esModule: true,
-    default: jest.fn(() => (
-      <div data-testid="title-breadcrumb">Breadcrumb</div>
-    )),
+    CsvJobsTray: jest.fn(() => <div data-testid="csv-jobs-tray" />),
   })
 );
 
@@ -215,7 +238,7 @@ jest.mock('../../../components/UploadFile/UploadFile', () => ({
               result: 'name,description\nrow1,desc1\nrow2,desc2',
             },
           } as ProgressEvent<FileReader>;
-          onCSVUploaded(mockEvent);
+          onCSVUploaded(mockEvent, { name: 'metrics.csv', size: 48 });
         }}>
         Upload CSV
       </button>
@@ -241,9 +264,29 @@ const renderComponent = (initialPath = '/table/test.table/import') => {
           element={<BulkEntityImportPage />}
           path="/:entityType/:fqn/import"
         />
+        <Route
+          element={<BulkEntityImportPage />}
+          path="/bulk/edit/:entityType/:fqn"
+        />
       </Routes>
     </MemoryRouter>
   );
+};
+
+const uploadCsv = async () => {
+  await waitFor(() => {
+    expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
+  });
+
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('upload-csv-button'));
+  });
+};
+
+const startPreview = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByText('label.next: label.preview'));
+  });
 };
 
 describe('BulkEntityImportPage', () => {
@@ -251,7 +294,10 @@ describe('BulkEntityImportPage', () => {
   let mockValidateCsvString: jest.Mock;
   let mockIsBulkEditRoute: jest.Mock;
   let mockGetEntityColumnsAndDataSourceFromCSV: jest.Mock;
+  let mockGetMetricColumnsAndDataSourceFromMetrics: jest.Mock;
+  let mockGetImportedEntityType: jest.Mock;
   let mockGetImportValidateAPIEntityType: jest.Mock;
+  let mockGetMetrics: jest.Mock;
 
   beforeEach(() => {
     // Get mocked functions from modules
@@ -259,12 +305,27 @@ describe('BulkEntityImportPage', () => {
       require('../../../utils/EntityUtilClassBase').default;
     mockGetEntityByFqn = EntityUtilClassBase.getEntityByFqn as jest.Mock;
 
+    const FqnHook = require('../../../hooks/useFqn');
+    FqnHook.useFqn.mockReturnValue({ fqn: 'test.table' });
+
+    const RequiredParamsUtils = require('../../../utils/useRequiredParams');
+    RequiredParamsUtils.useRequiredParams.mockReturnValue({
+      entityType: EntityType.TABLE,
+    });
+
     const CSVUtils = require('../../../utils/CSV/CSV.utils');
     mockGetEntityColumnsAndDataSourceFromCSV =
       CSVUtils.getEntityColumnsAndDataSourceFromCSV as jest.Mock;
+    mockGetMetricColumnsAndDataSourceFromMetrics =
+      CSVUtils.getMetricColumnsAndDataSourceFromMetrics as jest.Mock;
+
+    const MetricsAPI = require('../../../rest/metricsAPI');
+    mockGetMetrics = MetricsAPI.getMetrics as jest.Mock;
 
     const EntityImportUtils = require('../../../utils/EntityImport/EntityImportUtils');
     mockValidateCsvString = EntityImportUtils.validateCsvString as jest.Mock;
+    mockGetImportedEntityType =
+      EntityImportUtils.getImportedEntityType as jest.Mock;
     mockGetImportValidateAPIEntityType =
       EntityImportUtils.getImportValidateAPIEntityType as jest.Mock;
 
@@ -274,6 +335,9 @@ describe('BulkEntityImportPage', () => {
     jest.clearAllMocks();
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
     mockValidateCsvString.mockResolvedValue(undefined);
+    mockGetImportedEntityType.mockImplementation(
+      (entityType: EntityType) => entityType
+    );
     mockIsBulkEditRoute.mockReturnValue(false);
     mockGetEntityColumnsAndDataSourceFromCSV.mockReturnValue({
       columns: [
@@ -285,8 +349,20 @@ describe('BulkEntityImportPage', () => {
         { name: 'row2', description: 'desc2' },
       ],
     });
+    mockGetMetricColumnsAndDataSourceFromMetrics.mockReturnValue({
+      columns: [
+        { key: 'name*', name: 'Name' },
+        { key: 'description', name: 'Description' },
+      ],
+      dataSource: [{ id: 'metric-1', 'name*': 'net_sales' }],
+    });
+    mockGetMetrics.mockResolvedValue({
+      data: [],
+      paging: {},
+    });
     mockLocation.pathname = '/table/test.table/import';
     mockLocation.search = '';
+    mockLocation.state = null;
   });
 
   describe('Render & Initial State', () => {
@@ -340,6 +416,245 @@ describe('BulkEntityImportPage', () => {
         expect(mockGetEntityByFqn).not.toHaveBeenCalled();
       });
     });
+
+    it('should render metrics breadcrumb for wildcard metric import', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+
+      renderComponent('/metric/*/import');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
+      });
+
+      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+
+      expect(breadcrumbItems).toHaveLength(3);
+      expect(breadcrumbItems[0]).toHaveTextContent('label.governance');
+      expect(breadcrumbItems[1]).toHaveTextContent('label.metric-plural');
+      expect(breadcrumbItems[2]).toHaveTextContent('label.import');
+    });
+
+    it('should render metrics breadcrumb for wildcard metric bulk edit', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockIsBulkEditRoute.mockReturnValue(true);
+
+      renderComponent('/bulk/edit/metric/*');
+
+      await waitFor(() => {
+        expect(BulkEditEntity).toHaveBeenCalled();
+      });
+
+      const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+      const breadcrumbList =
+        bulkEditEntityMock.mock.calls.at(-1)[0].breadcrumbList;
+
+      expect(breadcrumbList).toEqual([
+        {
+          name: 'label.metric-plural',
+          url: ROUTES.METRICS,
+        },
+      ]);
+    });
+
+    it('dispatches the CSV jobs refresh event to activate the tray when a preview starts', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+      const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: CSV_JOBS_REFRESH_EVENT })
+      );
+
+      dispatchEventSpy.mockRestore();
+    });
+
+    it('should render uploaded metric CSV preview with the shared bulk edit view', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      const uploadedCsvData = [
+        ['name', 'description'],
+        ['row1', 'desc1'],
+      ];
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(
+          JSON.stringify({
+            jobId: 'test-job-id',
+            status: 'STARTED',
+            error: null,
+          })
+        );
+        socketCallback?.(JSON.stringify(mockWebSocketResponse));
+      });
+
+      await act(async () => {
+        const readStringCall = mockReadString.mock.calls[0];
+        readStringCall?.[1]?.complete({
+          data: uploadedCsvData,
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-edit-entity')).toBeInTheDocument();
+      });
+
+      expect(mockGetEntityColumnsAndDataSourceFromCSV).toHaveBeenCalledWith(
+        uploadedCsvData,
+        EntityType.METRIC,
+        { user: true, team: true },
+        true,
+        false,
+        true
+      );
+
+      const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+      const latestProps = bulkEditEntityMock.mock.calls.at(-1)[0];
+
+      expect(latestProps.workflowMode).toBe('import');
+      expect(latestProps.isExportHydrationRequired).toBe(false);
+      expect(latestProps.isNextDisabled).toBe(false);
+      expect(latestProps.workflowHeaderConfig.currentLabel).toBe(
+        'label.import'
+      );
+    });
+
+    it('should hydrate wildcard metric bulk edit from listing API route scope', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      const matchingMetric = {
+        id: 'metric-1',
+        name: 'net_sales',
+        displayName: 'Net Sales',
+      };
+      const skippedMetric = {
+        id: 'metric-2',
+        name: 'gross_profit',
+        displayName: 'Gross Profit',
+      };
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockIsBulkEditRoute.mockReturnValue(true);
+      mockLocation.pathname = '/bulk/edit/metric/*';
+      mockLocation.state = {
+        metricBulkEditScope: {
+          mode: 'filtered',
+          filters: {
+            searchText: 'sales',
+          },
+        },
+      };
+      mockGetMetrics
+        .mockResolvedValueOnce({
+          data: [matchingMetric, skippedMetric],
+          paging: { after: 'next-page' },
+        })
+        .mockResolvedValueOnce({
+          data: [],
+          paging: {},
+        });
+
+      renderComponent('/bulk/edit/metric/*');
+
+      await waitFor(() => {
+        expect(mockGetMetrics).toHaveBeenCalledTimes(2);
+      });
+
+      expect(mockGetMetrics).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fields: '*',
+          limit: 1000,
+          include: Include.All,
+        }),
+        expect.objectContaining({
+          signal: expect.any(AbortSignal),
+        })
+      );
+      expect(mockGetMetricColumnsAndDataSourceFromMetrics).toHaveBeenCalledWith(
+        [matchingMetric],
+        expect.any(Array),
+        { user: true, team: true },
+        true,
+        true
+      );
+
+      const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+      const latestProps = bulkEditEntityMock.mock.calls.at(-1)[0];
+
+      expect(latestProps.isExportHydrationRequired).toBe(false);
+    });
+
+    it('should hydrate wildcard metric bulk edit from listing API without route state', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      const metric = {
+        id: 'metric-1',
+        name: 'net_sales',
+        displayName: 'Net Sales',
+      };
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockIsBulkEditRoute.mockReturnValue(true);
+      mockLocation.pathname = '/bulk/edit/metric/*';
+      mockLocation.state = null;
+      mockGetMetrics.mockResolvedValueOnce({
+        data: [metric],
+        paging: {},
+      });
+
+      renderComponent('/bulk/edit/metric/*');
+
+      await waitFor(() => {
+        expect(mockGetMetrics).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fields: '*',
+            limit: 1000,
+            include: Include.All,
+          }),
+          expect.objectContaining({
+            signal: expect.any(AbortSignal),
+          })
+        );
+      });
+
+      expect(mockGetMetricColumnsAndDataSourceFromMetrics).toHaveBeenCalledWith(
+        [metric],
+        expect.any(Array),
+        { user: true, team: true },
+        true,
+        true
+      );
+
+      const bulkEditEntityMock = BulkEditEntity as jest.Mock;
+      const latestProps = bulkEditEntityMock.mock.calls.at(-1)[0];
+
+      expect(latestProps.isExportHydrationRequired).toBe(false);
+    });
   });
 
   describe('Props Validation', () => {
@@ -392,15 +707,8 @@ describe('BulkEntityImportPage', () => {
     it('should handle CSV file upload successfully', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       await waitFor(() => {
         expect(mockValidateCsvString).toHaveBeenCalled();
@@ -410,16 +718,8 @@ describe('BulkEntityImportPage', () => {
     it('should disable upload when async job is in progress', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-
-      // Simulate upload
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate websocket response with job started
       await act(async () => {
@@ -439,9 +739,11 @@ describe('BulkEntityImportPage', () => {
       });
 
       await waitFor(() => {
-        const button = screen.getByTestId('upload-csv-button');
-
-        expect(button).toBeDisabled();
+        expect(
+          screen.getByRole('button', {
+            name: 'message.import-csv-parsing',
+          })
+        ).toBeDisabled();
       });
     });
 
@@ -451,15 +753,8 @@ describe('BulkEntityImportPage', () => {
 
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(mockError);
@@ -494,15 +789,8 @@ describe('BulkEntityImportPage', () => {
     it('should handle websocket STARTED status', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      // Trigger upload to set processing state
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate websocket STARTED response
       await act(async () => {
@@ -522,22 +810,17 @@ describe('BulkEntityImportPage', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('banner')).toBeInTheDocument();
+        expect(
+          screen.getByText('message.import-csv-processing-title')
+        ).toBeInTheDocument();
       });
     });
 
     it('should handle websocket COMPLETED status with success', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      // Trigger upload
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate STARTED
       await act(async () => {
@@ -575,14 +858,8 @@ describe('BulkEntityImportPage', () => {
     it('should handle websocket COMPLETED status with failure', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate STARTED
       await act(async () => {
@@ -612,7 +889,10 @@ describe('BulkEntityImportPage', () => {
             JSON.stringify({
               jobId: 'test-job-id',
               status: 'COMPLETED',
-              result: mockCSVImportResultFailure,
+              result: {
+                ...mockCSVImportResultFailure,
+                numberOfRowsProcessed: 0,
+              },
               error: null,
             })
           );
@@ -621,21 +901,15 @@ describe('BulkEntityImportPage', () => {
 
       // Should reset to upload step
       await waitFor(() => {
-        expect(screen.getByTestId('upload-file')).toBeInTheDocument();
+        expect(screen.getByText('metrics.csv')).toBeInTheDocument();
       });
     });
 
     it('should handle websocket COMPLETED status with aborted', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate STARTED
       await act(async () => {
@@ -684,14 +958,8 @@ describe('BulkEntityImportPage', () => {
     it('should handle websocket FAILED status', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate STARTED
       await act(async () => {
@@ -762,14 +1030,8 @@ describe('BulkEntityImportPage', () => {
     it('should ignore websocket messages for different jobs', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate STARTED with job-1
       await act(async () => {
@@ -818,14 +1080,8 @@ describe('BulkEntityImportPage', () => {
     it('should show abort reason when validation is aborted', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate aborted result
       await act(async () => {
@@ -863,14 +1119,8 @@ describe('BulkEntityImportPage', () => {
     it('should handle retry after abort', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate aborted result
       await act(async () => {
@@ -945,14 +1195,8 @@ describe('BulkEntityImportPage', () => {
 
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       await waitFor(() => {
         expect(mockShowErrorToast).toHaveBeenCalledWith(invalidCSVError);
@@ -991,14 +1235,7 @@ describe('BulkEntityImportPage', () => {
 
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
 
       // Should handle gracefully
       expect(screen.getByTestId('page-layout')).toBeInTheDocument();
@@ -1012,14 +1249,8 @@ describe('BulkEntityImportPage', () => {
       renderComponent();
 
       // First upload CSV to move to edit step
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate successful initial load
       await act(async () => {
@@ -1084,14 +1315,8 @@ describe('BulkEntityImportPage', () => {
     it('should have navigation buttons in edit step', async () => {
       renderComponent();
 
-      await waitFor(() => {
-        expect(screen.getByTestId('upload-csv-button')).toBeInTheDocument();
-      });
-
-      const uploadButton = screen.getByTestId('upload-csv-button');
-      await act(async () => {
-        fireEvent.click(uploadButton);
-      });
+      await uploadCsv();
+      await startPreview();
 
       // Simulate move to edit step
       await act(async () => {

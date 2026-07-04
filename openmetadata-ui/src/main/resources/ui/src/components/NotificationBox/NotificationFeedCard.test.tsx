@@ -45,7 +45,7 @@ jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: unknown[]) => mockPrepareFeedLink(...args),
 }));
-jest.mock('../../utils/TasksUtils', () => ({
+jest.mock('../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPathFromTask: (...args: unknown[]) =>
     mockGetTaskDetailPathFromTask(...args),
   getTaskDisplayId: jest.fn().mockReturnValue('1'),

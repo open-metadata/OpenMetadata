@@ -11,6 +11,45 @@
       "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType",
       "description": "Type of progress update",
       "enum": ["DISCOVERY", "PROCESSING", "STEP_COMPLETE", "PIPELINE_COMPLETE", "ERROR"]
+    },
+    "progressNode": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode",
+      "description": "One node of the hierarchical progress tree. A node counts its direct children (root counts databases, a database counts schemas, a schema counts tables).",
+      "properties": {
+        "label": {
+          "description": "Display name of this node (database or schema name; empty for the run root)",
+          "type": "string"
+        },
+        "entityType": {
+          "description": "Type of children this node counts (Database, DatabaseSchema, Table, ...)",
+          "type": "string"
+        },
+        "processed": {
+          "description": "Children completed",
+          "type": "integer"
+        },
+        "expected": {
+          "description": "Number of children, or null when the producer was iterated lazily",
+          "type": ["integer", "null"]
+        },
+        "active": {
+          "description": "Opened and not yet complete",
+          "type": "boolean"
+        },
+        "overflow": {
+          "description": "Active children beyond the per-parent display cap",
+          "type": "integer"
+        },
+        "children": {
+          "description": "Active or relevant child nodes only",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/progressNode"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -31,8 +70,26 @@
       "type": "string"
     },
     "progress": {
-      "description": "Progress by entity type (e.g., Database, DatabaseSchema, Table). Keys are entity types, values contain total, processed, and estimatedRemainingSeconds.",
-      "existingJavaType": "java.util.Map<String, Object>"
+      "description": "Root of the hierarchical progress tree for this run",
+      "$ref": "#/definitions/progressNode"
+    },
+    "globalCounters": {
+      "description": "Run-level counters that survive scope pruning (e.g. Database, DatabaseSchema, Workspace). Each carries done and an optional upfront total.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "javaType": "org.openmetadata.schema.entity.services.ingestionPipelines.GlobalCounter",
+        "properties": {
+          "entityType": { "type": "string" },
+          "done": { "type": "integer" },
+          "total": { "type": ["integer", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "estimatedSecondsRemaining": {
+      "description": "Estimated seconds until the run completes; null when not yet computable",
+      "type": ["integer", "null"]
     },
     "currentEntity": {
       "description": "FQN of the entity currently being processed",

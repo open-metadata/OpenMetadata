@@ -16,7 +16,7 @@ import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
+import { VersionButton } from '../components/Entity/EntityVersionTimeLine/VersionButton';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
@@ -203,6 +203,10 @@ export const renderVersionButton = (
         className={className}
         isMajorVersion={majorVersionChecks()}
         selected={toString(currV.version) === current}
+        summary={getSummary({
+          changeDescription: currV.changeDescription,
+          isGlossaryTerm: !isEmpty(currV.glossary),
+        })}
         version={currV}
         onVersionSelect={versionHandler}
       />

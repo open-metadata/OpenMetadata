@@ -31,18 +31,20 @@ const dashboard = new DashboardClass();
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
-  const queryRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
-  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-  await queryRes;
+
   await waitForAllLoadersToDisappear(page);
 };
+
+const rootTreeNode = (page: Page, titleTestId: string) =>
+  page
+    .getByTestId(`explore-tree-title-${titleTestId}`)
+    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
 
 const goToExplore = async (page: Page) => {
   await redirectToHomePage(page);
@@ -250,6 +252,66 @@ test.describe(
       });
     });
 
+    test('service type drill-down disables unrelated roots and query-panel Clear resets it', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
+        await expandTreeNode(page, 'Databases');
+
+        // Explicit visibility wait before clicking. The expandTreeNode helper
+        // only waits for loaders to disappear, but the tree's child rows can
+        // continue to animate/reposition for a beat after that — the
+        // subsequent .click() then times out with "waiting for element to be
+        // visible, enabled and stable". toBeVisible polls until the element
+        // is stable too, which lets the click land cleanly.
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
+        );
+        await expect(serviceTitle).toBeVisible();
+
+        const browseRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await serviceTitle.click();
+        await browseRes;
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
+        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+        await expect(page.getByTestId('clear-filters')).toHaveCount(0);
+
+        await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+        expect(page.url()).toContain('browsePath');
+      });
+
+      await test.step('Query-panel Clear restores the full browse estate', async () => {
+        const clearRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await page.getByTestId('clear-all-chips').click();
+        await clearRes;
+        await waitForAllLoadersToDisappear(page);
+
+        const url = new URL(page.url());
+        expect(url.searchParams.get('browsePath')).toBeNull();
+        expect(url.searchParams.get('quickFilter')).toBeNull();
+
+        await expect(
+          page.getByTestId('browse-chip-serviceType')
+        ).not.toBeVisible();
+        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
+          /ant-tree-treenode-disabled/
+        );
+      });
+    });
+
     test('drills a non-database hierarchy (Dashboards) down to the entity-type leaf', async ({
       page,
     }) => {
@@ -267,6 +329,76 @@ test.describe(
       await expect(
         dashboardLeaf.locator('..').locator('.explore-node-count')
       ).toBeVisible();
+    });
+
+    test('selecting a schema keeps the drilled path expanded and highlights it', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = table.serviceResponseData.name;
+      const dbName = table.databaseResponseData.name;
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // Selecting a hierarchical node used to rebuild the tree from the static
+      // structure, collapsing the drilled path and clearing the highlight.
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId(`explore-tree-title-${schemaName}`).click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await test.step('the drilled path stays expanded (no collapse)', async () => {
+        expect(page.url()).toContain('browsePath');
+        await expect(
+          page.getByTestId(`explore-tree-title-${serviceName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${dbName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${schemaName}`)
+        ).toBeVisible();
+      });
+
+      await test.step('the selected schema stays highlighted', async () => {
+        await expect(rootTreeNode(page, schemaName)).toHaveClass(
+          /ant-tree-treenode-selected/
+        );
+      });
+    });
+
+    test('selecting the Tables leaf highlights the leaf, not its parent schema', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // The schema expands to its entity-type leaves; clicking Tables stores the
+      // type in quickFilter and only the schema path in browsePath. The
+      // highlight used to snap back up to the schema because it was re-derived
+      // from browsePath, which omits the leaf's type.
+      await expect(page.getByTestId('explore-tree-title-table')).toBeVisible();
+
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-table').click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(rootTreeNode(page, 'table')).toHaveClass(
+        /ant-tree-treenode-selected/
+      );
+      await expect(rootTreeNode(page, schemaName)).not.toHaveClass(
+        /ant-tree-treenode-selected/
+      );
     });
   }
 );

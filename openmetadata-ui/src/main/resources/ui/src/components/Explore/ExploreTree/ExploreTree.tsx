@@ -28,7 +28,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getPluralizeEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -36,12 +36,18 @@ import {
   findTreeNodeKeyByBrowsePath,
   getAggregations,
   getDisabledExploreTreeKeys,
+  getExploreQueryFilterMust,
+  getQueryFilterMust,
   getQuickFilterMust,
   getQuickFilterObject,
   getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  hasServiceDrillDownFilter,
   isEntityTypeBucketSelected,
+  isSelectionWithinBrowsePath,
   parseBrowsePathFields,
+  reconcilePresentRoots,
+  refreshRootCounts,
   updateTreeData,
   updateTreeDataWithCounts,
 } from '../../../utils/ExplorePureUtils';
@@ -95,6 +101,7 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => {
 };
 
 const ExploreTree = ({
+  additionalQueryFilter,
   onFieldValueSelect,
   onTreeSelect,
   selectedEntityTypes = [],
@@ -110,11 +117,29 @@ const ExploreTree = ({
   // overlapping fetches; only the newest may commit so a slow earlier response
   // can't overwrite the tree with stale counts.
   const countFetchSeqRef = useRef(0);
+  // Tracks whether the first load has completed. The full-screen spinner shows
+  // on that first load and on later rebuilds (external filter changes, which
+  // drop the loaded children), but not on a browse selection — that refreshes in
+  // place so browsing never blanks the tree out (the "page reload" the user saw).
+  const hasLoadedOnceRef = useRef(false);
+  // A tree selection keeps the expanded subtree so browsing does not collapse
+  // it; an external filter change (Data Assets dropdown, chip removal) rebuilds
+  // from the static roots so deeper counts and entity-type leaves re-fetch
+  // fresh under the new filter. Set by onNodeSelect, consumed by the next
+  // count refresh.
+  const treeSelectRef = useRef(false);
   const { t } = useTranslation();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  // Latest selection for the browse-path sync effect to read without taking a
+  // dependency on it — that would re-run the effect on every click and fight
+  // the highlight the click handler just set. Mirrored during render (not in an
+  // effect) so it is fresh for any effect regardless of effect declaration
+  // order, and only ever read from effects — never during render.
+  const selectedKeysRef = useRef<string[]>([]);
+  selectedKeysRef.current = selectedKeys;
   const [isLoading, setIsLoading] = useState(true);
 
   const defaultExpandedKeys = useMemo(() => {
@@ -179,6 +204,10 @@ const ExploreTree = ({
           childEntities:
             (treeNode as ExploreTreeNode).data?.childEntities ?? [],
           activeQuickFilter: parsedSearch.quickFilter,
+          activeBrowsePath: isEmpty(filterField)
+            ? parsedSearch.browsePath
+            : undefined,
+          activeQueryFilter: additionalQueryFilter,
         });
 
         const res = await searchQuery({
@@ -303,6 +332,7 @@ const ExploreTree = ({
       setTreeData,
       selectedEntityTypes,
       parsedSearch,
+      additionalQueryFilter,
     ]
   );
 
@@ -316,6 +346,14 @@ const ExploreTree = ({
       info: Parameters<NonNullable<TreeProps['onSelect']>>[1]
     ) => {
       const node = info.node as ExploreTreeNode;
+      // Arm the "keep the expanded subtree" flag only when the click moves the
+      // highlight to a different node — a new selection always drives a
+      // navigation and thus the count refresh that consumes the flag. Re-clicking
+      // the already-selected node navigates nowhere, so arming it here would
+      // leave a stale flag that a later external filter change would wrongly read.
+      if (selectedKeysRef.current[0] !== node.key) {
+        treeSelectRef.current = true;
+      }
       const filterField = node.data?.filterField;
       if (filterField) {
         if (node.isLeaf) {
@@ -359,9 +397,25 @@ const ExploreTree = ({
   const fetchEntityCounts = useCallback(async () => {
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
+    // A browse click keeps the expanded subtree; anything else (dropdown filter,
+    // chip removal, initial load) rebuilds so deeper counts/leaves re-fetch.
+    const preserveExpandedTree = treeSelectRef.current;
+    treeSelectRef.current = false;
     try {
-      setIsLoading(true);
-      const filterMust = getQuickFilterMust(parsedSearch.quickFilter);
+      // A rebuild drops the loaded children, so unmount the tree behind the
+      // spinner and let it remount fresh — refreshing in place would flicker the
+      // nodes as they drop and re-load. A browse selection keeps the subtree, so
+      // it refreshes silently (no spinner, no "page reload" feel).
+      if (!hasLoadedOnceRef.current || !preserveExpandedTree) {
+        setIsLoading(true);
+      }
+      const filterMust = [
+        ...getQuickFilterMust(parsedSearch.quickFilter),
+        ...getQueryFilterMust(additionalQueryFilter),
+        ...getExploreQueryFilterMust(
+          parseBrowsePathFields(parsedSearch.browsePath)
+        ),
+      ];
       const countRes = await searchQuery({
         query: searchQueryParam ?? '',
         pageNumber: 0,
@@ -413,24 +467,23 @@ const ExploreTree = ({
         buckets: presenceBuckets,
       };
 
-      // Rebuild from the static tree so any previously-loaded children are
-      // dropped and re-fetched with the current filter on the next expand —
-      // antd caches loaded children, so a filter change would otherwise leave
-      // stale (unfiltered) counts deeper in the tree.
-      setTreeData(() => {
-        const presentKeys = new Set(
-          updateTreeDataWithCounts(
-            searchClassBase.getExploreTree(),
-            presenceBuckets
-          )
-            .filter((node) => (node.totalCount ?? 0) > 0)
-            .map((node) => node.key)
-        );
-
-        return updateTreeDataWithCounts(
+      // Rebuild the root set from the present static roots so a category an
+      // earlier text query dropped can reappear and its counts re-scope to the
+      // current filter. On a browse click the live roots are reused so the
+      // expanded subtree and selection survive; on an external filter change no
+      // live roots are carried over, so the deeper counts and entity-type leaves
+      // re-fetch fresh under the new filter on the next expand.
+      setTreeData((origin) => {
+        const presentRoots = updateTreeDataWithCounts(
           searchClassBase.getExploreTree(),
+          presenceBuckets
+        ).filter((node) => (node.totalCount ?? 0) > 0);
+        const liveRoots = preserveExpandedTree ? origin : [];
+
+        return refreshRootCounts(
+          reconcilePresentRoots(presentRoots, liveRoots),
           countBuckets
-        ).filter((node) => presentKeys.has(node.key));
+        );
       });
     } catch {
       // Count fetch is best-effort: on failure the tree degrades to its current
@@ -441,9 +494,16 @@ const ExploreTree = ({
       // resolving later must not clear the spinner for the in-flight one.
       if (isLatestFetch()) {
         setIsLoading(false);
+        hasLoadedOnceRef.current = true;
       }
     }
-  }, [searchQueryParam, setTreeData, parsedSearch.quickFilter]);
+  }, [
+    searchQueryParam,
+    setTreeData,
+    parsedSearch.quickFilter,
+    parsedSearch.browsePath,
+    additionalQueryFilter,
+  ]);
 
   useEffect(() => {
     if (!hasFetchedRef.current) {
@@ -452,20 +512,33 @@ const ExploreTree = ({
     }
   }, []);
 
-  const quickFilterSignature = useMemo(
-    () => (isString(parsedSearch.quickFilter) ? parsedSearch.quickFilter : ''),
-    [parsedSearch.quickFilter]
+  const filterSignature = useMemo(
+    () =>
+      JSON.stringify({
+        browsePath: isString(parsedSearch.browsePath)
+          ? parsedSearch.browsePath
+          : '',
+        quickFilter: isString(parsedSearch.quickFilter)
+          ? parsedSearch.quickFilter
+          : '',
+        queryFilter: additionalQueryFilter ?? {},
+      }),
+    [parsedSearch.browsePath, parsedSearch.quickFilter, additionalQueryFilter]
   );
-  const previousQuickFilterRef = useRef(quickFilterSignature);
+  const previousFilterRef = useRef(filterSignature);
 
   useEffect(() => {
-    // When the active quick filter changes, rebuild the tree so the deeper
-    // levels (cached by antd) re-fetch and their counts reflect the filter.
-    if (previousQuickFilterRef.current !== quickFilterSignature) {
-      previousQuickFilterRef.current = quickFilterSignature;
+    // When the active filters change, rebuild the tree so the deeper levels
+    // cached by antd re-fetch and their counts reflect the current query.
+    if (previousFilterRef.current !== filterSignature) {
+      previousFilterRef.current = filterSignature;
       fetchEntityCounts();
+    } else {
+      // This render did not trigger a refresh (only the text query changed),
+      // so drop any armed browse flag rather than let it apply to a later one.
+      treeSelectRef.current = false;
     }
-  }, [quickFilterSignature, fetchEntityCounts]);
+  }, [filterSignature, fetchEntityCounts]);
 
   useEffect(() => {
     // Hierarchical selections live in browsePath, static leaves in quickFilter
@@ -479,10 +552,21 @@ const ExploreTree = ({
     // Keep the highlight in sync with the browse-path chips: removing the
     // Service chip moves the selection back up to the matching ancestor
     // (e.g. the category root), and removing the last browse chip clears it.
+    // A selection that already sits on the active path — including an
+    // entity-type leaf (Tables/Columns) whose parent levels are that path — is
+    // left untouched so a count refresh can't snap the leaf back to its schema.
     const browseFields = parseBrowsePathFields(parsedSearch.browsePath);
     if (!isEmpty(browseFields)) {
-      const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
-      setSelectedKeys(matchedKey ? [matchedKey] : []);
+      if (
+        !isSelectionWithinBrowsePath(
+          treeData,
+          selectedKeysRef.current,
+          browseFields
+        )
+      ) {
+        const matchedKey = findTreeNodeKeyByBrowsePath(treeData, browseFields);
+        setSelectedKeys(matchedKey ? [matchedKey] : []);
+      }
       hadBrowsePathRef.current = true;
     } else if (hadBrowsePathRef.current) {
       hadBrowsePathRef.current = false;
@@ -493,8 +577,21 @@ const ExploreTree = ({
   // Top-level categories that cannot hold the selected asset type are grayed
   // out so the user can't browse into services that won't contain it.
   const disabledRootKeys = useMemo(
-    () => getDisabledExploreTreeKeys(treeData, selectedEntityTypes),
-    [treeData, selectedEntityTypes]
+    () =>
+      getDisabledExploreTreeKeys(treeData, selectedEntityTypes, {
+        disableEmptyRoots: hasServiceDrillDownFilter(
+          parsedSearch.quickFilter,
+          parsedSearch.browsePath,
+          additionalQueryFilter
+        ),
+      }),
+    [
+      treeData,
+      selectedEntityTypes,
+      parsedSearch.quickFilter,
+      parsedSearch.browsePath,
+      additionalQueryFilter,
+    ]
   );
 
   const displayTreeData = useMemo(

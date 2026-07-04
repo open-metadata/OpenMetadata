@@ -51,7 +51,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
@@ -73,6 +72,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -731,6 +732,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 if (hardDelete) {
                   limits.invalidateCache(entityType);
                 }
+                repository.storeChangeEventForAsyncOperation(
+                    deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
                 WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                     jobId, securityContext, deleteResponse.entity());
               } catch (Exception e) {
@@ -871,6 +874,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                   return;
                 }
                 repository.restoreFromSearch(response.getEntity());
+                repository.storeChangeEventForAsyncOperation(
+                    response.getEntity(), response.getChangeType(), false, userName);
                 LOG.info(
                     "[AsyncRestore] Restored {}:{} (jobId={})",
                     Entity.getEntityTypeFromObject(response.getEntity()),
@@ -918,31 +923,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                CsvExportProgressCallback progressCallback =
-                    (exported, total, message) ->
-                        WebsocketNotificationHandler.sendCsvExportProgressNotification(
-                            jobId, securityContext, exported, total, message);
-
-                String csvData =
-                    repository.exportToCsv(
-                        name,
-                        securityContext.getUserPrincipal().getName(),
-                        recursive,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                    jobId, securityContext, csvData);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while exporting.", e);
-                WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.EXPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            false,
+            recursive,
+            null,
+            null);
+    String jobId = job.getJobId();
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
@@ -1073,43 +1065,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    String jobId = UUID.randomUUID().toString();
+    CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
+    CsvAsyncJob job =
+        csvJobManager.createJob(
+            CsvAsyncJob.Operation.IMPORT,
+            entityType,
+            name,
+            securityContext.getUserPrincipal().getName(),
+            dryRun,
+            recursive,
+            csv,
+            versioningEntityType);
+    String jobId = job.getJobId();
     CSVImportResponse responseEntity = new CSVImportResponse(jobId, "Import is in progress.");
-    Response response =
-        Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        RequestLatencyContext.wrapWithContext(
-            () -> {
-              try {
-                WebsocketNotificationHandler.sendCsvImportStartedNotification(
-                    jobId, securityContext);
-
-                CsvImportProgressCallback progressCallback =
-                    (rowsProcessed, totalRows, batchNumber, message) ->
-                        WebsocketNotificationHandler.sendCsvImportProgressNotification(
-                            jobId, securityContext, rowsProcessed, totalRows, message);
-
-                CsvImportResult result =
-                    importCsvInternal(
-                        uriInfo,
-                        securityContext,
-                        name,
-                        csv,
-                        dryRun,
-                        recursive,
-                        versioningEntityType,
-                        progressCallback);
-                WebsocketNotificationHandler.sendCsvImportCompleteNotification(
-                    jobId, securityContext, result);
-              } catch (Exception e) {
-                LOG.error("Encountered Exception while importing.", e);
-                WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                    jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
-              }
-            }));
-
-    return response;
+    return Response.ok().entity(responseEntity).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)

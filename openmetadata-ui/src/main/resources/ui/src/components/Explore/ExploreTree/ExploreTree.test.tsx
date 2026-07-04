@@ -201,6 +201,117 @@ describe('ExploreTree', () => {
     // A category with no matches under the filter (Dashboards has 0 tables) is
     // still rendered, because visibility tracks the unfiltered estate.
     expect(getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(
+      getByText('label.dashboard-plural').closest('.ant-tree-treenode')
+    ).not.toHaveClass('ant-tree-treenode-disabled');
+  });
+
+  it('grays out non-matching categories when a service browse path is active', async () => {
+    const browsePath = JSON.stringify([
+      {
+        key: 'serviceType',
+        label: 'serviceType',
+        value: [{ key: 'BigQuery', label: 'BigQuery' }],
+      },
+    ]);
+    const filteredBuckets = [
+      { key: 'table', doc_count: 5 },
+      { key: 'tableColumn', doc_count: 4 },
+    ];
+    const unfilteredBuckets = [
+      { key: 'table', doc_count: 50 },
+      { key: 'dashboard', doc_count: 10 },
+      { key: 'topic', doc_count: 3 },
+    ];
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) =>
+        Promise.resolve(
+          buildAggregationResponse(
+            mustLength({ queryFilter }) > 0
+              ? filteredBuckets
+              : unfilteredBuckets
+          )
+        )
+      );
+
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(browsePath)}`
+    );
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const filteredCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        mustLength(arg) > 0 &&
+        JSON.stringify(arg.queryFilter).includes('serviceType')
+    );
+    const databaseNode = getByText('label.database-plural').closest(
+      '.ant-tree-treenode'
+    );
+    const dashboardNode = getByText('label.dashboard-plural').closest(
+      '.ant-tree-treenode'
+    );
+
+    expect(filteredCall).toBeDefined();
+    expect(databaseNode).not.toHaveClass('ant-tree-treenode-disabled');
+    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
+  });
+
+  it('grays out non-matching categories when an advanced service filter is active', async () => {
+    const queryFilter = {
+      query: {
+        bool: {
+          must: [{ bool: { should: [{ term: { serviceType: 'BigQuery' } }] } }],
+        },
+      },
+    };
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) =>
+        Promise.resolve(
+          buildAggregationResponse(
+            mustLength({ queryFilter }) > 0
+              ? [{ key: 'table', doc_count: 5 }]
+              : [
+                  { key: 'table', doc_count: 50 },
+                  { key: 'dashboard', doc_count: 10 },
+                ]
+          )
+        )
+      );
+
+    const { getByText, queryByTestId } = render(
+      <ExploreTree
+        additionalQueryFilter={queryFilter}
+        onFieldValueSelect={jest.fn()}
+        onTreeSelect={jest.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    const filteredCall = searchQuerySpy.mock.calls.find(
+      ([arg]) =>
+        mustLength(arg) > 0 &&
+        JSON.stringify(arg.queryFilter).includes('serviceType')
+    );
+    const dashboardNode = getByText('label.dashboard-plural').closest(
+      '.ant-tree-treenode'
+    );
+
+    expect(filteredCall).toBeDefined();
+    expect(dashboardNode).toHaveClass('ant-tree-treenode-disabled');
   });
 
   it('reuses the cached unfiltered presence aggregation across filter changes', async () => {
@@ -353,5 +464,254 @@ describe('ExploreTree', () => {
 
     expect(getByText('label.database-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
+  });
+
+  const treeWithServiceMock = () =>
+    ({
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'table', doc_count: 50 },
+            { key: 'dashboard', doc_count: 10 },
+          ],
+        },
+        serviceType: { buckets: [{ key: 'BigQuery', doc_count: 1687 }] },
+        'service.displayName.keyword': {
+          buckets: [{ key: 'bigquery_prod', doc_count: 900 }],
+        },
+      },
+      hits: { hits: [], total: { value: 0 } },
+    } as never);
+
+  const drillToServiceNode = async (
+    findByText: (text: string) => Promise<HTMLElement>
+  ) => {
+    // Databases is expanded by default and lazy-loads its service types; drill
+    // one level deeper into the service so a nested level is mounted.
+    const bigQueryNode = await findByText('BigQuery');
+    const switcher = bigQueryNode
+      .closest('.ant-tree-treenode')
+      ?.querySelector('.ant-tree-switcher');
+    fireEvent.click(switcher as Element);
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+  };
+
+  it('keeps the expanded subtree mounted when a node is selected (browse)', async () => {
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, getByTestId, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // Selecting a node is a browse click — the subsequent count refresh must
+    // keep the expanded subtree instead of collapsing it.
+    fireEvent.click(getByTestId('explore-tree-title-bigquery_prod'));
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(
+        JSON.stringify([
+          {
+            key: 'serviceType',
+            label: 'serviceType',
+            value: [{ key: 'BigQuery', label: 'BigQuery' }],
+          },
+        ])
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+  });
+
+  it('rebuilds the tree on an external Data Assets filter change', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, queryByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // A dropdown filter change (no tree selection) rebuilds from the static
+    // roots so the deeper levels re-fetch fresh under the new filter — the
+    // stale expanded service must drop.
+    window.history.pushState(
+      {},
+      '',
+      `/explore?quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+          },
+        })
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(
+        searchQuerySpy.mock.calls.some(([arg]) =>
+          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+        )
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not leak the browse flag from a no-op re-select into a filter change', async () => {
+    const browsePath = encodeURIComponent(
+      JSON.stringify([
+        {
+          key: 'serviceType',
+          label: 'serviceType',
+          value: [{ key: 'BigQuery', label: 'BigQuery' }],
+        },
+      ])
+    );
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(treeWithServiceMock());
+
+    const { findByText, getByTestId, queryByText, queryByTestId, rerender } =
+      render(
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    await drillToServiceNode(findByText);
+
+    // Select the service type and reflect its browsePath — the browse refresh
+    // consumes the flag and the highlight settles on the service-type node.
+    fireEvent.click(getByTestId('explore-tree-title-BigQuery'));
+    window.history.pushState({}, '', `/explore?browsePath=${browsePath}`);
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    expect(await findByText('bigquery_prod')).toBeInTheDocument();
+
+    // Re-click the already-selected node (no navigation) then change a dropdown
+    // filter: the re-click must not leave the flag armed, so this still rebuilds.
+    fireEvent.click(getByTestId('explore-tree-title-BigQuery'));
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${browsePath}&quickFilter=${encodeURIComponent(
+        JSON.stringify({
+          query: {
+            bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] },
+          },
+        })
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(
+        searchQuerySpy.mock.calls.some(([arg]) =>
+          JSON.stringify(arg.queryFilter ?? {}).includes('Tier.Tier1')
+        )
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(queryByText('bigquery_prod')).not.toBeInTheDocument();
+    });
+  });
+
+  it('does not blank the tree with a spinner on a browse selection', async () => {
+    let releaseRefresh: (() => void) | undefined;
+    let refreshStarted = false;
+    jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockImplementation(({ queryFilter }) => {
+        // Hold the browse refresh (it carries the browsePath entity types) open
+        // so the in-flight UI can be observed; the initial load and presence
+        // aggregation resolve at once.
+        if (JSON.stringify(queryFilter ?? {}).includes('entityType.keyword')) {
+          refreshStarted = true;
+
+          return new Promise((resolve) => {
+            releaseRefresh = () =>
+              resolve(
+                buildAggregationResponse([{ key: 'table', doc_count: 5 }])
+              );
+          });
+        }
+
+        return Promise.resolve(
+          buildAggregationResponse([
+            { key: 'table', doc_count: 50 },
+            { key: 'dashboard', doc_count: 10 },
+          ])
+        );
+      });
+
+    const { getByText, queryByTestId, rerender } = render(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    // Selecting a category root is a browse click; reflect its browsePath so the
+    // browse refresh fires without rebuilding (and so without the spinner).
+    fireEvent.click(getByText('label.database-plural'));
+    window.history.pushState(
+      {},
+      '',
+      `/explore?browsePath=${encodeURIComponent(
+        JSON.stringify([
+          {
+            key: 'entityType',
+            label: 'label.database-plural',
+            value: [{ key: 'table', label: 'table' }],
+          },
+        ])
+      )}`
+    );
+    rerender(
+      <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+    );
+
+    await waitFor(() => expect(refreshStarted).toBe(true));
+
+    // A browse refresh keeps the tree on screen instead of swapping in the
+    // full-screen spinner (the "page reload" symptom the user reported).
+    expect(queryByTestId('loader')).not.toBeInTheDocument();
+    expect(getByText('label.database-plural')).toBeInTheDocument();
+
+    await act(async () => {
+      releaseRefresh?.();
+    });
   });
 });

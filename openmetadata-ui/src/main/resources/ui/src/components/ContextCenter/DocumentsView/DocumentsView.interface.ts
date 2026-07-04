@@ -20,6 +20,7 @@ export interface FolderOption {
 
 export interface DocumentsViewProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   data: ContextFile[];
   folders?: FolderOption[];
   isLoading: boolean;
@@ -27,7 +28,7 @@ export interface DocumentsViewProps {
   selectedIds?: Set<string>;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
   onBulkDelete?: () => void;
@@ -48,16 +49,20 @@ export interface DocumentPreviewPanelProps {
 
 export interface FolderPickerMenuProps {
   folders: FolderOption[];
+  currentFolderId?: string;
   onPick: (folderId: string) => void;
 }
 export interface FileActionsProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
 }
 export interface ListHeaderProps {
+  canDelete?: boolean;
+  canEdit?: boolean;
   count: number;
   folders?: FolderOption[];
   selectedCount: number;
@@ -69,13 +74,14 @@ export interface ListHeaderProps {
 
 export interface FileRowProps {
   canDelete?: boolean;
+  canEdit?: boolean;
   file: ContextFile;
   folders?: FolderOption[];
   isActive?: boolean;
   isSelected?: boolean;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
-  onFileMoved?: (file: ContextFile, targetFolderId: string) => void;
+  onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
   onPreview?: (file: ContextFile) => void;
   onSelectFile?: (fileId: string) => void;
 }
