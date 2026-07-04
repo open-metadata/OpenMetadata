@@ -196,11 +196,11 @@ const EntityHeaderTitle = ({
                   entity: formattedEntityType,
                 })}>
                 <Button
+                  aria-busy={isFollowingLoading || undefined}
                   className="entity-follow-button flex-center gap-1 text-sm "
                   data-testid="entity-follow-button"
-                  disabled={deleted}
+                  disabled={deleted || isFollowingLoading}
                   icon={<Icon component={StarFilledIcon} />}
-                  loading={isFollowingLoading}
                   onClick={handleFollowingClick}>
                   <Typography.Text>
                     {t(`label.${isFollowing ? 'un-follow' : 'follow'}`)}

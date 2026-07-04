@@ -75,4 +75,27 @@ describe('EntityHeaderTitle', () => {
       'http://localhost/test-link'
     );
   });
+
+  it('should keep the title visible without rendering a follow loader', () => {
+    const { container } = render(
+      <EntityHeaderTitle
+        isFollowingLoading
+        displayName="Test DisplayName"
+        handleFollowingClick={jest.fn()}
+        icon="test-icon"
+        name="test-name"
+        serviceName="sample-data"
+      />
+    );
+
+    expect(screen.getByTestId('entity-header-name')).toHaveTextContent(
+      'test-name'
+    );
+    expect(screen.getByTestId('entity-follow-button')).toBeDisabled();
+    expect(screen.getByTestId('entity-follow-button')).toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
+    expect(container.querySelector('.ant-btn-loading-icon')).toBeNull();
+  });
 });
