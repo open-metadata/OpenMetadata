@@ -71,7 +71,9 @@ test.describe('Lineage PNG export — snapshot regression', () => {
     await page.getByTestId('export-button').click();
 
     await page
-      .locator('[data-testid="export-entity-modal"] [data-testid="submit-button"]')
+      .locator(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+      )
       .waitFor({ state: 'visible' });
 
     // Select PNG (the modal defaults to CSV for entity lineage)

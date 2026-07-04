@@ -751,7 +751,9 @@ export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] [data-testid="submit-button"]')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
@@ -836,7 +838,9 @@ export const verifyExportLineagePNG = async (
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] [data-testid="submit-button"]')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });

@@ -169,7 +169,10 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       const downloadPromise = page.waitForEvent('download');
       await page.click('[data-testid="manage-button"]');
       await page.click('[data-testid="export-button-description"]');
-      await page.fill('[data-testid="file-name-input"]', sourceGlossary.data.displayName);
+      await page.fill(
+        '[data-testid="file-name-input"]',
+        sourceGlossary.data.displayName
+      );
       await page.click('[data-testid="submit-button"]');
       const download = await downloadPromise;
 
