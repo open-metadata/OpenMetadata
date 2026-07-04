@@ -45,7 +45,6 @@ import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
 import CoreSelectWidget from '../../../../common/FormBuilderV1/widgets/CoreSelectWidget';
-import Loader from '../../../../common/Loader/Loader';
 
 const BooleanFieldTemplate = lazy(
   () =>
@@ -287,7 +286,7 @@ const IngestionWorkflowForm = forwardRef<
   };
 
   return (
-    <Suspense fallback={<Loader />}>
+    <Suspense fallback={null}>
       <Form
         focusOnFirstError
         noHtml5Validate

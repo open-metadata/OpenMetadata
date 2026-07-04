@@ -13,14 +13,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -67,6 +60,7 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -331,14 +325,14 @@ function FileDetails({
         />
       ),
       lineageTab: (
-        <Suspense fallback={<Loader />}>
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={fileDetails as SourceType}
             entityType={EntityType.FILE}
             hasEditAccess={editLineagePermission}
           />
-        </Suspense>
+        </LazyTabContent>
       ),
       customPropertiesTab: fileDetails && (
         <CustomPropertyTable<EntityType.FILE>

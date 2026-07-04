@@ -29,7 +29,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -423,7 +422,7 @@ const AddServicePage = () => {
                 />
               )}
 
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 {activeServiceStep === 2 && (
                   <div className="tw:flex tw:flex-col tw:gap-4">
                     <ServiceNameCard
@@ -560,7 +559,7 @@ const AddServicePage = () => {
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}

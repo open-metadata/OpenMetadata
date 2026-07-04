@@ -19,6 +19,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -58,11 +59,9 @@ const ContractTab = withSuspenseFallback(
   )
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
   )
 );
 
@@ -149,12 +148,14 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(mlModelDetail.deleted)}
-          entity={mlModelDetail as SourceType}
-          entityType={EntityType.MLMODEL}
-          hasEditAccess={editLineagePermission}
-        />
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
+          <EntityLineageTab
+            deleted={Boolean(mlModelDetail.deleted)}
+            entity={mlModelDetail as SourceType}
+            entityType={EntityType.MLMODEL}
+            hasEditAccess={editLineagePermission}
+          />
+        </LazyTabContent>
       ),
     },
     {

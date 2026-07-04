@@ -22,6 +22,7 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -66,11 +67,9 @@ const ContractTab = withSuspenseFallback(
   )
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
   )
 );
 
@@ -168,12 +167,14 @@ export const getPipelineDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={pipelineDetails as SourceType}
-          entityType={EntityType.PIPELINE}
-          hasEditAccess={editLineagePermission}
-        />
+        <LazyTabContent activeTab={tab} tab={EntityTabs.LINEAGE}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={pipelineDetails as SourceType}
+            entityType={EntityType.PIPELINE}
+            hasEditAccess={editLineagePermission}
+          />
+        </LazyTabContent>
       ),
     },
     {

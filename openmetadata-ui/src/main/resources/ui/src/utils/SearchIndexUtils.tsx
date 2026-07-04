@@ -12,7 +12,7 @@
  */
 
 import { get, uniqueId } from 'lodash';
-import { lazy, Suspense } from 'react';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -20,7 +20,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
+import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -186,14 +186,14 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={searchIndexDetails as SourceType}
             entityType={EntityType.SEARCH_INDEX}
             hasEditAccess={editLineagePermission}
           />
-        </Suspense>
+        </LazyTabContent>
       ),
     },
     {

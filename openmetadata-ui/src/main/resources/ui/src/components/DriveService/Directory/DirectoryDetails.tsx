@@ -14,14 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -69,6 +62,7 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -362,14 +356,14 @@ function DirectoryDetails({
         />
       ),
       lineageTab: (
-        <Suspense fallback={<Loader />}>
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={directoryDetails as SourceType}
             entityType={EntityType.DIRECTORY}
             hasEditAccess={editLineagePermission}
           />
-        </Suspense>
+        </LazyTabContent>
       ),
       customPropertiesTab: directoryDetails && (
         <CustomPropertyTable<EntityType.DIRECTORY>

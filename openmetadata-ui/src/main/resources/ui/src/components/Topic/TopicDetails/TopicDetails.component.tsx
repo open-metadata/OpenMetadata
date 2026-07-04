@@ -67,6 +67,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
+import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import type { GenericProviderProps } from '../../Customization/GenericProvider/GenericProvider.interface';
 import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -124,14 +125,10 @@ const SampleDataWithMessages = withSuspenseFallback(
   )
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../../Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({
-        default: module.EntityLineageTab,
-      })
-    )
-  )
+const EntityLineageTab = lazy(() =>
+  import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
+    default: module.EntityLineageTab,
+  }))
 );
 
 const QueryViewer = withSuspenseFallback(
@@ -437,12 +434,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={topicDetails as SourceType}
-          entityType={EntityType.TOPIC}
-          hasEditAccess={editLineagePermission}
-        />
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={topicDetails as SourceType}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </LazyTabContent>
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>

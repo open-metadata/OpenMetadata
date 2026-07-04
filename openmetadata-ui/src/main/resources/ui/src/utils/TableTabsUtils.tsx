@@ -13,14 +13,14 @@
 
 import { Divider, Space, Typography } from 'antd';
 import { get, isUndefined } from 'lodash';
-import { lazy, Suspense } from 'react';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import Loader from '../components/common/Loader/Loader';
+import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -109,11 +109,9 @@ const DataObservabilityTab = withSuspenseFallback(
   )
 );
 
-const EntityLineageTab = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-      (module) => ({ default: module.EntityLineageTab })
-    )
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
   )
 );
 
@@ -124,8 +122,8 @@ const TableConstraints = withSuspenseFallback(
   )
 );
 
-const KnowledgeGraph = withSuspenseFallback(
-  lazy(() => import('../components/KnowledgeGraph3D/KnowledgeGraph3D'))
+const KnowledgeGraph = lazy(
+  () => import('../components/KnowledgeGraph3D/KnowledgeGraph3D')
 );
 
 const QueryViewer = withSuspenseFallback(
@@ -293,14 +291,14 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={tableDetails as SourceType}
             entityType={EntityType.TABLE}
             hasEditAccess={editLineagePermission}
           />
-        </Suspense>
+        </LazyTabContent>
       ),
     },
     {
@@ -317,7 +315,7 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <Suspense fallback={<Loader />}>
+        <LazyTabContent activeTab={activeTab} tab={EntityTabs.KNOWLEDGE_GRAPH}>
           <KnowledgeGraph
             depth={1}
             entity={
@@ -330,7 +328,7 @@ export const getTableDetailPageBaseTabs = ({
             }
             entityType={EntityType.TABLE}
           />
-        </Suspense>
+        </LazyTabContent>
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },
