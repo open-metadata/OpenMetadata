@@ -32,6 +32,10 @@ public class WorkflowVariableHandler {
     this.varScope = varScope;
   }
 
+  /**
+   * Per-input variable namespace map for a workflow node. A node can read several inputs from
+   * different node/global namespaces, so the wrapper is plural: InputNamespaces.
+   */
   public static record InputNamespaces(Map<String, String> namespaces) {
     public InputNamespaces {
       namespaces =

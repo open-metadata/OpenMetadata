@@ -435,7 +435,8 @@ public class CreateTask implements TaskListener {
             .withFullyQualifiedName(entity.getFullyQualifiedName());
 
     // Build createdBy reference
-    EntityReference createdByRef = resolveCreatedByReference(requestedCreatedBy, entity, payload);
+    EntityReference createdByRef =
+        resolveCreatedByReference(requestedCreatedBy, entity, payload, taskType);
     String updatedBy =
         requestedUpdatedBy != null && !requestedUpdatedBy.isBlank()
             ? requestedUpdatedBy
@@ -513,11 +514,12 @@ public class CreateTask implements TaskListener {
         updatedTask.setPriority(requestedPriority);
       }
       Long effectiveDueDate =
-          resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+          resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
       if (effectiveDueDate != null) {
         updatedTask.setDueDate(effectiveDueDate);
       }
-      updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
+      updatedTask.setPayload(
+          withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -575,11 +577,11 @@ public class CreateTask implements TaskListener {
       task.setTaskFormSchemaVersion(taskFormSchemaVersion);
     }
     Long effectiveDueDate =
-        resolveEffectiveDueDate(stageStatus, requestedPayload, requestedDueDate);
+        resolveEffectiveDueDate(stageStatus, taskType, requestedPayload, requestedDueDate);
     if (effectiveDueDate != null) {
       task.setDueDate(effectiveDueDate);
     }
-    task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
+    task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -834,14 +836,16 @@ public class CreateTask implements TaskListener {
   }
 
   static Long resolveEffectiveDueDate(
-      TaskEntityStatus stageStatus, Object payload, Long requestedDueDate) {
-    if (stageStatus != TaskEntityStatus.Granted || payload == null) {
+      TaskEntityStatus stageStatus,
+      TaskEntityType taskType,
+      Object payload,
+      Long requestedDueDate) {
+    if (stageStatus != TaskEntityStatus.Granted
+        || taskType != TaskEntityType.DataAccessRequest
+        || payload == null) {
       return requestedDueDate;
     }
     DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
-    if (darPayload == null) {
-      return requestedDueDate;
-    }
     String duration = darPayload.getDuration();
     if (duration == null || duration.isBlank()) {
       return requestedDueDate;
@@ -862,14 +866,14 @@ public class CreateTask implements TaskListener {
    * the Granted stage, or upstream-set value), returns that existing value unchanged — silent
    * overwrites would extend access on every workflow listener fire.
    */
-  static Long resolveEffectiveExpirationDate(TaskEntityStatus stageStatus, Object payload) {
-    if (stageStatus != TaskEntityStatus.Granted) {
+  static Long resolveEffectiveExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    if (stageStatus != TaskEntityStatus.Granted
+        || taskType != TaskEntityType.DataAccessRequest
+        || payload == null) {
       return null;
     }
     DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
-    if (darPayload == null) {
-      return null;
-    }
     if (darPayload.getExpirationDate() != null) {
       return darPayload.getExpirationDate();
     }
@@ -886,24 +890,33 @@ public class CreateTask implements TaskListener {
    * non-DAR workflows that target Granted aren't penalised and the input map is never
    * mutated.
    */
-  static Object withGrantExpirationDate(TaskEntityStatus stageStatus, Object payload) {
-    Long expiration = resolveEffectiveExpirationDate(stageStatus, payload);
+  static Object withGrantExpirationDate(
+      TaskEntityStatus stageStatus, TaskEntityType taskType, Object payload) {
+    Long expiration = resolveEffectiveExpirationDate(stageStatus, taskType, payload);
     if (expiration == null) {
       return payload;
     }
     DataAccessRequestPayload darPayload = readDataAccessRequestPayload(payload);
-    if (darPayload == null || darPayload.getExpirationDate() != null) {
+    if (darPayload.getExpirationDate() != null) {
       return payload;
     }
     return darPayload.withExpirationDate(expiration);
   }
 
   private static DataAccessRequestPayload readDataAccessRequestPayload(Object payload) {
+    // Task.payload is declared as java.lang.Object in the schema because the shape
+    // varies per taskType. Depending on how the task reached this code path it can
+    // arrive as a raw JSON String (Flowable variable serialization) or as a
+    // deserialized Map/POJO (repository read). Handle both here rather than at every
+    // caller.
     try {
+      if (payload instanceof String json) {
+        return JsonUtils.readValue(json, DataAccessRequestPayload.class);
+      }
       return JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
     } catch (RuntimeException invalidPayload) {
       LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
-      return null;
+      throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
     }
   }
 
@@ -939,12 +952,15 @@ public class CreateTask implements TaskListener {
   }
 
   private EntityReference resolveCreatedByReference(
-      EntityReference requestedCreatedBy, EntityInterface entity, Object payload) {
+      EntityReference requestedCreatedBy,
+      EntityInterface entity,
+      Object payload,
+      TaskEntityType taskType) {
     if (requestedCreatedBy != null && requestedCreatedBy.getId() != null) {
       return requestedCreatedBy;
     }
 
-    EntityReference payloadCreator = extractPayloadCreatedBy(payload);
+    EntityReference payloadCreator = extractPayloadCreatedBy(payload, taskType);
     if (payloadCreator != null) {
       return payloadCreator;
     }
@@ -961,7 +977,11 @@ public class CreateTask implements TaskListener {
     }
   }
 
-  private EntityReference extractPayloadCreatedBy(Object payload) {
+  static EntityReference extractPayloadCreatedBy(Object payload, TaskEntityType taskType) {
+    if (taskType != TaskEntityType.RecognizerFeedbackApproval
+        && taskType != TaskEntityType.DataQualityReview) {
+      return null;
+    }
     RecognizerFeedbackTaskPayload feedbackPayload = readRecognizerFeedbackTaskPayload(payload);
     RecognizerFeedback recognizerFeedback =
         feedbackPayload != null ? feedbackPayload.feedback() : null;
@@ -971,15 +991,23 @@ public class CreateTask implements TaskListener {
     return recognizerFeedback.getCreatedBy();
   }
 
-  private RecognizerFeedbackTaskPayload readRecognizerFeedbackTaskPayload(Object payload) {
+  private static RecognizerFeedbackTaskPayload readRecognizerFeedbackTaskPayload(Object payload) {
+    // Task.payload is declared as java.lang.Object in the schema because the shape
+    // varies per taskType. Depending on how the task reached this code path it can
+    // arrive as a raw JSON String (Flowable variable serialization), the concrete
+    // POJO (in-process reuse), or a deserialized Map (repository read).
     try {
       if (payload instanceof RecognizerFeedbackTaskPayload feedbackPayload) {
         return feedbackPayload;
       }
+      if (payload instanceof String json) {
+        return JsonUtils.readValue(json, RecognizerFeedbackTaskPayload.class);
+      }
       return JsonUtils.convertValue(payload, RecognizerFeedbackTaskPayload.class);
     } catch (RuntimeException invalidPayload) {
       LOG.trace("[CreateTask] Payload is not a RecognizerFeedbackTaskPayload", invalidPayload);
-      return null;
+      throw new IllegalArgumentException(
+          "Invalid recognizer feedback task payload", invalidPayload);
     }
   }
 
