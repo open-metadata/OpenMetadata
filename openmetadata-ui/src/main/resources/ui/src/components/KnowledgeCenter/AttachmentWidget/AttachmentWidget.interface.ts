@@ -10,5 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export { default } from './MUIAutocomplete';
-export type { MUIAutocompleteProps } from './MUIAutocomplete.interface';
+
+export interface AttachmentItem {
+  id: string;
+  name: string;
+  size: number;
+  fileType: string;
+  downloadUrl?: string;
+}
+
+export interface AttachmentWidgetProps {
+  hasPermission: boolean;
+}

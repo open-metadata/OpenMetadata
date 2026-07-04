@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
 
-import { AutocompleteProps } from '@mui/material';
-
-export interface MUIAutocompleteProps
-  extends Omit<
-    AutocompleteProps<string, true, false, true>,
-    'renderInput' | 'onChange' | 'value' | 'options'
-  > {
-  value?: string[];
-  onChange?: (value: string[]) => void;
-  label?: string;
-  placeholder?: string;
-  required?: boolean;
-  options?: string[];
+export interface WidgetCardProps {
+  children?: React.ReactNode;
+  title?: string;
+  titleIcon?: React.ReactNode;
+  headerExtra?: React.ReactNode;
+  defaultExpanded?: boolean;
+  onExpandStateChange?: (isExpanded: boolean) => void;
+  isExpandDisabled?: boolean;
+  forceExpand?: boolean;
   dataTestId?: string;
+  className?: string;
+  helperText?: React.ReactNode;
 }

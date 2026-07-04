@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
+import React from 'react';
 
-.test-suite-list-container {
-  background-color: var(--tw-color-bg-primary);
-  border-radius: @border-rad-sm;
-  border: @global-border;
-
-  .test-suite-list-header {
-    padding: @padding-md;
-  }
+export interface WidgetActionButtonProps {
+  title: string;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+  'data-testid'?: string;
+  className?: string;
 }

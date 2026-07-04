@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  Skeleton,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
@@ -41,27 +47,31 @@ const StatusDataWidget = ({
   );
 
   const body = (
-    <Space
+    <Box
       className="w-full"
       data-testid="status-data-widget"
-      direction="vertical"
-      size={16}>
+      direction="col"
+      gap={4}>
       <div className="d-flex items-center gap-2">
         <IconSvg color={PRIMARY_COLOR} height={20} width={20} />
-        <Typography.Text
-          className="font-semibold text-md"
+        <Typography
+          as="span"
+          className="font-semibold text-sm"
           data-testid="status-title">
           {statusData.title === DataQualityDimensions.NoDimension
             ? t('label.no-dimension')
             : statusData.title}
-        </Typography.Text>
+        </Typography>
       </div>
       <div className="d-flex flex-wrap justify-between gap-2">
-        <Typography.Text
-          className="font-semibold display-xs chart-widget-link-underline"
-          data-testid="total-value">
+        <Typography
+          as="span"
+          className="chart-widget-link-underline"
+          data-testid="total-value"
+          size="text-xl"
+          weight="semibold">
           {statusData.total}
-        </Typography.Text>
+        </Typography>
         <div className="d-flex items-center gap-3">
           {Object.entries(countCard).map(([key, value]) => (
             <Tooltip key={key} title={t(`label.${key}`)}>
@@ -74,15 +84,25 @@ const StatusDataWidget = ({
           ))}
         </div>
       </div>
-    </Space>
+    </Box>
   );
+
+  if (isLoading) {
+    return (
+      <Card
+        className={classNames('status-card-widget-container', {
+          'chart-widget-link-no-underline': !isUndefined(redirectPath),
+        })}>
+        <Skeleton height={120} width="100%" />
+      </Card>
+    );
+  }
 
   return (
     <Card
       className={classNames('status-card-widget-container', {
         'chart-widget-link-no-underline': !isUndefined(redirectPath),
-      })}
-      loading={isLoading}>
+      })}>
       {redirectPath ? <Link to={redirectPath}>{body}</Link> : body}
     </Card>
   );
