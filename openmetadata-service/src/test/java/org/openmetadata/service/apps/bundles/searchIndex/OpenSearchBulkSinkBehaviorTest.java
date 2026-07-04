@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -155,7 +156,7 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void addEntityRecordsEntityNotFoundFailuresAndInvokesCallback() throws Exception {
+  void addEntityRecordsEntityNotFoundWarningsWithoutCallback() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
@@ -195,16 +196,12 @@ class OpenSearchBulkSinkBehaviorTest {
           Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
-      verify(tracker).recordProcess(StatsResult.FAILED);
-      verify(failureCallback)
-          .onFailure(
-              ENTITY_TYPE,
-              entityId.toString(),
-              "table.fqn",
-              "Entity with id [" + entityId + "] not found.",
-              IndexingFailureRecorder.FailureStage.PROCESS);
-      assertEquals(1, sink.getStats().getFailedRecords());
-      assertEquals(1, sink.getProcessStats().getFailedRecords());
+      verify(tracker).recordProcess(StatsResult.WARNING);
+      verifyNoInteractions(failureCallback);
+      assertEquals(0, sink.getStats().getFailedRecords());
+      assertEquals(1, sink.getStats().getWarningRecords());
+      assertEquals(0, sink.getProcessStats().getFailedRecords());
+      assertEquals(1, sink.getProcessStats().getWarningRecords());
     }
   }
 

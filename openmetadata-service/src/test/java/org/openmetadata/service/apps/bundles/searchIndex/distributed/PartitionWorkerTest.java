@@ -787,7 +787,7 @@ class PartitionWorkerTest {
     assertEquals(
         PartitionStatus.PROCESSING,
         progressCaptor.getAllValues().get(progressCaptor.getAllValues().size() - 1).getStatus());
-    verify(coordinator).completePartition(partition.getId(), 2L, 0L);
+    verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
   }
 
   @Test
@@ -827,7 +827,7 @@ class PartitionWorkerTest {
       assertEquals(2, result.readerFailed());
     }
 
-    verify(coordinator).completePartition(partition.getId(), 0L, 2L);
+    verify(coordinator).completePartition(partition.getId(), 0L, 2L, 0L);
   }
 
   @Test
@@ -870,7 +870,7 @@ class PartitionWorkerTest {
       assertEquals(0, result.failedCount());
     }
 
-    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong());
+    verify(coordinator, never()).completePartition(any(), anyLong(), anyLong(), anyLong());
   }
 
   @Test
@@ -922,7 +922,7 @@ class PartitionWorkerTest {
             eq("batch_at_offset_0"),
             eq("Failed to write batch to search index: sink unavailable"),
             any());
-    verify(coordinator).completePartition(partition.getId(), 0L, 1L);
+    verify(coordinator).completePartition(partition.getId(), 0L, 1L, 0L);
   }
 
   @Test
@@ -935,6 +935,7 @@ class PartitionWorkerTest {
     resultList.setData(List.of(mock(EntityInterface.class), mock(EntityInterface.class)));
     StageCounter processCounter = new StageCounter();
     processCounter.getCumulativeFailed().set(1);
+    StageCounter sinkCounter = new StageCounter();
 
     when(coordinator.getCollectionDAO()).thenReturn(collectionDAO);
     when(collectionDAO.searchIndexServerStatsDAO()).thenReturn(searchIndexServerStatsDAO);
@@ -952,6 +953,7 @@ class PartitionWorkerTest {
                 (mock, context) -> {
                   when(mock.getPendingSinkOps()).thenReturn(0L);
                   when(mock.getProcess()).thenReturn(processCounter);
+                  when(mock.getSink()).thenReturn(sinkCounter);
                 });
         MockedConstruction<PaginatedEntitiesSource> ignored =
             mockConstruction(
@@ -967,7 +969,7 @@ class PartitionWorkerTest {
       assertEquals(1, trackerConstruction.constructed().size());
     }
 
-    verify(coordinator).completePartition(partition.getId(), 1L, 1L);
+    verify(coordinator).completePartition(partition.getId(), 1L, 1L, 0L);
   }
 
   @Test
@@ -985,7 +987,7 @@ class PartitionWorkerTest {
     when(bulkSink.getPendingVectorTaskCount()).thenReturn(0);
     doThrow(new IllegalStateException("completion failed"))
         .when(coordinator)
-        .completePartition(partition.getId(), 1L, 0L);
+        .completePartition(partition.getId(), 1L, 0L, 0L);
 
     ServerIdentityResolver resolver = mock(ServerIdentityResolver.class);
     when(resolver.getServerId()).thenReturn("server-a");

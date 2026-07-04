@@ -304,13 +304,16 @@ public class PartitionWorker {
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
-      // Adjust partition counts to include process-stage failures.
+      // Adjust partition counts to include stage-level failures and warnings.
       // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
-      // Process failures happen async in addEntity() and are tracked by StageStatsTracker.
+      // Process and sink results happen async and are tracked by StageStatsTracker.
       long processFailed =
           statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
-      if (processFailed > 0) {
-        long adjustment = Math.min(processFailed, successCount.get());
+      long sinkFailed =
+          statsTracker != null ? statsTracker.getSink().getCumulativeFailed().get() : 0;
+      long stageFailed = processFailed + sinkFailed;
+      if (stageFailed > 0) {
+        long adjustment = Math.min(stageFailed, successCount.get());
         if (adjustment > 0) {
           successCount.addAndGet(-adjustment);
           failedCount.addAndGet(adjustment);
@@ -318,8 +321,11 @@ public class PartitionWorker {
       }
       long processWarnings =
           statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
-      if (processWarnings > 0) {
-        long adjustment = Math.min(processWarnings, successCount.get());
+      long sinkWarnings =
+          statsTracker != null ? statsTracker.getSink().getCumulativeWarnings().get() : 0;
+      long stageWarnings = processWarnings + sinkWarnings;
+      if (stageWarnings > 0) {
+        long adjustment = Math.min(stageWarnings, successCount.get());
         if (adjustment > 0) {
           successCount.addAndGet(-adjustment);
           warningsCount.addAndGet(adjustment);
@@ -327,19 +333,22 @@ public class PartitionWorker {
       }
 
       // Mark partition as completed (stats are now in the database)
-      coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
+      coordinator.completePartition(
+          partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
       long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, processWarnings: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, sinkFailed: {}, processWarnings: {}, sinkWarnings: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
           processFailed,
+          sinkFailed,
           processWarnings,
+          sinkWarnings,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(
