@@ -12,8 +12,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { act } from 'react';
-import React from 'react';
+import React, { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE_DATA } from '../../../mocks/TestCase.mock';
