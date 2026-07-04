@@ -169,6 +169,16 @@ const DocumentFolderView = (
 
   const refetchFolderFiles = useCallback(
     async (folderIds: string[]) => {
+      const collapsed = folderIds.filter((id) => !expandedKeys.has(id));
+      if (collapsed.length > 0) {
+        setFolderFilesState((prev) => {
+          const next = new Map(prev);
+          collapsed.forEach((id) => next.delete(id));
+
+          return next;
+        });
+      }
+
       const targets = folderIds.filter((id) => expandedKeys.has(id));
       if (targets.length === 0) {
         return;
