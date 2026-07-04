@@ -41,6 +41,7 @@ export interface AdvanceSearchContext {
   config: Config;
   isUpdating: boolean;
   onReset: () => void;
+  onResetQueryFilter: () => void;
   onResetAllFilters: () => void;
   onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
   searchIndex: string | Array<string>;
