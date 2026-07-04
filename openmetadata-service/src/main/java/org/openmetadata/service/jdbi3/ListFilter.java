@@ -91,6 +91,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
+    conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -181,6 +182,21 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.APPLIED_TO.ordinal());
     }
     return result;
+  }
+
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
+    }
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
   }
 
   private String getAssignee() {
