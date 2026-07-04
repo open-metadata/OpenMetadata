@@ -35,8 +35,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class LLMModelRepository extends EntityRepository<LLMModel> {
-  private static final String MODEL_UPDATE_FIELDS = "usedByAgents";
-  private static final String MODEL_PATCH_FIELDS = "usedByAgents";
+  private static final String MODEL_UPDATE_FIELDS = "usedByAgents,reviewers";
+  private static final String MODEL_PATCH_FIELDS = "usedByAgents,reviewers";
 
   public LLMModelRepository() {
     super(

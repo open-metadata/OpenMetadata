@@ -31,8 +31,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class McpServerRepository extends EntityRepository<McpServer> {
-  private static final String SERVER_UPDATE_FIELDS = "tools,resources,prompts,governanceMetadata";
-  private static final String SERVER_PATCH_FIELDS = "tools,resources,prompts,governanceMetadata";
+  private static final String SERVER_UPDATE_FIELDS =
+      "tools,resources,prompts,governanceMetadata,reviewers";
+  private static final String SERVER_PATCH_FIELDS =
+      "tools,resources,prompts,governanceMetadata,reviewers";
 
   public McpServerRepository() {
     super(

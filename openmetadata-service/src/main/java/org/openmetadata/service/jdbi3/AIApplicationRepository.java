@@ -24,8 +24,10 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Slf4j
 @Repository
 public class AIApplicationRepository extends EntityRepository<AIApplication> {
-  private static final String APPLICATION_UPDATE_FIELDS = "modelConfigurations,tools,dataSources";
-  private static final String APPLICATION_PATCH_FIELDS = "modelConfigurations,tools,dataSources";
+  private static final String APPLICATION_UPDATE_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
+  private static final String APPLICATION_PATCH_FIELDS =
+      "modelConfigurations,tools,dataSources,reviewers";
 
   public AIApplicationRepository() {
     super(

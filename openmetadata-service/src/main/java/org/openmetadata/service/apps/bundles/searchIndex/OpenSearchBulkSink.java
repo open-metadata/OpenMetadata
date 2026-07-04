@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -166,10 +167,12 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private final AtomicLong totalWarnings = new AtomicLong(0);
 
   // Process stage metrics (document building/transformation)
   private final AtomicLong processSuccess = new AtomicLong(0);
   private final AtomicLong processFailed = new AtomicLong(0);
+  private final AtomicLong processWarnings = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -501,23 +504,12 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        String entityTypeName = Entity.getEntityTypeFromObject(entity);
-        failureCallback.onFailure(
-            entityTypeName,
-            entity.getId() != null ? entity.getId().toString() : null,
-            entity.getFullyQualifiedName(),
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entity, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entity, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -535,6 +527,31 @@ public class OpenSearchBulkSink implements BulkSink {
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
       }
+    }
+  }
+
+  private void recordStaleReferenceWarning(
+      EntityInterface entity, StageStatsTracker tracker, Exception e) {
+    recordStaleReferenceWarning(
+        Entity.getEntityTypeFromObject(entity),
+        entity.getId(),
+        entity.getFullyQualifiedName(),
+        tracker,
+        e);
+  }
+
+  private void recordStaleReferenceWarning(
+      String entityType, UUID entityId, String entityFqn, StageStatsTracker tracker, Exception e) {
+    LOG.warn(
+        "Skipping stale reference while building search doc for {} {}: {}",
+        entityType,
+        entityFqn != null ? entityFqn : entityId,
+        e.getMessage());
+    totalWarnings.incrementAndGet();
+    processWarnings.incrementAndGet();
+    updateStats();
+    if (tracker != null) {
+      tracker.recordProcess(StatsResult.WARNING);
     }
   }
 
@@ -601,22 +618,12 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        failureCallback.onFailure(
-            entityType,
-            entity.getId() != null ? entity.getId().toString() : null,
-            null,
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -769,6 +776,7 @@ public class OpenSearchBulkSink implements BulkSink {
     stats.setTotalRecords((int) totalSubmitted.get());
     stats.setSuccessRecords((int) totalSuccess.get());
     stats.setFailedRecords((int) totalFailed.get());
+    stats.setWarningRecords((int) totalWarnings.get());
   }
 
   @Override
@@ -780,14 +788,16 @@ public class OpenSearchBulkSink implements BulkSink {
   @Override
   public StepStats getStats() {
     // Read directly from atomic counters for accurate real-time stats
-    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // Include warnings so skipped stale references are visible but not counted as failures.
     // This handles entity build failures which increment failed but not submitted
     long success = totalSuccess.get();
     long failed = totalFailed.get();
+    long warnings = totalWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   @Override
@@ -1023,10 +1033,12 @@ public class OpenSearchBulkSink implements BulkSink {
   public StepStats getProcessStats() {
     long success = processSuccess.get();
     long failed = processFailed.get();
+    long warnings = processWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   public static class CustomBulkProcessor {

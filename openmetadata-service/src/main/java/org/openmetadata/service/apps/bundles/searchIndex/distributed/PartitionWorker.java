@@ -316,20 +316,30 @@ public class PartitionWorker {
           failedCount.addAndGet(adjustment);
         }
       }
+      long processWarnings =
+          statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
+      if (processWarnings > 0) {
+        long adjustment = Math.min(processWarnings, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          warningsCount.addAndGet(adjustment);
+        }
+      }
 
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
-      long actualProcessed = successCount.get() + failedCount.get();
+      long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, processWarnings: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
           processFailed,
+          processWarnings,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(

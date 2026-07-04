@@ -62,7 +62,7 @@ import org.openmetadata.service.security.Authorizer;
 public class AIApplicationResource extends EntityResource<AIApplication, AIApplicationRepository> {
   public static final String COLLECTION_PATH = "/v1/aiApplications/";
   private final AIApplicationMapper mapper = new AIApplicationMapper();
-  static final String FIELDS = "owners,followers,tags,extension,domains";
+  static final String FIELDS = "owners,followers,tags,extension,domains,reviewers";
 
   @Override
   public AIApplication addHref(UriInfo uriInfo, AIApplication aiApplication) {
