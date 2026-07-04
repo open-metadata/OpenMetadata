@@ -10,12 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Form, Input, Modal, Progress, Select, Typography } from 'antd';
+import {
+  Alert,
+  Badge,
+  Button,
+  Dialog,
+  InputBase,
+  InputGroup,
+  Modal,
+  ModalOverlay,
+  ProgressBarBase,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Loading01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isString, lowerCase } from 'lodash';
 import {
   createContext,
+  FC,
   ReactNode,
   useCallback,
   useContext,
@@ -37,7 +50,6 @@ import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUti
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner from '../../common/Banner/Banner';
 import { CSV_JOBS_REFRESH_EVENT } from '../../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import {
   CSVExportJob,
@@ -50,17 +62,24 @@ const EntityExportModalContext = createContext<EntityExportModalContextProps>(
   {} as EntityExportModalContextProps
 );
 
+const AlertSpinnerIcon: FC<{ className?: string }> = () => (
+  <Loading01 className="tw:size-5 tw:animate-spin" />
+);
+
 export const EntityExportModalProvider = ({
   children,
 }: {
   children: ReactNode;
 }) => {
-  const [form] = Form.useForm();
   const { t } = useTranslation();
   const location = useLocation();
 
   const [exportData, setExportData] = useState<ExportData | null>(null);
   const [downloading, setDownloading] = useState<boolean>(false);
+  const [fileName, setFileName] = useState<string>('');
+  const [selectedExportType, setSelectedExportType] = useState<ExportTypes>(
+    ExportTypes.CSV
+  );
 
   const csvExportJobRef = useRef<Partial<CSVExportJob>>();
 
@@ -73,9 +92,6 @@ export const EntityExportModalProvider = ({
   const [csvExportData, setCSVExportData] = useState<string>();
 
   const [csvExportError, setCSVExportError] = useState<string>();
-
-  const selectedExportType =
-    Form.useWatch<ExportTypes>(['exportType'], form) ?? ExportTypes.CSV;
 
   const isBulkEdit = useMemo(
     () => isBulkEditRoute(location.pathname) || exportData?.hideExportModal,
@@ -92,13 +108,14 @@ export const EntityExportModalProvider = ({
     [exportData, isBulkEdit]
   );
 
-  const exportTypesOptions = useMemo(
+  const exportTypeItems = useMemo(
     () =>
       exportUtilClassBase
         .getExportTypeOptions()
         .filter((option) =>
           exportData?.exportTypes.includes(option.value as ExportTypes)
-        ),
+        )
+        .map((option) => ({ id: option.value, label: option.label })),
     [exportData]
   );
 
@@ -312,10 +329,8 @@ export const EntityExportModalProvider = ({
       } else if (isCsvOnly) {
         runTrayExport(exportData);
       } else {
-        form.setFieldsValue({
-          fileName: `${exportData.name}_${getCurrentISODate()}`,
-          exportType: exportData.exportTypes[0],
-        });
+        setFileName(`${exportData.name}_${getCurrentISODate()}`);
+        setSelectedExportType(exportData.exportTypes[0]);
       }
     }
   }, [isBulkEdit, isCsvOnly, exportData, runTrayExport]);
@@ -339,98 +354,129 @@ export const EntityExportModalProvider = ({
     ]
   );
 
+  const isExportInProgress = csvExportJob?.status === 'IN_PROGRESS';
+
   return (
     <EntityExportModalContext.Provider value={providerValue}>
       <>
         {children}
         {exportData && !isBulkEdit && !isCsvOnly && (
-          <Modal
-            centered
-            open
-            cancelText={t('label.cancel')}
-            closable={false}
-            data-testid="export-entity-modal"
-            maskClosable={false}
-            okButtonProps={{
-              form: 'export-form',
-              htmlType: 'submit',
-              id: 'submit-button',
-              disabled: downloading,
-              loading: selectedExportType !== ExportTypes.CSV && downloading,
-            }}
-            okText={t('label.export')}
-            title={exportData.title ?? t('label.export')}
-            onCancel={handleCancel}>
-            <Form
-              form={form}
-              id="export-form"
-              layout="vertical"
-              onFinish={handleExport}>
-              <Form.Item label={`${t('label.export-type')}:`} name="exportType">
-                <Select
-                  data-testid="export-type-select"
-                  disabled={exportData.exportTypes.length === 1}>
-                  {exportTypesOptions.map((type) => (
-                    <Select.Option
-                      key={type.value}
-                      title={type.value}
-                      value={type.value}>
-                      <div className="d-flex items-center">
-                        {type.label}
-                        {BETA_EXPORT_TYPES.includes(type.value) && (
-                          <Badge
-                            className="m-l-xs service-beta-tag"
-                            count={t('label.beta')}
-                            size="small"
-                          />
-                        )}
-                      </div>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
+          <ModalOverlay isOpen>
+            <Modal>
+              <Dialog
+                data-testid="export-entity-modal"
+                width={480}
+                onClose={handleCancel}>
+                <Dialog.Header>
+                  <Typography
+                    as="h3"
+                    className="tw:text-primary"
+                    size="text-lg"
+                    weight="semibold">
+                    {exportData.title ?? t('label.export')}
+                  </Typography>
+                </Dialog.Header>
+                <Dialog.Content>
+                  <Select
+                    data-testid="export-type-select"
+                    isDisabled={exportData.exportTypes.length === 1}
+                    items={exportTypeItems}
+                    label={`${t('label.export-type')}:`}
+                    selectedKey={selectedExportType}
+                    onSelectionChange={(key) =>
+                      key && setSelectedExportType(key as ExportTypes)
+                    }>
+                    {(item) => (
+                      <Select.Item id={item.id} textValue={item.label}>
+                        <div className="tw:flex tw:items-center tw:gap-2">
+                          {item.label}
+                          {BETA_EXPORT_TYPES.includes(
+                            item.id as ExportTypes
+                          ) && (
+                            <Badge color="gray" size="sm">
+                              {t('label.beta')}
+                            </Badge>
+                          )}
+                        </div>
+                      </Select.Item>
+                    )}
+                  </Select>
 
-              <Form.Item
-                className={classNames({ 'mb-0': !csvExportJob?.jobId })}
-                label={`${t('label.entity-name', {
-                  entity: t('label.file'),
-                })}:`}
-                name="fileName">
-                <Input
-                  addonAfter={`.${lowerCase(selectedExportType)}`}
-                  data-testid="file-name-input"
-                />
-              </Form.Item>
-            </Form>
+                  <InputGroup
+                    label={`${t('label.entity-name', {
+                      entity: t('label.file'),
+                    })}:`}
+                    trailingAddon={
+                      <InputGroup.Prefix position="trailing">
+                        {`.${lowerCase(selectedExportType)}`}
+                      </InputGroup.Prefix>
+                    }
+                    value={fileName}
+                    onChange={setFileName}>
+                    <InputBase inputDataTestId="file-name-input" />
+                  </InputGroup>
 
-            {csvExportJob?.jobId && (
-              <>
-                {csvExportJob.status === 'IN_PROGRESS' &&
-                  csvExportJob.progress !== undefined &&
-                  csvExportJob.total !== undefined && (
-                    <div className="m-b-md">
-                      <Progress
-                        percent={Math.round(
-                          (csvExportJob.progress / csvExportJob.total) * 100
+                  {csvExportJob?.jobId && (
+                    <>
+                      {isExportInProgress &&
+                        csvExportJob.progress !== undefined &&
+                        csvExportJob.total !== undefined && (
+                          <div className="tw:flex tw:flex-col tw:gap-2">
+                            <ProgressBarBase
+                              max={csvExportJob.total}
+                              value={csvExportJob.progress}
+                            />
+                            <Typography
+                              as="span"
+                              className="tw:text-tertiary"
+                              size="text-xs">
+                              {csvExportJob.message}
+                            </Typography>
+                          </div>
                         )}
-                        status="active"
-                      />
-                      <Typography.Text className="text-grey-muted text-xs">
-                        {csvExportJob.message}
-                      </Typography.Text>
-                    </div>
+                      {!isExportInProgress && (
+                        <Alert
+                          icon={
+                            !csvExportJob.error && downloading
+                              ? AlertSpinnerIcon
+                              : undefined
+                          }
+                          title={
+                            csvExportJob.error ?? csvExportJob.message ?? ''
+                          }
+                          variant={
+                            csvExportJob.error
+                              ? 'error'
+                              : downloading
+                              ? 'brand'
+                              : 'success'
+                          }
+                        />
+                      )}
+                    </>
                   )}
-                {csvExportJob.status !== 'IN_PROGRESS' && (
-                  <Banner
-                    className="border-radius"
-                    isLoading={downloading}
-                    message={csvExportJob.error ?? csvExportJob.message ?? ''}
-                    type={csvExportJob.error ? 'error' : 'success'}
-                  />
-                )}
-              </>
-            )}
-          </Modal>
+                </Dialog.Content>
+                <Dialog.Footer>
+                  <Button color="secondary" size="lg" onClick={handleCancel}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="submit-button"
+                    isDisabled={downloading}
+                    isLoading={
+                      selectedExportType !== ExportTypes.CSV && downloading
+                    }
+                    size="lg"
+                    onClick={() =>
+                      handleExport({ fileName, exportType: selectedExportType })
+                    }>
+                    {t('label.export')}
+                  </Button>
+                </Dialog.Footer>
+              </Dialog>
+            </Modal>
+          </ModalOverlay>
         )}
       </>
     </EntityExportModalContext.Provider>
