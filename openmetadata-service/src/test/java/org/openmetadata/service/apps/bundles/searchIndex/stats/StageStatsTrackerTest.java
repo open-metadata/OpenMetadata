@@ -322,7 +322,11 @@ class StageStatsTrackerTest {
               anyLong());
 
       tracker.recordReader(StatsResult.SUCCESS);
+      tracker.recordProcess(StatsResult.WARNING);
       tracker.flush();
+
+      assertEquals(1, tracker.getReader().getSuccess().get());
+      assertEquals(1, tracker.getProcess().getWarnings().get());
     }
   }
 

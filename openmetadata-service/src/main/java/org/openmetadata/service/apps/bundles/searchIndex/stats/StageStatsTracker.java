@@ -341,6 +341,7 @@ public class StageStatsTracker {
       reader.getTotalTimeNanos().addAndGet(rTimeNanos);
       process.getSuccess().addAndGet(pSuccess);
       process.getFailed().addAndGet(pFailed);
+      process.getWarnings().addAndGet(pWarnings);
       process.getTotalTimeNanos().addAndGet(pTimeNanos);
       sink.getSuccess().addAndGet(sSuccess);
       sink.getFailed().addAndGet(sFailed);
