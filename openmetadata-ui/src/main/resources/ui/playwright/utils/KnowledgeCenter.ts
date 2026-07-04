@@ -496,7 +496,7 @@ export const getKnowledgePageCardEntityIdentifier = async (
 
 export const toggleKnowledgePageBookmark = async (
   page: Page,
-  bookmarkBtn: Locator,
+  bookmarkBtn: Locator
 ) => {
   const bookmarkResponse = page.waitForResponse((response) => {
     const url = response.url();
@@ -682,7 +682,9 @@ export const createLink = async (
     state: 'visible',
   });
 
-  const linkButton = page.getByTestId('center-panel').getByRole('button', { name: 'Link' });
+  const linkButton = page
+    .getByTestId('center-panel')
+    .getByRole('button', { name: 'Link' });
   await expect(linkButton).toBeVisible();
   await linkButton.click();
 

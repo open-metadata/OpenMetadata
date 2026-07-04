@@ -555,7 +555,10 @@ test.describe('Context Center Articles', () => {
       tag: 'Article',
       tagFqn: 'KnowledgeCenter.Article',
     });
-    await page.getByTestId('tags-container').getByTestId('edit-button').waitFor({ state: 'visible' });
+    await page
+      .getByTestId('tags-container')
+      .getByTestId('edit-button')
+      .waitFor({ state: 'visible' });
     await updateTags(page, {
       tag: 'HowToGuide',
       tagFqn: 'KnowledgeCenter.HowToGuide',
@@ -678,14 +681,12 @@ test.describe('Context Center Articles', () => {
           op: 'add',
           path: '/parent',
           value: {
-            id: parent.id, type: "page", fullyQualifiedName: parent.fullyQualifiedName,
-displayName
-: 
-parent.displayName,
+            id: parent.id,
+            type: 'page',
+            fullyQualifiedName: parent.fullyQualifiedName,
+            displayName: parent.displayName,
 
-name
-: 
-parent.name
+            name: parent.name,
           },
         },
       ],
@@ -695,20 +696,24 @@ parent.name
 
     await navigateToArticles(page);
     await scrollHierarchyToNode(page, parent.displayName);
-    const ExpandIcon = page.getByRole('button', { name: `Expand ${parent.displayName}` });
+    const ExpandIcon = page.getByRole('button', {
+      name: `Expand ${parent.displayName}`,
+    });
     await expect(ExpandIcon).toBeVisible();
     await ExpandIcon.click();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
-    const collapseIcon = page.getByRole('button', { name: `Collapse ${parent.displayName}` });
+    const collapseIcon = page.getByRole('button', {
+      name: `Collapse ${parent.displayName}`,
+    });
     await collapseIcon.click();
     await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).not.toBeVisible();
 
     await page.getByLabel('Expand All').click();
-     await expect(
+    await expect(
       page.getByTestId(`page-node-${child.displayName}`)
     ).toBeVisible();
     await page.getByLabel('Collapse All').click();
