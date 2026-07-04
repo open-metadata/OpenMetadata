@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyNamespace;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -542,9 +543,10 @@ public class GlossaryRdfImporter {
 
   private void persistRelationTypes(Collection<GlossaryTermRelationType> newTypes) {
     synchronized (RELATION_TYPE_SETTINGS_LOCK) {
-      GlossaryTermRelationSettings settings =
-          SettingsCache.getSetting(
-              SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
+      // Read the persisted document directly rather than from SettingsCache: the cache is a
+      // per-JVM Guava cache, so a concurrent import on another node could merge against a stale
+      // local copy and its createOrUpdate would drop a relation type this import just registered.
+      GlossaryTermRelationSettings settings = currentRelationSettings();
       List<GlossaryTermRelationType> merged =
           settings == null || settings.getRelationTypes() == null
               ? new ArrayList<>()
@@ -565,6 +567,18 @@ public class GlossaryRdfImporter {
       Entity.getSystemRepository().createOrUpdate(updated);
       result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
     }
+  }
+
+  private GlossaryTermRelationSettings currentRelationSettings() {
+    GlossaryTermRelationSettings settings = null;
+    Settings stored =
+        Entity.getSystemRepository()
+            .getConfigWithKey(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.toString());
+    if (stored != null) {
+      settings =
+          JsonUtils.convertValue(stored.getConfigValue(), GlossaryTermRelationSettings.class);
+    }
+    return settings;
   }
 
   private void persistTerms(
