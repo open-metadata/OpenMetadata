@@ -106,7 +106,7 @@ function ObservabilityAlertsTable({
   };
 
   return (
-    <TableCard.Root className="tw:rounded-3 tw:border tw:border-secondary tw:shadow-none tw:ring-0">
+    <TableCard.Root className="tw:rounded-md tw:border tw:border-secondary tw:shadow-none tw:ring-0">
       <div className="tw:border-b tw:border-secondary">
         <Table
           aria-label={t('label.observability-alert')}
