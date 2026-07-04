@@ -1027,7 +1027,7 @@ test.describe(
       });
 
       await test.step('Clear filters and verify count disappears', async () => {
-        await page.getByTestId('clear-all-chips').click();
+        await page.getByTestId('advance-search-clear-btn').click();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
