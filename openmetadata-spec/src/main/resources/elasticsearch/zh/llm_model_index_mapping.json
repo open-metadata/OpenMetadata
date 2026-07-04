@@ -143,6 +143,9 @@
       "version": {
         "type": "float"
       },
+      "modelVersion": {
+        "type": "keyword"
+      },
       "updatedAt": {
         "type": "date",
         "format": "epoch_second"
