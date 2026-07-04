@@ -503,16 +503,10 @@ test.describe('Data Contracts', () => {
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
-          await validateDataContractInsideBundleTestSuites(page);
-
-          await expect(
-            page
-              .getByTestId('test-suite-table')
-              .locator('[role="gridcell"]')
-              .filter({
-                hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
-              })
-          ).toBeVisible();
+          await validateDataContractInsideBundleTestSuites(
+            page,
+            DATA_CONTRACT_DETAILS.name
+          );
         });
 
         await test.step('Edit quality expectations from the data contract and validate', async () => {

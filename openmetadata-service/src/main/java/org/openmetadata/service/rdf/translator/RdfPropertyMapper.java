@@ -50,9 +50,17 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that should be omitted from RDF because they are audit/helper data, or are
-  // handled by a dedicated emission step elsewhere in this class (e.g. tableConstraints, which
-  // requires the parent table FQN to mint constrained-column URIs).
+  // Properties skipped by the generic field-mapping loop. Three reasons:
+  //   1. Audit/helper data with no place in the graph: changeDescription, votes.
+  //   2. Handled by a dedicated structured-emission step elsewhere in this class, so they must not
+  //      also be written as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
+  //      parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV
+  //      measurements), pipelineStatus (RdfActivityMapper prov:Activity), usageSummary
+  //      (RdfUsageMapper usage-count triples).
+  //   3. Embedded time-series data with no structured RDF equivalent, belonging in the time-series
+  //      store rather than the knowledge graph: testCaseResult. A testCase carries its latest
+  //      testCaseResult inline; serializing it would push per-run test-result time-series into the
+  //      graph on every reindex/update.
   private static final Set<String> IGNORED_PROPERTIES =
       Set.of(
           "changeDescription",
@@ -60,7 +68,8 @@ public class RdfPropertyMapper {
           "tableConstraints",
           "profile",
           "pipelineStatus",
-          "usageSummary");
+          "usageSummary",
+          "testCaseResult");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =
