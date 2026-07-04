@@ -14,7 +14,12 @@ import { APIRequestContext, expect, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { TableClass } from '../support/entity/TableClass';
-import { toastNotification } from './common';
+import {
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  toastNotification,
+  uuid,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
   fillTagDetails,
@@ -41,6 +46,28 @@ export const getFailedRowsData = (table: TableClass) => {
     }),
   };
 };
+
+type CsvExportResponse = {
+  jobId: string;
+};
+
+type CsvExportDownload = {
+  suggestedFilename: () => string;
+  saveAs: (filePath: string) => Promise<void>;
+  text: () => Promise<string>;
+};
+
+const createCsvExportDownload = (
+  suggestedFilename: string,
+  csvContent: string
+): CsvExportDownload => ({
+  suggestedFilename: () => suggestedFilename,
+  saveAs: async (filePath: string) => {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, csvContent);
+  },
+  text: async () => csvContent,
+});
 
 export const setupTestCaseWithFailedRows = async (
   apiContext: APIRequestContext,
@@ -343,22 +370,34 @@ export const navigateToGlobalDataQuality = async (page: Page) => {
 /**
  * Perform complete export workflow for test cases
  * @param page - Playwright page object
- * @returns Download object from Playwright
+ * @returns Download-compatible object backed by the async CSV job result
  */
-export const performTestCaseExport = async (page: Page) => {
-  const downloadPromise = page.waitForEvent('download');
+export const performTestCaseExport = async (
+  page: Page,
+  fileName = `test-cases-${uuid()}`
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
 
-  await expect(page.getByTestId('export-button')).toBeVisible();
-  await page.getByTestId('export-button').click();
-  await page.locator('#export-form').waitFor({
-    state: 'visible',
-  });
-  await expect(page.locator('#export-form')).toBeVisible();
-  await expect(page.locator('#submit-button')).not.toBeDisabled();
-  await page.locator('#submit-button').click();
-  const download = await downloadPromise;
+  try {
+    await expect(page.getByTestId('export-button')).toBeVisible();
+    await page.getByTestId('export-button').click();
 
-  return download;
+    const exportResponse = await exportResponsePromise;
+    expect(exportResponse.ok()).toBeTruthy();
+
+    const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+    const csvContent = await fetchCompletedCsvAsyncJobResult(apiContext, jobId);
+
+    return createCsvExportDownload(`${fileName}.csv`, csvContent);
+  } finally {
+    await afterAction();
+  }
 };
 
 /**
@@ -658,7 +697,7 @@ export const performE2EExportImportFlow = async (
   await test.step('Export test case details to downloads folder', async () => {
     await visitDataQualityTab(page, table);
     await clickManageButton(page, 'table');
-    const download = await performTestCaseExport(page);
+    const download = await performTestCaseExport(page, table.entity.name);
 
     const filename = download.suggestedFilename();
     expect(filename).toContain('.csv');

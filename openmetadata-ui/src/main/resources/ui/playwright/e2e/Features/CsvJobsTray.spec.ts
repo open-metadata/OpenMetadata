@@ -49,8 +49,24 @@ const mockJobsApi = (page: Page, jobs: Record<string, unknown>[]) =>
     fulfillJobsRoute(route, jobs)
   );
 
-const triggerJobsRefresh = (page: Page) =>
-  page.evaluate(() => window.dispatchEvent(new Event('csv-jobs-refresh')));
+const triggerJobsRefresh = async (page: Page) => {
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event('csv-jobs-refresh'))
+  );
+};
+
+const activateJobsTray = async (page: Page) => {
+  await expect
+    .poll(
+      async () => {
+        await triggerJobsRefresh(page);
+
+        return page.locator('.csv-jobs-tray').count();
+      },
+      { timeout: 10_000 }
+    )
+    .toBeGreaterThan(0);
+};
 
 const openTray = async (page: Page) => {
   await page.locator('.csv-jobs-tray-launcher').click();
@@ -66,7 +82,7 @@ test.describe('CsvJobsTray', () => {
 
   test('shows a running export job and its progress text', async ({ page }) => {
     await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
@@ -77,7 +93,7 @@ test.describe('CsvJobsTray', () => {
 
   test('shows an import job in the tray', async ({ page }) => {
     await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
@@ -87,7 +103,7 @@ test.describe('CsvJobsTray', () => {
 
   test('can cancel a running job from the tray', async ({ page }) => {
     await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     let cancelCalled = false;
     await page.route(
@@ -114,7 +130,7 @@ test.describe('CsvJobsTray', () => {
 
   test('shows Download button for a completed export job', async ({ page }) => {
     await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
@@ -150,7 +166,7 @@ test.describe('CsvJobsTray', () => {
     page,
   }) => {
     await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
@@ -175,7 +191,7 @@ test.describe('CsvJobsTray', () => {
   }) => {
     // COMPLETED EXPORT shows Download; COMPLETED IMPORT shows the dismiss (XClose) button
     await mockJobsApi(page, [RUNNING_IMPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
@@ -194,7 +210,7 @@ test.describe('CsvJobsTray', () => {
 
   test('multiple jobs co-exist in the tray', async ({ page }) => {
     await mockJobsApi(page, [RUNNING_EXPORT_JOB, RUNNING_IMPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toContainText('2');
     await openTray(page);
@@ -208,7 +224,7 @@ test.describe('CsvJobsTray', () => {
     page,
   }) => {
     await mockJobsApi(page, [RUNNING_EXPORT_JOB]);
-    await triggerJobsRefresh(page);
+    await activateJobsTray(page);
 
     await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible();
     await openTray(page);
