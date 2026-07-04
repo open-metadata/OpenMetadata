@@ -70,9 +70,11 @@ export type ExportData = {
       recursive?: boolean;
     }
   ) => Promise<CSVExportResponse | string>;
+  onError?: () => void;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;
+  csvExportError?: string;
   clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
   triggerExportForBulkEdit: (data: ExportData) => void;
