@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -411,6 +412,32 @@ class EntityFieldUtilsTest {
       assertTrue(
           entity.getReviewers().stream().anyMatch(ref -> "governance".equals(ref.getName())));
     }
+  }
+
+  @Test
+  void parseEntityStatusAcceptsCanonicalAndMixedCaseValues() {
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("Draft"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("draft"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("DRAFT"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("drAFT"));
+    assertEquals(EntityStatus.DRAFT, EntityFieldUtils.parseEntityStatus("DrAfT"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("approved"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("APPROVED"));
+    assertEquals(EntityStatus.APPROVED, EntityFieldUtils.parseEntityStatus("ApPrOvEd"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("Deprecated"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("deprecated"));
+    assertEquals(EntityStatus.DEPRECATED, EntityFieldUtils.parseEntityStatus("DEPRECATED"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("in review"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("IN REVIEW"));
+    assertEquals(EntityStatus.IN_REVIEW, EntityFieldUtils.parseEntityStatus("In Review"));
+    assertEquals(EntityStatus.REJECTED, EntityFieldUtils.parseEntityStatus("rejected"));
+    assertEquals(EntityStatus.ARCHIVED, EntityFieldUtils.parseEntityStatus("ARCHIVED"));
+  }
+
+  @Test
+  void parseEntityStatusThrowsForUnknownValues() {
+    assertThrows(
+        IllegalArgumentException.class, () -> EntityFieldUtils.parseEntityStatus("not-a-status"));
   }
 
   @Test
