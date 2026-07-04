@@ -247,63 +247,57 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     }
   };
 
-  const fetchTestCases = async (param?: ListTestCaseParamsBySearch) => {
-    setIsTestCaseLoading(true);
-    try {
-      const response = await getListTestCaseBySearch({
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.TEST_DEFINITION,
-          TabSpecificField.TESTSUITE,
-          TabSpecificField.INCIDENT_ID,
-        ],
-        testSuiteId,
-        ...sortOptions,
-        ...param,
-        limit: pageSize,
-      });
-      const { paging: ingestionPipelinePaging } = await getIngestionPipelines({
-        arrQueryFields: [],
-        testSuite: testSuiteFQN,
-        pipelineType: [PipelineType.TestSuite],
-        limit: 0,
-      });
-      setIngestionPipelineCount(ingestionPipelinePaging.total);
-      setTestCaseResult(response.data);
-      handlePagingChange(response.paging);
-    } catch {
-      setTestCaseResult([]);
-      showErrorToast(
-        t('server.entity-fetch-error', {
-          entity: t('label.test-case-plural'),
-        })
-      );
-    } finally {
-      setIsTestCaseLoading(false);
-    }
-  };
+  const fetchTestCases = useCallback(
+    async (param?: ListTestCaseParamsBySearch) => {
+      setIsTestCaseLoading(true);
+      try {
+        const response = await getListTestCaseBySearch({
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.TEST_DEFINITION,
+            TabSpecificField.TESTSUITE,
+            TabSpecificField.INCIDENT_ID,
+          ],
+          testSuiteId,
+          ...sortOptions,
+          ...param,
+          limit: pageSize,
+        });
+        const { paging: ingestionPipelinePaging } = await getIngestionPipelines(
+          {
+            arrQueryFields: [],
+            testSuite: testSuiteFQN,
+            pipelineType: [PipelineType.TestSuite],
+            limit: 0,
+          }
+        );
+        setIngestionPipelineCount(ingestionPipelinePaging.total);
+        setTestCaseResult(response.data);
+        handlePagingChange(response.paging);
+      } catch {
+        setTestCaseResult([]);
+        showErrorToast(
+          t('server.entity-fetch-error', {
+            entity: t('label.test-case-plural'),
+          })
+        );
+      } finally {
+        setIsTestCaseLoading(false);
+      }
+    },
+    [testSuiteId, testSuiteFQN, sortOptions, pageSize, handlePagingChange, t]
+  );
 
-  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
-    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
-    await fetchTestCases({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
-    handlePageChange(INITIAL_PAGING_VALUE);
-  };
+  const handleSortTestCase = useCallback(
+    async (apiParams?: ListTestCaseParamsBySearch) => {
+      setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+      await fetchTestCases({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [fetchTestCases, handlePageChange]
+  );
 
-  const handleAddTestCaseSubmit = async (payload: {
-    selectAll: boolean;
-    includeIds: string[];
-    excludeIds: string[];
-  }) => {
-    try {
-      await addTestCasesToLogicalTestSuiteBulk(testSuiteId ?? '', payload);
-      setIsTestCaseModalOpen(false);
-      await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const fetchTestSuiteByName = async () => {
+  const fetchTestSuiteByName = useCallback(async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
         fields: [
@@ -336,7 +330,27 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         })
       );
     }
-  };
+  }, [testSuiteFQN, t]);
+
+  const handleAddTestCaseSubmit = useCallback(
+    async (payload: {
+      selectAll: boolean;
+      includeIds: string[];
+      excludeIds: string[];
+    }) => {
+      if (!testSuiteId) {
+        return;
+      }
+      try {
+        await addTestCasesToLogicalTestSuiteBulk(testSuiteId, payload);
+        setIsTestCaseModalOpen(false);
+        await Promise.all([fetchTestSuiteByName(), fetchTestCases()]);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [testSuiteId, fetchTestSuiteByName, fetchTestCases]
+  );
 
   const updateTestSuiteData = async (updatedTestSuite: TestSuite) => {
     try {
@@ -349,12 +363,11 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const onUpdateOwner = useCallback(
     async (updatedOwners: TestSuite['owners']) => {
-      const updatedTestSuite = {
-        ...testSuite,
-        owners: updatedOwners,
-      } as TestSuite;
+      if (!testSuite) {
+        return;
+      }
 
-      await updateTestSuiteData(updatedTestSuite);
+      await updateTestSuiteData({ ...testSuite, owners: updatedOwners });
     },
     [testSuite]
   );
@@ -406,27 +419,30 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     [testSuite, t, refetchChangeSummary]
   );
 
-  const handleDisplayNameChange = async (entityName?: EntityName) => {
-    try {
-      if (testSuite) {
-        const updatedTestSuite = {
-          ...testSuite,
-          ...entityName,
-        };
-        const jsonPatch = compare(testSuite, updatedTestSuite);
+  const handleDisplayNameChange = useCallback(
+    async (entityName?: EntityName) => {
+      try {
+        if (testSuite) {
+          const updatedTestSuite = {
+            ...testSuite,
+            ...entityName,
+          };
+          const jsonPatch = compare(testSuite, updatedTestSuite);
 
-        if (jsonPatch.length && testSuite.id) {
-          const response = await saveAndUpdateTestSuiteData(
-            updatedTestSuite as TestSuite
-          );
+          if (jsonPatch.length && testSuite.id) {
+            const response = await saveAndUpdateTestSuiteData(
+              updatedTestSuite as TestSuite
+            );
 
-          setTestSuite(response);
+            setTestSuite(response);
+          }
         }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+    },
+    [testSuite]
+  );
 
   const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
     if (currentPage) {
@@ -437,7 +453,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     }
   };
 
-  const handleTestSuiteUpdate = (testCase?: TestCase) => {
+  const handleTestSuiteUpdate = useCallback((testCase?: TestCase) => {
     if (testCase) {
       setTestCaseResult((prev) =>
         prev.map((test) =>
@@ -445,7 +461,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
         )
       );
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (permissions.hasViewPermission) {

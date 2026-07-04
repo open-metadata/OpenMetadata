@@ -14,7 +14,6 @@ import {
   Box,
   Button,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01, RefreshCcw01 } from '@untitledui/icons';
@@ -280,19 +279,17 @@ const IncidentManagerDetailPage = ({
                           item: t('label.url-uppercase'),
                         })
                   }>
-                  <TooltipTrigger className="tw:flex tw:items-center">
-                    <Button
-                      aria-label={t('label.copy-item', {
-                        item: t('label.url-uppercase'),
-                      })}
-                      color="tertiary"
-                      data-testid="entity-header-copy-button"
-                      iconLeading={Copy01}
-                      size="xs"
-                      type="button"
-                      onClick={handleCopyEntityUrl}
-                    />
-                  </TooltipTrigger>
+                  <Button
+                    aria-label={t('label.copy-item', {
+                      item: t('label.url-uppercase'),
+                    })}
+                    color="tertiary"
+                    data-testid="entity-header-copy-button"
+                    iconLeading={Copy01}
+                    size="xs"
+                    type="button"
+                    onClick={handleCopyEntityUrl}
+                  />
                 </Tooltip>
               </Box>
             </Box>

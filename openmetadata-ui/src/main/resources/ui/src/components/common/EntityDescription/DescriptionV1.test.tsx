@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { act, render, screen } from '@testing-library/react';
-import { Suspense } from 'react';
+import { ComponentType, ReactNode, Suspense } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { ChangeSummaryEntry } from '../../../rest/changeSummaryAPI';
 import DescriptionV1 from './DescriptionV1';
@@ -33,7 +32,13 @@ jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
 
 jest.mock('../DescriptionSourceBadge/DescriptionSourceBadge', () => ({
   __esModule: true,
-  default: ({ changeSummaryEntry, showBadge }: any) =>
+  default: ({
+    changeSummaryEntry,
+    showBadge,
+  }: {
+    changeSummaryEntry?: ChangeSummaryEntry;
+    showBadge?: boolean;
+  }) =>
     changeSummaryEntry?.changeSource ? (
       <div
         data-changed-by={changeSummaryEntry.changedBy}
@@ -46,14 +51,20 @@ jest.mock('../DescriptionSourceBadge/DescriptionSourceBadge', () => ({
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => ({
   __esModule: true,
-  default: ({ markdown }: any) => (
+  default: ({ markdown }: { markdown: string }) => (
     <div data-testid="rich-text-previewer">{markdown}</div>
   ),
 }));
 
 jest.mock('../ExpandableCard/ExpandableCard', () => ({
   __esModule: true,
-  default: ({ cardProps, children }: any) => (
+  default: ({
+    cardProps,
+    children,
+  }: {
+    cardProps?: { title?: ReactNode };
+    children?: ReactNode;
+  }) => (
     <div data-testid="expandable-card">
       {cardProps?.title}
       {children}
@@ -80,7 +91,7 @@ jest.mock('../../Suggestions/SuggestionsSlider/SuggestionsSlider', () => ({
 
 jest.mock('../../AppRouter/withSuspenseFallback', () => ({
   __esModule: true,
-  default: (Component: any) =>
+  default: (Component: ComponentType<Record<string, unknown>>) =>
     function WithSuspenseFallback(props: Record<string, unknown>) {
       return (
         <Suspense fallback={null}>
