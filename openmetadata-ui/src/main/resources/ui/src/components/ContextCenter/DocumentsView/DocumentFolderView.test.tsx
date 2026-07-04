@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { createRef } from 'react';
 import {
   act,
   fireEvent,
@@ -19,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { createRef } from 'react';
 import { deleteFolder, listContextFiles } from '../../../rest/assetAPI';
 import DocumentFolderView from './DocumentFolderView.component';
 import {
@@ -210,9 +210,7 @@ const mockFolders = [
   },
 ];
 
-const mockFiles = [
-  { id: 'file-1', name: 'file-1', displayName: 'File One' },
-];
+const mockFiles = [{ id: 'file-1', name: 'file-1', displayName: 'File One' }];
 
 describe('DocumentFolderView', () => {
   beforeEach(() => {
@@ -265,7 +263,11 @@ describe('DocumentFolderView', () => {
   });
 
   it('opens the create folder modal when the add button is clicked', () => {
-    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+    });
 
     fireEvent.click(screen.getByTestId('add-folder-btn'));
 
@@ -288,7 +290,11 @@ describe('DocumentFolderView', () => {
   });
 
   it('shows delete modal when delete button is clicked', () => {
-    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+    });
 
     const deleteBtn = screen.getByTestId('delete-folder-btn-folder-1');
     fireEvent.click(deleteBtn);
@@ -340,7 +346,11 @@ describe('DocumentFolderView', () => {
   });
 
   it('closes delete modal on cancel without deleting', () => {
-    renderFolderView({ canCreate: true, canDelete: true, folders: mockFolders });
+    renderFolderView({
+      canCreate: true,
+      canDelete: true,
+      folders: mockFolders,
+    });
 
     fireEvent.click(screen.getByTestId('delete-folder-btn-folder-1'));
     fireEvent.click(screen.getByTestId('cancel-delete-btn'));
