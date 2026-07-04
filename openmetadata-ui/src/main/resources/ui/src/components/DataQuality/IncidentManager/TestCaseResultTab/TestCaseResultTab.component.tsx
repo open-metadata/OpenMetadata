@@ -90,8 +90,6 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
     AlertComponent,
     additionalComponents,
   } = useTestCaseResultTab();
-  // Fall back to the store toggle for call sites that render the tab
-  // without props.
   const isSidePanelVisible = showSidePanel ?? isTabExpanded;
 
   const renderParameterRows = useCallback(

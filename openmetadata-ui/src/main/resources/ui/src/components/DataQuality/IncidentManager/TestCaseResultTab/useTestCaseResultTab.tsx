@@ -208,7 +208,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     if (!testCaseData) {
       return;
     }
-    // Preserve tier tags
     const tierTag = getTierTags(testCaseData.tags ?? []);
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 

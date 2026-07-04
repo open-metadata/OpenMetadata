@@ -75,8 +75,6 @@ const DescriptionV1 = ({
 }: DescriptionProps) => {
   const navigate = useNavigate();
   const { isVersionView, changeSummary } = useGenericContext<Domain>();
-  // Explicit prop wins over the GenericProvider context so pages without
-  // the provider can attribute the description too.
   const descriptionChangeSummary =
     changeSummaryEntry ?? changeSummary?.['description'];
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();

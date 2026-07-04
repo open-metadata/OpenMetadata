@@ -35,8 +35,7 @@ interface TaskListV1Props {
 }
 
 const TaskListV1 = ({
-  // The ActivityFeedProvider context defaults to `{}`, so consumers can
-  // momentarily pass `undefined` (e.g. across an HMR provider swap).
+  // The ActivityFeedProvider context defaults to `{}`, so this can be undefined
   taskList = [],
   isLoading,
   onTaskClick,

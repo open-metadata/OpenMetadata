@@ -47,8 +47,6 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
 
-// Header names are dot/underscore-joined FQN segments with no spaces; let
-// them wrap inside the tooltip bubble instead of overflowing it.
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );

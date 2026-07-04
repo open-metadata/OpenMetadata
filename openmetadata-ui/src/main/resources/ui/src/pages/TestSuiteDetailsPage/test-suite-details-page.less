@@ -12,9 +12,8 @@
  */
 @import (reference) '../../styles/variables.less';
 
-// Mirrors the data-asset header metadata row. The color overrides are
-// copied from data-asset-header.less, which only loads with
-// DataAssetsHeader and therefore can't be relied on here.
+// Color overrides copied from data-asset-header.less, which only loads
+// with DataAssetsHeader and therefore can't be relied on here.
 .test-suite-details-header {
   display: flex;
   align-items: flex-start;
@@ -48,9 +47,8 @@
 }
 
 .test-suite-details-tabs {
-  // OSS side renders antd `tabs-new` panes; the pipeline tab's Row brings
-  // its own vertical margins (needed in the table profiler QualityTab) and
-  // the pane wrapper's padding already covers it here.
+  // The pipeline tab's Row brings vertical margins needed in the table
+  // profiler QualityTab; the pane wrapper's padding already covers it here.
   .ant-tabs-tabpane {
     .test-suite-pipeline-tab {
       margin-top: 0;

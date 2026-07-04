@@ -341,9 +341,8 @@ export const useTestCaseDetailPage = ({
     getFeedCounts(EntityType.TEST_CASE, testCaseFQN, handleFeedCount);
   }, [testCaseFQN]);
 
-  // P2-A: only `feedCount.openTaskCount` is consumed by this page (drives the tabs' open-task
-  // badge). The activity-events fetch that {@link getFeedCounts} bundles in is wasted here,
-  // so we skip it entirely — there's no Activity Feed tab on incidents (TestCasePageTabs).
+  // Only the open-task count is used here (tab badge); skip the
+  // activity-events fetch that getFeedCounts would bundle in.
   const fetchTaskCounts = useCallback(() => {
     if (testCaseFQN) {
       fetchEntityTaskCountsInto(testCaseFQN, setFeedCount);

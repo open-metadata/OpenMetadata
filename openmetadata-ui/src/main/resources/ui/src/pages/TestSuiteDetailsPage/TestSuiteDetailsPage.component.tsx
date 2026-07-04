@@ -53,8 +53,6 @@ import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBa
 import './test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from './useTestSuiteDetailsPage';
 
-// Header names are dot/underscore-joined FQN segments with no spaces; let
-// them wrap inside the tooltip bubble instead of overflowing it.
 const breakableTooltipText = (text?: string) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
