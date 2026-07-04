@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
+import { act } from 'react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';

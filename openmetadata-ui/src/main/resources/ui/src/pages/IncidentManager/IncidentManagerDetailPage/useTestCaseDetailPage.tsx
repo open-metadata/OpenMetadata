@@ -284,7 +284,7 @@ export const useTestCaseDetailPage = ({
           ? observabilityRouterClassBase.getTestCaseVersionPath(
               testCaseFQN,
               version,
-              activeKey as TestCasePageTabs
+              activeKey
             )
           : testCaseDetailsPath
       );

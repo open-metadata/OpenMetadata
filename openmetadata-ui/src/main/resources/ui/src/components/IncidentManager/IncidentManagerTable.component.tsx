@@ -159,7 +159,7 @@ const IncidentManagerTable = ({
       <Table.Row id={record.id ?? ''} key={record.id}>
         <Table.Cell className="tw:w-72 tw:min-w-56">
           <Link
-            className="tw:m-0 tw:break-words"
+            className="tw:m-0 tw:wrap-break-word"
             data-testid={`test-case-${ref?.name}`}
             state={{ breadcrumbData }}
             to={observabilityRouterClassBase.getTestCaseDetailPagePath(
@@ -214,7 +214,7 @@ const IncidentManagerTable = ({
         </Table.Cell>
         <Table.Cell>
           {testCaseResolutionStatusDetailsRender(
-            record.testCaseResolutionStatusDetails as Assigned | undefined,
+            record.testCaseResolutionStatusDetails,
             record
           )}
         </Table.Cell>

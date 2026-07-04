@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { act } from 'react';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE_DATA } from '../../../../mocks/TestCase.mock';
 import {
@@ -115,7 +116,7 @@ describe('useTestCaseResultTab', () => {
         ...(MOCK_TEST_CASE_DATA.parameterValues ?? []),
         { name: 'sqlExpression', value: 'SELECT 1' },
       ],
-    } as unknown as TestCase;
+    };
 
     const { result } = renderHook(() => useTestCaseResultTab());
 
@@ -156,7 +157,7 @@ describe('useTestCaseResultTab', () => {
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
       computePassedFailedRowCount: true,
-    } as unknown as TestCase;
+    };
 
     const { result } = renderHook(() => useTestCaseResultTab());
 
@@ -172,7 +173,7 @@ describe('useTestCaseResultTab', () => {
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
       useDynamicAssertion: true,
-    } as unknown as TestCase;
+    };
 
     const { result } = renderHook(() => useTestCaseResultTab());
 
