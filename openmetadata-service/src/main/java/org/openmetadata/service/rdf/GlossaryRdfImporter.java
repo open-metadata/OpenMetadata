@@ -609,35 +609,42 @@ public class GlossaryRdfImporter {
    * blended vocabularies) collapse to the same term FQN. Without this guard the second concept's
    * {@code createOrUpdate} would silently overwrite the first term — including its canonical IRI.
    * The owner is checked against both this run ({@code iriByFqn}) and any already-persisted term at
-   * the FQN, so a later import cannot clobber a term an earlier import created; collisions are
-   * skipped and surfaced in the import result instead.
+   * the FQN: an FQN taken by a different concept, or by a non-ontology term with no canonical IRI
+   * (e.g. one created manually), is a collision that is skipped and surfaced rather than
+   * overwritten. Only a re-import of the same concept (matching IRI) updates in place.
    */
   private boolean collidesWithExistingConcept(TermIntent intent, String fqn) {
     String owner = iriByFqn.get(fqn);
-    if (owner == null) {
-      owner = persistedConceptIri(fqn);
+    boolean collides;
+    String conflictLabel = owner;
+    if (owner != null) {
+      collides = !owner.equals(intent.iri);
+    } else {
+      GlossaryTerm existing = persistedTerm(fqn);
+      String existingIri =
+          existing == null || existing.getIri() == null ? null : existing.getIri().toString();
+      collides = existing != null && (existingIri == null || !existingIri.equals(intent.iri));
+      conflictLabel = existingIri == null ? "an existing term" : existingIri;
     }
-    boolean collides = owner != null && !owner.equals(intent.iri);
     if (collides) {
       result.addMessage(
           String.format(
               "Skipped %s: local name '%s' collides with %s; both map to '%s'",
-              intent.iri, intent.name, owner, fqn));
+              intent.iri, intent.name, conflictLabel, fqn));
     } else {
       iriByFqn.put(fqn, intent.iri);
     }
     return collides;
   }
 
-  private String persistedConceptIri(String fqn) {
-    String iri = null;
+  private GlossaryTerm persistedTerm(String fqn) {
+    GlossaryTerm term = null;
     try {
-      GlossaryTerm existing = Entity.getEntityByName(GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
-      iri = existing.getIri() == null ? null : existing.getIri().toString();
+      term = Entity.getEntityByName(GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
-      iri = null;
+      term = null;
     }
-    return iri;
+    return term;
   }
 
   private void persistNonCollidingTerm(

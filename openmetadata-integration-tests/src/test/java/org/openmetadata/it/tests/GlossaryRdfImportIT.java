@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -37,6 +38,7 @@ import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.User;
@@ -329,6 +331,51 @@ public class GlossaryRdfImportIT {
         "http://example.com/vocab1#Drug",
         afterSecond.getIri().toString(),
         "the persisted term keeps its original canonical IRI, not silently replaced" + detail);
+  }
+
+  @Test
+  void importDoesNotOverwriteAManuallyCreatedTermWithNoIri(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    // A term created outside the importer (e.g. by hand or CSV) carries no canonical IRI.
+    GlossaryTerm manual =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("Drug")
+                    .withDisplayName("Manual Drug")
+                    .withDescription("Created by hand, not from an ontology.")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+    assertNull(manual.getIri(), "a manually created term has no canonical IRI");
+
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix ex:   <http://example.com/vocab#> .
+
+        ex:Drug a skos:Concept ;
+            skos:prefLabel "Drug Concept" .
+        """;
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+    String detail = " | result=" + result;
+    assertEquals(
+        0, result.get("termsUpdated").asInt(), "the manual term must not be overwritten" + detail);
+    assertEquals(
+        0, result.get("termsCreated").asInt(), "the colliding concept is skipped" + detail);
+    assertTrue(
+        result.get("messages").toString().contains("collides"),
+        "the collision with the non-ontology term must be surfaced" + detail);
+
+    GlossaryTerm afterImport = getTerm(glossary.getName() + ".Drug");
+    assertNull(
+        afterImport.getIri(),
+        "the manual term keeps its null IRI — it is not adopted/overwritten by the import"
+            + detail);
+    assertEquals(
+        "Created by hand, not from an ontology.",
+        afterImport.getDescription(),
+        "the manual term's data is left untouched" + detail);
   }
 
   @Test
