@@ -854,7 +854,7 @@ test.describe('Context Center Articles', () => {
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
       await createNewPage(browser);
-    await deleteArticleByFqn(cleanupContext, updatedTitle);
+    await deleteArticleByFqn(cleanupContext, article.fullyQualifiedName);
     await cleanupAfterAction();
   });
 
