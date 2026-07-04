@@ -39,9 +39,9 @@ import { updateTestCaseById } from '../../../../rest/testAPI';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtilsPure';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getTaskDisplayId } from '../../../../utils/TaskNavigationUtils';
-import { getTaskDetailPath as getNewTaskDetailPath } from '../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -304,7 +304,9 @@ export const useTestCaseIncidentHeader = ({
     () =>
       incidentTask
         ? {
-            path: getNewTaskDetailPath(incidentTask),
+            path: observabilityRouterClassBase.getIncidentTaskPath(
+              incidentTask
+            ),
             label: `#${getTaskDisplayId(incidentTask.taskId)}`,
           }
         : null,

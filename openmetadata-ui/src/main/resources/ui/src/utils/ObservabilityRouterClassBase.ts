@@ -12,8 +12,10 @@
  */
 
 import { ROUTES } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { Task } from '../rest/tasksAPI';
 import {
   getDataQualityPagePath,
   getObservabilityAlertDetailsPath,
@@ -23,6 +25,11 @@ import {
   getTestCaseVersionPath,
   getTestSuitePath,
 } from './RouterUtils';
+import {
+  getTaskDetailPath,
+  getTaskEntityFQN,
+  getTaskEntityType,
+} from './TaskUtils';
 
 class ObservabilityRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {
@@ -85,6 +92,21 @@ class ObservabilityRouterClassBase {
     tab: TestCasePageTabs = TestCasePageTabs.TEST_CASE_RESULTS
   ): string {
     return getTestCaseDimensionsDetailPagePath(fqn, dimensionKey, tab);
+  }
+
+  /**
+   * Test-case incident tasks live on the test case's own Issues tab —
+   * the generic entity activity-feed route has no testCase page, so
+   * `getTaskDetailPath` would land on Not Found for them.
+   */
+  public getIncidentTaskPath(task: Task): string {
+    const entityFQN = getTaskEntityFQN(task);
+
+    if (getTaskEntityType(task) === EntityType.TEST_CASE && entityFQN) {
+      return this.getTestCaseDetailPagePath(entityFQN, TestCasePageTabs.ISSUES);
+    }
+
+    return getTaskDetailPath(task);
   }
 }
 

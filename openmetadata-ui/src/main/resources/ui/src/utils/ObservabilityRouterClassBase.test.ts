@@ -13,6 +13,7 @@
 
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { Task } from '../rest/tasksAPI';
 import observabilityRouterClassBase, {
   ObservabilityRouterClassBase,
 } from './ObservabilityRouterClassBase';
@@ -195,6 +196,40 @@ describe('ObservabilityRouterClassBase', () => {
       expect(router.getObservabilityAlertsListPath()).toBe(
         '/observability/alerts'
       );
+    });
+  });
+
+  describe('getIncidentTaskPath', () => {
+    it('should return the test case issues tab path for test case tasks', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+          about: {
+            type: 'testCase',
+            fullyQualifiedName: 'db.schema.table.col.test_case',
+          },
+        } as unknown as Task)
+      ).toBe('/test-case/db.schema.table.col.test_case/issues');
+    });
+
+    it('should return the activity-feed task path for non test case tasks', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+          about: { type: 'table', fullyQualifiedName: 'db.schema.table' },
+        } as unknown as Task)
+      ).toBe('/table/db.schema.table/activity_feed/tasks/6');
+    });
+
+    it('should fall back to the generic task path when the task has no entity reference', () => {
+      expect(
+        router.getIncidentTaskPath({
+          id: 'task-uuid',
+          taskId: 6,
+        } as unknown as Task)
+      ).toBe('/tasks/task-uuid');
     });
   });
 

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import { act } from 'react';
+import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TASK_DATA,
   MOCK_TEST_CASE_DATA,
@@ -129,8 +129,11 @@ jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDisplayId: jest.fn().mockReturnValue(9),
 }));
 
-jest.mock('../../../../utils/TaskUtils', () => ({
-  getTaskDetailPath: jest.fn().mockReturnValue('/task/9'),
+jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
+  __esModule: true,
+  default: {
+    getIncidentTaskPath: jest.fn().mockReturnValue('/task/9'),
+  },
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
