@@ -41,6 +41,10 @@ import {
   getTreeConfig,
   processEntityTypeFields,
 } from '../../../utils/AdvancedSearchUtils';
+import {
+  getExploreClearQueryFilterSearchParams,
+  getExploreResetFiltersSearchParams,
+} from '../../../utils/ExplorePureUtils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -191,11 +195,7 @@ export const AdvanceSearchProvider = ({
     (tree?: ImmutableTree) => {
       navigate({
         pathname: location.pathname,
-        search: Qs.stringify({
-          ...parsedSearch,
-          queryFilter: tree ? JSON.stringify(tree) : undefined,
-          page: 1,
-        }),
+        search: getExploreClearQueryFilterSearchParams(parsedSearch, tree),
       });
     },
     [navigate, parsedSearch, location.pathname]
@@ -214,19 +214,20 @@ export const AdvanceSearchProvider = ({
     setSQLQuery('');
   }, [config]);
 
+  const handleResetQueryFilter = useCallback(() => {
+    handleReset();
+    handleTreeUpdate();
+  }, [handleReset, handleTreeUpdate]);
+
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
     setQueryFilter(undefined);
     setSQLQuery('');
     navigate({
       pathname: location.pathname,
-      search: Qs.stringify({
-        quickFilter: undefined,
-        queryFilter: undefined,
-        page: 1,
-      }),
+      search: getExploreResetFiltersSearchParams(parsedSearch),
     });
-  }, [navigate, location.pathname]);
+  }, [navigate, parsedSearch, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
     const subfields: Record<string, FieldOrGroup> = {};
@@ -346,6 +347,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       onReset: handleReset,
+      onResetQueryFilter: handleResetQueryFilter,
       onResetAllFilters: handleResetAllFilters,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
@@ -361,6 +363,7 @@ export const AdvanceSearchProvider = ({
       isUpdating,
       searchIndex,
       handleReset,
+      handleResetQueryFilter,
       handleResetAllFilters,
       changeSearchIndex,
       handleSubmit,
