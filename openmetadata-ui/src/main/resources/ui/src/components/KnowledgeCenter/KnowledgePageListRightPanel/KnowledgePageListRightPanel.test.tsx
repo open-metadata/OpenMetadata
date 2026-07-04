@@ -109,7 +109,7 @@ describe('KnowledgePageListRightPanel', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.no-recently-viewed-date')
+      screen.getByText('message.no-recently-viewed-data')
     ).toBeInTheDocument();
   });
 

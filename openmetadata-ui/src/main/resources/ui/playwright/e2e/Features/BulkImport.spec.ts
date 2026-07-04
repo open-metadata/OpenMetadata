@@ -30,6 +30,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  addGridRowAndSelectFirstCell,
   createColumnRowDetails,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
@@ -295,15 +296,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       await fillRecursiveColumnDetails(
         {
@@ -692,15 +685,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       // Fill table columns details
       await fillRecursiveColumnDetails(
@@ -712,15 +697,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for table details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 17, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       await fillRowDetails(
         {
@@ -742,15 +719,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       // fill second table columns details
       await fillRecursiveColumnDetails(
