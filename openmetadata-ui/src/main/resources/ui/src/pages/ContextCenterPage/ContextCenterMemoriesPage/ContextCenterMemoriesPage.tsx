@@ -515,6 +515,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
                 { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
               )}
+              data-test-id={`memory-count-card-${filterKey}`}
               key={filterKey}
               onClick={() => handleFilterChange(filterKey)}>
               <ChevronRight
@@ -585,6 +586,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 className={classNames(
                   selectedAsset ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
                 )}
+                data-testid="asset-filter-button"
                 onPress={open}>
                 <Database01
                   className={classNames('tw:shrink-0', {

@@ -139,7 +139,7 @@ const LinkedAssetCard: FC<{
   const fqn = asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
 
   return (
-    <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5">
+    <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5" data-testid="linked-asset-card">
       <div className="tw:shrink-0">
         {getEntityIconWithBg(
           asset.reference?.type,
@@ -179,6 +179,7 @@ const LinkedAssetCard: FC<{
           {onRemove && (
             <ButtonUtility
               color="tertiary"
+              data-testid="remove-linked-asset-btn"
               icon={<X size={18} strokeWidth={2} />}
               onClick={() => onRemove(fqn)}
             />
@@ -563,7 +564,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   }) => {
     if (isViewOnly) {
       return (
-        <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:h-36 tw:overflow-y-auto tw:resize-y">
+        <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:h-36 tw:overflow-y-auto tw:resize-y"
+          data-testid="description-field-preview">
           <ReactMarkdown components={getCustomMarkdownComponents()}>
             {preprocessMarkdownText(field.value)}
           </ReactMarkdown>
@@ -606,13 +608,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         <Dialog showCloseButton title="" width={600} onClose={handleClose}>
           <Dialog.Content className="tw:p-0!">
             <div
-              className="tw:flex tw:flex-col tw:max-h-[92vh]"
               ref={modalContainerRef}>
               <ConfigProvider
                 getPopupContainer={() =>
                   modalContainerRef.current ?? document.body
                 }>
-                <HookForm form={form} onSubmit={form.handleSubmit(handleSubmit)}>
+                <HookForm className="tw:flex tw:flex-col tw:max-h-[92vh]" form={form} onSubmit={form.handleSubmit(handleSubmit)}>
                   {/* Sticky header */}
                   <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
                     <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
@@ -935,6 +936,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                       {!isViewOnly && isOwner && (
                                         <ButtonUtility
                                           color="tertiary"
+                                          data-testid="memory-visibility-edit-button"
                                           icon={
                                             <EditIcon height={14} width={14} />
                                           }

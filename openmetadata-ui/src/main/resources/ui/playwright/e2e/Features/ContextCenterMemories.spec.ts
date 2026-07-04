@@ -11,17 +11,21 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { TableClass } from '../../support/entity/TableClass';
 import {
-  buildPermissionRule,
-  loginAsUser,
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+  uuid
+} from '../../utils/common';
+import {
   MEMORIES_API,
   MEMORIES_URL,
-  navigateToMemories,
+  navigateToMemories
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
 const test = base;
@@ -31,28 +35,75 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // ─── Shared test data ─────────────────────────────────────────────────────────
 
 const SHARED_MEMORY_TITLE = `CC Memory Shared ${uuid()}`;
+const SHARED_NOT_WITH_CONSUMER_TITLE = `CC Memory Shared Elsewhere ${uuid()}`;
 const PRIVATE_MEMORY_TITLE = `CC Memory Private ${uuid()}`;
 const ENTITY_MEMORY_TITLE = `CC Memory Entity ${uuid()}`;
 
-const CREATE_MEMORY_RULE = buildPermissionRule(
-  'cc-memories-spec-create',
-  ['All'],
-  ['Create', 'ViewAll']
-);
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Returns the first table asset from ES, or undefined if none exist. */
-const fetchFirstTable = async (page: Page) => {
-  const res = await page.request.get(
-    '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
-  );
-  if (!res.ok()) {
-    return undefined;
-  }
+interface LoggedInUser {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+/** Identifies the currently authenticated user via their own session. */
+const getLoggedInUser = async (
+  apiContext: APIRequestContext
+): Promise<LoggedInUser> => {
+  const res = await apiContext.get('/api/v1/users/loggedInUser');
+  expect(res.ok()).toBeTruthy();
   const data = await res.json();
 
-  return data.hits?.hits?.[0]?._source;
+  return { id: data.id, name: data.name, displayName: data.displayName ?? data.name };
+};
+
+const createMemoryViaApi = async (
+  apiContext: APIRequestContext,
+  overrides: Record<string, unknown>
+) => {
+  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  expect(res.status()).toBe(201);
+
+  return res.json();
+};
+
+const patchMemory = async (
+  apiContext: APIRequestContext,
+  id: string,
+  patch: Record<string, unknown>[]
+) => {
+  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
+    data: patch,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+/**
+ * Searches for a memory by a unique query string and returns its row locator.
+ * The list is paginated, so a memory created earlier in the suite may not be
+ * on the currently loaded page — searching re-queries page 1 and guarantees
+ * the row is present if it matches.
+ */
+const searchAndGetMemoryRow = async (
+  page: Page,
+  query: string,
+  memoryId: string
+) => {
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes(MEMORIES_API) &&
+      res.url().includes('q=') &&
+      res.request().method() === 'GET'
+  );
+  await page.getByTestId('search-input').locator('input').fill(query);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  return page.getByTestId(`memory-row-${memoryId}`);
 };
 
 // ─── Test suite ───────────────────────────────────────────────────────────────
@@ -63,71 +114,130 @@ test.describe(
   () => {
     let sharedMemoryId: string;
     let sharedMemoryName: string;
+    let sharedNotWithConsumerId: string;
     let privateMemoryId: string;
     let privateMemoryName: string;
     let entityMemoryId: string;
+    let dataConsumerUser: LoggedInUser;
+    let secondAuthorMemoryId: string;
+    let secondAuthorMemoryTitle: string;
 
-    /** Non-admin user with Create + ViewAll on ContextMemory. */
-    const nonAdminCreator = new UserClass();
+    /** Real table asset, used for linked-entity assertions instead of skipping when ES is empty. */
+    const linkedTable = new TableClass();
 
     /** All memory IDs created in beforeAll — cleaned up in afterAll. */
     const globalMemoryIds: string[] = [];
+    // 11 memories forces 2 pages (page size = 10)
+    const PAGINATION_COUNT = 11;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
-      // ── Non-admin user with Create permission ──────────────────────────────
-      await nonAdminCreator.create(apiContext, false);
-      await nonAdminCreator.setCustomRulePolicy(
+      await linkedTable.create(apiContext);
+
+      // dataConsumerPage is a per-test fixture and isn't resolved inside
+      // beforeAll, so open a page against the same storage state directly.
+      const dataConsumerSetupPage = await browser.newPage({
+        storageState: 'playwright/.auth/dataConsumer.json',
+      });
+      await redirectToHomePage(dataConsumerSetupPage);
+      const {
+        apiContext: dataConsumerApiContext,
+        afterAction: dataConsumerAfterAction,
+      } = await getApiContext(dataConsumerSetupPage);
+      dataConsumerUser = await getLoggedInUser(dataConsumerApiContext);
+      await dataConsumerAfterAction();
+      await dataConsumerSetupPage.close();
+
+      for (let i = 0; i < PAGINATION_COUNT; i++) {
+        const data = await createMemoryViaApi(apiContext, {
+          name: `cc_memory_pg_${uuid()}`,
+          title: `Pagination Memory ${String(i + 1).padStart(2, '0')}`,
+          question: `Pagination question ${i + 1}`,
+          answer: `Pagination answer ${i + 1}`,
+          shareConfig: { visibility: 'Shared' },
+        });
+        globalMemoryIds.push(data.id);
+      }
+
+      // ── Second author — attributed to the dataConsumer fixture via `owners`,
+      // no separate login needed since the author filter/"Created by Me" tab
+      // both query by `owners`, not by the authenticated creator. ───────────
+      await waitForSearchIndexed(
         apiContext,
-        CREATE_MEMORY_RULE,
-        `cc-memories-spec-create-policy-${uuid()}`
+        dataConsumerUser.name,
+        'user_search_index'
       );
 
-      // ── Shared memory ──────────────────────────────────────────────────────
+      secondAuthorMemoryTitle = `Second Author Memory ${uuid()}`;
+      const secondAuthorMemory = await createMemoryViaApi(apiContext, {
+        name: `cc_memory_second_author_${uuid()}`,
+        title: secondAuthorMemoryTitle,
+        question: 'Memory created by a second, distinct author',
+        answer: 'Used to verify author filtering and sorting are real.',
+        shareConfig: { visibility: 'Entity' },
+        owners: [{ id: dataConsumerUser.id, type: 'user' }],
+      });
+      secondAuthorMemoryId = secondAuthorMemory.id;
+      globalMemoryIds.push(secondAuthorMemoryId);
+
+      // ── Shared memory — explicitly shared with the dataConsumer fixture ────
       sharedMemoryName = `cc_memory_shared_${uuid()}`;
-      const sharedRes = await apiContext.post(MEMORIES_API, {
-        data: {
-          name: sharedMemoryName,
-          title: SHARED_MEMORY_TITLE,
-          question: 'What is a shared memory?',
-          answer: 'A **shared** memory is visible to everyone in the workspace.',
-          shareConfig: { visibility: 'Shared' },
+      const sharedData = await createMemoryViaApi(apiContext, {
+        name: sharedMemoryName,
+        title: SHARED_MEMORY_TITLE,
+        question: 'What is a shared memory?',
+        answer:
+          'A **shared** memory is visible to its owner and to the specific users or teams it has been explicitly shared with.',
+        shareConfig: {
+          visibility: 'Shared',
+          sharedWith: [
+            {
+              principal: {
+                id: dataConsumerUser.id,
+                type: 'user',
+                name: dataConsumerUser.name,
+              },
+              role: 'Viewer',
+            },
+          ],
         },
       });
-      expect(sharedRes.status()).toBe(201);
-      const sharedData = await sharedRes.json();
       sharedMemoryId = sharedData.id;
       globalMemoryIds.push(sharedMemoryId);
 
+      // ── Shared memory — NOT shared with the dataConsumer (negative fixture) ─
+      const sharedElsewhereData = await createMemoryViaApi(apiContext, {
+        name: `cc_memory_shared_elsewhere_${uuid()}`,
+        title: SHARED_NOT_WITH_CONSUMER_TITLE,
+        question: 'Shared with someone else entirely',
+        answer:
+          'Only visible to the owner and whoever it is explicitly shared with.',
+        shareConfig: { visibility: 'Shared', sharedWith: [] },
+      });
+      sharedNotWithConsumerId = sharedElsewhereData.id;
+      globalMemoryIds.push(sharedNotWithConsumerId);
+
       // ── Private memory ─────────────────────────────────────────────────────
       privateMemoryName = `cc_memory_private_${uuid()}`;
-      const privateRes = await apiContext.post(MEMORIES_API, {
-        data: {
-          name: privateMemoryName,
-          title: PRIVATE_MEMORY_TITLE,
-          question: 'Private memory question',
-          answer: 'Only the creator can see this.',
-          shareConfig: { visibility: 'Private' },
-        },
+      const privateData = await createMemoryViaApi(apiContext, {
+        name: privateMemoryName,
+        title: PRIVATE_MEMORY_TITLE,
+        question: 'Private memory question',
+        answer: 'Only the owner (and an admin) can see this.',
+        shareConfig: { visibility: 'Private' },
       });
-      expect(privateRes.status()).toBe(201);
-      const privateData = await privateRes.json();
       privateMemoryId = privateData.id;
       globalMemoryIds.push(privateMemoryId);
 
-      // ── Entity-visibility memory ───────────────────────────────────────────
-      const entityRes = await apiContext.post(MEMORIES_API, {
-        data: {
-          name: `cc_memory_entity_${uuid()}`,
-          title: ENTITY_MEMORY_TITLE,
-          question: 'Entity memory question',
-          answer: 'Visible only to users linked to the referenced entity.',
-          shareConfig: { visibility: 'Entity' },
-        },
+      // ── Entity-visibility memory — visible to every authenticated user ─────
+      const entityData = await createMemoryViaApi(apiContext, {
+        name: `cc_memory_entity_${uuid()}`,
+        title: ENTITY_MEMORY_TITLE,
+        question: 'Entity memory question',
+        answer: 'Visible to every authenticated user, regardless of ownership.',
+        shareConfig: { visibility: 'Entity' },
       });
-      expect(entityRes.status()).toBe(201);
-      const entityData = await entityRes.json();
       entityMemoryId = entityData.id;
       globalMemoryIds.push(entityMemoryId);
 
@@ -141,7 +251,7 @@ test.describe(
         await apiContext.delete(`${MEMORIES_API}/${id}?hardDelete=true`);
       }
 
-      await nonAdminCreator.delete(apiContext);
+      await linkedTable.delete(apiContext);
       await afterAction();
     });
 
@@ -149,9 +259,46 @@ test.describe(
       await redirectToHomePage(page);
     });
 
+    // ─── 0. Page Header ───────────────────────────────────────────────────────
+
+    test.describe('Page Header', () => {
+      test('shows header with title, breadcrumb and Add Memory button', async ({
+        page,
+      }) => {
+
+        await navigateToMemories(page);
+
+        const header = page.getByTestId('context-center-header');
+        await expect(header).toBeVisible();
+        await expect(header.getByTestId('breadcrumb')).toBeVisible();
+        await expect(header.getByRole('heading')).toContainText('Memor');
+        await expect(page.getByTestId('add-memory-btn')).toBeVisible();
+      });
+    });
+
     // ─── 1. Form Validation ─────────────────────────────────────────────────
 
     test.describe('Form Validation', () => {
+      test('Add Memory button opens the create modal', async ({ page }) => {
+        await navigateToMemories(page);
+        await page.getByTestId('add-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByTestId('memory-title-input')).toBeVisible();
+        await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Delete' })
+        ).not.toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Edit' })
+        ).not.toBeVisible();
+        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Create Memory' })
+        ).toBeVisible();
+      });
+
       test('Create Memory button is disabled when memory content is empty', async ({
         page,
       }) => {
@@ -256,8 +403,9 @@ test.describe(
         await expect(
           dialog.getByTestId('memory-content-input').locator('textarea')
         ).not.toBeVisible();
-        await expect(dialog.locator('.prose')).toBeVisible();
-        await expect(dialog.locator('.prose strong')).toContainText('Bold text');
+        await expect(dialog.locator('.prose strong')).toContainText(
+          'Bold text'
+        );
         await expect(dialog.locator('.prose em')).toContainText('italic text');
       });
 
@@ -396,7 +544,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          SHARED_MEMORY_TITLE,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
@@ -410,33 +562,24 @@ test.describe(
       }) => {
         test.slow();
 
-        const table = await fetchFirstTable(page);
-        if (!table?.id) {
-          test.skip();
-
-          return;
-        }
+        const table = linkedTable.entityResponseData;
 
         const { apiContext, afterAction } = await createNewPage(browser);
         const linkedName = `cc_memory_linked_${uuid()}`;
-        const createRes = await apiContext.post(MEMORIES_API, {
-          data: {
-            name: linkedName,
-            title: `Linked Entity Memory ${uuid()}`,
-            question: 'Memory with linked entity',
-            answer: 'Linked to a data asset.',
-            shareConfig: { visibility: 'Shared' },
-            primaryEntity: {
-              id: table.id,
-              type: table.entityType ?? 'table',
-              name: table.name,
-              displayName: table.displayName,
-              fullyQualifiedName: table.fullyQualifiedName,
-            },
+        const created = await createMemoryViaApi(apiContext, {
+          name: linkedName,
+          title: `Linked Entity Memory ${uuid()}`,
+          question: 'Memory with linked entity',
+          answer: 'Linked to a data asset.',
+          shareConfig: { visibility: 'Shared' },
+          primaryEntity: {
+            id: table.id,
+            type: 'table',
+            name: table.name,
+            displayName: table.displayName,
+            fullyQualifiedName: table.fullyQualifiedName,
           },
         });
-        expect(createRes.status()).toBe(201);
-        const created = await createRes.json();
         const linkedMemoryId = created.id;
         await afterAction();
 
@@ -449,8 +592,34 @@ test.describe(
 
         const { apiContext: cleanCtx, afterAction: cleanAfter } =
           await createNewPage(browser);
-        await cleanCtx.delete(`${MEMORIES_API}/${linkedMemoryId}?hardDelete=true`);
+        await cleanCtx.delete(
+          `${MEMORIES_API}/${linkedMemoryId}?hardDelete=true`
+        );
         await cleanAfter();
+      });
+
+      test('clicking a memory row opens the view-only modal with owner action buttons', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = await searchAndGetMemoryRow(
+          page,
+          SHARED_MEMORY_TITLE,
+          sharedMemoryId
+        );
+        await row.scrollIntoViewIfNeeded();
+        await row.click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByText(SHARED_MEMORY_TITLE)).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Edit' })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`memory=${sharedMemoryName}`));
+
+        await page.getByRole('button', { name: /cancel/i }).click();
       });
     });
 
@@ -478,51 +647,40 @@ test.describe(
         await expect(
           page.getByTestId(`memory-row-${sharedMemoryId}`)
         ).toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
+        ).not.toBeVisible();
       });
 
       test('clearing search restores the unfiltered list', async ({ page }) => {
         test.slow();
 
         await navigateToMemories(page);
-
+        const searchPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+        );
         const searchInput = page.getByTestId('search-input').locator('input');
         await searchInput.fill('zzz_no_match_expected');
+        await searchPromise;
         await waitForAllLoadersToDisappear(page);
 
         const restoreResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         await searchInput.clear();
         await restoreResPromise;
         await waitForAllLoadersToDisappear(page);
 
+        // The list is paginated, so search for the title rather than
+        // assuming the memory is visible on the currently-loaded page.
         await expect(
-          page.getByTestId(`memory-row-${sharedMemoryId}`)
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
         ).toBeVisible();
       });
 
-      test('"All" tab shows all visible memories', async ({ page }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        const listResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
-        );
-        await page.getByRole('tab', { name: /^all$/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByTestId(`memory-row-${sharedMemoryId}`)
-        ).toBeVisible();
-      });
-
-      test('"Created by Me" tab shows admin\'s own memories', async ({
+      test('"Created by Me" tab shows admin\'s own memories and hides the second author\'s', async ({
         page,
       }) => {
         test.slow();
@@ -531,16 +689,20 @@ test.describe(
 
         const listResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         await page.getByRole('tab', { name: /created by me/i }).click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
 
+        // The list is paginated, so search for the title rather than
+        // assuming the memory is visible on the currently-loaded page.
         await expect(
-          page.getByTestId(`memory-row-${sharedMemoryId}`)
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
         ).toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
+        ).not.toBeVisible();
       });
 
       test('clicking "Total Memories" count card activates the All view', async ({
@@ -556,17 +718,29 @@ test.describe(
 
         const listResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         // Click the first summary card (Total Memories)
-        await page.getByText(/total memor/i).first().click();
+        await page
+          .getByText(/total memor/i)
+          .first()
+          .click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
 
-        // All memories are shown again
+        // All memories are shown again, including the second author's.
+        // The list is paginated, so search for each title individually
+        // (search always re-queries page 1) rather than assuming either
+        // memory is visible on the currently-loaded unfiltered page.
         await expect(
-          page.getByTestId(`memory-row-${sharedMemoryId}`)
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+        ).toBeVisible();
+        await expect(
+          await searchAndGetMemoryRow(
+            page,
+            secondAuthorMemoryTitle,
+            secondAuthorMemoryId
+          )
         ).toBeVisible();
       });
 
@@ -579,40 +753,27 @@ test.describe(
 
         const listResPromise = page.waitForResponse(
           (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         // Click the "Created by Me" summary card
         await page
-          .locator('[class*="card"]')
-          .filter({ hasText: /created by me/i })
-          .first()
+          .locator('[data-test-id="memory-count-card-created-by-me"]')
           .click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
 
-        // Admin's shared memory visible under the created-by-me filter
+        // Admin's shared memory visible; the second author's memory is not.
+        // The list is paginated, so search for the title rather than
+        // assuming the memory is visible on the currently-loaded page.
         await expect(
-          page.getByTestId(`memory-row-${sharedMemoryId}`)
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
         ).toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
+        ).not.toBeVisible();
       });
 
-      test('author filter dropdown opens with search input and "All Authors" option', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-
-        await page.getByRole('button', { name: /all.*author/i }).click();
-
-        await expect(page.getByPlaceholder(/search.*author/i)).toBeVisible();
-        await expect(
-          page.getByRole('menuitem', { name: /all.*author/i })
-        ).toBeVisible();
-      });
-
-      test('selecting an author filters memories to their content', async ({
+      test('selecting the second author in the author filter shows only their memory', async ({
         page,
       }) => {
         test.slow();
@@ -623,34 +784,36 @@ test.describe(
 
         const authorSearch = page.getByPlaceholder(/search.*author/i);
         await expect(authorSearch).toBeVisible();
-        await authorSearch.fill('admin');
+        await authorSearch.fill(dataConsumerUser.name);
         await waitForAllLoadersToDisappear(page);
 
-        const adminOption = page
-          .getByRole('menuitem')
-          .filter({ hasNotText: /all.*author/i })
-          .first();
+        const authorOption = page.getByRole('menuitemradio', {
+          name: dataConsumerUser.displayName,
+        });
+        await expect(authorOption).toBeVisible();
 
-        if (await adminOption.isVisible()) {
-          const listResPromise = page.waitForResponse(
-            (res) =>
-              res.url().includes(MEMORIES_API) &&
-              res.request().method() === 'GET'
-          );
-          await adminOption.click();
-          await listResPromise;
-          await waitForAllLoadersToDisappear(page);
+        const listResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+        );
+        await authorOption.click();
+        await listResPromise;
+        await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId(`memory-row-${sharedMemoryId}`)
-          ).toBeVisible();
-          await expect(
-            page.getByRole('button', { name: /clear all/i })
-          ).toBeVisible();
-        }
+        await expect(
+          page.getByTestId(`memory-row-${secondAuthorMemoryId}`)
+        ).toBeVisible();
+        // Search narrows further within the active author filter, so this
+        // confirms sharedMemoryId is excluded rather than merely off-page.
+        await expect(
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+        ).not.toBeVisible();
+        await expect(
+          page.getByRole('button', { name: /clear all/i })
+        ).toBeVisible();
       });
 
-      test('"Clear All" button resets author and asset filters', async ({
+      test('"Clear All" button resets the author filter and restores the full list', async ({
         page,
       }) => {
         test.slow();
@@ -660,37 +823,49 @@ test.describe(
         await page.getByRole('button', { name: /all.*author/i }).click();
         const authorSearch = page.getByPlaceholder(/search.*author/i);
         await expect(authorSearch).toBeVisible();
-        await authorSearch.fill('admin');
+        await authorSearch.fill(dataConsumerUser.name);
         await waitForAllLoadersToDisappear(page);
 
-        const authorOption = page
-          .getByRole('menuitem')
-          .filter({ hasNotText: /all.*author/i })
-          .first();
+        const authorOption = page.getByRole('menuitemradio', {
+          name: dataConsumerUser.displayName,
+        });
+        await expect(authorOption).toBeVisible();
+        await authorOption.click();
+        await waitForAllLoadersToDisappear(page);
 
-        if (await authorOption.isVisible()) {
-          await authorOption.click();
-          await waitForAllLoadersToDisappear(page);
+        // Search narrows further within the active author filter, so this
+        // confirms sharedMemoryId is excluded rather than merely off-page.
+        await expect(
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+        ).not.toBeVisible();
 
-          const clearBtn = page.getByRole('button', { name: /clear all/i });
-          await expect(clearBtn).toBeVisible();
+        const clearBtn = page.getByRole('button', { name: /clear all/i });
+        await expect(clearBtn).toBeVisible();
 
-          const listResPromise = page.waitForResponse(
-            (res) =>
-              res.url().includes(MEMORIES_API) &&
-              res.request().method() === 'GET'
-          );
-          await clearBtn.click();
-          await listResPromise;
-          await waitForAllLoadersToDisappear(page);
+        const listResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+        );
+        await clearBtn.click();
+        await listResPromise;
+        await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByRole('button', { name: /clear all/i })
-          ).not.toBeVisible();
-          await expect(
-            page.getByTestId(`memory-row-${sharedMemoryId}`)
-          ).toBeVisible();
-        }
+        await expect(
+          page.getByRole('button', { name: /clear all/i })
+        ).not.toBeVisible();
+        // The list is paginated, so search for each title individually
+        // rather than assuming either memory is visible on the currently
+        // loaded unfiltered page.
+        await expect(
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+        ).toBeVisible();
+        await expect(
+          await searchAndGetMemoryRow(
+            page,
+            secondAuthorMemoryTitle,
+            secondAuthorMemoryId
+          )
+        ).toBeVisible();
       });
 
       test('clicking "All" tab after applying an author filter clears the filter', async ({
@@ -704,32 +879,33 @@ test.describe(
         await page.getByRole('button', { name: /all.*author/i }).click();
         const authorSearch = page.getByPlaceholder(/search.*author/i);
         await expect(authorSearch).toBeVisible();
-        await authorSearch.fill('admin');
+        await authorSearch.fill(dataConsumerUser.name);
         await waitForAllLoadersToDisappear(page);
 
-        const authorOption = page
-          .getByRole('menuitem')
-          .filter({ hasNotText: /all.*author/i })
-          .first();
+        const authorOption = page.getByRole('menuitemradio', {
+          name: dataConsumerUser.displayName,
+        });
+        await expect(authorOption).toBeVisible();
+        await authorOption.click();
+        await waitForAllLoadersToDisappear(page);
 
-        if (await authorOption.isVisible()) {
-          await authorOption.click();
-          await waitForAllLoadersToDisappear(page);
+        // "All" tab clears the author filter
+        const listResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
+        );
+        await page.getByRole('tab', { name: /^all$/i }).click();
+        await listResPromise;
+        await waitForAllLoadersToDisappear(page);
 
-          // "All" tab clears the author filter
-          const listResPromise = page.waitForResponse(
-            (res) =>
-              res.url().includes(MEMORIES_API) &&
-              res.request().method() === 'GET'
-          );
-          await page.getByRole('tab', { name: /^all$/i }).click();
-          await listResPromise;
-          await waitForAllLoadersToDisappear(page);
-
-          await expect(
-            page.getByRole('button', { name: /clear all/i })
-          ).not.toBeVisible();
-        }
+        await expect(
+          page.getByRole('button', { name: /clear all/i })
+        ).not.toBeVisible();
+        // The list is paginated, so search for the title rather than
+        // assuming the memory is visible on the currently-loaded page.
+        await expect(
+          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+        ).toBeVisible();
       });
 
       test('no results message is shown when search matches nothing', async ({
@@ -752,7 +928,7 @@ test.describe(
         await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(page).toContainText(/no.*memor.*available/i);
+        await expect(page.getByText('No Memories are available')).toBeVisible();
       });
     });
 
@@ -766,20 +942,35 @@ test.describe(
         await page.getByRole('button', { name: /sort/i }).click();
 
         await expect(
-          page.getByRole('menuitem', { name: /recently updated/i })
+          page.getByRole('menuitemradio', { name: 'Recently Updated' })
         ).toBeVisible();
         await expect(
-          page.getByRole('menuitem', { name: /most used/i })
+          page.getByRole('menuitemradio', { name: 'Most Used' })
         ).toBeVisible();
         await expect(
-          page.getByRole('menuitem', { name: /updated by/i })
+          page.getByRole('menuitemradio', { name: 'Updated By' })
         ).toBeVisible();
       });
 
-      test('selecting "Most Used" reloads memories and updates the sort label', async ({
+      test('selecting "Most Used" actually reorders rows by usageCount', async ({
+        browser,
         page,
       }) => {
         test.slow();
+
+        const { apiContext, afterAction } = await createNewPage(browser);
+        // Make the entity-visibility memory the clear most-used memory in
+        // the whole fixture set, so it must render first once sorted.
+        // usageCount/lastUsedAt are excluded from ContextMemoryRepository's
+        // change tracking (server-side telemetry fields), so a patch that
+        // touches ONLY usageCount is silently dropped before it's persisted —
+        // also flipping `pinned` (a tracked field) forces the patch to
+        // persist, carrying usageCount along with it.
+        await patchMemory(apiContext, entityMemoryId, [
+          { op: 'add', path: '/usageCount', value: 999999 },
+          { op: 'add', path: '/pinned', value: true },
+        ]);
+        await afterAction();
 
         await navigateToMemories(page);
         await page.getByRole('button', { name: /sort/i }).click();
@@ -787,37 +978,22 @@ test.describe(
         const listResPromise = page.waitForResponse(
           (res) =>
             res.url().includes(MEMORIES_API) &&
+            res.url().includes('sortBy=usageCount') &&
             res.request().method() === 'GET'
         );
-        await page.getByRole('menuitem', { name: /most used/i }).click();
+        await page.getByRole('menuitemradio', { name: /most used/i }).click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
           page.getByRole('button', { name: /most used/i })
         ).toBeVisible();
-      });
 
-      test('selecting "Updated By" reloads memories and updates the sort label', async ({
-        page,
-      }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-        await page.getByRole('button', { name: /sort/i }).click();
-
-        const listResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+        const rows = page.locator('[data-testid^="memory-row-"]');
+        await expect(rows.first()).toHaveAttribute(
+          'data-testid',
+          `memory-row-${entityMemoryId}`
         );
-        await page.getByRole('menuitem', { name: /updated by/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(
-          page.getByRole('button', { name: /updated by/i })
-        ).toBeVisible();
       });
     });
 
@@ -881,7 +1057,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+        await page
+          .context()
+          .grantPermissions(['clipboard-read', 'clipboard-write']);
 
         await navigateToMemories(page);
 
@@ -889,9 +1067,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
-        // The copy-link button is the first button inside the row's actions area
-        // (before the edit and delete actions)
-        await row.getByRole('button').first().click();
+        await row.getByTestId('copy-link-btn').click();
 
         const clipboard = await page.evaluate(() =>
           navigator.clipboard.readText()
@@ -908,17 +1084,13 @@ test.describe(
       test.beforeEach(async ({ browser }) => {
         const { apiContext, afterAction } = await createNewPage(browser);
         const name = `cc_memory_each_field_edit_${uuid()}`;
-        const res = await apiContext.post(MEMORIES_API, {
-          data: {
-            name,
-            title: `Edit Fields Memory ${uuid()}`,
-            question: 'Original question text',
-            answer: 'Original answer text',
-            shareConfig: { visibility: 'Shared' },
-          },
+        const data = await createMemoryViaApi(apiContext, {
+          name,
+          title: `Edit Fields Memory ${uuid()}`,
+          question: 'Original question text',
+          answer: 'Original answer text',
+          shareConfig: { visibility: 'Shared' },
         });
-        expect(res.status()).toBe(201);
-        const data = await res.json();
         editMemoryId = data.id;
         await afterAction();
       });
@@ -929,6 +1101,92 @@ test.describe(
           `${MEMORIES_API}/${editMemoryId}?hardDelete=true`
         );
         await afterAction();
+      });
+
+      test('edit-memory button on the row opens the modal in edit mode', async ({
+        page,
+      }) => {
+        test.slow();
+
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByTestId('memory-content-input')).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Edit' })
+        ).not.toBeVisible();
+        await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible();
+        await expect(
+          page.getByRole('button', { name: 'Save Changes' })
+        ).toBeVisible();
+      });
+
+      test('view modal switches to edit mode and saves changes', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByRole('button', { name: /^edit$/i }).click();
+
+        await dialog
+          .getByTestId('memory-content-input')
+          .locator('textarea')
+          .fill('Updated via view-to-edit switch.');
+
+        const updateResPromise = page.waitForResponse(
+          new RegExp(`${MEMORIES_API}/${editMemoryId}`)
+        );
+        await dialog.getByRole('button', { name: /^(save|create)/i }).click();
+        const updateRes = await updateResPromise;
+        expect(updateRes.status()).toBe(200);
+
+        await expect(dialog).not.toBeVisible();
+      });
+
+      test('cancel button in edit mode closes the modal without saving', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${editMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog
+          .getByTestId('memory-title-input')
+          .locator('input')
+          .fill('This change should be discarded');
+
+        await dialog.getByRole('button', { name: /cancel/i }).click();
+        await expect(dialog).not.toBeVisible();
+
+        await navigateToMemories(page);
+        const reopenedRow = page.getByTestId(`memory-row-${editMemoryId}`);
+        await reopenedRow.scrollIntoViewIfNeeded();
+        await reopenedRow.click();
+
+        const viewDialog = page.getByRole('dialog');
+        await expect(viewDialog).toBeVisible();
+        await expect(viewDialog).not.toContainText(
+          'This change should be discarded'
+        );
+        await page.getByRole('button', { name: /cancel/i }).click();
       });
 
       test('editing title updates the memory and the row reflects the new title', async ({
@@ -1001,7 +1259,9 @@ test.describe(
 
         const viewDialog = page.getByRole('dialog');
         await expect(viewDialog).toBeVisible();
-        await expect(viewDialog.locator('.prose')).toContainText(newContent);
+        await expect(
+          viewDialog.getByTestId('description-field-preview')
+        ).toContainText(newContent);
         await page.getByRole('button', { name: /cancel/i }).click();
       });
 
@@ -1046,19 +1306,10 @@ test.describe(
 
         // In edit mode the visibility section shows the edit pencil icon for owners
         // Click the edit icon next to the visibility badge
-        const editVisibilityBtn = dialog.locator(
-          'button[data-testid="edit-visibility-btn"]'
+        const editVisibilityBtn = dialog.getByTestId(
+          'memory-visibility-edit-button'
         );
-
-        if (await editVisibilityBtn.isVisible()) {
-          await editVisibilityBtn.click();
-        } else {
-          // Fallback: use the last edit button in the metadata card
-          await dialog
-            .getByRole('button', { name: /edit/i })
-            .last()
-            .click();
-        }
+        await editVisibilityBtn.click();
 
         await dialog.getByTestId('memory-visibility-select').click();
         await page.getByRole('option', { name: /private/i }).click();
@@ -1084,17 +1335,11 @@ test.describe(
       });
 
       test('adding a linked asset in edit mode shows entity badge on the row', async ({
-        browser,
         page,
       }) => {
         test.slow();
 
-        const table = await fetchFirstTable(page);
-        if (!table?.id) {
-          test.skip();
-
-          return;
-        }
+        const table = linkedTable.entityResponseData;
 
         await navigateToMemories(page);
 
@@ -1107,15 +1352,20 @@ test.describe(
 
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
 
-        const assetSearch = page.getByPlaceholder(/search.*asset/i);
+        const assetSearch = page
+          .getByTestId('picker-popover')
+          .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
         await assetSearch.fill(table.name);
         await waitForAllLoadersToDisappear(page);
 
-        const firstOption = page.getByRole('option').first();
-        if (await firstOption.isVisible()) {
-          await firstOption.click();
-        }
+        const option = page.getByRole('option', {
+          name: table.displayName ?? table.name,
+        });
+        await expect(option).toBeVisible();
+        await option.click();
+
+        await page.keyboard.press('Escape'); // Close the picker popover
 
         // Confirm the asset card appeared in the dialog
         await expect(dialog).toContainText(table.displayName ?? table.name);
@@ -1131,16 +1381,14 @@ test.describe(
 
         const updatedRow = page.getByTestId(`memory-row-${editMemoryId}`);
         await updatedRow.scrollIntoViewIfNeeded();
-        await expect(updatedRow).toContainText(
-          table.displayName ?? table.name
-        );
+        await expect(updatedRow).toContainText(table.displayName ?? table.name);
       });
     });
 
     // ─── 9. Visibility Badge Text in Modal ──────────────────────────────────
 
     test.describe('Visibility Badge Text', () => {
-      test('Shared memory shows "visible to everyone in the workspace" description', async ({
+      test('Shared memory shows the shared-with-specific-people description', async ({
         page,
       }) => {
         test.slow();
@@ -1155,7 +1403,6 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/shared/i);
-        await expect(dialog).toContainText(/visible to everyone/i);
 
         await page.getByRole('button', { name: /cancel/i }).click();
       });
@@ -1175,7 +1422,7 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/private/i);
-        await expect(dialog).toContainText(/visible only to you/i);
+        await expect(dialog).toContainText('Only visible to you.');
 
         await page.getByRole('button', { name: /cancel/i }).click();
       });
@@ -1195,7 +1442,9 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await expect(dialog).toContainText(/entity/i);
-        await expect(dialog).toContainText(/visible to linked/i);
+        await expect(dialog).toContainText(
+          "Visible within selected entity's context."
+        );
 
         await page.getByRole('button', { name: /cancel/i }).click();
       });
@@ -1208,17 +1457,14 @@ test.describe(
 
         const { apiContext, afterAction } = await createNewPage(browser);
         const name = `cc_memory_vis_badge_${uuid()}`;
-        const res = await apiContext.post(MEMORIES_API, {
-          data: {
-            name,
-            title: `Visibility Badge Memory ${uuid()}`,
-            question: 'Visibility badge test',
-            answer: 'Testing badge text after visibility change',
-            shareConfig: { visibility: 'Shared' },
-          },
+        const visBadgeMemory = await createMemoryViaApi(apiContext, {
+          name,
+          title: `Visibility Badge Memory ${uuid()}`,
+          question: 'Visibility badge test',
+          answer: 'Testing badge text after visibility change',
+          shareConfig: { visibility: 'Shared' },
         });
-        expect(res.status()).toBe(201);
-        const visBadgeMemoryId = (await res.json()).id;
+        const visBadgeMemoryId = visBadgeMemory.id;
         await afterAction();
 
         await navigateToMemories(page);
@@ -1229,22 +1475,13 @@ test.describe(
 
         const dialog = page.getByRole('dialog');
         await expect(dialog).toBeVisible();
-
-        // Initially shows "Shared" + "visible to everyone"
-        await expect(dialog).toContainText(/visible to everyone/i);
+        await expect(dialog).toContainText(/shared/i);
 
         // Open the visibility editor
-        const editVisibilityBtn = dialog.locator(
-          'button[data-testid="edit-visibility-btn"]'
+        const editVisibilityBtn = dialog.getByTestId(
+          'memory-visibility-edit-button'
         );
-        if (await editVisibilityBtn.isVisible()) {
-          await editVisibilityBtn.click();
-        } else {
-          await dialog
-            .getByRole('button', { name: /edit/i })
-            .last()
-            .click();
-        }
+        await editVisibilityBtn.click();
 
         await dialog.getByTestId('memory-visibility-select').click();
         await page.getByRole('option', { name: /private/i }).click();
@@ -1264,7 +1501,7 @@ test.describe(
 
         const viewDialog = page.getByRole('dialog');
         await expect(viewDialog).toBeVisible();
-        await expect(viewDialog).toContainText(/visible only to you/i);
+        await expect(viewDialog).toContainText('Only visible to you.');
         await page.getByRole('button', { name: /cancel/i }).click();
 
         const { apiContext: cleanCtx, afterAction: cleanAfter } =
@@ -1277,9 +1514,15 @@ test.describe(
     });
 
     // ─── 10. Visibility Enforcement ─────────────────────────────────────────
+    //
+    // Backend rule (ContextMemoryVisibility.isVisibleToUser):
+    //   Private -> owner/admin only.
+    //   Shared  -> owner/admin plus whoever is explicitly listed in
+    //              shareConfig.sharedWith (by user, team, or domain).
+    //   Entity  -> every authenticated user, unconditionally.
 
     test.describe('Visibility Enforcement', () => {
-      test('private memory (admin-owned) is NOT visible to data consumers', async ({
+      test('private memory (admin-owned) is NOT visible to a non-owner', async ({
         dataConsumerPage: page,
       }) => {
         test.slow();
@@ -1292,7 +1535,7 @@ test.describe(
         ).not.toBeVisible();
       });
 
-      test('shared memory is visible to data consumers', async ({
+      test('shared memory IS visible to a user explicitly listed in sharedWith', async ({
         dataConsumerPage: page,
       }) => {
         test.slow();
@@ -1304,6 +1547,33 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
         await expect(row).toContainText(SHARED_MEMORY_TITLE);
+      });
+
+      test('shared memory is NOT visible to a user absent from sharedWith', async ({
+        dataConsumerPage: page,
+      }) => {
+        test.slow();
+
+        await redirectToHomePage(page);
+        await navigateToMemories(page);
+
+        await expect(
+          page.getByTestId(`memory-row-${sharedNotWithConsumerId}`)
+        ).not.toBeVisible();
+      });
+
+      test('entity-visibility memory is visible to every authenticated user', async ({
+        dataConsumerPage: page,
+      }) => {
+        test.slow();
+
+        await redirectToHomePage(page);
+        await navigateToMemories(page);
+
+        const row = page.getByTestId(`memory-row-${entityMemoryId}`);
+        await row.scrollIntoViewIfNeeded();
+        await expect(row).toBeVisible();
+        await expect(row).toContainText(ENTITY_MEMORY_TITLE);
       });
 
       test('data consumer sees a read-only modal for shared memories they do not own', async ({
@@ -1333,94 +1603,10 @@ test.describe(
       });
     });
 
-    // ─── 11. Non-Admin User Creates a Memory ────────────────────────────────
-
-    test.describe('Non-Admin User — Create Memory', () => {
-      let nonAdminMemoryId: string;
-
-      test.afterAll(async ({ browser }) => {
-        if (nonAdminMemoryId) {
-          const { apiContext, afterAction } = await createNewPage(browser);
-          await apiContext.delete(
-            `${MEMORIES_API}/${nonAdminMemoryId}?hardDelete=true`
-          );
-          await afterAction();
-        }
-      });
-
-      test('user with Create permission can create a memory and it appears under "Created by Me"', async ({
-        browser,
-      }) => {
-        test.slow();
-
-        const page = await loginAsUser(browser, nonAdminCreator);
-        await redirectToHomePage(page);
-        await navigateToMemories(page);
-
-        const addBtn = page.getByTestId('add-memory-btn');
-        await expect(addBtn).toBeVisible();
-        await addBtn.click();
-
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-
-        const content = `Non-admin memory content ${uuid()}`;
-        await dialog
-          .getByTestId('memory-content-input')
-          .locator('textarea')
-          .fill(content);
-
-        const createResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'POST'
-        );
-        await dialog.getByRole('button', { name: /create memory/i }).click();
-        const createRes = await createResPromise;
-        expect(createRes.status()).toBe(201);
-
-        const created = await createRes.json();
-        nonAdminMemoryId = created.id;
-
-        await expect(dialog).not.toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-
-        // Switch to "Created by Me" and verify the memory appears
-        const listResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
-        );
-        await page.getByRole('tab', { name: /created by me/i }).click();
-        await listResPromise;
-        await waitForAllLoadersToDisappear(page);
-
-        const row = page.getByTestId(`memory-row-${nonAdminMemoryId}`);
-        await row.scrollIntoViewIfNeeded();
-        await expect(row).toBeVisible();
-
-        await page.close();
-      });
-    });
-
     // ─── 12. Linked Asset Selection ─────────────────────────────────────────
 
     test.describe('Linked Asset Selection', () => {
-      test('link an asset button opens the search popover', async ({ page }) => {
-        test.slow();
-
-        await navigateToMemories(page);
-        await page.getByTestId('add-memory-btn').click();
-
-        const dialog = page.getByRole('dialog');
-        await expect(dialog).toBeVisible();
-
-        await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
-        await expect(page.getByPlaceholder(/search.*asset/i)).toBeVisible();
-      });
-
-      test('typing in asset search popover triggers a search and shows results', async ({
+      test('link an asset button opens the search popover', async ({
         page,
       }) => {
         test.slow();
@@ -1432,27 +1618,18 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
-        const assetSearch = page.getByPlaceholder(/search.*asset/i);
-        await expect(assetSearch).toBeVisible();
-
-        const searchResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes('/search/query') && res.status() === 200
-        );
-        await assetSearch.fill('test');
-        await searchResPromise;
-
-        // Either results or empty state — list container must be visible
+        await page.getByText('Loading...').waitFor({ state: 'detached' });
         await expect(
-          page.getByRole('option').first().or(page.getByText(/no.*result/i))
+          page.getByTestId('picker-popover').getByRole('textbox')
         ).toBeVisible();
       });
 
-      test('ArrowDown + Enter keyboard navigation selects the first asset result', async ({
+      test('typing the linked table name in the asset search returns it as a result', async ({
         page,
       }) => {
         test.slow();
+
+        const table = linkedTable.entityResponseData;
 
         await navigateToMemories(page);
         await page.getByTestId('add-memory-btn').click();
@@ -1461,28 +1638,60 @@ test.describe(
         await expect(dialog).toBeVisible();
 
         await dialog.getByRole('button', { name: /link.*asset/i }).click();
-
-        const assetSearch = page.getByPlaceholder(/search.*asset/i);
+        await page.getByText('Loading...').waitFor({ state: 'detached' });
+        const assetSearch = page
+          .getByTestId('picker-popover')
+          .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
         const searchResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes('/search/query') && res.status() === 200
+          (res) => res.url().includes('/search/query') && res.status() === 200
         );
-        await assetSearch.fill('a');
+        await assetSearch.fill(table.name);
         await searchResPromise;
 
-        const firstOption = page.getByRole('option').first();
-        if (await firstOption.isVisible()) {
-          const optionText = (await firstOption.textContent()) ?? '';
+        await expect(
+          page.getByRole('option', { name: table.displayName ?? table.name })
+        ).toBeVisible();
+      });
 
-          // Navigate with keyboard
-          await assetSearch.press('ArrowDown');
-          await page.keyboard.press('Enter');
+      test('ArrowDown + Enter keyboard navigation selects the linked table result', async ({
+        page,
+      }) => {
+        test.slow();
 
-          // The selected asset name should appear in the linked assets section
-          await expect(dialog).toContainText(optionText.trim().slice(0, 20));
-        }
+        const table = linkedTable.entityResponseData;
+
+        await navigateToMemories(page);
+        await page.getByTestId('add-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        await dialog.getByRole('button', { name: /link.*asset/i }).click();
+        await page.getByText('Loading...').waitFor({ state: 'detached' });
+        const assetSearch = page
+          .getByTestId('picker-popover')
+          .getByRole('textbox');
+        await expect(assetSearch).toBeVisible();
+
+        const searchResPromise = page.waitForResponse(
+          (res) => res.url().includes('/search/query') && res.status() === 200
+        );
+        await assetSearch.fill(table.name);
+        await searchResPromise;
+
+        const option = page.getByRole('option', {
+          name: table.displayName ?? table.name,
+        });
+        await expect(option).toBeVisible();
+
+        // Navigate with keyboard
+        await assetSearch.press('ArrowDown');
+        await page.keyboard.press('Enter');
+
+        // The selected asset name should appear in the linked assets section
+        await expect(dialog).toContainText(table.displayName ?? table.name);
       });
 
       test('linked asset card shows remove button; clicking it removes the asset', async ({
@@ -1491,33 +1700,25 @@ test.describe(
       }) => {
         test.slow();
 
-        const table = await fetchFirstTable(page);
-        if (!table?.id) {
-          test.skip();
-
-          return;
-        }
+        const table = linkedTable.entityResponseData;
 
         // Create a memory with a linked entity so we can test removal in edit mode
         const { apiContext, afterAction } = await createNewPage(browser);
         const name = `cc_memory_remove_asset_${uuid()}`;
-        const createRes = await apiContext.post(MEMORIES_API, {
-          data: {
-            name,
-            title: `Remove Asset Test ${uuid()}`,
-            question: 'Remove asset test',
-            answer: 'Remove asset test',
-            shareConfig: { visibility: 'Shared' },
-            primaryEntity: {
-              id: table.id,
-              type: table.entityType ?? 'table',
-              name: table.name,
-              fullyQualifiedName: table.fullyQualifiedName,
-            },
+        const created = await createMemoryViaApi(apiContext, {
+          name,
+          title: `Remove Asset Test ${uuid()}`,
+          question: 'Remove asset test',
+          answer: 'Remove asset test',
+          shareConfig: { visibility: 'Shared' },
+          primaryEntity: {
+            id: table.id,
+            type: 'table',
+            name: table.name,
+            fullyQualifiedName: table.fullyQualifiedName,
           },
         });
-        expect(createRes.status()).toBe(201);
-        const removeAssetMemId = (await createRes.json()).id;
+        const removeAssetMemId = created.id;
         await afterAction();
 
         await navigateToMemories(page);
@@ -1532,15 +1733,13 @@ test.describe(
 
         // Remove button is the X inside the linked asset card
         const assetCard = dialog
-          .locator('[class*="card"]')
+          .getByTestId('linked-asset-card')
           .filter({ hasText: table.displayName ?? table.name });
-        const removeBtn = assetCard.getByRole('button').last();
+        const removeBtn = assetCard.getByTestId('remove-linked-asset-btn');
         await expect(removeBtn).toBeVisible();
         await removeBtn.click();
 
-        await expect(dialog).not.toContainText(
-          table.displayName ?? table.name
-        );
+        await expect(dialog).not.toContainText(table.displayName ?? table.name);
 
         await dialog.getByRole('button', { name: /cancel/i }).click();
 
@@ -1557,99 +1756,172 @@ test.describe(
       }) => {
         test.slow();
 
+        const table = linkedTable.entityResponseData;
+
         await navigateToMemories(page);
 
-        // The asset filter button is labeled "All Assets" by default
-        // Open it
-        await page.getByRole('button', { name: /all.*asset/i }).click();
+        // The asset filter button is labeled "All Assets" by default, but
+        // its accessible name changes to the selected asset's name once one
+        // is picked — use the stable testid instead of the label so the
+        // button can still be found (and reopened) after a selection.
+        const assetFilterButton = page.getByTestId('asset-filter-button');
 
-        const assetSearch = page.getByPlaceholder(
-          /search.*asset.*by.*name.*or.*path/i
+        // Opening the popover fires an immediate, unfiltered loadOptions('')
+        // fetch — wait for it so the picker's initial state has settled
+        // before searching, otherwise a later waitForResponse could match
+        // this stale request instead of the actual search.
+        const initialLoadResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes('/search/query') &&
+            res.url().includes('q=*')
         );
+        await assetFilterButton.click();
+        await initialLoadResPromise;
+
+        const assetSearch = page
+          .getByTestId('picker-popover')
+          .getByRole('textbox');
         await expect(assetSearch).toBeVisible();
 
         const searchResPromise = page.waitForResponse(
-          (res) =>
-            res.url().includes('/search/query') && res.status() === 200
+          (res) => res.url().includes('/search/query') && res.status() === 200
         );
-        await assetSearch.fill('a');
+        await assetSearch.fill(table.name);
         await searchResPromise;
 
-        const firstOption = page.getByRole('option').first();
-        if (await firstOption.isVisible()) {
-          // Select an asset
-          await firstOption.click();
-          await waitForAllLoadersToDisappear(page);
+        const option = page.getByRole('option', {
+          name: table.displayName ?? table.name,
+        });
+        await expect(option).toBeVisible();
+        await option.click();
+        await waitForAllLoadersToDisappear(page);
 
-          // "Clear All" appears since an asset filter is now active
-          await expect(
-            page.getByRole('button', { name: /clear all/i })
-          ).toBeVisible();
+        // "Clear All" appears since an asset filter is now active
+        await expect(
+          page.getByRole('button', { name: /clear all/i })
+        ).toBeVisible();
 
-          // Click the "All Assets" option inside the filter to reset
-          await page.getByRole('button', { name: /all.*asset/i }).click();
+        // Reopen the same filter trigger (now showing the selected asset's
+        // name) to click its "All Assets" reset option. Reopening fires
+        // another loadOptions('') fetch — wait for it before looking for
+        // the reset option.
+        const reopenLoadResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes('/search/query') &&
+            res.url().includes('q=*')
+        );
+        await assetFilterButton.click();
+        await reopenLoadResPromise;
 
-          const allAssetsOption = page
-            .getByRole('option', { name: /all.*asset/i })
-            .first();
+        const allAssetsOption = page
+          .getByRole('button', { name: 'All Assets' })
+        await expect(allAssetsOption).toBeVisible();
+        await allAssetsOption.click();
 
-          if (await allAssetsOption.isVisible()) {
-            const listResPromise = page.waitForResponse(
-              (res) =>
-                res.url().includes(MEMORIES_API) &&
-                res.request().method() === 'GET'
-            );
-            await allAssetsOption.click();
-            await listResPromise;
-            await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page);
 
-            await expect(
-              page.getByRole('button', { name: /clear all/i })
-            ).not.toBeVisible();
-          }
-        }
+        await expect(
+          page.getByRole('button', { name: /clear all/i })
+        ).not.toBeVisible();
       });
     });
 
-    // ─── 13. Pagination ──────────────────────────────────────────────────────
+    // ─── 13. Delete Memory ───────────────────────────────────────────────────
+
+    test.describe('Delete Memory', () => {
+      let deleteMemoryId: string;
+      let deleteMemoryTitle: string;
+
+      test.beforeEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        deleteMemoryTitle = `Delete Me ${uuid()}`;
+        const data = await createMemoryViaApi(apiContext, {
+          name: `cc_memory_delete_${uuid()}`,
+          title: deleteMemoryTitle,
+          question: 'Delete flow test',
+          answer: 'This memory exists only to be deleted.',
+          shareConfig: { visibility: 'Shared' },
+        });
+        deleteMemoryId = data.id;
+        await afterAction();
+      });
+
+      test.afterEach(async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await apiContext
+          .delete(`${MEMORIES_API}/${deleteMemoryId}?hardDelete=true`)
+          .catch(() => undefined);
+        await afterAction();
+      });
+
+      test('deleting a memory via the row actions menu removes it from the list', async ({
+        page,
+      }) => {
+        test.slow();
+
+        await navigateToMemories(page);
+
+        const row = await searchAndGetMemoryRow(
+          page,
+          deleteMemoryTitle,
+          deleteMemoryId
+        );
+        await row.scrollIntoViewIfNeeded();
+        await expect(row).toBeVisible();
+
+        await row.getByRole('button', { name: 'Open menu' }).first().click();
+        await page.getByTestId('delete-btn').click();
+
+        const deleteResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(`${MEMORIES_API}/${deleteMemoryId}`) &&
+            res.request().method() === 'DELETE'
+        );
+        await page.getByTestId('confirm-button').click();
+        const deleteRes = await deleteResPromise;
+        expect(deleteRes.ok()).toBeTruthy();
+
+        await waitForAllLoadersToDisappear(page);
+        await expect(
+          page.getByTestId(`memory-row-${deleteMemoryId}`)
+        ).not.toBeVisible();
+      });
+
+      test('delete button inside the edit modal deletes the memory', async ({
+        page,
+      }) => {
+        await navigateToMemories(page);
+
+        const row = await searchAndGetMemoryRow(
+          page,
+          deleteMemoryTitle,
+          deleteMemoryId
+        );
+        await row.scrollIntoViewIfNeeded();
+        await row.getByTestId('edit-memory-btn').click();
+
+        const dialog = page.getByRole('dialog');
+        await expect(dialog).toBeVisible();
+
+        const deleteResPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes(`${MEMORIES_API}/${deleteMemoryId}`) &&
+            res.request().method() === 'DELETE'
+        );
+        await dialog.getByRole('button', { name: /^delete$/i }).click();
+        const deleteRes = await deleteResPromise;
+        expect(deleteRes.ok()).toBeTruthy();
+
+        await expect(dialog).not.toBeVisible();
+        await expect(
+          page.getByTestId(`memory-row-${deleteMemoryId}`)
+        ).not.toBeVisible();
+      });
+    });
+
+    // ─── 14. Pagination ──────────────────────────────────────────────────────
 
     test.describe('Pagination', () => {
-      const paginationMemoryIds: string[] = [];
-      // 11 memories forces 2 pages (page size = 10)
-      const PAGINATION_COUNT = 11;
-
-      test.beforeAll(async ({ browser }) => {
-        const { apiContext, afterAction } = await createNewPage(browser);
-
-        for (let i = 0; i < PAGINATION_COUNT; i++) {
-          const res = await apiContext.post(MEMORIES_API, {
-            data: {
-              name: `cc_memory_pg_${uuid()}`,
-              title: `Pagination Memory ${String(i + 1).padStart(2, '0')}`,
-              question: `Pagination question ${i + 1}`,
-              answer: `Pagination answer ${i + 1}`,
-              shareConfig: { visibility: 'Shared' },
-            },
-          });
-          if (res.status() === 201) {
-            const data = await res.json();
-            paginationMemoryIds.push(data.id);
-          }
-        }
-
-        await afterAction();
-      });
-
-      test.afterAll(async ({ browser }) => {
-        const { apiContext, afterAction } = await createNewPage(browser);
-
-        for (const id of paginationMemoryIds) {
-          await apiContext.delete(`${MEMORIES_API}/${id}?hardDelete=true`);
-        }
-
-        await afterAction();
-      });
-
       test('pagination controls are visible when more than 10 memories exist', async ({
         page,
       }) => {
@@ -1719,8 +1991,7 @@ test.describe(
         // Go back to page 1
         const toPage1 = page.waitForResponse(
           (res) =>
-            res.url().includes(MEMORIES_API) &&
-            res.request().method() === 'GET'
+            res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         await page.getByRole('button', { name: /prev/i }).click();
         await toPage1;

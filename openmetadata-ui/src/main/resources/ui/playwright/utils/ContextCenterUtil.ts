@@ -681,3 +681,31 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };
+
+
+/** Returns the first table asset from ES, or undefined if none exist. */
+export const fetchFirstTable = async (page: Page) => {
+  const res = await page.request.get(
+    '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
+  );
+  if (!res.ok()) {
+    return undefined;
+  }
+  const data = await res.json();
+
+  return data.hits?.hits?.[0]?._source;
+};
+
+export const patchMemory = async (
+  apiContext: APIRequestContext,
+  id: string,
+  patch: Record<string, unknown>[]
+) => {
+  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
+    data: patch,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
