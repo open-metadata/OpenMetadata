@@ -850,9 +850,7 @@ export const verifyExportLineagePNG = async (
     await page.getByRole('option', { name: 'PNG' }).click();
   }
 
-  await expect(
-    page.getByTestId('export-type-select').getByText('PNG')
-  ).toBeVisible();
+  await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
   const [download] = await Promise.all([
     // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG

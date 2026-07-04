@@ -620,7 +620,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         // Start export
         const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
+        await page.getByTestId('submit-button').click();
         const download = await downloadPromise;
 
         // Verify download started
@@ -681,7 +681,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         // Start export
         const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
+        await page.getByTestId('submit-button').click();
         const download = await downloadPromise;
 
         // Read the CSV content
@@ -824,7 +824,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         await page.locator('[role="dialog"]').waitFor();
 
         const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
+        await page.getByTestId('submit-button').click();
         const download = await downloadPromise;
 
         const stream = await download.createReadStream();

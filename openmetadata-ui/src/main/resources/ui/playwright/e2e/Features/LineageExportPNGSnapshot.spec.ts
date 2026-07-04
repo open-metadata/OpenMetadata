@@ -79,9 +79,7 @@ test.describe('Lineage PNG export — snapshot regression', () => {
     // Select PNG (the modal defaults to CSV for entity lineage)
     await page.getByTestId('export-type-select').click();
     await page.getByRole('option', { name: 'PNG' }).click();
-    await expect(
-      page.getByTestId('export-type-select').getByText('PNG')
-    ).toBeVisible();
+    await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
     // Trigger download
     const [download] = await Promise.all([
