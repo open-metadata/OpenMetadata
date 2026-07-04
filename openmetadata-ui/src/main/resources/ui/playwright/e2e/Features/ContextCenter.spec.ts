@@ -15,7 +15,7 @@ import { expect } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   MEMORIES_API,
-  navigateToMemories
+  navigateToMemories,
 } from '../../utils/ContextCenterUtil';
 import { test } from '../fixtures/pages';
 
@@ -34,7 +34,6 @@ test.describe('Context Center', () => {
 
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-
 
     // Create a memory owned by admin for card/edit/delete action tests
     ownerMemoryName = `cc_memory_${uuid()}`;
@@ -66,7 +65,6 @@ test.describe('Context Center', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
-
 
   test.describe('Memories Page', () => {
     test('shows header with title, breadcrumb and Add Memory button', async ({
