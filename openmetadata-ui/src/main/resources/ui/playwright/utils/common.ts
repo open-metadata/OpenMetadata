@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, Page, request } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  request,
+} from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
@@ -986,6 +993,44 @@ type MetricSearchResponse = {
   hits?: {
     hits?: MetricSearchHit[];
   };
+};
+
+type CsvAsyncJob = {
+  jobId: string;
+  status: string;
+};
+
+export const fetchCompletedCsvAsyncJobResult = async (
+  apiContext: APIRequestContext,
+  jobId: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
+
+        if (!response.ok()) {
+          return undefined;
+        }
+
+        const jobs = (await response.json()) as CsvAsyncJob[];
+
+        return jobs.find((job) => job.jobId === jobId)?.status;
+      },
+      { timeout: 90_000 }
+    )
+    .toBe('COMPLETED');
+
+  const resultResponse = await apiContext.get(
+    `/api/v1/csvAsyncJobs/${jobId}/result`,
+    {
+      headers: { Accept: 'text/csv' },
+    }
+  );
+
+  expect(resultResponse.ok()).toBeTruthy();
+
+  return resultResponse.text();
 };
 
 export const isMetricsSearchResponse = (response: ResponseWithRequest) => {

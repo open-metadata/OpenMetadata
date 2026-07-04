@@ -13,7 +13,12 @@
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import * as fs from 'fs';
 import { Glossary } from '../../support/glossary/Glossary';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   uploadCSVAndWaitForGrid,
   validateImportStatus,
@@ -48,11 +53,6 @@ type GlossaryTermsResponse = {
   }>;
 };
 
-type CsvAsyncJob = {
-  jobId: string;
-  status: string;
-};
-
 type CsvExportResponse = {
   jobId: string;
 };
@@ -80,39 +80,6 @@ const waitForGlossaryTerms = async (
       { timeout: 60000 }
     )
     .toEqual(expect.arrayContaining(termNames));
-};
-
-const fetchCompletedCsvAsyncJobResult = async (
-  apiContext: APIRequestContext,
-  jobId: string
-) => {
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
-
-        if (!response.ok()) {
-          return undefined;
-        }
-
-        const jobs = (await response.json()) as CsvAsyncJob[];
-
-        return jobs.find((job) => job.jobId === jobId)?.status;
-      },
-      { timeout: 90_000 }
-    )
-    .toBe('COMPLETED');
-
-  const resultResponse = await apiContext.get(
-    `/api/v1/csvAsyncJobs/${jobId}/result`,
-    {
-      headers: { Accept: 'text/csv' },
-    }
-  );
-
-  expect(resultResponse.ok()).toBeTruthy();
-
-  return resultResponse.text();
 };
 
 test.use({
