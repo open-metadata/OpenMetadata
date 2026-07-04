@@ -125,7 +125,7 @@ const IncidentManagerPageHeader = ({
             <HeaderDotSeparator />
             <HeaderField label={t('label.incident')}>
               <Link
-                className="no-underline domain-link-text tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
+                className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
                 data-testid="incident-task-link"
                 to={taskLinkInfo.path}>
                 {taskLinkInfo.label}
@@ -208,7 +208,7 @@ const IncidentManagerPageHeader = ({
           <HeaderDotSeparator />
           <HeaderField label={t('label.table')}>
             <Link
-              className="no-underline domain-link-text tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
+              className="no-underline tw:flex tw:items-center tw:gap-1 tw:text-sm tw:font-medium"
               data-testid="table-name"
               to={getEntityDetailsPath(
                 EntityType.TABLE,
