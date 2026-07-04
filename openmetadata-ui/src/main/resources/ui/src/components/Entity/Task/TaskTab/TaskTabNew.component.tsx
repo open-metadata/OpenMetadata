@@ -71,10 +71,12 @@ import {
   TaskAvailableTransition,
   TaskCategory,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/entity/type';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
@@ -231,6 +233,47 @@ const DAR_FIELD_FORMATTERS: Record<string, (value: unknown) => string> = {
   duration: (value) => formatIsoDuration(String(value ?? '')),
 };
 
+const ASSIGNEES_COLLAPSED_COUNT = 5;
+
+/**
+ * Renders the task assignees, clamped to the first few entries. When more
+ * assignees exist a "Show More" toggle reveals the rest.
+ */
+const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  const hasOverflow = assignees.length > ASSIGNEES_COLLAPSED_COUNT;
+  const visibleAssignees =
+    expanded || !hasOverflow
+      ? assignees
+      : assignees.slice(0, ASSIGNEES_COLLAPSED_COUNT);
+
+  return (
+    <div>
+      <div className="d-flex flex-wrap gap-2">
+        {visibleAssignees.map((assignee) => (
+          <div className="d-flex items-center gap-2" key={assignee.id}>
+            <UserPopOverCard userName={assignee.name ?? ''}>
+              <ProfilePicture name={assignee.name ?? ''} width="24" />
+            </UserPopOverCard>
+            <Typography.Text>{getEntityName(assignee)}</Typography.Text>
+          </div>
+        ))}
+      </div>
+      {hasOverflow && (
+        <Button
+          className="p-0 text-xs font-medium"
+          size="small"
+          type="link"
+          onClick={() => setExpanded((prev) => !prev)}>
+          {expanded ? t('label.show-less') : t('label.show-more')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 export const TaskTabNew = ({
   task,
   owners = [],
@@ -331,6 +374,34 @@ export const TaskTabNew = ({
       ),
     [task, taskFormSchema]
   );
+  // A Data Access Request only needs the "Select Columns" field for
+  // column-level access; hide it entirely for FullAccess / Masked so the
+  // read-only detail doesn't show an empty "--" row.
+  const readOnlyFormSchema = useMemo(() => {
+    const formSchema = taskFormSchema?.formSchema;
+    const uiSchema = taskFormSchema?.uiSchema;
+    const shouldHideColumns =
+      task.category === TaskCategory.DataAccess &&
+      readOnlyTaskPayload?.accessType !== AccessType.ColumnLevel;
+
+    if (!shouldHideColumns || !formSchema) {
+      return { formSchema, uiSchema };
+    }
+
+    const properties = Object.fromEntries(
+      Object.entries(
+        (formSchema.properties as Record<string, unknown>) ?? {}
+      ).filter(([field]) => field !== 'columns')
+    );
+    const uiOrder = (uiSchema?.['ui:order'] as string[] | undefined)?.filter(
+      (field) => field !== 'columns'
+    );
+
+    return {
+      formSchema: { ...formSchema, properties },
+      uiSchema: uiOrder ? { ...uiSchema, 'ui:order': uiOrder } : uiSchema,
+    };
+  }, [task.category, taskFormSchema, readOnlyTaskPayload?.accessType]);
   const initialTaskPayload = useMemo(
     () =>
       applyTaskFormSchemaDefaults(
@@ -503,18 +574,7 @@ export const TaskTabNew = ({
       {
         iconSrc: icAssignees,
         label: t('label.assignee-plural'),
-        value: (
-          <div className="d-flex flex-wrap gap-2">
-            {task.assignees?.map((assignee) => (
-              <div className="d-flex items-center gap-2" key={assignee.id}>
-                <UserPopOverCard userName={assignee.name ?? ''}>
-                  <ProfilePicture name={assignee.name ?? ''} width="24" />
-                </UserPopOverCard>
-                <Typography.Text>{getEntityName(assignee)}</Typography.Text>
-              </div>
-            ))}
-          </div>
-        ),
+        value: <ClampedAssignees assignees={task.assignees ?? []} />,
       },
     ];
   }, [
@@ -1763,8 +1823,8 @@ export const TaskTabNew = ({
               }
               mode="read"
               payload={readOnlyTaskPayload}
-              schema={taskFormSchema?.formSchema}
-              uiSchema={taskFormSchema?.uiSchema}
+              schema={readOnlyFormSchema.formSchema}
+              uiSchema={readOnlyFormSchema.uiSchema}
             />
           </div>
         )}

@@ -693,13 +693,11 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
         );
         await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
+          '[data-testid="searchbar-component"] input',
           testCaseName
         );
         await searchTestCaseResponse;
-        await page.locator('.ant-spin').waitFor({
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
@@ -860,10 +858,10 @@ test.describe(
             url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
             url.url().includes(testCases[0])
         );
-        await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
-          testCases[0]
-        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill(testCases[0]);
         await searchTestCaseResponse;
 
         await expect(
@@ -874,7 +872,7 @@ test.describe(
         const getTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.locator('.ant-input-clear-icon').click();
+        await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
 
         // Test case filter by service name
@@ -985,7 +983,7 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('Column').click();
+        await page.getByTitle('Column', { exact: true }).click();
         await testCaseTypeByColumn;
 
         await expect(
