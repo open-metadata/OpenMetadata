@@ -99,18 +99,12 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.service' },
+    name: 'label.connect',
     step: 2,
   },
   {
-    name: 'label.connection-entity',
-    nameData: { entity: 'label.detail-plural' },
+    name: 'label.what-to-ingest',
     step: 3,
-  },
-  {
-    name: 'label.set-default-filters',
-    step: 4,
   },
 ];
 
@@ -195,6 +189,8 @@ export const BETA_SERVICES = [
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.SapBw4Hana,
+  PipelineServiceType.SapBw4HanaPipeline,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -214,6 +210,8 @@ export const TEST_CONNECTION_WARNING_MESSAGE =
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
+  'useAccessHistory',
+  'accessHistoryChunkSize',
   'scheme',
   'sampleDataStorageConfig',
   'computeTableMetrics',
@@ -237,7 +235,62 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
-  'sessionExpiry',
+];
+
+export const CONNECTION_AUTH_TYPE_PROPERTY = 'authType';
+
+export const OPTIONAL_CONNECTION_PROPERTIES = new Set([
+  'billingProjectId',
+  'hostPort',
+]);
+
+export const OPTIONAL_SCOPE_PROPERTIES = new Set([
+  'apiCollectionFilterPattern',
+  'apiEndpointFilterPattern',
+  'chartFilterPattern',
+  'containerFilterPattern',
+  'dashboardFilterPattern',
+  'dataModelFilterPattern',
+  'databaseFilterPattern',
+  'databaseName',
+  'directoryFilterPattern',
+  'domainFilterPattern',
+  'fileFilterPattern',
+  'glossaryFilterPattern',
+  'mlModelFilterPattern',
+  'modelFilterPattern',
+  'pipelineFilterPattern',
+  'projectFilterPattern',
+  'schemaFilterPattern',
+  'searchIndexFilterPattern',
+  'serverFilterPattern',
+  'sobjectNames',
+  'spreadsheetFilterPattern',
+  'storedProcedureFilterPattern',
+  'supportsMetadataExtraction',
+  'tableFilterPattern',
+  'topicFilterPattern',
+  'worksheetFilterPattern',
+]);
+
+export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'includeTables',
+  'includeViews',
+  'includeTags',
+  'includeCustomProperties',
+  'includeOwners',
+  'includeStoredProcedures',
+  'includeDDL',
+  'markDeletedTables',
+  'markDeletedStoredProcedures',
+  'markDeletedSchemas',
+  'markDeletedDatabases',
+  'overrideMetadata',
+  'enableDebugLog',
+  'dbtUpdateDescriptions',
+  'dbtUpdateOwners',
+  'overrideLineage',
+  'searchAcrossDatabases',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -265,6 +318,7 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [

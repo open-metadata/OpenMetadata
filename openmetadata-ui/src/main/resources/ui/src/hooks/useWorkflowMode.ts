@@ -53,6 +53,7 @@ export interface UseWorkflowModeReturn {
   mode: WorkflowMode;
   isViewMode: boolean;
   isEditMode: boolean;
+  isNoOp: boolean;
   enterEditMode: () => void;
   enterViewMode: () => void;
   toggleMode: () => void;
@@ -60,6 +61,7 @@ export interface UseWorkflowModeReturn {
   canSave: boolean;
   canDelete: boolean;
   canDragNodes: boolean;
+  canDragNodesInViewMode: boolean;
   canAccessSidebar: boolean;
   showEditButton: boolean;
   showSaveButton: boolean;
@@ -154,13 +156,15 @@ export const useWorkflowMode = (
       mode: internalMode,
       isViewMode,
       isEditMode,
+      isNoOp: isNoOpTrigger,
 
       canEdit: isEditMode && !isNoOpTrigger,
       canSave: isEditMode && !isNoOpTrigger,
       canDelete: isViewMode && !isNoOpTrigger && caps.allowDeleteWorkflow,
       canDragNodes: isEditMode && structural,
+      canDragNodesInViewMode: isViewMode && caps.allowViewModeDrag,
       canAccessSidebar: isEditMode,
-      allowStructuralGraphEdits: structural,
+      allowStructuralGraphEdits: structural && isEditMode && !isNoOpTrigger,
       showWorkflowNodePalette,
       allowFullStartNodeConfiguration,
       allowStartNodeFilterScheduleAndBatchEdit,

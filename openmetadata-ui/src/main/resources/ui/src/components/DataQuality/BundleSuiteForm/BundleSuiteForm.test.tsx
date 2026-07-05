@@ -208,7 +208,7 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
 );
 
 // Mock utils
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   generateUUID: jest.fn().mockReturnValue('mock-uuid'),
 }));
 
@@ -220,13 +220,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   }),
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockReturnValue({
-    resetAlert: jest.fn(),
-    animationClass: '',
-  }),
 }));
 
 describe('BundleSuiteForm Component', () => {

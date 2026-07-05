@@ -37,7 +37,6 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -480,7 +479,6 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @calculate_execution_time(context="EvaluateBestParser")
     def _evaluate_best_parser(
         self,
         query: str,
@@ -514,7 +512,6 @@ class LineageParser:
             f" {self.masked_query or self.query}"
         )
 
-        @calculate_execution_time(context="GetSqlGlotLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -564,7 +561,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlGlot for query parsing")
                 return lr_sqlglot
 
-        @calculate_execution_time(context="GetSqlFluffLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(
@@ -614,7 +610,6 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] Selected SqlFluff for query parsing")
                 return lr_sqlfluff
 
-        @calculate_execution_time(context="GetSqlParseLineageRunner")
         @timeout(seconds=timeout_seconds)
         # disable memory limits until better solution is found as they are performance overhead
         # @memory_limit(

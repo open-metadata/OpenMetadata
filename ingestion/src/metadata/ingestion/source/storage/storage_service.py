@@ -14,7 +14,7 @@ Base class for ingesting Object Storage services
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Set, Tuple, cast  # noqa: UP035
 
 from pydantic import Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -64,6 +64,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
 )
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.path_pattern import (
@@ -117,7 +118,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -140,7 +140,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
-                use_cache=True,
             ),
         ],
     )
@@ -326,11 +325,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Mark the container record as scanned and update
         the storage_source_state
         """
-        parent_container = (
-            self.metadata.get_by_id(entity=Container, entity_id=container_request.parent.id).fullyQualifiedName.root
-            if container_request.parent
-            else None
-        )
+        parent_container = None
+        if container_request.parent:
+            parent_id = require_entity_reference_id(container_request.parent, "Parent container")
+            parent = cast(
+                "Container",
+                self.metadata.get_by_id(entity=Container, entity_id=parent_id, nullable=False),
+            )
+            if parent.fullyQualifiedName is None:
+                raise ValueError(f"Parent container {parent_id.root} must include fullyQualifiedName")
+            parent_container = parent.fullyQualifiedName.root
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
@@ -351,7 +355,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                mark_deleted_entity=self.source_config.markDeletedContainers,
+                recursive=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 

@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
-import { Card, Col, Input, Radio, Row, Select, Typography } from 'antd';
-import cronstrue from 'cronstrue/i18n';
+import {
+  Button,
+  Card,
+  Grid,
+  Select,
+  TimePicker,
+  TimePickerValue,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Clock } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-v1.svg';
 import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
@@ -25,18 +32,17 @@ import {
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
-import { getPopupContainer } from '../../../../../utils/formUtils';
-import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   getCron,
   getDefaultScheduleValue,
   getStateValue,
   getUpdatedStateFromFormState,
-} from '../../../../../utils/SchedularUtils';
-import SelectionCardGroup from '../../../../common/SelectionCardGroup/SelectionCardGroup';
+} from '../../../../../utils/CronExpressionUtils';
+import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import { SelectionOption } from '../../../../common/SelectionCardGroup/SelectionCardGroup.interface';
 import './schedule-interval-v1.less';
 import { StateValue } from './ScheduleInterval.interface';
+import ScheduleSelectionCards from './ScheduleSelectionCards';
 
 export interface ScheduleIntervalV1Props {
   value?: string;
@@ -46,6 +52,18 @@ export interface ScheduleIntervalV1Props {
   defaultSchedule?: string;
   entity?: string;
 }
+
+const PERIOD_CUSTOM = 'custom';
+
+const FREQUENCY_LABEL_KEYS: Record<string, string> = {
+  hour: 'label.hourly',
+  day: 'label.daily',
+  week: 'label.weekly',
+  month: 'label.monthly',
+};
+
+const SELECTED_FREQUENCY_CLASS =
+  'tw:bg-utility-brand-50 tw:text-brand-secondary tw:ring-brand tw:hover:bg-utility-brand-50 tw:hover:text-brand-secondary';
 
 const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   value,
@@ -97,38 +115,20 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 
-  const {
-    showMinuteSelect,
-    showHourSelect,
-    showWeekSelect,
-    showMonthSelect,
-    minuteCol,
-    hourCol,
-    weekCol,
-    monthCol,
-  } = useMemo(() => {
-    const isHourSelected = selectedPeriod === 'hour';
-    const isDaySelected = selectedPeriod === 'day';
-    const isWeekSelected = selectedPeriod === 'week';
-    const isMonthSelected = selectedPeriod === 'month';
-    const showMinuteSelect =
-      isHourSelected || isDaySelected || isWeekSelected || isMonthSelected;
-    const showHourSelect = isDaySelected || isWeekSelected || isMonthSelected;
-    const showWeekSelect = isWeekSelected;
-    const showMonthSelect = isMonthSelected;
-    const minuteCol = isHourSelected ? 12 : 6;
+  const { showTimePicker, showMinuteOnly, showWeekSelect, showMonthSelect } =
+    useMemo(() => {
+      const isHourSelected = selectedPeriod === 'hour';
+      const isDaySelected = selectedPeriod === 'day';
+      const isWeekSelected = selectedPeriod === 'week';
+      const isMonthSelected = selectedPeriod === 'month';
 
-    return {
-      showMinuteSelect,
-      showHourSelect,
-      showWeekSelect,
-      showMonthSelect,
-      minuteCol: showMinuteSelect ? minuteCol : 0,
-      hourCol: showHourSelect ? 6 : 0,
-      weekCol: showWeekSelect ? 24 : 0,
-      monthCol: showMonthSelect ? 24 : 0,
-    };
-  }, [selectedPeriod]);
+      return {
+        showTimePicker: isDaySelected || isWeekSelected || isMonthSelected,
+        showMinuteOnly: isHourSelected,
+        showWeekSelect: isWeekSelected,
+        showMonthSelect: isMonthSelected,
+      };
+    }, [selectedPeriod]);
 
   const handleSelectedSchedular = useCallback(
     (schedularValue: SchedularOptions) => {
@@ -165,43 +165,102 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     [state, onChange]
   );
 
-  const filteredPeriodOptions = useMemo(() => {
+  const frequencyOptions = useMemo(() => {
     const options = includePeriodOptions
       ? PERIOD_OPTIONS.filter((option) =>
           includePeriodOptions.includes(option.value)
         )
       : PERIOD_OPTIONS;
 
-    return options.map((option) => ({
-      ...option,
-      label: t(option.label),
-    }));
+    return options
+      .filter((option) => option.value !== PERIOD_CUSTOM)
+      .map((option) => ({
+        id: option.value,
+        label: t(FREQUENCY_LABEL_KEYS[option.value] ?? option.label),
+      }));
   }, [includePeriodOptions]);
+
+  const dayOptions = useMemo(
+    () =>
+      DAY_OPTIONS.map((option) => ({
+        id: option.value,
+        label: option.label,
+      })),
+    []
+  );
+
+  const dateOptions = useMemo(
+    () =>
+      DAY_IN_MONTH_OPTIONS.map((option) => ({
+        id: option.value,
+        label: option.label,
+      })),
+    []
+  );
+
+  const minuteOptions = useMemo(
+    () =>
+      Array.from({ length: 60 }, (_, i) => ({
+        id: i.toString(),
+        label: i.toString().padStart(2, '0'),
+      })),
+    []
+  );
+
+  const timeValue = useMemo<TimePickerValue>(() => {
+    const hour = Number(state.hour);
+    const minute = Number(state.min);
+
+    return {
+      hour: isNaN(hour) ? 0 : hour,
+      minute: isNaN(minute) ? 0 : minute,
+    };
+  }, [state.hour, state.min]);
+
+  const [cronHumanText, setCronHumanText] = useState<string>('');
+
+  useEffect(() => {
+    if (!cronString) {
+      setCronHumanText('');
+
+      return;
+    }
+    let cancelled = false;
+    import('cronstrue/i18n').then((m) => {
+      if (!cancelled) {
+        setCronHumanText(
+          m.default.toString(cronString, {
+            use24HourTimeFormat: false,
+            verbose: true,
+            locale: getCurrentLocaleForConstrue(),
+            throwExceptionOnParseError: false,
+          })
+        );
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cronString]);
 
   const cronExpressionCard = useMemo(() => {
     const cronStringValue = cronString
       ? t('label.entity-scheduled-to-run-value', {
           entity: entity ?? t('label.ingestion'),
-          value: cronstrue.toString(cronString, {
-            use24HourTimeFormat: false,
-            verbose: true,
-            locale: getCurrentLocaleForConstrue(),
-            throwExceptionOnParseError: false,
-          }),
+          value: cronHumanText,
         })
       : t('message.pipeline-will-trigger-manually');
 
     return (
-      <Card className="cron-expression-card">
-        <div className="cron-expression-card-icon">
-          <InfoCircleOutlined />
-        </div>
-        <Typography.Text className="expression-text">
+      <Card className="cron-expression-card tw:bg-secondary" size="sm">
+        <Clock className="cron-expression-card-icon" />
+        <Typography className="expression-text" size="text-sm">
           {cronStringValue}
-        </Typography.Text>
+        </Typography>
       </Card>
     );
-  }, [cronString, entity]);
+  }, [cronString, cronHumanText, entity, t]);
 
   // Update internal state when external value changes
   useEffect(() => {
@@ -219,147 +278,153 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
   return (
     <div className="schedule-interval-v1">
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <SelectionCardGroup
+      <Grid gap="4">
+        <Grid.Item span={24}>
+          <ScheduleSelectionCards
+            disabled={disabled}
             options={SCHEDULE_OPTIONS}
             value={selectedSchedular}
             onChange={(value) =>
-              !disabled && handleSelectedSchedular(value as SchedularOptions)
+              handleSelectedSchedular(value as SchedularOptions)
             }
           />
-        </Col>
+        </Grid.Item>
         {selectedSchedular === SchedularOptions.SCHEDULE && (
-          <Col span={24}>
-            <Row data-testid="cron-container" gutter={[16, 16]}>
-              <Col data-testid="time-dropdown-container" span={12}>
-                <label>{t('label.every')}</label>
-                <Select
-                  className="w-full m-t-xs"
-                  data-testid="cron-type"
-                  disabled={disabled}
-                  getPopupContainer={getPopupContainer}
-                  options={filteredPeriodOptions.map(
-                    ({ label, value: optionValue }) => ({
-                      label,
-                      value: optionValue,
-                    })
-                  )}
-                  value={selectedPeriod}
-                  onChange={(selectedPeriodValue) =>
-                    handleStateChange({ selectedPeriod: selectedPeriodValue })
-                  }
-                />
-              </Col>
+          <Grid.Item span={24}>
+            <div
+              className="schedule-interval-v1-fields"
+              data-testid="cron-container">
+              <div
+                className="frequency-field"
+                data-testid="frequency-container">
+                <label>{t('label.frequency')}</label>
+                <div className="frequency-button-group m-t-xs">
+                  {frequencyOptions.map((option) => (
+                    <Button
+                      className={
+                        selectedPeriod === option.id
+                          ? SELECTED_FREQUENCY_CLASS
+                          : undefined
+                      }
+                      color="secondary"
+                      data-testid={`frequency-${option.id}`}
+                      isDisabled={disabled}
+                      key={option.id}
+                      size="sm"
+                      onPress={() =>
+                        handleStateChange({ selectedPeriod: option.id })
+                      }>
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
 
-              {selectedPeriod === 'custom' && (
-                <Col span={12}>
-                  <label>{t('label.cron')}</label>
-                  <Input
-                    className="m-t-xs"
-                    disabled={disabled}
-                    placeholder={t('label.please-enter-value', {
-                      name: t('label.cron'),
-                    })}
-                    value={state.cron}
-                    onChange={(e) => {
-                      const cronValue = e.target.value;
-                      setState((prev) => ({ ...prev, cron: cronValue }));
-                      onChange?.(cronValue);
-                    }}
-                  />
-                </Col>
-              )}
+              <Grid gap="4">
+                {showWeekSelect && (
+                  <Grid.Item span={8}>
+                    <label>{t('label.day')}</label>
+                    <Select
+                      aria-label={t('label.day')}
+                      className="w-full m-t-xs"
+                      data-testid="day-options"
+                      isDisabled={disabled}
+                      items={dayOptions}
+                      selectedKey={dow ?? null}
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ dow: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
 
-              {showHourSelect && (
-                <Col span={hourCol}>
-                  <label>{t('label.hour')}</label>
-                  <Select
-                    className="w-full m-t-xs"
-                    disabled={disabled}
-                    getPopupContainer={getPopupContainer}
-                    options={Array.from({ length: 24 }, (_, i) => ({
-                      label: i.toString().padStart(2, '0'),
-                      value: i,
-                    }))}
-                    value={state.hour}
-                    onChange={(hour) => handleStateChange({ hour })}
-                  />
-                </Col>
-              )}
+                {showMonthSelect && (
+                  <Grid.Item span={8}>
+                    <label>{t('label.date')}</label>
+                    <Select
+                      aria-label={t('label.date')}
+                      className="w-full m-t-xs"
+                      data-testid="date-options"
+                      isDisabled={disabled}
+                      items={dateOptions}
+                      selectedKey={dom ?? null}
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ dom: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
 
-              {showMinuteSelect && (
-                <Col span={minuteCol}>
-                  <label>{t('label.minute')}</label>
-                  <Select
-                    className="w-full m-t-xs"
-                    disabled={disabled}
-                    getPopupContainer={getPopupContainer}
-                    options={Array.from({ length: 60 }, (_, i) => ({
-                      label: i.toString().padStart(2, '0'),
-                      value: i,
-                    }))}
-                    value={state.min}
-                    onChange={(min) => handleStateChange({ min })}
-                  />
-                </Col>
-              )}
+                {showTimePicker && (
+                  <Grid.Item span={8}>
+                    <label>{t('label.time')}</label>
+                    <TimePicker
+                      aria-label={t('label.time')}
+                      className="m-t-xs"
+                      data-testid="time-picker"
+                      isDisabled={disabled}
+                      value={timeValue}
+                      onChange={(time: TimePickerValue | null) => {
+                        if (time !== null) {
+                          handleStateChange({
+                            hour: String(time.hour),
+                            min: String(time.minute),
+                          });
+                        }
+                      }}
+                    />
+                  </Grid.Item>
+                )}
 
-              {showWeekSelect && (
-                <Col span={weekCol}>
-                  <label>{t('label.day')}</label>
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex gap-2 m-t-xs"
-                    disabled={disabled}
-                    value={dow}
-                    onChange={(e) =>
-                      handleStateChange({ dow: e.target.value })
-                    }>
-                    {DAY_OPTIONS.map(({ label, value: optionValue }) => (
-                      <Radio.Button
-                        className="week-selector-buttons"
-                        disabled={disabled}
-                        key={`${label}-${optionValue}`}
-                        value={optionValue}>
-                        {label[0]}
-                      </Radio.Button>
-                    ))}
-                  </Radio.Group>
-                </Col>
-              )}
-
-              {showMonthSelect && (
-                <Col span={monthCol}>
-                  <label>{t('label.date')}</label>
-                  <Radio.Group
-                    buttonStyle="solid"
-                    className="d-flex flex-wrap gap-2 m-t-xs"
-                    disabled={disabled}
-                    value={dom}
-                    onChange={(e) =>
-                      handleStateChange({ dom: e.target.value })
-                    }>
-                    {DAY_IN_MONTH_OPTIONS.map(
-                      ({ label, value: optionValue }) => (
-                        <Radio.Button
-                          className="week-selector-buttons"
-                          disabled={disabled}
-                          key={`day-${label}-${optionValue}`}
-                          value={optionValue}>
-                          {label}
-                        </Radio.Button>
-                      )
-                    )}
-                  </Radio.Group>
-                </Col>
-              )}
-            </Row>
-          </Col>
+                {showMinuteOnly && (
+                  <Grid.Item span={8}>
+                    <label>{t('label.minute')}</label>
+                    <Select
+                      aria-label={t('label.minute')}
+                      className="w-full m-t-xs"
+                      data-testid="minute-options"
+                      isDisabled={disabled}
+                      items={minuteOptions}
+                      selectedKey={
+                        state.min === undefined ? null : String(state.min)
+                      }
+                      onSelectionChange={(key: Key | null) =>
+                        key !== null && handleStateChange({ min: String(key) })
+                      }>
+                      {(item) => (
+                        <Select.Item
+                          id={item.id}
+                          key={item.id}
+                          textValue={item.label}>
+                          {item.label}
+                        </Select.Item>
+                      )}
+                    </Select>
+                  </Grid.Item>
+                )}
+              </Grid>
+            </div>
+          </Grid.Item>
         )}
 
-        <Col span={24}>{cronExpressionCard}</Col>
-      </Row>
+        <Grid.Item span={24}>{cronExpressionCard}</Grid.Item>
+      </Grid>
     </div>
   );
 };

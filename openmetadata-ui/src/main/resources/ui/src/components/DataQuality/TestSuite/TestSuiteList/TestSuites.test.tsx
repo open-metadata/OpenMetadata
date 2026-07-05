@@ -60,7 +60,8 @@ const mockList = {
 };
 
 jest.mock('@openmetadata/ui-core-components', () => {
-  const SortContext = require('react').createContext<{
+  const React = require('react') as typeof import('react');
+  const SortContext = React.createContext<{
     sortDescriptor?: { column?: string; direction?: string };
     onSortChange?: (desc: {
       column?: string;
@@ -77,14 +78,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     id?: string;
     allowsSorting?: boolean;
   }) => {
-    const { onSortChange, sortDescriptor } =
-      require('react').useContext(SortContext);
+    const { onSortChange, sortDescriptor } = React.useContext(SortContext);
     const handleClick = () => {
       if (!allowsSorting || !onSortChange) {
         return;
       }
       const currentDir =
-        sortDescriptor?.column === id ? sortDescriptor.direction : undefined;
+        sortDescriptor?.column === id ? sortDescriptor?.direction : undefined;
       const newDir = currentDir === 'ascending' ? 'descending' : 'ascending';
       onSortChange({ column: id, direction: newDir });
     };
@@ -109,12 +109,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }) => void;
     sortDescriptor?: { column?: string; direction?: string };
     [key: string]: unknown;
-  }>) => (
-    <SortContext.Provider value={{ sortDescriptor, onSortChange }}>
-      <table data-testid={testId}>{children}</table>
-    </SortContext.Provider>
-  );
+  }>) => {
+    const value = { sortDescriptor, onSortChange };
 
+    return (
+      <SortContext.Provider value={value}>
+        <table data-testid={testId}>{children}</table>
+      </SortContext.Provider>
+    );
+  };
   MockTable.Header = ({
     columns,
     children,
@@ -158,60 +161,84 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <td className={className}>{children}</td>
   );
 
-  const MockButtonGroup = ({
+  const cloneWith = (children: React.ReactNode, props: object) =>
+    React.Children.map(children, (child: React.ReactNode) =>
+      React.isValidElement(child) ? React.cloneElement(child, props) : child
+    );
+
+  const MockTabs = ({
     children,
     onSelectionChange,
-    selectedKeys,
+    selectedKey,
   }: React.PropsWithChildren<{
-    onSelectionChange?: (keys: Set<string | number>) => void;
-    selectedKeys?: Iterable<string | number>;
-    disallowEmptySelection?: boolean;
+    onSelectionChange?: (key: string | number) => void;
+    selectedKey?: string | number;
   }>) => (
-    <div
-      data-selected-keys={[...(selectedKeys ?? [])].join(',')}
-      data-testid="button-group">
-      {require('react').Children.map(children, (child) => {
-        if (!require('react').isValidElement(child)) {
-          return child;
-        }
-
-        return require('react').cloneElement(
-          child as React.ReactElement<{
-            id?: string;
-            onClick?: () => void;
-          }>,
-          {
-            onClick: () => {
-              const id = (child as React.ReactElement<{ id?: string }>).props
-                .id;
-              if (id !== undefined) {
-                onSelectionChange?.(new Set([id]));
-              }
-            },
-          }
-        );
-      })}
+    <div data-selected-key={selectedKey} data-testid="sub-tabs">
+      {cloneWith(children, { onSelectionChange })}
     </div>
   );
-
-  const MockButtonGroupItem = ({
+  MockTabs.List = ({
+    children,
+    onSelectionChange,
+  }: React.PropsWithChildren<{
+    onSelectionChange?: (key: string | number) => void;
+  }>) => (
+    <div data-testid="sub-tabs-list">
+      {cloneWith(children, { onSelectionChange })}
+    </div>
+  );
+  MockTabs.Item = ({
     children,
     id,
     'data-testid': testId,
-    onClick,
+    onSelectionChange,
   }: React.PropsWithChildren<{
     id?: string;
     'data-testid'?: string;
-    onClick?: () => void;
+    onSelectionChange?: (key: string | number) => void;
   }>) => (
-    <button data-id={id} data-testid={testId} onClick={onClick}>
+    <button
+      data-id={id}
+      data-testid={testId}
+      onClick={() => id !== undefined && onSelectionChange?.(id)}>
       {children}
     </button>
   );
 
+  const MockBox = ({
+    children,
+    className,
+    'data-testid': testId,
+  }: React.PropsWithChildren<{
+    className?: string;
+    'data-testid'?: string;
+  }>) => (
+    <div className={className} data-testid={testId}>
+      {children}
+    </div>
+  );
+
+  const MockInput = ({
+    placeholder,
+    value,
+    onChange,
+  }: {
+    placeholder?: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <input
+      placeholder={placeholder}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  );
+
   return {
-    ButtonGroup: MockButtonGroup,
-    ButtonGroupItem: MockButtonGroupItem,
+    Box: MockBox,
+    Input: MockInput,
+    Tabs: MockTabs,
     Table: MockTable,
   };
 });
@@ -299,9 +326,8 @@ jest.mock(
   })
 );
 
-jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div>SearchBar.component</div>),
+jest.mock('@untitledui/icons', () => ({
+  SearchLg: () => <span data-testid="search-icon" />,
 }));
 
 jest.mock('../../SummaryPannel/PieChartSummaryPanel.component', () => ({
@@ -369,7 +395,9 @@ describe('TestSuites component', () => {
     expect(
       await screen.findByTestId('owner-select-filter')
     ).toBeInTheDocument();
-    expect(await screen.findByText('SearchBar.component')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('searchbar-component')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('SummaryPanel.component')
     ).toBeInTheDocument();
@@ -428,10 +456,10 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should render ButtonGroup with table and bundle suite options', async () => {
+  it('should render the sub-tab toggle with table and bundle suite options', async () => {
     render(<TestSuites />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByTestId('button-group')).toBeInTheDocument();
+    expect(await screen.findByTestId('sub-tabs')).toBeInTheDocument();
     expect(
       await screen.findByTestId('table-suite-radio-btn')
     ).toBeInTheDocument();

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
-import 'react-data-grid/lib/styles.css';
+import type { ColumnOrColumnGroup } from 'react-data-grid';
+import { LazyDataGrid } from '../../DataGrid/LazyDataGrid';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
 const TableTypePropertyEditTable = ({
@@ -26,7 +26,7 @@ const TableTypePropertyEditTable = ({
   return useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
-        <DataGrid
+        <LazyDataGrid
           className="rdg-light"
           columns={
             columns as unknown as ColumnOrColumnGroup<

@@ -43,6 +43,11 @@ export interface GlossaryTerm {
      */
     deleted?: boolean;
     /**
+     * Derived: the context memory from which the Memory Agent created this glossary term
+     * (DERIVED_FROM edge, read-only projection).
+     */
+    derivedFrom?: EntityReference;
+    /**
      * Description of the glossary term.
      */
     description: string;
@@ -92,6 +97,13 @@ export interface GlossaryTerm {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Canonical IRI of this term in its source ontology (e.g.,
+     * `http://example.com/ontology/hcp#HealthcareProvider`). Preserves identity across ontology
+     * import/export round-trips and is used as the RDF subject when present. Empty for terms
+     * not sourced from an external ontology.
+     */
+    iri?: string;
     /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When
@@ -240,6 +252,9 @@ export interface FieldChange {
  * the relationship of a table `belongs to a` database.
  *
  * Reference to the data contract for this entity.
+ *
+ * Derived: the context memory from which the Memory Agent created this glossary term
+ * (DERIVED_FROM edge, read-only projection).
  *
  * Glossary that this term belongs to.
  *

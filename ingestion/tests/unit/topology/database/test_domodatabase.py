@@ -234,7 +234,7 @@ class DomoDatabaseUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
-    @patch("pydomo.Domo")
+    @patch("metadata.ingestion.source.database.domodatabase.connection.Domo")
     def __init__(
         self,
         methodName,  # noqa: N803

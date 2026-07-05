@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import brandClassBase from '../utils/BrandData/BrandClassBase';
-
 export const PAGE_HEADERS = {
   ADVANCE_SEARCH: {
     header: 'label.advanced-search',
@@ -190,14 +188,8 @@ export const PAGE_HEADERS = {
   },
   APPLICATION: {
     header: 'label.extend-open-meta-data',
-    headerParams: { brandName: brandClassBase.getPageTitle() },
+    headerParams: {},
     subHeader: 'message.application-to-improve-data',
-  },
-  CUSTOM_PAGE: {
-    header: 'label.customize-entity',
-    headerParams: { entity: 'label.landing-page' },
-    subHeader: 'message.page-sub-header-for-customize-landing-page',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
   },
   INCIDENT_MANAGER: {
     header: 'label.incident-manager',
@@ -206,7 +198,7 @@ export const PAGE_HEADERS = {
   SETTING: {
     header: 'label.setting-plural',
     subHeader: 'message.page-sub-header-for-setting',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
+    subHeaderParams: {},
   },
   LOGIN_CONFIGURATION: {
     header: 'label.login',
@@ -220,15 +212,19 @@ export const PAGE_HEADERS = {
     header: 'label.search',
     subHeader: 'message.page-sub-header-for-search-setting',
   },
+  SEARCH_INDEX_MAPPINGS: {
+    header: 'label.search-mapping-plural',
+    subHeader: 'message.page-sub-header-for-search-index-mappings',
+  },
   LINEAGE_CONFIG: {
     header: 'label.lineage-config',
     subHeader: 'message.page-sub-header-for-lineage-config-setting',
   },
   OM_URL_CONFIG: {
     header: 'label.entity-configuration',
-    headerParams: { entity: 'label.open-metadata-url' },
+    headerParams: { entity: 'label.brand-name-url' },
     subHeader: 'message.om-url-configuration-message',
-    subHeaderParams: { brandName: brandClassBase.getPageTitle() },
+    subHeaderParams: {},
   },
   OM_HEALTH: {
     header: 'label.health-check',

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -33,43 +34,48 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
-import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
-  getDataModelByFqn,
   patchDataModelDetails,
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
 import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+  dashboardDataModelQueryFn,
+  dashboardDataModelQueryKey,
+} from '../../rest/queries/dashboardDataModelQuery';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getTierTags } from '../../utils/TableUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+const DATA_MODEL_FIELDS = [
+  TabSpecificField.OWNERS,
+  TabSpecificField.TAGS,
+  TabSpecificField.FOLLOWERS,
+  TabSpecificField.VOTES,
+  TabSpecificField.DOMAINS,
+  TabSpecificField.DATA_PRODUCTS,
+  TabSpecificField.EXTENSION,
+].join(',');
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const queryClient = useQueryClient();
 
   const { entityFqn: dashboardDataModelFQN } = useFqn({
     type: EntityType.DASHBOARD_DATA_MODEL,
   });
 
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [hasError, setHasError] = useState<boolean>(false);
+  const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true);
   const [dataModelPermissions, setDataModelPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [dataModelData, setDataModelData] = useState<DashboardDataModel>(
-    {} as DashboardDataModel
-  );
 
   const { hasViewPermission } = useMemo(() => {
     return {
@@ -78,21 +84,91 @@ const DataModelsPage = () => {
     };
   }, [dataModelPermissions]);
 
-  const { isUserFollowing } = useMemo(() => {
-    return {
-      tier: getTierTags(dataModelData?.tags ?? []),
-      isUserFollowing: dataModelData?.followers?.some(
-        ({ id }: { id: string }) => id === currentUser?.id
-      ),
-    };
-  }, [dataModelData, currentUser]);
+  const dataModelCacheKey = useMemo(
+    () => dashboardDataModelQueryKey(dashboardDataModelFQN, DATA_MODEL_FIELDS),
+    [dashboardDataModelFQN]
+  );
 
-  const fetchResourcePermission = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
+  const {
+    data: dataModelData,
+    isLoading: dataModelLoading,
+    error: dataModelError,
+  } = useQuery({
+    queryKey: dataModelCacheKey,
+    queryFn: dashboardDataModelQueryFn(
+      dashboardDataModelFQN,
+      DATA_MODEL_FIELDS
+    ),
+    enabled: Boolean(
+      dashboardDataModelFQN && hasViewPermission && !permissionsLoading
+    ),
+  });
+
+  const isError = useMemo(
+    () => (dataModelError as AxiosError | undefined)?.response?.status === 404,
+    [dataModelError]
+  );
+
+  useEffect(() => {
+    const status = (dataModelError as AxiosError | undefined)?.response?.status;
+    if (status === ClientErrors.FORBIDDEN) {
+      navigate(ROUTES.FORBIDDEN, { replace: true });
+    } else if (dataModelError && status !== 404) {
+      showErrorToast(dataModelError as AxiosError);
+    }
+  }, [dataModelError, navigate]);
+
+  useEffect(() => {
+    if (!dataModelData) {
+      return;
+    }
+    addToRecentViewed({
+      displayName: getEntityName(dataModelData),
+      entityType: EntityType.DASHBOARD_DATA_MODEL,
+      fqn: dataModelData.fullyQualifiedName ?? '',
+      serviceType: dataModelData.serviceType,
+      timestamp: 0,
+      id: dataModelData.id,
+    });
+  }, [dataModelData]);
+
+  const setDataModelData = useCallback(
+    (
+      updater:
+        | DashboardDataModel
+        | undefined
+        | ((
+            prev: DashboardDataModel | undefined
+          ) => DashboardDataModel | undefined)
+    ) => {
+      queryClient.setQueryData<DashboardDataModel | undefined>(
+        dataModelCacheKey,
+        updater
+      );
+    },
+    [queryClient, dataModelCacheKey]
+  );
+
+  const refetchDataModelDetails = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: dataModelCacheKey }),
+    [queryClient, dataModelCacheKey]
+  );
+
+  const isUserFollowing = useMemo(
+    () =>
+      dataModelData?.followers?.some(
+        ({ id }: { id: string }) => id === currentUser?.id
+      ) ?? false,
+    [dataModelData?.followers, currentUser?.id]
+  );
+
+  // See DashboardDetailsPage for the rationale on NOT using useCallback here.
+  const fetchResourcePermission = async (entityFqn: string) => {
+    setPermissionsLoading(true);
     try {
       const entityPermission = await getEntityPermissionByFqn(
         ResourceEntity.DASHBOARD_DATA_MODEL,
-        dashboardDataModelFQN
+        entityFqn
       );
       setDataModelPermissions(entityPermission);
     } catch {
@@ -102,72 +178,90 @@ const DataModelsPage = () => {
         })
       );
     } finally {
-      setIsLoading(false);
+      setPermissionsLoading(false);
     }
   };
 
-  const fetchDataModelDetails = async (dashboardDataModelFQN: string) => {
-    setIsLoading(true);
-    try {
-      const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        // eslint-disable-next-line max-len
-        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
-        include: Include.All,
-      });
-      setDataModelData(response);
+  const handleUpdateDataModelData = useCallback(
+    (updatedData: DashboardDataModel) => {
+      const jsonPatch = compare(
+        omitBy(dataModelData ?? {}, isUndefined),
+        updatedData
+      );
 
-      addToRecentViewed({
-        displayName: getEntityName(response),
-        entityType: EntityType.DASHBOARD_DATA_MODEL,
-        fqn: response.fullyQualifiedName ?? '',
-        serviceType: response.serviceType,
-        timestamp: 0,
-        id: response.id,
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setHasError(true);
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN);
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return patchDataModelDetails(dataModelData?.id ?? '', jsonPatch);
+    },
+    [dataModelData]
+  );
 
-  const handleUpdateDataModelData = (updatedData: DashboardDataModel) => {
-    const jsonPatch = compare(omitBy(dataModelData, isUndefined), updatedData);
-
-    return patchDataModelDetails(dataModelData?.id ?? '', jsonPatch);
-  };
-
-  const handleFollowDataModel = async () => {
-    const followerId = currentUser?.id ?? '';
-    const dataModelId = dataModelData?.id ?? '';
-    try {
+  const followMutation = useMutation<
+    void,
+    AxiosError,
+    void,
+    { previous: DashboardDataModel | undefined }
+  >({
+    mutationFn: async () => {
+      const dataModelId = dataModelData?.id ?? '';
+      const followerId = currentUser?.id ?? '';
       if (isUserFollowing) {
-        const response = await removeDataModelFollower(dataModelId, followerId);
-        const { oldValue } = response.changeDescription.fieldsDeleted[0];
-
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          followers: (dataModelData?.followers || []).filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
+        await removeDataModelFollower(dataModelId, followerId);
       } else {
-        const response = await addDataModelFollower(dataModelId, followerId);
-        const { newValue } = response.changeDescription.fieldsAdded[0];
-
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          followers: [...(dataModelData?.followers ?? []), ...newValue],
-        }));
+        await addDataModelFollower(dataModelId, followerId);
       }
-    } catch (error) {
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: dataModelCacheKey });
+      const previous = queryClient.getQueryData<DashboardDataModel | undefined>(
+        dataModelCacheKey
+      );
+      const followerId = currentUser?.id ?? '';
+      queryClient.setQueryData<DashboardDataModel | undefined>(
+        dataModelCacheKey,
+        (prev) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentFollowers = prev.followers ?? [];
+          if (isUserFollowing) {
+            return {
+              ...prev,
+              followers: currentFollowers.filter(({ id }) => id !== followerId),
+            };
+          }
+
+          return {
+            ...prev,
+            followers: [
+              ...currentFollowers,
+              { id: followerId, type: 'user' },
+            ] as DashboardDataModel['followers'],
+          };
+        }
+      );
+
+      return { previous };
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData<DashboardDataModel | undefined>(
+          dataModelCacheKey,
+          context.previous
+        );
+      }
       showErrorToast(error as AxiosError);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: dataModelCacheKey });
+    },
+  });
+
+  const handleFollowDataModel = useCallback(async () => {
+    try {
+      await followMutation.mutateAsync();
+    } catch {
+      // Errors surfaced via mutation onError handler — swallow rethrow.
     }
-  };
+  }, [followMutation]);
 
   const handleUpdateOwner = useCallback(
     async (updatedOwners?: DashboardDataModel['owners']) => {
@@ -177,118 +271,125 @@ const DataModelsPage = () => {
           owners: updatedOwners,
         });
 
-        setDataModelData((prev) => ({
-          ...(prev as DashboardDataModel),
-          owners: newOwners,
-          version,
-        }));
+        setDataModelData((prev) => {
+          if (!prev) {
+            return prev;
+          }
+
+          return {
+            ...prev,
+            owners: newOwners,
+            version,
+          };
+        });
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [dataModelData, dataModelData?.owners]
+    [dataModelData, handleUpdateDataModelData, setDataModelData]
   );
 
-  const handleUpdateTier = async (updatedTier?: Tag) => {
-    try {
-      const tags = updateTierTag(dataModelData?.tags ?? [], updatedTier);
-      const { tags: newTags, version } = await handleUpdateDataModelData({
-        ...(dataModelData as DashboardDataModel),
-        tags,
-      });
+  const handleUpdateTier = useCallback(
+    async (updatedTier?: Tag) => {
+      try {
+        const tags = updateTierTag(dataModelData?.tags ?? [], updatedTier);
+        const { tags: newTags, version } = await handleUpdateDataModelData({
+          ...(dataModelData as DashboardDataModel),
+          tags,
+        });
 
-      setDataModelData((prev) => ({
-        ...(prev as DashboardDataModel),
-        tags: newTags,
-        version,
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+        setDataModelData((prev) => {
+          if (!prev) {
+            return prev;
+          }
 
-  const handleUpdateDataModel = async (
-    updatedDataModel: DashboardDataModel,
-    key?: keyof DashboardDataModel
-  ) => {
-    try {
-      const response = await handleUpdateDataModelData(updatedDataModel);
-
-      setDataModelData(() => ({
-        ...response,
-        ...(key && { [key]: response[key] }),
-      }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleToggleDelete = (version?: number) => {
-    setDataModelData((prev) => {
-      if (!prev) {
-        return prev;
+          return {
+            ...prev,
+            tags: newTags,
+            version,
+          };
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
       }
+    },
+    [dataModelData, handleUpdateDataModelData, setDataModelData]
+  );
 
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-  };
+  const handleUpdateDataModel = useCallback(
+    async (
+      updatedDataModel: DashboardDataModel,
+      key?: keyof DashboardDataModel
+    ) => {
+      try {
+        const response = await handleUpdateDataModelData(updatedDataModel);
 
-  const updateVote = async (data: QueryVote, id: string) => {
-    try {
-      await updateDataModelVotes(id, data);
-      const details = await getDataModelByFqn(
-        dashboardDataModelFQN,
+        setDataModelData((prev) => {
+          if (!prev) {
+            return response;
+          }
 
-        {
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.FOLLOWERS,
-            TabSpecificField.VOTES,
-            TabSpecificField.DOMAINS,
-            TabSpecificField.DATA_PRODUCTS,
-          ],
-          include: Include.All,
+          return {
+            ...response,
+            ...(key && { [key]: response[key] }),
+          };
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [handleUpdateDataModelData, setDataModelData]
+  );
+
+  const handleToggleDelete = useCallback(
+    (version?: number) => {
+      setDataModelData((prev) => {
+        if (!prev) {
+          return prev;
         }
-      );
-      setDataModelData(details);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+
+        return {
+          ...prev,
+          deleted: !prev?.deleted,
+          ...(version ? { version } : {}),
+        };
+      });
+    },
+    [setDataModelData]
+  );
+
+  const updateVote = useCallback(
+    async (data: QueryVote, id: string) => {
+      try {
+        await updateDataModelVotes(id, data);
+        await queryClient.invalidateQueries({ queryKey: dataModelCacheKey });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [queryClient, dataModelCacheKey]
+  );
 
   const updateDataModelDetailsState = useCallback(
     (data: DataAssetWithDomains) => {
       const updatedData = data as DashboardDataModel;
-
-      setDataModelData((data) => ({
-        ...(updatedData ?? data),
+      setDataModelData((prev) => ({
+        ...(updatedData ?? prev),
         version: updatedData.version,
       }));
     },
-    []
+    [setDataModelData]
   );
-
-  useEffect(() => {
-    if (hasViewPermission) {
-      fetchDataModelDetails(dashboardDataModelFQN);
-    }
-  }, [dashboardDataModelFQN, dataModelPermissions]);
 
   useEffect(() => {
     fetchResourcePermission(dashboardDataModelFQN);
   }, [dashboardDataModelFQN]);
 
-  // Rendering
-  if (isLoading) {
+  if (permissionsLoading || dataModelLoading) {
     return <Loader />;
   }
 
-  if (hasError) {
+  if (isError) {
     return (
       <ErrorPlaceHolder>
         {getEntityMissingError(t('label.data-model'), dashboardDataModelFQN)}
@@ -296,7 +397,7 @@ const DataModelsPage = () => {
     );
   }
 
-  if (!hasViewPermission && !isLoading) {
+  if (!dataModelPermissions.ViewAll && !dataModelPermissions.ViewBasic) {
     return (
       <ErrorPlaceHolder
         className="border-none"
@@ -308,11 +409,15 @@ const DataModelsPage = () => {
     );
   }
 
+  if (!dataModelData) {
+    return <Loader />;
+  }
+
   return (
     <DataModelDetails
       dataModelData={dataModelData}
       dataModelPermissions={dataModelPermissions}
-      fetchDataModel={() => fetchDataModelDetails(dashboardDataModelFQN)}
+      fetchDataModel={refetchDataModelDetails}
       handleFollowDataModel={handleFollowDataModel}
       handleToggleDelete={handleToggleDelete}
       handleUpdateOwner={handleUpdateOwner}

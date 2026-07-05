@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Input, Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Col, Form, Input } from 'antd';
 import { isEmpty, isUndefined, omit, trim } from 'lodash';
-import { useMemo, useState } from 'react';
+import {
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
 import {
@@ -31,398 +38,440 @@ import {
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
-import { IngestionWorkflowData } from '../../../../interface/service.interface';
+import {
+  IngestionWorkflowData,
+  IngestionWorkflowFormHandle,
+} from '../../../../interface/service.interface';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import {
-  getDefaultFilterPropertyValues,
-  getSuccessMessage,
-} from '../../../../utils/IngestionUtils';
+import { getDefaultFilterPropertyValues } from '../../../../utils/IngestionConfigUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
-import {
-  getRaiseOnErrorFormField,
-  getScheduleOptionsFromSchedules,
-} from '../../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { generateUUID } from '../../../../utils/StringsUtils';
+import { getRaiseOnErrorFormField } from '../../../../utils/SchedularUtils';
+import { getIngestionName } from '../../../../utils/ServicePureUtils';
+import { generateUUID } from '../../../../utils/StringUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
-import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
+import ServiceFlowStepper from '../AddService/ServiceFlowStepper/ServiceFlowStepper';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
-import { AddIngestionProps } from './IngestionWorkflow.interface';
+import IngestionNameCard from './IngestionNameCard/IngestionNameCard';
+import {
+  AddIngestionHandle,
+  AddIngestionProps,
+} from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
 import {
   IngestionExtraConfig,
+  ScheduleIntervalHandle,
   WorkflowExtraConfig,
 } from './Steps/ScheduleInterval.interface';
 
-const AddIngestion = ({
-  activeIngestionStep,
-  data,
-  handleCancelClick,
-  handleViewServiceClick,
-  heading,
-  ingestionAction = '',
-  ingestionProgress = 0,
-  isIngestionCreated = false,
-  isIngestionDeployed = false,
-  onAddIngestionSave,
-  onIngestionDeploy,
-  onSuccessSave,
-  onUpdateIngestion,
-  pipelineType,
-  serviceCategory,
-  serviceData,
-  setActiveIngestionStep,
-  showDeployButton,
-  showSuccessScreen = true,
-  status,
-  onFocus,
-}: AddIngestionProps) => {
-  const { t } = useTranslation();
-  const { ingestionFQN } = useFqn();
-  const { currentUser } = useApplicationStore();
-  const { config: limitConfig } = useLimitStore();
+const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
+  function AddIngestion(
+    {
+      activeIngestionStep,
+      data,
+      handleCancelClick,
+      handleViewServiceClick,
+      heading,
+      hideFooter = false,
+      ingestionAction = '',
+      ingestionProgress = 0,
+      isIngestionCreated = false,
+      isIngestionDeployed = false,
+      onAddIngestionSave,
+      onIngestionDeploy,
+      onSuccessSave,
+      onUpdateIngestion,
+      pipelineType,
+      serviceCategory,
+      serviceData,
+      setActiveIngestionStep,
+      showDeployButton,
+      showSuccessScreen = true,
+      status,
+      onFocus,
+    }: Readonly<AddIngestionProps>,
+    ref
+  ) {
+    const workflowFormRef = useRef<IngestionWorkflowFormHandle>(null);
+    const scheduleIntervalRef = useRef<ScheduleIntervalHandle>(null);
+    const { t } = useTranslation();
+    const { ingestionFQN } = useFqn();
+    const { currentUser } = useApplicationStore();
+    const { config: limitConfig } = useLimitStore();
 
-  const isEditMode = !isEmpty(ingestionFQN);
+    const isEditMode = !isEmpty(ingestionFQN);
 
-  const { pipelineSchedules } =
-    limitConfig?.limits?.config.featureLimits.find(
-      (limit) => limit.name === 'ingestionPipeline'
-    ) ?? {};
+    const { pipelineSchedules } =
+      limitConfig?.limits?.config.featureLimits.find(
+        (limit) => limit.name === 'ingestionPipeline'
+      ) ?? {};
 
-  const periodOptions = pipelineSchedules
-    ? getScheduleOptionsFromSchedules(pipelineSchedules)
-    : undefined;
+    const periodOptions = pipelineSchedules
+      ? getScheduleOptionsFromSchedules(pipelineSchedules)
+      : undefined;
 
-  const filterProperties = useMemo(
-    () =>
-      getDefaultFilterPropertyValues({
-        pipelineType,
-        serviceCategory,
-        ingestionData: data,
-        serviceData,
-        isEditMode,
+    const filterProperties = useMemo(
+      () =>
+        getDefaultFilterPropertyValues({
+          pipelineType,
+          serviceCategory,
+          ingestionData: data,
+          serviceData,
+          isEditMode,
+        }),
+      [pipelineType, serviceCategory, data, serviceData, isEditMode]
+    );
+
+    const translatedSteps = useMemo(
+      () =>
+        STEPS_FOR_ADD_INGESTION.map((step) => ({
+          ...step,
+          name: translateWithNestedKeys(step.name, step.nameData),
+        })),
+      []
+    );
+
+    // lazy initialization to initialize the data only once
+    const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
+      () => ({
+        ...(data?.sourceConfig.config ?? {}),
+        ...filterProperties,
+        name: data?.name ?? generateUUID(),
+        displayName:
+          data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
+        enableDebugLog: data?.loggerLevel === LogLevels.Debug,
+        raiseOnError: data?.raiseOnError ?? true,
+        rootProcessingEngine: data?.processingEngine,
+      })
+    );
+
+    const { ingestionName, retries } = useMemo(
+      () => ({
+        ingestionName:
+          workflowData?.displayName ??
+          getIngestionName(serviceData.name, pipelineType),
+        retries: data?.airflowConfig.retries ?? 0,
       }),
-    [pipelineType, serviceCategory, data, serviceData, isEditMode]
-  );
+      [data, pipelineType, serviceData, workflowData]
+    );
 
-  const translatedSteps = useMemo(
-    () =>
-      STEPS_FOR_ADD_INGESTION.map((step) => ({
-        ...step,
-        name: translateWithNestedKeys(step.name, step.nameData),
-      })),
-    []
-  );
+    const isSettingsPipeline = useMemo(
+      () =>
+        pipelineType === PipelineType.DataInsight ||
+        pipelineType === PipelineType.ElasticSearchReindex,
+      [pipelineType]
+    );
 
-  // lazy initialization to initialize the data only once
-  const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
-    () => ({
-      ...(data?.sourceConfig.config ?? {}),
-      ...filterProperties,
-      name: data?.name ?? generateUUID(),
-      displayName:
-        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
-      enableDebugLog: data?.loggerLevel === LogLevels.Debug,
-      raiseOnError: data?.raiseOnError ?? true,
-      rootProcessingEngine: data?.processingEngine,
-    })
-  );
+    const viewServiceText = useMemo(
+      () =>
+        isSettingsPipeline
+          ? t('label.view-entity', {
+              entity: t('label.pipeline-detail-plural'),
+            })
+          : undefined,
 
-  const { ingestionName, retries } = useMemo(
-    () => ({
-      ingestionName:
-        workflowData?.displayName ??
-        getIngestionName(serviceData.name, pipelineType),
-      retries: data?.airflowConfig.retries ?? 0,
-    }),
-    [data, pipelineType, serviceData, workflowData]
-  );
+      [isSettingsPipeline]
+    );
 
-  const isSettingsPipeline = useMemo(
-    () =>
-      pipelineType === PipelineType.DataInsight ||
-      pipelineType === PipelineType.ElasticSearchReindex,
-    [pipelineType]
-  );
+    const [saveState, setSaveState] = useState<LOADING_STATE>(
+      LOADING_STATE.INITIAL
+    );
+    const [showDeployModal, setShowDeployModal] = useState(false);
 
-  const viewServiceText = useMemo(
-    () =>
-      isSettingsPipeline
-        ? t('label.view-entity', {
-            entity: t('label.pipeline-detail-plural'),
-          })
-        : undefined,
+    const handleDataChange = (data: IngestionWorkflowData) =>
+      setWorkflowData(data);
 
-    [isSettingsPipeline]
-  );
-
-  const [saveState, setSaveState] = useState<LOADING_STATE>(
-    LOADING_STATE.INITIAL
-  );
-  const [showDeployModal, setShowDeployModal] = useState(false);
-
-  const handleDataChange = (data: IngestionWorkflowData) =>
-    setWorkflowData(data);
-
-  const handleNext = (step: number) => {
-    setActiveIngestionStep(step);
-  };
-
-  const handlePrev = (step: number) => {
-    setActiveIngestionStep(step);
-  };
-
-  const handleSubmit = (data: IngestionWorkflowData) => {
-    setWorkflowData(data);
-    handleNext(2);
-  };
-
-  const createNewIngestion = (
-    extraData: WorkflowExtraConfig & IngestionExtraConfig
-  ) => {
-    const {
-      name = '',
-      enableDebugLog,
-      displayName,
-      raiseOnError: _raiseOnError,
-      rootProcessingEngine,
-      ...rest
-    } = workflowData ?? {};
-    const ingestionName = trim(name);
-    setSaveState(LOADING_STATE.WAITING);
-
-    // below setting is required to trigger workflow which schedule with one day or more frequency
-    const date = new Date(Date.now());
-    date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
-    date.setDate(date.getDate() - 1); // subtracting 1 day from current date
-
-    const ingestionDetails: CreateIngestionPipeline = {
-      airflowConfig: {
-        scheduleInterval: extraData.cron,
-        startDate: date,
-        retries: extraData.retries,
-      },
-      raiseOnError: extraData.raiseOnError ?? true,
-      loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
-      name: ingestionName,
-      displayName: displayName,
-      owners: [
-        {
-          id: currentUser?.id ?? '',
-          type: 'user',
-        },
-      ],
-      pipelineType: pipelineType,
-      service: {
-        id: serviceData.id as string,
-        type: serviceCategory.slice(0, -1),
-      },
-      sourceConfig: {
-        // clean the data to remove empty fields
-        config: { ...cleanWorkFlowData(rest) },
-      },
-      processingEngine: rootProcessingEngine,
+    const handleNext = (step: number) => {
+      setActiveIngestionStep(step);
     };
 
-    if (onAddIngestionSave) {
-      setShowDeployModal(true);
-      onAddIngestionSave(ingestionDetails)
-        .then(() => {
-          if (showSuccessScreen) {
-            handleNext(3);
-          } else {
-            onSuccessSave?.();
-          }
-        })
-        .catch(() => {
-          // ignore since error is displayed in toast in the parent promise
-        })
-        .finally(() => {
-          setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
-          setShowDeployModal(false);
-        });
-    }
-  };
+    const handlePrev = (step: number) => {
+      setActiveIngestionStep(step);
+    };
 
-  const updateIngestion = (
-    extraData: WorkflowExtraConfig & IngestionExtraConfig
-  ) => {
-    if (data) {
-      const updatedData: IngestionPipeline = {
-        ...data,
+    const handleSubmit = (data: IngestionWorkflowData) => {
+      setWorkflowData({ ...data, displayName: workflowData?.displayName });
+      handleNext(2);
+    };
+
+    const createNewIngestion = (
+      extraData: WorkflowExtraConfig & IngestionExtraConfig
+    ) => {
+      const {
+        name = '',
+        enableDebugLog,
+        displayName,
+        raiseOnError: _raiseOnError,
+        rootProcessingEngine,
+        ...rest
+      } = workflowData ?? {};
+      const ingestionName = trim(name);
+      setSaveState(LOADING_STATE.WAITING);
+
+      // below setting is required to trigger workflow which schedule with one day or more frequency
+      const date = new Date(Date.now());
+      date.setUTCHours(0, 0, 0, 0); // setting time to 00:00:00
+      date.setDate(date.getDate() - 1); // subtracting 1 day from current date
+
+      const ingestionDetails: CreateIngestionPipeline = {
         airflowConfig: {
-          ...data.airflowConfig,
           scheduleInterval: extraData.cron,
+          startDate: date,
           retries: extraData.retries,
         },
         raiseOnError: extraData.raiseOnError ?? true,
-        displayName: workflowData?.displayName,
-        loggerLevel: workflowData?.enableDebugLog
-          ? LogLevels.Debug
-          : LogLevels.Info,
-        processingEngine: workflowData?.rootProcessingEngine,
-        sourceConfig: {
-          config: {
-            // clean the data to remove empty fields
-            ...cleanWorkFlowData(
-              omit(workflowData, [
-                'name',
-                'enableDebugLog',
-                'displayName',
-                'raiseOnError',
-                'rootProcessingEngine',
-              ]) ?? {}
-            ),
+        loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
+        name: ingestionName,
+        displayName: displayName,
+        owners: [
+          {
+            id: currentUser?.id ?? '',
+            type: 'user',
           },
+        ],
+        pipelineType: pipelineType,
+        service: {
+          id: serviceData.id as string,
+          type: serviceCategory.slice(0, -1),
         },
+        sourceConfig: {
+          // clean the data to remove empty fields
+          config: { ...cleanWorkFlowData(rest) },
+        },
+        processingEngine: rootProcessingEngine,
       };
 
-      if (onUpdateIngestion) {
-        setSaveState(LOADING_STATE.WAITING);
+      if (onAddIngestionSave) {
         setShowDeployModal(true);
-        onUpdateIngestion(updatedData, data, data.id as string, data.name)
+        onAddIngestionSave(ingestionDetails)
           .then(() => {
-            setSaveState(LOADING_STATE.SUCCESS);
             if (showSuccessScreen) {
               handleNext(3);
             } else {
               onSuccessSave?.();
             }
           })
+          .catch(() => {
+            // ignore since error is displayed in toast in the parent promise
+          })
           .finally(() => {
             setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
-            setTimeout(() => setShowDeployModal(false), 500);
+            setShowDeployModal(false);
           });
       }
-    }
-  };
+    };
 
-  const handleDeployClick = () => {
-    setShowDeployModal(true);
-    onIngestionDeploy?.().finally(() => {
-      setTimeout(() => setShowDeployModal(false), 500);
-    });
-  };
+    const updateIngestion = (
+      extraData: WorkflowExtraConfig & IngestionExtraConfig
+    ) => {
+      if (data) {
+        const updatedData: IngestionPipeline = {
+          ...data,
+          airflowConfig: {
+            ...data.airflowConfig,
+            scheduleInterval: extraData.cron,
+            retries: extraData.retries,
+          },
+          raiseOnError: extraData.raiseOnError ?? true,
+          displayName: workflowData?.displayName,
+          loggerLevel: workflowData?.enableDebugLog
+            ? LogLevels.Debug
+            : LogLevels.Info,
+          processingEngine: workflowData?.rootProcessingEngine,
+          sourceConfig: {
+            config: {
+              // clean the data to remove empty fields
+              ...cleanWorkFlowData(
+                omit(workflowData, [
+                  'name',
+                  'enableDebugLog',
+                  'displayName',
+                  'raiseOnError',
+                  'rootProcessingEngine',
+                ]) ?? {}
+              ),
+            },
+          },
+        };
 
-  const handleScheduleIntervalDeployClick = (
-    extraData: WorkflowExtraConfig & IngestionExtraConfig
-  ) => {
-    if (status === FormSubmitType.ADD) {
-      createNewIngestion(extraData);
-    } else {
-      updateIngestion(extraData);
-    }
-  };
+        if (onUpdateIngestion) {
+          setSaveState(LOADING_STATE.WAITING);
+          setShowDeployModal(true);
+          onUpdateIngestion(updatedData, data, data.id as string, data.name)
+            .then(() => {
+              setSaveState(LOADING_STATE.SUCCESS);
+              if (showSuccessScreen) {
+                handleNext(3);
+              } else {
+                onSuccessSave?.();
+              }
+            })
+            .finally(() => {
+              setTimeout(() => setSaveState(LOADING_STATE.INITIAL), 500);
+              setTimeout(() => setShowDeployModal(false), 500);
+            });
+        }
+      }
+    };
 
-  const raiseOnErrorFormField = useMemo(
-    () => getRaiseOnErrorFormField(onFocus),
-    [onFocus]
-  );
+    const handleDeployClick = () => {
+      setShowDeployModal(true);
+      onIngestionDeploy?.().finally(() => {
+        setTimeout(() => setShowDeployModal(false), 500);
+      });
+    };
 
-  const schedularOptionsTranslated = useMemo(
-    () =>
-      SCHEDULAR_OPTIONS.map((option) => ({
-        ...option,
-        title: t(option.title),
-        description: t(option.description),
-      })),
-    [t]
-  );
+    const handleScheduleIntervalDeployClick = (
+      extraData: WorkflowExtraConfig & IngestionExtraConfig
+    ) => {
+      if (status === FormSubmitType.ADD) {
+        createNewIngestion(extraData);
+      } else {
+        updateIngestion(extraData);
+      }
+    };
 
-  return (
-    <div data-testid="add-ingestion-container">
-      <Typography.Title className="font-normal" level={5}>
-        {heading}
-      </Typography.Title>
+    // Exposes submit to the parent card footer, dispatching to the active step's form when hideFooter is true.
+    useImperativeHandle(
+      ref,
+      () => ({
+        submit: () => {
+          if (activeIngestionStep === 1) {
+            workflowFormRef.current?.submit();
+          } else if (activeIngestionStep === 2) {
+            scheduleIntervalRef.current?.submit();
+          }
+        },
+      }),
+      [activeIngestionStep]
+    );
 
-      <IngestionStepper
-        activeStep={activeIngestionStep}
-        excludeSteps={[]}
-        steps={translatedSteps}
-      />
+    const raiseOnErrorFormField = useMemo(
+      () => getRaiseOnErrorFormField(onFocus),
+      [onFocus]
+    );
 
-      <div className="p-t-lg">
-        {activeIngestionStep === 1 && (
-          <IngestionWorkflowForm
-            okText={t('label.next')}
-            operationType={status}
-            pipeLineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceData={serviceData}
-            workflowData={workflowData}
-            onCancel={handleCancelClick}
-            onChange={handleDataChange}
-            onFocus={onFocus}
-            onSubmit={handleSubmit}
-          />
-        )}
+    const schedularOptionsTranslated = useMemo(
+      () =>
+        SCHEDULAR_OPTIONS.map((option) => ({
+          ...option,
+          title: t(option.title),
+          description: t(option.description),
+        })),
+      [t]
+    );
 
-        {activeIngestionStep === 2 && (
-          <ScheduleInterval<IngestionExtraConfig>
-            buttonProps={{
-              okText: isUndefined(data)
-                ? t('label.add-deploy')
-                : t('label.submit'),
-            }}
-            defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-            disabled={pipelineType === PipelineType.DataInsight}
-            includePeriodOptions={periodOptions}
-            initialData={{
-              cron: data?.airflowConfig.scheduleInterval,
-              raiseOnError: data?.raiseOnError ?? true,
-            }}
-            isEditMode={isEditMode}
-            schedularOptions={schedularOptionsTranslated}
-            status={saveState}
-            onBack={() => handlePrev(1)}
-            onDeploy={handleScheduleIntervalDeployClick}>
-            <Col span={24}>
-              <Form.Item
-                colon={false}
-                initialValue={retries}
-                label={t('label.number-of-retries')}
-                name="retries">
-                <Input
-                  min={0}
-                  type="number"
-                  onFocus={() => onFocus('root/retries')}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
-          </ScheduleInterval>
-        )}
+    return (
+      <div data-testid="add-ingestion-container">
+        <Typography className="tw:m-0" size="text-xl" weight="semibold">
+          {heading}
+        </Typography>
 
-        {activeIngestionStep > 2 && handleViewServiceClick && (
-          <SuccessScreen
-            handleDeployClick={handleDeployClick}
-            handleViewServiceClick={handleViewServiceClick}
-            name={ingestionName}
-            showDeployButton={showDeployButton}
-            showIngestionButton={false}
-            state={status}
-            successMessage={getSuccessMessage(
-              ingestionName,
-              status,
-              showDeployButton
-            )}
-            viewServiceText={viewServiceText}
-          />
-        )}
-
-        <DeployIngestionLoaderModal
-          action={ingestionAction}
-          ingestionName={ingestionName}
-          isDeployed={isIngestionDeployed}
-          isIngestionCreated={isIngestionCreated}
-          progress={ingestionProgress}
-          visible={showDeployModal}
+        <ServiceFlowStepper
+          activeStep={activeIngestionStep}
+          className="tw:mt-6"
+          steps={translatedSteps}
         />
+
+        <div className="p-t-lg">
+          {activeIngestionStep === 1 && (
+            <div className="tw:flex tw:flex-col tw:gap-4">
+              <IngestionNameCard
+                displayName={workflowData?.displayName ?? ''}
+                onDisplayNameChange={(value) =>
+                  handleDataChange({ ...workflowData, displayName: value })
+                }
+                onFocus={onFocus}
+              />
+              <IngestionWorkflowForm
+                hideFooter={hideFooter}
+                okText={t('label.next')}
+                operationType={status}
+                pipeLineType={pipelineType}
+                ref={workflowFormRef}
+                serviceCategory={serviceCategory}
+                serviceData={serviceData}
+                workflowData={workflowData}
+                onCancel={handleCancelClick}
+                onChange={handleDataChange}
+                onFocus={onFocus}
+                onSubmit={handleSubmit}
+              />
+            </div>
+          )}
+
+          {activeIngestionStep === 2 && (
+            <ScheduleInterval<IngestionExtraConfig>
+              buttonProps={{
+                okText: isUndefined(data)
+                  ? t('label.add-deploy')
+                  : t('label.submit'),
+              }}
+              defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+              disabled={pipelineType === PipelineType.DataInsight}
+              includePeriodOptions={periodOptions}
+              initialData={{
+                cron: data?.airflowConfig.scheduleInterval,
+                raiseOnError: data?.raiseOnError ?? true,
+              }}
+              isEditMode={isEditMode}
+              ref={scheduleIntervalRef}
+              schedularOptions={schedularOptionsTranslated}
+              showActionButtons={!hideFooter}
+              status={saveState}
+              onBack={() => handlePrev(1)}
+              onDeploy={handleScheduleIntervalDeployClick}>
+              <Col span={24}>
+                <Form.Item
+                  colon={false}
+                  initialValue={retries}
+                  label={t('label.number-of-retries')}
+                  name="retries">
+                  <Input
+                    min={0}
+                    type="number"
+                    onFocus={() => onFocus('root/retries')}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={24}>{generateFormFields([raiseOnErrorFormField])}</Col>
+            </ScheduleInterval>
+          )}
+
+          {activeIngestionStep > 2 && handleViewServiceClick && (
+            <SuccessScreen
+              handleDeployClick={handleDeployClick}
+              handleViewServiceClick={handleViewServiceClick}
+              name={ingestionName}
+              showDeployButton={showDeployButton}
+              showIngestionButton={false}
+              state={status}
+              successMessage={getSuccessMessage(
+                ingestionName,
+                status,
+                showDeployButton
+              )}
+              viewServiceText={viewServiceText}
+            />
+          )}
+
+          <DeployIngestionLoaderModal
+            action={ingestionAction}
+            ingestionName={ingestionName}
+            isDeployed={isIngestionDeployed}
+            isIngestionCreated={isIngestionCreated}
+            progress={ingestionProgress}
+            visible={showDeployModal}
+          />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+AddIngestion.displayName = 'AddIngestion';
 
 export default AddIngestion;

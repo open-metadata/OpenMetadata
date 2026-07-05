@@ -70,6 +70,10 @@
   },
   "mappings": {
     "properties": {
+      "extension": {
+        "type": "object",
+        "enabled": false
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -273,7 +277,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

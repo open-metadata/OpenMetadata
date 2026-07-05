@@ -22,6 +22,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -810,13 +811,16 @@ public class FeedResourceIT {
         String.format(
             "<#E::table::%s::columns::%s::description>", table.getFullyQualifiedName(), "id");
 
-    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER);
-    EntityReference adminAssignee = admin.getEntityReference();
+    // Assign to a unique per-test user: the ASSIGNED_TO list is capped at limit=100, and a shared
+    // assignee (admin) accumulates far more than 100 open tasks from concurrent tests, paginating
+    // this test's task out of the result. A dedicated assignee keeps the filtered list isolated.
+    User taskAssignee = UserTestFactory.createUser(ns, "taskStatusFilter");
+    EntityReference assignee = taskAssignee.getEntityReference();
 
     CreateTaskDetails taskDetails =
         new CreateTaskDetails()
             .withType(TaskType.RequestDescription)
-            .withAssignees(List.of(adminAssignee))
+            .withAssignees(List.of(assignee))
             .withOldValue("old description")
             .withSuggestion("new description");
 
@@ -839,9 +843,10 @@ public class FeedResourceIT {
     closeTask(closedTask.getTask().getId(), new CloseTask().withComment("closing task"));
 
     try {
-      ThreadList openTasks = listTasksByUserFilter(admin.getId(), "ASSIGNED_TO", TaskStatus.Open);
+      ThreadList openTasks =
+          listTasksByUserFilter(taskAssignee.getId(), "ASSIGNED_TO", TaskStatus.Open);
       ThreadList closedTasks =
-          listTasksByUserFilter(admin.getId(), "ASSIGNED_TO", TaskStatus.Closed);
+          listTasksByUserFilter(taskAssignee.getId(), "ASSIGNED_TO", TaskStatus.Closed);
 
       assertNotNull(openTasks);
       assertNotNull(openTasks.getData());

@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -106,7 +107,7 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
-test.describe('Data asset lineage', () => {
+test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 
@@ -140,8 +141,8 @@ test.describe('Data asset lineage', () => {
     test(`verify create lineage for entity - ${startCase(key)}`, async ({
       page,
     }) => {
-      // 7 minute timeout
-      test.setTimeout(7 * 60 * 1000);
+      // 5 minute timeout
+      test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
         const { apiContext } = await getApiContext(page);

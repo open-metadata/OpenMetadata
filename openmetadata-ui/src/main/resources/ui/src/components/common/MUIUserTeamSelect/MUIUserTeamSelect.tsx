@@ -42,10 +42,8 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
 export interface MUIUserTeamSelectProps {
@@ -317,8 +315,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
             avatarType="solid"
             displayName={entity.displayName}
             name={entity.name ?? ''}
-            size={18}
-            sx={{ marginRight: '4px' }}
+            size="xs"
           />
         )}
         <span>{getEntityName(entity)}</span>
@@ -345,8 +342,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
                 avatarType="solid"
                 displayName={entity.displayName}
                 name={entity.name ?? ''}
-                size={14}
-                sx={{ marginRight: '4px' }}
+                size="xxs"
               />
             )
           }

@@ -47,6 +47,8 @@
         "EditTeams",
         "EditTier",
         "EditCertification",
+        "CreateTask",
+        "EditTask",
         "EditTests",
         "EditUsage",
         "EditUsers",
@@ -67,7 +69,10 @@
         "Impersonate",
         "AuditLogs",
         "ViewTestDefinitionLibrary",
-        "EditTestDefinitionLibrary"
+        "EditTestDefinitionLibrary",
+        "ResolveTask",
+        "CloseTask",
+        "ReassignTask"
       ]
     }
   },

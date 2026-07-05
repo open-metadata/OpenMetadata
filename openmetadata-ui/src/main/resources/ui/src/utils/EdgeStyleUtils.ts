@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Theme } from '@mui/material';
-import { Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 
 export interface EdgeStyle {
   stroke: string;
