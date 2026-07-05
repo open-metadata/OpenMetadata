@@ -1100,8 +1100,23 @@ public class ElasticSearchBulkSink implements BulkSink {
       long bulkStartNanos = System.nanoTime();
       Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
 
-      CompletableFuture<BulkResponse> future =
-          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      CompletableFuture<BulkResponse> future;
+      try {
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      } catch (IOException e) {
+        // A synchronous throw here (e.g., dead transport) means the completion handler below
+        // never runs. Without this catch the semaphore permit and activeBulkRequests slot leak,
+        // eventually starving the pipeline and hanging close(). Mirror OpenSearchBulkSink so both
+        // backends clean up identically.
+        circuitBreaker.recordFailure();
+        boolean retryScheduled =
+            handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        if (!retryScheduled) {
+          activeBulkRequests.decrementAndGet();
+          concurrentRequestSemaphore.release();
+        }
+        return;
+      }
 
       future.whenComplete(
           (response, error) -> {
