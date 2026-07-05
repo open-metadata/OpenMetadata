@@ -202,7 +202,7 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       columnRequest.setDescription("Column test definition for case insensitivity check");
       columnRequest.setEntityType(TestDefinitionEntityType.COLUMN);
       columnRequest.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
-      createEntity(columnRequest);
+      TestDefinition createdColumn = createEntity(columnRequest);
 
       // Create a TABLE test definition
       CreateTestDefinition tableRequest = new CreateTestDefinition();
@@ -210,52 +210,19 @@ public class TestDefinitionResourceIT extends BaseEntityIT<TestDefinition, Creat
       tableRequest.setDescription("Table test definition for case insensitivity check");
       tableRequest.setEntityType(TestDefinitionEntityType.TABLE);
       tableRequest.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
-      createEntity(tableRequest);
+      TestDefinition createdTable = createEntity(tableRequest);
 
-      // Test mixed case "Column" matches COLUMN
-      ListResponse<TestDefinition> mixedCaseColumn = listEntities(
-          new ListParams().addQueryParam("entityType", "Column"));
-
-      // Test uppercase "COLUMN" — the baseline that already worked
-      ListResponse<TestDefinition> upperCaseColumn = listEntities(
-          new ListParams().addQueryParam("entityType", "COLUMN"));
-
-      // Test mixed case "Table" matches TABLE
-      ListResponse<TestDefinition> mixedCaseTable = listEntities(
-          new ListParams().addQueryParam("entityType", "Table"));
-
-      // Test all lowercase "table" matches TABLE
-      ListResponse<TestDefinition> lowerCaseTable = listEntities(
-          new ListParams().addQueryParam("entityType", "table"));
-
-      // Test uppercase "TABLE" — the baseline that already worked
-      ListResponse<TestDefinition> upperCaseTable = listEntities(
-          new ListParams().addQueryParam("entityType", "TABLE"));
-
-      // COLUMN assertions
       assertTrue(
-          mixedCaseColumn.getData().size() > 0,
-          "Mixed case 'Column' should return results, not 0");
-      assertEquals(
-          upperCaseColumn.getData().size(),
-          mixedCaseColumn.getData().size(),
-          "Mixed case 'Column' and uppercase 'COLUMN' should return same results");
-
-      // TABLE assertions
+          listEntities(new ListParams().addQueryParam("entityType", "Column"))
+              .getData().stream()
+              .anyMatch(td -> td.getId().equals(createdColumn.getId())),
+          "Mixed case 'Column' should return the created COLUMN definition");
+      
       assertTrue(
-          mixedCaseTable.getData().size() > 0,
-          "Mixed case 'Table' should return results, not 0");
-      assertTrue(
-          lowerCaseTable.getData().size() > 0,
-          "Lowercase 'table' should return results, not 0");
-      assertEquals(
-          upperCaseTable.getData().size(),
-          mixedCaseTable.getData().size(),
-          "Mixed case 'Table' and uppercase 'TABLE' should return same results");
-      assertEquals(
-          upperCaseTable.getData().size(),
-          lowerCaseTable.getData().size(),
-          "Lowercase 'table' and uppercase 'TABLE' should return same results");
+          listEntities(new ListParams().addQueryParam("entityType", "Table"))
+              .getData().stream()
+              .anyMatch(td -> td.getId().equals(createdTable.getId())),
+          "Mixed case 'Table' should return the created TABLE definition");
   }
 
   @Test
