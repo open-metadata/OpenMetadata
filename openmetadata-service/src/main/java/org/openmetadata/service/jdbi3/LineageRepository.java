@@ -536,8 +536,11 @@ public class LineageRepository {
         EntityReference pipelineRef, List<String> fieldsToRemove) {
       Map<String, Object> pipelineMap;
       if (pipelineRef.getType().equalsIgnoreCase(Entity.PIPELINE)) {
-      pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
-    }
+        pipelineMap =
+            JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
+      } else {
+        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
+      }
 
     // Remove fields
     fieldsToRemove.forEach(pipelineMap::remove);
