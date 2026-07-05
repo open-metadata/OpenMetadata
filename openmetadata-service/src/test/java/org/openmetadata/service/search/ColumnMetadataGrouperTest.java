@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -401,6 +402,21 @@ class ColumnMetadataGrouperTest {
     List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
     // Natural String order: 'N' (0x4E) precedes 'n' (0x6E).
     assertEquals(List.of("Name", "name"), actual);
+  }
+
+  @Test
+  void testGroupColumns_nullColumnNameSortsLastWithoutError() {
+    // A null column name (e.g. a null map key) must not throw; it sorts last (nullsLast).
+    Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
+        new LinkedHashMap<>();
+    columnsByName.put("beta", singleOccurrence("beta"));
+    columnsByName.put(null, singleOccurrence(null));
+    columnsByName.put("alpha", singleOccurrence("alpha"));
+
+    List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
+
+    List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
+    assertEquals(Arrays.asList("alpha", "beta", null), actual);
   }
 
   private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {
