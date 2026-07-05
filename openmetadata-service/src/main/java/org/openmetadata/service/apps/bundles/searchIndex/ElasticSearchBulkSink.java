@@ -1108,7 +1108,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       CompletableFuture<BulkResponse> future;
       try {
         future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
-      } catch (IOException e) {
+      } catch (Exception e) {
         // A synchronous throw here (e.g., dead transport) means the completion handler below
         // never runs. Without this catch the semaphore permit and activeBulkRequests slot leak,
         // eventually starving the pipeline and hanging close(). Mirror OpenSearchBulkSink so both
