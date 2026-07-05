@@ -157,23 +157,31 @@ public record SubjectContext(User user, String impersonatedBy) {
     return false;
   }
 
-  /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
+  /** Returns true if any of the resource owners is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, List<EntityReference> owners) {
-    for (EntityReference owner : owners) {
-      if (owner.getType().equals(Entity.USER)) {
-        SubjectContext subjectContext = getSubjectContext(owner.getName());
-        return subjectContext.isUserUnderTeam(parentTeam);
-      } else if (owner.getType().equals(Entity.TEAM)) {
-        try {
-          Team team =
-              Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-          return isInTeam(parentTeam, team.getEntityReference());
-        } catch (Exception ex) {
-          // Ignore and return false
-        }
+    boolean isUnderTeam = false;
+    for (EntityReference owner : listOrEmpty(owners)) {
+      if (isOwnerUnderTeam(owner, parentTeam)) {
+        isUnderTeam = true;
+        break;
       }
     }
-    return false;
+    return isUnderTeam;
+  }
+
+  private boolean isOwnerUnderTeam(EntityReference owner, String parentTeam) {
+    boolean result = false;
+    if (owner.getType().equals(Entity.USER)) {
+      result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
+    } else if (owner.getType().equals(Entity.TEAM)) {
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+        result = isInTeam(parentTeam, team.getEntityReference());
+      } catch (Exception ex) {
+        // Team could not be resolved (e.g. deleted); treat as not under the team.
+      }
+    }
+    return result;
   }
 
   /** Return true if the team is part of the hierarchy of parentTeam */

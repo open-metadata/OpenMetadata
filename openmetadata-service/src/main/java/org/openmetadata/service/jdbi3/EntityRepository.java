@@ -2485,7 +2485,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null || after.isEmpty() ? null : getCursorValue(entities.get(0));
+      // entities can be empty when the caller holds a valid cursor but all rows past it were
+      // deleted concurrently — guard against get(0) throwing IndexOutOfBounds (HTTP 500).
+      beforeCursor =
+          (after == null || after.isEmpty() || entities.isEmpty())
+              ? null
+              : getCursorValue(entities.getFirst());
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -2607,9 +2612,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = getCursorValue(entities.get(0));
+      beforeCursor = getCursorValue(entities.getFirst());
     }
-    afterCursor = getCursorValue(entities.get(entities.size() - 1));
+    // entities can be empty when the caller holds a valid before-cursor but all earlier rows were
+    // deleted concurrently — guard against get(-1) throwing IndexOutOfBounds (HTTP 500).
+    afterCursor = entities.isEmpty() ? null : getCursorValue(entities.getLast());
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
