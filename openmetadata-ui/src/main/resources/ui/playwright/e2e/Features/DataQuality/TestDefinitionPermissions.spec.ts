@@ -362,10 +362,9 @@ test.describe(
       await expect(editButton).toBeDisabled();
 
       // Verify enabled switch exists and can be toggled
-      const row = dataStewardPage.locator(
-        `[data-row-key="${systemTestDef.id}"]`
+      const enabledSwitch = dataStewardPage.getByTestId(
+        `enable-switch-${systemTestDef.name}`
       );
-      const enabledSwitch = row.getByRole('switch');
 
       await expect(enabledSwitch).toBeVisible();
       await expect(enabledSwitch).toBeEnabled();

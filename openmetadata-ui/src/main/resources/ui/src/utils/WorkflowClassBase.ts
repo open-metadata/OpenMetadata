@@ -32,7 +32,7 @@ export class WorkflowClassBase {
       allowFullStartNodeConfiguration: false,
       allowStartNodeFilterScheduleAndBatchEdit: true,
       allowScheduledTrigger: false,
-      allowViewModeDrag: false,
+      allowViewModeDrag: true,
     };
   }
 }

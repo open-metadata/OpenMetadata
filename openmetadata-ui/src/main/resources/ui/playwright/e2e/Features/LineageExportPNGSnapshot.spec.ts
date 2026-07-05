@@ -71,21 +71,21 @@ test.describe('Lineage PNG export — snapshot regression', () => {
     await page.getByTestId('export-button').click();
 
     await page
-      .locator('[data-testid="export-entity-modal"] #submit-button')
+      .locator(
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+      )
       .waitFor({ state: 'visible' });
 
     // Select PNG (the modal defaults to CSV for entity lineage)
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
-    await expect(
-      page.getByTestId('export-type-select').getByText('PNGBeta')
-    ).toBeVisible();
+    await page.getByRole('option', { name: 'PNG' }).click();
+    await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
     // Trigger download
     const [download] = await Promise.all([
       page.waitForEvent('download'),
       page.click(
-        '[data-testid="export-entity-modal"] button#submit-button:visible'
+        '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
       ),
     ]);
 
