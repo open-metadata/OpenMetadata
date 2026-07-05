@@ -2538,14 +2538,40 @@ export interface GlossaryTermRelationType {
      */
     displayName: string;
     /**
+     * Glossary term FQNs (or external class IRIs) a source term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    domain?: string[];
+    /**
      * Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric
      * relations.
      */
     inverseRelation?: string;
     /**
+     * Whether the relation is asymmetric (A relates B implies B does not relate A).
+     */
+    isAsymmetric?: boolean;
+    /**
      * Whether relations can be created between terms in different glossaries.
      */
     isCrossGlossaryAllowed?: boolean;
+    /**
+     * Whether the relation is functional (a source term has at most one target).
+     */
+    isFunctional?: boolean;
+    /**
+     * Whether the relation is inverse-functional (a target term has at most one source).
+     */
+    isInverseFunctional?: boolean;
+    /**
+     * Whether the relation is irreflexive (no term relates to itself).
+     */
+    isIrreflexive?: boolean;
+    /**
+     * Whether the relation is reflexive (every term relates to itself).
+     */
+    isReflexive?: boolean;
     /**
      * Whether the relation is symmetric (A relates B implies B relates A).
      */
@@ -2562,6 +2588,12 @@ export interface GlossaryTermRelationType {
      * Unique name of the relation type (e.g., 'broader', 'synonym').
      */
     name: string;
+    /**
+     * Glossary term FQNs (or external class IRIs) a target term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    range?: string[];
     /**
      * RDF predicate URI for this relation (e.g., 'skos:broader').
      */

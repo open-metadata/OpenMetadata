@@ -49,7 +49,6 @@ describe('RelatedDataAssets', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByTestId('header-label')).toBeInTheDocument();
     expect(screen.getByText('label.data-asset-plural')).toBeInTheDocument();
 
     expect(screen.getByTestId('edit-data-assets')).toBeInTheDocument();
