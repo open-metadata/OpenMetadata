@@ -606,8 +606,6 @@ test.describe('Lineage Filters', () => {
         await page.getByRole('button', { name: 'Update' }).click();
         await lineageRes;
 
-        console.log(entitiesToShow, entitiesToHide);
-
         for (const entity of entitiesToShow) {
           await expect(
             page.locator(
@@ -948,7 +946,9 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify downstream count for all the entities', async ({ page }) => {
-      test.slow();
+      // Visits one instance of every entity type sequentially, each a full
+      // page navigation, so the default slow (3x = 180s) budget is too tight.
+      test.setTimeout(300_000);
 
       // validate main entity count
       const count = entities.length;
@@ -980,7 +980,7 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify upstream count for all the entities', async ({ page }) => {
-      test.slow();
+      test.setTimeout(360_000);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
       await page.getByRole('button', { name: 'Upstream' }).click();

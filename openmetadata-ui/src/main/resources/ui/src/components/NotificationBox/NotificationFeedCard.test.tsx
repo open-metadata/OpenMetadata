@@ -32,16 +32,20 @@ import { MentionNotification } from './NotificationFeedCard.interface';
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockImplementation((date) => date),
   getRelativeTime: jest.fn().mockImplementation((date) => date),
+  getEpochMillisForPastDays: jest.fn().mockImplementation((days) => days),
+  getStartOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
+  getCurrentMillis: jest.fn().mockReturnValue(0),
 }));
 
 const mockPrepareFeedLink = jest.fn();
 const mockGetTaskDetailPathFromTask = jest.fn();
 
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   entityDisplayName: jest.fn().mockReturnValue('database.schema.table'),
   prepareFeedLink: (...args: unknown[]) => mockPrepareFeedLink(...args),
 }));
-jest.mock('../../utils/TasksUtils', () => ({
+jest.mock('../../utils/TaskNavigationUtils', () => ({
   getTaskDetailPathFromTask: (...args: unknown[]) =>
     mockGetTaskDetailPathFromTask(...args),
   getTaskDisplayId: jest.fn().mockReturnValue('1'),
@@ -71,7 +75,7 @@ jest.mock('react-router-dom', () => ({
     ),
   useNavigate: jest.fn(() => mockNavigate),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),

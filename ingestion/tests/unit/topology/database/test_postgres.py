@@ -485,7 +485,7 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], DatabaseSchema)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"database": "test_service.test_db"})
 
                 # Verify the entity_source_state contains both processed and filtered schemas
@@ -553,7 +553,7 @@ class PostgresUnitTest(TestCase):
                 mock_delete.assert_called_once()
                 call_args = mock_delete.call_args
                 self.assertEqual(call_args[1]["entity_type"], Database)
-                self.assertEqual(call_args[1]["mark_deleted_entity"], True)
+                self.assertEqual(call_args[1]["recursive"], True)
                 self.assertEqual(call_args[1]["params"], {"service": "test_service"})
 
                 # Verify the entity_source_state contains both processed and filtered databases

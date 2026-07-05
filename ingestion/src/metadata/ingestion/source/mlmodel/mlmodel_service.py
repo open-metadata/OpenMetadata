@@ -75,7 +75,6 @@ class MlModelServiceTopology(ServiceTopology):
                 processor="yield_create_request_mlmodel_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["mlmodel"],
@@ -89,7 +88,6 @@ class MlModelServiceTopology(ServiceTopology):
                 context="mlmodels",
                 processor="yield_mlmodel",
                 consumer=["mlmodel_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=AddLineageRequest,
@@ -185,7 +183,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=MlModel,
                 entity_source_state=self.mlmodel_source_state,
-                mark_deleted_entity=self.source_config.markDeletedMlModels,
+                recursive=self.source_config.markDeletedMlModels,
                 params={"service": self.context.get().mlmodel_service},
             )
 

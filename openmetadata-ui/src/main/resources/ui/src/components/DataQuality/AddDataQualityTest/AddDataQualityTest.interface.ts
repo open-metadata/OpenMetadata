@@ -91,6 +91,9 @@ export type TestCaseFormType = {
   testTypeId: string;
   computePassedFailedRowCount?: boolean;
   description?: string;
+  displayName?: string;
   tags?: TagLabel[];
   glossaryTerms?: TagLabel[];
+  dimensionColumns?: string[];
+  topDimensions?: number;
 };

@@ -34,7 +34,7 @@ import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
@@ -323,6 +323,95 @@ export const getDataProductOutputPorts = async (
   const response = await APIClient.get<PaginatedEntities>(
     `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/outputPorts`,
     { params }
+  );
+
+  return response.data;
+};
+
+// ---------------------------------------------------------------------------
+// ODPS (Open Data Product Standard) v4.1 Import/Export
+// ---------------------------------------------------------------------------
+
+export type ODPSImportStrategy = 'merge' | 'replace';
+
+export interface ODPSValidationResult {
+  valid?: boolean;
+  version?: string;
+  languages?: string;
+}
+
+export const exportDataProductToODPSYaml = async (
+  dataProductId: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/${dataProductId}/odps/yaml`,
+    {
+      headers: { Accept: 'application/yaml' },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
+export const exportDataProductToODPSYamlByFqn = async (
+  fqn: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/odps/yaml`,
+    {
+      headers: { Accept: 'application/yaml' },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
+export const importDataProductFromODPSYaml = async (
+  yamlContent: string,
+  domainFqn?: string,
+  languageCode?: string
+): Promise<DataProduct> => {
+  const response = await APIClient.post<DataProduct>(
+    `${BASE_URL}/odps/yaml`,
+    yamlContent,
+    {
+      params: { domain: domainFqn, languageCode },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+export const createOrUpdateDataProductFromODPSYaml = async (
+  yamlContent: string,
+  strategy: ODPSImportStrategy = 'merge',
+  domainFqn?: string,
+  languageCode?: string
+): Promise<DataProduct> => {
+  const response = await APIClient.put<DataProduct>(
+    `${BASE_URL}/odps/yaml`,
+    yamlContent,
+    {
+      params: { strategy, domain: domainFqn, languageCode },
+      headers: { 'Content-Type': 'application/yaml' },
+    }
+  );
+
+  return response.data;
+};
+
+export const validateODPSYaml = async (
+  yamlContent: string
+): Promise<ODPSValidationResult> => {
+  const response = await APIClient.post<ODPSValidationResult>(
+    `${BASE_URL}/odps/validate/yaml`,
+    yamlContent,
+    {
+      headers: { 'Content-Type': 'application/yaml' },
+    }
   );
 
   return response.data;

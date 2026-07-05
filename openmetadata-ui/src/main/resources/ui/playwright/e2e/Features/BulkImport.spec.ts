@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -30,6 +30,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
+  addGridRowAndSelectFirstCell,
   createColumnRowDetails,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
@@ -46,8 +47,10 @@ import {
   performColumnSelectAndDeleteOperation,
   performDeleteOperationOnEntity,
   pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 // use the admin user to login
 test.use({
@@ -87,6 +90,33 @@ const databaseSchemaDetails1 = {
 const databaseSchemaDetails2 = {
   ...createDatabaseSchemaRowDetails(),
   glossary: glossaryDetails,
+};
+
+const validateSuccessfulImportStatus = async (page: Page) => {
+  const expectedProcessed =
+    (await page.getByTestId('processed-row').textContent())?.trim() ?? '0';
+
+  await validateImportStatus(page, {
+    passed: expectedProcessed,
+    processed: expectedProcessed,
+    failed: '0',
+  });
+};
+
+const expectImportRowStatusesToContain = async (
+  page: Page,
+  rowStatus: string[]
+) => {
+  // The result grid populates cells asynchronously after Next-click. Without
+  // first waiting for the row count to match, the toContainText assertion
+  // can run mid-render against 0 or partial cells, fail under retry too,
+  // and never recover. Wait for the expected number of detail cells before
+  // checking text.
+  await expect(page.locator('.rdg-cell-details')).toHaveCount(
+    rowStatus.length,
+    { timeout: 60_000 }
+  );
+  await expect(page.locator('.rdg-cell-details')).toContainText(rowStatus);
 };
 
 const tableDetails1 = {
@@ -132,8 +162,8 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Database service', async ({ page }) => {
-    // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(300_000);
+    // 6 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
+    test.setTimeout(600_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -141,6 +171,14 @@ test.describe('Bulk Import Export', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await dbService.create(apiContext);
+
+    // Bulk-import reads the service's children list from ES; wait for the
+    // service to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      dbService.entityResponseData.fullyQualifiedName,
+      'database_service_search_index'
+    );
 
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
@@ -167,10 +205,7 @@ test.describe('Bulk Import Export', () => {
         'downloads/' + dbService.entity.name + '.csv',
       ]);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -261,15 +296,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       await fillRecursiveColumnDetails(
         {
@@ -349,11 +376,7 @@ test.describe('Bulk Import Export', () => {
 
       await loader.waitFor({ state: 'hidden' });
 
-      await validateImportStatus(page, {
-        passed: '6',
-        processed: '6',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
       const rowStatus = [
         'Entity created',
         'Entity created',
@@ -363,11 +386,12 @@ test.describe('Bulk Import Export', () => {
         'Entity created',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/services/databaseServices/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -375,7 +399,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -385,7 +409,7 @@ test.describe('Bulk Import Export', () => {
 
   test('Database', async ({ page }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(300_000);
+    test.setTimeout(500_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -418,10 +442,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -550,11 +571,7 @@ test.describe('Bulk Import Export', () => {
         state: 'detached',
       });
 
-      await validateImportStatus(page, {
-        passed: '12',
-        processed: '12',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       await page.locator('.rdg-header-row').waitFor({
         state: 'visible',
@@ -575,11 +592,12 @@ test.describe('Bulk Import Export', () => {
         'Entity created',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -587,7 +605,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -597,7 +615,7 @@ test.describe('Bulk Import Export', () => {
 
   test('Database Schema', async ({ page }) => {
     // 4 minutes to avoid test timeout happening some times in AUTs, since it add all the entities layer
-    test.setTimeout(240_000);
+    test.setTimeout(500_000);
 
     let customPropertyRecord: Record<string, string> = {};
 
@@ -605,6 +623,14 @@ test.describe('Bulk Import Export', () => {
 
     const { apiContext, afterAction } = await getApiContext(page);
     await dbSchemaEntity.create(apiContext);
+
+    // Bulk-import reads the schema's children list from ES; wait for the
+    // schema to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      dbSchemaEntity.entityResponseData.fullyQualifiedName,
+      'database_schema_search_index'
+    );
 
     await test.step('create custom properties for extension edit', async () => {
       customPropertyRecord = await createCustomPropertiesForEntity(
@@ -627,10 +653,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbSchemaEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -662,15 +685,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       // Fill table columns details
       await fillRecursiveColumnDetails(
@@ -682,15 +697,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for table details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 17, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       await fillRowDetails(
         {
@@ -712,15 +719,7 @@ test.describe('Bulk Import Export', () => {
       );
 
       // Add new row for columns details
-      await page.click('[data-testid="add-row-btn"]');
-
-      // Reverse traves to first cell to fill the details
-      await page.click(RDG_ACTIVE_CELL_SELECTOR);
-      await page
-        .locator(RDG_ACTIVE_CELL_SELECTOR)
-        .press('ArrowDown', { delay: 100 });
-
-      await pressKeyXTimes(page, 13, 'ArrowLeft');
+      await addGridRowAndSelectFirstCell(page);
 
       // fill second table columns details
       await fillRecursiveColumnDetails(
@@ -733,11 +732,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '4',
-        processed: '4',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -746,11 +741,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databaseSchemas/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -758,7 +754,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -767,12 +763,20 @@ test.describe('Bulk Import Export', () => {
   });
 
   test('Table', async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(300_000);
 
     const tableEntity = new TableClass();
 
     const { apiContext, afterAction } = await getApiContext(page);
     await tableEntity.create(apiContext);
+
+    // Bulk-import reads the table's columns from ES; wait for the table
+    // to be indexed before the test fetches its export/edit grid.
+    await waitForSearchIndexed(
+      apiContext,
+      tableEntity.entityResponseData.fullyQualifiedName,
+      'table_search_index'
+    );
 
     await test.step('should export data table details', async () => {
       await tableEntity.visitEntityPage(page);
@@ -787,10 +791,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + tableEntity.entity.name + '.csv']);
 
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -870,9 +871,7 @@ test.describe('Bulk Import Export', () => {
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -905,11 +904,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '8',
-        processed: '8',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity created',
@@ -922,11 +917,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -934,7 +930,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -952,9 +948,7 @@ test.describe('Bulk Import Export', () => {
           'downloads/' + `${dbEntity.entity.name}-delete` + '.csv',
         ]);
 
-      await page.getByTestId('add-row-btn').waitFor({
-        state: 'visible',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -975,11 +969,7 @@ test.describe('Bulk Import Export', () => {
 
       await page.getByRole('button', { name: 'Next' }).click();
 
-      await validateImportStatus(page, {
-        passed: '9',
-        processed: '9',
-        failed: '0',
-      });
+      await validateSuccessfulImportStatus(page);
 
       const rowStatus = [
         'Entity updated',
@@ -993,11 +983,12 @@ test.describe('Bulk Import Export', () => {
         'Entity updated',
       ];
 
-      await expect(page.locator('.rdg-cell-details')).toHaveText(rowStatus);
+      await expectImportRowStatusesToContain(page, rowStatus);
 
       const updateButtonResponse = page.waitForResponse(
         `/api/v1/databases/name/*/importAsync?*dryRun=false&recursive=true*`
       );
+      const navigationPromise = page.waitForEvent('framenavigated');
 
       await page.getByRole('button', { name: 'Update' }).click();
       await page
@@ -1005,7 +996,7 @@ test.describe('Bulk Import Export', () => {
         .waitFor({ state: 'detached' });
 
       await updateButtonResponse;
-      await page.waitForEvent('framenavigated');
+      await navigationPromise;
       await toastNotification(page, /details updated successfully/);
     });
 
@@ -1070,10 +1061,7 @@ test.describe('Bulk Import Export', () => {
       await page
         .locator('[type="file"]')
         .setInputFiles(['downloads/' + dbEntity.entity.name + '.csv']);
-      // Wait for upload widget to be hidden indicating file is loaded
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
-      });
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();

@@ -6,8 +6,14 @@ import static org.openmetadata.service.search.SearchClient.UPSTREAM_ENTITY_RELAT
 import static org.openmetadata.service.search.SearchClient.UPSTREAM_LINEAGE_FIELD;
 import static org.openmetadata.service.search.elasticsearch.ElasticSearchClient.SOURCE_FIELDS_TO_EXCLUDE;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +55,197 @@ public final class SearchUtils {
   public static final String DOWNSTREAM_ENTITY_RELATIONSHIP_KEY =
       "upstreamEntityRelationship.entity.fqnHash.keyword";
 
+  private static final String EXACT_AGG_SUFFIX = "__exact";
+  private static final String PREFIX_AGG_SUFFIX = "__prefix";
+  private static final String CONTAINS_AGG_SUFFIX = "__contains";
+  private static final String STERMS_PREFIX = "sterms#";
+
   private SearchUtils() {}
+
+  /**
+   * Stable search routing key so all of a user's queries hit the same shard copy. Without it,
+   * paginated and repeated searches bounce across replicas/shards on a multi-node cluster,
+   * returning reordered or different results for the same query.
+   */
+  public static String searchPreferenceFor(SubjectContext subjectContext) {
+    String preference = null;
+    if (subjectContext != null && subjectContext.user() != null) {
+      preference = subjectContext.user().getName();
+    }
+    return preference;
+  }
+
+  /**
+   * Append an OpenSearch {@code preference} routing key to a raw {@code _search} endpoint so all of
+   * a user's queries hit the same shard copy. Used by the vector/raw search paths that build the
+   * endpoint URL directly (the request-builder paths set preference on the builder instead).
+   */
+  public static String appendPreferenceParam(String endpoint, String preference) {
+    String result = endpoint;
+    if (!nullOrEmpty(preference)) {
+      String separator = endpoint.contains("?") ? "&" : "?";
+      result =
+          endpoint
+              + separator
+              + "preference="
+              + URLEncoder.encode(preference, StandardCharsets.UTF_8);
+    }
+    return result;
+  }
+
+  /** Aggregation name for the exact-match sub-agg (user-typed term only). */
+  public static String exactAggKey(String fieldName) {
+    return fieldName + EXACT_AGG_SUFFIX;
+  }
+
+  /** Aggregation name for the starts-with sub-agg. */
+  public static String prefixAggKey(String fieldName) {
+    return fieldName + PREFIX_AGG_SUFFIX;
+  }
+
+  /** Aggregation name for the full wildcard (contains) sub-agg. */
+  public static String containsAggKey(String fieldName) {
+    return fieldName + CONTAINS_AGG_SUFFIX;
+  }
+
+  /**
+   * Returns {@code true} when the include value represents an actual user search term rather than
+   * the bare "match-all" pattern ({@code .*}) or an empty string. Only when this is true should
+   * the three-sub-aggregation best-match strategy be used.
+   */
+  public static boolean isBestMatchSearchPattern(String includeValue) {
+    return includeValue != null && !includeValue.isEmpty() && !includeValue.equals(".*");
+  }
+
+  /**
+   * Strips the {@code .*} prefix and suffix that the frontend adds when building the include regex
+   * (e.g., {@code .*name.*} → {@code name}).
+   */
+  public static String extractRawSearchValue(String includeValue) {
+    String raw = includeValue.startsWith(".*") ? includeValue.substring(2) : includeValue;
+    raw = raw.endsWith(".*") ? raw.substring(0, raw.length() - 2) : raw;
+    return raw;
+  }
+
+  /**
+   * Merges three ranked aggregation buckets — exact, prefix, contains — from a response produced
+   * by {@link #exactAggKey}, {@link #prefixAggKey}, {@link #containsAggKey} sub-aggregations into
+   * a single {@code sterms#fieldName} bucket list ordered exact → prefix → contains, deduped, and
+   * trimmed to {@code limit}. On failure degrades to renaming the {@code __contains} sub-agg under
+   * the canonical {@code sterms#fieldName} key so the UI always receives the key it expects.
+   */
+  public static String mergeBestMatchAggregations(
+      String responseJson, String fieldName, int limit, ObjectMapper mapper) {
+    try {
+      return doMergeBestMatch(responseJson, fieldName, limit, mapper);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to merge best-match aggregations, falling back to contains agg: {}",
+          e.getMessage());
+      return fallbackToContainsAgg(responseJson, fieldName, mapper);
+    }
+  }
+
+  private static String fallbackToContainsAgg(
+      String responseJson, String fieldName, ObjectMapper mapper) {
+    try {
+      ObjectNode root = (ObjectNode) mapper.readTree(responseJson);
+      ObjectNode aggregations = (ObjectNode) root.get("aggregations");
+      String result = responseJson;
+      if (aggregations != null) {
+        result = renameContainsAggToField(root, aggregations, fieldName, mapper);
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.warn("Best-match fallback also failed: {}", e.getMessage());
+      return responseJson;
+    }
+  }
+
+  private static String renameContainsAggToField(
+      ObjectNode root, ObjectNode aggregations, String fieldName, ObjectMapper mapper)
+      throws Exception {
+    String containsKey = STERMS_PREFIX + containsAggKey(fieldName);
+    JsonNode containsAgg = aggregations.get(containsKey);
+    String result = responseJson(root, mapper);
+    if (containsAgg != null) {
+      aggregations.remove(STERMS_PREFIX + exactAggKey(fieldName));
+      aggregations.remove(STERMS_PREFIX + prefixAggKey(fieldName));
+      aggregations.remove(containsKey);
+      aggregations.set(STERMS_PREFIX + fieldName, containsAgg);
+      result = responseJson(root, mapper);
+    }
+    return result;
+  }
+
+  private static String responseJson(ObjectNode root, ObjectMapper mapper) throws Exception {
+    return mapper.writeValueAsString(root);
+  }
+
+  private static String doMergeBestMatch(
+      String responseJson, String fieldName, int limit, ObjectMapper mapper) throws Exception {
+    ObjectNode root = (ObjectNode) mapper.readTree(responseJson);
+    ObjectNode aggregations = (ObjectNode) root.get("aggregations");
+    String result = responseJson;
+    if (aggregations != null) {
+      result = rebuildWithMergedBuckets(root, aggregations, fieldName, limit, mapper);
+    }
+    return result;
+  }
+
+  private static String rebuildWithMergedBuckets(
+      ObjectNode root, ObjectNode aggregations, String fieldName, int limit, ObjectMapper mapper)
+      throws Exception {
+    List<JsonNode> merged = buildMergedBuckets(aggregations, fieldName, limit);
+
+    aggregations.remove(STERMS_PREFIX + exactAggKey(fieldName));
+    aggregations.remove(STERMS_PREFIX + prefixAggKey(fieldName));
+    aggregations.remove(STERMS_PREFIX + containsAggKey(fieldName));
+
+    ObjectNode mergedAgg = mapper.createObjectNode();
+    mergedAgg.put("doc_count_error_upper_bound", 0);
+    mergedAgg.put("sum_other_doc_count", 0);
+    ArrayNode bucketsArray = mapper.createArrayNode();
+    merged.forEach(bucketsArray::add);
+    mergedAgg.set("buckets", bucketsArray);
+    aggregations.set(STERMS_PREFIX + fieldName, mergedAgg);
+
+    return mapper.writeValueAsString(root);
+  }
+
+  private static List<JsonNode> buildMergedBuckets(
+      ObjectNode aggregations, String fieldName, int limit) {
+    List<JsonNode> exact = getBuckets(aggregations, STERMS_PREFIX + exactAggKey(fieldName));
+    List<JsonNode> prefix = getBuckets(aggregations, STERMS_PREFIX + prefixAggKey(fieldName));
+    List<JsonNode> contains = getBuckets(aggregations, STERMS_PREFIX + containsAggKey(fieldName));
+
+    Set<String> seen = new HashSet<>();
+    List<JsonNode> merged = new ArrayList<>();
+    addUnique(exact, seen, merged);
+    addUnique(prefix, seen, merged);
+    addUnique(contains, seen, merged);
+
+    return merged.size() > limit ? merged.subList(0, limit) : merged;
+  }
+
+  private static List<JsonNode> getBuckets(ObjectNode aggregations, String aggKey) {
+    JsonNode agg = aggregations.get(aggKey);
+    List<JsonNode> buckets = new ArrayList<>();
+    if (agg != null && agg.has("buckets")) {
+      agg.get("buckets").forEach(buckets::add);
+    }
+    return buckets;
+  }
+
+  private static void addUnique(
+      List<JsonNode> source, Set<String> seen, List<JsonNode> destination) {
+    for (JsonNode bucket : source) {
+      String key = bucket.path("key").asText("");
+      if (seen.add(key)) {
+        destination.add(bucket);
+      }
+    }
+  }
 
   public static RelationshipRef getRelationshipRef(Map<String, Object> entityMap) {
     // This assumes these keys exists in the map, use it with caution
@@ -65,6 +261,44 @@ public final class SearchUtils {
       return JsonUtils.readOrConvertValues(esDoc.get(UPSTREAM_LINEAGE_FIELD), EsLineageData.class);
     }
     return Collections.emptyList();
+  }
+
+  /**
+   * Time-windowed overload that filters edges by observed time window.
+   * An edge is included if its [createdAt, updatedAt] interval overlaps the
+   * requested [startTime, endTime] window. Legacy edges with no timestamps bypass the filter — see
+   * {@link #edgeMatchesWindow}.
+   *
+   * @param esDoc     Source map from an ES hit
+   * @param startTime Inclusive lower bound of the window in epoch millis, or null for -∞
+   * @param endTime   Inclusive upper bound of the window in epoch millis, or null for +∞
+   * @return Edges in the window (or all edges if both bounds are null)
+   */
+  public static List<EsLineageData> getUpstreamLineageListIfExist(
+      Map<String, Object> esDoc, Long startTime, Long endTime) {
+    return getUpstreamLineageListIfExist(esDoc).stream()
+        .filter(edge -> edgeMatchesWindow(edge, startTime, endTime))
+        .collect(Collectors.toList());
+  }
+
+  private static boolean edgeMatchesWindow(EsLineageData edge, Long startTime, Long endTime) {
+    boolean matches;
+    if (edge == null) {
+      matches = false;
+    } else if (startTime == null && endTime == null) {
+      matches = true;
+    } else if (edge.getCreatedAt() == null && edge.getUpdatedAt() == null) {
+      matches = true;
+    } else {
+      Long createdAt = edge.getCreatedAt();
+      Long updatedAt = edge.getUpdatedAt();
+      Long effectiveCreatedAt = createdAt == null ? updatedAt : createdAt;
+      Long effectiveUpdatedAt = updatedAt == null ? createdAt : updatedAt;
+      boolean startOk = endTime == null || effectiveCreatedAt <= endTime;
+      boolean endOk = startTime == null || effectiveUpdatedAt >= startTime;
+      matches = startOk && endOk;
+    }
+    return matches;
   }
 
   public static EsLineageData copyEsLineageData(EsLineageData data) {
@@ -330,11 +564,17 @@ public final class SearchUtils {
     return requiredFields;
   }
 
-  public static List<Object> searchAfter(String searchAfter) {
-    if (!nullOrEmpty(searchAfter)) {
-      return List.of(searchAfter.split(","));
+  /** One {@code ?search_after=v} per sort value — no in-band delimiter. */
+  public static List<Object> searchAfter(List<String> values) {
+    List<Object> result = null;
+    if (!nullOrEmpty(values)) {
+      List<String> filtered =
+          values.stream().filter(v -> !nullOrEmpty(v)).collect(Collectors.toList());
+      if (!filtered.isEmpty()) {
+        result = new ArrayList<>(filtered);
+      }
     }
-    return null;
+    return result;
   }
 
   public static List<String> sourceFields(String sourceFields) {

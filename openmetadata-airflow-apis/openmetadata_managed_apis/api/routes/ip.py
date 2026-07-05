@@ -16,7 +16,8 @@ import traceback
 from typing import Callable, Optional  # noqa: UP035
 
 import requests
-from flask import Blueprint, escape
+from flask import Blueprint
+from markupsafe import escape
 from requests.exceptions import ConnectionError
 from urllib3.exceptions import NewConnectionError
 

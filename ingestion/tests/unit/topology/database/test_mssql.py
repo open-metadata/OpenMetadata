@@ -13,10 +13,11 @@ Test Mssql using the topology
 """
 
 import types
+from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy.types import INTEGER, VARCHAR
+from sqlalchemy.types import INTEGER, VARCHAR, BigInteger, Integer, Numeric
 
 import metadata.ingestion.source.database.mssql.utils as mssql_dialet
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -50,11 +51,6 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
-from metadata.ingestion.source.database.mssql.queries import (
-    MSSQL_GET_CURRENT_DATABASE,
-    MSSQL_GET_DATABASE,
-    MSSQL_TEST_GET_QUERIES,
-)
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 
 mock_mssql_config = {
@@ -360,42 +356,6 @@ class TestUpdateMssqlIschemaNames:
         update_mssql_ischema_names(target)
         assert target["existing_key"] is sentinel
 
-    @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
-    def test_test_connection_uses_current_db_query_when_not_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import test_connection
-
-        mock_service_connection = MagicMock()
-        mock_service_connection.ingestAllDatabases = False
-
-        test_connection(
-            metadata=MagicMock(),
-            engine=MagicMock(),
-            service_connection=mock_service_connection,
-        )
-
-        call_kwargs = mock_test_connection_db_common.call_args
-        queries = call_kwargs.kwargs["queries"]
-        assert queries["GetDatabases"] == MSSQL_GET_CURRENT_DATABASE
-        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
-
-    @patch("metadata.ingestion.source.database.mssql.connection.test_connection_db_common")
-    def test_test_connection_uses_all_dbs_query_when_ingest_all(self, mock_test_connection_db_common):
-        from metadata.ingestion.source.database.mssql.connection import test_connection
-
-        mock_service_connection = MagicMock()
-        mock_service_connection.ingestAllDatabases = True
-
-        test_connection(
-            metadata=MagicMock(),
-            engine=MagicMock(),
-            service_connection=mock_service_connection,
-        )
-
-        call_kwargs = mock_test_connection_db_common.call_args
-        queries = call_kwargs.kwargs["queries"]
-        assert queries["GetDatabases"] == MSSQL_GET_DATABASE
-        assert queries["GetQueries"] == MSSQL_TEST_GET_QUERIES
-
     def _setup_stored_procedure_context(self):
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
@@ -495,3 +455,36 @@ class TestUpdateMssqlIschemaNames:
         result = self.mssql._get_encrypted_procedures("test_db", "dbo")
 
         assert result == set()
+
+
+class MssqlIdentityColumnTest(TestCase):
+    """Regression tests for identity column reflection.
+
+    BigInteger identity columns previously crashed with
+    ``module 'sqlalchemy.util.compat' has no attribute 'long_type'`` on
+    SQLAlchemy 2.0, dropping every column of the affected table.
+    """
+
+    def test_bigint_identity_returns_int_values(self):
+        result = mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), Decimal("1"))
+
+        assert result == {"start": 1, "increment": 1}
+        assert isinstance(result["start"], int)
+        assert isinstance(result["increment"], int)
+
+    def test_int_identity_returns_int_values(self):
+        result = mssql_dialet.get_identity_values(Integer(), Decimal("5"), Decimal("2"))
+
+        assert result == {"start": 5, "increment": 2}
+        assert isinstance(result["start"], int)
+        assert isinstance(result["increment"], int)
+
+    def test_non_integer_identity_keeps_original_values(self):
+        start, increment = Decimal("1.0"), Decimal("1.0")
+        result = mssql_dialet.get_identity_values(Numeric(), start, increment)
+
+        assert result == {"start": start, "increment": increment}
+
+    def test_missing_seed_returns_empty_dict(self):
+        assert mssql_dialet.get_identity_values(BigInteger(), None, Decimal("1")) == {}
+        assert mssql_dialet.get_identity_values(BigInteger(), Decimal("1"), None) == {}

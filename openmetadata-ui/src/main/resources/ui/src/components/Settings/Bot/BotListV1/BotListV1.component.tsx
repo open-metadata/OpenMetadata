@@ -15,8 +15,8 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Space, Switch, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, lowerCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
@@ -27,20 +27,25 @@ import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Bot, ProviderType } from '../../../../generated/entity/bot';
+import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../hooks/authHooks';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { searchQuery } from '../../../../rest/searchAPI';
+import { formatUsersResponse } from '../../../../utils/APIUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringsUtils';
+import {
+  escapeESReservedCharacters,
+  stringToHTML,
+} from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -54,6 +59,22 @@ import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBread
 import PageHeader from '../../../PageHeader/PageHeader.component';
 import './bot-list-v1.less';
 import { BotListV1Props } from './BotListV1.interfaces';
+
+const BOT_SEARCH_PAGE_SIZE = 100;
+const MAX_BOT_SEARCH_LENGTH = 128;
+
+const getBotUserFromUser = (
+  botUser: User,
+  existingBotUser?: Bot['botUser']
+): Bot['botUser'] => ({
+  ...existingBotUser,
+  id: botUser.id,
+  name: botUser.name,
+  displayName: botUser.displayName,
+  fullyQualifiedName: botUser.fullyQualifiedName,
+  type: existingBotUser?.type ?? EntityType.USER,
+});
+
 const BotListV1 = ({
   showDeleted,
   handleAddBotClick,
@@ -79,11 +100,139 @@ const BotListV1 = ({
   const [handleErrorPlaceholder, setHandleErrorPlaceholder] = useState(false);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const latestSearchRequest = useRef(0);
+  const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
+  const botMapLoadPromiseRef = useRef<Promise<void> | null>(null);
+
+  const loadBotsByUserNameMap = useCallback(async () => {
+    const { data } = await getBots({
+      limit: BOT_SEARCH_PAGE_SIZE,
+      include: showDeleted ? Include.Deleted : Include.NonDeleted,
+    });
+    const map = new Map<string, Bot>();
+    data.forEach((bot) => {
+      if (bot.name) {
+        map.set(bot.name.toLowerCase(), bot);
+      }
+    });
+    botsByUserNameRef.current = map;
+  }, [showDeleted]);
+
+  const ensureBotMapLoaded = useCallback(() => {
+    if (!botMapLoadPromiseRef.current) {
+      botMapLoadPromiseRef.current = loadBotsByUserNameMap().catch((error) => {
+        botMapLoadPromiseRef.current = null;
+        showErrorToast((error as AxiosError).message);
+      });
+    }
+
+    return botMapLoadPromiseRef.current;
+  }, [loadBotsByUserNameMap]);
+
+  const reloadBotMap = useCallback(() => {
+    botMapLoadPromiseRef.current = null;
+    botsByUserNameRef.current = new Map();
+
+    return ensureBotMapLoaded();
+  }, [ensureBotMapLoaded]);
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.BOTS),
     []
   );
+
+  const enrichBotWithMatchedUser = useCallback((bot: Bot, botUser?: User) => {
+    if (!botUser) {
+      return bot;
+    }
+
+    return {
+      ...bot,
+      botUser: getBotUserFromUser(botUser, bot.botUser),
+    };
+  }, []);
+
+  const searchBots = async (text: string): Promise<Bot[]> => {
+    const term = text.trim();
+
+    if (!term) {
+      return [];
+    }
+
+    const wildcardPattern = `*${escapeESReservedCharacters(term)}*`;
+
+    const response = await searchQuery({
+      query: '',
+      pageNumber: 1,
+      pageSize: BOT_SEARCH_PAGE_SIZE,
+      includeDeleted: showDeleted,
+      searchIndex: SearchIndex.USER,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [{ term: { isBot: true } }],
+            should: [
+              'name.keyword',
+              'displayName.keyword',
+              'fullyQualifiedName.keyword',
+              'email.keyword',
+            ].map((field) => ({
+              wildcard: {
+                [field]: { value: wildcardPattern, case_insensitive: true },
+              },
+            })),
+            minimum_should_match: 1,
+          },
+        },
+      },
+    });
+    const matchedUsers = formatUsersResponse(response.hits.hits);
+    await ensureBotMapLoaded();
+    const botsByUserName = botsByUserNameRef.current;
+    const usersByBotName = new Map<string, User>(
+      matchedUsers
+        .filter((user): user is User & { name: string } => Boolean(user.name))
+        .map((user) => [user.name.toLowerCase(), user])
+    );
+
+    const lowerTerm = term.toLowerCase();
+    const matchedById = new Map<string, Bot>();
+
+    botsByUserName.forEach((bot, key) => {
+      if (!bot.id) {
+        return;
+      }
+
+      const user = usersByBotName.get(key);
+      const matchesBot =
+        key.includes(lowerTerm) ||
+        bot.displayName?.toLowerCase().includes(lowerTerm) ||
+        bot.description?.toLowerCase().includes(lowerTerm);
+
+      if (user || matchesBot) {
+        matchedById.set(bot.id, enrichBotWithMatchedUser(bot, user));
+      }
+    });
+
+    return Array.from(matchedById.values());
+  };
+
+  const runActiveSearch = async (activeSearchTerm: string) => {
+    const searchRequestId = ++latestSearchRequest.current;
+
+    try {
+      const matchedBots = await searchBots(activeSearchTerm);
+
+      if (searchRequestId === latestSearchRequest.current) {
+        setSearchedData(matchedBots);
+      }
+    } catch (error) {
+      if (searchRequestId === latestSearchRequest.current) {
+        showErrorToast((error as AxiosError).message);
+        setSearchedData([]);
+      }
+    }
+  };
 
   /**
    *
@@ -101,14 +250,16 @@ const BotListV1 = ({
         limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
+      const activeSearchTerm = searchTerm.trim();
+
       handlePagingChange(paging);
       setBotUsers(data);
-      setSearchedData(data);
-      if (!showDeleted && isEmpty(data)) {
-        setHandleErrorPlaceholder(true);
+      if (activeSearchTerm) {
+        await runActiveSearch(activeSearchTerm);
       } else {
-        setHandleErrorPlaceholder(false);
+        setSearchedData(data);
       }
+      setHandleErrorPlaceholder(!showDeleted && isEmpty(data));
     } catch (error) {
       showErrorToast((error as AxiosError).message);
     } finally {
@@ -188,7 +339,7 @@ const BotListV1 = ({
         },
       },
     ],
-    []
+    [t, searchTerm, isAdminUser]
   );
 
   /**
@@ -217,27 +368,37 @@ const BotListV1 = ({
    */
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
+    await reloadBotMap();
     fetchBots(showDeleted);
-  }, [selectedUser]);
+  }, [selectedUser, reloadBotMap]);
 
-  const handleSearch = (text: string) => {
-    setSearchTerm(text);
-    if (text) {
-      const normalizeText = lowerCase(text);
-      const matchedData = botUsers.filter(
-        (bot) =>
-          bot.name.includes(normalizeText) ||
-          bot.displayName?.includes(normalizeText) ||
-          bot.description?.includes(normalizeText)
-      );
-      setSearchedData(matchedData);
-    } else {
+  const handleSearch = async (text: string) => {
+    const cappedText = text.slice(0, MAX_BOT_SEARCH_LENGTH);
+    setSearchTerm(cappedText);
+    const normalizedSearchTerm = cappedText.trim();
+
+    if (!normalizedSearchTerm) {
+      latestSearchRequest.current += 1;
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       setSearchedData(botUsers);
+      setLoading(false);
+
+      return;
     }
-    handlePageChange(INITIAL_PAGING_VALUE, {
-      cursorType: null,
-      cursorValue: undefined,
-    });
+
+    const currentSearchRequestId = latestSearchRequest.current + 1;
+    setLoading(true);
+
+    try {
+      await runActiveSearch(normalizedSearchTerm);
+    } finally {
+      if (latestSearchRequest.current === currentSearchRequestId) {
+        setLoading(false);
+      }
+    }
   };
 
   const handleShowDeletedBots = (checked: boolean) => {
@@ -259,6 +420,14 @@ const BotListV1 = ({
       fetchBots(showDeleted);
     }
   }, [pageSize, showDeleted, pagingCursor]);
+
+  // Build bot-user → bot map once for search resolution.
+  // Re-runs when showDeleted toggles (loadBotsByUserNameMap dep changes).
+  useEffect(() => {
+    botMapLoadPromiseRef.current = null;
+    botsByUserNameRef.current = new Map();
+    ensureBotMapLoaded();
+  }, [ensureBotMapLoaded]);
 
   const addBotLabel = t('label.add-entity', { entity: t('label.bot') });
 
@@ -351,7 +520,7 @@ const BotListV1 = ({
             paging,
             pagingHandler: handleBotPageChange,
             onShowSizeChange: handlePageSizeChange,
-            showPagination,
+            showPagination: showPagination && !searchTerm.trim(),
           }}
           dataSource={searchedData}
           loading={loading}

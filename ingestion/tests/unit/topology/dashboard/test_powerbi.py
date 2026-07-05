@@ -1,6 +1,6 @@
 import uuid
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,6 +16,8 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.powerbi.metadata import PowerbiSource
 from metadata.ingestion.source.dashboard.powerbi.models import (
@@ -24,6 +26,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     DataflowEntityAttribute,
     DataflowExportResponse,
     DataflowMashup,
+    Datamart,
     Dataset,
     Datasource,
     DatasourceConnectionDetails,
@@ -33,9 +36,12 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBITableSource,
+    PowerBIUser,
     ReportPage,
     Tile,
     UpstreaDataflow,
+    UpstreamDatamart,
+    Workspaces,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 from metadata.utils import fqn
@@ -665,6 +671,30 @@ MOCK_DATAMODEL_ENTITY = DashboardDataModel(
     id=uuid.uuid4(),
     dataModelType=DataModelType.PowerBIDataFlow.value,
     columns=[],
+)
+MOCK_DATAMART = Datamart(
+    id="datamart_b",
+    name="sales_datamart",
+    description="Sales datamart",
+    modifiedBy="jane.doe@example.com",
+    users=[
+        PowerBIUser(
+            displayName="Jane Doe",
+            emailAddress="jane.doe@example.com",
+            datamartUserAccessRight="ReadWriteReshare",
+            userType="Member",
+        )
+    ],
+    upstreamDatamarts=[
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_a",
+        ),
+        UpstreamDatamart(
+            groupId="ws-1",
+            targetDatamartId="datamart_b",
+        ),
+    ],
 )
 
 
@@ -2329,3 +2359,200 @@ class PowerBIUnitTest(TestCase):
             assert any(expected_table.lower() in t["table"].lower() for t in result), (
                 f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
             )
+
+    def test_yield_dashboard_lineage_yields_barrier_first(self):
+        """The override must emit a ``Barrier`` as its first record so the sink
+        flushes before ``super().yield_dashboard_lineage`` runs its
+        ``get_by_name`` lookups. Subsequent yields come from ``super``.
+        """
+        ws_id = "test-workspace-id"
+        mock_workspace = MagicMock()
+        mock_workspace.id = ws_id
+        mock_ctx = MagicMock()
+        mock_ctx.get.return_value = MagicMock(workspace=mock_workspace)
+
+        sentinel_super_records = [
+            Either(right=MagicMock(name="lineage-1")),
+            Either(right=MagicMock(name="lineage-2")),
+        ]
+
+        with (
+            patch.object(self.powerbi, "context", mock_ctx),
+            patch(
+                "metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.yield_dashboard_lineage",
+                return_value=iter(sentinel_super_records),
+            ),
+        ):
+            emitted = list(self.powerbi.yield_dashboard_lineage(MagicMock()))
+
+        # First record is a Barrier carrying the workspace id in its reason.
+        assert len(emitted) == 1 + len(sentinel_super_records)
+        first = emitted[0]
+        assert isinstance(first.right, Barrier)
+        assert ws_id in (first.right.reason or "")
+
+        # Subsequent records are exactly what super yielded, in order.
+        for actual, expected in zip(emitted[1:], sentinel_super_records, strict=True):
+            assert actual is expected
+
+    @pytest.mark.order(53)
+    @patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DATAMODEL_ENTITY)
+    @patch.object(fqn, "build", return_value="powerbi.datamart_a")
+    def test_upstream_datamart_lineage(self, *_):
+        """`create_datamart_upstream_datamart_lineage` should emit one lineage
+        request per non-self upstream datamart reference. The self-reference in
+        MOCK_DATAMART (targetDatamartId == datamart_b == datamart.id) must be
+        filtered out.
+        """
+        MOCK_DATAMART_ENTITY = DashboardDataModel(  # noqa: N806
+            name="datamart_b",
+            id=uuid.uuid4(),
+            dataModelType=DataModelType.PowerBIDatamart.value,
+            columns=[],
+        )
+
+        lineage_requests = list(
+            self.powerbi.create_datamart_upstream_datamart_lineage(MOCK_DATAMART, MOCK_DATAMART_ENTITY)
+        )
+
+        successful = [r for r in lineage_requests if r.right is not None]
+        assert len(successful) == 1
+
+    @pytest.mark.order(55)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_yield_dashboard_advances_workspace_progress(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        for dash in (
+            PowerBIDashboard(id="dash-1", displayName="One", tiles=[]),
+            PowerBIDashboard(id="dash-2", displayName="Two", tiles=[]),
+        ):
+            self.powerbi.state.add_filtered_dashboard(dash)
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-1", name="Sales")
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        self.powerbi._open_group_progress(
+            "Sales",
+            {"Dashboard": None, "Chart": None, "DashboardDataModel": None},
+        )
+        list(self.powerbi.yield_dashboard(Group(id="ws-1", name="Sales")))
+
+        assert self.powerbi.progress.assets_ingested() == 2
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "Sales.Dashboard" in out
+        assert "Dashboard 2" in out
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_tracks_workspace_group(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_a = Group(id="wa", name="Alpha")
+        ws_b = Group(id="wb", name="Beta")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_a, ws_b]))
+        self.powerbi.get_dashboards_list = MagicMock(return_value=[])
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["wa", "wb"]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 2, None)]
+        assert self.powerbi.progress.snapshot() is None
+
+    @pytest.mark.order(56)
+    def test_get_dashboard_does_not_count_workspace_failing_before_open(self):
+        self.powerbi.state = WorkspaceState()
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        ws_ok = Group(id="ok", name="Ok")
+        ws_bad = Group(id="bad", name="Bad")
+        self.powerbi._prepare_workspace_data = MagicMock(return_value=iter([ws_bad, ws_ok]))
+        self.powerbi.context.get = MagicMock(return_value=MagicMock())
+        self.powerbi.get_dashboards_list = MagicMock(side_effect=[RuntimeError("boom"), []])
+
+        produced = list(self.powerbi.get_dashboard())
+
+        assert [w.id for w in produced] == ["ok"]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 1, None)]
+
+    @pytest.mark.order(57)
+    def test_admin_workspace_progress_total_reconciles_to_active_scan_results(self):
+        self.powerbi.__dict__.pop("_progress_registry", None)
+        self.powerbi.pagination_entity_per_page = 100
+
+        candidate_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}") for index in range(46)]
+        active_workspaces = [Group(id=f"ws-{index}", name=f"Workspace {index}", state="Active") for index in range(40)]
+        skipped_workspaces = [
+            Group(id=f"ws-{index}", name=f"Workspace {index}", state="Deleted") for index in range(40, 44)
+        ]
+        self.powerbi.client = MagicMock()
+        self.powerbi.client.api_client = MagicMock()
+        self.powerbi.client.api_client.fetch_all_workspaces = MagicMock(return_value=candidate_workspaces)
+        self.powerbi.client.api_client.initiate_workspace_scan = MagicMock(return_value=MagicMock(id="scan-1"))
+        self.powerbi.client.api_client.wait_for_scan_complete = MagicMock(return_value=True)
+        self.powerbi.client.api_client.fetch_workspace_scan_result = MagicMock(
+            return_value=Workspaces(workspaces=active_workspaces + skipped_workspaces)
+        )
+
+        produced = list(self.powerbi.get_admin_workspace_data())
+
+        assert [workspace.id for workspace in produced] == [f"ws-{index}" for index in range(40)]
+        assert self.powerbi.progress.global_counters() == [("Workspaces", 0, 40)]
+
+    @pytest.mark.order(58)
+    @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
+    def test_unnamed_workspace_keys_progress_on_id(self, *_):
+        from metadata.workflow.progress_render import ProgressReporter
+
+        self.powerbi.__dict__.pop("_progress_registry", None)
+
+        self.powerbi.state.add_filtered_dashboard(PowerBIDashboard(id="dash-1", displayName="One", tiles=[]))
+
+        mock_context = MagicMock()
+        mock_context.workspace = Group(id="ws-x", name=None)
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+
+        assert self.powerbi._progress_group_name() == "ws-x"
+
+        self.powerbi._open_group_progress("ws-x", {"Dashboard": None})
+        list(self.powerbi.yield_dashboard(Group(id="ws-x", name=None)))
+
+        out = ProgressReporter(self.powerbi.progress).cli()
+        assert "ws-x.Dashboard" in out
+        assert "None.Dashboard" not in out
+
+    @pytest.mark.order(54)
+    def test_yield_datamodel_for_datamart(self):
+        """`yield_datamodel` should emit a CreateDashboardDataModelRequest with
+        dataModelType=PowerBIDatamart, no columns, and the datamart-specific
+        sourceUrl when the workspace contains a Datamart.
+        """
+        mock_context = MagicMock()
+        mock_context.workspace = Group(
+            id="ws-1",
+            name="Test Workspace",
+            datasets=[],
+            dataflows=[],
+            datamarts=[MOCK_DATAMART],
+        )
+        mock_context.dashboard_service = "test_powerbi_service"
+        self.powerbi.context.get = MagicMock(return_value=mock_context)
+        self.powerbi.source_config.includeDataModels = True
+        self.powerbi.source_config.includeOwners = False
+        self.powerbi.state.set_filtered_datamodels(None)
+
+        results = list(self.powerbi.yield_datamodel(mock_context.workspace))
+        successful = [r.right for r in results if r.right is not None]
+
+        assert len(successful) == 1
+        request = successful[0]
+        assert request.dataModelType == DataModelType.PowerBIDatamart
+        assert request.columns == []
+        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")

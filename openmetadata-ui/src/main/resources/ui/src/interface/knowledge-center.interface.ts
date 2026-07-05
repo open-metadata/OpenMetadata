@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { VotingDataProps } from 'components/Entity/Voting/voting.interface';
 import React, { ReactNode } from 'react';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { PageProcessingStatus } from '../generated/entity/data/page';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
 import { TagLabel } from '../generated/type/tagLabel';
 import { Votes } from '../generated/type/votes';
@@ -57,6 +58,8 @@ export interface KnowledgePage {
   children?: EntityReference[];
   deleted: boolean;
   entityStatus?: EntityStatus;
+  processingStatus?: PageProcessingStatus;
+  processingError?: string;
 }
 
 export type CreateKnowledgePage = Pick<
@@ -116,6 +119,7 @@ export interface KnowledgeCenterPageHandlers {
   onSetThreadLink: (link: string) => void;
   onToggleDelete: () => void;
   onSave?: () => void;
+  onUpdate?: (updatedPage: KnowledgePage) => Promise<void>;
   contentChangeState: ContentChangeState;
 }
 

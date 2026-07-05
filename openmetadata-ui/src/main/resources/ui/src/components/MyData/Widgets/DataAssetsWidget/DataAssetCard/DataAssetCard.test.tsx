@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Bucket } from 'Models';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import DataAssetCard from './DataAssetCard.component';
@@ -23,8 +23,11 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getExplorePath: jest.fn(),
 }));
 
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/EntityDisplayUtils', () => ({
   getServiceLogo: jest.fn().mockReturnValue('getServiceLogo'),
+}));
+
+jest.mock('../../../../../utils/FilterQueryUtils', () => ({
   getServiceTypeExploreQueryFilter: jest
     .fn()
     .mockImplementation(() => filterQuery),
@@ -53,10 +56,15 @@ const mockServiceData: Bucket = {
 };
 
 describe('DataAssetCard', () => {
-  it('should render DataAssetCard', () => {
+  it('should render DataAssetCard', async () => {
     render(<DataAssetCard service={mockServiceData} />);
 
-    expect(screen.getByText('getServiceLogo')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('service-icon').querySelector('img')
+      ).toBeInTheDocument();
+    });
+
     expect(screen.getByText('MySQL')).toBeInTheDocument();
     expect(screen.getByText('AppBadge')).toBeInTheDocument();
 

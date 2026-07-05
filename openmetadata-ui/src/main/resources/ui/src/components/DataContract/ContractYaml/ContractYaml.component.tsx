@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 import yaml from 'js-yaml';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './contract-yaml.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const ContractYaml = ({ contract }: { contract: DataContract }) => {
   const schemaEditorValue = useMemo(() => {

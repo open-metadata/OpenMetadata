@@ -34,7 +34,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';

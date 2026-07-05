@@ -4,11 +4,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.net.ConnectException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -27,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BooleanSupplier;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
@@ -60,10 +64,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
 
-  // 2s caps TCP connect (Fuseki down / crash-looping). REQUEST_TIMEOUT_MS
-  // bounds the per-request body via a CompletableFuture wrapper around every
-  // blocking RDFConnection call below — caller thread frees on timeout even
-  // when Fuseki accepts the TCP connection and then stalls on the response.
+  // Defaults keep TCP connect fail-fast while giving production Fuseki enough
+  // time for larger SPARQL UPDATE transactions. The request timeout bounds the
+  // per-request body via a CompletableFuture wrapper around every blocking
+  // RDFConnection call below — caller thread frees on timeout even when Fuseki
+  // accepts the TCP connection and then stalls on the response.
   //
   // We use CompletableFuture rather than Jena's QueryExecution.setTimeout
   // (removed in Jena 5; broke integration tests previously) or Jena's
@@ -72,10 +77,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // versions). The wrapper is Jena-API-agnostic. On timeout the underlying
   // HTTP request continues to leak its (virtual) thread until OS-level TCP
   // give-up; that's bounded by the circuit breaker, which trips after
-  // CIRCUIT_BREAKER_FAILURE_THRESHOLD timeouts and short-circuits new
-  // traffic for CIRCUIT_BREAKER_COOLDOWN_MS.
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(2);
-  private static final long REQUEST_TIMEOUT_MS = 10_000L;
+  // CIRCUIT_BREAKER_FAILURE_THRESHOLD connect/timeout failures and
+  // short-circuits new traffic for CIRCUIT_BREAKER_COOLDOWN_MS.
+  static final int DEFAULT_CONNECT_TIMEOUT_MS = 2_000;
+  static final long DEFAULT_REQUEST_TIMEOUT_MS = 60_000L;
+  static final int DEFAULT_WRITE_MAX_RETRIES = 2;
+  static final long DEFAULT_WRITE_RETRY_INITIAL_BACKOFF_MS = 250L;
+  static final long DEFAULT_WRITE_RETRY_MAX_BACKOFF_MS = 2_000L;
+
   private static final int CIRCUIT_BREAKER_FAILURE_THRESHOLD = 5;
   private static final long CIRCUIT_BREAKER_COOLDOWN_MS = 30_000L;
 
@@ -103,11 +112,21 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final String endpoint;
   private final String username;
   private final String password;
+  private final Duration connectTimeout;
+  private final long requestTimeoutMs;
+  private final int writeMaxRetries;
+  private final long writeRetryInitialBackoffMs;
+  private final long writeRetryMaxBackoffMs;
+  private final LongConsumer retryDelayMs;
 
   private final AtomicInteger consecutiveFailures = new AtomicInteger(0);
   private final AtomicLong circuitOpenUntilMs = new AtomicLong(0L);
 
   public JenaFusekiStorage(RdfConfiguration config) {
+    this(config, JenaFusekiStorage::sleepRetryDelay);
+  }
+
+  JenaFusekiStorage(RdfConfiguration config, LongConsumer retryDelayMs) {
     this.baseUri =
         config.getBaseUri() != null ? config.getBaseUri().toString() : "https://open-metadata.org/";
 
@@ -117,6 +136,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             : "http://openmetadata-fuseki:3030/openmetadata";
     this.username = config.getUsername();
     this.password = config.getPassword();
+    this.connectTimeout = Duration.ofMillis(resolveConnectTimeoutMs(config));
+    this.requestTimeoutMs = resolveRequestTimeoutMs(config);
+    this.writeMaxRetries = resolveWriteMaxRetries(config);
+    this.writeRetryInitialBackoffMs = resolveWriteRetryInitialBackoffMs(config);
+    this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
+    this.retryDelayMs = retryDelayMs;
 
     // Best-effort attempt to create the dataset at startup; callers should invoke
     // ensureStorageReady() before running work to recover from later restarts of the RDF server.
@@ -125,7 +150,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (username != null && password != null) {
       java.net.http.HttpClient httpClient =
           java.net.http.HttpClient.newBuilder()
-              .connectTimeout(CONNECT_TIMEOUT)
+              .connectTimeout(connectTimeout)
               .authenticator(
                   new java.net.Authenticator() {
                     @Override
@@ -140,12 +165,46 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     } else {
       java.net.http.HttpClient httpClient =
-          java.net.http.HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+          java.net.http.HttpClient.newBuilder().connectTimeout(connectTimeout).build();
       this.connection =
           RDFConnectionFuseki.create().destination(endpoint).httpClient(httpClient).build();
     }
     LOG.info("Connected to Apache Jena Fuseki at {}", maskUserInfo(endpoint));
     loadOntology();
+  }
+
+  static int resolveConnectTimeoutMs(RdfConfiguration config) {
+    return positiveInt(config.getConnectTimeoutMs(), DEFAULT_CONNECT_TIMEOUT_MS);
+  }
+
+  static long resolveRequestTimeoutMs(RdfConfiguration config) {
+    return positiveLong(config.getRequestTimeoutMs(), DEFAULT_REQUEST_TIMEOUT_MS);
+  }
+
+  static int resolveWriteMaxRetries(RdfConfiguration config) {
+    Integer value = config.getWriteMaxRetries();
+    return value != null && value >= 0 ? value : DEFAULT_WRITE_MAX_RETRIES;
+  }
+
+  static long resolveWriteRetryInitialBackoffMs(RdfConfiguration config) {
+    return nonNegativeLong(
+        config.getWriteRetryInitialBackoffMs(), DEFAULT_WRITE_RETRY_INITIAL_BACKOFF_MS);
+  }
+
+  static long resolveWriteRetryMaxBackoffMs(RdfConfiguration config) {
+    return nonNegativeLong(config.getWriteRetryMaxBackoffMs(), DEFAULT_WRITE_RETRY_MAX_BACKOFF_MS);
+  }
+
+  private static int positiveInt(Integer value, int defaultValue) {
+    return value != null && value > 0 ? value : defaultValue;
+  }
+
+  private static long positiveLong(Integer value, long defaultValue) {
+    return value != null && value > 0 ? value.longValue() : defaultValue;
+  }
+
+  private static long nonNegativeLong(Integer value, long defaultValue) {
+    return value != null && value >= 0 ? value.longValue() : defaultValue;
   }
 
   @Override
@@ -310,7 +369,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           info.datasetName(),
           info.serverBaseUrl());
 
-      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
       String adminUrl =
           info.serverBaseUrl() + "/$/datasets/" + encodePathSegment(info.datasetName());
 
@@ -348,7 +407,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private void createDataset(
       String serverBaseUrl, String datasetName, String username, String password) {
     try {
-      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+      HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
       String adminUrl = serverBaseUrl + "/$/datasets";
 
       String body = "dbName=" + datasetName + "&dbType=tdb2";
@@ -436,6 +495,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  static boolean isCircuitBreakerFailure(Throwable t) {
+    return isConnectError(t) || isTimeoutError(t) || isServerError(t);
+  }
+
+  // Only gateway/availability 5xx (502/503/504) indicate Fuseki itself is
+  // unhealthy and should count toward the shared breaker. A bare 500 is often a
+  // per-request failure (e.g. an expensive SPARQL SELECT that exceeds a server
+  // limit) — tripping the breaker on those would let one heavy graph query
+  // short-circuit ALL RDF traffic. Client errors (4xx) are the caller's fault
+  // and must never trip it either.
+  private static boolean isServerError(Throwable t) {
+    Throwable cause = t;
+    boolean result = false;
+    while (cause != null && !result) {
+      if (cause instanceof org.apache.jena.atlas.web.HttpException httpException) {
+        int code = httpException.getStatusCode();
+        result = code == 502 || code == 503 || code == 504;
+      }
+      Throwable next = cause.getCause();
+      cause = (next == cause) ? null : next;
+    }
+    return result;
+  }
+
   private static boolean isConnectError(Throwable t) {
     Throwable cause = t;
     while (cause != null) {
@@ -453,23 +536,143 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return false;
   }
 
+  private static boolean isTimeoutError(Throwable t) {
+    Throwable cause = t;
+    while (cause != null) {
+      if (cause instanceof TimeoutException
+          || cause instanceof HttpTimeoutException
+          || cause instanceof SocketTimeoutException) {
+        return true;
+      }
+      Throwable next = cause.getCause();
+      if (next == cause) {
+        return false;
+      }
+      cause = next;
+    }
+    return false;
+  }
+
+  private void runWriteWithRetry(Runnable op, String description) {
+    runWriteWithRetry(
+        op,
+        description,
+        writeMaxRetries,
+        writeRetryInitialBackoffMs,
+        writeRetryMaxBackoffMs,
+        retryDelayMs,
+        () -> throwIfCircuitOpen(description),
+        this::recordSuccess,
+        this::recordFailure,
+        this::isCircuitOpen);
+  }
+
+  static void runWriteWithRetry(
+      Runnable op,
+      String description,
+      int writeMaxRetries,
+      long writeRetryInitialBackoffMs,
+      long writeRetryMaxBackoffMs,
+      LongConsumer retryDelayMs,
+      Runnable throwIfCircuitOpen,
+      Runnable recordSuccess,
+      Runnable recordFailure,
+      BooleanSupplier isCircuitOpen) {
+    RuntimeException lastException = null;
+    for (int attempt = 0; attempt <= writeMaxRetries; attempt++) {
+      throwIfCircuitOpen.run();
+      try {
+        op.run();
+        recordSuccess.run();
+        return;
+      } catch (RuntimeException e) {
+        lastException = e;
+        if (!isCircuitBreakerFailure(e)) {
+          throw e;
+        }
+        recordFailure.run();
+        if (isCircuitOpen.getAsBoolean()) {
+          throw new RdfStorageCircuitOpenException(description, e);
+        }
+        if (attempt >= writeMaxRetries) {
+          throw e;
+        }
+        sleepBeforeRetry(
+            description,
+            attempt + 1,
+            e,
+            writeMaxRetries,
+            writeRetryInitialBackoffMs,
+            writeRetryMaxBackoffMs,
+            retryDelayMs);
+      }
+    }
+    throw lastException;
+  }
+
+  private static void sleepBeforeRetry(
+      String description,
+      int retryNumber,
+      RuntimeException cause,
+      int writeMaxRetries,
+      long writeRetryInitialBackoffMs,
+      long writeRetryMaxBackoffMs,
+      LongConsumer retryDelayMs) {
+    long waitTime = retryBackoffMs(retryNumber, writeRetryInitialBackoffMs, writeRetryMaxBackoffMs);
+    LOG.debug(
+        "Retrying RDF write {} after {} ms (retry {}/{})",
+        description,
+        waitTime,
+        retryNumber,
+        writeMaxRetries,
+        cause);
+    if (waitTime <= 0) {
+      return;
+    }
+    retryDelayMs.accept(waitTime);
+  }
+
+  private static void sleepRetryDelay(long waitTime) {
+    try {
+      Thread.sleep(waitTime);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Interrupted while retrying RDF write", ie);
+    }
+  }
+
+  private static long retryBackoffMs(
+      int retryNumber, long writeRetryInitialBackoffMs, long writeRetryMaxBackoffMs) {
+    if (writeRetryInitialBackoffMs <= 0 || writeRetryMaxBackoffMs <= 0) {
+      return 0L;
+    }
+    long multiplier = 1L << Math.min(retryNumber - 1, 30);
+    long uncapped;
+    try {
+      uncapped = Math.multiplyExact(writeRetryInitialBackoffMs, multiplier);
+    } catch (ArithmeticException e) {
+      uncapped = Long.MAX_VALUE;
+    }
+    return Math.min(uncapped, writeRetryMaxBackoffMs);
+  }
+
   // Run a blocking RDFConnection call with a request-level deadline.
   // CompletableFuture.runAsync executes the supplier on the common ForkJoinPool;
-  // get(REQUEST_TIMEOUT_MS, …) frees this thread when the deadline hits, even
+  // get(requestTimeoutMs, …) frees this thread when the deadline hits, even
   // if the underlying HTTP request continues blocking until the server
   // responds (or the OS gives up on the socket). Exceptions thrown by the
   // supplier are unwrapped from ExecutionException so the caller sees the
   // original Jena HttpException, IOException, etc. and can decide whether to
   // retry or surface to the circuit breaker.
-  private static <T> T runWithTimeout(Supplier<T> op, String description) {
+  private <T> T runWithTimeout(Supplier<T> op, String description) {
     CompletableFuture<T> future = CompletableFuture.supplyAsync(op, TIMEOUT_EXECUTOR);
     try {
-      return future.get(REQUEST_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      return future.get(requestTimeoutMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
       // Cancellation doesn't actually interrupt Jena's HTTP call, but
       // releases this thread; the leaked task continues until OS TCP timeout.
       future.cancel(true);
-      throw new RuntimeException(description + " timed out after " + REQUEST_TIMEOUT_MS + "ms", te);
+      throw new RuntimeException(description + " timed out after " + requestTimeoutMs + "ms", te);
     } catch (ExecutionException ee) {
       Throwable cause = ee.getCause() != null ? ee.getCause() : ee;
       if (cause instanceof RuntimeException re) {
@@ -482,7 +685,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
-  private static void runWithTimeout(Runnable op, String description) {
+  private void runWithTimeout(Runnable op, String description) {
     runWithTimeout(
         () -> {
           op.run();
@@ -501,7 +704,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   // RdfRepository.addRelationship load the existing entity model from Fuseki
   // (which includes hook-managed predicates like om:owns / om:contains) and
   // pass it here; without this exclusion the dynamic walk would pull those
-  // hook predicates into the DELETE scope and the subsequent LOAD would
+  // hook predicates into the DELETE scope and the subsequent INSERT would
   // overwrite them with a possibly-stale snapshot, opening a lost-update
   // race window with concurrent async relationship writes.
   private static Set<String> collectTranslatorPredicates(String entityUri, Model entityModel) {
@@ -559,13 +762,30 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             KNOWLEDGE_GRAPH, entityUri, KNOWLEDGE_GRAPH, entityUri, filterIn);
   }
 
+  static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
+    Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
+    String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
+    String triples = serializeModel(entityModel);
+    if (triples.isBlank()) {
+      return deleteQuery;
+    }
+    return deleteQuery + ";\n" + buildInsertData(triples);
+  }
+
+  private static String serializeModel(Model model) {
+    StringWriter writer = new StringWriter();
+    model.write(writer, "N-TRIPLES");
+    return writer.toString();
+  }
+
+  private static String buildInsertData(String triples) {
+    return "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
+  }
+
   /**
    * Bulk variant: one combined DELETE + INSERT DATA SPARQL UPDATE for the
-   * whole batch, in a SINGLE transaction at the Fuseki side. Per-entity
-   * {@link #storeEntity} costs ~2 HTTP round trips per entity (~150 ms RT on
-   * localhost = ~6.7 entities/s); batching collapses N entities into 1
-   * round trip, so a batch of 100 entities runs at ~100× the per-entity
-   * throughput.
+   * whole batch, in a SINGLE transaction at the Fuseki side. Batching collapses
+   * N per-entity updates into one request per repository chunk.
    *
    * <p>Atomicity: previously the bulk path issued a SPARQL UPDATE for the
    * DELETE and a separate GSP POST for the LOAD, which could leave the
@@ -599,28 +819,20 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       combinedModel.add(req.model());
     }
 
-    // Serialise the combined model as N-Triples and embed in INSERT DATA so
-    // the whole batch — DELETE statements + INSERT DATA — executes as ONE
-    // SPARQL UPDATE transaction at Fuseki.
-    StringWriter writer = new StringWriter();
-    combinedModel.write(writer, "N-TRIPLES");
-    String triples = writer.toString();
+    String triples = serializeModel(combinedModel);
     StringBuilder combined = new StringBuilder(combinedDelete);
     if (!triples.isBlank()) {
       if (combined.length() > 0) {
         combined.append(";\n");
       }
-      combined
-          .append("INSERT DATA { GRAPH <")
-          .append(KNOWLEDGE_GRAPH)
-          .append("> { ")
-          .append(triples)
-          .append(" } }");
+      combined.append(buildInsertData(triples));
     }
 
     try {
       UpdateRequest updateRequest = UpdateFactory.create(combined.toString());
-      runWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities");
+      runWriteWithRetry(
+          () -> runWithTimeout(() -> connection.update(updateRequest), "bulkStoreEntities"),
+          "bulkStoreEntities");
       // DEBUG, not INFO: this fires per-batch in a hot reindex loop (default
       // batchSize=100 → tens of thousands of log lines on a real reindex).
       // Keep INFO reserved for events ops actually want to grep for.
@@ -629,12 +841,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           requests.size(),
           KNOWLEDGE_GRAPH,
           combinedModel.size());
-      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk-store {} entities in Fuseki", requests.size(), e);
-      if (isConnectError(e)) {
-        recordFailure();
-      }
       throw new RuntimeException("Failed to bulk-store entities in RDF", e);
     }
   }
@@ -660,58 +868,16 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     //  - the predicates the current model actually emits for <entityUri>
     //    (covers translator-only predicates introduced via the JSON-LD
     //    context that aren't in the static set).
-    Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
-    String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
-
-    int maxRetries = 3;
-    int retryCount = 0;
-    Exception lastException = null;
-
-    while (retryCount < maxRetries) {
-      try {
-        UpdateRequest deleteRequest = UpdateFactory.create(deleteQuery);
-        runWithTimeout(() -> connection.update(deleteRequest), "storeEntity delete");
-        runWithTimeout(() -> connection.load(KNOWLEDGE_GRAPH, entityModel), "storeEntity load");
-        LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
-        recordSuccess();
-        return;
-      } catch (org.apache.jena.atlas.web.HttpException e) {
-        lastException = e;
-        if (isConnectError(e)) {
-          recordFailure();
-          LOG.error("Fuseki unreachable storing entity {}; fast-failing without retry", entityId);
-          throw new RuntimeException("Failed to store entity in RDF (Fuseki unreachable)", e);
-        }
-        retryCount++;
-        if (retryCount < maxRetries) {
-          try {
-            long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
-            LOG.debug(
-                "Retrying entity storage after {} ms (attempt {}/{}, status: {})",
-                waitTime,
-                retryCount + 1,
-                maxRetries,
-                e.getStatusCode());
-            Thread.sleep(waitTime);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while retrying", ie);
-          }
-        } else {
-          LOG.error("Failed to store entity in Fuseki after {} attempts", maxRetries, e);
-          recordFailure();
-          throw new RuntimeException("Failed to store entity in RDF", e);
-        }
-      } catch (Exception e) {
-        LOG.error("Failed to store entity in Fuseki", e);
-        recordFailure();
-        throw new RuntimeException("Failed to store entity in RDF", e);
-      }
+    String upsertQuery = buildEntityUpsertUpdate(entityUri, entityModel);
+    try {
+      UpdateRequest request = UpdateFactory.create(upsertQuery);
+      runWriteWithRetry(
+          () -> runWithTimeout(() -> connection.update(request), "storeEntity"), "storeEntity");
+      LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
+    } catch (Exception e) {
+      LOG.error("Failed to store entity in Fuseki", e);
+      throw new RuntimeException("Failed to store entity in RDF", e);
     }
-
-    LOG.error("Failed to store entity after {} retries", maxRetries);
-    recordFailure();
-    throw new RuntimeException("Failed to store entity in RDF after retries", lastException);
   }
 
   @Override
@@ -751,58 +917,17 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             toType,
             toId);
 
-    int maxRetries = 3;
-    int retryCount = 0;
-    Exception lastException = null;
-
-    while (retryCount < maxRetries) {
-      try {
-        LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
-        UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
-        runWithTimeout(() -> connection.update(request), "storeRelationship");
-        LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
-        recordSuccess();
-        return; // Success
-      } catch (org.apache.jena.atlas.web.HttpException e) {
-        lastException = e;
-        if (isConnectError(e)) {
-          recordFailure();
-          LOG.error(
-              "Fuseki unreachable storing relationship {}->{}; fast-failing without retry",
-              fromId,
-              toId);
-          throw new RuntimeException("Failed to store relationship in RDF (Fuseki unreachable)", e);
-        }
-        retryCount++;
-        if (retryCount < maxRetries) {
-          try {
-            long waitTime = (long) (100 * Math.pow(2, retryCount - 1));
-            LOG.debug(
-                "Retrying relationship storage after {} ms (attempt {}/{}, status: {})",
-                waitTime,
-                retryCount + 1,
-                maxRetries,
-                e.getStatusCode());
-            Thread.sleep(waitTime);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Interrupted while retrying", ie);
-          }
-        } else {
-          LOG.error("Failed to store relationship in Fuseki after {} attempts", maxRetries, e);
-          recordFailure();
-          throw new RuntimeException("Failed to store relationship in RDF", e);
-        }
-      } catch (Exception e) {
-        LOG.error("Failed to store relationship in Fuseki", e);
-        recordFailure();
-        throw new RuntimeException("Failed to store relationship in RDF", e);
-      }
+    try {
+      LOG.debug("SPARQL Update Query: {}", deleteInsertQuery);
+      UpdateRequest request = UpdateFactory.create(deleteInsertQuery);
+      runWriteWithRetry(
+          () -> runWithTimeout(() -> connection.update(request), "storeRelationship"),
+          "storeRelationship");
+      LOG.debug("Stored relationship (idempotent): {} -{}- {}", fromId, relationshipType, toId);
+    } catch (Exception e) {
+      LOG.error("Failed to store relationship in Fuseki", e);
+      throw new RuntimeException("Failed to store relationship in RDF", e);
     }
-
-    LOG.error("Failed to store relationship after {} retries", maxRetries);
-    recordFailure();
-    throw new RuntimeException("Failed to store relationship in RDF after retries", lastException);
   }
 
   @Override
@@ -910,15 +1035,15 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         // above.
       }
       UpdateRequest request = UpdateFactory.create(combined.toString());
-      runWithTimeout(() -> connection.update(request), "bulkStoreRelationships");
+      runWriteWithRetry(
+          () -> runWithTimeout(() -> connection.update(request), "bulkStoreRelationships"),
+          "bulkStoreRelationships");
       LOG.info(
           "Bulk stored {} relationships, reconciled {} source entities",
           relationships.size(),
           effectiveSources.size());
-      recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to bulk store relationships in Fuseki", e);
-      recordFailure();
       throw new RuntimeException("Failed to bulk store relationships in RDF", e);
     }
   }
@@ -949,7 +1074,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       return result.isEmpty() ? null : result;
     } catch (Exception e) {
       LOG.error("Failed to get entity from Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       return null;
@@ -975,7 +1100,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to delete entity from Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to delete entity from RDF", e);
@@ -992,7 +1117,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       return result;
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL query on Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to execute SPARQL query", e);
@@ -1069,7 +1194,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to execute SPARQL update on Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to execute SPARQL update", e);
@@ -1097,7 +1222,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to load Turtle file into Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to load Turtle file", e);
@@ -1119,7 +1244,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
           });
       recordSuccess();
     } catch (Exception e) {
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw e;
@@ -1140,7 +1265,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
         return results.next().getLiteral("count").getLong();
       }
     } catch (Exception e) {
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw e;
@@ -1158,7 +1283,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       recordSuccess();
     } catch (Exception e) {
       LOG.error("Failed to clear graph on Fuseki", e);
-      if (isConnectError(e)) {
+      if (isCircuitBreakerFailure(e)) {
         recordFailure();
       }
       throw new RuntimeException("Failed to clear graph", e);
@@ -1248,7 +1373,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private String startCompaction(DatasetEndpoint info) throws IOException, InterruptedException {
-    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
     String compactUrl =
         info.serverBaseUrl()
             + "/$/compact/"
@@ -1303,7 +1428,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
 
   private void waitForCompactionTask(String serverBaseUrl, String userInfo, String taskId)
       throws InterruptedException {
-    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+    HttpClient httpClient = HttpClient.newBuilder().connectTimeout(connectTimeout).build();
     String taskUrl = serverBaseUrl + "/$/tasks/" + encodePathSegment(taskId);
     long deadline = System.currentTimeMillis() + COMPACT_MAX_WAIT_MS;
     // Poll-then-sleep ordering: the very first iteration checks immediately so

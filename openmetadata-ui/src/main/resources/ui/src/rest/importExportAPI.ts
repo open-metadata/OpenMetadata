@@ -13,7 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { EntityType } from '../enums/entity.enum';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export interface importEntityInCSVFormatRequestParams {
@@ -131,6 +131,50 @@ export const importGlossaryTermInCSVFormat = async ({
     AxiosResponse<CSVImportAsyncResponse>
   >(
     `/glossaryTerms/name/${getEncodedFqn(name)}/importAsync?dryRun=${dryRun}`,
+    data,
+    configOptions
+  );
+
+  return response.data;
+};
+
+export interface OntologyImportResult {
+  dryRun: boolean;
+  glossariesCreated: number;
+  termsCreated: number;
+  termsUpdated: number;
+  relationsAdded: number;
+  conceptMappingsAdded: number;
+  customPropertiesCreated: number;
+  relationTypesRegistered: number;
+  messages: string[];
+}
+
+// JSON-LD is intentionally excluded — the backend rejects it (remote @context
+// resolution is an SSRF risk). Keep in sync with GlossaryRdfImporter.jenaLang().
+export type OntologyImportFormat = 'turtle' | 'rdfxml' | 'ntriples';
+
+export const importGlossaryOntology = async ({
+  name,
+  data,
+  dryRun = true,
+  format = 'turtle',
+}: {
+  name: string;
+  data: string;
+  dryRun?: boolean;
+  format?: OntologyImportFormat;
+}) => {
+  const configOptions = {
+    headers: { 'Content-type': 'text/plain' },
+  };
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<OntologyImportResult>
+  >(
+    `/glossaries/name/${getEncodedFqn(
+      name
+    )}/importRdf?dryRun=${dryRun}&format=${encodeURIComponent(format)}`,
     data,
     configOptions
   );

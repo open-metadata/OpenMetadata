@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { SelectChangeEvent } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { Connection, Edge, Node } from 'reactflow';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';
@@ -245,7 +244,7 @@ export const useWorkflowState = ({
   );
 
   const handleEventTypeChange = useCallback(
-    (event: SelectChangeEvent<string[]>) => {
+    (event: { target: { value: string | string[] } }) => {
       const value = event.target.value;
       const newEventTypes =
         typeof value === 'string' ? value.split(',') : value;
