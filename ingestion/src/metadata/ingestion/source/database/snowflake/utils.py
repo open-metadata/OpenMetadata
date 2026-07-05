@@ -15,7 +15,7 @@ Module to define overridden dialect methods
 
 import operator  # noqa: I001
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from functools import reduce
 from typing import Dict, Optional  # noqa: UP035
 
@@ -664,6 +664,7 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     )
 
 
+@reflection.cache
 def _get_schema_unique_constraints(self, connection, schema, **kw):
     result = connection.execute(
         text(
@@ -676,8 +677,6 @@ def _get_schema_unique_constraints(self, connection, schema, **kw):
         name = self.normalize_name(row._mapping["constraint_name"])
         table_name = self.normalize_name(row._mapping["table_name"])
 
-        # OpenMetadata Patch: Append the table_name into the uniqueness dictionary
-        # to support DBs that allow duplicate constraint names across tables
         constraint_key = (name, table_name)
 
         if constraint_key not in unique_constraints:
@@ -691,14 +690,12 @@ def _get_schema_unique_constraints(self, connection, schema, **kw):
                 self.normalize_name(row._mapping["column_name"])
             )
 
-    ans = {}
+    ans = defaultdict(list)
     for constraint in unique_constraints.values():
         t_name = constraint.pop("table_name")
-        if t_name not in ans:
-            ans[t_name] = []
         ans[t_name].append(constraint)
 
-    return ans
+    return dict(ans)
 
 
 @reflection.cache

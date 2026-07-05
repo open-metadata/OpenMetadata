@@ -1,4 +1,4 @@
-﻿from unittest.mock import Mock
+from unittest.mock import Mock
 from metadata.ingestion.source.database.snowflake.utils import _get_schema_unique_constraints
 
 def test_snowflake_unique_constraint_collision():
