@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
@@ -20,9 +20,14 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  createMemoryViaApi,
+  getLoggedInUser,
+  LoggedInUser,
   MEMORIES_API,
   MEMORIES_URL,
   navigateToMemories,
+  patchMemory,
+  searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
@@ -38,77 +43,6 @@ const SHARED_MEMORY_TITLE = `CC Memory Shared ${uuid()}`;
 const SHARED_NOT_WITH_CONSUMER_TITLE = `CC Memory Shared Elsewhere ${uuid()}`;
 const PRIVATE_MEMORY_TITLE = `CC Memory Private ${uuid()}`;
 const ENTITY_MEMORY_TITLE = `CC Memory Entity ${uuid()}`;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-interface LoggedInUser {
-  id: string;
-  name: string;
-  displayName: string;
-}
-
-/** Identifies the currently authenticated user via their own session. */
-const getLoggedInUser = async (
-  apiContext: APIRequestContext
-): Promise<LoggedInUser> => {
-  const res = await apiContext.get('/api/v1/users/loggedInUser');
-  expect(res.ok()).toBeTruthy();
-  const data = await res.json();
-
-  return {
-    id: data.id,
-    name: data.name,
-    displayName: data.displayName ?? data.name,
-  };
-};
-
-const createMemoryViaApi = async (
-  apiContext: APIRequestContext,
-  overrides: Record<string, unknown>
-) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
-  expect(res.status()).toBe(201);
-
-  return res.json();
-};
-
-const patchMemory = async (
-  apiContext: APIRequestContext,
-  id: string,
-  patch: Record<string, unknown>[]
-) => {
-  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
-    data: patch,
-    headers: { 'Content-Type': 'application/json-patch+json' },
-  });
-  expect(res.ok()).toBeTruthy();
-
-  return res.json();
-};
-
-/**
- * Searches for a memory by a unique query string and returns its row locator.
- * The list is paginated, so a memory created earlier in the suite may not be
- * on the currently loaded page — searching re-queries page 1 and guarantees
- * the row is present if it matches.
- */
-const searchAndGetMemoryRow = async (
-  page: Page,
-  query: string,
-  memoryId: string
-) => {
-  const searchResPromise = page.waitForResponse(
-    (res) =>
-      res.url().includes(MEMORIES_API) &&
-      res.url().includes('q=') &&
-      res.request().method() === 'GET'
-  );
-  await page.getByTestId('search-input').locator('input').fill(query);
-  await searchResPromise;
-  await waitForAllLoadersToDisappear(page);
-
-  return page.getByTestId(`memory-row-${memoryId}`);
-};
 
 // ─── Test suite ───────────────────────────────────────────────────────────────
 
@@ -866,7 +800,7 @@ test.describe(
         // rather than assuming either memory is visible on the currently
         // loaded unfiltered page.
         await expect(
-          await searchAndGetMemoryRow(page, SHARED_MEMORY_TITLE, sharedMemoryId)
+          page.getByTestId(`memory-row-${sharedMemoryId}`)
         ).toBeVisible();
         await expect(
           await searchAndGetMemoryRow(

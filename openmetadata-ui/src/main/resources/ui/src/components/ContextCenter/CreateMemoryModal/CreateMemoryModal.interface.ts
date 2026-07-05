@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { FormSelectItem } from '@openmetadata/ui-core-components';
+import { ContextMemory, ShareVisibility } from '../../../generated/entity/context/contextMemory';
 
 export interface CreateMemoryModalProps {
   isOpen: boolean;
@@ -27,3 +28,11 @@ export interface CreateMemoryModalProps {
   canDelete?: boolean;
   currentUserName?: string;
 }
+
+export interface MemoryFormValues {
+  title: string;
+  memory: string;
+  memoryType: FormSelectItem | null;
+  visibility: ShareVisibility;
+}
+

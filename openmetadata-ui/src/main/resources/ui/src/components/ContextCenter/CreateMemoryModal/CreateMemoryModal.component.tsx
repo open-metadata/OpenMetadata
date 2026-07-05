@@ -24,7 +24,6 @@ import {
   FieldTypes,
   FormField,
   FormItemLabel,
-  FormSelectItem,
   getField,
   HintText,
   HookForm,
@@ -34,7 +33,7 @@ import {
   TextArea,
   Tooltip,
   TooltipTrigger,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
@@ -102,7 +101,7 @@ import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
-import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+import { CreateMemoryModalProps, MemoryFormValues } from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
   lazy(
@@ -112,13 +111,6 @@ const TagSelectForm = withSuspenseFallback(
 );
 
 // ─── Form types ───────────────────────────────────────────────────────────────
-
-interface MemoryFormValues {
-  title: string;
-  memory: string;
-  memoryType: FormSelectItem | null;
-  visibility: ShareVisibility;
-}
 
 const DEFAULT_FORM_VALUES: MemoryFormValues = {
   title: '',
@@ -1132,7 +1124,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           }
                           isLoading={isSubmitting}
                           size="sm"
-                          onClick={() => form.handleSubmit(handleSubmit)()}>
+                          type="submit">
                           {submitLabel}
                         </Button>
                       )}

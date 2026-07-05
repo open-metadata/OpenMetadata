@@ -515,7 +515,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
                 { 'tw:bg-utility-blue-50 tw:border-utility-blue-200': isActive }
               )}
-              data-test-id={`memory-count-card-${filterKey}`}
+              data-testid={`memory-count-card-${filterKey}`}
               key={filterKey}
               onClick={() => handleFilterChange(filterKey)}>
               <ChevronRight
