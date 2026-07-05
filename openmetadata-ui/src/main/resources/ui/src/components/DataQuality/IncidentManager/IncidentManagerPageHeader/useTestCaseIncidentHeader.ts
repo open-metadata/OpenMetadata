@@ -62,10 +62,12 @@ export interface UseTestCaseIncidentHeaderResult {
   testCaseStatusData: TestCaseResolutionStatus | undefined;
   isLoading: boolean;
   taskLinkInfo: TaskLinkInfo | null;
-  ownerDisplayName: ReturnType<
-    typeof getCommonExtraInfoForVersionDetails
-  >['ownerDisplayName'];
-  ownerRef: ReturnType<typeof getCommonExtraInfoForVersionDetails>['ownerRef'];
+  ownerDisplayName:
+    | ReturnType<typeof getCommonExtraInfoForVersionDetails>['ownerDisplayName']
+    | undefined;
+  ownerRef:
+    | ReturnType<typeof getCommonExtraInfoForVersionDetails>['ownerRef']
+    | undefined;
   columnName: string | null;
   tableFqn: string;
   dimensionKey: string | undefined;
@@ -111,11 +113,18 @@ export const useTestCaseIncidentHeader = ({
     useActivityFeedProvider();
 
   const { ownerDisplayName, ownerRef } = useMemo(() => {
+    // Owner diff styling belongs to the version page only; the live page
+    // renders owners plainly even when the entity carries a
+    // changeDescription (e.g. right after an owner update).
+    if (!isVersionPage) {
+      return { ownerDisplayName: undefined, ownerRef: undefined };
+    }
+
     return getCommonExtraInfoForVersionDetails(
       testCaseData?.changeDescription as ChangeDescription,
       testCaseData?.owners
     );
-  }, [testCaseData?.changeDescription, testCaseData?.owners]);
+  }, [isVersionPage, testCaseData?.changeDescription, testCaseData?.owners]);
 
   const columnName = useMemo(() => {
     const isColumn = testCaseData?.entityLink.includes('::columns::');

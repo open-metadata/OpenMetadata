@@ -183,6 +183,21 @@ describe('useTestCaseIncidentHeader', () => {
     expect(result.current.testCaseStatusData).toBeUndefined();
   });
 
+  it('should expose the owner version diff only on the version page', async () => {
+    const { result: liveResult } = renderIncidentHeaderHook();
+
+    await waitFor(() => expect(liveResult.current.isLoading).toBe(false));
+
+    expect(liveResult.current.ownerDisplayName).toBeUndefined();
+    expect(liveResult.current.ownerRef).toBeUndefined();
+
+    const { result: versionResult } = renderIncidentHeaderHook(true);
+
+    await waitFor(() => expect(versionResult.current.isLoading).toBe(false));
+
+    expect(versionResult.current.ownerDisplayName).not.toBeUndefined();
+  });
+
   it('should build the task link info from the incident task', async () => {
     const { result } = renderIncidentHeaderHook();
 
