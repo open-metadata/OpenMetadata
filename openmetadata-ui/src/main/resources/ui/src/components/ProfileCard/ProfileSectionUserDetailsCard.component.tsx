@@ -10,31 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons';
 import { Badge, Button, Modal, Popover, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
-import { User } from '../../generated/entity/teams/user';
-import { getUserOnlineStatus, isMaskedEmail } from '../../utils/Users.util';
-
-import Icon from '@ant-design/icons';
-import { AxiosError } from 'axios';
 import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
   RequestType,
 } from '../../generated/auth/changePasswordRequest';
+import { User } from '../../generated/entity/teams/user';
 import { AuthProvider } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { changePassword } from '../../rest/auth-API';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { getUserOnlineStatus, isMaskedEmail } from '../../utils/UsersPureUtils';
 import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';

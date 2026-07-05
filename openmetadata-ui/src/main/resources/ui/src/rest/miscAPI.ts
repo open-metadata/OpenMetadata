@@ -28,7 +28,7 @@ import { SearchResponse } from '../interface/search.interface';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../utils/StringsUtils';
+} from '../utils/StringUtils';
 import APIClient from './index';
 
 export const getSearchAPIQueryParams = (

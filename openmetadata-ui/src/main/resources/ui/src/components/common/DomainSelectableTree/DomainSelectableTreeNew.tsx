@@ -41,15 +41,13 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
-import {
-  convertDomainsToTreeOptions,
-  isDomainExist,
-} from '../../../utils/DomainUtils';
-import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { isDomainExist } from '../../../utils/DomainFilterUtils';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
 import { TagRenderer } from '../TagRenderer/TagRenderer';

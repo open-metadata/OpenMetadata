@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.AI_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
@@ -26,6 +27,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_INDEX_MAPPINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -54,6 +56,7 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
@@ -73,7 +76,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.resources.system.AISettingsHandler;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
+import org.openmetadata.service.search.SearchFieldLimits;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -201,6 +207,37 @@ public class SettingsCache {
       LOG.error("Failed to read default search settings. Message: {}", e.getMessage(), e);
     }
 
+    // Initialise AI Settings
+    Settings storedAiSettings =
+        Entity.getSystemRepository().getConfigWithKey(AI_SETTINGS.toString());
+    try {
+      List<String> aiJsonDataFiles =
+          EntityUtil.getJsonDataResources(".*json/data/settings/aiSettings.json$");
+      if (!aiJsonDataFiles.isEmpty()) {
+        String aiJson =
+            CommonUtil.getResourceAsStream(
+                EntityRepository.class.getClassLoader(), aiJsonDataFiles.get(0));
+        AISettings defaultAiSettings = JsonUtils.readValue(aiJson, AISettings.class);
+        if (storedAiSettings == null) {
+          Settings setting =
+              new Settings().withConfigType(AI_SETTINGS).withConfigValue(defaultAiSettings);
+          Entity.getSystemRepository().createNewSetting(setting);
+        } else {
+          AISettings existingAiSettings =
+              JsonUtils.convertValue(storedAiSettings.getConfigValue(), AISettings.class);
+          AISettings mergedAiSettings =
+              new AISettingsHandler().mergeAISettings(defaultAiSettings, existingAiSettings);
+          if (!JsonUtils.pojoToJson(mergedAiSettings)
+              .equals(JsonUtils.pojoToJson(existingAiSettings))) {
+            storedAiSettings.setConfigValue(mergedAiSettings);
+            Entity.getSystemRepository().createOrUpdate(storedAiSettings);
+          }
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to read default AI settings. Message: {}", e.getMessage(), e);
+    }
+
     // Initialise Certification Settings
     Settings certificationSettings =
         Entity.getSystemRepository().getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
@@ -291,13 +328,12 @@ public class SettingsCache {
         Entity.getSystemRepository().getConfigWithKey(MCP_CONFIGURATION.toString());
     if (storedMcpConfig == null) {
       org.openmetadata.schema.api.configuration.MCPConfiguration mcpConfig =
-          applicationConfig.getMcpConfiguration();
-      if (mcpConfig != null) {
-        Settings setting =
-            new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
-
-        Entity.getSystemRepository().createNewSetting(setting);
-      }
+          applicationConfig.getMcpConfiguration() != null
+              ? applicationConfig.getMcpConfiguration()
+              : new org.openmetadata.schema.api.configuration.MCPConfiguration();
+      Settings setting =
+          new Settings().withConfigType(MCP_CONFIGURATION).withConfigValue(mcpConfig);
+      Entity.getSystemRepository().createNewSetting(setting);
     }
 
     Settings storedScimConfig =
@@ -492,6 +528,9 @@ public class SettingsCache {
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialize admin-editable, per-language/per-entity search index mappings (hardened at seed)
+    SearchIndexMappingsSeeder.seedIfAbsent();
   }
 
   private static GlossaryTermRelationType createRelationType(
@@ -554,6 +593,10 @@ public class SettingsCache {
       // If search settings are being invalidated, also invalidate aggregated fields
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      }
+      // Stored mapping edits change the per-entity field limits (e.g. depth) used at build time
+      if (SEARCH_INDEX_MAPPINGS.toString().equals(settingsName)) {
+        SearchFieldLimits.invalidateEntityCache();
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);

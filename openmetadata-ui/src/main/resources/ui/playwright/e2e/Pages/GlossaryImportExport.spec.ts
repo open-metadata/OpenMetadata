@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -22,9 +22,10 @@ import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
+import { createAdminApiContext } from '../../utils/admin';
 import {
   closeFirstPopupAlert,
-  createNewPage,
+  fetchCompletedCsvAsyncJobResult,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -42,6 +43,7 @@ import { selectActiveGlossary } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
+  startCsvPreviewAndWaitForGrid,
   validateImportStatus,
 } from '../../utils/importUtils';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
@@ -64,11 +66,47 @@ const propertyListName: Record<string, string> = {};
 
 const additionalGlossaryTerm = createGlossaryTermRowDetails();
 
+type CsvExportResponse = {
+  jobId: string;
+};
+
+const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
+  await page.getByTestId('manage-button').click();
+
+  const manageDropdown = page
+    .locator('.glossary-manage-dropdown-list-container')
+    .last();
+
+  await expect(manageDropdown).toBeVisible();
+  await manageDropdown.getByTestId(itemTestId).click();
+};
+
+const exportActiveGlossaryCsv = async (
+  page: Page,
+  apiContext: APIRequestContext
+) => {
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaries/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
+
+  await selectGlossaryManageItem(page, 'export-button');
+
+  const exportResponse = await exportResponsePromise;
+  expect(exportResponse.ok()).toBeTruthy();
+
+  const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+
+  return fetchCompletedCsvAsyncJobResult(apiContext, jobId);
+};
+
 test.describe('Glossary Bulk Import Export', () => {
   test.slow(true);
 
-  test.beforeAll('setup pre-test', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  test.beforeAll('setup pre-test', async () => {
+    const { apiContext, afterAction } = await createAdminApiContext();
 
     await user1.create(apiContext);
     await user2.create(apiContext);
@@ -81,8 +119,8 @@ test.describe('Glossary Bulk Import Export', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  test.afterAll('Cleanup', async () => {
+    const { apiContext, afterAction } = await createAdminApiContext();
 
     await user1.delete(apiContext);
     await user2.delete(apiContext);
@@ -98,6 +136,9 @@ test.describe('Glossary Bulk Import Export', () => {
   });
 
   test('Glossary Bulk Import Export', async ({ page }) => {
+    test.setTimeout(5 * 60 * 1000);
+    let glossary1CsvContent = '';
+
     await test.step('create custom properties for extension edit', async () => {
       for (const property of propertiesList) {
         const entity = CUSTOM_PROPERTIES_ENTITIES.entity_glossaryTerm;
@@ -119,19 +160,15 @@ test.describe('Glossary Bulk Import Export', () => {
     });
 
     await test.step('should export data glossary term details', async () => {
+      const { apiContext, afterAction } = await getApiContext(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
-      const downloadPromise = page.waitForEvent('download');
-
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', glossary1.data.displayName);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
-
-      // Wait for the download process to complete and save the downloaded file somewhere.
-      await download.saveAs('downloads/' + download.suggestedFilename());
+      try {
+        glossary1CsvContent = await exportActiveGlossaryCsv(page, apiContext);
+      } finally {
+        await afterAction();
+      }
     });
 
     await test.step('should import and edit with one additional glossaryTerm', async () => {
@@ -152,17 +189,15 @@ test.describe('Glossary Bulk Import Export', () => {
       // Arrived due to parallel testing
       await closeFirstPopupAlert(page);
 
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="import-button-description"]');
+      await selectGlossaryManageItem(page, 'import-button');
       await page.locator('[type="file"]').waitFor({ state: 'attached' });
-      await page.setInputFiles(
-        '[type="file"]',
-        'downloads/' + glossary1.data.displayName + '.csv'
-      );
-
-      await page.getByTestId('upload-file-widget').waitFor({
-        state: 'hidden',
+      await page.setInputFiles('[type="file"]', {
+        name: `${glossary1.data.displayName}.csv`,
+        mimeType: 'text/csv',
+        buffer: Buffer.from(glossary1CsvContent),
       });
+
+      await startCsvPreviewAndWaitForGrid(page);
 
       // Adding some assertion to make sure that CSV loaded correctly
       await expect(page.locator('.rdg-header-row')).toBeVisible();
@@ -172,7 +207,9 @@ test.describe('Glossary Bulk Import Export', () => {
         page.getByRole('button', { name: 'Previous' })
       ).toBeVisible();
 
+      const rowCount = await page.locator('.rdg-row').count();
       await page.click('[data-testid="add-row-btn"]');
+      await expect(page.locator('.rdg-row')).toHaveCount(rowCount + 1);
 
       // click on last row first cell
       const lastRow = page.locator('.rdg-row').last();
@@ -280,7 +317,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
   test('Check for Circular Reference in Glossary Import', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const circularRefGlossary = new Glossary('Test CSV');
+    const circularRefGlossary = new Glossary(`TestCSV-${uuid()}`);
 
     try {
       await test.step('Create glossary for circular reference test', async () => {
@@ -291,13 +328,12 @@ test.describe('Glossary Bulk Import Export', () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, circularRefGlossary.data.displayName);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        await selectGlossaryManageItem(page, 'import-button');
 
-        const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
-,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
-${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
+        const initialCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,,`;
 
         const initialCsvBlob = new Blob([initialCsvContent], {
           type: 'text/csv',
@@ -313,11 +349,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await initialCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -351,10 +383,10 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
 
-        const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,
-,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,
-${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,`;
+        const circularCsvContent = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+${circularRefGlossary.data.name}.name1,name1,name1,<p>name1</p>,,,,,,user:admin,Approved,,,,
+,parent,parent,<p>parent</p>,,,,,,user:admin,Approved,,,,
+${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin,Approved,,,,`;
 
         const circularCsvBlob = new Blob([circularCsvContent], {
           type: 'text/csv',
@@ -374,11 +406,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await circularCsvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -400,7 +428,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           .textContent();
 
         expect(errorText).toContain(
-          "Invalid hierarchy: Term 'Test CSV.name1' cannot be its own parent"
+          `Invalid hierarchy: Term '${circularRefGlossary.data.name}.name1' cannot be its own parent`
         );
       });
     } finally {
@@ -412,7 +440,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I05: Import validation - missing required fields
   test('Import validation - missing required fields', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const validationGlossary = new Glossary('ValidationTest');
+    const validationGlossary = new Glossary(`ValidationTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for validation test', async () => {
@@ -427,8 +455,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with missing name (required field)
-        const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,`;
+        const missingNameCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+,,,<p>Description without name</p>,,,,,,user:admin,Approved,,,,`;
 
         const csvBlob = new Blob([missingNameCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'missing-name.csv', {
@@ -442,11 +470,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -471,7 +495,7 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
   // IE-I06: Import validation - invalid parent reference
   test('Import validation - invalid parent reference', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const parentRefGlossary = new Glossary('ParentRefTest');
+    const parentRefGlossary = new Glossary(`ParentRefTest-${uuid()}`);
 
     try {
       await test.step('Create glossary for parent ref test', async () => {
@@ -486,8 +510,8 @@ ${circularRefGlossary.data.name}.parent,child,child,<p>child</p>,,,,,,user:admin
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with reference to non-existent parent
-        const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child with invalid parent</p>,,,,,,user:admin,Approved,,,`;
+        const invalidParentCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child with invalid parent</p>,,,,,,user:admin,Approved,,,,`;
 
         const csvBlob = new Blob([invalidParentCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'invalid-parent.csv', {
@@ -501,11 +525,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -534,7 +554,7 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
     page,
   }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const partialGlossary = new Glossary('PartialSuccess');
+    const partialGlossary = new Glossary(`PartialSuccess-${uuid()}`);
 
     try {
       await test.step('Create glossary for partial success test', async () => {
@@ -549,9 +569,9 @@ ${parentRefGlossary.data.name}.NonExistentParent,childTerm,childTerm,<p>Child wi
         await page.click('[data-testid="import-button-description"]');
 
         // CSV with one valid term and one with circular reference
-        const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension
-,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,
-${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,`;
+        const mixedCsv = `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension
+,validTerm,validTerm,<p>This is a valid term</p>,,,,,,user:admin,Approved,,,,
+${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p>,,,,,,user:admin,Approved,,,,`;
 
         const csvBlob = new Blob([mixedCsv], { type: 'text/csv' });
         const csvFile = new File([csvBlob], 'mixed-terms.csv', {
@@ -565,11 +585,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(await csvFile.arrayBuffer()),
         });
 
-        await page.getByTestId('upload-file-widget').waitFor({
-          state: 'hidden',
-        });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
 
         await page.getByRole('button', { name: 'Next' }).click();
 
@@ -603,7 +619,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
     test.slow(true);
 
     const { apiContext, afterAction } = await getApiContext(page);
-    const largeGlossary = new Glossary('LargeExport');
+    const largeGlossary = new Glossary(`LargeExport-${uuid()}`);
     const terms: GlossaryTerm[] = [];
 
     try {
@@ -626,19 +642,10 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, largeGlossary.data.displayName);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="export-button-description"]');
+        const csvContent = await exportActiveGlossaryCsv(page, apiContext);
 
-        // Wait for export modal
-        await page.locator('[role="dialog"]').waitFor();
-
-        // Start export
-        const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
-        const download = await downloadPromise;
-
-        // Verify download started
-        expect(download.suggestedFilename()).toContain('.csv');
+        expect(csvContent).toContain('ExportTerm0');
+        expect(csvContent).toContain('ExportTerm19');
       });
     } finally {
       await largeGlossary.delete(apiContext);
@@ -649,7 +656,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
   // IE-E05: Export maintains hierarchy in CSV
   test('Export maintains hierarchy structure in CSV', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
-    const hierarchyGlossary = new Glossary('HierarchyExport');
+    const hierarchyGlossary = new Glossary(`HierarchyExport-${uuid()}`);
     let parentTerm: GlossaryTerm;
     let childTerm: GlossaryTerm;
     let grandchildTerm: GlossaryTerm;
@@ -687,36 +694,14 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, hierarchyGlossary.data.displayName);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="export-button-description"]');
+        const csvContent = await exportActiveGlossaryCsv(page, apiContext);
 
-        // Wait for export modal
-        await page.locator('[role="dialog"]').waitFor();
-
-        // Start export
-        const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
-        const download = await downloadPromise;
-
-        // Read the CSV content
-        const stream = await download.createReadStream();
-
-        if (stream) {
-          const chunks: Buffer[] = [];
-
-          for await (const chunk of stream) {
-            chunks.push(Buffer.from(chunk));
-          }
-
-          const csvContent = Buffer.concat(chunks).toString('utf-8');
-
-          // Verify parent column contains hierarchy info
-          expect(csvContent).toContain('parent');
-          // Verify terms are in the export
-          expect(csvContent).toContain('HierarchyParent');
-          expect(csvContent).toContain('HierarchyChild');
-          expect(csvContent).toContain('HierarchyGrandchild');
-        }
+        // Verify parent column contains hierarchy info
+        expect(csvContent).toContain('parent');
+        // Verify terms are in the export
+        expect(csvContent).toContain('HierarchyParent');
+        expect(csvContent).toContain('HierarchyChild');
+        expect(csvContent).toContain('HierarchyGrandchild');
       });
     } finally {
       await hierarchyGlossary.delete(apiContext);
@@ -761,15 +746,14 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         // Safety check: parallel test runs can surface a "glossary not found" popup.
         await closeFirstPopupAlert(page);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="import-button-description"]');
+        await selectGlossaryManageItem(page, 'import-button');
 
         const csvContent =
-          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n` +
+          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n` +
           `,${importedTermName},${importedTermName},Imported,,` +
           `synonym:${target1.responseData.fullyQualifiedName};` +
           `${target2.responseData.fullyQualifiedName};` +
-          `narrower:${target3.responseData.fullyQualifiedName},,,,user:admin,Approved,,,`;
+          `narrower:${target3.responseData.fullyQualifiedName},,,,user:admin,Approved,,,,`;
 
         await page.locator('[type="file"]').waitFor({ state: 'attached' });
         await page.setInputFiles('[type="file"]', {
@@ -778,11 +762,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(csvContent),
         });
 
-        await page
-          .getByTestId('upload-file-widget')
-          .waitFor({ state: 'hidden' });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
         await page.getByRole('button', { name: 'Next' }).click();
 
         const loader = page.locator(
@@ -799,6 +779,10 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         await page.getByRole('button', { name: 'Update' }).click();
         await loader.waitFor({ state: 'detached' });
+        await toastNotification(
+          page,
+          `Glossary ${relGlossary.responseData.fullyQualifiedName} details updated successfully`
+        );
       });
 
       await test.step('Verify each relation type via API', async () => {
@@ -833,25 +817,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
         await selectActiveGlossary(page, relGlossary.data.displayName);
         await closeFirstPopupAlert(page);
 
-        await page.click('[data-testid="manage-button"]');
-        await page.click('[data-testid="export-button-description"]');
-        await page.locator('[role="dialog"]').waitFor();
-
-        const downloadPromise = page.waitForEvent('download');
-        await page.getByRole('button', { name: 'Export' }).click();
-        const download = await downloadPromise;
-
-        const stream = await download.createReadStream();
-        expect(stream, 'Download stream should be available').not.toBeNull();
-        const chunks: Buffer[] = [];
-
-        if (stream) {
-          for await (const chunk of stream) {
-            chunks.push(Buffer.from(chunk));
-          }
-        }
-
-        const csvContent = Buffer.concat(chunks).toString('utf-8');
+        const csvContent = await exportActiveGlossaryCsv(page, apiContext);
         const lines = csvContent.split(/\r?\n/);
         const importedRow = lines.find((line) =>
           line.includes(`,${importedTermName},`)
@@ -901,9 +867,9 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
 
         const newTermName = `TR_invalid_${uuid()}`;
         const csvContent =
-          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n` +
+          `parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n` +
           `,${newTermName},${newTermName},Invalid,,` +
-          `notarealtype:${target.responseData.fullyQualifiedName},,,,user:admin,Approved,,,`;
+          `notarealtype:${target.responseData.fullyQualifiedName},,,,user:admin,Approved,,,,`;
 
         await page.locator('[type="file"]').waitFor({ state: 'attached' });
         await page.setInputFiles('[type="file"]', {
@@ -912,11 +878,7 @@ ${partialGlossary.data.name}.selfRef,selfRef,selfRef,<p>Self-referential term</p
           buffer: Buffer.from(csvContent),
         });
 
-        await page
-          .getByTestId('upload-file-widget')
-          .waitFor({ state: 'hidden' });
-
-        await expect(page.locator('.rdg-header-row')).toBeVisible();
+        await startCsvPreviewAndWaitForGrid(page);
         await page.getByRole('button', { name: 'Next' }).click();
 
         const loader = page.locator(

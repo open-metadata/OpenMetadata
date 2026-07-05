@@ -389,11 +389,11 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('EntityName'),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
 }));

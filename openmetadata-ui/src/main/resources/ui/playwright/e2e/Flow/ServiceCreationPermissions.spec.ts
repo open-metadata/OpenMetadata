@@ -30,6 +30,13 @@ import {
 } from '../../utils/common';
 import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import {
+  advanceToServiceConnectionStep,
+  mockSuccessfulTestConnection,
+  selectServiceConnector,
+  testConnectionIfRequired,
+  waitForServiceConnectionForm,
+} from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const serviceOwnerPolicy = new PolicyClass();
@@ -42,9 +49,20 @@ const adminOwnedService = new DatabaseServiceClass(
   `pw-admin-service-${uuid()}`
 );
 
+const pipelineTriggerPolicy = new PolicyClass();
+const pipelineTriggerRole = new RolesClass();
+const pipelineTriggerUser = new UserClass();
+const pipelineEditPolicy = new PolicyClass();
+const pipelineEditRole = new RolesClass();
+const pipelineEditUser = new UserClass();
+
+let ingestionPipelineName = '';
+
 const test = base.extend<{
   serviceOwnerPage: Page;
   anotherUserPage: Page;
+  pipelineTriggerPage: Page;
+  pipelineEditPage: Page;
 }>({
   serviceOwnerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -58,7 +76,40 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  pipelineTriggerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineTriggerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  pipelineEditPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await pipelineEditUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
+
+const openPipelineActions = async (page: Page) => {
+  await redirectToHomePage(page);
+  await adminOwnedService.visitEntityPage(page);
+
+  await page.getByTestId('agents').click();
+
+  const metadataSubTab = page.getByTestId('metadata-sub-tab');
+  if (await metadataSubTab.isVisible()) {
+    await metadataSubTab.click();
+  }
+
+  const actionButton = page
+    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
+    .getByTestId('more-actions');
+
+  await actionButton.waitFor();
+  await actionButton.click();
+
+  await page.getByTestId('actions-dropdown').waitFor();
+};
 
 test.describe(
   'Service Creation with isOwner() Permissions',
@@ -124,7 +175,111 @@ test.describe(
         ],
       });
 
-      await adminOwnedService.create(apiContext);
+      const adminServiceResponse = await adminOwnedService.create(apiContext);
+
+      await pipelineTriggerUser.create(apiContext);
+      await pipelineEditUser.create(apiContext);
+
+      // The Agents tab is only visible to service owners/admins. Both users are
+      // made owners so the tab is visible and isOwner() grants all operations on
+      // the ingestionPipeline entity. Deny rules then strip the specific
+      // operations we want to exclude per user.
+      await adminOwnedService.patch(apiContext, [
+        {
+          op: 'add',
+          path: '/owners',
+          value: [
+            { id: pipelineTriggerUser.responseData.id, type: 'user' },
+            { id: pipelineEditUser.responseData.id, type: 'user' },
+          ],
+        },
+      ]);
+
+      const triggerPolicyResponse = await pipelineTriggerPolicy.create(
+        apiContext,
+        [
+          {
+            name: 'IngestionPipeline-Deny-EditAll-Rule',
+            resources: ['ingestionPipeline'],
+            operations: ['EditAll'],
+            effect: 'deny',
+          },
+        ]
+      );
+      const triggerRoleResponse = await pipelineTriggerRole.create(apiContext, [
+        triggerPolicyResponse.fullyQualifiedName,
+      ]);
+
+      const editPolicyResponse = await pipelineEditPolicy.create(apiContext, [
+        {
+          name: 'IngestionPipeline-Deny-Trigger-Rule',
+          resources: ['ingestionPipeline'],
+          operations: ['Trigger'],
+          effect: 'deny',
+        },
+      ]);
+      const editRoleResponse = await pipelineEditRole.create(apiContext, [
+        editPolicyResponse.fullyQualifiedName,
+      ]);
+
+      await pipelineTriggerUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: triggerRoleResponse.id,
+              type: 'role',
+              name: triggerRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      await pipelineEditUser.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: editRoleResponse.id,
+              type: 'role',
+              name: editRoleResponse.name,
+            },
+          },
+        ],
+      });
+
+      ingestionPipelineName = `pw-ingestion-perm-${uuid()}`;
+      const createPipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: ingestionPipelineName,
+            pipelineType: 'metadata',
+            service: {
+              id: adminServiceResponse.id,
+              type: 'databaseService',
+            },
+            sourceConfig: {
+              config: {
+                type: 'DatabaseMetadata',
+              },
+            },
+          },
+        }
+      );
+
+      expect(createPipelineResponse.status()).toBe(201);
+
+      const createdPipeline = await createPipelineResponse.json();
+      await apiContext.post(
+        `/api/v1/services/ingestionPipelines/deploy/${createdPipeline.id}`
+      );
 
       await afterAction();
     });
@@ -139,6 +294,12 @@ test.describe(
       await serviceViewerPolicy.delete(apiContext);
       await serviceOwnerUser.delete(apiContext);
       await anotherUser.delete(apiContext);
+      await pipelineTriggerRole.delete(apiContext);
+      await pipelineTriggerPolicy.delete(apiContext);
+      await pipelineEditRole.delete(apiContext);
+      await pipelineEditPolicy.delete(apiContext);
+      await pipelineTriggerUser.delete(apiContext);
+      await pipelineEditUser.delete(apiContext);
 
       await afterAction();
     });
@@ -153,19 +314,20 @@ test.describe(
 
       await page.getByTestId('add-service-button').click();
 
-      await page.getByTestId('Mysql').click();
-      await page.getByTestId('next-button').click();
+      await selectServiceConnector(page, 'Mysql');
 
       const serviceName = `pw-user-owned-service-${uuid()}`;
-      await page.getByTestId('service-name').fill(serviceName);
-      await page.getByTestId('next-button').click();
+      await mockSuccessfulTestConnection(page);
+      await page.locator('#service-name').fill(serviceName);
+      await advanceToServiceConnectionStep(page);
 
       await page.locator('#root\\/username').fill('test_user');
       await page.locator('#root\\/authType\\/password').fill('test_password');
       await page.locator('#root\\/hostPort').fill('localhost:3306');
 
-      await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
       await expect(page.getByTestId('entity-header-title')).toContainText(
         serviceName
@@ -238,7 +400,9 @@ test.describe(
       );
 
       await page.getByRole('tab', { name: 'Connection' }).click();
+      await mockSuccessfulTestConnection(page);
       await page.getByTestId('edit-connection-button').click();
+      await waitForServiceConnectionForm(page);
 
       await page.locator('#root\\/username').clear();
       await page.locator('#root\\/username').fill('updated_user');
@@ -247,8 +411,9 @@ test.describe(
         response.url().includes('/api/v1/services/databaseServices')
       );
 
-      await page.getByTestId('submit-btn').click();
-      await page.getByTestId('submit-btn').click();
+      await testConnectionIfRequired(page);
+      await page.getByTestId('next-button').click();
+      await page.getByRole('button', { name: 'Save' }).click();
       await saveResponse;
 
       const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
@@ -414,6 +579,41 @@ test.describe(
         await performAdminLogin(browser);
       await serviceToUpdate.delete(cleanupContext);
       await cleanupAfterAction();
+    });
+
+    test('User with Trigger permission can run an ingestion pipeline without EditAll', async ({
+      pipelineTriggerPage: page,
+    }) => {
+      await openPipelineActions(page);
+
+      await expect(page.getByTestId('run-button')).toBeVisible();
+      await expect(page.getByTestId('edit-button')).toBeHidden();
+      await expect(page.getByTestId('kill-button')).toBeHidden();
+
+      const triggerResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+          response.request().method() === 'POST'
+      );
+
+      await page.getByTestId('run-button').click();
+
+      const response = await triggerResponse;
+
+      expect(response.status()).toBe(200);
+    });
+
+    test('User with EditAll but not Trigger cannot run a pipeline', async ({
+      pipelineEditPage: page,
+    }) => {
+      await openPipelineActions(page);
+
+      await expect(page.getByTestId('edit-button')).toBeVisible();
+      await expect(page.getByTestId('kill-button')).toBeVisible();
+      await expect(page.getByTestId('re-deploy-button')).toBeVisible();
+      await expect(page.getByTestId('run-button')).toBeHidden();
     });
   }
 );

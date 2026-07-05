@@ -12,22 +12,55 @@
  */
 
 import { get } from 'lodash';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
-import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import TopicSchemaFields from '../components/Topic/TopicSchema/TopicSchema';
+import { lazy } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { Topic } from '../generated/entity/data/topic';
+import type { Topic } from '../generated/entity/data/topic';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
-import { Field } from '../generated/type/schema';
-import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { EntityReference } from '../generated/type/entityReference';
+import type { Field } from '../generated/type/schema';
+import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
-import { TopicDetailPageTabProps } from './TopicClassBase';
+import type { TopicDetailPageTabProps } from './TopicClassBase';
+
+const ErrorPlaceHolder = withSuspenseFallback(
+  lazy(
+    () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
+  )
+);
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const CommonWidgets = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataAssets/CommonWidgets/CommonWidgets').then(
+      (module) => ({ default: module.CommonWidgets })
+    )
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+const TopicSchemaFields = withSuspenseFallback(
+  lazy(() => import('../components/Topic/TopicSchema/TopicSchema'))
+);
 
 export const getTopicDetailsPageTabs = ({
   schemaCount,

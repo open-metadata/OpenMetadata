@@ -52,7 +52,6 @@ from metadata.utils.class_helper import (
     get_reference_type_from_service_type,
     get_service_class_from_service_type,
 )
-from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -70,7 +69,7 @@ logger = ingestion_logger()
 # Type of service linked to the Ingestion Pipeline
 T = TypeVar("T")
 
-REPORTS_INTERVAL_SECONDS = 60
+REPORTS_INTERVAL_SECONDS = 30
 
 
 class InvalidWorkflowJSONException(Exception):  # noqa: N818
@@ -106,10 +105,8 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None  # noqa: UP045
         self._ingestion_pipeline: Optional[IngestionPipeline] = None  # noqa: UP045
+        self._steps_closed = False
         self._start_ts = datetime_to_ts(datetime.now())
-
-        # Execution time tracking is always enabled for workflows regardless of the log level
-        self._execution_time_tracker = ExecutionTimeTracker(enabled=True)
 
         set_loggers_level(self.workflow_config.loggerLevel.value)
 
@@ -163,6 +160,30 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         return self._ingestion_pipeline
 
+    def close_steps(self) -> None:
+        """
+        Close workflow steps so that any buffered records are flushed and
+        reflected in the step status before it is printed.
+
+        Sinks like the metadata REST sink batch entities and only flush them
+        in `close()`, where they are also added to the status counters. This
+        must run before `print_status()` so the printed counts include those
+        buffered records, while remaining separate from `stop()` so the
+        streamable logging handler stays alive during status printing.
+
+        Idempotent: `execute()` calls this before `print_status()`, and
+        `stop()` calls it again so callers using `stop()` standalone still
+        get step cleanup. The `_steps_closed` flag prevents double-flush.
+        """
+        if self._steps_closed:
+            return
+        self._steps_closed = True
+        for step in self.workflow_steps():
+            try:
+                step.close()
+            except Exception as exc:
+                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+
     def stop(self) -> None:
         """
         Main stopping logic
@@ -181,13 +202,16 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         ProgressTrackerState().reset()
         OperationMetricsState().reset()
 
-        self.metadata.close()
+        # Close steps before tearing down the OM client so sinks can use it
+        # for any final flush. No-op when execute() already closed steps.
+        # Wrapped defensively so a flush failure doesn't leave the timer
+        # stopped but the OM client still open.
+        try:
+            self.close_steps()
+        except Exception:
+            logger.debug("close_steps failed during stop", exc_info=True)
 
-        for step in self.workflow_steps():
-            try:
-                step.close()
-            except Exception as exc:
-                logger.warning(f"Error trying to close the step {step} due to [{exc}]")
+        self.metadata.close()
 
     @property
     def timer(self) -> RepeatedTimer:
@@ -293,9 +317,24 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
 
         # Force resource closing. Required for killing the threading
         finally:
-            ingestion_status = self.build_ingestion_status()
-            self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+            # Flush sink buffers first so the step statuses include records
+            # that some sinks only commit in close(). Both the persisted
+            # pipeline status (build_ingestion_status -> Summary.from_step)
+            # and the printed summary read from those same step statuses.
+            # Swallow any unexpected error here so the pipeline status is
+            # still persisted to the server even on a catastrophic flush
+            # failure (preserves the pre-existing "status is always sent"
+            # invariant).
             try:
+                self.close_steps()
+            except Exception:
+                logger.debug("close_steps failed", exc_info=True)
+            try:
+                ingestion_status = self.build_ingestion_status()
+                try:
+                    self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                finally:
+                    self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
                 try:
                     self.print_status()
                 finally:
@@ -411,6 +450,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
                 )
+
+            reporter = self._progress_reporter()
+            if reporter is not None:
+                text = reporter.cli()
+                if text:
+                    logger.info("Ingestion progress:\n%s", text)
 
             # Send progress update to the server for live tracking
             self.send_progress_update()

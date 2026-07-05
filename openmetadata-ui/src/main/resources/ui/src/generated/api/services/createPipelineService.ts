@@ -114,6 +114,8 @@ export interface PipelineConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
 export interface ConfigObject {
     /**
@@ -138,6 +140,8 @@ export interface ConfigObject {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      */
     hostPort?: string;
     /**
@@ -150,6 +154,8 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -161,6 +167,9 @@ export interface ConfigObject {
     type?: PipelineServiceType;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -391,6 +400,19 @@ export interface ConfigObject {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
+     * Password for the HANA database user.
+     */
+    password?: string;
+    /**
+     * HANA database username with access to BW metadata tables.
+     */
+    username?: string;
     [property: string]: any;
 }
 
@@ -1110,6 +1132,8 @@ export interface AuthConfigurationType {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1259,6 +1283,9 @@ export enum Type {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -1445,6 +1472,8 @@ export enum S3Type {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Type of pipeline service - Airflow or Prefect.
  */
 export enum PipelineServiceType {
@@ -1466,6 +1495,7 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",

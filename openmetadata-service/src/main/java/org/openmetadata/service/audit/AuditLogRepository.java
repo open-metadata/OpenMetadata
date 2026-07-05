@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.events.AuditLogger;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.AsyncService;
@@ -37,11 +38,16 @@ public class AuditLogRepository {
           EventType.ENTITY_SOFT_DELETED,
           EventType.ENTITY_DELETED,
           EventType.ENTITY_RESTORED,
+          EventType.ENTITY_LINEAGE_ADDED,
+          EventType.ENTITY_LINEAGE_DELETED,
+          EventType.ENTITY_LINEAGE_UPDATED,
           EventType.USER_LOGIN,
           EventType.USER_LOGOUT);
 
   private static final Set<String> AGENT_INDICATORS =
       Set.of("agent", "documentation", "classification", "automator");
+
+  private static final AuditLogger AUDIT_LOGGER = AuditLogger.getLogger(AuditLogRepository.class);
 
   private final CollectionDAO.AuditLogDAO auditLogDAO;
 
@@ -106,11 +112,27 @@ public class AuditLogRepository {
           record.getActorType(),
           record.getEntityType(),
           record.getEntityId());
-      auditLogDAO.insert(record);
+      int inserted = auditLogDAO.insert(record);
+      if (inserted > 0) {
+        logAuditTrail(record);
+      }
       LOG.debug("Successfully inserted audit log for change event {}", changeEvent.getId());
     } catch (Exception ex) {
       LOG.warn("Failed to persist audit log for change event {}", changeEvent.getId(), ex);
     }
+  }
+
+  private void logAuditTrail(AuditLogRecord record) {
+    AUDIT_LOGGER.log(
+        "eventType={} user={} actorType={} entityType={} entityFQN={} entityId={} service={} ts={}",
+        record.getEventType(),
+        record.getUserName(),
+        record.getActorType(),
+        record.getEntityType(),
+        record.getEntityFQN(),
+        record.getEntityId(),
+        record.getServiceName(),
+        record.getEventTs());
   }
 
   public static final EventType AUTH_EVENT_LOGIN = EventType.USER_LOGIN;
@@ -405,6 +427,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_ASC,
+              ORDER_ASC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -431,6 +454,7 @@ public class AuditLogRepository {
           auditLogDAO.list(
               condition,
               ORDER_DESC,
+              ORDER_DESC_QUALIFIED,
               userName,
               actorType,
               serviceName,
@@ -534,14 +558,15 @@ public class AuditLogRepository {
     EventType eventType = changeEvent.getEventType();
     String entityType = changeEvent.getEntityType();
     String entityFqn = changeEvent.getEntityFullyQualifiedName();
+    String recursiveSuffix = Boolean.TRUE.equals(changeEvent.getRecursive()) ? " (recursive)" : "";
 
     switch (eventType) {
       case ENTITY_CREATED:
         return String.format("Created %s: %s", entityType, entityFqn);
       case ENTITY_DELETED:
-        return String.format("Deleted %s: %s", entityType, entityFqn);
+        return String.format("Deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_SOFT_DELETED:
-        return String.format("Soft deleted %s: %s", entityType, entityFqn);
+        return String.format("Soft deleted %s: %s%s", entityType, entityFqn, recursiveSuffix);
       case ENTITY_RESTORED:
         return String.format("Restored %s: %s", entityType, entityFqn);
       case ENTITY_UPDATED:
@@ -730,6 +755,8 @@ public class AuditLogRepository {
 
   private static final String ORDER_DESC = "ORDER BY event_ts DESC, id DESC";
   private static final String ORDER_ASC = "ORDER BY event_ts ASC, id ASC";
+  private static final String ORDER_DESC_QUALIFIED = "ORDER BY a.event_ts DESC, a.id DESC";
+  private static final String ORDER_ASC_QUALIFIED = "ORDER BY a.event_ts ASC, a.id ASC";
 
   private int sanitizeLimit(int requested) {
     int limit = requested <= 0 ? 25 : requested;

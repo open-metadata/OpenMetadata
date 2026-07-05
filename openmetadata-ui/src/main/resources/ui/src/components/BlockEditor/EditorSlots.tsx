@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, ReactRenderer } from '@tiptap/react';
+import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
@@ -50,7 +50,24 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       }
 
       if (op === 'add') {
-        editor?.chain().focus().setLink({ href: values.href }).run();
+        const { from, to } = editor.state.selection;
+        const hasSelectedText = from !== to;
+
+        if (hasSelectedText) {
+          editor.chain().focus().setLink({ href: values.href }).run();
+        } else {
+          // setLink on an empty selection only sets a stored mark and renders
+          // nothing, so insert the href as the link text to get a visible link.
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: values.href,
+              marks: [{ type: 'link', attrs: { href: values.href } }],
+            })
+            .run();
+        }
       }
 
       // move cursor at the end
@@ -58,6 +75,19 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
       // close the modal
       handleLinkToggle();
+    };
+
+    // Mount the link modal and popup inside the editor's nearest focus-trapping
+    // dialog (e.g. React Aria's SlideoutMenu) so it does not steal focus or
+    // swallow their clicks. antd modals/drawers don't trap focus from a
+    // body-portalled modal, and their transforms would misposition it, so fall
+    // back to document.body for those (and when not inside a dialog at all).
+    const getDialogContainer = (): HTMLElement => {
+      const dialog = editor?.view.dom.closest('[role="dialog"]');
+
+      return dialog && !dialog.closest('.ant-modal, .ant-drawer')
+        ? (dialog as HTMLElement)
+        : document.body;
     };
 
     const handleUnlink = () => {
@@ -122,7 +152,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         popup = tippy('body', {
           getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => document.body,
+          appendTo: () => getDialogContainer(),
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -160,6 +190,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         {isLinkModalOpen && (
           <LinkModal
             data={{ href: editor?.getAttributes('link').href }}
+            getContainer={getDialogContainer}
             isOpen={isLinkModalOpen}
             onCancel={handleLinkCancel}
             onSave={(values) =>

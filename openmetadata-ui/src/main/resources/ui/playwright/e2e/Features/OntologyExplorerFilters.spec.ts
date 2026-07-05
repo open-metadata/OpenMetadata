@@ -17,6 +17,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   addTermRelation,
   applyGlossaryFilter,
+  applyMultiGlossaryFilter,
   applyRelationTypeFilter,
   createApiContext,
   deleteEntities,
@@ -311,10 +312,11 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
     }) => {
       await waitForGraphLoaded(page);
 
-      await page.getByTestId('search-dropdown-Glossary').click();
-      await page.getByTestId(glossary.responseData.id).click();
-      await page.getByTestId(glossary2.responseData.id).click();
-      await page.getByTestId('update-btn').click();
+      await applyMultiGlossaryFilter(
+        page,
+        glossary.responseData.id,
+        glossary2.responseData.id
+      );
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
@@ -327,15 +329,15 @@ test.describe('Ontology Explorer - Filters and Tabs', () => {
     }) => {
       await waitForGraphLoaded(page);
 
-      await page.getByTestId('search-dropdown-Glossary').click();
-      await page.getByTestId(glossary.responseData.id).click();
-      await page.getByTestId(glossary2.responseData.id).click();
-      await page.getByTestId('update-btn').click();
+      await applyMultiGlossaryFilter(
+        page,
+        glossary.responseData.id,
+        glossary2.responseData.id
+      );
       await waitForGraphLoaded(page);
 
-      await page.getByTestId('search-dropdown-Glossary').click();
-      await page.getByTestId(glossary2.responseData.id).click();
-      await page.getByTestId('update-btn').click();
+      // Deselect glossary2 — clicks the already-selected ID to uncheck it.
+      await applyMultiGlossaryFilter(page, glossary2.responseData.id);
       await waitForGraphLoaded(page);
 
       await expect(page.getByTestId('ontology-explorer-stats')).toContainText(

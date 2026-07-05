@@ -10,29 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Typography } from 'antd';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../../assets/svg/all-activity-v2.svg';
 import {
-  GREEN_3,
-  RED_3,
-  YELLOW_2,
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+  DQ_CHART_WARNING_COLOR,
 } from '../../../../constants/Color.constants';
 import { INITIAL_TEST_SUMMARY } from '../../../../constants/TestSuite.constant';
 import { fetchTestCaseSummary } from '../../../../rest/dataQualityDashboardAPI';
 import {
-  getPieChartLabel,
   getTestCaseTabPath,
   transformToTestCaseStatusObject,
-} from '../../../../utils/DataQuality/DataQualityUtils';
+} from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { getPieChartLabel } from '../../../../utils/DataQuality/DataQualityUtils';
 import type { CustomPieChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomPieChart from '../../../Visualisations/Chart/CustomPieChart.component';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
 import { TEST_CASE_STATUS_PIE_SEGMENT_ORDER } from '../ChartWidgets.constants';
-
 const TestCaseStatusPieChartWidget = ({
   className = '',
   chartFilter,
@@ -77,17 +76,17 @@ const TestCaseStatusPieChartWidget = ({
         {
           name: t('label.success'),
           value: testCaseSummary.success,
-          color: GREEN_3,
+          color: DQ_CHART_SUCCESS_COLOR,
         },
         {
           name: t('label.failed'),
           value: testCaseSummary.failed,
-          color: RED_3,
+          color: DQ_CHART_FAILED_COLOR,
         },
         {
           name: t('label.aborted'),
           value: testCaseSummary.aborted,
-          color: YELLOW_2,
+          color: DQ_CHART_WARNING_COLOR,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -98,19 +97,26 @@ const TestCaseStatusPieChartWidget = ({
     [testCaseSummary]
   );
 
+  if (isTestCaseSummaryLoading) {
+    return (
+      <Card
+        className={className}
+        data-testid="test-case-status-pie-chart-widget">
+        <Skeleton height={200} width="100%" />
+      </Card>
+    );
+  }
+
   return (
-    <Card
-      className={className}
-      data-testid="test-case-status-pie-chart-widget"
-      loading={isTestCaseSummaryLoading}>
+    <Card className={className} data-testid="test-case-status-pie-chart-widget">
       <div className="d-flex flex-column items-center">
         <div className="d-flex items-center gap-2">
           <div className="custom-chart-icon-background all-tests-icon icon-container">
             <TestCaseIcon />
           </div>
-          <Typography.Text className="font-medium text-md">
+          <Typography as="span" className="font-semibold text-sm">
             {t('label.test-case-result')}
-          </Typography.Text>
+          </Typography>
         </div>
         <CustomPieChart
           showLegends
