@@ -19,7 +19,7 @@ export const getEmailConfigFieldLabels = (fieldName: string) => {
     case 'enableSmtpServer':
       return i18n.t('label.enable-smtp-server');
     case 'openMetadataUrl':
-      return i18n.t('label.open-metadata-url');
+      return i18n.t('label.brand-name-url');
     case 'password':
       return i18n.t('label.password');
     case 'senderMail':

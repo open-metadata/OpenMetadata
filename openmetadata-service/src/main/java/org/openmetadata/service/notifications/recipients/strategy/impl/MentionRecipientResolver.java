@@ -23,6 +23,7 @@ import org.openmetadata.schema.SubscriptionAction;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -62,6 +63,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
             : resolveAnnouncementMentions(announcement, destination);
       }
 
+      if (Entity.TASK.equalsIgnoreCase(event.getEntityType())) {
+        Task task = AlertsRuleEvaluator.getTask(event);
+        return resolveTaskMentions(task, destination);
+      }
+
       LOG.warn(
           "MentionRecipientResolver called with unsupported entity type: {}",
           event.getEntityType());
@@ -91,6 +97,11 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
         return announcement == null
             ? Collections.emptySet()
             : resolveAnnouncementMentions(announcement, destination);
+      }
+
+      if (Entity.TASK.equalsIgnoreCase(entityType)) {
+        Task task = Entity.getEntity(Entity.TASK, entityId, "comments", Include.NON_DELETED);
+        return resolveTaskMentions(task, destination);
       }
 
       LOG.warn("MentionRecipientResolver called with unsupported entity type: {}", entityType);
@@ -157,6 +168,13 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
     }
 
     return recipients;
+  }
+
+  private Set<Recipient> resolveTaskMentions(Task task, SubscriptionDestination destination) {
+    // Single source of truth with the filter side (AlertsRuleEvaluator.getTaskMentions): resolve
+    // only the latest comment's mentions so earlier comments aren't re-notified on each
+    // comment-add.
+    return resolveEntityLinks(AlertsRuleEvaluator.getTaskMentions(task), destination.getType());
   }
 
   private Set<Recipient> resolveAnnouncementMentions(

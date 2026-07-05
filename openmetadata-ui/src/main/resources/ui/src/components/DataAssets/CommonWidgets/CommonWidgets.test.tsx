@@ -17,11 +17,11 @@ import {
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from './CommonWidgets';
 
 // Mock the required dependencies
-jest.mock('../../Customization/GenericProvider/GenericProvider');
+jest.mock('../../Customization/GenericProvider/GenericContext');
 jest.mock('../../common/EntityDescription/DescriptionV1', () => ({
   __esModule: true,
   default: () => <div data-testid="description-widget">Description Widget</div>,
@@ -52,6 +52,11 @@ jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
     <div data-testid="reviewer-label-widget">Reviewer Label Widget</div>
+  ),
+}));
+jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
+  DomainExpertWidget: () => (
+    <div data-testid="domain-expert-name">Domain Expert Widget</div>
   ),
 }));
 
@@ -86,7 +91,7 @@ describe('CommonWidgets', () => {
     (useGenericContext as jest.Mock).mockReturnValue(mockGenericContext);
   });
 
-  it('should render description widget', () => {
+  it('should render description widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.DESCRIPTION,
       x: 0,
@@ -102,10 +107,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('description-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('description-widget')).toBeInTheDocument();
   });
 
-  it('should render data products widget', () => {
+  it('should render data products widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.DATA_PRODUCTS,
       x: 0,
@@ -121,10 +126,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('data-products-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('data-products-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render tags widget', () => {
+  it('should render tags widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.TAGS,
       x: 0,
@@ -140,10 +147,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('tags-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
   });
 
-  it('should render glossary terms widget', () => {
+  it('should render glossary terms widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.GLOSSARY_TERMS,
       x: 0,
@@ -159,10 +166,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('tags-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
   });
 
-  it('should render custom properties widget', () => {
+  it('should render custom properties widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
       x: 0,
@@ -178,10 +185,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('custom-properties-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-properties-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render owners widget', () => {
+  it('should render owners widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.OWNERS,
       x: 0,
@@ -197,10 +206,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('owner-label-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('owner-label-widget')).toBeInTheDocument();
   });
 
-  it('should render reviewer widget', () => {
+  it('should render reviewer widget', async () => {
     const widgetConfig = {
       i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
       x: 0,
@@ -216,10 +225,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('reviewer-label-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('reviewer-label-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render experts widget', () => {
+  it('should render experts widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.EXPERTS,
       x: 0,
@@ -235,7 +246,7 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('domain-expert-name')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-expert-name')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {
@@ -264,7 +275,7 @@ describe('CommonWidgets', () => {
       jest.clearAllMocks();
     });
 
-    it('should render custom properties widget when ViewCustomFields is true', () => {
+    it('should render custom properties widget when ViewCustomFields is true', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -290,11 +301,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget when ViewCustomFields is false', () => {
+    it('should render custom properties widget when ViewCustomFields is false', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -320,11 +331,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget when ViewCustomFields is undefined', () => {
+    it('should render custom properties widget when ViewCustomFields is undefined', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -349,11 +360,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget for different entity types', () => {
+    it('should render custom properties widget for different entity types', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -379,7 +390,7 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
   });

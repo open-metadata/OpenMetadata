@@ -34,15 +34,6 @@
   }
 }
 
-.knowledge-page-layout {
-  .knowledge-page-layout-grid {
-    .knowledge-page-layout-content {
-      height: @knowledge-center-content-height;
-      overflow-y: auto;
-    }
-  }
-}
-
 .author-avatar-group {
   .ant-space-item:not(:last-child) {
     margin-right: -16px;
@@ -78,6 +69,23 @@
   max-width: 700px;
   margin: 0 auto;
   padding-top: 16px;
+}
+
+.knowledge-version-title-col {
+  min-width: 0;
+
+  .ant-space,
+  .ant-space-item {
+    min-width: 0;
+  }
+
+  .entity-header-display-name {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .knowledge-card-title.ant-typography-ellipsis {

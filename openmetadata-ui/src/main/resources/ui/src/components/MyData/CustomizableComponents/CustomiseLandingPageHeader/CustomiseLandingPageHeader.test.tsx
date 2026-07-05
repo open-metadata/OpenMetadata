@@ -12,14 +12,14 @@
  */
 import { render, screen } from '@testing-library/react';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getRecentlyViewedData } from '../../../../utils/CommonUtils';
+import { getRecentlyViewedData } from '../../../../utils/RecentActivityUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import CustomiseLandingPageHeader from './CustomiseLandingPageHeader';
 
 jest.mock('../../../../hooks/useApplicationStore');
 jest.mock('../../../../utils/ServiceUtilClassBase');
-jest.mock('../../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../../utils/CommonUtils'),
+jest.mock('../../../../utils/RecentActivityUtils', () => ({
+  ...jest.requireActual('../../../../utils/RecentActivityUtils'),
   getRecentlyViewedData: jest.fn(),
 }));
 
@@ -71,12 +71,12 @@ describe('CustomiseLandingPageHeader', () => {
     );
   });
 
-  it('should render the component', () => {
+  it('should render the component', async () => {
     render(<CustomiseLandingPageHeader />);
 
     expect(screen.getByText('label.welcome')).toBeInTheDocument();
     expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-selector')).toBeInTheDocument();
   });
 
   it('should display welcome message with user name when displayName is not available', () => {
@@ -95,12 +95,12 @@ describe('CustomiseLandingPageHeader', () => {
     expect(screen.getByTestId('customise-header-btn')).toBeInTheDocument();
   });
 
-  it('should render the domain selector', () => {
+  it('should render the domain selector', async () => {
     render(<CustomiseLandingPageHeader />);
 
-    expect(screen.getByTestId('domain-selector')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-icon')).toBeInTheDocument();
-    expect(screen.getByTestId('dropdown-icon')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-selector')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-icon')).toBeInTheDocument();
+    expect(await screen.findByTestId('dropdown-icon')).toBeInTheDocument();
   });
 
   it('should render recently viewed data when available', () => {

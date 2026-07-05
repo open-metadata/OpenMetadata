@@ -13,11 +13,10 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
@@ -35,7 +34,6 @@ import CorePasswordWidget from './widgets/CorePasswordWidget';
 import CoreRadioWidget from './widgets/CoreRadioWidget';
 import CoreSelectWidget from './widgets/CoreSelectWidget';
 import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
-
 const defaultFields = {
   AnyOfField: CoreOneOfField,
   ArrayField: CoreArrayField,
@@ -64,7 +62,9 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       okText,
       cancelText,
       isLoading,
+      isSubmitDisabled = false,
       hideCancelButton = false,
+      hideFooter = false,
       status = 'initial',
       onCancel,
       onSubmit,
@@ -95,7 +95,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
 
     const handleFormChange = (e: IChangeEvent) => {
       setLocalFormData(e.formData ?? {});
-      props.onChange && props.onChange(e);
+      props.onChange?.(e);
     };
 
     const isSubmitting = status === 'waiting';
@@ -116,6 +116,18 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.widgets]
     );
 
+    const mergedTemplates = useMemo(
+      () => ({
+        ArrayFieldTemplate: CoreArrayFieldTemplate,
+        FieldTemplate: CoreFieldTemplate,
+        ObjectFieldTemplate: CoreObjectFieldTemplate,
+        FieldErrorTemplate: CoreFieldErrorTemplate,
+        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
+        ...(props.templates ?? {}),
+      }),
+      [props.templates]
+    );
+
     return (
       <Form
         {...props}
@@ -127,15 +139,9 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         formData={localFormData}
         idSeparator="/"
         ref={ref}
-        schema={schema as RJSFSchema}
+        schema={schema}
         showErrorList={false}
-        templates={{
-          ArrayFieldTemplate: CoreArrayFieldTemplate,
-          FieldTemplate: CoreFieldTemplate,
-          ObjectFieldTemplate: CoreObjectFieldTemplate,
-          FieldErrorTemplate: CoreFieldErrorTemplate,
-          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
-        }}
+        templates={mergedTemplates}
         transformErrors={transformErrors}
         uiSchema={uiSchema}
         validator={validator}
@@ -143,25 +149,31 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
         onChange={handleFormChange}
         onSubmit={onSubmit}>
         {children}
-        <div className="tw:mt-4 tw:flex tw:justify-end tw:gap-2">
-          {!hideCancelButton && (
+        {/* When hideFooter is true, the parent card renders the footer to span full width
+         * and keep the card's bottom border-radius visible during scroll. */}
+        {!hideFooter && (
+          <div className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:flex tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1">
+            {!hideCancelButton && (
+              <Button
+                color="secondary"
+                size="sm"
+                type="button"
+                onClick={handleCancel}>
+                {cancelText ?? t('label.cancel')}
+              </Button>
+            )}
             <Button
-              color="secondary"
+              color="primary"
+              data-testid="submit-btn"
+              isDisabled={isSubmitting || isLoading || isSubmitDisabled}
               size="sm"
-              type="button"
-              onClick={handleCancel}>
-              {cancelText ?? t('label.cancel')}
+              type="submit">
+              {isSubmitting
+                ? t('label.submitting')
+                : okText ?? t('label.submit')}
             </Button>
-          )}
-          <Button
-            color="primary"
-            data-testid="submit-btn"
-            isDisabled={isSubmitting || isLoading}
-            size="sm"
-            type="submit">
-            {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
-          </Button>
-        </div>
+          </div>
+        )}
       </Form>
     );
   }

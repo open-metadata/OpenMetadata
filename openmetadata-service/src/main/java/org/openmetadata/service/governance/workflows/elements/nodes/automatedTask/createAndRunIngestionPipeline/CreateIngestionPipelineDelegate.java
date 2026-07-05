@@ -19,7 +19,6 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -31,7 +30,6 @@ public class CreateIngestionPipelineDelegate implements JavaDelegate {
   private Expression deployExpr;
   private Expression inputNamespaceMapExpr;
   private Expression ingestionPipelineMapperExpr;
-  private Expression pipelineServiceClientExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
@@ -45,8 +43,6 @@ public class CreateIngestionPipelineDelegate implements JavaDelegate {
       boolean deploy = Boolean.parseBoolean((String) deployExpr.getValue(execution));
       IngestionPipelineMapper mapper =
           (IngestionPipelineMapper) ingestionPipelineMapperExpr.getValue(execution);
-      PipelineServiceClientInterface pipelineServiceClient =
-          (PipelineServiceClientInterface) pipelineServiceClientExpr.getValue(execution);
 
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
@@ -58,8 +54,7 @@ public class CreateIngestionPipelineDelegate implements JavaDelegate {
           Entity.getEntity(entityLink, "owners,ingestionRunner", Include.NON_DELETED);
 
       CreateIngestionPipelineImpl.CreateIngestionPipelineResult result =
-          new CreateIngestionPipelineImpl(mapper, pipelineServiceClient)
-              .execute(service, pipelineType, deploy);
+          new CreateIngestionPipelineImpl(mapper).execute(service, pipelineType, deploy);
 
       varHandler.setNodeVariable(RESULT_VARIABLE, getResultFromBoolean(result.isSuccessful()));
       varHandler.setNodeVariable(INGESTION_PIPELINE_ID_VARIABLE, result.getIngestionPipelineId());

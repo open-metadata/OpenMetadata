@@ -35,6 +35,7 @@ class MockSSEResponse:
         self.lines: list[str] = lines
         self.status_code: int = status_code
         self.raise_error: Optional[Exception] = raise_error  # noqa: UP045
+        self.encoding: Optional[str] = None  # noqa: UP045
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -42,10 +43,49 @@ class MockSSEResponse:
             err.response = Mock(status_code=self.status_code)
             raise err
 
-    def iter_lines(self, decode_unicode: bool = False) -> Iterator[str]:
+    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
         if self.raise_error:
             raise self.raise_error
         yield from self.lines
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
+        return False
+
+
+class MockByteStreamSSEResponse:
+    """Mock SSE response that reproduces ``requests``' real wire decoding.
+
+    Holds raw UTF-8 bytes plus the charset ``requests`` would derive from the
+    response headers (ISO-8859-1 for a charset-less ``text/event-stream``), and
+    mirrors how ``iter_lines`` decodes and splits: ``str.splitlines()`` when no
+    delimiter is given, ``str.split(delimiter)`` otherwise. This exercises the
+    real bug — UTF-8 multi-byte characters mis-decoded as Latin-1 inject
+    codepoints (e.g. 0x85) that ``splitlines()`` breaks on.
+    """
+
+    def __init__(
+        self,
+        raw: bytes,
+        declared_encoding: str = "ISO-8859-1",
+        status_code: int = 200,
+    ):
+        self.raw: bytes = raw
+        self.encoding: str = declared_encoding
+        self.status_code: int = status_code
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            err = requests.exceptions.HTTPError("HTTP error")
+            err.response = Mock(status_code=self.status_code)
+            raise err
+
+    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
+        text = self.raw.decode(self.encoding) if decode_unicode else self.raw
+        lines = text.split(delimiter) if delimiter else text.splitlines()
+        yield from lines
 
     def __enter__(self):
         return self
@@ -816,3 +856,74 @@ def test_parse_sse_event_with_colon_in_data(sse_client):
 
     assert parsed["event"] == "message"
     assert parsed["data"] == '{"key":"value:with:colons"}'
+
+
+def test_parse_sse_event_concatenates_multiple_data_lines(sse_client):
+    """Multiple ``data:`` lines in one SSE event must be concatenated with newlines
+    (per the SSE spec), not overwritten so only the last survives."""
+    event_buffer = [
+        "event: message",
+        "data: part-one",
+        "data: part-two",
+        "data: part-three",
+    ]
+    parsed = sse_client._parse_sse_event(event_buffer)
+
+    assert parsed["data"] == "part-one\npart-two\npart-three"
+
+
+def test_parse_sse_event_reassembles_json_split_across_data_lines(sse_client):
+    """A JSON payload chunked across multiple ``data:`` lines must be fully reassembled
+    so downstream ``json.loads`` sees complete JSON.
+
+    Regression: large/over-escaped agent payloads (e.g. the Quality agent's
+    ``createTestCase`` blob) arrive split across several ``data:`` lines. Keeping only
+    the last line truncated the JSON mid-string and surfaced downstream as
+    ``json.JSONDecodeError: Unterminated string``.
+    """
+    event_buffer = [
+        "event: message",
+        'data: {"testCases":',
+        'data: [{"name":"customer_id_not_null"}]}',
+    ]
+    parsed = sse_client._parse_sse_event(event_buffer)
+
+    data = json.loads(parsed["data"])
+    assert data["testCases"][0]["name"] == "customer_id_not_null"
+
+
+def test_stream_preserves_utf8_emoji_in_single_data_line(sse_client):
+    """A ``data:`` line carrying a multi-byte UTF-8 character (e.g. ``✅``) must
+    arrive intact and JSON-parseable.
+
+    Regression: ``requests`` defaults a charset-less ``text/event-stream`` to
+    ISO-8859-1, so ``iter_lines(decode_unicode=True)`` decodes the UTF-8 bytes
+    ``e2 9c 85`` (``✅``) byte-by-byte, producing U+0085 — which
+    ``str.splitlines()`` treats as a line break. The single ``data:`` line was
+    split, its tail (no ``data:`` prefix) dropped, and the JSON truncated
+    mid-string, surfacing as ``json.JSONDecodeError: Unterminated string``.
+    """
+    payload = json.dumps(
+        {
+            "streamId": "stream-emoji",
+            "sequence": 1,
+            "data": {
+                "message": {
+                    "sender": "assistant",
+                    "content": [{"textMessage": {"type": "markdown", "message": "## ✅ Done"}}],
+                }
+            },
+        },
+        ensure_ascii=False,  # server emits raw UTF-8 (e2 9c 85), not \uXXXX escapes
+    )
+    raw = (f'event: message\ndata: {payload}\n\nevent: stream-completed\ndata: {{"type":"completed"}}\n\n').encode()
+
+    mock_response = MockByteStreamSSEResponse(raw, declared_encoding="ISO-8859-1")
+    mock_session = MockRequestsSession(mock_response)
+
+    with patch("requests.Session", return_value=mock_session):
+        events = list(sse_client.stream("GET", "/chat/stream"))
+
+    message_event = next(event for event in events if event["event"] == "message")
+    data_json = json.loads(message_event["data"])
+    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "## ✅ Done"

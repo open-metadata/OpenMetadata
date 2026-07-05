@@ -1,35 +1,269 @@
 package org.openmetadata.service.migration.utils.v200;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
+
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Post;
+import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskComment;
+import org.openmetadata.schema.type.TaskDetails;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
+import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MigrationUtil {
 
+  private static final String DATA_CONSUMER_ROLE = "DataConsumer";
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
+  private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+
+  /**
+   * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
+   * point at the same target entity (e.g. a few glossary terms each with hundreds of tasks); going
+   * through {@link EntityRepository#get} for every task would re-load the entity and re-walk its
+   * inheritance chain. This cache shortens the lookup to a Map probe for the common case.
+   *
+   * <p>Bounded LRU via {@link LinkedHashMap#removeEldestEntry} so a pathological install with
+   * millions of unique target entities cannot OOM the migration step. Cached lists are wrapped
+   * unmodifiable so a downstream caller mutating the returned list cannot corrupt the cache.
+   *
+   * <p>The migration runs single-threaded on startup so no synchronization is required.
+   */
+  private static final int DOMAIN_CACHE_MAX_SIZE = 10_000;
+
+  private static final Map<String, List<EntityReference>> DOMAIN_CACHE =
+      new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, List<EntityReference>> eldest) {
+          return size() > DOMAIN_CACHE_MAX_SIZE;
+        }
+      };
+
   private MigrationUtil() {}
+
+  /**
+   * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
+   * upgrades. Role→Policy attachments are modelled as {@code Relationship.HAS} edges in {@code
+   * entity_relationship} (the {@code policies} field on Role JSON is derived from those edges, not
+   * stored), so this migration writes the relationship directly via {@code
+   * relationshipDAO().insert(...)} which upserts and is therefore idempotent.
+   *
+   * <p>Migrations run before service startup, so {@code initSeedDataFromResources()} has not yet
+   * created {@code TaskAuthorPolicy}. The helper loads the seed JSON from the classpath and
+   * persists it via {@link PolicyRepository#initializeEntity} (create-if-missing) before adding
+   * the role relationship.
+   */
+  public static void addTaskAuthorPolicyToDataConsumerRole(CollectionDAO collectionDAO) {
+    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
+    PolicyRepository policyRepository =
+        (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = ensureTaskAuthorPolicySeeded(policyRepository);
+      if (policy == null) {
+        LOG.warn(
+            "{} seed not found on classpath, skipping DataConsumer attachment", TASK_AUTHOR_POLICY);
+        return;
+      }
+      Role role = roleRepository.findByName(DATA_CONSUMER_ROLE, Include.NON_DELETED);
+      collectionDAO
+          .relationshipDAO()
+          .insert(
+              role.getId(), policy.getId(), Entity.ROLE, Entity.POLICY, Relationship.HAS.ordinal());
+      LOG.info("Attached {} to {}", TASK_AUTHOR_POLICY, DATA_CONSUMER_ROLE);
+    } catch (EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping TaskAuthorPolicy backfill: {} not found ({})",
+          DATA_CONSUMER_ROLE,
+          ex.getMessage());
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to attach {} to {}: {}",
+          TASK_AUTHOR_POLICY,
+          DATA_CONSUMER_ROLE,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
+  /**
+   * Ensure {@code DataConsumerPolicy} contains the {@code DataConsumerPolicy-CreateTask-Rule} that
+   * grants authenticated users the {@code Create} operation on the {@code task} resource. The rule
+   * was added to the seed JSON in #28044 but the migration step was omitted, so existing
+   * installations upgrading from 1.x would not pick it up automatically.
+   */
+  public static void addCreateTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists = false;
+      for (Rule rule : policy.getRules()) {
+        if (CREATE_TASK_RULE_NAME.equals(rule.getName())) {
+          ruleExists = true;
+          break;
+        }
+      }
+      if (!ruleExists) {
+        Rule createTaskRule =
+            new Rule()
+                .withName(CREATE_TASK_RULE_NAME)
+                .withDescription(
+                    "Allow authenticated users to create tasks"
+                        + " (data access requests, suggestions, etc.).")
+                .withResources(List.of("task"))
+                .withOperations(List.of(MetadataOperation.CREATE))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(createTaskRule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", CREATE_TASK_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping CreateTask rule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}",
+          CREATE_TASK_RULE_NAME,
+          DATA_CONSUMER_POLICY,
+          ex.getMessage(),
+          ex);
+    }
+  }
+
+  private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
+
+  /**
+   * Backfill the per-entity {@code CreateTask}/{@code EditTask} grant onto an existing tenant's
+   * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
+   * policies are create-if-not-exists, so without this migration upgraded deployments would lose
+   * the ability for non-admin users to file or patch task threads (the new authorization wired into
+   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   */
+  public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists = false;
+      for (Rule rule : policy.getRules()) {
+        if (TASK_RULE_NAME.equals(rule.getName())) {
+          ruleExists = true;
+          break;
+        }
+      }
+      if (!ruleExists) {
+        Rule taskRule =
+            new Rule()
+                .withName(TASK_RULE_NAME)
+                .withDescription(
+                    "Allow authenticated users to file and edit tasks (data access requests,"
+                        + " suggestions, etc.) against any entity. Restrict this rule (e.g. with"
+                        + " an isOwner condition) to limit who can file or edit tasks on which"
+                        + " entities.")
+                .withResources(List.of("all"))
+                .withOperations(List.of(MetadataOperation.CREATE_TASK, MetadataOperation.EDIT_TASK))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(taskRule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping TaskRule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
+    }
+  }
+
+  private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {
+    Policy existing = null;
+    try {
+      existing = repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+    } catch (EntityNotFoundException ignored) {
+      // Not seeded yet — fall through to seed-from-classpath path.
+    }
+    if (existing != null) {
+      return existing;
+    }
+    try {
+      List<Policy> seeds = repository.getEntitiesFromSeedData();
+      for (Policy seed : seeds) {
+        if (TASK_AUTHOR_POLICY.equals(seed.getName())) {
+          repository.initializeEntity(seed);
+          return repository.findByName(TASK_AUTHOR_POLICY, Include.NON_DELETED);
+        }
+      }
+    } catch (IOException e) {
+      LOG.error("Failed to load TaskAuthorPolicy seed data: {}", e.getMessage());
+    }
+    return null;
+  }
 
   /**
    * Migrate suggestions from the old suggestions table to the new task_entity table. Each
@@ -131,7 +365,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated suggestions correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -182,7 +416,7 @@ public class MigrationUtil {
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         insertTask(handle, suggestionId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains);
+        insertTaskDomainRelationships(handle, suggestionId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle, suggestionId, null, null, null, createdByUserId, taskJson, connectionType);
         migrated++;
@@ -278,6 +512,13 @@ public class MigrationUtil {
               createdByUserId,
               aboutJson,
               connectionType);
+          // Re-run domain inheritance for existing rows. The original v200 promotion
+          // used a raw SQL lookup that missed inherited domains (e.g. glossary terms
+          // inheriting from their parent glossary); now that the lookup walks the
+          // entity API, force-migrate must also reconcile domain relationships for
+          // tasks that were already promoted before this fix.
+          List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(aboutJson);
+          insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
           skipped++;
           continue;
         }
@@ -306,7 +547,7 @@ public class MigrationUtil {
 
         // Inherit domains from the target entity so domain-scoped task queries
         // return migrated tasks correctly.
-        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(handle, taskJson);
+        List<EntityReference> inheritedDomains = resolveDomainsForTaskAbout(taskJson);
         setDomainsInTaskJson(taskJson, inheritedDomains);
 
         // Build payload
@@ -365,7 +606,7 @@ public class MigrationUtil {
         }
 
         insertTask(handle, threadId, taskJson.toString(), fqnHash, connectionType);
-        insertTaskDomainRelationships(handle, threadId, inheritedDomains);
+        insertTaskDomainRelationships(handle, threadId, inheritedDomains, connectionType);
         insertTaskLinkRelationships(
             handle,
             threadId,
@@ -581,7 +822,7 @@ public class MigrationUtil {
           ? "GlossaryApproval"
           : "RequestApproval";
       case "RequestTestCaseFailureResolution" -> "TestCaseResolution";
-      case "RecognizerFeedbackApproval" -> "DataQualityReview";
+      case "RecognizerFeedbackApproval" -> "RecognizerFeedbackApproval";
       default -> "CustomTask";
     };
   }
@@ -972,7 +1213,10 @@ public class MigrationUtil {
             ? FullyQualifiedName.buildHash(event.getEntity().getFullyQualifiedName())
             : null;
     String aboutFqnHash =
-        event.getAbout() != null ? FullyQualifiedName.buildHash(event.getAbout()) : null;
+        nullOrEmpty(event.getAbout())
+            ? null
+            : FullyQualifiedName.buildHash(
+                MessageParser.EntityLink.parse(event.getAbout()).getEntityFQN());
     String domains =
         event.getDomains() == null || event.getDomains().isEmpty()
             ? null
@@ -1062,11 +1306,11 @@ public class MigrationUtil {
 
   /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
-   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but using raw SQL,
-   * since migrations run before the EntityRepository layer is fully initialized for new tasks.
+   * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
+   * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
+   * its parent glossary) are included.
    */
-  private static List<EntityReference> resolveDomainsForTaskAbout(
-      Handle handle, ObjectNode taskJson) {
+  private static List<EntityReference> resolveDomainsForTaskAbout(ObjectNode taskJson) {
     JsonNode about = taskJson.get("about");
     if (about == null || !about.has("type")) {
       return Collections.emptyList();
@@ -1080,76 +1324,49 @@ public class MigrationUtil {
       return Collections.emptyList();
     }
 
-    return queryDomainsForEntity(handle, entityId, entityType);
+    return resolveDomainsViaRepository(entityId, entityType);
   }
 
   /**
-   * Query the entity_relationship table for any DOMAIN --HAS--> entity rows
-   * and join with domain_entity to build EntityReferences.
+   * Resolve an entity's effective domains via {@link EntityRepository#get} so that
+   * <em>inherited</em> domains are included. Glossary terms, columns, and other entities that
+   * inherit their domain from a parent do not have a direct {@code domain --HAS--> entity} row in
+   * {@code entity_relationship}; the inheritance is computed at read time. A raw SQL query on
+   * {@code entity_relationship} would miss those cases entirely.
+   *
+   * <p>Results are cached in {@link #DOMAIN_CACHE} so that the (typical) pattern of many tasks
+   * sharing a small set of target entities resolves each unique entity exactly once. Transient
+   * lookup failures are not cached so a later task on the same entity can retry.
    */
-  private static List<EntityReference> queryDomainsForEntity(
-      Handle handle, String entityId, String entityType) {
+  private static List<EntityReference> resolveDomainsViaRepository(
+      String entityId, String entityType) {
+    String cacheKey = entityType + "::" + entityId;
+    List<EntityReference> cached = DOMAIN_CACHE.get(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
     try {
-      List<Map<String, Object>> rows =
-          handle
-              .createQuery(
-                  "SELECT d.json AS domainJson FROM entity_relationship er "
-                      + "JOIN domain_entity d ON d.id = er.fromId "
-                      + "WHERE er.toId = :entityId "
-                      + "AND er.toEntity = :entityType "
-                      + "AND er.fromEntity = :domainEntity "
-                      + "AND er.relation = :hasRelation")
-              .bind("entityId", entityId)
-              .bind("entityType", entityType)
-              .bind("domainEntity", Entity.DOMAIN)
-              .bind("hasRelation", Relationship.HAS.ordinal())
-              .mapToMap()
-              .list();
-
-      List<EntityReference> domains = new ArrayList<>();
-      for (Map<String, Object> row : rows) {
-        EntityReference domainRef = buildDomainReference(row.get("domainJson"));
-        if (domainRef != null) {
-          domains.add(domainRef);
-        }
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      if (!repo.isSupportsDomains()) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
       }
+      Object entity =
+          repo.get(null, UUID.fromString(entityId), repo.getFields(Entity.FIELD_DOMAINS));
+      if (!(entity instanceof EntityInterface ei)) {
+        DOMAIN_CACHE.put(cacheKey, Collections.emptyList());
+        return Collections.emptyList();
+      }
+      // Snapshot via List.copyOf so the cache entry is genuinely independent of the
+      // (potentially-mutable) list returned by the repository.
+      List<EntityReference> domains =
+          ei.getDomains() == null ? Collections.emptyList() : List.copyOf(ei.getDomains());
+      DOMAIN_CACHE.put(cacheKey, domains);
       return domains;
     } catch (Exception e) {
       LOG.debug(
           "Could not resolve domains for entity {}/{}: {}", entityType, entityId, e.getMessage());
       return Collections.emptyList();
-    }
-  }
-
-  private static EntityReference buildDomainReference(Object domainJsonObject) {
-    if (domainJsonObject == null) {
-      return null;
-    }
-    try {
-      JsonNode domainJson = JsonUtils.readTree(domainJsonObject.toString());
-      if (!domainJson.has("id")) {
-        return null;
-      }
-      EntityReference ref =
-          new EntityReference()
-              .withId(UUID.fromString(domainJson.get("id").asText()))
-              .withType(Entity.DOMAIN);
-      if (domainJson.has("name") && !domainJson.get("name").isNull()) {
-        ref.setName(domainJson.get("name").asText());
-      }
-      if (domainJson.has("fullyQualifiedName") && !domainJson.get("fullyQualifiedName").isNull()) {
-        ref.setFullyQualifiedName(domainJson.get("fullyQualifiedName").asText());
-      }
-      if (domainJson.has("displayName") && !domainJson.get("displayName").isNull()) {
-        ref.setDisplayName(domainJson.get("displayName").asText());
-      }
-      if (domainJson.has("description") && !domainJson.get("description").isNull()) {
-        ref.setDescription(domainJson.get("description").asText());
-      }
-      return ref;
-    } catch (Exception e) {
-      LOG.debug("Could not parse domain JSON: {}", e.getMessage());
-      return null;
     }
   }
 
@@ -1261,26 +1478,25 @@ public class MigrationUtil {
 
   /**
    * Insert DOMAIN --HAS--> task rows so {@code TaskRepository.getDomains()} returns
-   * the inherited domains when the task is read.
+   * the inherited domains when the task is read. Idempotent via {@link #insertEntityRelationship}
+   * (ON CONFLICT DO NOTHING / ON DUPLICATE KEY UPDATE) — re-runs no longer rely on a catch-all
+   * exception handler to swallow duplicate-key violations, so genuine failures propagate.
    */
   private static void insertTaskDomainRelationships(
-      Handle handle, String taskId, List<EntityReference> domains) {
+      Handle handle, String taskId, List<EntityReference> domains, ConnectionType connectionType) {
     if (domains == null || domains.isEmpty()) {
       return;
     }
     for (EntityReference domain : domains) {
       try {
-        handle
-            .createUpdate(
-                "INSERT INTO entity_relationship "
-                    + "(fromId, toId, fromEntity, toEntity, relation) "
-                    + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
-            .bind("fromId", domain.getId().toString())
-            .bind("toId", taskId)
-            .bind("fromEntity", Entity.DOMAIN)
-            .bind("toEntity", Entity.TASK)
-            .bind("relation", Relationship.HAS.ordinal())
-            .execute();
+        insertEntityRelationship(
+            handle,
+            domain.getId().toString(),
+            Entity.DOMAIN,
+            taskId,
+            Entity.TASK,
+            Relationship.HAS,
+            connectionType);
       } catch (Exception e) {
         LOG.debug(
             "Could not insert domain relationship for task {} -> domain {}: {}",
@@ -1288,6 +1504,701 @@ public class MigrationUtil {
             domain.getId(),
             e.getMessage());
       }
+    }
+  }
+
+  /** Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0. */
+  public static class TaskWorkflow {
+    private static final String ADMIN_USER_NAME = "admin";
+    private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
+    private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
+        "createRecognizerFeedbackApprovalTask";
+    private static final String FEEDBACK_PAYLOAD_KEY = "feedback";
+    private static final int BATCH_SIZE = 200;
+
+    private static final String NOTIFICATION_ALERT_TYPE = "Notification";
+    private static final String MENTION_FILTER_NAME = "filterByMentionedName";
+    private static final String CONVERSATION_RESOURCE = "conversation";
+    private static final String TASK_RESOURCE = "task";
+    private static final String UPDATE_SUBSCRIPTION_MYSQL =
+        "UPDATE event_subscription_entity SET json = :json WHERE id = :id";
+    private static final String UPDATE_SUBSCRIPTION_POSTGRES =
+        "UPDATE event_subscription_entity SET json = :json::jsonb WHERE id = :id";
+
+    private final Handle handle;
+    private final CollectionDAO collectionDAO;
+    private final TaskRepository taskRepository;
+    private final WorkflowDefinitionRepository workflowDefinitionRepository;
+    private final WorkflowHandler workflowHandler;
+
+    public TaskWorkflow(Handle handle) {
+      this.handle = handle;
+      this.collectionDAO = handle.attach(CollectionDAO.class);
+      this.taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      this.workflowDefinitionRepository =
+          (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+      this.workflowHandler = WorkflowHandler.getInstance();
+    }
+
+    public void runTaskWorkflowCutoverMigration() {
+      int seededDefaults = ensureDefaultTaskWorkflows();
+      int redeployedWorkflows = redeployUserApprovalWorkflows();
+      MigrationStats stats = migrateLegacyThreadTasks();
+      int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int backfilledOpenTasks = backfillOpenTasksToWorkflowInstances();
+
+      LOG.info(
+          "Completed task workflow cutover migration. seededDefaults={}, workflowsRedeployed={}, migrated={}, alreadyMigrated={}, skipped={}, failures={}, rewrittenRecognizerFeedbackTasks={}, backfilledOpenTasks={}",
+          seededDefaults,
+          redeployedWorkflows,
+          stats.migrated,
+          stats.alreadyMigrated,
+          stats.skipped,
+          stats.failed,
+          rewrittenRecognizerFeedbackTasks,
+          backfilledOpenTasks);
+    }
+
+    public void runRecognizerFeedbackTaskTypeMigration() {
+      int seededDefaults = ensureDefaultTaskWorkflows();
+      int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+
+      LOG.info(
+          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+          seededDefaults,
+          rewrittenRecognizerFeedbackTasks);
+    }
+
+    private int ensureDefaultTaskWorkflows() {
+      int seeded = 0;
+      try {
+        for (WorkflowDefinition workflowDefinition :
+            workflowDefinitionRepository.getEntitiesFromSeedData()) {
+          String workflowName = workflowDefinition.getName();
+          if (!TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRefs()
+              .contains(workflowName)) {
+            continue;
+          }
+
+          WorkflowDefinition existingWorkflow =
+              workflowDefinitionRepository.findByNameOrNull(workflowName, Include.NON_DELETED);
+          if (existingWorkflow != null) {
+            workflowDefinition.setId(existingWorkflow.getId());
+            workflowDefinition.setVersion(existingWorkflow.getVersion());
+          } else if (workflowDefinition.getId() == null) {
+            workflowDefinition.setId(UUID.randomUUID());
+          }
+
+          workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
+          workflowDefinition.setUpdatedAt(System.currentTimeMillis());
+          workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+          seeded++;
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to seed default task workflows during migration", e);
+      }
+      return seeded;
+    }
+
+    private int redeployUserApprovalWorkflows() {
+      int redeployed = 0;
+      try {
+        List<WorkflowDefinition> workflowDefinitions =
+            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+
+        for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
+          if (!containsApprovalTaskNodeForCutover(workflowDefinition.getNodes())) {
+            continue;
+          }
+
+          try {
+            workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+            redeployed++;
+            LOG.info(
+                "Redeployed workflow '{}' to activate Task V2 approval listeners",
+                workflowDefinition.getName());
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to redeploy workflow '{}': {}",
+                workflowDefinition.getName(),
+                e.getMessage());
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to redeploy user approval workflows during migration", e);
+      }
+      return redeployed;
+    }
+
+    private boolean containsApprovalTaskNodeForCutover(
+        List<WorkflowNodeDefinitionInterface> nodes) {
+      for (WorkflowNodeDefinitionInterface node : listOrEmpty(nodes)) {
+        if (USER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())
+            || RECOGNIZER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private MigrationStats migrateLegacyThreadTasks() {
+      MigrationStats stats = new MigrationStats();
+      int offset = 0;
+      String legacyThreadTable = getLegacyThreadSourceTable();
+
+      if (legacyThreadTable == null) {
+        LOG.info("No legacy thread task table found, skipping task workflow cutover migration");
+        return stats;
+      }
+
+      while (true) {
+        List<String> threadBatch = listTaskThreadWithOffset(legacyThreadTable, BATCH_SIZE, offset);
+        if (threadBatch.isEmpty()) {
+          break;
+        }
+
+        for (String threadJson : threadBatch) {
+          try {
+            Thread legacyThread = JsonUtils.readValue(threadJson, Thread.class);
+            migrateLegacyThreadTask(legacyThread, stats);
+          } catch (Exception e) {
+            stats.failed++;
+            LOG.warn("Failed to parse/migrate legacy thread task JSON: {}", e.getMessage());
+          }
+        }
+
+        offset += threadBatch.size();
+        if (threadBatch.size() < BATCH_SIZE) {
+          break;
+        }
+      }
+
+      return stats;
+    }
+
+    private int backfillOpenTasksToWorkflowInstances() {
+      int backfilled = 0;
+      try {
+        ListFilter filter = new ListFilter(Include.NON_DELETED);
+        filter.addQueryParam("taskStatusGroup", "open");
+        List<Task> openTasks =
+            listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+        for (Task task : openTasks) {
+          if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
+            continue;
+          }
+
+          var workflowBinding =
+              TaskWorkflowLifecycleResolver.resolveBinding(
+                  task.getType(), task.getCategory(), task.getPayload());
+          if (workflowBinding.isEmpty()) {
+            continue;
+          }
+
+          WorkflowDefinition workflowDefinition =
+              workflowDefinitionRepository.findByNameOrNull(
+                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
+          if (workflowDefinition == null) {
+            continue;
+          }
+
+          Map<String, Object> variables = new LinkedHashMap<>();
+          variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+          variables.put(
+              getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+              EntityUtil.buildEntityLink(
+                  task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
+          variables.put(
+              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
+              task.getUpdatedBy());
+          variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+          if (workflowBinding.get().schema() != null
+              && workflowBinding.get().schema().getId() != null) {
+            variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
+            variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
+          }
+
+          workflowHandler.triggerByKey(
+              getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
+              task.getId().toString(),
+              variables);
+          backfilled++;
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to backfill open tasks to workflow instances", e);
+      }
+      return backfilled;
+    }
+
+    private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
+      int rewritten = 0;
+      try {
+        ListFilter filter = new ListFilter(Include.NON_DELETED);
+        filter.addQueryParam("taskStatusGroup", "open");
+        filter.addQueryParam("taskType", TaskEntityType.DataQualityReview.value());
+
+        List<Task> openDataQualityReviewTasks =
+            listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
+        for (Task task : openDataQualityReviewTasks) {
+          if (task == null
+              || task.getId() == null
+              || !isRecognizerFeedbackDataQualityReviewTask(task)) {
+            continue;
+          }
+
+          TaskEntityType previousType = task.getType();
+          TaskCategory previousCategory = task.getCategory();
+          try {
+            task.setType(TaskEntityType.RecognizerFeedbackApproval);
+            task.setCategory(TaskCategory.Review);
+            collectionDAO.taskDAO().updateTask(task.getId().toString(), JsonUtils.pojoToJson(task));
+            rewritten++;
+          } catch (Exception e) {
+            task.setType(previousType);
+            task.setCategory(previousCategory);
+            LOG.error("Failed to rewrite recognizer feedback task '{}'", task.getId(), e);
+          }
+        }
+      } catch (Exception e) {
+        LOG.error("Failed to list recognizer feedback review tasks for type rewrite", e);
+      }
+      return rewritten;
+    }
+
+    private boolean isRecognizerFeedbackDataQualityReviewTask(Task task) {
+      if (task == null || task.getType() != TaskEntityType.DataQualityReview) {
+        return false;
+      }
+
+      try {
+        Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
+        if (payload == null || !payload.containsKey(FEEDBACK_PAYLOAD_KEY)) {
+          return false;
+        }
+
+        RecognizerFeedback feedback =
+            JsonUtils.convertValue(payload.get(FEEDBACK_PAYLOAD_KEY), RecognizerFeedback.class);
+        return feedback != null
+            && !nullOrEmpty(feedback.getTagFQN())
+            && !nullOrEmpty(feedback.getEntityLink());
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to inspect task '{}' payload for recognizer feedback keys", task.getId(), e);
+        return false;
+      }
+    }
+
+    private List<String> listTaskThreadWithOffset(String tableName, int limit, int offset) {
+      return handle
+          .createQuery(
+              String.format(
+                  "SELECT json FROM %s WHERE type = 'Task' ORDER BY createdAt ASC LIMIT :limit OFFSET :offset",
+                  tableName))
+          .bind("limit", limit)
+          .bind("offset", offset)
+          .mapTo(String.class)
+          .list();
+    }
+
+    private void migrateLegacyThreadTask(Thread legacyThread, MigrationStats stats) {
+      if (legacyThread == null || legacyThread.getId() == null || legacyThread.getTask() == null) {
+        stats.skipped++;
+        return;
+      }
+
+      UUID legacyThreadId = legacyThread.getId();
+
+      if (isAlreadyMigrated(legacyThreadId)) {
+        stats.alreadyMigrated++;
+        upsertTaskMigrationMapping(legacyThreadId, legacyThreadId);
+        return;
+      }
+
+      try {
+        Task migratedTask = buildTaskFromLegacyThread(legacyThread);
+        Task createdTask = taskRepository.create(null, migratedTask);
+        upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
+        stats.migrated++;
+      } catch (Exception e) {
+        stats.failed++;
+        LOG.warn("Failed to migrate legacy thread task '{}': {}", legacyThreadId, e.getMessage());
+      }
+    }
+
+    private boolean isAlreadyMigrated(UUID legacyThreadId) {
+      try {
+        return taskRepository.find(legacyThreadId, Include.ALL) != null;
+      } catch (Exception e) {
+        return false;
+      }
+    }
+
+    private Task buildTaskFromLegacyThread(Thread legacyThread) {
+      TaskDetails legacyTaskDetails = legacyThread.getTask();
+      TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
+
+      EntityReference createdByRef = resolveUserReference(legacyThread.getCreatedBy());
+      EntityReference aboutRef = resolveAboutReference(legacyThread);
+
+      long createdAt =
+          legacyThread.getThreadTs() != null
+              ? legacyThread.getThreadTs()
+              : System.currentTimeMillis();
+      long updatedAt =
+          legacyThread.getUpdatedAt() != null ? legacyThread.getUpdatedAt() : createdAt;
+
+      TaskEntityStatus status = mapLegacyStatus(legacyTaskDetails.getStatus());
+
+      Task task =
+          new Task()
+              .withId(legacyThread.getId())
+              .withCategory(typeAndCategory.category)
+              .withType(typeAndCategory.type)
+              .withStatus(status)
+              .withPriority(TaskPriority.Medium)
+              .withDescription(resolveDescription(legacyThread, typeAndCategory.type))
+              .withAbout(aboutRef)
+              .withAssignees(legacyTaskDetails.getAssignees())
+              .withCreatedBy(createdByRef)
+              .withCreatedAt(createdAt)
+              .withUpdatedAt(updatedAt)
+              .withUpdatedBy(resolveUpdatedBy(legacyThread, createdByRef))
+              .withPayload(buildLegacyPayload(legacyTaskDetails));
+
+      List<TaskComment> comments =
+          convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
+      task.withComments(comments).withCommentCount(comments.size());
+
+      UUID runtimeWorkflowInstanceId =
+          workflowHandler.getRuntimeWorkflowInstanceId(legacyThread.getId());
+      if (runtimeWorkflowInstanceId != null) {
+        task.setWorkflowInstanceId(runtimeWorkflowInstanceId);
+      }
+
+      if (status != TaskEntityStatus.Open) {
+        task.setResolution(buildLegacyResolution(legacyThread, createdByRef));
+      }
+
+      return task;
+    }
+
+    private TypeAndCategory mapLegacyTaskType(TaskType legacyTaskType) {
+      if (legacyTaskType == null) {
+        return new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
+      }
+
+      return switch (legacyTaskType) {
+        case RequestApproval -> new TypeAndCategory(
+            TaskEntityType.GlossaryApproval, TaskCategory.Approval);
+        case RecognizerFeedbackApproval -> new TypeAndCategory(
+            TaskEntityType.RecognizerFeedbackApproval, TaskCategory.Review);
+        case RequestDescription, UpdateDescription -> new TypeAndCategory(
+            TaskEntityType.DescriptionUpdate, TaskCategory.MetadataUpdate);
+        case RequestTag, UpdateTag -> new TypeAndCategory(
+            TaskEntityType.TagUpdate, TaskCategory.MetadataUpdate);
+        case RequestTestCaseFailureResolution -> new TypeAndCategory(
+            TaskEntityType.TestCaseResolution, TaskCategory.Incident);
+        case Generic -> new TypeAndCategory(TaskEntityType.CustomTask, TaskCategory.Custom);
+      };
+    }
+
+    private TaskEntityStatus mapLegacyStatus(TaskStatus legacyStatus) {
+      if (legacyStatus == null || legacyStatus == TaskStatus.Open) {
+        return TaskEntityStatus.Open;
+      }
+      return TaskEntityStatus.Completed;
+    }
+
+    private TaskResolution buildLegacyResolution(
+        Thread legacyThread, EntityReference fallbackUserRef) {
+      TaskDetails legacyTask = legacyThread.getTask();
+      TaskResolutionType resolutionType = mapLegacyResolutionType(legacyTask);
+
+      EntityReference resolvedBy = resolveUserReference(legacyTask.getClosedBy());
+      if (resolvedBy == null) {
+        resolvedBy = fallbackUserRef;
+      }
+
+      Long resolvedAt = legacyTask.getClosedAt();
+      if (resolvedAt == null) {
+        resolvedAt = legacyThread.getUpdatedAt();
+      }
+      if (resolvedAt == null) {
+        resolvedAt = System.currentTimeMillis();
+      }
+
+      return new TaskResolution()
+          .withType(resolutionType)
+          .withResolvedBy(resolvedBy)
+          .withResolvedAt(resolvedAt)
+          .withComment("Migrated from legacy thread task")
+          .withNewValue(legacyTask.getNewValue());
+    }
+
+    private TaskResolutionType mapLegacyResolutionType(TaskDetails legacyTask) {
+      if (legacyTask == null) {
+        return TaskResolutionType.Completed;
+      }
+
+      TaskType taskType = legacyTask.getType();
+      if (taskType == TaskType.RequestApproval || taskType == TaskType.RecognizerFeedbackApproval) {
+        return nullOrEmpty(legacyTask.getNewValue())
+            ? TaskResolutionType.Rejected
+            : TaskResolutionType.Approved;
+      }
+      return TaskResolutionType.Completed;
+    }
+
+    private String resolveDescription(Thread legacyThread, TaskEntityType taskType) {
+      if (!nullOrEmpty(legacyThread.getMessage())) {
+        return legacyThread.getMessage();
+      }
+      return String.format("Migrated legacy task (%s)", taskType.value());
+    }
+
+    private String resolveUpdatedBy(Thread legacyThread, EntityReference createdByRef) {
+      if (!nullOrEmpty(legacyThread.getUpdatedBy())) {
+        return legacyThread.getUpdatedBy();
+      }
+      return createdByRef != null ? createdByRef.getName() : ADMIN_USER_NAME;
+    }
+
+    private Object buildLegacyPayload(TaskDetails legacyTask) {
+      if (legacyTask == null) {
+        return null;
+      }
+
+      Map<String, Object> payload = new LinkedHashMap<>();
+
+      if (!nullOrEmpty(legacyTask.getOldValue())) {
+        payload.put("oldValue", legacyTask.getOldValue());
+      }
+      if (!nullOrEmpty(legacyTask.getSuggestion())) {
+        payload.put("suggestion", legacyTask.getSuggestion());
+      }
+      if (!nullOrEmpty(legacyTask.getNewValue())) {
+        payload.put("newValue", legacyTask.getNewValue());
+      }
+      if (legacyTask.getTestCaseResolutionStatusId() != null) {
+        payload.put("testCaseResolutionStatusId", legacyTask.getTestCaseResolutionStatusId());
+      }
+      if (legacyTask.getFeedback() != null) {
+        payload.put("feedback", legacyTask.getFeedback());
+      }
+      if (legacyTask.getRecognizer() != null) {
+        payload.put("recognizer", legacyTask.getRecognizer());
+      }
+
+      return payload.isEmpty() ? null : payload;
+    }
+
+    private List<TaskComment> convertPostsToComments(
+        List<Post> posts, EntityReference fallbackUserRef, long fallbackTimestamp) {
+      List<TaskComment> comments = new ArrayList<>();
+
+      for (Post post : listOrEmpty(posts)) {
+        if (post == null || nullOrEmpty(post.getMessage())) {
+          continue;
+        }
+
+        EntityReference author = resolveUserReference(post.getFrom());
+        if (author == null) {
+          author = fallbackUserRef;
+        }
+        if (author == null) {
+          continue;
+        }
+
+        long createdAt = post.getPostTs() != null ? post.getPostTs() : fallbackTimestamp;
+
+        TaskComment comment =
+            new TaskComment()
+                .withId(post.getId() != null ? post.getId() : UUID.randomUUID())
+                .withMessage(post.getMessage())
+                .withAuthor(author)
+                .withCreatedAt(createdAt)
+                .withReactions(post.getReactions());
+        comments.add(comment);
+      }
+
+      return comments;
+    }
+
+    private EntityReference resolveAboutReference(Thread legacyThread) {
+      if (legacyThread.getEntityRef() != null && legacyThread.getEntityRef().getId() != null) {
+        return legacyThread.getEntityRef();
+      }
+
+      if (nullOrEmpty(legacyThread.getAbout())) {
+        return null;
+      }
+
+      try {
+        MessageParser.EntityLink entityLink =
+            MessageParser.EntityLink.parse(legacyThread.getAbout());
+        return Entity.getEntityReferenceByName(
+            entityLink.getEntityType(), entityLink.getEntityFQN(), Include.ALL);
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to resolve about reference for legacy thread '{}' from '{}': {}",
+            legacyThread.getId(),
+            legacyThread.getAbout(),
+            e.getMessage());
+        return null;
+      }
+    }
+
+    private EntityReference resolveUserReference(String userName) {
+      if (nullOrEmpty(userName)) {
+        return getAdminReference();
+      }
+
+      try {
+        return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (Exception e) {
+        LOG.debug("Unable to resolve user '{}': {}", userName, e.getMessage());
+        return getAdminReference();
+      }
+    }
+
+    private EntityReference getAdminReference() {
+      return Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+    }
+
+    private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {
+      long migratedAt = System.currentTimeMillis();
+
+      handle
+          .createUpdate("DELETE FROM task_migration_mapping WHERE old_thread_id = :oldThreadId")
+          .bind("oldThreadId", oldThreadId.toString())
+          .execute();
+
+      handle
+          .createUpdate(
+              "INSERT INTO task_migration_mapping(old_thread_id, new_task_id, migrated_at, source) "
+                  + "VALUES (:oldThreadId, :newTaskId, :migratedAt, :source)")
+          .bind("oldThreadId", oldThreadId.toString())
+          .bind("newTaskId", newTaskId.toString())
+          .bind("migratedAt", migratedAt)
+          .bind("source", "thread_task_migration")
+          .execute();
+    }
+
+    private boolean tableExists(String tableName) {
+      try (ResultSet tables =
+          handle
+              .getConnection()
+              .getMetaData()
+              .getTables(null, null, tableName, new String[] {"TABLE"})) {
+        while (tables.next()) {
+          if (tableName.equalsIgnoreCase(tables.getString("TABLE_NAME"))) {
+            return true;
+          }
+        }
+        return false;
+      } catch (Exception e) {
+        return false;
+      }
+    }
+
+    private String getLegacyThreadSourceTable() {
+      if (tableExists("thread_entity_legacy")) {
+        return "thread_entity_legacy";
+      }
+      if (tableExists("thread_entity_archived")) {
+        return "thread_entity_archived";
+      }
+      return null;
+    }
+
+    /**
+     * Incidents moved from conversation threads to Task entities in the task redesign. Add the
+     * "task" resource to existing mention-based Notification alerts so they keep notifying
+     * mentioned users on incident/task activity, alongside conversations.
+     */
+    public void addTaskResourceToMentionAlerts() {
+      LOG.info("Adding '{}' resource to mention-based notification alerts", TASK_RESOURCE);
+      List<Map<String, Object>> rows =
+          handle.createQuery("SELECT id, json FROM event_subscription_entity").mapToMap().list();
+      int updated = 0;
+
+      for (Map<String, Object> row : rows) {
+        String id = row.get("id").toString();
+        try {
+          ObjectNode root = (ObjectNode) JsonUtils.readTree(row.get("json").toString());
+          ArrayNode resources = mentionAlertResourcesToUpdate(root);
+          if (resources == null) {
+            continue;
+          }
+          resources.add(TASK_RESOURCE);
+          String updateSql =
+              Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+                  ? UPDATE_SUBSCRIPTION_MYSQL
+                  : UPDATE_SUBSCRIPTION_POSTGRES;
+          handle.createUpdate(updateSql).bind("json", root.toString()).bind("id", id).execute();
+          updated++;
+        } catch (Exception e) {
+          LOG.warn("Failed to add task resource to event subscription {}", id, e);
+        }
+      }
+      LOG.info(
+          "Added '{}' resource to {} mention-based notification alerts", TASK_RESOURCE, updated);
+    }
+
+    private ArrayNode mentionAlertResourcesToUpdate(ObjectNode root) {
+      JsonNode alertType = root.get("alertType");
+      if (alertType == null || !NOTIFICATION_ALERT_TYPE.equals(alertType.asText())) {
+        return null;
+      }
+      JsonNode filteringRules = root.get("filteringRules");
+      if (filteringRules == null
+          || !(filteringRules.get("resources") instanceof ArrayNode resources)) {
+        return null;
+      }
+      boolean isMentionConversationAlert =
+          jsonArrayContains(resources, CONVERSATION_RESOURCE)
+              && !jsonArrayContains(resources, TASK_RESOURCE)
+              && hasMentionFilter(filteringRules.get("rules"));
+      return isMentionConversationAlert ? resources : null;
+    }
+
+    private boolean hasMentionFilter(JsonNode rules) {
+      if (!(rules instanceof ArrayNode ruleArray)) {
+        return false;
+      }
+      for (JsonNode rule : ruleArray) {
+        JsonNode name = rule.get("name");
+        if (name != null && MENTION_FILTER_NAME.equals(name.asText())) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private boolean jsonArrayContains(ArrayNode array, String value) {
+      for (JsonNode node : array) {
+        if (value.equals(node.asText())) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private static class TypeAndCategory {
+      private final TaskEntityType type;
+      private final TaskCategory category;
+
+      private TypeAndCategory(TaskEntityType type, TaskCategory category) {
+        this.type = type;
+        this.category = category;
+      }
+    }
+
+    private static class MigrationStats {
+      private int migrated;
+      private int alreadyMigrated;
+      private int skipped;
+      private int failed;
     }
   }
 }

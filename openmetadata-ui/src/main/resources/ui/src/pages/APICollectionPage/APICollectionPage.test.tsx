@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { waitFor } from '@testing-library/react';
 import { useParams } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { useFqn } from '../../hooks/useFqn';
 import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getApiEndPoints } from '../../rest/apiEndpointsAPI';
-import { getFeedCounts } from '../../utils/CommonUtils';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
+import { fetchEntityTaskCountsInto } from '../../utils/FeedUtilsPure';
 import APICollectionPage from './APICollectionPage';
-
 jest.mock('../../rest/apiCollectionsAPI', () => ({
   getApiCollectionByFQN: jest.fn().mockResolvedValue({}),
   restoreApiCollection: jest.fn().mockResolvedValue({ version: 1 }),
@@ -33,12 +33,18 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
   getApiEndPoints: jest.fn().mockResolvedValue({ paging: { total: 0 } }),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getFeedCounts: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
   getEntityMissingError: jest.fn(),
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
   getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
+}));
+jest.mock('../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('test-api-collection'),
+}));
+jest.mock('../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
+  getFeedCounts: jest.fn(),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -151,7 +157,7 @@ jest.mock('../../utils/AdvancedSearchClassBase', () => {
 
 describe('APICollectionPage', () => {
   const renderComponent = () => {
-    return render(<APICollectionPage />);
+    return renderWithQueryClient(<APICollectionPage />);
   };
 
   it('should call APIs with updated FQN when FQN changes', async () => {
@@ -175,8 +181,7 @@ describe('APICollectionPage', () => {
         paging: { limit: 0 },
         include: Include.NonDeleted,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        EntityType.API_COLLECTION,
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'api.collection.v1',
         expect.any(Function)
       );
@@ -207,8 +212,7 @@ describe('APICollectionPage', () => {
         paging: { limit: 0 },
         include: Include.NonDeleted,
       });
-      expect(getFeedCounts).toHaveBeenCalledWith(
-        EntityType.API_COLLECTION,
+      expect(fetchEntityTaskCountsInto).toHaveBeenCalledWith(
         'api.collection.v2',
         expect.any(Function)
       );
@@ -217,7 +221,7 @@ describe('APICollectionPage', () => {
     // Verify each API was called exactly once with new FQN
     expect(getApiCollectionByFQN).toHaveBeenCalledTimes(1);
     expect(getApiEndPoints).toHaveBeenCalledTimes(1);
-    expect(getFeedCounts).toHaveBeenCalledTimes(1);
+    expect(fetchEntityTaskCountsInto).toHaveBeenCalledTimes(1);
   });
 
   it('should pass entity name as pageTitle to PageLayoutV1', async () => {

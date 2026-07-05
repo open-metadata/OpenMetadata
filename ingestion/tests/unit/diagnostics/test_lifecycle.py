@@ -76,15 +76,17 @@ def test_shutdown_resets_state_and_stops_threads():
 
     diagnostics.shutdown()
     assert diagnostics.is_active() is False
-    assert state.watchdog.is_alive() is False or state.watchdog._stop_event.is_set()
-    assert state.heartbeat.is_alive() is False or state.heartbeat._stop_event.is_set()
+    assert all(monitor.is_alive() is False or monitor._stop_event.is_set() for monitor in state._monitors)
 
 
 def test_operation_records_in_registry_after_install():
+    from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
+
     diagnostics.install(_FakeWorkflow())
     with diagnostics.operation("test.recorded", k="v"):
         state = diagnostics._get_state()
-        deepest = state.registry.deepest_per_thread()
+        assert state is not None
+        deepest = state.aspect(OperationRegistry).deepest_per_thread()
         assert deepest[threading.get_ident()][0] == "test.recorded"
 
 

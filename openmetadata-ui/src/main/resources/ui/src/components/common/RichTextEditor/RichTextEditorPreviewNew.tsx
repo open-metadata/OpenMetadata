@@ -12,15 +12,18 @@
  */
 import { Button } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  formatContent,
+  formatClientContent,
   isDescriptionContentEmpty,
-} from '../../../utils/BlockEditorUtils';
-import BlockEditor from '../../BlockEditor/BlockEditor';
+} from '../../../utils/BlockEditorPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
+const BlockEditor = withSuspenseFallback(
+  lazy(() => import('../../BlockEditor/BlockEditor'))
+);
 
 const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   markdown = '',
@@ -55,7 +58,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
   useEffect(() => {
-    setContent(formatContent(markdown, 'client'));
+    setContent(formatClientContent(markdown));
     setIsContentLoaded(false);
     setIsOverflowing(false);
   }, [markdown]);

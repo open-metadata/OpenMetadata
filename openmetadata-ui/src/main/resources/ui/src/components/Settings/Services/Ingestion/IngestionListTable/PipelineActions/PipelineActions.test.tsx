@@ -14,10 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { MemoryRouter } from 'react-router-dom';
-import {
-  ingestionDataName,
-  mockPipelineActionsProps,
-} from '../../../../../../mocks/IngestionListTable.mock';
+import { mockPipelineActionsProps } from '../../../../../../mocks/IngestionListTable.mock';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
@@ -38,10 +35,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditAll: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: true,
           }}
         />,
         {
@@ -59,10 +54,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              Delete: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            Delete: true,
           }}
         />,
         {
@@ -79,9 +72,7 @@ describe('PipelineAction', () => {
       render(
         <PipelineActions
           {...mockPipelineActionsProps}
-          ingestionPipelinePermissions={{
-            [ingestionDataName]: DEFAULT_ENTITY_PERMISSION,
-          }}
+          ingestionPipelinePermissions={DEFAULT_ENTITY_PERMISSION}
         />,
         {
           wrapper: MemoryRouter,
@@ -98,9 +89,7 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
           }}
         />,
         {
@@ -119,10 +108,8 @@ describe('PipelineAction', () => {
         <PipelineActions
           {...mockPipelineActionsProps}
           ingestionPipelinePermissions={{
-            [ingestionDataName]: {
-              ...DEFAULT_ENTITY_PERMISSION,
-              EditIngestionPipelineStatus: true,
-            },
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditIngestionPipelineStatus: true,
           }}
         />,
         {

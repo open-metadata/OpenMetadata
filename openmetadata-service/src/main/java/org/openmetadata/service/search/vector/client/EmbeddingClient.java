@@ -3,8 +3,8 @@ package org.openmetadata.service.search.vector.client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 
 public abstract class EmbeddingClient {
   static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 10;
@@ -52,14 +52,15 @@ public abstract class EmbeddingClient {
 
   public abstract String getModelId();
 
-  protected static int resolveMaxConcurrent(ElasticSearchConfiguration config) {
-    NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
-    if (nlsCfg != null) {
-      Integer value = nlsCfg.getMaxConcurrentRequests();
+  protected static int resolveMaxConcurrent(LLMConfiguration config) {
+    int result = DEFAULT_MAX_CONCURRENT_REQUESTS;
+    LLMEmbeddingsConfig embeddings = config != null ? config.getEmbeddings() : null;
+    if (embeddings != null) {
+      Integer value = embeddings.getMaxConcurrentRequests();
       if (value != null && value > 0) {
-        return value;
+        result = value;
       }
     }
-    return DEFAULT_MAX_CONCURRENT_REQUESTS;
+    return result;
   }
 }
