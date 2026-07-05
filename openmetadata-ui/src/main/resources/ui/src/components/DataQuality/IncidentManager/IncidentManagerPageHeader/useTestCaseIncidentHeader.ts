@@ -260,7 +260,7 @@ export const useTestCaseIncidentHeader = ({
     } else {
       setIsLoading(false);
     }
-  }, [testCaseData]);
+  }, [testCaseData?.incidentId]);
 
   const handleDomainUpdate = async (
     selectedDomain: EntityReference | EntityReference[]

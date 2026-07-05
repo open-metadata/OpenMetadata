@@ -477,7 +477,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     if (testSuiteId) {
       fetchTestCases({ testSuiteId });
     }
-  }, [testSuite, pageSize]);
+  }, [testSuiteId, pageSize]);
 
   const pagingData: NextPreviousProps = useMemo(
     () => ({
