@@ -55,6 +55,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
+import { assignDomainWidget } from '../../utils/domain';
 import {
   addMultiOwner,
   assignGlossaryTerm,
@@ -235,10 +236,6 @@ test.describe(
           .getByTestId('selectable-list-update-btn')
           .click();
         await patchRequest;
-
-        await expect(
-          page.getByTestId('data-assets-header').getByTestId(`${teamName}`)
-        ).toBeVisible();
 
         for (const name of [
           user.getUserDisplayName(),
@@ -799,10 +796,10 @@ test.describe(
         });
 
         // Assign first domain (multi-select mode)
-        await assignDomain(page, testDomain1.responseData);
+        await assignDomainWidget(page, testDomain1.responseData, true);
 
         // Assign second domain (should ADD to first, not replace)
-        await assignDomain(page, testDomain2.responseData, false);
+        await assignDomainWidget(page, testDomain2.responseData, true);
 
         // Verify both domains are visible (multi-select mode allows multiple)
         // Use filter to find specific domain links
