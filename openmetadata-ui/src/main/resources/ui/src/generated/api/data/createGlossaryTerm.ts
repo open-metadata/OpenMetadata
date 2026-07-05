@@ -35,6 +35,11 @@ export interface CreateGlossaryTerm {
      */
     glossary: string;
     /**
+     * Canonical IRI of this term in its source ontology. Preserves identity across ontology
+     * import/export round-trips.
+     */
+    iri?: string;
+    /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When
      * mutually exclusive is `false`, multiple terms from this group can be used to label an
