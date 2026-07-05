@@ -58,7 +58,7 @@ test.describe('TestCase Version Page', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    // await table1.delete(apiContext);
+    await table1.delete(apiContext);
 
     await afterAction();
   });
