@@ -188,15 +188,15 @@ public class SchemaFieldExtractor {
         LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
         throw new SchemaProcessingException(
             "Error loading schema '" + schemaPath + "': " + e.getMessage(),
-            SchemaProcessingException.ErrorType.INVALID_SCHEMA,
-            e);
+            e,
+            SchemaProcessingException.ErrorType.OTHER);
       }
     } catch (IOException e) {
-      LOG.error("Error closing schema input stream '{}': {}", schemaPath, e.getMessage());
+      LOG.error("Error reading schema input stream '{}': {}", schemaPath, e.getMessage());
       throw new SchemaProcessingException(
-          "Error closing schema input stream: " + e.getMessage(),
-          SchemaProcessingException.ErrorType.INVALID_SCHEMA,
-          e);
+          "Error reading schema input stream: " + e.getMessage(),
+          e,
+          SchemaProcessingException.ErrorType.OTHER);
     }
   }
 
@@ -446,12 +446,14 @@ public class SchemaFieldExtractor {
         LOG.error("Error loading schema '{}': {}", schemaPath, e.getMessage());
         throw new SchemaProcessingException(
             "Error loading schema '" + schemaPath + "': " + e.getMessage(),
+            e,
             SchemaProcessingException.ErrorType.OTHER);
       }
     } catch (IOException e) {
-      LOG.error("Error closing schema input stream '{}': {}", schemaPath, e.getMessage());
+      LOG.error("Error reading schema input stream '{}': {}", schemaPath, e.getMessage());
       throw new SchemaProcessingException(
-          "Error closing schema input stream: " + e.getMessage(),
+          "Error reading schema input stream: " + e.getMessage(),
+          e,
           SchemaProcessingException.ErrorType.OTHER);
     }
   }
