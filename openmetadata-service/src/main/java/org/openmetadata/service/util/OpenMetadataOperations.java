@@ -3032,12 +3032,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatabaseAuthenticationProviderFactory.get(dataSourceFactory.getUrl())
         .ifPresent(
             databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dataSourceFactory.getUrl(),
-                      dataSourceFactory.getUser(),
-                      dataSourceFactory.getPassword());
-              dataSourceFactory.setPassword(token);
+              try {
+                String token =
+                    databaseAuthenticationProvider.authenticate(
+                        dataSourceFactory.getUrl(),
+                        dataSourceFactory.getUser(),
+                        dataSourceFactory.getPassword());
+                dataSourceFactory.setPassword(token);
+              } finally {
+                try {
+                  databaseAuthenticationProvider.close();
+                } catch (Exception ignored) {
+                  // Ignored
+                }
+              }
             });
 
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
