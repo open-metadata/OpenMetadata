@@ -55,21 +55,19 @@ import {
   getLineageByEntityCount,
   getLineageDataByFQN,
 } from '../../rest/lineageAPI';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-  highlightSearchText,
-} from '../../utils/EntityUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getSearchNameEsQuery,
-  LINEAGE_IMPACT_OPTIONS,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+} from '../../utils/Lineage/LineagePureUtils';
+import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
@@ -93,7 +91,6 @@ import {
 import { EImpactLevel } from './LineageTable.interface';
 import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
-
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();

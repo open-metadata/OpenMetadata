@@ -33,11 +33,9 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import {
-  addToRecentViewed,
-  getEntityMissingError,
-} from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DirectoryDetailsUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DirectoryDetailsPage from './DirectoryDetailsPage';
@@ -223,16 +221,19 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 }));
 
 // Mock utils
-jest.mock('../../utils/CommonUtils', () => ({
-  addToRecentViewed: jest.fn(),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Directory not found'),
+}));
+
+jest.mock('../../utils/RecentActivityUtils', () => ({
+  addToRecentViewed: jest.fn(),
 }));
 
 jest.mock('../../utils/DirectoryDetailsUtils', () => ({
   defaultFields: 'owners,tags,followers,dataProducts,domains',
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Directory'),
 }));
 

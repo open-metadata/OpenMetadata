@@ -128,11 +128,11 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockReturnValue(QueryVoteType.votedUp),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn(),
 }));
 jest.mock('../../../hooks/useFqn', () => ({
@@ -176,7 +176,7 @@ const mockContext = {
   permissions: DEFAULT_ENTITY_PERMISSION,
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 
@@ -208,6 +208,7 @@ describe('GlossaryHeader component', () => {
 
     expect(screen.queryByText('label.import')).toBeInTheDocument();
     expect(screen.queryByText('label.export')).toBeInTheDocument();
+    expect(screen.queryByText('label.import-ontology')).toBeInTheDocument();
 
     expect(
       screen.queryByText('label.change-parent-entity')
@@ -227,6 +228,39 @@ describe('GlossaryHeader component', () => {
     );
 
     expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+  });
+
+  it('should hide the import ontology action when the user lacks import/export permission', async () => {
+    // Import/export permission is off, but display-name edit is on — so the
+    // manage menu still opens and we are testing the per-item gate, not the
+    // whole-menu gate.
+    mockContext.type = EntityType.GLOSSARY;
+    mockContext.permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditDisplayName: true,
+    };
+    mockGlossaryTermPermission.All = false;
+    mockGlossaryTermPermission.EditAll = false;
+
+    render(
+      <GlossaryHeader
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('manage-button'));
+    });
+
+    expect(screen.queryByText('label.import-ontology')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.import')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.export')).not.toBeInTheDocument();
+
+    mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+    mockGlossaryTermPermission.All = true;
+    mockGlossaryTermPermission.EditAll = true;
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
@@ -321,5 +355,58 @@ describe('GlossaryHeader component', () => {
     expect(
       screen.queryByText('ChangeParentHierarchyComponent')
     ).not.toBeInTheDocument();
+  });
+
+  describe('import/export visibility with conditional policies', () => {
+    it('should show import/export when globalPermissions denies but entity-level permissions allow (isOwner condition satisfied)', async () => {
+      // Simulate a conditional policy: resource-level check returns false because
+      // the backend cannot evaluate isOwner() without entity context.
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+
+      // Entity-level permissions are fetched with the glossary ID so the backend
+      // correctly evaluates isOwner() and returns Allow.
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('manage-button'));
+      });
+
+      expect(screen.queryByText('label.import')).toBeInTheDocument();
+      expect(screen.queryByText('label.export')).toBeInTheDocument();
+    });
+
+    it('should hide import/export when both globalPermissions and entity-level permissions deny', async () => {
+      // Both resource-level and entity-level permissions deny — user is not the
+      // owner and no other condition grants access.
+      mockGlossaryTermPermission.All = false;
+      mockGlossaryTermPermission.EditAll = false;
+
+      mockContext.type = EntityType.GLOSSARY;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        All: false,
+        EditAll: false,
+      };
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
+    });
   });
 });

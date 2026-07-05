@@ -1,13 +1,11 @@
 package org.openmetadata.mcp.tools;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DomainRepository;
@@ -22,6 +20,7 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class CreateDomainTool implements McpTool {
+  private static final String DEFAULT_DOMAIN_TYPE = "Aggregate";
 
   @Override
   public Map<String, Object> execute(
@@ -35,97 +34,84 @@ public class CreateDomainTool implements McpTool {
       Limits limits,
       CatalogSecurityContext securityContext,
       Map<String, Object> params) {
-    Object nameRaw = params.get("name");
-    if (!(nameRaw instanceof String name) || name.isBlank()) {
-      throw new IllegalArgumentException(
-          "Parameter 'name' is required and must be a non-blank string. Received: " + nameRaw);
+    final String name = CommonUtils.requireNonBlank(params.get("name"), "name");
+    final String description =
+        CommonUtils.requireNonBlank(params.get("description"), "description");
+
+    final String parent = CommonUtils.optString(params, "parent");
+    preflightParent(parent);
+    final List<String> experts = JsonUtils.readOrConvertValues(params.get("experts"), String.class);
+    CommonUtils.preflightExperts(experts);
+
+    final CreateDomain create = new CreateDomain();
+    create.setName(name);
+    create.setDescription(description);
+    create.setDomainType(parseDomainType(params.get("domainType")));
+    if (parent != null) {
+      create.setParent(parent);
+    }
+    if (!experts.isEmpty()) {
+      create.setExperts(experts);
+    }
+    final String displayName = CommonUtils.optString(params, "displayName");
+    if (displayName != null) {
+      create.setDisplayName(displayName);
+    }
+    if (params.containsKey("owners")) {
+      CommonUtils.setOwners(create, params);
+    }
+    if (params.containsKey("tags")) {
+      create.setTags(CommonUtils.buildTagLabels(params.get("tags")));
     }
 
-    Object descriptionRaw = params.get("description");
-    if (!(descriptionRaw instanceof String description) || description.isBlank()) {
-      throw new IllegalArgumentException(
-          "Parameter 'description' is required and must be a non-blank string. Received: "
-              + descriptionRaw);
-    }
+    final DomainMapper mapper = new DomainMapper();
+    final Domain entity = mapper.createToEntity(create, CommonUtils.principal(securityContext));
 
-    Object domainTypeRaw = params.get("domainType");
-    if (!(domainTypeRaw instanceof String domainType) || domainType.isBlank()) {
-      throw new IllegalArgumentException(
-          "Parameter 'domainType' is required and must be a non-blank string. Received: "
-              + domainTypeRaw);
-    }
+    authorize(authorizer, limits, securityContext, entity);
 
-    CreateDomain createDomain = new CreateDomain();
-    createDomain.setName(name);
-    createDomain.setDescription(description);
+    final DomainRepository repo = (DomainRepository) Entity.getEntityRepository(Entity.DOMAIN);
+    repo.prepareInternal(entity, false);
 
+    final String userName = CommonUtils.principal(securityContext);
+    final RestUtil.PutResponse<Domain> response =
+        repo.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
+    McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
+  }
+
+  static CreateDomain.DomainType parseDomainType(Object raw) {
+    final String value = (raw instanceof String s && !s.isBlank()) ? s : DEFAULT_DOMAIN_TYPE;
+    CreateDomain.DomainType result;
     try {
-      createDomain.setDomainType(CreateDomain.DomainType.fromValue(domainType));
-    } catch (Exception e) {
+      result = CreateDomain.DomainType.fromValue(value);
+    } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
           "Parameter 'domainType' has invalid value '"
-              + domainType
-              + "'. Valid values are: "
-              + java.util.Arrays.toString(CreateDomain.DomainType.values()));
+              + value
+              + "'. Valid values are: Source-aligned, Consumer-aligned, Aggregate");
     }
+    return result;
+  }
 
-    if (params.containsKey("displayName")) {
-      Object displayNameRaw = params.get("displayName");
-      if (!(displayNameRaw instanceof String)) {
-        throw new IllegalArgumentException(
-            "Parameter 'displayName' must be a string. Received: " + displayNameRaw);
-      }
-      createDomain.setDisplayName((String) displayNameRaw);
+  private static void preflightParent(String parent) {
+    if (parent != null && !parent.isBlank()) {
+      CommonUtils.requireExists(
+          Entity.DOMAIN,
+          parent,
+          "Parent domain '"
+              + parent
+              + "' not found. The parent domain must already exist before creating a child"
+              + " domain.");
     }
+  }
 
-    if (params.containsKey("parent")) {
-      Object parentRaw = params.get("parent");
-      if (!(parentRaw instanceof String)) {
-        throw new IllegalArgumentException(
-            "Parameter 'parent' must be a string. Received: " + parentRaw);
-      }
-      createDomain.setParent((String) parentRaw);
-    }
-
-    if (params.containsKey("owners")) {
-      CommonUtils.setOwners(createDomain, params);
-    }
-
-    if (params.containsKey("experts")) {
-      createDomain.setExperts(JsonUtils.readOrConvertValues(params.get("experts"), String.class));
-    }
-
-    if (params.containsKey("tags")) {
-      List<TagLabel> tags = new ArrayList<>();
-      for (String tagFqn : JsonUtils.readOrConvertValues(params.get("tags"), String.class)) {
-        tags.add(
-            new TagLabel()
-                .withTagFQN(tagFqn)
-                .withSource(TagLabel.TagSource.CLASSIFICATION)
-                .withLabelType(TagLabel.LabelType.MANUAL));
-      }
-      createDomain.setTags(tags);
-    }
-
-    DomainMapper mapper = new DomainMapper();
-    Domain domain =
-        mapper.createToEntity(createDomain, securityContext.getUserPrincipal().getName());
-
-    OperationContext operationContext =
+  private static void authorize(
+      Authorizer authorizer, Limits limits, CatalogSecurityContext securityContext, Domain entity) {
+    final OperationContext operationContext =
         new OperationContext(Entity.DOMAIN, MetadataOperation.CREATE);
-    CreateResourceContext<Domain> createResourceContext =
-        new CreateResourceContext<>(Entity.DOMAIN, domain);
+    final CreateResourceContext<Domain> createResourceContext =
+        new CreateResourceContext<>(Entity.DOMAIN, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
-
-    DomainRepository repo = (DomainRepository) Entity.getEntityRepository(Entity.DOMAIN);
-    repo.prepareInternal(domain, false);
-
-    String userName = securityContext.getUserPrincipal().getName();
-    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
-    RestUtil.PutResponse<Domain> response =
-        repo.createOrUpdate(null, domain, userName, impersonatedBy);
-    McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return JsonUtils.getMap(response.getEntity());
   }
 }

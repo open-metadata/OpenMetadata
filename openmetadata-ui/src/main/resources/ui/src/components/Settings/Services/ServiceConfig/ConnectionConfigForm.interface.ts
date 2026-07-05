@@ -17,16 +17,35 @@ import {
   ConfigData,
   ServicesType,
 } from '../../../../interface/service.interface';
+import { ConnectionFieldSection } from '../../../../utils/ServiceConnectionUtils';
 
 export interface ConnectionConfigFormProps {
   data?: ServicesType;
   okText?: string;
   cancelText?: string;
+  hideFooter?: boolean;
   serviceType: string;
   serviceCategory: ServiceCategory;
   status: LoadingState;
-  onFocus: (id: string) => void;
+  onBlur?: () => void;
+  onFocus: (
+    id: string,
+    schemaMeta?: {
+      title?: string;
+      description?: string;
+      section?: ConnectionFieldSection;
+    }
+  ) => void;
   onSave: (data: IChangeEvent<ConfigData>) => Promise<void>;
   disableTestConnection?: boolean;
+  isSubmitDisabled?: boolean;
+  additionalMissingFieldsCount?: number;
   onCancel?: () => void;
+  onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
+  onValidateAdditionalRequiredFields?: () => boolean;
+}
+
+export interface ConnectionConfigFormHandle {
+  submit: () => void;
+  isSubmitDisabled: boolean;
 }

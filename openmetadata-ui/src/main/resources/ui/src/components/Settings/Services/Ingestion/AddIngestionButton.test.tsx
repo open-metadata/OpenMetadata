@@ -66,4 +66,18 @@ describe('AddIngestionButton', () => {
 
     expect(mockNavigate).toHaveBeenCalledTimes(0);
   });
+
+  it('should not show Policy Agent option in the OSS ingestion menu', async () => {
+    await act(async () => {
+      render(<AddIngestionButton {...mockAddIngestionButtonProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    fireEvent.click(screen.getByTestId('add-new-ingestion-button'));
+
+    expect(
+      screen.queryByTestId('agent-item-policyAgent')
+    ).not.toBeInTheDocument();
+  });
 });

@@ -34,6 +34,7 @@ from metadata.generated.schema.api.data.createDataContract import (
 )
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
@@ -75,16 +76,22 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type import basic
+from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import OMetaCustomProperties
 from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    OMetaFQNLineageRequest,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
@@ -109,6 +116,7 @@ from metadata.ingestion.models.tests_data import (
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client import APIError, LimitsException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.pipeline.pipeline_service import (
@@ -118,7 +126,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
-from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.fqn import get_query_checksum
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
@@ -126,12 +134,32 @@ logger = ingestion_logger()
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
 
+# TODO: remove the duplicate-conflict-to-warning downgrade below once #25890 (the server-side
+# bulk-query idempotency fix, shipped in 1.13.0) has rolled out to all deployments. The
+# checksum dedup in write_query is permanent and stays - only this downgrade is temporary.
+# Until then, re-ingesting a query whose checksum already exists (same SQL across services or
+# runs) comes back as a unique-constraint violation that loses no metadata, so a lineage run
+# must not be marked failed over it. These are the query_entity unique constraints (checksum +
+# nameHash, both engines) that identify such an already-present query on the bulk response.
+DUPLICATE_QUERY_CONSTRAINTS = (
+    "unique_query_checksum",
+    "query_entity_namehash_key",
+    "query_entity.namehash",
+)
+
+
+def is_duplicate_query_conflict(message: Optional[str]) -> bool:  # noqa: UP045
+    """Whether a failed bulk-query response is an already-present (duplicate) query."""
+    lowered = (message or "").lower()
+    return any(constraint in lowered for constraint in DUPLICATE_QUERY_CONSTRAINTS)
+
 
 class MetadataRestSinkConfig(ConfigModel):
     api_endpoint: Optional[str] = None  # noqa: UP045
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
+    override_metadata: bool = False
 
 
 class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
@@ -160,6 +188,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         # Track entity names in buffer for O(1) duplicate checking
         # Key: (entity_type, name), Value: True
         self.buffered_entity_names: dict[tuple, bool] = {}
+        # Queries are bulk-created on a dedicated buffer (see write_query) keyed on the
+        # SQL checksum, so query-specific dedup and duplicate-checksum handling stay out
+        # of the generic entity bulk path.
+        self.query_buffer: list[CreateQueryRequest] = []
+        self.buffered_query_checksums: set[str] = set()
 
     @classmethod
     def create(
@@ -180,7 +213,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(f"Processing Create request {type(record)}")
         return self.write_create_request(record)
 
-    @calculate_execution_time(store=False)
     def _run(self, record: Entity, *_, **__) -> Either[Any]:
         """
         Default implementation for the single dispatch
@@ -322,7 +354,11 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             )
 
         try:
-            result = self.metadata.bulk_create_or_update(entities=self.buffer, use_async=False)
+            result = self.metadata.bulk_create_or_update(
+                entities=self.buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
         except Exception as exc:
             logger.error(f"Failed to flush entities to bulk API: {exc}")
             logger.debug(traceback.format_exc())
@@ -359,6 +395,82 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 stackTrace=None,
             ),
         )
+
+    @_run_dispatch.register
+    def write_query(self, record: CreateQueryRequest) -> Either[Entity]:
+        """Buffer queries on a dedicated bulk path.
+
+        A query create request carries no name, so the server derives it from the SQL
+        checksum. Identical SQL (e.g. a scheduled stored procedure running the same
+        statement) therefore produces the same checksum and would collide in the bulk
+        API. Keeping queries on their own buffer and flush isolates that checksum dedup,
+        and the already-present-query handling in _flush_query_buffer, from the generic
+        entity bulk path.
+        """
+        checksum = get_query_checksum(model_str(record.query))
+        result = Either(right=None)  # pyright: ignore[reportCallIssue]
+        if checksum in self.buffered_query_checksums:
+            logger.debug(f"Skipping duplicate query with checksum {checksum}")
+        else:
+            self.buffered_query_checksums.add(checksum)
+            self.query_buffer.append(record)
+            if len(self.query_buffer) >= self.config.bulk_sink_batch_size:
+                result = self._flush_query_buffer()
+        return result
+
+    def _flush_query_buffer(self) -> Either[Entity]:
+        """Bulk-create buffered queries, then classify the response."""
+        if not self.query_buffer:
+            return Either(right=None)  # pyright: ignore[reportCallIssue]
+
+        try:
+            result = self.metadata.bulk_create_or_update(
+                entities=self.query_buffer,  # pyright: ignore[reportArgumentType]
+                use_async=False,
+                override_metadata=self.config.override_metadata,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to flush queries to bulk API: {exc}")
+            logger.debug(traceback.format_exc())
+            return Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name="Query Buffer",
+                    error=f"Failed to flush queries to bulk API: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        finally:
+            self.query_buffer = []
+            self.buffered_query_checksums.clear()
+
+        return self._record_query_flush_result(result)
+
+    def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
+        """Record a query bulk response. Already-present queries are reported as warnings
+        (not failures) so a lineage run is not marked failed over queries that lost no
+        metadata. Any other failure is still recorded as a failure."""
+        if not result:
+            return Either(right=None)  # pyright: ignore[reportCallIssue]
+
+        self.status.scanned_all(result.successRequest or [])
+        if result.status == basic.Status.success:
+            return Either(right=result)  # pyright: ignore[reportCallIssue]
+
+        first_failure = None
+        for failed in result.failedRequest or []:
+            query_ref = failed.request or "unknown"
+            if is_duplicate_query_conflict(failed.message):
+                self.status.warning("Query", f"Skipped already-present query [{query_ref}]: {failed.message}")
+            else:
+                failure = StackTraceError(
+                    name="Query Buffer",
+                    error=f"Failed to flush query [{query_ref}] to bulk API: {failed.message}",
+                    stackTrace=None,
+                )
+                self.status.failed(failure)
+                first_failure = first_failure or failure
+
+        return Either(left=first_failure) if first_failure else Either(right=result)  # pyright: ignore[reportCallIssue]
 
     @_run_dispatch.register
     def patch_entity(self, record: PatchRequest) -> Either[Entity]:
@@ -441,6 +553,45 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
 
     @_run_dispatch.register
+    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[dict[str, Any]]:
+        created_lineage = self.metadata.add_lineage_by_name(
+            from_entity_fqn=add_lineage.from_entity_fqn,
+            from_entity_type=add_lineage.from_entity_type,
+            to_entity_fqn=add_lineage.to_entity_fqn,
+            to_entity_type=add_lineage.to_entity_type,
+            lineage_details=add_lineage.lineage_details,
+            check_patch=True,
+        )
+        if not created_lineage or created_lineage.get("error"):
+            error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
+            return Either(
+                left=StackTraceError(name="AddLineageRequestError", error=error, stackTrace=None),
+                right=None,
+            )
+
+        return Either(left=None, right=created_lineage["entity"]["fullyQualifiedName"])
+
+    def _delete_lineage_by_source_reference(self, entity_reference: EntityReference, source: str) -> None:
+        if entity_reference.id:
+            self.metadata.delete_lineage_by_source(
+                entity_type=entity_reference.type,
+                entity_id=model_str(entity_reference.id),
+                source=source,
+            )
+            return
+        if entity_reference.fullyQualifiedName:
+            self.metadata.delete_lineage_by_source_by_name(
+                entity_type=entity_reference.type,
+                entity_fqn=model_str(entity_reference.fullyQualifiedName),
+                source=source,
+            )
+            return
+        logger.warning(
+            f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "
+            "has neither id nor fullyQualifiedName"
+        )
+
+    @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
         """
         Writes the override lineage for the given lineage request.
@@ -451,30 +602,66 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         Returns:
             Either[Dict[str, Any]]: The result of the dispatch operation.
         """
-        if (
-            add_lineage.override_lineage is True
-            and add_lineage.lineage_request.edge.lineageDetails
-            and add_lineage.lineage_request.edge.lineageDetails.source
+        if add_lineage.override_lineage is True and (
+            add_lineage.lineage_request.lineage_details
+            if isinstance(add_lineage.lineage_request, OMetaFQNLineageRequest)
+            else add_lineage.lineage_request.edge.lineageDetails
         ):
-            if (
-                add_lineage.lineage_request.edge.lineageDetails.pipeline
-                and add_lineage.lineage_request.edge.lineageDetails.source
-                in (LineageSource.PipelineLineage, LineageSource.OpenLineage)
+            lineage_request = add_lineage.lineage_request
+            lineage_details = (
+                lineage_request.lineage_details
+                if isinstance(lineage_request, OMetaFQNLineageRequest)
+                else lineage_request.edge.lineageDetails
+            )
+            if not lineage_details or not lineage_details.source:
+                return self._run_dispatch(lineage_request)
+            if lineage_details.pipeline and lineage_details.source in (
+                LineageSource.PipelineLineage,
+                LineageSource.OpenLineage,
             ):
-                self.metadata.delete_lineage_by_source(
-                    entity_type="pipeline",
-                    entity_id=str(add_lineage.lineage_request.edge.lineageDetails.pipeline.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    lineage_details.pipeline,
+                    lineage_details.source.value,
+                )
+            elif isinstance(lineage_request, OMetaFQNLineageRequest):
+                self.metadata.delete_lineage_by_source_by_name(
+                    entity_type=lineage_request.to_entity_type,
+                    entity_fqn=lineage_request.to_entity_fqn,
+                    source=lineage_details.source.value,
                 )
             else:
-                self.metadata.delete_lineage_by_source(
-                    entity_type=add_lineage.lineage_request.edge.toEntity.type,
-                    entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
-                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                self._delete_lineage_by_source_reference(
+                    lineage_request.edge.toEntity,
+                    lineage_details.source.value,
                 )
         lineage_response = self._run_dispatch(add_lineage.lineage_request)
         if lineage_response and lineage_response.right is not None and add_lineage.entity_fqn and add_lineage.entity:
             self.metadata.patch_lineage_processed_flag(entity=add_lineage.entity, fqn=add_lineage.entity_fqn)
+        return lineage_response
+
+    @_run_dispatch.register
+    def write_barrier(self, record: Barrier) -> Either[Entity]:
+        """Flush the buffers synchronously so subsequent records in the same
+        stream see committed entities."""
+        result = Either(right=None)  # pyright: ignore[reportCallIssue]
+        if self.buffer:
+            logger.debug(
+                "Barrier flush: %d entities, reason=%s",
+                len(self.buffer),
+                record.reason,
+            )
+            result = self._flush_buffer()
+        if self.query_buffer:
+            logger.debug(
+                "Barrier flush: %d queries, reason=%s",
+                len(self.query_buffer),
+                record.reason,
+            )
+            query_result = self._flush_query_buffer()
+            # Surface a genuine query failure even when the entity flush succeeded.
+            if result.left is None and query_result.left is not None:
+                result = query_result
+        return result  # pyright: ignore[reportCallIssue]
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
         """
@@ -591,7 +778,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         entity_obj: Any = record.entity
         entity_id = entity_obj.id
         fqn = entity_obj.fullyQualifiedName.root
-        recursive = bool(record.mark_deleted_entities)
+        recursive = bool(record.recursive)
         if record.dispatch_async:
             # Server-side async cascade — returns 202 + jobId immediately so ingestion
             # doesn't block on large subtrees (issue #4003). The actual work runs on the
@@ -1033,6 +1220,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         if self.buffer:
             logger.info(f"Flushing {len(self.buffer)} remaining entities on close")
             self._flush_buffer()
+
+        if self.query_buffer:
+            logger.info(f"Flushing {len(self.query_buffer)} remaining queries on close")
+            self._flush_query_buffer()
 
         # Process deferred lifecycle data now that all tables exist
         self._process_deferred_lifecycle_data()

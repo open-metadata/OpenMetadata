@@ -43,6 +43,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
@@ -61,9 +62,31 @@ public class TestCaseResolutionStatusRepository
         Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
+  // {@code testSuites} stays on the exclude list to scrub legacy docs written before the
+  // SearchRepository inheritable-field refactor stopped propagating testCase.testSuites onto
+  // child TCRS docs. The field is absent from the {@link TestCaseResolutionStatus} schema
+  // ({@code additionalProperties: false}), so any surviving polluted source would otherwise
+  // 400 strict Jackson deserialization on /testCaseIncidentStatus/search/list.
   @Override
   protected List<String> getExcludeSearchFields() {
-    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts");
+  }
+
+  // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
+  // feeds the raw ES hit straight into strict deserialization, so the full set of non-schema
+  // search fields must be pushed into the {@code _source.exclude} of the query itself — matching
+  // exactly what the {@code latest=true} path strips client-side. Excluding only {@code testSuites}
+  // leaves {@code @timestamp}, {@code domains}, {@code testCase}, and {@code testSuite} in the
+  // source, each of which 400s strict Jackson in turn.
+  @Override
+  protected void setExcludeSearchFields(SearchListFilter searchListFilter) {
+    String existingExcludeFields = searchListFilter.getQueryParam("excludeFields");
+    String scrubFields = String.join(",", getExcludeSearchFields());
+    String mergedExcludeFields =
+        nullOrEmpty(existingExcludeFields)
+            ? scrubFields
+            : existingExcludeFields + "," + scrubFields;
+    searchListFilter.addQueryParam("excludeFields", mergedExcludeFields);
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(

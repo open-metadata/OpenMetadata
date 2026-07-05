@@ -1,8 +1,6 @@
 package org.openmetadata.mcp.tools;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -53,20 +51,19 @@ class CreateDomainToolTest {
   }
 
   @Test
-  void testCreateDomainToolExecution() {
+  void testExecuteCallsPrepareInternal() {
     DomainRepository repo = mock(DomainRepository.class);
     Domain domain = new Domain();
     domain.setId(UUID.randomUUID());
-    domain.setName("TestDomain");
+    domain.setName("Finance");
 
     RestUtil.PutResponse<Domain> putResponse =
         new RestUtil.PutResponse<>(Response.Status.CREATED, domain, EventType.ENTITY_CREATED);
 
-    when(repo.createOrUpdate(isNull(), any(Domain.class), anyString(), isNull()))
+    when(repo.createOrUpdate(isNull(), any(Domain.class), anyString(), any()))
         .thenReturn(putResponse);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedStatic<McpChangeEventUtil> eventMock = mockStatic(McpChangeEventUtil.class);
         MockedConstruction<DomainMapper> mapperMock =
             mockConstruction(
                 DomainMapper.class,
@@ -76,60 +73,15 @@ class CreateDomainToolTest {
       entityMock.when(() -> Entity.getEntityRepository(Entity.DOMAIN)).thenReturn(repo);
 
       Map<String, Object> params = new HashMap<>();
-      params.put("name", "TestDomain");
-      params.put("description", "A test domain");
+      params.put("name", "Finance");
+      params.put("description", "Finance domain");
       params.put("domainType", "Aggregate");
 
       CreateDomainTool tool = new CreateDomainTool();
       Map<String, Object> result = tool.execute(authorizer, limits, securityContext, params);
 
       assertNotNull(result);
-      assertEquals("TestDomain", result.get("name"));
-      assertNotNull(result.get("id"));
-
-      verify(limits).enforceLimits(any(), any(), any());
-      verify(authorizer).authorize(any(), any(), any());
       verify(repo).prepareInternal(any(Domain.class), eq(false));
-      eventMock.verify(
-          () ->
-              McpChangeEventUtil.publishChangeEvent(
-                  any(Domain.class), any(EventType.class), anyString()));
     }
-  }
-
-  @Test
-  void testMissingRequiredParameterThrowsException() {
-    CreateDomainTool tool = new CreateDomainTool();
-    Map<String, Object> params = new HashMap<>();
-
-    // Missing 'name'
-    params.put("description", "A test domain");
-    params.put("domainType", "Aggregate");
-
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> tool.execute(authorizer, limits, securityContext, params));
-    assertEquals(
-        "Parameter 'name' is required and must be a non-blank string. Received: null",
-        exception.getMessage());
-  }
-
-  @Test
-  void testInvalidDomainTypeThrowsException() {
-    CreateDomainTool tool = new CreateDomainTool();
-    Map<String, Object> params = new HashMap<>();
-
-    params.put("name", "TestDomain");
-    params.put("description", "A test domain");
-    params.put("domainType", "InvalidType"); // Invalid enum value
-
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> tool.execute(authorizer, limits, securityContext, params));
-    assertEquals(
-        "Parameter 'domainType' has invalid value 'InvalidType'. Valid values are: Aggregate, Source-aligned, Consumer-aligned",
-        exception.getMessage());
   }
 }

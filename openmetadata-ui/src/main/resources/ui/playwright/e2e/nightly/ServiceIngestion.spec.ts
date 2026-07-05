@@ -13,7 +13,7 @@
 
 import test, { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { POSTGRES, REDSHIFT } from '../../constant/service';
+import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -115,17 +115,23 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       await service.updateScheduleOptions(page);
     });
 
-    // TODO: Need to fix MYSQL service specific test - #28125
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
+      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+        service.serviceType
+      )
     ) {
       /**
        * Tests database-specific ingestion behaviors
        * @description Runs additional checks for Postgres, Redshift, and MySQL services
        */
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
-      });
+      test(
+        service.serviceType === MYSQL
+          ? 'Profiler ingestion workflow'
+          : `Service specific tests`,
+        async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        }
+      );
     }
   });
 });

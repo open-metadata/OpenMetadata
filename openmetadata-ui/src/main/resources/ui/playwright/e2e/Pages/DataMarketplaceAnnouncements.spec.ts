@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { performAdminLogin } from '../../utils/admin';
@@ -29,7 +30,7 @@ let dpAnnouncementId: string;
 
 test.describe(
   'Data Marketplace - Announcements',
-  { tag: ['@Pages', '@Discovery'] },
+  { tag: ['@Pages', '@Discovery', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll('Setup entities and announcements', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -81,12 +82,27 @@ test.describe(
       });
 
       await test.step('Verify announcement items are displayed', async () => {
-        await expect(
-          page.getByTestId(`announcement-item-${domainAnnouncementId}`)
-        ).toBeVisible();
-        await expect(
-          page.getByTestId(`announcement-item-${dpAnnouncementId}`)
-        ).toBeVisible();
+        await page
+          .getByTestId(/^announcement-item-/)
+          .first()
+          .waitFor();
+
+        const viewAll = page.getByTestId('view-all-btn');
+        if (await viewAll.isVisible()) {
+          await viewAll.click();
+        }
+
+        const domainItem = page.getByTestId(
+          `announcement-item-${domainAnnouncementId}`
+        );
+        await domainItem.scrollIntoViewIfNeeded();
+        await expect(domainItem).toBeVisible();
+
+        const dpItem = page.getByTestId(
+          `announcement-item-${dpAnnouncementId}`
+        );
+        await dpItem.scrollIntoViewIfNeeded();
+        await expect(dpItem).toBeVisible();
       });
     });
 

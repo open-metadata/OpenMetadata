@@ -13,7 +13,7 @@
 
 import { Button, Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import { useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
@@ -23,14 +23,21 @@ import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentMana
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getChangedEntityStatus,
   getDiffByFieldName,
-  getDiffDisplayValue,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityDiffPureUtils';
+import { getDiffDisplayValue } from '../../../../utils/EntityDiffUtils';
+import { getChangedEntityStatus } from '../../../../utils/EntityVersionUtilsPure';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
-import QueryViewer from '../../../common/QueryViewer/QueryViewer.component';
 import '../TestCaseResultTab/test-case-result-tab.style.less';
-import AddSqlQueryFormModal from './AddSqlQueryFormModal/AddSqlQueryFormModal.component';
+
+const QueryViewer = withSuspenseFallback(
+  lazy(() => import('../../../common/QueryViewer/QueryViewer.component'))
+);
+
+const AddSqlQueryFormModal = withSuspenseFallback(
+  lazy(() => import('./AddSqlQueryFormModal/AddSqlQueryFormModal.component'))
+);
 
 const SqlQueryTab = () => {
   const { testCase, isLoading } = useTestCaseStore();

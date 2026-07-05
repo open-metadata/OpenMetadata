@@ -40,6 +40,13 @@ RUN dpkg --configure -a \
     wget --no-install-recommends \
     # Accept MSSQL ODBC License
     && ACCEPT_EULA=Y apt-get -qq install -y msodbcsql18 \
+    # Pull bookworm-security fixes for known-vulnerable packages
+    # (gnutls28 -> 3.7.9-2+deb12u7, libcap2 -> 1:2.66-4+deb12u3,
+    # openssh -> 1:9.2p1-2+deb12u10, rsync -> 3.2.7-1+deb12u5).
+    # --only-upgrade is a no-op for packages not present in the base image.
+    && apt-get -qq install -y --only-upgrade \
+         libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
+         libpam0g libpam-modules libpam-modules-bin libpam-runtime \
     && rm -rf /var/lib/apt/lists/*
 
 # Add updated postgres/redshift dependencies based on libq
@@ -107,7 +114,7 @@ RUN pip install --upgrade pip "setuptools<81"
 RUN pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.12.0.0.dev0"
+ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 

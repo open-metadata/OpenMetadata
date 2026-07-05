@@ -183,7 +183,7 @@ public class HttpServletStatelessServerTransport extends HttpServlet
                   .block();
 
           String jsonResponseText = jsonMapper.writeValueAsString(jsonrpcResponse);
-          if (acceptsSse) {
+          if (shouldEmitSse(acceptsJson, acceptsSse)) {
             writeSseResponse(response, jsonResponseText);
           } else {
             writeJsonResponse(response, jsonResponseText);
@@ -256,6 +256,17 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     PrintWriter writer = response.getWriter();
     writer.write(jsonError);
     writer.flush();
+  }
+
+  /**
+   * Picks the response media type via Accept-header content negotiation. JSON is preferred whenever
+   * the client accepts it, because the MCP Streamable HTTP spec has clients send {@code Accept:
+   * application/json, text/event-stream} and most (e.g. the ai-sdk Python client) cannot parse an
+   * SSE {@code data: } framed body. SSE is emitted only for clients that accept event-stream but
+   * NOT JSON (e.g. the Databricks Supervisor Agent client).
+   */
+  static boolean shouldEmitSse(boolean acceptsJson, boolean acceptsSse) {
+    return acceptsSse && !acceptsJson;
   }
 
   static void writeJsonResponse(HttpServletResponse response, String jsonResponseText)

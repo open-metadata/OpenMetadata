@@ -16,8 +16,14 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
+import {
+  runDrawerQuickFilterMatrix,
+  toDrawerAsset,
+} from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
   redirectToHomePage,
@@ -30,6 +36,7 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -39,6 +46,91 @@ test.describe('Data Product Comprehensive Tests', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test('Add-Assets drawer quick filter - behaviour matrix', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+    const tieredTable = new TableClass();
+    const plainTable = new TableClass();
+    const filterTopic = new TopicClass();
+    const filterDashboard = new DashboardClass();
+
+    try {
+      await test.step('Create data product and varied assets', async () => {
+        await domain.create(apiContext);
+        await dataProduct.create(apiContext);
+
+        const domainPatch = {
+          op: 'add' as const,
+          path: '/domains/0',
+          value: { id: domain.responseData.id, type: 'domain' },
+        };
+
+        await tieredTable.create(apiContext);
+        await tieredTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: 'Tier.Tier1',
+                source: 'Classification',
+                labelType: 'Manual',
+              },
+            },
+            domainPatch,
+          ],
+        });
+        await plainTable.create(apiContext);
+        await plainTable.patch({ apiContext, patchData: [domainPatch] });
+        await filterTopic.create(apiContext);
+        await filterTopic.patch({ apiContext, patchData: [domainPatch] });
+        await filterDashboard.create(apiContext);
+        await filterDashboard.patch({ apiContext, patchData: [domainPatch] });
+      });
+
+      await test.step('Open the data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.getByTestId('assets').click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await runDrawerQuickFilterMatrix(page, {
+        surface: 'data product',
+        openDrawer: async () => {
+          await page.getByTestId('data-product-details-add-button').click();
+          await page
+            .getByTestId('asset-selection-modal')
+            .waitFor({ state: 'visible' });
+          await waitForAllLoadersToDisappear(page);
+        },
+        closeDrawer: async () => {
+          await page.getByTestId('cancel-btn').click();
+          await page
+            .getByTestId('asset-selection-modal')
+            .waitFor({ state: 'hidden' });
+        },
+        table: toDrawerAsset(tieredTable),
+        untieredTable: toDrawerAsset(plainTable),
+        topic: toDrawerAsset(filterTopic),
+        dashboard: toDrawerAsset(filterDashboard),
+      });
+    } finally {
+      await tieredTable.delete(apiContext);
+      await plainTable.delete(apiContext);
+      await filterTopic.delete(apiContext);
+      await filterDashboard.delete(apiContext);
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Create data product via UI with description', async ({ page }) => {
@@ -180,8 +272,12 @@ test.describe('Data Product Comprehensive Tests', () => {
         }
 
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 

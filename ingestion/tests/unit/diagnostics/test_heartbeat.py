@@ -8,19 +8,18 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Heartbeat output format and step-status rendering.
-
-Heartbeats are emitted through the `metadata.Diagnostics` logger, so
-tests use pytest's `caplog` to capture log records instead of patching
-stderr.
-"""
+"""Heartbeat output format and step-status rendering."""
 
 import logging
 
-from metadata.ingestion.diagnostics.heartbeat import HeartbeatThread
-from metadata.ingestion.diagnostics.http_introspect import HttpTracker
-from metadata.ingestion.diagnostics.memory import MemoryTracker
-from metadata.ingestion.diagnostics.registry import OperationRegistry
+from metadata.ingestion.diagnostics.collectors.http import HttpTracker
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
+from metadata.ingestion.diagnostics.collectors.stage_progress import StageProgressCollector
+from metadata.ingestion.diagnostics.config import DiagnosticsConfig
+from metadata.ingestion.diagnostics.handler import DiagnosticsHandler
+from metadata.ingestion.diagnostics.monitors.watchdog import Watchdog
+from metadata.ingestion.diagnostics.samplers.memory import MemoryTracker
+from metadata.ingestion.diagnostics.samplers.time_accounting import TimeAccountingSampler
 
 
 class _FakeStatus:
@@ -47,20 +46,34 @@ class _FakeWorkflow:
         return self._steps
 
 
-def _emit_once(heartbeat, caplog) -> str:
+def _make_handler(workflow=None, registry=None):
+    config = DiagnosticsConfig()
+    registry = registry or OperationRegistry()
+    memory = MemoryTracker()
+    aspects = [
+        registry,
+        HttpTracker(),
+        memory,
+        TimeAccountingSampler(registry),
+        StageProgressCollector(),
+    ]
+    return DiagnosticsHandler(
+        config=config,
+        aspects=aspects,
+        watchdog=Watchdog(registry, memory, config),
+        db_introspector=None,
+        workflow=workflow,
+    )
+
+
+def _emit_once(handler, caplog) -> str:
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        handler.emit_heartbeat()
     return "\n".join(record.getMessage() for record in caplog.records)
 
 
 def test_heartbeat_emits_required_fields(caplog):
-    heartbeat = HeartbeatThread(
-        registry=OperationRegistry(),
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=None,
-    )
-    out = _emit_once(heartbeat, caplog)
+    out = _emit_once(_make_handler(), caplog)
     assert out.startswith("diag.heartbeat")
     for key in ("tick=", "pid=", "threads=", "rss=", "rss_delta_30s=", "active_http=", "main_op="):
         assert key in out
@@ -71,26 +84,14 @@ def test_heartbeat_renders_step_progress(caplog):
         _FakeStep("Source", _FakeStatus(record_count=42, failures=["e1"])),
         _FakeStep("Sink", _FakeStatus(record_count=40, failures=[])),
     ]
-    heartbeat = HeartbeatThread(
-        registry=OperationRegistry(),
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=_FakeWorkflow(steps),
-    )
-    out = _emit_once(heartbeat, caplog)
+    out = _emit_once(_make_handler(workflow=_FakeWorkflow(steps)), caplog)
     assert "steps=[Source=42/1err,Sink=40/0err]" in out
 
 
 def test_heartbeat_renders_main_thread_operation(caplog):
     registry = OperationRegistry()
     registry.push("source.iter", {"entity": "x"})
-    heartbeat = HeartbeatThread(
-        registry=registry,
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=None,
-    )
-    out = _emit_once(heartbeat, caplog)
+    out = _emit_once(_make_handler(registry=registry), caplog)
     assert "main_op=source.iter(" in out
 
 
@@ -101,48 +102,22 @@ def test_heartbeat_handles_broken_step_status_gracefully(caplog):
         def get_status(self):
             raise RuntimeError("boom")
 
-    heartbeat = HeartbeatThread(
-        registry=OperationRegistry(),
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=_FakeWorkflow([_BadStep()]),
-    )
-    out = _emit_once(heartbeat, caplog)
+    out = _emit_once(_make_handler(workflow=_FakeWorkflow([_BadStep()])), caplog)
     assert out.startswith("diag.heartbeat")
 
 
 def test_heartbeat_emits_at_info_level(caplog):
-    heartbeat = HeartbeatThread(
-        registry=OperationRegistry(),
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=None,
-    )
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        _make_handler().emit_heartbeat()
     levels = {r.levelname for r in caplog.records if r.message.startswith("diag.heartbeat")}
     assert levels == {"INFO"}
 
 
-# Backwards-compat: a sanity test that heartbeats DO NOT write to stderr directly
-# (everything must go through the logger so it ships).
 def test_heartbeat_does_not_write_directly_to_stderr(caplog, capsys):
-    heartbeat = HeartbeatThread(
-        registry=OperationRegistry(),
-        http_tracker=HttpTracker(),
-        memory_tracker=MemoryTracker(),
-        workflow=None,
-    )
     with caplog.at_level(logging.INFO, logger="metadata.Diagnostics"):
-        heartbeat._emit()
+        _make_handler().emit_heartbeat()
     captured = capsys.readouterr()
-    # The default basicConfig StreamHandler may have written the formatted
-    # log record to stderr — that's fine, the logger is responsible. What
-    # we don't want is a direct sys.stderr.write of the raw "diag.heartbeat ..."
-    # line BYPASSING the logger.
     if captured.err:
-        # If stderr has output, every line must be a formatted log record
-        # (which always contains the level name).
         for line in captured.err.splitlines():
             if line.strip():
                 assert "diag.heartbeat" not in line or "INFO" in line

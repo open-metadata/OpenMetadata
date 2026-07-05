@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Locator, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import {
@@ -18,6 +18,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   uuid,
+  waitForMetricsSearchResponse,
 } from '../../utils/common';
 import {
   removeUnitOfMeasurement,
@@ -27,6 +28,25 @@ import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+const selectMetricFormOption = async (
+  page: Page,
+  field: Locator,
+  input: Locator,
+  title: string
+) => {
+  await input.click();
+  await input.fill(title);
+
+  const option = page
+    .locator('.ant-select-dropdown:visible')
+    .getByTitle(title, { exact: true });
+
+  await expect(option).toBeVisible();
+  // eslint-disable-next-line playwright/no-force-option -- Ant select option can be obscured during page scroll.
+  await option.click({ force: true });
+  await expect(field).toContainText(title);
+};
 
 test.describe(
   'Metric Custom Unit of Measurement Flow',
@@ -39,9 +59,7 @@ test.describe(
 
       await test.step('Navigate to Metrics and create a metric', async () => {
         // Navigate to Metrics
-        const listAPIPromise = page.waitForResponse(
-          '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
-        );
+        const listAPIPromise = waitForMetricsSearchResponse(page);
         await sidebarClick(page, SidebarItem.METRICS);
         await listAPIPromise;
 
@@ -66,26 +84,39 @@ test.describe(
           .fill(`Test metric for unit testing ${metricName}`);
 
         // Select granularity
-        await page.getByTestId('granularity').locator('input').fill('Quarter');
-        await page.getByTitle('Quarter', { exact: true }).click();
+        await selectMetricFormOption(
+          page,
+          page.getByTestId('granularity'),
+          page.getByTestId('granularity').locator('input'),
+          'Quarter'
+        );
 
         // Select metric type
-        await page.getByTestId('metricType').locator('input').fill('Sum');
-        await page.getByTitle('Sum', { exact: true }).click();
+        await selectMetricFormOption(
+          page,
+          page.getByTestId('metricType'),
+          page.getByTestId('metricType').locator('input'),
+          'Sum'
+        );
 
         await clickOutside(page);
 
         // Select unit of measurement (use Bytes as initial unit)
-        await page
-          .getByTestId('unitOfMeasurement')
-          .locator('input')
-          .fill('Events');
-        await page.getByTitle('Events', { exact: true }).click();
+        await selectMetricFormOption(
+          page,
+          page.getByTestId('unitOfMeasurement'),
+          page.getByTestId('unitOfMeasurement').locator('input'),
+          'Events'
+        );
         await clickOutside(page);
 
         // Select language and add expression
-        await page.getByTestId('language').locator('input').fill('SQL');
-        await page.getByTitle('SQL', { exact: true }).click();
+        await selectMetricFormOption(
+          page,
+          page.getByTestId('language'),
+          page.getByTestId('language').locator('input'),
+          'SQL'
+        );
 
         await clickOutside(page);
 

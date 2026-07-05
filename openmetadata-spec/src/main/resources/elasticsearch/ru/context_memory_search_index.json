@@ -171,6 +171,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "pinned": {
+        "type": "boolean"
+      },
       "sourceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -307,6 +310,31 @@
           }
         }
       },
+      "sourceFile": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "displayName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
       "usageCount": {
         "type": "long",
         "null_value": 0
@@ -323,7 +351,14 @@
         "format": "epoch_second"
       },
       "updatedBy": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "href": {
         "type": "text"
@@ -611,7 +646,23 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
+      },
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
       },
       "suggest": {
         "type": "completion",

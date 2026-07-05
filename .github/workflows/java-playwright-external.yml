@@ -1,0 +1,537 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Runs the Java integration suites against an ALREADY-RUNNING external OpenMetadata cluster
+# instead of a containerized server, across three jobs:
+#   - ui-it-external      : *UIIT.java (Playwright) via the `ui-it` profile
+#   - search-it-external  : tests/search/*IT.java via the `search-it` profile
+#   - scale-it-external   : tests/search/scale/*IT.java via `scale-it`, matrixed over cohort
+#                           sizes (scaleSeeds, default [100000]).
+#
+# All three jobs share ONE cluster, so each starts with a "Purge orphaned test data" step
+# (purge-it profile) to clear any bulk cohort a cancelled prior run left behind. Scale runs in
+# jpw.data.mode=ingest: it creates AND cleans up its own 100k (TestNamespaceExtension), so the
+# cluster stays clean for ui-it/search-it — whose own reindexes then only ever process their small
+# per-test fixtures. (Persistent static-100k reuse is for a SEPARATE scale-only cluster, not here.)
+#
+# The harness switches to external mode automatically when OM_URL + OM_ADMIN_TOKEN are set (see
+# UiTestServer.get / ExternalServer.fromEnv / OssTestServer.defaultHandle): no Docker image is
+# built and no testcontainers (MySQL/ES/OS) are started. Both the SDK clients and the Playwright
+# browser authenticate with the JWT acquired below.
+#
+# Search engine access: the search/scale ITs would normally talk to OpenSearch directly on :9200,
+# which a remote cluster doesn't expose. In external mode SearchClient routes index introspection
+# through the server's admin-only, typed /v1/test-support/search endpoints (TestSupportSearchResource,
+# auto-registered via @Collection). The deployed image on the target cluster MUST therefore (a) be
+# built from this branch or later, AND (b) set OM_TEST_SUPPORT_SEARCH_ENABLED=true in the SERVER's
+# environment — the resource is disabled by default so it never ships enabled in production, and
+# without the flag every external search assertion fails. The flag belongs on the cluster
+# deployment, not on this CI runner.
+#
+# Auth: the target cluster uses basic auth, so we exchange username/password for a JWT via
+# POST /api/v1/users/login (password base64-encoded) and feed the accessToken as OM_ADMIN_TOKEN.
+#
+# Excluded / skipped:
+#   - @Tag("sso-bootstrap")  — spin up their own OM lifecycle; pointless against external.
+#   - @Tag("search-direct")  — SearchAvailable*/DistributedAutoTune*UIIT read the engine directly;
+#     not yet routed through the passthrough (Phase 2 follow-on).
+#   - LiveIndexRetryIT + ReindexStatsIT#orphanedSchemaDoesNotFailReindex self-skip in external
+#     mode (they need the embedded container / in-JVM DAO).
+#   - GoogleSsoSignInUIIT self-skips under non-SSO backends.
+
+name: Java Integration Tests (External Cluster)
+
+on:
+  schedule:
+    # Run daily at midnight (00:00 UTC).
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    inputs:
+      runUiIt:
+        description: 'Run the ui-it (Playwright) job'
+        required: false
+        type: boolean
+        default: true
+      runSearchIt:
+        description: 'Run the search-it job'
+        required: false
+        type: boolean
+        default: true
+      runScaleIt:
+        description: 'Run the scale-it matrix job'
+        required: false
+        type: boolean
+        default: true
+      itTest:
+        description: 'Optional single class/glob to run for ui-it (failsafe -Dit.test). Empty = full suite.'
+        required: false
+        type: string
+        default: ''
+      scaleSeeds:
+        description: 'JSON array of scale table cohort sizes (matrix). E.g. [100000] or [100000, 500000].'
+        required: false
+        type: string
+        default: '[100000]'
+      scaleTimeoutMin:
+        description: 'Per-run reindex timeout (minutes) for scale tests'
+        required: false
+        type: string
+        default: '300'
+      reindexTimeoutMin:
+        description: 'Per-run reindex completion/acceptance timeout (minutes) for ui-it & search-it'
+        required: false
+        type: string
+        default: '60'
+      entityLoaderMaxWorkers:
+        description: 'Cap on EntityLoader create concurrency (keep low for a shared/proxied cluster to avoid 504s)'
+        required: false
+        type: string
+        default: '8'
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  ui-it-external:
+    if: ${{ github.event.inputs.runUiIt != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Install Playwright browsers
+        run: |
+          mvn -pl :openmetadata-integration-tests dependency:build-classpath -Dmdep.outputFile=/tmp/cp.txt -q
+          java -cp "$(cat /tmp/cp.txt)" com.microsoft.playwright.CLI install --with-deps chromium
+
+      - name: Acquire admin JWT from external cluster
+        env:
+          OM_EXTERNAL_URL: ${{ secrets.OM_EXTERNAL_URL }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          if [ -z "$OM_EXTERNAL_URL" ] || [ -z "$OM_EXTERNAL_USERNAME" ] || [ -z "$OM_EXTERNAL_PASSWORD" ]; then
+            echo "Missing OM_EXTERNAL_URL / OM_EXTERNAL_USERNAME / OM_EXTERNAL_PASSWORD secrets"
+            exit 1
+          fi
+          # OM basic-auth login expects a base64-encoded password (BasicAuthServletHandler).
+          PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
+          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
+            | jq -r '.accessToken')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login to ${OM_EXTERNAL_URL} failed — no accessToken returned"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Purge orphaned test data (clean cluster before run)
+        # Functional suites must start on a cluster free of leftover bulk cohorts — a cancelled prior
+        # run skips per-test cleanup, and a stale 100k makes every reindex reprocess it (~20m each).
+        # purge-it hard-deletes every test-namespace root (matched by the __<run-id>__ signature), so
+        # reindexes here only ever process this run's own small fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
+      - name: Run UI integration tests (external cluster)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+          PW_VIDEO: 'true'
+        run: |
+          STRESS_PROPS="-Djpw.simpleReindex.tables=${{ github.event.inputs.simpleReindexTables || '5000' }} \
+            -Djpw.simpleReindex.topics=${{ github.event.inputs.simpleReindexTopics || '1500' }} \
+            -Djpw.simpleReindex.dashboards=${{ github.event.inputs.simpleReindexDashboards || '1500' }} \
+            -Djpw.simpleReindex.pipelines=${{ github.event.inputs.simpleReindexPipelines || '2000' }} \
+            -Djpw.searchAvailable.tables=${{ github.event.inputs.searchAvailableTables || '5000' }}"
+          IT_TEST_PROP=""
+          if [ -n "${{ github.event.inputs.itTest }}" ]; then
+            IT_TEST_PROP="-Dit.test=${{ github.event.inputs.itTest }}"
+          fi
+          mvn verify -P ui-it -pl :openmetadata-integration-tests $STRESS_PROPS $IT_TEST_PROP \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }} \
+            -Dui.it.excludedGroups="sso-bootstrap,search-direct"
+
+      - name: Upload Playwright traces
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-traces
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright videos
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/playwright-videos
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-ui-it-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java UIIT External: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  search-it-external:
+    # These suites trigger the server-global SearchIndexingApplication, which is a singleton per
+    # instance (one run at a time). Since all external jobs hit the SAME cluster, they must run
+    # serially or they collide with "Job is already running". `needs` enforces ordering; `always()`
+    # keeps each job's own toggle independent (so it still runs if ui-it was skipped/failed).
+    needs: [ui-it-external]
+    if: ${{ always() && github.event.inputs.runSearchIt != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Acquire admin JWT from external cluster
+        env:
+          OM_EXTERNAL_URL: ${{ secrets.OM_EXTERNAL_URL }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          if [ -z "$OM_EXTERNAL_URL" ] || [ -z "$OM_EXTERNAL_USERNAME" ] || [ -z "$OM_EXTERNAL_PASSWORD" ]; then
+            echo "Missing OM_EXTERNAL_URL / OM_EXTERNAL_USERNAME / OM_EXTERNAL_PASSWORD secrets"
+            exit 1
+          fi
+          PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
+          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
+            | jq -r '.accessToken')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login to ${OM_EXTERNAL_URL} failed — no accessToken returned"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Purge orphaned test data (clean cluster before run)
+        # search-it does ~14 full reindexes; on a cluster carrying a stale 100k each is ~20m and the
+        # job blows its cap. Purge every test-namespace root first so reindexes only process this
+        # run's own small per-test fixtures.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
+      - name: Run search integration tests (external cluster)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P search-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }} \
+            -Djpw.reindex.timeoutMin=${{ github.event.inputs.reindexTimeoutMin || '60' }}
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-search-it-external-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Search ITs External: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+
+  scale-it-external:
+    # Runs after search-it (shared instance, singleton reindex app). max-parallel: 1 so the matrix
+    # entries (e.g. 100k then 500k) seed + reindex one at a time — two concurrent reindexes on one
+    # cluster collide and the db/es counts would mix cohorts.
+    needs: [search-it-external]
+    if: ${{ always() && github.event.inputs.runScaleIt != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        seed: ${{ fromJSON(github.event.inputs.scaleSeeds || '[100000, 500000]') }}
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          libevent-dev jq
+          sudo make install_antlr_cli
+
+      - name: Build dependencies for integration-tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: mvn -DskipTests install -pl :openmetadata-integration-tests -am
+
+      - name: Acquire admin JWT from external cluster
+        env:
+          OM_EXTERNAL_URL: ${{ secrets.OM_EXTERNAL_URL }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          if [ -z "$OM_EXTERNAL_URL" ] || [ -z "$OM_EXTERNAL_USERNAME" ] || [ -z "$OM_EXTERNAL_PASSWORD" ]; then
+            echo "Missing OM_EXTERNAL_URL / OM_EXTERNAL_USERNAME / OM_EXTERNAL_PASSWORD secrets"
+            exit 1
+          fi
+          PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
+          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
+            | jq -r '.accessToken')
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "Login to ${OM_EXTERNAL_URL} failed — no accessToken returned"
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "OM_ADMIN_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          echo "OM_URL=${OM_EXTERNAL_URL%/}" >> "$GITHUB_ENV"
+
+      - name: Purge orphaned test data (clean cluster before run)
+        # Clear any bulk cohort a cancelled prior run left behind. The scale test (ingest mode)
+        # creates and then cleans up its own 100k, so the cluster returns to clean; this purge just
+        # guarantees a clean starting point.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P purge-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true
+
+      - name: Run scale test (${{ matrix.seed }} tables, external cluster)
+        # Self-contained: ingest mode creates the cohort and cleans it up afterwards
+        # (TestNamespaceExtension), so the cluster returns to clean for the next run.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OM_URL: ${{ env.OM_URL }}
+          OM_ADMIN_TOKEN: ${{ env.OM_ADMIN_TOKEN }}
+          # Credentials so the harness can re-login and auto-renew the token on long runs.
+          OM_EXTERNAL_USERNAME: ${{ secrets.OM_EXTERNAL_USERNAME }}
+          OM_EXTERNAL_PASSWORD: ${{ secrets.OM_EXTERNAL_PASSWORD }}
+        run: |
+          mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
+            -Djpw.scale.tables=${{ matrix.seed }} \
+            -Djpw.scale.timeoutMin=${{ github.event.inputs.scaleTimeoutMin || '300' }} \
+            -Djpw.data.mode=ingest \
+            -Djpw.loader.maxWorkers=${{ github.event.inputs.entityLoaderMaxWorkers || '8' }}
+
+      - name: Upload scale metrics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: scale-metrics-${{ matrix.seed }}-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/benchmark
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Upload Failsafe Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports-scale-${{ matrix.seed }}-${{ github.run_id }}
+          path: openmetadata-integration-tests/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Publish Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fail_on_test_failures: false
+          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
+
+      - name: Slack notification
+        if: ${{ always() && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Scale IT External (${{ matrix.seed }} tables): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        env:
+          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
