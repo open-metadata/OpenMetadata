@@ -20,9 +20,9 @@ import { Copy01, RefreshCcw01 } from '@untitledui/icons';
 import { Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
@@ -39,14 +39,22 @@ import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeL
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import Fqn from '../../../utils/Fqn';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+  getEntityDetailsPath,
+  getServiceDetailsPath,
+} from '../../../utils/RouterUtils';
+import { stringToHTML } from '../../../utils/StringUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
 
-const breakableTooltipText = (text?: string) => (
+const breakableTooltipText = (text?: ReactNode) => (
   <span className="tw:block tw:max-w-full tw:break-words">{text}</span>
 );
 
@@ -57,7 +65,6 @@ const IncidentManagerDetailPage = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     testCase,
@@ -104,15 +111,47 @@ const IncidentManagerDetailPage = ({
   );
 
   const breadcrumb = useMemo(() => {
-    const data: TitleBreadcrumbProps['titleLinks'] = location.state
-      ?.breadcrumbData
-      ? [...location.state.breadcrumbData]
-      : [
-          {
-            name: t('label.incident-manager'),
-            url: observabilityRouterClassBase.getIncidentManagerPath(),
-          },
-        ];
+    // Compact asset trail (service > ... > table); HeaderBreadcrumb's
+    // maxItems collapses the middle crumbs into a "..." menu.
+    const tableFqn = getEntityFQN(testCase?.entityLink ?? '');
+    const fqnParts = tableFqn ? Fqn.split(tableFqn) : [];
+    const [service, database, schema, table] = fqnParts;
+
+    const data: TitleBreadcrumbProps['titleLinks'] =
+      fqnParts.length === 4
+        ? [
+            {
+              name: service,
+              url: getServiceDetailsPath(
+                service,
+                ServiceCategory.DATABASE_SERVICES
+              ),
+            },
+            {
+              name: database,
+              url: getEntityDetailsPath(
+                EntityType.DATABASE,
+                `${service}.${database}`
+              ),
+            },
+            {
+              name: schema,
+              url: getEntityDetailsPath(
+                EntityType.DATABASE_SCHEMA,
+                `${service}.${database}.${schema}`
+              ),
+            },
+            {
+              name: table,
+              url: getEntityDetailsPath(EntityType.TABLE, tableFqn),
+            },
+          ]
+        : [
+            {
+              name: t('label.incident-manager'),
+              url: observabilityRouterClassBase.getIncidentManagerPath(),
+            },
+          ];
 
     if (isDimensionPage) {
       return [
@@ -141,7 +180,7 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase, location.state, isDimensionPage, dimensionKey]);
+  }, [testCase, isDimensionPage, dimensionKey, t]);
 
   const breadcrumbItems = useMemo(
     () =>
@@ -205,6 +244,7 @@ const IncidentManagerDetailPage = ({
               <HeaderBreadcrumb
                 className="tw:mb-0"
                 items={breadcrumbItems}
+                maxItems={3}
                 showHome={false}
                 size="sm"
               />
@@ -248,10 +288,14 @@ const IncidentManagerDetailPage = ({
                       as="h2"
                       className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
                       data-testid="entity-header-display-name"
-                      ellipsis={{ tooltip: breakableTooltipText(displayName) }}
+                      ellipsis={{
+                        tooltip: breakableTooltipText(
+                          stringToHTML(displayName)
+                        ),
+                      }}
                       size="text-lg"
                       weight="bold">
-                      {displayName}
+                      {stringToHTML(displayName)}
                     </Typography>
                   )}
                   <Typography
