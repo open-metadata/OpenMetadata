@@ -1227,6 +1227,11 @@ public class OpenSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }
