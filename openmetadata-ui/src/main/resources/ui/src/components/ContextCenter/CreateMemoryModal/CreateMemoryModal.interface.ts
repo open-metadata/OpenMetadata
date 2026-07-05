@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
-import { ContextMemory, ShareVisibility } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  ShareVisibility,
+} from '../../../generated/entity/context/contextMemory';
 
 export interface CreateMemoryModalProps {
   isOpen: boolean;
@@ -35,4 +38,3 @@ export interface MemoryFormValues {
   memoryType: FormSelectItem | null;
   visibility: ShareVisibility;
 }
-

@@ -33,7 +33,7 @@ import {
   TextArea,
   Tooltip,
   TooltipTrigger,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
@@ -101,7 +101,10 @@ import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
-import { CreateMemoryModalProps, MemoryFormValues } from './CreateMemoryModal.interface';
+import {
+  CreateMemoryModalProps,
+  MemoryFormValues,
+} from './CreateMemoryModal.interface';
 
 const TagSelectForm = withSuspenseFallback(
   lazy(
