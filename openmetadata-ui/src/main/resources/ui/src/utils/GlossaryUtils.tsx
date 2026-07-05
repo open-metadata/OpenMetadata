@@ -133,12 +133,6 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
   };
 };
 
-}),
-  ];
-
-  return breadcrumbList;
-};
-
 export const updateGlossaryTermByFqn = (
   glossaryTerms: ModifiedGlossary[],
   fqn: string,
