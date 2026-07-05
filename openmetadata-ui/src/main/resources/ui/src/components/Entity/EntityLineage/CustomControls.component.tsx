@@ -58,8 +58,8 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
-import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
-import { getSearchNameEsQuery } from '../../../utils/Lineage/LineageUtils';
+import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import { getSearchNameEsQuery } from '../../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
@@ -69,7 +69,7 @@ import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
-
+import LineageTimeFilter from './LineageTimeFilter.component';
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
@@ -93,6 +93,8 @@ const CustomControls: FC<{
     nodes,
     selectedQuickFilters,
     onExportClick,
+    timeFilter,
+    setTimeFilter,
   } = useLineageProvider();
   const {
     lineageConfig,
@@ -293,8 +295,18 @@ const CustomControls: FC<{
         nodeDepth: nodeDepth,
         maxDepth: nodeDepth,
         query_filter: quickFilters,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       }),
-    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+    [
+      fqn,
+      entityType,
+      lineageDirection,
+      nodeDepth,
+      quickFilters,
+      timeFilter?.startTime,
+      timeFilter?.endTime,
+    ]
   );
 
   const handleExportClick = useCallback(() => {
@@ -437,6 +449,11 @@ const CustomControls: FC<{
             </Tabs>
           )}
 
+          <LineageTimeFilter
+            endTime={timeFilter?.endTime}
+            startTime={timeFilter?.startTime}
+            onChange={setTimeFilter}
+          />
           {lineageEditButton}
           <Tooltip
             placement="top"

@@ -660,7 +660,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
   await page.fill(
-    '[data-testid="name"] input',
+    '[data-testid="name"]',
     CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
   );
 
@@ -669,14 +669,14 @@ export const addCustomPropertiesForEntity = async ({
   );
 
   // Correct name
-  await page.fill('[data-testid="name"] input', propertyName);
+  await page.fill('[data-testid="name"]', propertyName);
 
   // displayName
-  await page.fill('[data-testid="display-name"] input', propertyName);
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
   await page.locator('[data-testid="propertyType"]').click();
-  await page.getByTitle(`${customType}`, { exact: true }).click();
+  await page.getByRole('option', { name: customType, exact: true }).click();
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
@@ -750,7 +750,7 @@ export const addCustomPropertiesForEntity = async ({
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
 
   // Click on name field to blur description and trigger validation without closing modal
-  await page.click('[data-testid="name"] input');
+  await page.click('[data-testid="name"]');
 
   await expect(page.locator('#propertyType_help')).not.toBeVisible();
   await expect(page.locator('#description_help')).not.toBeVisible();
@@ -886,7 +886,19 @@ export const deleteCreatedProperty = async (
   // Ensure the save button is visible before clicking
   await expect(page.locator('[data-testid="save-button"]')).toBeVisible();
 
+  const patchResponse = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/metadata/types/') &&
+      res.request().method() === 'PATCH' &&
+      res.status() === 200
+  );
+
   await page.locator('[data-testid="save-button"]').click();
+  await patchResponse;
+
+  // ConfirmationModal is destroyOnClose: assert the body text unmounts so
+  // the modal mask is gone before the next sidebar click in callers' loops.
+  await expect(page.locator('[data-testid="body-text"]')).not.toBeAttached();
 };
 
 export const verifyCustomPropertyInAdvancedSearch = async (

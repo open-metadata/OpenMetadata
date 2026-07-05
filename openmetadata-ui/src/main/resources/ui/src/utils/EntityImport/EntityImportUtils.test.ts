@@ -33,11 +33,13 @@ import {
 
 // Mock dependencies
 jest.mock('../../rest/importExportAPI');
-jest.mock('../EntityUtils', () => ({
+jest.mock('../EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn((entity) => [
     { name: 'Parent', url: '/parent', activeTitle: false },
     { name: entity.name, url: `/entity/${entity.fullyQualifiedName}` },
   ]),
+}));
+jest.mock('../EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity.name),
 }));
 jest.mock('../RouterUtils', () => ({

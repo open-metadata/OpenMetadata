@@ -16,7 +16,7 @@ import { lowerCase } from 'lodash';
 import { TAG_LIST_SIZE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { TableTagsComponentProps, TableUnion } from './TableTags.interface';
 

@@ -30,7 +30,7 @@ jest.mock('./date-time/DateTimeUtils', () => {
   };
 });
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./NumberUtils', () => ({
   calculatePercentage: jest.fn((numerator, denominator, precision, format) => {
     const value = (numerator / denominator) * 100;
 

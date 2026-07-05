@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.service.util.AwsCredentialsUtil;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.SdkBytes;
@@ -25,28 +25,30 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   private final String modelId;
   private final int dimension;
 
-  public BedrockEmbeddingClient(ElasticSearchConfiguration config) {
+  public BedrockEmbeddingClient(LLMConfiguration config) {
     super(resolveMaxConcurrent(config));
-    NaturalLanguageSearchConfiguration nlsCfg = config.getNaturalLanguageSearch();
-    if (nlsCfg.getBedrock() == null) {
+    LLMBedrockEmbeddingConfig bedrockEmbedding =
+        config.getEmbeddings() != null ? config.getEmbeddings().getBedrock() : null;
+    if (bedrockEmbedding == null) {
       throw new IllegalArgumentException("Bedrock configuration is required");
     }
-    if (nlsCfg.getBedrock().getEmbeddingModelId() == null
-        || nlsCfg.getBedrock().getEmbeddingModelId().isBlank()) {
+    if (bedrockEmbedding.getEmbeddingModelId() == null
+        || bedrockEmbedding.getEmbeddingModelId().isBlank()) {
       throw new IllegalArgumentException("Bedrock embedding model ID is required");
     }
-    if (nlsCfg.getBedrock().getEmbeddingDimension() == null
-        || nlsCfg.getBedrock().getEmbeddingDimension() <= 0) {
+    if (bedrockEmbedding.getEmbeddingDimension() == null
+        || bedrockEmbedding.getEmbeddingDimension() <= 0) {
       throw new IllegalArgumentException("Bedrock embedding dimension must be positive");
     }
 
-    AWSBaseConfig awsConfig = nlsCfg.getBedrock().getAwsConfig();
+    AWSBaseConfig awsConfig =
+        config.getBedrock() != null ? config.getBedrock().getAwsConfig() : null;
     if (awsConfig == null || awsConfig.getRegion() == null || awsConfig.getRegion().isBlank()) {
       throw new IllegalArgumentException("AWS region is required for Bedrock");
     }
 
-    this.modelId = nlsCfg.getBedrock().getEmbeddingModelId();
-    this.dimension = nlsCfg.getBedrock().getEmbeddingDimension();
+    this.modelId = bedrockEmbedding.getEmbeddingModelId();
+    this.dimension = bedrockEmbedding.getEmbeddingDimension();
 
     this.bedrockClient =
         BedrockRuntimeClient.builder()

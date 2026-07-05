@@ -399,7 +399,7 @@ class BigqueryUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
-    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
     def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         get_connection.return_value = Mock()
@@ -694,8 +694,8 @@ class BigqueryLineageSourceTest(TestCase):
     Bigquery Lineage Test
     """
 
-    @patch("metadata.ingestion.source.database.bigquery.connection.get_connection")
-    @patch("metadata.ingestion.source.database.bigquery.connection.test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection")
     @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
     def __init__(
         self,
@@ -737,7 +737,7 @@ class TestBigqueryRegionAwareQueries:
             "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
         )
         patcher_get_conn = patch(
-            "metadata.ingestion.source.database.bigquery.connection.get_connection",
+            "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client",
             return_value=Mock(),
         )
         self._patchers = [patcher_test_conn, patcher_set_project, patcher_get_conn]

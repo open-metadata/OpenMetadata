@@ -19,7 +19,7 @@ import {
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import {
   AVATAR_FONT_SIZE_MAP,

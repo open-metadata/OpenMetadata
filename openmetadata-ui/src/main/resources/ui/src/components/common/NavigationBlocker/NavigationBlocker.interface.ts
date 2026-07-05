@@ -14,10 +14,14 @@
 export interface NavigationBlockerProps {
   children: React.ReactNode;
   enabled?: boolean;
-  message?: string;
-  title?: string;
-  confirmText?: string;
-  cancelText?: string;
   onConfirm?: () => Promise<void>;
   onCancel?: () => void;
+  // When set, a confirmed browser-back navigation goes to this path instead of
+  // the default `history.go(-2)`.
+  leaveTo?: string;
+  renderModal?: (props: {
+    isOpen: boolean;
+    onLeave: () => void;
+    onStay: () => void;
+  }) => React.ReactNode;
 }

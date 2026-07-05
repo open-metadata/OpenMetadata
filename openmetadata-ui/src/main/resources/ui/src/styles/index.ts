@@ -11,23 +11,20 @@
  *  limitations under the License.
  */
 
-import '@fontsource/poppins'; // Font 400
-import '@fontsource/poppins/300.css'; // Font 300
-import '@fontsource/poppins/500.css'; // Font 500
-import '@fontsource/poppins/600.css'; // Font 600
 import '@fontsource/source-code-pro'; // Font 400
 
-import '@fontsource/inter'; // Font 400
-import '@fontsource/inter/400.css'; // Font 400
-import '@fontsource/inter/500.css'; // Font 500
-import '@fontsource/inter/600.css'; // Font 600
-import '@fontsource/inter/700.css'; // Font 700
-import '@fontsource/inter/800.css'; // Font 800
-import '@fontsource/inter/900.css'; // Font 900
+// Variable Inter aliased under the "Inter" family name. Loads one woff2 per
+// Unicode subset covering the full 100–900 weight axis, replacing the prior
+// 6 weight-specific woff2 files per subset (~30 → ~7 fetches). See the file
+// header in {@link ./inter-variable.css} for context.
+import './inter-variable.css';
 
-import '@react-awesome-query-builder/antd/css/styles.css';
-import 'reactflow/dist/base.css';
-import 'reactflow/dist/style.css';
+// reactflow CSS is co-located with the runtime in LineageProvider so it only
+// loads when the lineage canvas mounts. Previously imported here, which kept
+// `vendor-reactflow` in the entry chunk's modulepreload list even after the
+// 11 util/hook files were converted to `import type` (see PR-1 of bundle-size
+// follow-up). Side-effect CSS imports count as runtime dependencies for
+// Rollup's chunk-graph analysis.
 import './antd-master.less';
 import './app.less';
 import './components/add-edit-form-steps.less';

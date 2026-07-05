@@ -11,25 +11,12 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-@import (reference) '../../../styles/variables.less';
 
 @border-color: #0000001a;
 
 .knowledge-center-layout {
-  // 80px navbar + 150px page header + 20px margin = 250px
-  height: calc(100vh - 250px);
-
-  &.knowledge-details-page {
-   // 80px navbar + 178px page header + 20px margin = 278px
-    height: calc(100vh - 278px);
-    padding-bottom: 20px;
-  }
-
-  &.knowledge-version-page {
-    // 80px navbar + 142px page header + 20px margin = 242px
-    height: calc(100vh - 242px);
-    padding-bottom: 20px;
-  }
+  flex: 1;
+  min-height: 0;
 }
 
 .knowledge-center-layout.reflex-container {
@@ -39,13 +26,6 @@
   display: flex;
   position: relative;
   width: 100%;
-
-  .left-reflex-card {
-    > .ant-card-body {
-      padding: @padding-xs 0;
-      border-radius: @border-rad-sm;
-    }
-  }
 }
 
 .knowledge-center-layout.reflex-container.horizontal {

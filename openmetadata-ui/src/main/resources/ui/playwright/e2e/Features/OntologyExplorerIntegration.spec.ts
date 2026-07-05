@@ -18,6 +18,7 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getAuthContext, getToken, uuid } from '../../utils/common';
 import {
   addTermRelation,
+  applyMultiGlossaryFilter,
   applyRelationTypeFilter,
   clickDataModeAssetBadge,
   createApiContext,
@@ -215,6 +216,8 @@ test.describe('Ontology Explorer - Relation Type Filter Prunes Nodes', () => {
 test.describe('Ontology Explorer - Cross Glossary Edges', () => {
   const crossGlossary1 = new Glossary();
   const crossTerm1 = new GlossaryTerm(crossGlossary1);
+  // crossTerm3 lives in crossGlossary1 but has only a same-glossary relation
+  const crossTerm3 = new GlossaryTerm(crossGlossary1);
   const crossGlossary2 = new Glossary();
   const crossTerm2 = new GlossaryTerm(crossGlossary2);
 
@@ -222,9 +225,13 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     const { page, apiContext } = await createApiContext(browser);
     await crossGlossary1.create(apiContext);
     await crossTerm1.create(apiContext);
+    await crossTerm3.create(apiContext);
     await crossGlossary2.create(apiContext);
     await crossTerm2.create(apiContext);
+    // crossTerm1 <-> crossTerm2: cross-glossary edge
     await addTermRelation(apiContext, crossTerm1, crossTerm2, 'relatedTo');
+    // crossTerm3 <-> crossTerm1: same-glossary edge — must be hidden in Cross Glossary mode
+    await addTermRelation(apiContext, crossTerm3, crossTerm1, 'relatedTo');
     await disposeApiContext(page, apiContext);
   });
 
@@ -233,6 +240,7 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await deleteEntities(
       apiContext,
       crossTerm1,
+      crossTerm3,
       crossTerm2,
       crossGlossary1,
       crossGlossary2
@@ -247,10 +255,11 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await navigateToOntologyExplorer(page);
     await waitForGraphLoaded(page);
 
-    await page.getByTestId('search-dropdown-Glossary').click();
-    await page.getByTestId(crossGlossary1.responseData.id).click();
-    await page.getByTestId(crossGlossary2.responseData.id).click();
-    await page.getByTestId('update-btn').click();
+    await applyMultiGlossaryFilter(
+      page,
+      crossGlossary1.responseData.id,
+      crossGlossary2.responseData.id
+    );
     await waitForGraphLoaded(page);
 
     await page.getByTestId('view-mode-select').click();
@@ -260,6 +269,70 @@ test.describe('Ontology Explorer - Cross Glossary Edges', () => {
     await expect(page.getByTestId('ontology-explorer-stats')).toContainText(
       /[1-9]\d*\s*Relations?/i
     );
+  });
+
+  test('Cross Glossary view hides terms that only have same-glossary edges', async ({
+    page,
+  }) => {
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+
+    await applyMultiGlossaryFilter(
+      page,
+      crossGlossary1.responseData.id,
+      crossGlossary2.responseData.id
+    );
+    await waitForGraphLoaded(page);
+
+    // In overview mode crossTerm3 should be visible (has a same-glossary edge).
+    const overviewPositions = await readNodePositions(page);
+    expect(
+      overviewPositions[crossTerm3.responseData.id],
+      'crossTerm3 must be visible in Overview mode'
+    ).toBeDefined();
+
+    await page.getByTestId('view-mode-select').click();
+    await page.getByRole('option', { name: 'Cross Glossary' }).click();
+    await waitForGraphLoaded(page);
+
+    const crossPositions = await readNodePositions(page);
+
+    // crossTerm3 only has a same-glossary edge and must not appear.
+    expect(
+      crossPositions[crossTerm3.responseData.id],
+      'crossTerm3 (same-glossary-only) must NOT appear in Cross Glossary view'
+    ).toBeUndefined();
+
+    // crossTerm1 and crossTerm2 share a cross-glossary edge and must appear.
+    expect(
+      crossPositions[crossTerm1.responseData.id],
+      'crossTerm1 (has a cross-glossary edge) must be visible'
+    ).toBeDefined();
+    expect(
+      crossPositions[crossTerm2.responseData.id],
+      'crossTerm2 (has a cross-glossary edge) must be visible'
+    ).toBeDefined();
+  });
+
+  test('isolated nodes toggle is disabled when Cross Glossary view is active', async ({
+    page,
+  }) => {
+    test.slow();
+    await navigateToOntologyExplorer(page);
+    await waitForGraphLoaded(page);
+
+    // The toggle is enabled in Overview mode.
+    await expect(
+      page.getByTestId('ontology-isolated-toggle')
+    ).not.toBeDisabled();
+
+    await page.getByTestId('view-mode-select').click();
+    await page.getByRole('option', { name: 'Cross Glossary' }).click();
+    await waitForGraphLoaded(page);
+
+    // showCrossGlossaryOnly=true disables the isolated nodes toggle.
+    await expect(page.getByTestId('ontology-isolated-toggle')).toBeDisabled();
   });
 });
 

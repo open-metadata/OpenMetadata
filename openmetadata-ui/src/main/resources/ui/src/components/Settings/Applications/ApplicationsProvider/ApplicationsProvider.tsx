@@ -24,19 +24,22 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
+import { getMcpChatEnabled } from '../../../../rest/mcpClientAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import Loader from '../../../common/Loader/Loader';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
+import { McpChatPlugin } from '../plugins/McpChatPlugin';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
+  const [mcpChatEnabled, setMcpChatEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
-  const { setApplicationsName } = useApplicationStore();
+  const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
 
   // Create extension registry (singleton for the app lifecycle)
   const [extensionRegistry] = useState(() => new ExtensionPointRegistry());
@@ -55,6 +58,11 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       // do not handle error
     } finally {
       setLoading(false);
+      // Signal to downstream consumers (plugins, mode-aware code) that
+      // `applications` reflects server state. Set unconditionally —
+      // even on fetch error the list is "as loaded as it's going to
+      // be" and consumers should stop waiting.
+      setApplicationsLoaded(true);
     }
   }, []);
 
@@ -63,11 +71,21 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
       fetchApplicationList();
     } else {
       setLoading(false);
+      // No permissions to fetch — applications stays `[]` but the
+      // "loaded" signal still needs to flip so downstream consumers
+      // gating on it don't wait forever.
+      setApplicationsLoaded(true);
     }
   }, [permissions]);
 
+  useEffect(() => {
+    getMcpChatEnabled()
+      .then(setMcpChatEnabled)
+      .catch(() => setMcpChatEnabled(false));
+  }, []);
+
   const installedPluginInstances: AppPlugin[] = useMemo(() => {
-    return applications
+    const plugins = applications
       .map((app) => {
         if (!app.name) {
           return null;
@@ -78,7 +96,13 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         return PluginClass ? new PluginClass(app.name, true) : null;
       })
       .filter(Boolean) as AppPlugin[];
-  }, [applications]);
+
+    if (mcpChatEnabled) {
+      plugins.push(new McpChatPlugin('McpChatApplication', true));
+    }
+
+    return plugins;
+  }, [applications, mcpChatEnabled]);
 
   // Let plugins contribute to extension points
   useEffect(() => {

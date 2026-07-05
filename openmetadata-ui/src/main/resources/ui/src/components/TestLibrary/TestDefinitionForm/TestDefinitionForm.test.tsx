@@ -17,18 +17,19 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
   EntityType,
   TestDataType,
-  TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import TestDefinitionForm from './TestDefinitionForm.component';
 
 const mockOnSuccess = jest.fn();
@@ -105,15 +106,26 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
     )),
 }));
 
+jest.mock('../../common/ServiceDocPanel/ServiceDocPanel', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ activeField, serviceName }) => (
+    <div data-testid="service-doc-panel">
+      {serviceName}:{activeField}
+    </div>
+  )),
+}));
+
 describe('TestDefinitionForm Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (createTestDefinition as jest.Mock).mockResolvedValue({});
     (patchTestDefinition as jest.Mock).mockResolvedValue({});
+    window.HTMLElement.prototype.scrollIntoView = jest.fn();
+    window.HTMLElement.prototype.scrollTo = jest.fn();
   });
 
   describe('Rendering', () => {
-    it('should render form in create mode with all required fields', () => {
+    it('should render form in create mode with all required fields', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -121,7 +133,9 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+
+      await screen.findByTestId('code-editor');
+
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.test-platform-plural')
@@ -172,6 +186,38 @@ describe('TestDefinitionForm Component', () => {
       );
 
       expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+    });
+
+    it('should render field documentation panel and update active field on focus', () => {
+      render(
+        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
+      );
+
+      expect(screen.getByTestId('service-doc-panel')).toHaveTextContent(
+        'TestDefinitionForm:'
+      );
+
+      fireEvent.focus(screen.getByLabelText('label.name'));
+
+      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          activeField: 'root/name',
+          serviceName: 'TestDefinitionForm',
+          serviceType: 'OpenMetadata',
+        }),
+        expect.anything()
+      );
+
+      fireEvent.focus(screen.getByLabelText('label.description'));
+
+      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          activeField: 'root/description',
+          serviceName: 'TestDefinitionForm',
+          serviceType: 'OpenMetadata',
+        }),
+        expect.anything()
+      );
     });
 
     it('should render parameter section with add button', () => {

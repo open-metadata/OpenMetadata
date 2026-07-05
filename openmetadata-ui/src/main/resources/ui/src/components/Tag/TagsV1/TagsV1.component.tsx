@@ -23,16 +23,17 @@ import { ReactComponent as IconTag } from '../../../assets/svg/tag.svg';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, TagSource } from '../../../generated/type/tagLabel';
-import { reduceColorOpacity } from '../../../utils/CommonUtils';
+import { reduceColorOpacity } from '../../../utils/ColorUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderIcon } from '../../../utils/IconUtils';
 import {
   getClassificationTagPath,
   getGlossaryPath,
 } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';

@@ -17,11 +17,7 @@ import {
 } from '../constant/KnowledgeCenter.constant';
 import { SidebarItem } from '../constant/sidebar';
 import { TopicClass } from '../support/entity/TopicClass';
-import {
-  descriptionBox,
-  descriptionBoxReadOnly,
-  redirectToHomePage,
-} from './common';
+import { redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
@@ -35,19 +31,13 @@ export const deletePage = async (
 ) => {
   if (!isQuickLink) {
     await page.getByTestId('manage-button').first().click();
-    await page.getByTestId('delete-button').click();
+    await page.getByTestId('delete-btn').click();
   }
 
-  await page.waitForSelector('[role="dialog"].ant-modal');
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await expect(page.getByTestId('confirm-button')).toBeVisible();
 
   const deleteResponse = page.waitForResponse(
-    `/api/v1/contextCenter/pages/*?hardDelete=true&recursive=${!isQuickLink}`
+    `/api/v1/contextCenter/pages/*?recursive=${!isQuickLink}&hardDelete=${isQuickLink}`
   );
 
   // Register before clicking so we don't miss the response the app fires
@@ -112,7 +102,15 @@ export const updateTags = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page.click('[data-testid="tags-container"] [data-testid="add-tag"]');
+  const tagsContainer = page.locator('[data-testid="tags-container"]').first();
+  const addTagBtn = tagsContainer.getByTestId('add-tag');
+  const editTagBtn = tagsContainer.getByTestId('edit-button');
+  const isAdd = await addTagBtn.isVisible();
+  if (isAdd) {
+    await addTagBtn.click();
+  } else {
+    await editTagBtn.click();
+  }
 
   await page.waitForSelector('[data-testid="tag-selector"] input', {
     state: 'visible',
@@ -148,11 +146,7 @@ export const updateDataAsset = async (
       response.url().includes('/api/v1/contextCenter/pages/') &&
       response.request().method() === 'PATCH'
   );
-  await page
-    .getByTestId('add-data-assets-container')
-    .locator('span')
-    .first()
-    .click();
+  await page.getByTestId('add-data-assets-container').click();
 
   await page.waitForSelector(
     '[data-testid="asset-select-list"] > .ant-select-selector input',
@@ -223,32 +217,35 @@ export const createQuickLink = async (
   await page.getByTestId('create-knowledge-page-btn').click();
   await page.getByTestId('create-quick-link-btn').click();
 
-  await expect(page.locator('.ant-modal-title')).toHaveText('Add Quick Link');
-
-  await page.locator('[data-testid="displayName"]').fill(data.displayName);
-  await page.locator('[data-testid="url"]').fill(data.url);
-  await page.locator(descriptionBox).fill(data.description);
-
-  await page
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .click();
-  await page
-    .locator('[data-testid="asset-select-list"] > .ant-select-selector input')
-    .fill(dataAsset.entity.name);
+  const modal = page.locator('.quick-link-form-modal');
 
   await expect(
-    page.locator(
-      '.ant-select-item-option-content:has-text("' +
-        dataAsset.entity.name +
-        '")'
-    )
+    modal.getByRole('heading', { name: 'Add Quick Link' })
   ).toBeVisible();
 
-  await page.click(
-    '.ant-select-item-option-content:has-text("' + dataAsset.entity.name + '")'
+  await modal
+    .locator('[data-testid="displayName"] input')
+    .fill(data.displayName);
+  await modal.locator('[data-testid="url"] input').fill(data.url);
+  await modal
+    .locator('[data-testid="description"] textarea')
+    .fill(data.description);
+
+  const assetInput = modal.locator(
+    '[data-testid="related-entities-container"] input[role="combobox"]'
   );
 
-  await page.click('.ant-modal-footer > #quick-link-form');
+  await assetInput.click();
+  await assetInput.fill(dataAsset.entity.name);
+
+  await expect(
+    page.getByRole('option', { name: dataAsset.entity.name })
+  ).toBeVisible();
+
+  await page.getByRole('option', { name: dataAsset.entity.name }).click();
+  await page.keyboard.press('Escape');
+
+  await modal.getByRole('button', { name: 'Save' }).click();
 };
 
 export const readQuickLink = async (
@@ -260,22 +257,22 @@ export const readQuickLink = async (
   }
 ) => {
   await page
-    .locator(`[data-testid="${quickLink.displayName}"]`)
+    .locator(`[data-testid="knowledge-card-${quickLink.displayName}"]`)
     .scrollIntoViewIfNeeded();
 
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] ${descriptionBoxReadOnly} > p`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-card-description"]`
     )
   ).toHaveText(quickLink.description);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('href', quickLink.url);
   await expect(
     page.locator(
-      `[data-testid="${quickLink.displayName}"] [data-testid="knowledge-link"]`
+      `[data-testid="knowledge-card-${quickLink.displayName}"] [data-testid="knowledge-link"]`
     )
   ).toHaveAttribute('target', '_blank');
 };
@@ -293,32 +290,48 @@ export const updateQuickLink = async (
 ) => {
   await page
     .locator(
-      `[data-testid="${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
+      `[data-testid="knowledge-card-${knowledgePageQuickLink.displayName}"] [data-testid="edit-quick-link-btn"]`
     )
     .click();
 
-  await expect(page.locator('.ant-modal-title')).toHaveText(
-    `Edit Quick Link ${knowledgePageQuickLink.displayName}`
+  const modal = page.locator('.quick-link-form-modal');
+
+  await expect(
+    modal.getByRole('heading', {
+      name: `Edit Quick Link ${knowledgePageQuickLink.displayName}`,
+    })
+  ).toBeVisible();
+
+  await modal
+    .locator('[data-testid="displayName"] input')
+    .fill(knowledgePageQuickLink.updatedDisplayName);
+  await modal
+    .locator('[data-testid="url"] input')
+    .fill(knowledgePageQuickLink.updatedUrl);
+
+  const descriptionTextarea = modal.locator(
+    '[data-testid="description"] textarea'
   );
 
-  await page
-    .locator('[data-testid="displayName"]')
-    .fill(knowledgePageQuickLink.updatedDisplayName);
-  await page
-    .locator('[data-testid="url"]')
-    .fill(knowledgePageQuickLink.updatedUrl);
-  await page
-    .locator(descriptionBox)
-    .fill(knowledgePageQuickLink.updatedDescription);
+  await descriptionTextarea.click();
+  await descriptionTextarea.press('ControlOrMeta+a');
+  await descriptionTextarea.fill(knowledgePageQuickLink.updatedDescription);
 
-  await page.locator('[data-testid="tag-selector"] input').first().click();
-  await page
-    .locator('[data-testid="tag-selector"] input')
-    .first()
-    .fill(knowledgePageQuickLink.tag);
-  await page.getByTestId(`tag-${knowledgePageQuickLink.tagFqn}`).click();
+  const tagInput = modal.locator(
+    '[data-testid="tags-container"] input[role="combobox"]'
+  );
 
-  await page.click('.ant-modal-footer > #quick-link-form');
+  await tagInput.click();
+  await tagInput.fill(knowledgePageQuickLink.tag);
+
+  await expect(
+    page.getByRole('option', { name: knowledgePageQuickLink.tag })
+  ).toBeVisible();
+
+  await page.getByRole('option', { name: knowledgePageQuickLink.tag }).click();
+  await page.keyboard.press('Escape');
+
+  await modal.getByRole('button', { name: 'Save' }).click();
 
   await readQuickLink(page, {
     displayName: knowledgePageQuickLink.updatedDisplayName,
@@ -454,7 +467,7 @@ export const getKnowledgePageCardByIndex = async (
   index: number
 ) => {
   const listing = page.getByTestId('knowledge-page-listing');
-  const cards = listing.locator('.knowledge-card');
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
   await expect(cards.nth(index)).toBeAttached();
   const card = cards.nth(index);
   await card.scrollIntoViewIfNeeded();
@@ -476,7 +489,7 @@ export const getKnowledgePageCardEntityIdentifier = async (
     (await card.getByTestId('knowledge-page-link').getAttribute('href')) ?? '';
   const fqn = href.split('/knowledge-center/').pop() ?? '';
   const displayText = (
-    await card.getByTestId('entity-header-display-name').textContent()
+    await card.getByTestId('knowledge-card-title').textContent()
   )?.trim();
   return displayText && displayText !== 'Untitled' ? displayText : fqn;
 };
