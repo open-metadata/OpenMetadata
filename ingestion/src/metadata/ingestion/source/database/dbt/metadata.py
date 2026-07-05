@@ -62,7 +62,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -98,6 +98,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
+    get_dbt_test_definition_name,
     get_manifest_column_name,
     get_snapshot_effective_schema_and_database,
     validate_custom_property_value,
@@ -1139,7 +1140,7 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
-    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
+    def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
@@ -1401,8 +1402,9 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Tests Definition for node: {manifest_node.name}")
+                test_definition_name = get_dbt_test_definition_name(manifest_node)
                 check_test_definition_exists = self.metadata.get_by_name(
-                    fqn=manifest_node.name,
+                    fqn=test_definition_name,
                     entity=TestDefinition,
                 )
                 if not check_test_definition_exists:
@@ -1411,7 +1413,7 @@ class DbtSource(DbtServiceSource):
                         entity_type = EntityType.COLUMN
                     yield Either(
                         right=CreateTestDefinitionRequest(
-                            name=manifest_node.name,
+                            name=test_definition_name,
                             description=manifest_node.description,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
@@ -1460,7 +1462,7 @@ class DbtSource(DbtServiceSource):
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
                                 description=manifest_node.description,
-                                testDefinition=FullyQualifiedEntityName(manifest_node.name),
+                                testDefinition=FullyQualifiedEntityName(get_dbt_test_definition_name(manifest_node)),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
                                 displayName=None,
@@ -1488,7 +1490,7 @@ class DbtSource(DbtServiceSource):
                 logger.debug(f"Adding DBT Test Case Results for node: {manifest_node.name}")
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
                 if not dbt_test_result:
-                    logger.warning(f"DBT Test Case Results not found for node: {manifest_node.name}")
+                    logger.debug(f"DBT Test Case Results not found for node: {manifest_node.name}")
                     return
 
                 # Skip compiled-only entries: `dbt run` includes test nodes in

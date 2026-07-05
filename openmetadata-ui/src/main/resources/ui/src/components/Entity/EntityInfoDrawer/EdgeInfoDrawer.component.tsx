@@ -13,7 +13,7 @@
 
 import { GitMerge, X } from '@untitledui/icons';
 import { Button, Tooltip, Typography } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
 import DescriptionSection from '../../../components/common/DescriptionSection/DescriptionSection';
@@ -26,19 +26,34 @@ import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import { Source } from '../../../generated/type/entityLineage';
 import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import {
-  getColumnFunctionValue,
-  getLineageDetailsObject,
-} from '../../../utils/EntityLineageUtils';
+import { getLineageDetailsObject } from '../../../utils/EntityLineageEdgeUtils';
+import { getColumnFunctionValue } from '../../../utils/EntityLineagePureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
-import { ModalWithFunctionEditor } from '../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor';
-import { ModalWithQueryEditor } from '../../Modals/ModalWithQueryEditor/ModalWithQueryEditor';
 import './entity-info-drawer.less';
 import { EdgeInfoDrawerInfo } from './EntityInfoDrawer.interface';
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
+
+const ModalWithFunctionEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithFunctionEditor/ModalWithFunctionEditor').then(
+      (m) => ({ default: m.ModalWithFunctionEditor })
+    )
+  )
+);
+
+const ModalWithQueryEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor').then(
+      (m) => ({ default: m.ModalWithQueryEditor })
+    )
+  )
+);
 
 const getUserTimeValue = (user?: string, timestamp?: number) => {
   const valueParts = [user, getRelativeTime(timestamp)].filter(Boolean);
@@ -80,6 +95,24 @@ const EdgeInfoDrawer = ({
 
     return Boolean(sourceHandle && targetHandle);
   }, [edge]);
+
+  const resolvedSqlQuery = useMemo(() => {
+    const inlineQuery = edgeEntity?.sqlQuery;
+    if (inlineQuery) {
+      return inlineQuery;
+    }
+
+    // When the same SQL appears on multiple edges it is deduped into the target
+    // node's lineageSqlQueries map and referenced from the edge by sqlQueryKey.
+    const sqlQueryKey = edgeEntity?.sqlQueryKey;
+    if (!sqlQueryKey) {
+      return '';
+    }
+
+    const targetNode = nodes.find((node) => node.id === edge.target);
+
+    return targetNode?.data?.node?.lineageSqlQueries?.[sqlQueryKey] ?? '';
+  }, [edgeEntity, nodes, edge.target]);
 
   const onDescriptionUpdate = useCallback(
     async (updatedHTML: string) => {
@@ -345,8 +378,8 @@ const EdgeInfoDrawer = ({
   useEffect(() => {
     setIsLoading(true);
     getEdgeInfo();
-    setMysqlQuery(edge.data.edge?.sqlQuery);
-  }, [edge, visible]);
+    setMysqlQuery(resolvedSqlQuery);
+  }, [edge, visible, nodes, resolvedSqlQuery]);
 
   return (
     <>

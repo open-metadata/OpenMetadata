@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography as CoreTypography } from '@openmetadata/ui-core-components';
 import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
@@ -22,7 +23,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
@@ -80,14 +81,20 @@ const TestCaseIncidentManagerStatus = ({
 
   if (headerName) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <span className="font-medium text-blue text-sm">{headerName}</span>
+      <div className="tw:flex tw:flex-col tw:gap-1.5">
+        <div className="tw:flex tw:items-center tw:gap-1">
+          <CoreTypography
+            as="span"
+            className="tw:whitespace-nowrap tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {headerName}
+          </CoreTypography>
 
           {hasEditPermission && (
             <EditIconButton
               data-testid="edit-resolution-icon"
-              icon={<EditIcon width="14px" />}
+              icon={<EditIcon width="12px" />}
               newLook={newLook}
               size="small"
               onClick={onEditStatus}

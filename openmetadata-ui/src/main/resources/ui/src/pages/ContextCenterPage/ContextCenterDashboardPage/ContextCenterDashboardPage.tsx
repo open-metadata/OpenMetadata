@@ -15,7 +15,7 @@ import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   File05,
-  Home02,
+  File06,
   Sun,
   UploadCloud02,
 } from '@untitledui/icons';
@@ -25,13 +25,10 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
-import AlertBar from '../../../components/AlertBar/AlertBar';
-import AiActivitySection from '../../../components/ContextCenter/AiActivitySection/AiActivitySection.component';
+import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
-import NeedsAttentionSection from '../../../components/ContextCenter/NeedsAttentionSection/NeedsAttentionSection.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
-import { UploadedDocumentItem } from '../../../components/ContextCenter/UploadedDocumentCard/UploadedDocumentCard.interface';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
@@ -47,7 +44,6 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   CreateKnowledgePage,
@@ -61,19 +57,15 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import {
-  contextFileToUploadedDocumentItem,
-  createArticleKnowledgePage,
-} from '../../../utils/ContextCenterUtils';
-import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { alert } = useAlertStore();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
 
@@ -81,7 +73,7 @@ const ContextCenterDashboardPage: FC = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [articles, setArticles] = useState<KnowledgePage[]>([]);
   const [articlesCount, setArticlesCount] = useState(0);
-  const [documents, setDocuments] = useState<UploadedDocumentItem[]>([]);
+  const [documents, setDocuments] = useState<ContextFile[]>([]);
   const [documentsCount, setDocumentsCount] = useState(0);
   const [folderCount, setFolderCount] = useState(0);
   const [memories, setMemories] = useState<
@@ -144,7 +136,6 @@ const ContextCenterDashboardPage: FC = () => {
       const response = await getListKnowledgePages({
         fields: 'tags,page',
         limit: RECENT_DASHBOARD_ARTICLES_LIMIT,
-        pageType: PageType.ARTICLE,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
@@ -164,7 +155,7 @@ const ContextCenterDashboardPage: FC = () => {
         limit: RECENT_DASHBOARD_DOCUMENTS_LIMIT,
       });
       setDocumentsCount(response.paging.total ?? response.data.length);
-      setDocuments(response.data.map(contextFileToUploadedDocumentItem));
+      setDocuments(response.data);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
@@ -228,32 +219,44 @@ const ContextCenterDashboardPage: FC = () => {
   ]);
 
   const handleUploaded = useCallback((newFiles: ContextFile[]) => {
-    setDocuments((prev) => [
-      ...newFiles.map(contextFileToUploadedDocumentItem),
-      ...prev,
-    ]);
+    setDocuments((prev) => [...newFiles, ...prev]);
   }, []);
 
   const articlesRecentItems = useMemo(
     () =>
       articles.map((article) => {
         const owner = getEntityName(article?.owners?.[0]);
-        const time = getRelativeTime(article.updatedAt);
+        const time = getShortRelativeTime(article.updatedAt);
         const metaParts = [owner, time].filter(Boolean);
+        const icon =
+          article.pageType === PageType.QUICK_LINK ? (
+            <QuickLinkIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={13}
+              width={13}
+            />
+          ) : (
+            <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+          );
 
-        return { title: getEntityName(article), meta: metaParts.join(' · ') };
+        return {
+          icon,
+          meta: metaParts.join(' · '),
+          title: getEntityName(article),
+        };
       }),
     [articles]
   );
 
   const documentsRecentItems = useMemo(
     () =>
-      documents.map((d) => {
-        const metaParts = [d.updatedBy, getRelativeTime(d.updatedAt)].filter(
-          Boolean
-        );
+      documents.map((doc) => {
+        const metaParts = [
+          doc.updatedBy,
+          getShortRelativeTime(doc.updatedAt),
+        ].filter(Boolean);
 
-        return { title: d.name, meta: metaParts.join(' · ') };
+        return { title: getEntityName(doc), meta: metaParts.join(' · ') };
       }),
     [documents]
   );
@@ -262,7 +265,6 @@ const ContextCenterDashboardPage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={
           <Box align="center" className="tw:shrink-0" gap={3}>
@@ -303,19 +305,7 @@ const ContextCenterDashboardPage: FC = () => {
         }
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
-          },
-          {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.dashboard'),
-            url: '',
+            label: t('label.dashboard'),
           },
         ]}
         hasPermission={hasCreatePermission}
@@ -341,8 +331,6 @@ const ContextCenterDashboardPage: FC = () => {
             statSub={t('label.published')}
             subtitle={t('message.long-form-authored-versioned')}
             title={t('label.article-plural')}
-            tone="info"
-            trend="0 this week"
             onClick={() =>
               navigate(contextCenterClassBase.getArticlesListPath())
             }
@@ -360,8 +348,6 @@ const ContextCenterDashboardPage: FC = () => {
             statSubSecondary={`${folderCount} ${t('label.folder-plural')}`}
             subtitle={t('message.files-uploaded-for-ai-retrieval')}
             title={t('label.document-plural')}
-            tone="warning"
-            trend="0 processing"
             onClick={() =>
               navigate(contextCenterClassBase.getDocumentsListPath())
             }
@@ -378,19 +364,10 @@ const ContextCenterDashboardPage: FC = () => {
             statSub={t('label.memory-plural')}
             subtitle={t('message.atomic-facts-ai-should-remember')}
             title={t('label.memory-plural')}
-            tone="success"
-            trend="0 cites today"
             onClick={() =>
               navigate(contextCenterClassBase.getMemoriesListPath())
             }
           />
-        </div>
-
-        <div
-          className="tw:grid tw:gap-4 tw:h-full"
-          style={{ gridTemplateColumns: '1.4fr 1fr' }}>
-          <AiActivitySection isLoading={false} items={[]} />
-          <NeedsAttentionSection isLoading={false} items={[]} />
         </div>
       </Box>
 

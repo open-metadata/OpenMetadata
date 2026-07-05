@@ -14,6 +14,7 @@ import {
   Alert,
   Badge,
   BadgeWithButton,
+  Box,
   Button,
   ButtonUtility,
   Card,
@@ -43,9 +44,18 @@ import { ConfigProvider } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   getCustomMarkdownComponents,
@@ -53,12 +63,12 @@ import {
 } from '../../../components/common/MarkdownEditor/markdownComponents';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import DataAssetSelectList from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList';
-import TagSelectForm from '../../../components/Tag/TagsSelectForm/TagsSelectForm.component';
+import { ROUTES } from '../../../constants/constants';
 import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   EntityReference,
@@ -74,15 +84,24 @@ import {
   deleteContextMemory,
   updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
-import {
-  formatDate,
-  getShortRelativeTime,
-} from '../../../utils/date-time/DateTimeUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
+import { getEntityIconWithBg } from '../../../utils/Assets/AssetsUtils';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { formatDate } from '../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
+import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
+
+const TagSelectForm = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
+  )
+);
 
 const LinkedAssetCard: FC<{
   asset: DataAssetOption;
@@ -94,26 +113,37 @@ const LinkedAssetCard: FC<{
   const fqn = asset.reference?.fullyQualifiedName ?? String(asset.value ?? '');
 
   return (
-    <Card className="tw:flex tw:items-center tw:gap-3 tw:p-3">
+    <Card className="tw:flex tw:items-center tw:gap-2.5 tw:px-3 tw:py-2.5">
       <div className="tw:shrink-0">
-        {searchClassBase.getEntityIcon(
-          asset.reference?.type ?? '',
-          'tw:w-8 tw:h-8 tw:text-gray-500'
+        {getEntityIconWithBg(
+          asset.reference?.type,
+          { className: 'tw:w-8 tw:h-8' },
+          { size: 18 }
         )}
       </div>
-      <div className="tw:flex tw:flex-1 tw:justify-between tw:items-center tw:min-w-0">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2">
-          <Typography ellipsis size="text-sm" weight="medium">
+      <Box
+        align="center"
+        className="tw:flex-1 tw:min-w-0 tw:gap-2.5"
+        justify="between">
+        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+          <Typography
+            ellipsis
+            className="tw:leading-tight"
+            size="text-xs"
+            weight="medium">
             {displayName}
           </Typography>
-          <Typography ellipsis className="tw:text-gray-400" size="text-xs">
+          <Typography
+            ellipsis
+            className="tw:text-utility-gray-700 tw:leading-tight"
+            size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
         </div>
-        <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
+        <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
-              className="tw:uppercase"
+              className="tw:capitalize"
               color="gray"
               size="sm"
               type="modern">
@@ -128,7 +158,7 @@ const LinkedAssetCard: FC<{
             />
           )}
         </div>
-      </div>
+      </Box>
     </Card>
   );
 };
@@ -137,8 +167,8 @@ const EmptyLinkedAssets: FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="tw:p-3 tw:border-dashed tw:border tw:rounded-lg tw:border-gray-300 tw:flex tw:justify-center tw:items-center">
-      <Typography className="tw:text-gray-400" size="text-sm">
+    <div className="tw:p-3 tw:border-dashed tw:border tw:rounded-lg tw:border-primary tw:flex tw:justify-center tw:items-center">
+      <Typography className="tw:text-utility-gray-400" size="text-sm">
         {t('label.not-linked-to-any-data-asset')}
       </Typography>
     </div>
@@ -177,6 +207,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   onCreated,
   onUpdated,
   onDeleted,
+  isAdminUser,
+  canCreate = false,
+  canEdit = false,
   viewOnly = false,
   canDelete = false,
   currentUserName,
@@ -221,6 +254,30 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
+
+  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
+
+  const memorySourceLink = useMemo(() => {
+    if (!memorySource) {
+      return undefined;
+    }
+
+    return memorySource.type === EntityType.KNOWLEDGE_PAGE
+      ? contextCenterClassBase.getArticlePath(
+          memorySource.fullyQualifiedName ?? ''
+        )
+      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
+  }, [memorySource]);
+
+  const { showEditButton, showSubmitButton } = useMemo(() => {
+    const canEditMemory = (isOwner || isAdminUser) && canEdit;
+    const showEditButton = isViewOnly && canEditMemory;
+
+    const showSubmitButton =
+      !isViewOnly && (memoryToEdit ? canEditMemory : canCreate);
+
+    return { showEditButton, showSubmitButton };
+  }, [isViewOnly, isOwner, isAdminUser, canEdit, canCreate, memoryToEdit]);
 
   useEffect(() => {
     setIsViewOnly(viewOnly);
@@ -278,7 +335,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const isSubmitDisabled = memory.trim() === '';
 
   const handleAssetChange = useCallback(
-    (option: DataAssetOption | DataAssetOption[]) => {
+    (option?: DataAssetOption | DataAssetOption[]) => {
+      if (!option) {
+        setLinkedAssets([]);
+
+        return;
+      }
       const options = Array.isArray(option) ? option : [option];
       setLinkedAssets(options);
     },
@@ -441,7 +503,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const renderMemoryContent = () => {
     if (isViewOnly) {
       return (
-        <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-50 tw:h-36 tw:overflow-y-auto tw:resize-y">
+        <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:h-36 tw:overflow-y-auto tw:resize-y">
           <ReactMarkdown components={getCustomMarkdownComponents()}>
             {preprocessMarkdownText(memory)}
           </ReactMarkdown>
@@ -461,13 +523,13 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     }
 
     return (
-      <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-gray-200 tw:bg-gray-100 tw:text-gray-700 tw:h-36 tw:overflow-y-auto tw:resize-y">
+      <div className="prose tw:p-3 tw:rounded-lg tw:border tw:border-secondary tw:bg-tertiary tw:text-secondary tw:h-36 tw:overflow-y-auto tw:resize-y">
         {memory.trim() ? (
           <ReactMarkdown components={getCustomMarkdownComponents()}>
             {preprocessMarkdownText(memory)}
           </ReactMarkdown>
         ) : (
-          <Typography className="tw:text-gray-400" size="text-sm">
+          <Typography className="tw:text-utility-gray-400" size="text-sm">
             {t('message.nothing-to-preview')}
           </Typography>
         )}
@@ -492,9 +554,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                 }>
                 {/* Sticky header */}
                 <div className="tw:flex tw:items-center tw:gap-3 tw:pt-5 tw:pb-4 tw:shrink-0 tw:px-6">
-                  <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-blue-50 tw:border tw:border-indigo-100 tw:shrink-0">
+                  <div className="tw:flex tw:items-center tw:justify-center tw:w-10 tw:h-10 tw:rounded-lg tw:bg-utility-brand-50 tw:border tw:border-utility-indigo-100 tw:shrink-0">
                     <Lightbulb03
-                      className="tw:text-brand-700"
+                      className="tw:text-utility-brand-700"
                       size={20}
                       strokeWidth={1.5}
                     />
@@ -508,21 +570,45 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {(memoryToEdit?.owners?.[0]?.name ??
                       memoryToEdit?.updatedBy) && (
                       <div className="tw:flex tw:items-center tw:gap-1">
-                        <Typography className="tw:text-gray-500" size="text-xs">
+                        <Typography
+                          className="tw:text-quaternary"
+                          size="text-xs">
                           {t('label.created-by')}
                         </Typography>
                         <UserPopOverCard
                           showUserName
-                          className="tw:text-gray-900"
+                          className="tw:text-primary"
                           profileWidth={16}
                           userName={memoryToEdit?.owners?.[0]?.name || ''}
                         />
-                        <span className="tw:text-gray-400 tw:leading-none tw:select-none tw:text-xl">
+                        <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xl">
                           &middot;
                         </span>
-                        <Typography className="tw:text-gray-500" size="text-xs">
+                        <Typography
+                          className="tw:text-quaternary"
+                          size="text-xs">
                           {formatDate(memoryToEdit.updatedAt)}
                         </Typography>
+                      </div>
+                    )}
+                    {memorySource && memorySourceLink && (
+                      <div className="tw:flex tw:items-center tw:gap-1">
+                        <FileLock02
+                          className="tw:shrink-0 tw:text-utility-gray-400"
+                          size={12}
+                          strokeWidth={2}
+                        />
+                        <Typography
+                          className="tw:text-quaternary"
+                          size="text-xs">
+                          {t('label.extracted-from')}
+                        </Typography>
+                        <Link
+                          className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
+                          data-testid="memory-source-file-link"
+                          to={memorySourceLink}>
+                          {getEntityName(memorySource)}
+                        </Link>
                       </div>
                     )}
                   </div>
@@ -588,7 +674,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     <div className="tw:flex tw:items-center tw:justify-between">
                       <div className="tw:flex tw:items-center tw:gap-1">
                         <Typography
-                          className="tw:text-gray-700"
+                          className="tw:text-secondary"
                           size="text-sm"
                           weight="medium">
                           {t('label.memory')}
@@ -602,7 +688,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           title={t('message.what-should-ask-collate-remember')}>
                           <TooltipTrigger className="tw:leading-0">
                             <InfoCircle
-                              className="tw:text-gray-400 tw:cursor-pointer"
+                              className="tw:text-utility-gray-400 tw:cursor-pointer"
                               size={14}
                               strokeWidth={2}
                             />
@@ -653,7 +739,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Section 4: Linked Data Assets */}
                   <div className="tw:flex tw:flex-col tw:gap-2">
                     <Typography
-                      className="tw:text-gray-600"
+                      className="tw:text-tertiary"
                       size="text-xs"
                       weight="semibold">
                       {`${t('label.linked-data-asset-plural')} (${
@@ -693,6 +779,20 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </div>
                         )}
                         <DataAssetSelectList
+                          placeholder={t('label.search-assets-to-link')}
+                          popoverClassName="tw:h-100"
+                          renderTrigger={({ open }) => (
+                            <Button
+                              className="tw:px-2.5 tw:py-1.5"
+                              color="tertiary"
+                              iconLeading={Plus}
+                              size="sm"
+                              onPress={open}>
+                              {t('label.link-an-entity', {
+                                entity: t('label.asset'),
+                              })}
+                            </Button>
+                          )}
                           searchIndex={SearchIndex.DATA_ASSET}
                           value={linkedAssets}
                           onChange={handleAssetChange}
@@ -704,17 +804,17 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   {/* Section 5: Metadata */}
                   <div>
                     <Typography
-                      className="tw:text-gray-600"
+                      className="tw:text-tertiary"
                       size="text-xs"
                       weight="semibold">
                       {t('label.metadata')}
                     </Typography>
-                    <Card className="tw:flex tw:flex-col tw:divide-y tw:divide-gray-100 tw:mt-2">
+                    <Card className="tw:flex tw:flex-col tw:divide-y tw:divide-tertiary tw:mt-2">
                       {/* Visibility row */}
                       <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
                         <div className="tw:basis-[30%] tw:shrink-0">
                           <Typography
-                            className="tw:text-gray-500 tw:w-28 tw:shrink-0"
+                            className="tw:text-quaternary tw:w-28 tw:shrink-0"
                             size="text-sm">
                             {t('label.visibility')}
                           </Typography>
@@ -766,7 +866,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               </Badge>
                               {visibilityOption && (
                                 <Typography
-                                  className="tw:text-gray-500"
+                                  className="tw:text-quaternary"
                                   size="text-xs">
                                   {t(visibilityOption.descriptionKey)}
                                 </Typography>
@@ -788,7 +888,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <div className="tw:flex tw:items-center tw:gap-3">
                           <div className="tw:basis-[30%]">
                             <Typography
-                              className="tw:text-gray-500 tw:w-28 tw:shrink-0"
+                              className="tw:text-quaternary tw:w-28 tw:shrink-0"
                               size="text-sm">
                               {t('label.tag-plural')}
                             </Typography>
@@ -814,7 +914,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                   )}
                                   <Typography
                                     ellipsis
-                                    className="tw:text-gray-700"
+                                    className="tw:text-secondary"
                                     size="text-xs">
                                     {tag.tagFQN}
                                   </Typography>
@@ -841,7 +941,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                                     )}
                                     <Typography
                                       ellipsis
-                                      className="tw:text-gray-700"
+                                      className="tw:text-secondary"
                                       size="text-xs">
                                       {tag.tagFQN}
                                     </Typography>
@@ -881,61 +981,46 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
                           <div className="tw:basis-[30%]">
                             <Typography
-                              className="tw:text-gray-500 tw:w-28 tw:shrink-0"
+                              className="tw:text-quaternary tw:w-28 tw:shrink-0"
                               size="text-sm">
                               {t('label.updated')}
                             </Typography>
                           </div>
                           <Typography
-                            className="tw:text-gray-600"
+                            className="tw:text-tertiary"
                             size="text-sm">
                             {formatDate(memoryToEdit?.updatedAt)}
                           </Typography>
                         </div>
                       )}
-                      {memoryToEdit?.usageCount !== undefined && (
-                        <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-                          <div className="tw:basis-[30%]">
-                            <Typography
-                              className="tw:text-gray-500 tw:w-28 tw:shrink-0"
-                              size="text-sm">
-                              {t('label.used-by-ask-collate')}
-                            </Typography>
-                          </div>
-                          <div className="tw:flex tw:items-center tw:gap-1">
-                            <Typography
-                              className="tw:text-gray-600"
-                              size="text-sm"
-                              weight="semibold">
-                              {t('label.n-times', {
-                                count: memoryToEdit.usageCount,
-                              })}
-                            </Typography>
-                            {memoryToEdit.lastUsedAt !== undefined && (
-                              <>
-                                <span className="tw:text-gray-400 tw:select-none tw:mx-1">
-                                  &middot;
-                                </span>
+                      {memoryToEdit &&
+                        contextCenterClassBase
+                          .getMemoryMetadataList(memoryToEdit)
+                          .map(({ key, label, value }) => (
+                            <div
+                              className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3"
+                              key={key}>
+                              <div className="tw:basis-[30%]">
                                 <Typography
-                                  className="tw:text-gray-500"
+                                  className="tw:text-quaternary tw:w-28 tw:shrink-0"
                                   size="text-sm">
-                                  {`${t('label.last')} ${getShortRelativeTime(
-                                    memoryToEdit.lastUsedAt
-                                  )}`}
+                                  {label}
                                 </Typography>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                              </div>
+                              {value}
+                            </div>
+                          ))}
                     </Card>
                   </div>
+                  {isViewOnly && memoryToEdit?.id && (
+                    <DerivedOntologyCard memoryId={memoryToEdit.id} />
+                  )}
                 </div>
 
                 {/* Sticky footer */}
-                <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-gray-100 tw:shrink-0 tw:px-6">
+                <div className="tw:flex tw:items-center tw:justify-between tw:gap-3 tw:py-4 tw:border-t tw:border-tertiary tw:shrink-0 tw:px-6">
                   <div>
-                    {(isEditMode || (isViewOnly && canDelete)) && (
+                    {Boolean(memoryToEdit) && canDelete && (
                       <Button
                         color="tertiary-destructive"
                         iconLeading={Trash01}
@@ -955,7 +1040,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       onClick={handleClose}>
                       {t('label.cancel')}
                     </Button>
-                    {isViewOnly && (isOwner || canDelete) ? (
+                    {showEditButton && (
                       <Button
                         color="primary"
                         iconLeading={EditIcon}
@@ -963,7 +1048,9 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSwitchToEdit}>
                         {t('label.edit')}
                       </Button>
-                    ) : !isViewOnly ? (
+                    )}
+
+                    {showSubmitButton && (
                       <Button
                         color="primary"
                         isDisabled={
@@ -974,7 +1061,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         onClick={handleSubmit}>
                         {submitLabel}
                       </Button>
-                    ) : null}
+                    )}
                   </div>
                 </div>
               </ConfigProvider>

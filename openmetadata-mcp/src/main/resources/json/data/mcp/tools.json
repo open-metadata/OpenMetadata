@@ -1,6 +1,41 @@
 {
   "tools": [
     {
+      "name": "search_company_context",
+      "description": "Semantic search over Company Context knowledge pills extracted from Context Center files. Returns each pill's title, question, answer, summary, and source file in one call. Use this to answer questions from company documents, runbooks, FAQs, and policies.",
+      "parameters": {
+        "description": "Provide a natural-language 'query'. Returns the most semantically relevant knowledge pills.",
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Natural-language question or topic to find relevant company knowledge for."
+          },
+          "size": {
+            "type": "integer",
+            "description": "Number of pills to return. Default is 10, maximum is 50.",
+            "default": 10
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_company_context",
+      "description": "Fetch a single Company Context knowledge pill, returning its full title, question, answer, summary, and source file. Pass the 'fullyQualifiedName' (or 'name') from a search_company_context result, exactly as returned.",
+      "parameters": {
+        "description": "Provide the 'fqn' of the knowledge pill to fetch.",
+        "type": "object",
+        "properties": {
+          "fqn": {
+            "type": "string",
+            "description": "The 'fullyQualifiedName' or 'name' of the knowledge pill from a search_company_context result. Pass it verbatim; surrounding quotes are optional and handled for you."
+          }
+        },
+        "required": ["fqn"]
+      }
+    },
+    {
       "name": "search_metadata",
       "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
@@ -182,7 +217,7 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context by excluding verbose metadata fields.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
@@ -824,6 +859,69 @@
           "fqn",
           "entityType"
         ]
+      }
+    },
+    {
+      "name": "create_context_memory",
+      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stable, unique system name for the memory. Reusing an existing name updates that memory instead of creating a new one."
+          },
+          "question": {
+            "type": "string",
+            "description": "The canonical question or instruction this memory represents (e.g. 'Which warehouse should finance dashboards query?')."
+          },
+          "answer": {
+            "type": "string",
+            "description": "The canonical answer or guidance to retain (e.g. 'Always query the FINANCE_PROD warehouse for finance dashboards')."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable title shown in the Context Center."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Optional one-line summary of the memory."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional longer description in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the memory."
+          },
+          "memoryType": {
+            "type": "string",
+            "description": "Category of the memory. Defaults to 'Note' when omitted.",
+            "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"]
+          },
+          "memoryScope": {
+            "type": "string",
+            "description": "Scope at which the memory applies. 'UserGlobal' applies broadly; 'EntityScoped' ties it to a specific entity.",
+            "enum": ["UserGlobal", "EntityScoped"]
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this memory.",
+            "items": { "type": "string" }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this memory (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": { "type": "string" }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this memory belongs to (e.g. 'Finance', 'Marketing').",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["name", "question", "answer"]
       }
     }
   ]

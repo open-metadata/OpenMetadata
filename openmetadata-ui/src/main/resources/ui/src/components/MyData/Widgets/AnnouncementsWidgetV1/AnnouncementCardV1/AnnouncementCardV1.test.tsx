@@ -45,7 +45,7 @@ jest.mock('../../../../../utils/EntityUtilClassBase', () => ({
   },
 }));
 
-jest.mock('../../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn(() => 'service::entity'),
   getEntityType: jest.fn(() => 'table'),
 }));
@@ -98,15 +98,15 @@ describe('AnnouncementCardV1', () => {
     jest.clearAllMocks();
   });
 
-  it('renders announcement metadata and description', () => {
+  it('renders announcement metadata and description', async () => {
     renderAnnouncementCardV1(mockAnnouncement);
 
     expect(screen.getByTestId('announcement-card-v1-1')).toBeInTheDocument();
     expect(screen.getByText('alberto')).toBeInTheDocument();
     expect(screen.getByText('Total Data Assets')).toBeInTheDocument();
-    expect(screen.getByTestId('announcement-description')).toHaveTextContent(
-      'Lorem ipsum dolor sit amet.'
-    );
+    expect(
+      await screen.findByTestId('announcement-description')
+    ).toHaveTextContent('Lorem ipsum dolor sit amet.');
   });
 
   it('renders entity and user links without triggering card click', () => {

@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { PagingResponse } from 'Models';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
+import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
 
@@ -22,6 +23,59 @@ export interface CreateFolderRequest {
   name: string;
   displayName?: string;
 }
+
+type ErrorMessageResponse = {
+  message?: string;
+};
+
+const isErrorMessageResponse = (
+  value: unknown
+): value is ErrorMessageResponse =>
+  typeof value === 'object' &&
+  value !== null &&
+  'message' in value &&
+  typeof (value as ErrorMessageResponse).message === 'string';
+
+const getBlobErrorMessage = async (
+  blob: Blob,
+  fallbackMessage: string
+): Promise<string> => {
+  const text = await blob.text();
+
+  if (!text) {
+    return fallbackMessage;
+  }
+
+  try {
+    const parsed = JSON.parse(text) as unknown;
+
+    return isErrorMessageResponse(parsed) && parsed.message
+      ? parsed.message
+      : text;
+  } catch {
+    return text;
+  }
+};
+
+const normalizeBlobError = async (error: unknown): Promise<never> => {
+  if (axios.isAxiosError<Blob, { ids: string[] }>(error) && error.response) {
+    const { data } = error.response;
+
+    if (data instanceof Blob) {
+      const message = await getBlobErrorMessage(data, error.message);
+
+      throw new AxiosError<{ message: string }, { ids: string[] }>(
+        message,
+        error.code,
+        error.config,
+        error.request,
+        { ...error.response, data: { message } }
+      );
+    }
+  }
+
+  throw error;
+};
 
 export const createFolder = async (
   data: CreateFolderRequest
@@ -36,7 +90,8 @@ export const createFolder = async (
 
 export const listFolders = async (): Promise<Folder[]> => {
   const response = await APIClient.get<{ data: Folder[] }>(
-    '/contextCenter/drive/folders'
+    '/contextCenter/drive/folders',
+    { params: { fields: 'childrenCount' } }
   );
 
   return response.data.data ?? [];
@@ -51,10 +106,28 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (params: ListParams = {}) => {
+type ListContextFilesParams = ListParams & { folderId?: string };
+
+export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { fields: 'folder', limit: 100, ...params } }
+    {
+      params: {
+        fields: 'folder,memoryCount',
+        limit: 100,
+        orderBy: 'DESC',
+        ...params,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getContextFileById = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.get<ContextFile>(
+    `/contextCenter/drive/files/${id}`,
+    { params: { fields: 'folder,memoryCount' } }
   );
 
   return response.data;
@@ -67,6 +140,25 @@ export const moveFileToFolder = async (
   await APIClient.put(`/contextCenter/drive/files/${driveFileId}/move`, {
     folder: { id: folderId, type: 'folder' },
   });
+};
+
+export const bulkMoveFilesToFolder = async (
+  ids: string[],
+  folderId: string
+): Promise<BulkOperationResult> => {
+  const response = await APIClient.put<
+    { ids: string[]; folder: { id: string; type: string } },
+    AxiosResponse<BulkOperationResult>
+  >('/contextCenter/drive/files/bulk/move', {
+    ids,
+    folder: { id: folderId, type: 'folder' },
+  });
+
+  return response.data;
+};
+
+export const moveFileToRoot = async (driveFileId: string): Promise<void> => {
+  await APIClient.put(`/contextCenter/drive/files/${driveFileId}/move`, {});
 };
 
 export const uploadDriveFile = async (
@@ -128,6 +220,18 @@ export const deleteDriveFile = async (
   });
 };
 
+export const bulkDeleteDriveFiles = async (
+  ids: string[],
+  hardDelete = false
+): Promise<BulkOperationResult> => {
+  const response = await APIClient.post<
+    { ids: string[]; hardDelete: boolean },
+    AxiosResponse<BulkOperationResult>
+  >('/contextCenter/drive/files/bulk/delete', { ids, hardDelete });
+
+  return response.data;
+};
+
 export const listArchivedContextFiles = async (): Promise<ContextFile[]> => {
   const response = await APIClient.get<{ data: ContextFile[] }>(
     '/contextCenter/drive/files',
@@ -153,6 +257,23 @@ export const downloadDriveFile = async (id: string): Promise<Blob> => {
   );
 
   return response.data;
+};
+
+export const downloadDriveFiles = async (ids: string[]): Promise<Blob> => {
+  try {
+    const response = await APIClient.post<
+      { ids: string[] },
+      AxiosResponse<Blob>
+    >(
+      '/contextCenter/drive/files/bulk/download',
+      { ids },
+      { responseType: 'blob' }
+    );
+
+    return response.data;
+  } catch (error) {
+    return normalizeBlobError(error);
+  }
 };
 
 export const deleteAsset = async (

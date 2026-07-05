@@ -29,7 +29,6 @@ import {
   DotsVertical,
   File06,
   Globe01,
-  Home02,
   MessageChatSquare,
   ThumbsDown,
   ThumbsUp,
@@ -38,10 +37,12 @@ import {
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, toString, uniqBy } from 'lodash';
+import classNames from 'classnames';
+import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
 import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
@@ -50,15 +51,15 @@ import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.sv
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { QueryVoteType } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { useClipboard } from '../../../hooks/useClipBoard';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   ContentChangeState,
@@ -67,12 +68,14 @@ import {
 import { deleteKnowledgePage } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import {
-  getKnowledgePageName,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
+import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
@@ -90,45 +93,36 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
+  onUpdate,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
-  const [copyTooltip, setCopyTooltip] = useState<string>('');
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState<QueryVoteType | null>(null);
-  const { onCopyToClipBoard } = useClipboard(window.location.href);
   const {
     preferences: { recentlyViewedQuickLinks },
   } = useCurrentUserPreferences();
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
-  const breadcrumbs = useMemo(
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  const breadcrumbItems = useMemo(
     () => [
+      contextCenterClassBase.getContextCenterRootBreadcrumb(t),
       {
-        name: '',
-        icon: <Home02 size={14} />,
-        url: contextCenterClassBase.getHomePath(),
-        activeTitle: true,
+        label: t('label.article-plural'),
+        href: contextCenterClassBase.getArticlesListPath(),
       },
       {
-        name: t('label.context-center'),
-        url: contextCenterClassBase.getContextCenterPath(),
-      },
-      {
-        name: t('label.article-plural'),
-        url: contextCenterClassBase.getArticlesListPath(),
-      },
-      {
-        activeTitle: true,
-        name: getKnowledgePageName(knowledgePage, t),
-        url: '',
+        label: getKnowledgePageName(knowledgePage, t),
       },
     ],
-    [knowledgePage?.displayName, t]
+    [knowledgePage?.id, knowledgePage?.name, knowledgePage?.displayName, t]
   );
 
   const voteStatus = useMemo(() => {
@@ -196,12 +190,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
   };
 
-  const handleShare = async () => {
-    await onCopyToClipBoard();
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
-  };
-
   const handleFollowClick = async () => {
     setIsFollowLoading(true);
     await onFollowChange();
@@ -214,6 +202,32 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     await onVoteChange({ updatedVoteType });
     setVoteLoading(null);
   };
+
+  const handleDomainSave = useCallback(
+    async (selectedDomain: EntityReference | EntityReference[]) => {
+      if (!knowledgePage || !onUpdate) {
+        return;
+      }
+      const updated = cloneDeep(knowledgePage);
+      updated.domains = Array.isArray(selectedDomain)
+        ? selectedDomain
+        : [selectedDomain];
+      await onUpdate(updated);
+    },
+    [knowledgePage, onUpdate]
+  );
+
+  const handleOwnerSave = useCallback(
+    async (updatedOwners?: EntityReference[]) => {
+      if (!knowledgePage || !onUpdate) {
+        return;
+      }
+      const updated = cloneDeep(knowledgePage);
+      updated.owners = updatedOwners;
+      await onUpdate(updated);
+    },
+    [knowledgePage, onUpdate]
+  );
 
   const handleOpenConversation = () => {
     onSetThreadLink(
@@ -282,8 +296,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       permissions.EditDisplayName);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
+
+  const breadcrumbEl = (
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+  );
 
   if (!knowledgePage && !tabs) {
     return (
@@ -308,32 +325,22 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   return (
     <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
+      className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
-      {!breadcrumbInsideCard && (
-        <TitleBreadcrumb
-          useCustomArrow
-          className={breadcrumbClassName}
-          titleLinks={breadcrumbs}
-        />
-      )}
+      {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">
-            <TitleBreadcrumb
-              useCustomArrow
-              className={breadcrumbClassName}
-              titleLinks={breadcrumbs}
-            />
-          </div>
-        )}
+      <Card
+        className={classNames(
+          'tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3',
+          headerCardClassName
+        )}>
+        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
-            <div className="h:full tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
+            <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
               <File06
-                className="tw:text-gray-500"
+                className="tw:text-quaternary"
                 height={40}
                 strokeWidth={1.2}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
@@ -357,15 +364,16 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   <Tooltip title={t('label.domain')}>
                     <TooltipTrigger className="tw:leading-0">
                       <Globe01
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
                         size={16}
                       />
                     </TooltipTrigger>
                   </Tooltip>
                   <Typography
                     className={
-                      firstDomain ? 'tw:text-primary-900' : 'tw:text-gray-400'
+                      firstDomain ? 'tw:text-primary' : 'tw:text-quaternary'
                     }
+                    data-testid="domain-link"
                     size="text-sm"
                     weight="regular">
                     {firstDomain
@@ -373,21 +381,39 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       : t('label.no-entity', { entity: t('label.domain') })}
                   </Typography>
                   {extraDomains.length > 0 && (
-                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-gray-100 tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-gray-600">
+                    <span className="tw:inline-flex tw:items-center tw:rounded-full tw:bg-tertiary tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:text-tertiary">
                       +{extraDomains.length}
                     </span>
+                  )}
+                  {permissions.EditAll && (
+                    <DomainSelectableList
+                      isClearable
+                      hasPermission={permissions.EditAll}
+                      multiple={entityRules.canAddMultipleDomains}
+                      selectedDomain={knowledgePage?.domains ?? []}
+                      onUpdate={handleDomainSave}>
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-domain-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
+                          entity: t('label.domain'),
+                        })}
+                      />
+                    </DomainSelectableList>
                   )}
                 </div>
 
                 {/* Dot separator */}
-                <Dot className="tw:text-gray-400" size="xs" />
+                <Dot className="tw:text-fg-quaternary" size="xs" />
 
                 {/* Owners */}
                 <div className="tw:flex tw:items-center tw:gap-1.5">
                   <Tooltip title={t('label.owner-plural')}>
                     <TooltipTrigger className="tw:leading-0">
                       <User03
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-fg-disabled"
+                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
                         size={16}
                       />
                     </TooltipTrigger>
@@ -405,18 +431,40 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     </div>
                   ) : (
                     <Typography
-                      className="tw:text-gray-400"
+                      className="tw:text-quaternary"
                       size="text-sm"
                       weight="regular">
                       {t('label.no-entity', { entity: t('label.owner') })}
                     </Typography>
+                  )}
+                  {(permissions.EditAll || permissions.EditOwners) && (
+                    <UserTeamSelectableList
+                      hasPermission={
+                        permissions.EditAll || permissions.EditOwners
+                      }
+                      multiple={{
+                        user: entityRules.canAddMultipleUserOwners,
+                        team: entityRules.canAddMultipleTeamOwner,
+                      }}
+                      owner={knowledgePage?.owners}
+                      onUpdate={handleOwnerSave}>
+                      <ButtonUtility
+                        className="tw:p-1"
+                        color="secondary"
+                        data-testid="edit-owner-btn"
+                        icon={<EditIcon height={11} width={11} />}
+                        tooltip={t('label.edit-entity', {
+                          entity: t('label.owner-plural'),
+                        })}
+                      />
+                    </UserTeamSelectableList>
                   )}
                 </div>
 
                 {/* Editors */}
                 {editors.length > 0 && (
                   <>
-                    <Dot className="tw:text-gray-400" size="xs" />
+                    <Dot className="tw:text-fg-quaternary" size="xs" />
                     <div className="tw:flex tw:items-center tw:gap-1.5">
                       <Tooltip title={t('label.editor')}>
                         <TooltipTrigger className="tw:leading-0">
@@ -473,7 +521,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className={
                     voteStatus === QueryVoteType.votedUp
-                      ? 'tw:text-brand-600'
+                      ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
                   color="secondary"
@@ -483,7 +531,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     <ThumbsUp
                       className={
                         voteStatus === QueryVoteType.votedUp
-                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
                           : 'tw:fill-none'
                       }
                       height={18}
@@ -501,7 +549,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   className={
                     voteStatus === QueryVoteType.votedDown
-                      ? 'tw:text-brand-600'
+                      ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
                   color="secondary"
@@ -511,7 +559,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     <ThumbsDown
                       className={
                         voteStatus === QueryVoteType.votedDown
-                          ? 'tw:fill-blue-500 tw:stroke-white'
+                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
                           : 'tw:fill-none'
                       }
                       height={18}
@@ -538,7 +586,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               title={isFollowing ? t('label.un-follow') : t('label.follow')}>
               <TooltipTrigger>
                 <ButtonUtility
-                  className={isFollowing ? 'tw:text-brand-600' : undefined}
+                  className={
+                    isFollowing ? 'tw:text-fg-brand-primary' : undefined
+                  }
                   color="secondary"
                   data-testid="follow-btn"
                   disabled={isFollowLoading || knowledgePage?.deleted}
@@ -548,22 +598,13 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               </TooltipTrigger>
             </Tooltip>
 
-            <Tooltip
-              isOpen={isEmpty(copyTooltip) ? undefined : true}
-              title={
-                isEmpty(copyTooltip)
-                  ? t('label.copy-item', { item: t('label.url') })
-                  : copyTooltip
-              }>
-              <TooltipTrigger>
-                <ButtonUtility
-                  color="secondary"
-                  data-testid="share-btn"
-                  icon={<Copy06 height={20} width={20} />}
-                  onClick={handleShare}
-                />
-              </TooltipTrigger>
-            </Tooltip>
+            <CopyLinkButton
+              className="tw:w-8 tw:h-8"
+              color="secondary"
+              testId="share-btn"
+              url={window.location.href}>
+              <Copy06 height={20} width={20} />
+            </CopyLinkButton>
 
             {permissions?.Delete && (
               <Dropdown.Root>
@@ -593,11 +634,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       <div className="tw:flex tw:items-center tw:gap-2">
                         <Trash01
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
                         />
                         <Typography
                           ellipsis
-                          className="tw:grow tw:text-error-600"
+                          className="tw:grow tw:text-error-primary"
                           size="text-sm"
                           weight="medium">
                           {t('label.delete')}
@@ -612,8 +653,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <DeleteModal
               entityTitle={getKnowledgePageName(knowledgePage, t)}
               isDeleting={isDeleting}
-              message={t('message.soft-delete-message-for-entity', {
-                entity: getKnowledgePageName(knowledgePage, t),
+              message={t('message.delete-entity-permanently', {
+                entityType: t('label.article-lowercase'),
               })}
               open={isDeleteModalOpen}
               onCancel={() => setIsDeleteModalOpen(false)}

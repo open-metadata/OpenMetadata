@@ -41,7 +41,7 @@ import type {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity
@@ -207,7 +207,10 @@ export const getServiceOptions = (
     : option.text;
 };
 
-export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
+export const getOptionsFromAggregationBucket = (
+  buckets: Bucket[],
+  labelFormatter?: (key: string) => string
+) => {
   if (!buckets) {
     return [];
   }
@@ -219,7 +222,7 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     )
     .map((option) => ({
       key: option.key,
-      label: option.key,
+      label: labelFormatter ? labelFormatter(option.key) : option.key,
       count: option.doc_count ?? 0,
     }));
 };

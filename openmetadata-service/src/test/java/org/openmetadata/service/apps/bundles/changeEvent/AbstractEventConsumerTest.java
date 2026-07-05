@@ -16,16 +16,27 @@ package org.openmetadata.service.apps.bundles.changeEvent;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import java.lang.reflect.Field;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.notifications.recipients.RecipientResolver;
+import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
+import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.util.DIContainer;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -334,6 +345,267 @@ class AbstractEventConsumerTest {
         1,
         testEventConsumer.getCollectedSuccessfulEvents().size(),
         "Only successful events should be collected");
+  }
+
+  @Test
+  void testEventRecordedOncePerSubscriptionAcrossDestinationTypes() throws Exception {
+    RealPublishConsumer consumer = new RealPublishConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+
+    UUID webhookId = UUID.randomUUID();
+    UUID emailId = UUID.randomUUID();
+    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
+    destinations.put(webhookId, mockDestination(SubscriptionType.WEBHOOK));
+    destinations.put(emailId, mockDestination(SubscriptionType.EMAIL));
+    consumer.destinationMap = destinations;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(webhookId, emailId));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class)) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    List<?> recorded = (List<?>) getField(consumer, "successfulEvents");
+    assertEquals(
+        1,
+        recorded.size(),
+        "Event delivered to two destination types must be recorded once: "
+            + "successful_sent_change_events is keyed by (change_event_id, event_subscription_id)");
+    assertSame(event, recorded.getFirst());
+
+    AlertMetrics metrics = (AlertMetrics) getField(consumer, "alertMetrics");
+    assertEquals(
+        2,
+        metrics.getSuccessEvents(),
+        "Per-destination-type success metric is intentionally preserved");
+  }
+
+  // #25312: same-type destinations get one send via the primary, recipients unioned across them.
+  @Test
+  @SuppressWarnings("unchecked")
+  void testRecipientsUnionedAndSentOncePerSameTypeDestinations() throws Exception {
+    RealPublishConsumer consumer = newRealConsumerWithMetrics();
+
+    Destination<ChangeEvent> emailA = mockDestination(SubscriptionType.EMAIL, true);
+    Destination<ChangeEvent> emailB = mockDestination(SubscriptionType.EMAIL, true);
+    SubscriptionDestination subA = emailA.getSubscriptionDestination();
+    SubscriptionDestination subB = emailB.getSubscriptionDestination();
+    UUID idA = UUID.randomUUID();
+    UUID idB = UUID.randomUUID();
+    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
+    destinations.put(idA, emailA);
+    destinations.put(idB, emailB);
+    consumer.destinationMap = destinations;
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(idA, idB));
+
+    Recipient r1 = new EmailRecipient("a@example.com");
+    Recipient r2 = new EmailRecipient("b@example.com");
+    Set<Recipient> union = Set.of(r1, r2);
+
+    List<Set<Recipient>> sent = new ArrayList<>();
+    // Only the primary is sent to (Set order picks which), so record both and assert the total.
+    lenient()
+        .doAnswer(
+            inv -> {
+              sent.add(inv.getArgument(1));
+              return null;
+            })
+        .when(emailA)
+        .sendMessage(any(), any());
+    lenient()
+        .doAnswer(
+            inv -> {
+              sent.add(inv.getArgument(1));
+              return null;
+            })
+        .when(emailB)
+        .sendMessage(any(), any());
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedConstruction<RecipientResolver> resolverCtor =
+            mockConstruction(
+                RecipientResolver.class,
+                (mock, ctx) -> when(mock.resolveRecipients(any(), anyList())).thenReturn(union))) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+
+      consumer.publishEvents(events);
+
+      assertEquals(1, sent.size(), "One send per SubscriptionType, via the primary destination");
+      assertEquals(union, sent.getFirst(), "Recipients unioned across same-type destinations");
+
+      RecipientResolver resolver = resolverCtor.constructed().getFirst();
+      ArgumentCaptor<List<SubscriptionDestination>> captor = ArgumentCaptor.forClass(List.class);
+      verify(resolver).resolveRecipients(eq(event), captor.capture());
+      assertEquals(2, captor.getValue().size());
+      assertTrue(
+          captor.getValue().containsAll(List.of(subA, subB)),
+          "Resolver receives every same-type destination so recipients dedup across them");
+    }
+
+    assertEquals(
+        1,
+        ((List<?>) getField(consumer, "successfulEvents")).size(),
+        "Event recorded once for the (event, subscription)");
+  }
+
+  // #25312: empty recipients (destination requires them, none resolved) is a successful no-op send.
+  @Test
+  void testEmptyRecipientsIsNoOpSuccessAndRecorded() throws Exception {
+    RealPublishConsumer consumer = newRealConsumerWithMetrics();
+    Destination<ChangeEvent> email = mockDestination(SubscriptionType.EMAIL, true);
+    UUID id = UUID.randomUUID();
+    consumer.destinationMap = Map.of(id, email);
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedConstruction<RecipientResolver> resolverCtor =
+            mockConstruction(
+                RecipientResolver.class,
+                (mock, ctx) ->
+                    when(mock.resolveRecipients(any(), anyList())).thenReturn(Set.of()))) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    verify(email, never()).sendMessage(any(), any());
+    assertEquals(
+        1,
+        ((List<?>) getField(consumer, "successfulEvents")).size(),
+        "Empty recipients is a no-op success and still recorded");
+    assertEquals(1, ((AlertMetrics) getField(consumer, "alertMetrics")).getSuccessEvents());
+  }
+
+  // #25312: destinations that don't require recipients always send.
+  @Test
+  void testRequiresRecipientsFalseSendsWithoutResolving() throws Exception {
+    RealPublishConsumer consumer = newRealConsumerWithMetrics();
+    Destination<ChangeEvent> destination = mockDestination(SubscriptionType.WEBHOOK, false);
+    UUID id = UUID.randomUUID();
+    consumer.destinationMap = Map.of(id, destination);
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(id));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedConstruction<RecipientResolver> resolverCtor =
+            mockConstruction(RecipientResolver.class)) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      consumer.publishEvents(events);
+
+      RecipientResolver resolver = resolverCtor.constructed().getFirst();
+      verify(resolver, never()).resolveRecipients(any(), any());
+    }
+
+    verify(destination).sendMessage(eq(event), eq(Set.of()));
+    assertEquals(1, ((List<?>) getField(consumer, "successfulEvents")).size());
+  }
+
+  // #28827: delivered-on-one-type/failed-on-another is recorded once; failing type still reported.
+  @Test
+  void testMixedDeliveryRecordsOnceAndReportsTypeFailure() throws Exception {
+    RealPublishConsumer consumer = newRealConsumerWithMetrics();
+    Destination<ChangeEvent> ok = mockDestination(SubscriptionType.WEBHOOK, false);
+    Destination<ChangeEvent> failing = mockDestination(SubscriptionType.EMAIL, false);
+    doThrow(mock(EventPublisherException.class)).when(failing).sendMessage(any(), any());
+
+    UUID okId = UUID.randomUUID();
+    UUID failId = UUID.randomUUID();
+    Map<UUID, Destination<ChangeEvent>> destinations = new HashMap<>();
+    destinations.put(okId, ok);
+    destinations.put(failId, failing);
+    consumer.destinationMap = destinations;
+
+    ChangeEvent event = createMockChangeEvent();
+    Map<ChangeEvent, Set<UUID>> events = Map.of(event, Set.of(okId, failId));
+
+    try (MockedStatic<AlertUtil> alertUtil = mockStatic(AlertUtil.class);
+        MockedConstruction<RecipientResolver> resolverCtor =
+            mockConstruction(RecipientResolver.class)) {
+      alertUtil.when(() -> AlertUtil.getFilteredEvents(any(), any())).thenReturn(events);
+      consumer.publishEvents(events);
+    }
+
+    assertEquals(
+        1,
+        ((List<?>) getField(consumer, "successfulEvents")).size(),
+        "Delivered to at least one type, so recorded exactly once");
+    AlertMetrics metrics = (AlertMetrics) getField(consumer, "alertMetrics");
+    assertEquals(1, metrics.getSuccessEvents());
+    assertEquals(1, metrics.getFailedEvents());
+    assertEquals(
+        1, consumer.capturedFailures.size(), "handleFailedEvent invoked for the failing type");
+  }
+
+  private Destination<ChangeEvent> mockDestination(SubscriptionType type) {
+    return mockDestination(type, false);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Destination<ChangeEvent> mockDestination(
+      SubscriptionType type, boolean requiresRecipients) {
+    Destination<ChangeEvent> destination = mock(Destination.class);
+    SubscriptionDestination subscriptionDestination = mock(SubscriptionDestination.class);
+    lenient().when(subscriptionDestination.getType()).thenReturn(type);
+    lenient().when(destination.getEnabled()).thenReturn(true);
+    lenient().when(destination.getSubscriptionDestination()).thenReturn(subscriptionDestination);
+    lenient().when(destination.requiresRecipients()).thenReturn(requiresRecipients);
+    return destination;
+  }
+
+  private RealPublishConsumer newRealConsumerWithMetrics() throws Exception {
+    RealPublishConsumer consumer = new RealPublishConsumer(dependencies);
+    consumer.eventSubscription = eventSubscription;
+    setField(
+        consumer,
+        "alertMetrics",
+        new AlertMetrics().withTotalEvents(0).withFailedEvents(0).withSuccessEvents(0));
+    return consumer;
+  }
+
+  private static void setField(Object target, String name, Object value) throws Exception {
+    Field field = AbstractEventConsumer.class.getDeclaredField(name);
+    field.setAccessible(true);
+    field.set(target, value);
+  }
+
+  private static Object getField(Object target, String name) throws Exception {
+    Field field = AbstractEventConsumer.class.getDeclaredField(name);
+    field.setAccessible(true);
+    return field.get(target);
+  }
+
+  static class RealPublishConsumer extends AbstractEventConsumer {
+    final List<EventPublisherException> capturedFailures = new ArrayList<>();
+
+    RealPublishConsumer(DIContainer dependencies) {
+      super(dependencies);
+    }
+
+    @Override
+    public boolean sendAlert(UUID receiverId, ChangeEvent event) {
+      return true;
+    }
+
+    @Override
+    public boolean getEnabled() {
+      return true;
+    }
+
+    @Override
+    public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
+      // Capture instead of writing via the DAO, so the real publishEvents runs without one.
+      capturedFailures.add(ex);
+    }
   }
 
   private ChangeEvent createMockChangeEvent() {

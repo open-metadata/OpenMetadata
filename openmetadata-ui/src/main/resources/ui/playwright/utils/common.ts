@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Locator, Page, request } from '@playwright/test';
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  request,
+} from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { toLower } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
@@ -181,12 +188,14 @@ export const toastNotification = async (
   message: string | RegExp,
   timeout?: number
 ) => {
-  await page.getByTestId('alert-bar').getByText(message).waitFor({
-    state: 'visible',
-    timeout,
-  });
+  const toast = page
+    .getByTestId('alert-bar')
+    .filter({ hasText: message })
+    .first();
 
-  await expect(page.getByTestId('alert-icon')).toBeVisible();
+  await toast.waitFor({ state: 'visible', timeout });
+
+  await expect(toast.getByTestId('alert-icon')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -721,10 +730,10 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
-  const toastElement = page.getByTestId('alert-bar');
+  const closeIcon = page.getByTestId('alert-icon-close').first();
 
-  if ((await toastElement.count()) > 0) {
-    await page.getByTestId('alert-icon-close').first().click();
+  if (await closeIcon.isVisible()) {
+    await closeIcon.click();
   }
 };
 
@@ -966,6 +975,157 @@ export const testPaginationNavigation = async (
       expect(newRowCount).not.toBe(initialRowCount);
     }
   }
+};
+
+type ResponseWithRequest = {
+  request: () => { method: () => string };
+  url: () => string;
+};
+
+type MetricSearchHit = {
+  _source?: {
+    displayName?: string;
+    name?: string;
+  };
+};
+
+type MetricSearchResponse = {
+  hits?: {
+    hits?: MetricSearchHit[];
+  };
+};
+
+type CsvAsyncJob = {
+  jobId: string;
+  status: string;
+};
+
+export const fetchCompletedCsvAsyncJobResult = async (
+  apiContext: APIRequestContext,
+  jobId: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get('/api/v1/csvAsyncJobs?limit=50');
+
+        if (!response.ok()) {
+          return undefined;
+        }
+
+        const jobs = (await response.json()) as CsvAsyncJob[];
+
+        return jobs.find((job) => job.jobId === jobId)?.status;
+      },
+      { timeout: 90_000 }
+    )
+    .toBe('COMPLETED');
+
+  const resultResponse = await apiContext.get(
+    `/api/v1/csvAsyncJobs/${jobId}/result`,
+    {
+      headers: { Accept: 'text/csv' },
+    }
+  );
+
+  expect(resultResponse.ok()).toBeTruthy();
+
+  return resultResponse.text();
+};
+
+export const isMetricsSearchResponse = (response: ResponseWithRequest) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname.endsWith('/api/v1/search/query') &&
+    url.searchParams.get('index') === 'metric'
+  );
+};
+
+export const waitForMetricsSearchResponse = (page: Page) =>
+  page.waitForResponse(isMetricsSearchResponse);
+
+export const testMetricsPaginationNavigation = async (page: Page) => {
+  const page1ResponsePromise = waitForMetricsSearchResponse(page);
+
+  await page.goto('/metrics?pageSize=15');
+
+  const page1Response = await page1ResponsePromise;
+  expect(page1Response.status()).toBe(200);
+
+  await page.locator('table').waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+
+  const page1Data: MetricSearchResponse = await page1Response.json();
+  const page1FirstItem = page1Data.hits?.hits?.[0]?._source;
+  const page1FirstItemName =
+    page1FirstItem?.displayName ?? page1FirstItem?.name;
+
+  await expect(page.getByTestId('previous')).toBeDisabled();
+  const nextButton = page.getByTestId('next');
+  await expect(nextButton).toBeEnabled();
+
+  const [page2Response] = await Promise.all([
+    waitForMetricsSearchResponse(page),
+    nextButton.click(),
+  ]);
+  expect(page2Response.status()).toBe(200);
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
+
+  const paginationText = page.locator('[data-testid="page-indicator"]');
+  await expect(paginationText).toBeVisible();
+  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
+
+  if (page1FirstItemName) {
+    await expect(page.locator('tbody tr').first()).not.toContainText(
+      page1FirstItemName
+    );
+  }
+
+  const reloadResponsePromise = waitForMetricsSearchResponse(page);
+
+  await page.reload();
+
+  const reloadResponse = await reloadResponsePromise;
+  expect(reloadResponse.status()).toBe(200);
+
+  await page.locator('table').waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+  await expect(page.getByTestId('previous')).toBeEnabled();
+  expect(new URL(page.url()).searchParams.get('currentPage')).toBe('2');
+  expect(await paginationText.textContent()).toMatch(/2\s*of\s*\d+/);
+
+  const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+  await expect(pageSizeDropdown).toHaveText('15 / Page');
+
+  const menuItem = page.getByRole('menuitem', { name: '25 / Page' });
+  await pageSizeDropdown.hover();
+  const isMenuVisibleAfterHover = await menuItem.isVisible();
+  if (!isMenuVisibleAfterHover) {
+    await pageSizeDropdown.click();
+  }
+  await menuItem.waitFor({ state: 'visible' });
+
+  const pageSizeChangeResponsePromise = waitForMetricsSearchResponse(page);
+  await menuItem.click();
+
+  const pageSizeChangeResponse = await pageSizeChangeResponsePromise;
+  expect(pageSizeChangeResponse.status()).toBe(200);
+  expect(new URL(pageSizeChangeResponse.url()).searchParams.get('size')).toBe(
+    '25'
+  );
+
+  await waitForAllLoadersToDisappear(page);
+  await expect(pageSizeDropdown).toHaveText('25 / Page');
+
+  const newRowCount = await page
+    .locator('tbody > tr[data-row-key]:visible')
+    .count();
+  expect(newRowCount).toBeLessThanOrEqual(25);
 };
 
 export const testClientSidePaginationNavigation = async (

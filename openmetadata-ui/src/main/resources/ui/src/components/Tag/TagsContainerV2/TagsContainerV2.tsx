@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Typography } from 'antd';
+import { Col, Form, Row, Space } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import classNames from 'classnames';
 import { isArray, isEmpty, isEqual } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import {
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetPlusButton,
+  WidgetRequestButton,
+} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
@@ -28,33 +33,32 @@ import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { getTierTags } from '../../../utils/TablePureUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
-import { getTierTags } from '../../../utils/TableUtils';
 import tagClassBase from '../../../utils/TagClassBase';
-import { fetchGlossaryList, getTagPlaceholder } from '../../../utils/TagsUtils';
+import { getTagPlaceholder } from '../../../utils/TagsPureUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 import {
   getRequestTagsPath,
   getUpdateTagsPath,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import {
-  CommentIconButton,
-  EditIconButton,
-  PlusIconButton,
-  RequestIconButton,
-} from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
-import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
 import { LayoutType } from '../TagsViewer/TagsViewer.interface';
 import './tags-container.style.less';
 import { TagsContainerV2Props } from './TagsContainerV2.interface';
+const TagSelectForm = withSuspenseFallback(
+  lazy(() => import('../TagsSelectForm/TagsSelectForm.component'))
+);
 
 const TagsContainerV2 = ({
   permission,
@@ -213,10 +217,8 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <PlusIconButton
-          className="m-t-xss"
+        <WidgetPlusButton
           data-testid="add-tag"
-          size="small"
           title={t('label.add-entity', {
             entity: isGlossaryType
               ? t('label.glossary-term')
@@ -289,10 +291,8 @@ const TagsContainerV2 = ({
     const hasTags = !isEmpty(tags?.[tagType]);
 
     return (
-      <RequestIconButton
+      <WidgetRequestButton
         data-testid="request-entity-tags"
-        newLook={newLook}
-        size="small"
         title={
           hasTags
             ? t('label.update-request-tag-plural')
@@ -305,10 +305,8 @@ const TagsContainerV2 = ({
 
   const conversationThreadElement = useMemo(
     () => (
-      <CommentIconButton
+      <WidgetCommentButton
         data-testid="tag-thread"
-        newLook={newLook}
-        size="small"
         title={t('label.list-entity', {
           entity: t('label.conversation'),
         })}
@@ -320,38 +318,29 @@ const TagsContainerV2 = ({
     [entityType, entityFqn, onThreadLinkSelect]
   );
 
-  const header = useMemo(() => {
+  const headerExtra = useMemo(() => {
+    if (!permission) {
+      return null;
+    }
+
     return (
       <Space>
-        <Typography.Text
-          className={classNames({
-            'text-sm font-medium': newLook,
-            'right-panel-label': !newLook,
-          })}>
-          {isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')}
-        </Typography.Text>
-        {permission && (
+        {addTagButton ?? (
+          <WidgetEditButton
+            data-testid="edit-button"
+            title={t('label.edit-entity', {
+              entity:
+                tagType === TagSource.Classification
+                  ? t('label.tag-plural')
+                  : t('label.glossary-term'),
+            })}
+            onClick={handleAddClick}
+          />
+        )}
+        {showTaskHandler && (
           <>
-            {addTagButton ?? (
-              <EditIconButton
-                data-testid="edit-button"
-                newLook={newLook}
-                size="small"
-                title={t('label.edit-entity', {
-                  entity:
-                    tagType === TagSource.Classification
-                      ? t('label.tag-plural')
-                      : t('label.glossary-term'),
-                })}
-                onClick={handleAddClick}
-              />
-            )}
-            {showTaskHandler && (
-              <>
-                {tagType === TagSource.Classification && requestTagElement}
-                {conversationThreadElement}
-              </>
-            )}
+            {tagType === TagSource.Classification && requestTagElement}
+            {conversationThreadElement}
           </>
         )}
       </Space>
@@ -362,7 +351,6 @@ const TagsContainerV2 = ({
     isEditTags,
     permission,
     showTaskHandler,
-    isGlossaryType,
     requestTagElement,
     conversationThreadElement,
   ]);
@@ -495,14 +483,16 @@ const TagsContainerV2 = ({
 
   if (newLook) {
     return (
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
+      <WidgetCard
         dataTestId={isGlossaryType ? 'glossary-container' : 'tags-container'}
-        isExpandDisabled={isEmpty(tags?.[tagType])}>
+        forceExpand={isEditTags}
+        headerExtra={headerExtra}
+        isExpandDisabled={isEmpty(tags?.[tagType]) && !isEditTags}
+        title={
+          isGlossaryType ? t('label.glossary-term') : t('label.tag-plural')
+        }>
         {suggestionDataRender ?? tagBody}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 

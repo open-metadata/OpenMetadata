@@ -46,7 +46,7 @@ jest.mock(
     })
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: {
     explore: 'Explore',
     lineage: 'Lineage',
@@ -61,8 +61,12 @@ describe('KnowledgePageSummary', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
   });
 
   it('should render correctly with quick link', async () => {
@@ -81,8 +85,12 @@ describe('KnowledgePageSummary', () => {
       }
     );
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('quick-link-data')).toBeInTheDocument();
   });
 });

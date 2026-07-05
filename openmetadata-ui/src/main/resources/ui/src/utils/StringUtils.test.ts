@@ -28,15 +28,19 @@ jest.mock('./i18next/LocalUtil', () => ({
   },
 }));
 
+import { AxiosError } from 'axios';
 import {
+  decodeHtmlEntities,
   formatJsonString,
   getDecodedFqn,
   getEncodedFqn,
+  getPermissionErrorText,
   jsonToCSV,
   ordinalize,
   removeAttachmentsWithoutUrl,
   replaceCallback,
   slugify,
+  stripMarkdown,
 } from './StringUtils';
 
 describe('StringUtils', () => {
@@ -349,6 +353,70 @@ describe('StringUtils', () => {
       const result = removeAttachmentsWithoutUrl(htmlString);
 
       expect(result).toBe('<div class="regular">Keep this</div>');
+    });
+  });
+
+  describe('decodeHtmlEntities', () => {
+    it('should decode numeric HTML entities', () => {
+      expect(decodeHtmlEntities('This is &#98;old text')).toBe(
+        'This is bold text'
+      );
+    });
+
+    it('should decode named HTML entities', () => {
+      expect(decodeHtmlEntities('Tom &amp; Jerry')).toBe('Tom & Jerry');
+    });
+
+    it('should leave plain text unaffected', () => {
+      expect(decodeHtmlEntities('plain text')).toBe('plain text');
+    });
+  });
+
+  describe('stripMarkdown', () => {
+    it('should strip markdown syntax', () => {
+      expect(stripMarkdown('**bold** and `code`')).toBe('bold and code');
+    });
+
+    it('should decode HTML entities left over from markdown stripping', () => {
+      expect(stripMarkdown('This is &#98;old and &amp; italic')).toBe(
+        'This is bold and & italic'
+      );
+    });
+
+    it('should trim surrounding whitespace', () => {
+      expect(stripMarkdown('  **hello world**  ')).toBe('hello world');
+    });
+  });
+
+  describe('getPermissionErrorText', () => {
+    it('should return the friendly permission message for a 403 error', () => {
+      const error = {
+        response: { status: 403, data: { message: 'operations not allowed' } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe(
+        'message.operation-forbidden-please-contact-admin'
+      );
+    });
+
+    it('should return the backend message for a non-403 error', () => {
+      const error = {
+        response: { status: 500, data: { message: 'boom' } },
+      } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('boom');
+    });
+
+    it('should return the fallback text when a non-403 error has no message', () => {
+      const error = { response: { status: 500, data: {} } } as AxiosError;
+
+      expect(getPermissionErrorText(error, 'fallback')).toBe('fallback');
+    });
+
+    it('should return a plain string error unchanged', () => {
+      expect(getPermissionErrorText('plain error', 'fallback')).toBe(
+        'plain error'
+      );
     });
   });
 });

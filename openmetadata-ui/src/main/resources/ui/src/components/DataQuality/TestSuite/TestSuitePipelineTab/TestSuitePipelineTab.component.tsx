@@ -19,18 +19,18 @@ import {
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import { HelpCircle } from '@untitledui/icons';
-import { Button, Col, Row, Skeleton } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
-  IngestionServicePermission,
+  OperationPermission,
   ResourceEntity,
 } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -41,7 +41,6 @@ import { Table as TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/rule';
 import {
   IngestionPipeline,
-  PipelineStatus,
   StepSummary,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../../../generated/tests/testCase';
@@ -52,10 +51,9 @@ import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
-  getRunHistoryForPipeline,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
@@ -90,6 +88,7 @@ interface SelectedRowDetails {
 interface PipelineTableRow extends IngestionPipeline {
   runId?: string;
   runStatus?: StepSummary;
+  pipelinePermissions?: OperationPermission;
 }
 
 const TestSuitePipelineTab = ({
@@ -114,7 +113,6 @@ const TestSuitePipelineTab = ({
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
@@ -122,10 +120,8 @@ const TestSuitePipelineTab = ({
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
-    useState<IngestionServicePermission>();
-  const [recentRunStatuses, setRecentRunStatuses] = useState<
-    Record<string, PipelineStatus[]>
-  >({});
+    useState<Map<string, OperationPermission>>();
+  const permissionFetchId = useRef(0);
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
@@ -177,13 +173,13 @@ const TestSuitePipelineTab = ({
 
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     if (!testSuitePipelines.length) {
-      setRecentRunStatuses({});
-      setIngestionPipelinePermissions(undefined);
+      setIngestionPipelinePermissions(new Map<string, OperationPermission>());
 
       return;
     }
 
-    setIsIngestionRunsLoading(true);
+    permissionFetchId.current += 1;
+    const fetchId = permissionFetchId.current;
 
     const permissionPromises = testSuitePipelines.map((item) =>
       getEntityPermissionByFqn(
@@ -192,49 +188,21 @@ const TestSuitePipelineTab = ({
       )
     );
 
-    const recentRunStatusPromises = testSuitePipelines.map((item) =>
-      getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-    );
+    const permissionResponse = await Promise.allSettled(permissionPromises);
 
-    Promise.allSettled(permissionPromises).then((permissionResponse) => {
-      const permissionData = permissionResponse.reduce((acc, cv, index) => {
-        return {
-          ...acc,
-          [testSuitePipelines[index]?.name]:
-            cv.status === 'fulfilled' ? cv.value : {},
-        };
-      }, {});
+    if (fetchId !== permissionFetchId.current) {
+      return;
+    }
 
-      setIngestionPipelinePermissions(
-        permissionData as IngestionServicePermission
-      );
-    });
+    const permissionData = permissionResponse.reduce((acc, cv, index) => {
+      if (cv.status === 'fulfilled') {
+        acc.set(testSuitePipelines[index]?.name ?? '', cv.value);
+      }
 
-    Promise.allSettled(recentRunStatusPromises)
-      .then((recentRunStatusResponse) => {
-        const recentRunStatusData = recentRunStatusResponse.reduce(
-          (acc, cv, index) => {
-            let value: PipelineStatus[] = [];
+      return acc;
+    }, new Map<string, OperationPermission>());
 
-            if (cv.status === 'fulfilled') {
-              const runs = cv.value.data ?? [];
-              const ingestion = testSuitePipelines[index];
-              value =
-                runs.length === 0 && ingestion?.pipelineStatuses
-                  ? [ingestion.pipelineStatuses]
-                  : runs;
-            }
-
-            return {
-              ...acc,
-              [testSuitePipelines[index]?.name]: value,
-            };
-          },
-          {}
-        );
-        setRecentRunStatuses(recentRunStatusData);
-      })
-      .finally(() => setIsIngestionRunsLoading(false));
+    setIngestionPipelinePermissions(permissionData);
   }, [testSuitePipelines, getEntityPermissionByFqn]);
 
   const handlePipelinePageChange = useCallback(
@@ -377,10 +345,11 @@ const TestSuitePipelineTab = ({
     return sortedByTestCaseLength.map((pipeline) => ({
       ...pipeline,
       key: pipeline.name,
-      runStatus: recentRunStatuses?.[pipeline.name]?.[0]?.status?.[0],
-      runId: recentRunStatuses?.[pipeline.name]?.[0]?.runId,
+      runStatus: pipeline.pipelineStatuses?.[0]?.status?.[0],
+      runId: pipeline.pipelineStatuses?.[0]?.runId,
+      pipelinePermissions: ingestionPipelinePermissions?.get(pipeline.name),
     }));
-  }, [testSuitePipelines, recentRunStatuses]);
+  }, [testSuitePipelines, ingestionPipelinePermissions]);
 
   const emptyPlaceholder = useMemo(
     () =>
@@ -442,7 +411,9 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row className="m-l-0 m-r-0 m-t-md m-b-md" gutter={[16, 16]}>
+    <Row
+      className="test-suite-pipeline-tab m-l-0 m-r-0 m-t-md m-b-md"
+      gutter={[16, 16]}>
       {dataSource.length > 0 && (
         <Col className="d-flex justify-end" span={24}>
           <Button
@@ -496,17 +467,19 @@ const TestSuitePipelineTab = ({
               items={isLoading ? [] : dataSource}
               renderEmptyState={() => (isLoading ? <></> : emptyPlaceholder)}>
               {(item) => {
-                const record = item as PipelineTableRow;
+                const record = item;
                 const testCasesCount =
                   record?.sourceConfig?.config?.testCases?.length ??
                   t('label.all');
+
+                const permissions = record.pipelinePermissions;
 
                 return (
                   <Table.Row
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72">
+                    <Table.Cell className="tw:align-middle tw:w-72 tw:min-w-56">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 
@@ -517,14 +490,10 @@ const TestSuitePipelineTab = ({
                     </Table.Cell>
 
                     <Table.Cell className="tw:align-middle tw:w-44">
-                      {isIngestionRunsLoading ? (
-                        <Skeleton.Input active size="small" />
-                      ) : (
-                        <IngestionStatusCount
-                          runId={record.runId}
-                          summary={record.runStatus}
-                        />
-                      )}
+                      <IngestionStatusCount
+                        runId={record.runId}
+                        summary={record.runStatus}
+                      />
                     </Table.Cell>
 
                     <Table.Cell className="tw:align-middle tw:w-44">
@@ -533,14 +502,13 @@ const TestSuitePipelineTab = ({
 
                     <Table.Cell className="tw:align-middle tw:w-44">
                       <IngestionRecentRuns
-                        appRuns={recentRunStatuses[record.name]}
+                        appRuns={record.pipelineStatuses}
                         classNames="align-middle"
                         fetchStatus={false}
                         handlePipelineIdToFetchStatus={
                           handlePipelineIdToFetchStatus
                         }
                         ingestion={record}
-                        isAppRunsLoading={isIngestionRunsLoading}
                         pipelineIdToFetchStatus={pipelineIdToFetchStatus}
                       />
                     </Table.Cell>
@@ -566,9 +534,7 @@ const TestSuitePipelineTab = ({
                           handleIsConfirmationModalOpen={
                             setIsConfirmationModalOpen
                           }
-                          ingestionPipelinePermissions={
-                            ingestionPipelinePermissions
-                          }
+                          ingestionPipelinePermissions={permissions}
                           pipeline={record}
                           serviceCategory={ServiceCategory.DATABASE_SERVICES}
                           serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}

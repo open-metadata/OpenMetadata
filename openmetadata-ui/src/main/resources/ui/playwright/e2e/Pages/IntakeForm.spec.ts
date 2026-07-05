@@ -710,6 +710,9 @@ test.describe(
           .filter({ hasText: /admin/i });
         await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
         await adminOption.first().click();
+
+        await stewardInput.press('Escape');
+        await expect(listbox).toBeHidden();
       });
 
       await test.step('Submit and verify 201 + correct extension payload', async () => {

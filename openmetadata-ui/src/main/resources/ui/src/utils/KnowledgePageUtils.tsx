@@ -19,39 +19,17 @@ import {
   RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { File06 } from '@untitledui/icons';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { ReactComponent as IconArticle } from '../assets/svg/ic-articles.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import contextCenterClassBase from './ContextCenterClassBase';
 import { t } from './i18next/LocalUtil';
 import { getKnowledgePageName } from './KnowledgePagePureUtils';
 import { arraySorterByKey } from './RecentActivityUtils';
-
-export {
-  convertToTreeData,
-  extractKnowledgePageParentFQN,
-  findPageAndParentInTreeData,
-  findPageInTreeData,
-  getContextCenterArticlePath,
-  getContextCenterArticleVersionsPath,
-  getExpandedNodeKeys,
-  getKnowledgePageName,
-  getKnowledgePagePath,
-  getKnowledgePageWidgetList,
-  getKnowledgeVersionsPath,
-  getPageAllChildren,
-  getUpdatePageHierarchy,
-  getUpdatePageHierarchyForDelete,
-  hierarchyPaginationInitialState,
-  hierarchyPaginationReducer,
-  integrateNodesIntoHierarchy,
-  updateTreeData,
-} from './KnowledgePagePureUtils';
-export type { ActionType } from './KnowledgePagePureUtils';
 
 export const setRecentlyViewedData = (
   recentData: RecentlyViewedQuickLinks['data']
@@ -137,7 +115,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
       key={knowledgePage.id}
       target={isQuickLink ? '_blank' : '_self'}
       to={path}>
-      <Space align="baseline">
+      <Box align="center" gap={2}>
         {isQuickLink ? (
           <ExternalLinkIcon
             height={16}
@@ -145,15 +123,13 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
             width={16}
           />
         ) : (
-          <IconArticle
-            height={16}
-            style={{ verticalAlign: 'middle' }}
-            width={16}
-          />
+          <File06 size={16} strokeWidth={1.5} />
         )}
 
-        <span>{getKnowledgePageName(knowledgePage, t)}</span>
-      </Space>
+        <span className="tw:truncate">
+          {getKnowledgePageName(knowledgePage, t)}
+        </span>
+      </Box>
     </Link>
   );
 };

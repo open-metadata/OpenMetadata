@@ -68,10 +68,10 @@ public interface EntityDAO<T extends EntityInterface> {
    * UUID is ~36 chars, so an IN-list of this size is ~1MB on the wire (well below the 64MB
    * MySQL default) and still leaves headroom for Postgres's parameter ceiling. Callers that
    * may exceed this size must chunk their input lists; helpers in this interface
-   * ({@link #findEntitiesByIds}, {@link #findEntityByNames}, {@link #findReferencesByFqns},
-   * {@link #deleteByIds}) already do. (SQL Server isn't a supported connection type here —
-   * its ~2100 sp_executesql cap would require a separate, much smaller constant if it ever
-   * is.)
+   * ({@link #findEntitiesByIds}, {@link #findEntityByNames}, {@link #findReferencesByIds},
+   * {@link #findReferencesByFqns}, {@link #deleteByIds}) already do. (SQL Server isn't a
+   * supported connection type here — its ~2100 sp_executesql cap would require a separate, much
+   * smaller constant if it ever is.)
    */
   int MAX_IN_LIST_CHUNK_SIZE = 30_000;
 
@@ -332,6 +332,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
       connectionType = MYSQL)
@@ -341,6 +342,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>) <cond>",
       connectionType = POSTGRES)
@@ -364,6 +366,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
               + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
       connectionType = MYSQL)
@@ -373,6 +376,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "json->>'name' AS name, "
               + "json->>'displayName' AS displayName, "
               + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
               + "FALSE AS deleted "
               + "FROM <table> WHERE <nameHashColumn> IN (<names>)",
       connectionType = POSTGRES)
@@ -381,6 +385,77 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
       @BindList("names") List<String> nameHashes);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
+              + "deleted "
+              + "FROM <table> WHERE id IN (<ids>) <cond>",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
+              + "deleted "
+              + "FROM <table> WHERE id IN (<ids>) <cond>",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByIds(
+      @Define("table") String table,
+      @BindList("ids") List<String> ids,
+      @Define("cond") String cond);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) AS name, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')) AS displayName, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn, "
+              + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')) AS description, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE id IN (<ids>)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, "
+              + "json->>'name' AS name, "
+              + "json->>'displayName' AS displayName, "
+              + "json->>'fullyQualifiedName' AS fqn, "
+              + "json->>'description' AS description, "
+              + "FALSE AS deleted "
+              + "FROM <table> WHERE id IN (<ids>)",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(EntityReferenceRowMapper.class)
+  List<EntityReferenceRow> findReferencesByIdsNoDeleted(
+      @Define("table") String table, @BindList("ids") List<String> ids);
+
+  default List<EntityReference> findReferencesByIds(List<UUID> entityIds, Include include) {
+    if (CollectionUtils.isEmpty(entityIds)) {
+      return List.of();
+    }
+    List<String> ids = entityIds.stream().distinct().map(UUID::toString).toList();
+    int maxChunkSize = MAX_IN_LIST_CHUNK_SIZE;
+    if (ids.size() <= maxChunkSize) {
+      return findReferenceRowsByIds(ids, include).stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .toList();
+    }
+    List<EntityReference> all = new ArrayList<>(ids.size());
+    for (int i = 0; i < ids.size(); i += maxChunkSize) {
+      List<String> chunk = ids.subList(i, Math.min(i + maxChunkSize, ids.size()));
+      findReferenceRowsByIds(chunk, include).stream()
+          .map(row -> row.toEntityReference(Entity.getEntityTypeFromClass(getEntityClass())))
+          .forEach(all::add);
+    }
+    return all;
+  }
 
   /**
    * Resolve a list of FQNs to {@link EntityReference}s in a single batched query without
@@ -417,14 +492,23 @@ public interface EntityDAO<T extends EntityInterface> {
         getTableName(), getNameHashColumn(), nameHashes, getCondition(include));
   }
 
-  record EntityReferenceRow(UUID id, String name, String displayName, String fqn, boolean deleted) {
+  private List<EntityReferenceRow> findReferenceRowsByIds(List<String> ids, Include include) {
+    if (!supportsSoftDelete()) {
+      return findReferencesByIdsNoDeleted(getTableName(), ids);
+    }
+    return findReferencesByIds(getTableName(), ids, getCondition(include));
+  }
+
+  record EntityReferenceRow(
+      UUID id, String name, String displayName, String fqn, String description, boolean deleted) {
     public EntityReference toEntityReference(String entityType) {
       return new EntityReference()
           .withId(id)
           .withType(entityType)
           .withName(name)
-          .withDisplayName(displayName)
+          .withDisplayName(displayName == null || displayName.isEmpty() ? name : displayName)
           .withFullyQualifiedName(fqn)
+          .withDescription(description)
           .withDeleted(deleted);
     }
   }
@@ -437,6 +521,7 @@ public interface EntityDAO<T extends EntityInterface> {
           rs.getString("name"),
           rs.getString("displayName"),
           rs.getString("fqn"),
+          rs.getString("description"),
           rs.getBoolean("deleted"));
     }
   }
@@ -509,6 +594,12 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("table") String table,
       @BindList("ids") List<String> ids,
       @Define("cond") String cond);
+
+  // Lightweight bulk existence check: returns only the ids (of the given set) that exist in the
+  // table, without hydrating the json column. Used by relationship cleanup to validate large
+  // batches of endpoints with one query per entity type instead of a read per relationship.
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>)")
+  List<String> findExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")
   String findByName(
@@ -734,6 +825,36 @@ public interface EntityDAO<T extends EntityInterface> {
       @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("limit") int limit,
+      @Bind("offset") int offset);
+
+  record CursorRow(String name, String id) {}
+
+  class CursorRowMapper implements RowMapper<CursorRow> {
+    @Override
+    public CursorRow map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new CursorRow(rs.getString("name"), rs.getString("id"));
+    }
+  }
+
+  /**
+   * Lightweight cursor lookup at an absolute offset. Selects ONLY {@code name}, {@code id} so the
+   * per-entity {@code (name)} index covers the query and {@code ORDER BY name, id} is served
+   * index-only ({@code EXPLAIN} shows "Using index") with no filesort. Selecting {@code json} is
+   * not covered by that index, so a cost-based optimizer may instead choose a filesort on the
+   * {@code ORDER BY name, id} key — the json-derived {@code name} generated column, whose sort
+   * rows can exhaust sort memory and throw {@code ER_OUT_OF_SORTMEMORY ("Out of sort memory,
+   * consider increasing server sort buffer size")} on large catalogs (the work scales with the
+   * OFFSET). Serving the cursor lookup index-only avoids that sort entirely and never materializes
+   * the {@code json} blob for the skipped rows. The {@code name}/{@code id} columns are generated
+   * from {@code json.$.name}/{@code json.$.id}, so the returned values are identical to
+   * {@code entity.getName()}/{@code entity.getId()}.
+   */
+  @SqlQuery("SELECT name, id FROM <table> <cond> ORDER BY name, id LIMIT 1 OFFSET :offset")
+  @RegisterRowMapper(CursorRowMapper.class)
+  CursorRow getCursorAtOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
       @Bind("offset") int offset);
 
   @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
@@ -1008,6 +1129,11 @@ public interface EntityDAO<T extends EntityInterface> {
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
     return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
+  }
+
+  default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+    return getCursorAtOffset(
+        getTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
   default void exists(UUID id) {

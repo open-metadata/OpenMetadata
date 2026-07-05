@@ -29,6 +29,10 @@ public class EntityRulesUtil {
     return toggleRule(client, MULTI_DOMAIN_RULE_NAME, enableRule);
   }
 
+  public static boolean isMultiDomainRuleEnabled(OpenMetadataClient client) {
+    return isRuleEnabled(client, MULTI_DOMAIN_RULE_NAME);
+  }
+
   /**
    * Toggle any entity rule by name.
    *

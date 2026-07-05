@@ -203,6 +203,56 @@ test.describe('Search Settings', () => {
 
       await toastNotification(page, /Search Settings restored successfully/);
     });
+
+    test('Reset global search settings to default via confirmation modal', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      await page
+        .getByTestId('global-setting-edit-icon-Max Aggregate Size')
+        .click();
+      await page.getByTestId('value-input').fill('2000');
+      await page.getByTestId('inline-save-btn').click();
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Cancelling the confirmation must leave the customized value intact.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('body-text')).not.toBeAttached();
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Confirming the reset must restore the default value.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      const resetResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/system/settings/reset/searchSettings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-button').click();
+      await resetResponse;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('10000');
+    });
   });
 
   test.describe('Search Preview test', () => {
@@ -317,8 +367,7 @@ test.describe('Search Settings', () => {
         await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
         const tableCard = page.getByTestId(mockEntitySearchSettings.key);
 
-        // Register waitForResponse BEFORE the click so the on-load preview
-        // request is captured rather than missed.
+        // Register before navigation so the on-load preview request is captured.
         const initialPreviewPromise = page.waitForResponse((r) =>
           r.url().includes('/api/v1/search/preview')
         );
@@ -330,14 +379,16 @@ test.describe('Search Settings', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        // Capture the initial preview request to read original n-gram boost.
         const initialPreviewResponse = await initialPreviewPromise;
         expect(initialPreviewResponse.status()).toBe(200);
-        const initialBody = initialPreviewResponse.request().postDataJSON();
 
         const initialNgramBoost =
-          initialBody?.searchSettings?.assetTypeConfigurations
-            ?.find((c: { assetType: string }) => c.assetType === 'table')
+          initialPreviewResponse
+            .request()
+            .postDataJSON()
+            ?.searchSettings?.assetTypeConfigurations?.find(
+              (c: { assetType: string }) => c.assetType === 'table'
+            )
             ?.searchFields?.find(
               (f: { field: string }) => f.field === 'name.ngram'
             )?.boost ?? 0;
@@ -360,25 +411,29 @@ test.describe('Search Settings', () => {
         await saveResponse;
         await toastNotification(page, /Search Settings updated successfully/);
 
-        // Revert n-gram weight back to its original value.
-        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
-
-        // Wait for the preview to re-fetch with the reverted config.
-        const revertedPreviewResponse = await page.waitForResponse((r) =>
-          r.url().includes('/api/v1/search/preview')
-        );
-        expect(revertedPreviewResponse.status()).toBe(200);
-        const revertedBody = revertedPreviewResponse.request().postDataJSON();
-
-        const revertedNgramBoost =
-          revertedBody?.searchSettings?.assetTypeConfigurations
-            ?.find((c: { assetType: string }) => c.assetType === 'table')
+        // Scope the predicate to the reverted boost value so a stale post-save
+        // preview response (boost=5) can never satisfy the promise.
+        const revertedPreviewPromise = page.waitForResponse((r) => {
+          if (!r.url().includes('/api/v1/search/preview')) {
+            return false;
+          }
+          const boost = r
+            .request()
+            .postDataJSON()
+            ?.searchSettings?.assetTypeConfigurations?.find(
+              (c: { assetType: string }) => c.assetType === 'table'
+            )
             ?.searchFields?.find(
               (f: { field: string }) => f.field === 'name.ngram'
-            )?.boost ?? 0;
+            )?.boost;
 
-        // The reverted preview must use the original n-gram boost value.
-        expect(revertedNgramBoost).toBe(initialNgramBoost);
+          return boost === initialNgramBoost;
+        });
+
+        await setSliderValue(page, 'field-weight-slider', initialNgramBoost);
+
+        const revertedPreviewResponse = await revertedPreviewPromise;
+        expect(revertedPreviewResponse.status()).toBe(200);
       });
 
       test('Preview config updates when restore defaults returns empty search fields', async ({

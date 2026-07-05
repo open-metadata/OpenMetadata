@@ -40,5 +40,7 @@ export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.IncidentResolution]: 'message.incident-resolution-message',
   [TaskEntityType.PipelineReview]: 'message.pipeline-review-message',
   [TaskEntityType.DataQualityReview]: 'message.data-quality-review-message',
+  [TaskEntityType.RecognizerFeedbackApproval]:
+    'message.recognizer-feedback-approval-message',
   [TaskEntityType.CustomTask]: 'message.custom-task-message',
 };

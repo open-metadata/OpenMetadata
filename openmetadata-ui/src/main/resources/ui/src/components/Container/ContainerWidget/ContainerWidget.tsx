@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { Container } from '../../../generated/entity/data/container';
 import { useFqn } from '../../../hooks/useFqn';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import ContainerChildren from '../ContainerChildren/ContainerChildren';
-import ContainerDataModel from '../ContainerDataModel/ContainerDataModel';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const ContainerChildren = withSuspenseFallback(
+  lazy(() => import('../ContainerChildren/ContainerChildren'))
+);
+
+const ContainerDataModel = withSuspenseFallback(
+  lazy(() => import('../ContainerDataModel/ContainerDataModel'))
+);
 
 export const ContainerWidget = () => {
   const {

@@ -299,6 +299,20 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   await expect(entityHeaderName).toHaveText(name);
 };
 
+const verifyNodeDepth = async (
+  page: Page,
+  node: EntityClass,
+  expectedDepth: number
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const lineageNode = page.getByTestId(`lineage-node-${nodeFqn}`);
+  await lineageNode.waitFor({ state: 'attached' });
+  await lineageNode.scrollIntoViewIfNeeded();
+  await expect(lineageNode).toBeVisible();
+  const nodeDepth = await lineageNode.getAttribute('data-nodedepth');
+  expect(Number(nodeDepth)).toBe(expectedDepth);
+};
+
 export const performExpand = async (
   page: Page,
   node: EntityClass,
@@ -310,9 +324,15 @@ export const performExpand = async (
   const nodeLocator = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
   await nodeLocator.hover();
   const expandBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .getByTestId(`lineage-node-${nodeFqn}`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('plus-icon');
+
+  const existingNodeDepth = Number(
+    await page
+      .getByTestId(`lineage-node-${nodeFqn}`)
+      .getAttribute('data-nodedepth')
+  );
 
   if (newNode) {
     const expandRes = page.waitForResponse('/api/v1/lineage/getLineage/*?*');
@@ -322,6 +342,11 @@ export const performExpand = async (
     // perform a zoom out to have everything in view
     await performZoomOut(page, 5);
     await verifyNodePresent(page, newNode);
+    await verifyNodeDepth(
+      page,
+      newNode,
+      upstream ? existingNodeDepth - 1 : existingNodeDepth + 1
+    );
   }
 };
 
@@ -476,7 +501,7 @@ export const verifyPipelineDataInDrawer = async (
     .getByTestId(`pipeline-label-${fromNodeFqn}-${toNodeFqn}`)
     .dispatchEvent('click');
 
-  await page.locator('.edge-info-drawer').isVisible();
+  await expect(page.getByTestId('edge-header-title')).toBeVisible();
 
   if (bVisitPipelinePageFromDrawer) {
     await expect(page.getByTestId('edge-header-title')).toHaveText(
@@ -494,7 +519,7 @@ export const verifyPipelineDataInDrawer = async (
 
     await fromNode.visitEntityPage(page);
   } else {
-    await page.click('.edge-info-drawer .ant-drawer-header .anticon-close');
+    await page.getByTestId('drawer-close-icon').click();
   }
 };
 
@@ -726,7 +751,9 @@ export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
@@ -734,7 +761,7 @@ export const getLineageCSVData = async (page: Page) => {
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 
@@ -811,24 +838,26 @@ export const verifyExportLineagePNG = async (
   await page.getByTestId('export-button').click();
 
   await page
-    .locator('[data-testid="export-entity-modal"] #submit-button')
+    .locator(
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]'
+    )
     .waitFor({
       state: 'visible',
     });
 
   if (!isPNGSelected) {
     await page.getByTestId('export-type-select').click();
-    await page.locator('.ant-select-item[title="PNG"]').click();
+    await page.getByRole('option', { name: 'PNG' }).click();
   }
 
-  await expect(
-    page.getByTestId('export-type-select').getByText('PNGBeta')
-  ).toBeVisible();
+  await expect(page.getByTestId('export-type-select')).toContainText('PNG');
 
   const [download] = await Promise.all([
-    page.waitForEvent('download'),
+    // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
+    // render enough headroom before the download event fires.
+    page.waitForEvent('download', { timeout: 120_000 }),
     page.click(
-      '[data-testid="export-entity-modal"] button#submit-button:visible'
+      '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
     ),
   ]);
 

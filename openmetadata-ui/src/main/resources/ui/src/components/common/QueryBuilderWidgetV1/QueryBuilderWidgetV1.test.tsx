@@ -23,7 +23,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTreeConfig } from '../../../utils/AdvancedSearchUtils';
 import * as QueryBuilderElasticsearchFormatUtils from '../../../utils/QueryBuilderElasticsearchFormatUtils';
-import * as QueryBuilderUtils from '../../../utils/QueryBuilderUtils';
+import * as QueryBuilderUtils from '../../../utils/QueryBuilderPureUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilderWidgetV1 from './QueryBuilderWidgetV1';
@@ -48,6 +48,7 @@ jest.mock('../../../utils/AdvancedSearchUtils', () => ({
 }));
 
 jest.mock('../../../utils/QueryBuilderUtils');
+jest.mock('../../../utils/QueryBuilderPureUtils');
 jest.mock('../../../utils/QueryBuilderElasticsearchFormatUtils');
 jest.mock('../../../utils/RouterUtils', () => {
   return {

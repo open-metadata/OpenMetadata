@@ -27,7 +27,15 @@ import {
 } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ForwardedRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DAY_IN_MONTH_OPTIONS,
@@ -44,42 +52,46 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../../interface/FormUtils.interface';
-import { generateFormFields } from '../../../../../utils/formUtils';
-import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
   cronValidator,
   getCron,
   getDefaultScheduleValue,
-  getHourMinuteSelect,
   getStateValue,
   getUpdatedStateFromFormState,
-} from '../../../../../utils/SchedularUtils';
+} from '../../../../../utils/CronExpressionUtils';
+import { generateFormFields } from '../../../../../utils/formUtils';
+import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
+import { getHourMinuteSelect } from '../../../../../utils/SchedularUtils';
 import './schedule-interval.less';
 import {
+  ScheduleIntervalHandle,
   ScheduleIntervalProps,
   StateValue,
   WorkflowExtraConfig,
 } from './ScheduleInterval.interface';
 
-const ScheduleInterval = <T,>({
-  disabled,
-  includePeriodOptions,
-  onBack,
-  onDeploy,
-  initialData,
-  status,
-  children,
-  debugLog = {
-    allow: false,
-    initialValue: false,
-  },
-  isEditMode = false,
-  buttonProps,
-  defaultSchedule,
-  topChildren,
-  showActionButtons = true,
-  schedularOptions,
-}: ScheduleIntervalProps<T>) => {
+function ScheduleIntervalInner<T>(
+  {
+    disabled,
+    includePeriodOptions,
+    onBack,
+    onDeploy,
+    initialData,
+    status,
+    children,
+    debugLog = {
+      allow: false,
+      initialValue: false,
+    },
+    isEditMode = false,
+    buttonProps,
+    defaultSchedule,
+    topChildren,
+    showActionButtons = true,
+    schedularOptions,
+  }: ScheduleIntervalProps<T>,
+  ref: ForwardedRef<ScheduleIntervalHandle>
+) {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
   // we need to get the default schedule which is suitable for includePeriodOptions
@@ -102,6 +114,8 @@ const ScheduleInterval = <T,>({
       : SchedularOptions.SCHEDULE
   );
   const [form] = Form.useForm<StateValue>();
+  // Exposes submit to the parent card footer, which triggers the form when showActionButtons is false.
+  useImperativeHandle(ref, () => ({ submit: () => form.submit() }), [form]);
   const { cron: cronString, selectedPeriod, dow, dom } = state;
   const [cronHumanText, setCronHumanText] = useState<string>('');
 
@@ -445,6 +459,11 @@ const ScheduleInterval = <T,>({
       </Row>
     </Form>
   );
-};
+}
+
+// forwardRef cast preserves the generic type parameter <T> on the public API.
+const ScheduleInterval = forwardRef(ScheduleIntervalInner) as <T>(
+  props: ScheduleIntervalProps<T> & React.RefAttributes<ScheduleIntervalHandle>
+) => React.ReactElement | null;
 
 export default ScheduleInterval;

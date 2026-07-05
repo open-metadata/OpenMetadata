@@ -32,7 +32,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtils';
+} from '../../../../utils/EntityVersionUtilsPure';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../../utils/RouterUtils';
@@ -48,7 +48,6 @@ import EntityVersionTimeLine from '../../../Entity/EntityVersionTimeLine/EntityV
 import VersionTable from '../../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DataModelVersionProp } from './DataModelVersion.interface';
-
 const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
   currentVersionData,

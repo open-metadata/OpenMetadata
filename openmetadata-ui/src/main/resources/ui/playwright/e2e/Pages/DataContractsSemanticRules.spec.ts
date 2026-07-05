@@ -139,7 +139,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -243,7 +243,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -348,7 +348,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -451,7 +451,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -535,7 +535,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -617,7 +617,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -708,7 +708,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -797,7 +797,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -885,7 +885,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
       await waitForAllLoadersToDisappear(page);
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -971,7 +971,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1070,7 +1070,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1155,7 +1155,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1241,7 +1241,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1325,7 +1325,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1402,7 +1402,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1478,7 +1478,7 @@ test.describe('Data Contracts Semantics Rule Domain', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1599,7 +1599,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -1721,7 +1721,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2152,7 +2152,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2250,7 +2250,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2348,7 +2348,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2428,7 +2428,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
       ).not.toBeVisible();
     });
 
-    await test.step('DataProduct with Any In condition should passed', async () => {
+    await test.step('DataProduct with Not In condition should failed with excluded product', async () => {
       // Move to Schema Tab
       await page.getByTestId('schema').click();
 
@@ -2444,7 +2444,51 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
+        state: 'visible',
+      });
+
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
+
+      await page.reload();
+
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
+
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
+
+    await test.step('DataProduct with Not In condition should failed when table has multiple products one of which is excluded', async () => {
+      // Table currently has createdDataProducts[0] (the excluded one).
+      // Assign createdDataProducts[1] as well so the table has both products.
+      // The rule still excludes createdDataProducts[0], so validation must fail
+      // even though createdDataProducts[1] is not excluded.
+      await page.getByTestId('schema').click();
+
+      await waitForAllLoadersToDisappear(page);
+
+      await assignDataProduct(
+        page,
+        domain.responseData,
+        [createdDataProducts[1].responseData],
+        'Edit'
+      );
+
+      await page.click('[data-testid="contract"]');
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2532,7 +2576,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2622,7 +2666,7 @@ test.describe('Data Contracts Semantics Rule DataProduct', () => {
 
         await page.getByTestId('manage-contract-actions').click();
 
-        await page.locator('.contract-action-dropdown').waitFor({
+        await page.getByTestId('contract-action-dropdown').waitFor({
           state: 'visible',
         });
 
@@ -2715,7 +2759,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2806,7 +2850,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2894,7 +2938,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -2984,7 +3028,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3067,7 +3111,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3152,7 +3196,7 @@ test.describe('Data Contracts Semantics Rule DisplayName', () => {
 
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3235,7 +3279,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Between condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3323,7 +3367,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Between condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3423,7 +3467,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Less than condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3522,7 +3566,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Greater than condition should passed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3620,7 +3664,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with Less than condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
@@ -3722,7 +3766,7 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
     await test.step('UpdatedOn with GreaterThanEqual condition should failed', async () => {
       await page.getByTestId('manage-contract-actions').click();
 
-      await page.locator('.contract-action-dropdown').waitFor({
+      await page.getByTestId('contract-action-dropdown').waitFor({
         state: 'visible',
       });
 
