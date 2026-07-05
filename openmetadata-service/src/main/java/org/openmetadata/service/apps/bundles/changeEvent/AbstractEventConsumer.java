@@ -64,6 +64,9 @@ public abstract class AbstractEventConsumer
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
   protected final DIContainer dependencies;
   private long offset = -1;
+  // Highest change_event.offset actually read in the last poll. Used to advance the cursor by true
+  // offset instead of row count, since change_event.offset is a non-contiguous AUTO_INCREMENT.
+  private long lastReadOffset = -1;
   private long startingOffset = -1;
 
   private AlertMetrics alertMetrics;
@@ -379,19 +382,31 @@ public abstract class AbstractEventConsumer
 
   @Override
   public ResultList<ChangeEvent> pollEvents(long offset, long batchSize) {
-    List<String> eventJson = Entity.getCollectionDAO().changeEventDAO().list(batchSize, offset);
+    var records =
+        Entity.getCollectionDAO().changeEventDAO().listWithOffset((int) batchSize, offset);
     List<ChangeEvent> changeEvents = new ArrayList<>();
     List<EntityError> errorEvents = new ArrayList<>();
-    for (String json : eventJson) {
+    long maxOffset = offset;
+    for (var eventRecord : records) {
+      maxOffset = Math.max(maxOffset, eventRecord.offset());
       try {
-        ChangeEvent event = JsonUtils.readValue(json, ChangeEvent.class);
+        ChangeEvent event = JsonUtils.readValue(eventRecord.json(), ChangeEvent.class);
         changeEvents.add(event);
       } catch (Exception ex) {
-        errorEvents.add(new EntityError().withMessage(ex.getMessage()).withEntity(json));
-        LOG.error("Error in Parsing Change Event : {} , Message: {} ", json, ex.getMessage(), ex);
+        errorEvents.add(
+            new EntityError().withMessage(ex.getMessage()).withEntity(eventRecord.json()));
+        LOG.error(
+            "Error in Parsing Change Event : {} , Message: {} ",
+            eventRecord.json(),
+            ex.getMessage(),
+            ex);
       }
     }
-    return new ResultList<>(changeEvents, errorEvents, null, null, eventJson.size());
+    // Track the true maximum offset read so the cursor advances past exactly these rows. Advancing
+    // by row count re-read the tail whenever the AUTO_INCREMENT offset column had gaps (rolled-back
+    // txns / retention deletes), redelivering those change events.
+    this.lastReadOffset = maxOffset;
+    return new ResultList<>(changeEvents, errorEvents, null, null, records.size());
   }
 
   @Override
@@ -421,7 +436,8 @@ public abstract class AbstractEventConsumer
 
     } finally {
       if (!eventsWithReceivers.isEmpty()) {
-        offset += batchSize;
+        // Advance to the true max offset read (set by pollEvents), not by row count.
+        offset = lastReadOffset;
         commit(jobExecutionContext);
       }
     }

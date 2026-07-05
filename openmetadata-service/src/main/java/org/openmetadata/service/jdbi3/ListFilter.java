@@ -729,10 +729,9 @@ public class ListFilter extends Filter<ListFilter> {
       }
     } else {
       if (disabled) {
-        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+        disabledCondition = "(json->>'disabled')::boolean = TRUE";
       } else {
-        disabledCondition =
-            "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+        disabledCondition = "(json->>'disabled' IS NULL OR (json->>'disabled')::boolean = FALSE)";
       }
     }
     return disabledCondition;
