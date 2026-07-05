@@ -106,9 +106,12 @@ public class ColumnMetadataGrouper {
     // guaranteed (current callers build it as a HashMap), so sort here for a stable alphabetical
     // order. Case-insensitive for natural listing, with a case-sensitive tie-breaker so names that
     // differ only in case (e.g. "Name"/"name") stay stable instead of relying on map order.
+    // nullsLast guards against a null column name (e.g. a null map key) rather than throwing.
     gridItems.sort(
-        Comparator.comparing(ColumnGridItem::getColumnName, String.CASE_INSENSITIVE_ORDER)
-            .thenComparing(ColumnGridItem::getColumnName));
+        Comparator.comparing(
+                ColumnGridItem::getColumnName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+            .thenComparing(
+                ColumnGridItem::getColumnName, Comparator.nullsLast(Comparator.naturalOrder())));
 
     return gridItems;
   }
