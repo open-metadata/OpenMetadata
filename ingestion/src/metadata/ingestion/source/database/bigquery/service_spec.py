@@ -1,3 +1,4 @@
+from metadata.ingestion.source.database.bigquery.connection import BigQueryConnection
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 from metadata.ingestion.source.database.bigquery.usage import BigqueryUsageSource
@@ -13,4 +14,5 @@ ServiceSpec = DefaultDatabaseSpec(
     usage_source_class=BigqueryUsageSource,
     profiler_class=BigQueryProfilerInterface,
     sampler_class=BigQuerySampler,
+    connection_class=BigQueryConnection,  # pyright: ignore[reportArgumentType]
 )

@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
-import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
-import { ErrorTransformer } from '@rjsf/utils';
+import {
+  Input as UTInput,
+  Select as UTSelect,
+  SelectItemType,
+  Toggle,
+  ToggleProps,
+} from '@openmetadata/ui-core-components';
 import {
   Alert,
   Checkbox,
@@ -30,14 +35,13 @@ import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compact, isString, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { isString, startCase, toString } from 'lodash';
+import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { MUIColorPicker } from '../components/common/ColorPicker';
+import { ColorSwatchPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -49,7 +53,6 @@ import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelec
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
-import MUISelect from '../components/common/MUISelect/MUISelect';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
   MUIUserTeamSelectProps,
@@ -67,9 +70,6 @@ import { UserSelectableListProps } from '../components/common/UserSelectableList
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
-import MUIAutocomplete, {
-  MUIAutocompleteProps,
-} from '../components/form/MUIAutocomplete';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -81,7 +81,7 @@ import AntDTagSuggestion, {
   TagSuggestionProps as AntDTagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getField = (field: FieldProp) => {
   const {
@@ -173,6 +173,56 @@ export const getField = (field: FieldProp) => {
       );
     }
 
+    case FieldTypes.UT_TEXT: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+      const { 'data-testid': dataTestId, ...inputRest } = props;
+
+      return (
+        <Form.Item
+          {...formProps}
+          getValueProps={(value) => ({ value: (value as string) ?? '' })}>
+          <UTInput
+            {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
+            id={id}
+            inputDataTestId={dataTestId as string}
+            isRequired={isRequired}
+            label={isString(label) ? label : undefined}
+            placeholder={placeholder}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.UT_SELECT: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+      const { items = [], ...selectRest } = props as {
+        items?: SelectItemType[];
+      } & Record<string, unknown>;
+
+      return (
+        <Form.Item
+          {...formProps}
+          getValueProps={(value) => ({ selectedKey: value ?? null })}
+          trigger="onSelectionChange"
+          validateTrigger="onSelectionChange"
+          valuePropName="selectedKey">
+          <UTSelect
+            {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
+            id={id}
+            isRequired={isRequired}
+            items={items}
+            label={isString(label) ? label : undefined}
+            placeholder={placeholder}>
+            {(item: SelectItemType) => <UTSelect.Item {...item} />}
+          </UTSelect>
+        </Form.Item>
+      );
+    }
+
     case FieldTypes.PASSWORD_MUI: {
       const { error, ...muiProps } = props;
       const isRequired = fieldRules.some(
@@ -242,26 +292,6 @@ export const getField = (field: FieldProp) => {
 
       break;
 
-    case FieldTypes.SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUISelect
-            {...props}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
     case FieldTypes.SLIDER_INPUT:
       fieldElement = (
         <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
@@ -407,7 +437,7 @@ export const getField = (field: FieldProp) => {
     case FieldTypes.COLOR_PICKER_MUI: {
       return (
         <Form.Item {...formProps}>
-          <MUIColorPicker
+          <ColorSwatchPicker
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
           />
@@ -439,29 +469,6 @@ export const getField = (field: FieldProp) => {
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
             toolTip={helperText}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.COVER_IMAGE_UPLOAD_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUICoverImageUpload
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.AUTOCOMPLETE_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIAutocomplete
-            label={muiLabel as string}
-            placeholder={placeholder}
-            {...(props as MUIAutocompleteProps)}
           />
         </Form.Item>
       );
@@ -559,50 +566,6 @@ export const generateFormFields = (fields: FieldProp[]) => {
   );
 };
 
-export const transformErrors: ErrorTransformer = (errors) => {
-  const errorRet = errors.map((error) => {
-    const { property, params, name } = error;
-
-    /**
-     * For nested fields we have to check if it's property start with "."
-     * else we will just prepend the root to property
-     */
-    const id = property?.startsWith('.')
-      ? 'root' + property?.replaceAll('.', '/')
-      : `root/${property}`;
-
-    // If element is not present in DOM, ignore error
-    if (document.getElementById(id)) {
-      const fieldName = startCase(property?.split('/').pop() ?? '');
-
-      const errorMessages = {
-        required: () => ({
-          message: t('message.field-text-is-required', {
-            fieldText: startCase(params?.missingProperty),
-          }),
-        }),
-        minimum: () => ({
-          message: t('message.value-must-be-greater-than', {
-            field: fieldName,
-            minimum: params?.limit,
-          }),
-        }),
-      };
-
-      const errorHandler = errorMessages[name as keyof typeof errorMessages];
-      if (errorHandler && params) {
-        error.message = errorHandler().message;
-
-        return error;
-      }
-    }
-
-    return null;
-  });
-
-  return compact(errorRet);
-};
-
 export const setInlineErrorValue = (
   description: string,
   serverAPIError: string,
@@ -669,93 +632,4 @@ export const handleEntityCreationError = ({
     getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
-};
-
-export const getPopupContainer = (triggerNode: HTMLElement) =>
-  triggerNode.parentElement || document.body;
-
-/**
- * Configuration options for custom scroll-to-error behavior
- */
-export interface ScrollToErrorOptions {
-  /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
-  scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
-  errorSelector?: string;
-  /** Offset from top in pixels for better visibility. Defaults to 100 */
-  offsetTop?: number;
-  /** Delay in milliseconds before scrolling. Defaults to 100 */
-  delay?: number;
-  /** Scroll behavior. Defaults to 'smooth' */
-  behavior?: ScrollBehavior;
-}
-
-/**
- * Creates a reusable scroll-to-error handler for forms in complex layouts
- *
- * This utility is particularly useful when:
- * - Form is inside a drawer or modal with custom scroll containers
- * - Ant Design's built-in scrollToFirstError doesn't work due to layout complexity
- * - Form is nested within grid layouts or other complex structures
- *
- * @param options - Configuration options for scroll behavior
- * @returns Function to be used as onFinishFailed handler for Ant Design forms
- *
- * @example
- * ```tsx
- * // Basic usage for drawer forms
- * const scrollToError = createScrollToErrorHandler();
- *
- * <Form onFinishFailed={scrollToError}>
- *   // form content
- * </Form>
- *
- * // Custom configuration
- * const scrollToError = createScrollToErrorHandler({
- *   scrollContainer: '.my-custom-scroll-container',
- *   offsetTop: 150,
- *   delay: 50
- * });
- * ```
- */
-export const createScrollToErrorHandler = (
-  options: ScrollToErrorOptions = {}
-) => {
-  const {
-    scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
-    offsetTop = 100,
-    delay = 100,
-    behavior = 'smooth',
-  } = options;
-
-  return () => {
-    setTimeout(() => {
-      const firstError = document.querySelector(errorSelector);
-      if (firstError) {
-        const scrollableContainer = document.querySelector(scrollContainer);
-        if (scrollableContainer) {
-          const errorRect = firstError.getBoundingClientRect();
-          const containerRect = scrollableContainer.getBoundingClientRect();
-          const scrollTop =
-            scrollableContainer.scrollTop +
-            errorRect.top -
-            containerRect.top -
-            offsetTop;
-
-          scrollableContainer.scrollTo({
-            top: Math.max(0, scrollTop), // Ensure we don't scroll to negative values
-            behavior,
-          });
-        } else {
-          // Fallback to standard scrollIntoView if container not found
-          firstError.scrollIntoView({
-            behavior,
-            block: 'center',
-            inline: 'nearest',
-          });
-        }
-      }
-    }, delay);
-  };
 };

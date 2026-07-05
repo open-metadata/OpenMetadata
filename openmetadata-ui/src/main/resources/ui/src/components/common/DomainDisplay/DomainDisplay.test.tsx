@@ -16,7 +16,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import { DomainDisplay } from './DomainDisplay.component';
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name || 'Unknown'),

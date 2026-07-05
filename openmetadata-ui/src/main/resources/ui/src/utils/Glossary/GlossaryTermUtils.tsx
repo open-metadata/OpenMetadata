@@ -10,22 +10,84 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
-import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
-import AssetsTabs from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import GlossaryTermTab from '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
-import OntologyExplorer from '../../components/OntologyExplorer/OntologyExplorer';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
-import { getCountBadge } from '../../utils/CommonUtils';
+import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
-import { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
+import type { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../components/common/TabsLabel/TabsLabel.component'))
+);
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../components/Customization/GenericTab/GenericTab').then(
+      (module) => ({ default: module.GenericTab })
+    )
+  )
+);
+
+const AssetsTabs = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component'
+      )
+  )
+);
+
+const GlossaryTermTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Glossary/GlossaryTermTab/GlossaryTermTab.component'
+      )
+  )
+);
+
+const OntologyExplorer = withSuspenseFallback(
+  lazy(() => import('../../components/OntologyExplorer/OntologyExplorer'))
+);
+
+const ResizablePanels = withSuspenseFallback(
+  lazy(() => import('../../components/common/ResizablePanels/ResizablePanels'))
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../components/common/CustomPropertyTable/CustomPropertyTable'
+    ).then((module) => ({ default: module.CustomPropertyTable }))
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component'
+      )
+  )
+);
 
 export const getGlossaryTermDetailPageTabs = (
   props: GlossaryTermDetailPageTabProps

@@ -28,6 +28,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   GridComponent.Item = GridItem;
 
   return {
+    Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Label: ({ children }: { children: React.ReactNode }) => (
+      <label>{children}</label>
+    ),
     Tooltip: ({
       children,
       title,
@@ -78,9 +82,12 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   });
 });
 
-jest.mock('../../utils/CommonUtils', () => ({
-  isUrlFriendlyName: jest.fn().mockReturnValue(true),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
   getCountBadge: jest.fn().mockReturnValue(''),
+}));
+jest.mock('../../utils/StringUtils', () => ({
+  isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../hooks/useEntityRules', () => ({

@@ -1,6 +1,12 @@
+import json
 import uuid
 from typing import List, Optional  # noqa: UP035
 from unittest import TestCase
+from urllib.parse import quote_plus
+
+import pytest
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import SecretStr
 
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -21,6 +27,18 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
     TableType,
 )
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 from metadata.generated.schema.type.basic import (
     EntityExtension,
     EntityName,
@@ -28,7 +46,11 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.connections.builders import get_password_secret
 from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
+from metadata.utils.secrets.secrets_manager import SecretsManager
+from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
+from metadata.utils.singleton import Singleton
 
 
 class CustomPydanticValidationTest(TestCase):
@@ -199,6 +221,45 @@ def test_model_dump_json_secrets():
         model.model_validate_json(model.model_dump_json(mask_secrets=False)).root_secret.get_secret_value()
         == "root_password"
     )
+
+
+class _LeakedSecretConnection(BaseModel):
+    password: CustomSecretStr
+
+
+class _LeakedSecretParams(PydanticBaseModel):
+    """Mirrors data-quality runtime-param models: a vanilla pydantic model
+    (no mask-by-default ``model_dump_json``) wrapping a generated connection."""
+
+    conn_config: _LeakedSecretConnection
+
+
+class TestPlainSecretStrInCustomSecretStrField:
+    """Regression test for the data-quality serialization crash.
+
+    Connection builders (snowflake/oracle/impala/hive) assign a plain pydantic
+    ``SecretStr`` to a ``CustomSecretStr``-typed field when auth has no password.
+    Data-quality runtime-param setters then serialize that config through a
+    vanilla ``model_dump_json()``. ``handle_secret`` must not pass
+    ``skip_secret_manager`` to a plain ``SecretStr`` whose base
+    ``get_secret_value`` rejects the kwarg.
+    """
+
+    def test_model_dump_json_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("")
+
+        serialized = json.loads(_LeakedSecretParams(conn_config=connection).model_dump_json())
+
+        assert serialized["conn_config"]["password"] == ""
+
+    def test_python_dump_does_not_crash_on_plain_secret(self):
+        connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
+        connection.password = SecretStr("plain_value")
+
+        dumped = _LeakedSecretParams(conn_config=connection).model_dump()
+
+        assert dumped["conn_config"]["password"] == "plain_value"
 
 
 # Additional comprehensive tests for enhanced functionality
@@ -640,10 +701,11 @@ class CustomSecretStrExtendedTest(TestCase):
         assert empty_secret.get_secret_value() == ""
         assert str(empty_secret) == ""
 
-        # Test None secret handling
+        # Test None secret handling: a null secret resolves to an empty string
+        # instead of propagating None (see the get_secret_value null guard).
         try:
             none_secret = CustomSecretStr(None)
-            assert none_secret.get_secret_value() is None
+            assert none_secret.get_secret_value() == ""
         except (TypeError, ValueError, AttributeError):
             # This is acceptable behavior for None values
             pass
@@ -770,6 +832,149 @@ class CustomSecretStrExtendedTest(TestCase):
         assert all(
             secret.get_secret_value() in ["password1", "password2", "password3"] for secret in complex_model.secret_list
         )
+
+
+class TestExternalSecretReferenceSerialization:
+    """Regression tests for https://github.com/open-metadata/openmetadata-collate/issues/4362.
+
+    Values prefixed with ``secret:`` are external secret references: the server
+    resolves them against an external secret manager instead of persisting the
+    raw value. The prefix MUST survive SDK serialization. If it is stripped, the
+    reference is sent as a plain secret and ends up stored in Collate's internal
+    secret manager rather than being resolved externally.
+
+    The SDK serializes create/update payloads with
+    ``model_dump_json(context={"mask_secrets": False})`` (see the PUT path in
+    ``metadata.ingestion.ometa.ometa_api``), so these tests exercise that exact
+    serialization with the default ``DBSecretsManager`` active, as it is once an
+    ometa client has been instantiated.
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def db_secrets_manager(self):
+        Singleton.clear_all()
+        SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        yield
+        Singleton.clear_all()
+
+    def test_prefix_preserved_for_custom_secret_str(self):
+        class Connection(BaseModel):
+            password: CustomSecretStr
+
+        connection = Connection(password=self.EXTERNAL_SECRET_REFERENCE)
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}))
+
+        assert serialized["password"] == self.EXTERNAL_SECRET_REFERENCE
+
+    def test_prefix_preserved_for_typed_service_connection(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+
+        assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
+
+
+RESOLVED_EXTERNAL_SECRET = "resolved-external-password"
+
+
+class _FakeExternalSecretsManager(SecretsManager):
+    """Test double for an external secrets manager (e.g. AWS, Azure).
+
+    Resolves any reference id to a fixed value, so a test can tell real
+    resolution apart from mere ``secret:`` prefix stripping.
+    """
+
+    def get_string_value(self, secret_id: str) -> str:
+        return RESOLVED_EXTERNAL_SECRET
+
+
+class TestExternalSecretReferenceResolution:
+    """Guards the connect-time resolution path against the #4362 fix.
+
+    Preserving the ``secret:`` reference during serialization must NOT change how
+    ingestion resolves that reference when building a connection. Resolution runs
+    through a direct ``get_secret_value()`` call (see
+    ``metadata.ingestion.connections.builders.get_password_secret``), not through
+    serialization, so it stays intact. An external secrets manager is active
+    here, as it would be on a hybrid ingestion runner.
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def external_secrets_manager(self):
+        Singleton.clear_all()
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _FakeExternalSecretsManager()
+        yield
+        Singleton.clear_all()
+
+    def test_reference_resolves_for_connection_use(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        password = get_password_secret(connection)
+
+        assert password.get_secret_value() == RESOLVED_EXTERNAL_SECRET
+
+    def test_reference_is_not_resolved_into_serialized_payload(self):
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+
+        assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
+        assert serialized["authType"]["password"] != RESOLVED_EXTERNAL_SECRET
+
+
+class _NullExternalSecretsManager(SecretsManager):
+    """Test double for a secrets manager holding a secret stored as ``null``."""
+
+    def get_string_value(self, secret_id: str) -> str:
+        return None
+
+
+class TestNullSecretResolution:
+    """Regression test for a secret stored as ``null`` in the secrets manager.
+
+    Resolving it must yield an empty string (with a warning), not ``None``.
+    A ``None`` value crashes downstream string callers such as URL building
+    with ``quote_plus`` (``TypeError: quote_from_bytes() expected bytes``).
+    """
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def null_secrets_manager(self):
+        Singleton.clear_all()
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _NullExternalSecretsManager()
+        yield
+        Singleton.clear_all()
+
+    def test_null_secret_resolves_to_empty_string(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == ""
+        assert isinstance(resolved, str)
+
+    def test_null_secret_is_quote_plus_safe(self):
+        resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert quote_plus(resolved) == ""
 
 
 class DashboardDataModelTransformationTest(TestCase):

@@ -212,6 +212,23 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
+  public void testQuerySyntaxDetectionHandlesLongMalformedQueries() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+
+    List.of(
+            "owner:john",
+            "name : test",
+            "name:test AND type:table",
+            "description:\"exact phrase\"",
+            "[a TO z]",
+            "*PII*")
+        .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
+
+    List.of("customer order", "[".repeat(5000), "[a TO " + " ".repeat(5000), "a".repeat(5000))
+        .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+  }
+
+  @Test
   public void testEmptyAndWildcardQueries() {
     OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
 
@@ -324,6 +341,20 @@ public class SearchSourceBuilderFactoryTest {
     assertEquals(Boolean.FALSE, esWithoutAggregations.explain());
     assertHighlightFields(osWithoutAggregations, "displayName");
     assertHighlightFields(esWithoutAggregations, "displayName");
+  }
+
+  @Test
+  public void testOpenSearchHighlightDropsFlattenedExtensionField() {
+    // `extension` is flat_object on OpenSearch (no analyzer); highlighting it (or any extension.*
+    // subfield) fails the whole shard with a 500. buildHighlightsV2 must drop those while keeping
+    // the real analyzable fields. Regression guard for ExtensionHighlightSearchIT.
+    tableConfig.setHighlightFields(List.of("name", "extension", "extension.foundry_rid"));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.buildDataAssetSearchBuilderV2("table", "customer", 0, 10, false, false);
+
+    assertHighlightFields(osBuilder, "name");
   }
 
   @Test

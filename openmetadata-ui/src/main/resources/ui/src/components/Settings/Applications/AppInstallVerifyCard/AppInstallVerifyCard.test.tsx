@@ -19,7 +19,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -48,7 +48,7 @@ jest.mock('../../../../constants/constants', () => ({
   LIGHT_GREEN_COLOR: '#00ff00',
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   Transi18next: jest.fn().mockReturnValue('Transi18next'),
 }));
 

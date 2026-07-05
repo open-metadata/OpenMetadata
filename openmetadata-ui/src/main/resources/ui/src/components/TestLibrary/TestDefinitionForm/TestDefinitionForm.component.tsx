@@ -12,44 +12,55 @@
  */
 
 import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Card,
-  Drawer,
-  Form,
-  FormInstance,
-  Input,
-  Select,
-  Space,
-  Switch,
-} from 'antd';
-import { AxiosError } from 'axios';
+import type { FormInstance } from 'antd';
+import { Button, Card, Drawer, Form, Input, Select, Space, Switch } from 'antd';
+import type { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import React, { useMemo, useState } from 'react';
+import {
+  lazy,
+  useCallback,
+  useMemo,
+  useState,
+  type FC,
+  type FocusEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
+import {
+  OPEN_METADATA,
+  TEST_DEFINITION_FORM,
+} from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
+import type { CreateTestDefinition } from '../../../generated/api/tests/createTestDefinition';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
+import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
   EntityType,
   TestDataType,
-  TestDefinition,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import { handleSearchFilterOption } from '../../../utils/CommonUtils';
-import { createScrollToErrorHandler } from '../../../utils/formUtils';
+import { handleSearchFilterOption } from '../../../utils/FilterQueryUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import FormItemLabel from '../../common/Form/FormItemLabel';
-import CodeEditor from '../../Database/SchemaEditor/CodeEditor';
+
+const CodeEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
+);
+
+const ServiceDocPanel = withSuspenseFallback(
+  lazy(() => import('../../common/ServiceDocPanel/ServiceDocPanel'))
+);
 
 interface TestDefinitionFormProps {
   initialValues?: TestDefinition;
@@ -57,7 +68,7 @@ interface TestDefinitionFormProps {
   onCancel: () => void;
 }
 
-const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
+const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   initialValues,
   onSuccess,
   onCancel,
@@ -66,6 +77,7 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
   const [form] = Form.useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [activeField, setActiveField] = useState('');
   const isEditMode = Boolean(initialValues);
   const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
@@ -154,11 +166,30 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
     }
   };
 
+  const handleActiveField = useCallback((id?: string) => {
+    if (!id) {
+      return;
+    }
+
+    const fieldId = id.startsWith('root/') ? id : `root/${id}`;
+    setActiveField((previousField) =>
+      previousField === fieldId ? previousField : fieldId
+    );
+  }, []);
+
+  const handleFieldFocus = useCallback(
+    (event: FocusEvent<HTMLFormElement>) => {
+      handleActiveField(event.target.id);
+    },
+    [handleActiveField]
+  );
+
   return (
     <Drawer
       destroyOnClose
       open
-      className="custom-drawer-style"
+      bodyStyle={{ paddingBottom: 0, paddingTop: 0 }}
+      className="custom-drawer-style test-case-form-drawer"
       closable={false}
       extra={
         <Button
@@ -187,313 +218,343 @@ const TestDefinitionForm: React.FC<TestDefinitionFormProps> = ({
           ? t('label.edit-entity', { entity: t('label.test-definition') })
           : t('label.add-entity', { entity: t('label.test-definition') })
       }
-      width={720}
+      width="80%"
       onClose={onCancel}>
-      {errorMessage && (
-        <div className="m-b-md">
-          <AlertBar
-            defaultExpand
-            className="test-definition-form-alert"
-            message={errorMessage}
-            type="error"
+      <div className="tw:flex tw:h-full tw:gap-6">
+        <div className="drawer-form-content tw:h-full tw:min-w-0 tw:basis-[60%] tw:overflow-y-auto tw:py-6 tw:pr-2">
+          {errorMessage && (
+            <div className="m-b-md">
+              <AlertBar
+                defaultExpand
+                className="test-definition-form-alert"
+                message={errorMessage}
+                type="error"
+              />
+            </div>
+          )}
+          <Form
+            className="new-form-style"
+            form={form}
+            initialValues={{
+              ...initialValues,
+              testPlatforms: initialValues?.testPlatforms || [
+                TestPlatform.OpenMetadata,
+              ],
+              supportedServices: initialValues?.supportedServices || [],
+            }}
+            layout="vertical"
+            onFinish={handleSubmit}
+            onFinishFailed={scrollToError}
+            onFocus={handleFieldFocus}>
+            <Form.Item
+              label={t('label.name')}
+              name="name"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.name'),
+                  }),
+                },
+              ]}>
+              <Input
+                disabled={isEditMode}
+                placeholder={t('label.enter-entity-name', {
+                  entity: t('label.test-definition'),
+                })}
+              />
+            </Form.Item>
+
+            <Form.Item label={t('label.display-name')} name="displayName">
+              <Input
+                placeholder={t('label.enter-entity-name', {
+                  entity: t('label.display-name'),
+                })}
+              />
+            </Form.Item>
+
+            <Form.Item label={t('label.description')} name="description">
+              <Input.TextArea
+                placeholder={t('label.enter-entity-description', {
+                  entity: t('label.test-definition'),
+                })}
+                rows={4}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={
+                <FormItemLabel
+                  helperText={t('message.test-definition-sql-query-help')}
+                  label={t('label.sql-query')}
+                />
+              }
+              name="sqlExpression">
+              {isReadOnlyField ? (
+                <Input.TextArea
+                  disabled
+                  className="tw:font-mono tw:text-xs"
+                  rows={8}
+                  value={initialValues?.sqlExpression}
+                />
+              ) : (
+                <CodeEditor
+                  refreshEditor
+                  showCopyButton
+                  className="custom-query-editor query-editor-h-200"
+                  mode={{ name: CSMode.SQL }}
+                />
+              )}
+            </Form.Item>
+
+            <Form.Item
+              label={t('label.entity-type')}
+              name="entityType"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.entity-type'),
+                  }),
+                },
+              ]}>
+              <Select
+                disabled={isReadOnlyField}
+                id="entityType"
+                options={Object.values(EntityType).map((type) => ({
+                  label: type,
+                  value: type,
+                }))}
+                placeholder={t('label.select-field', {
+                  field: t('label.entity-type'),
+                })}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={t('label.test-platform-plural')}
+              name="testPlatforms"
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.test-platform-plural'),
+                  }),
+                },
+              ]}>
+              <Select
+                disabled={isReadOnlyField}
+                id="testPlatforms"
+                mode="multiple"
+                options={Object.values(TestPlatform).map((platform) => ({
+                  label: platform,
+                  value: platform,
+                }))}
+                placeholder={t('label.select-field', {
+                  field: t('label.test-platform-plural'),
+                })}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={t('label.data-quality-dimension')}
+              name="dataQualityDimension">
+              <Select
+                options={Object.values(DataQualityDimensions).map(
+                  (dimension) => ({
+                    label: dimension,
+                    value: dimension,
+                  })
+                )}
+                placeholder={t('label.select-field', {
+                  field: t('label.data-quality-dimension'),
+                })}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label={
+                <FormItemLabel
+                  helperText={t('message.supported-services-help')}
+                  label={t('label.supported-service-plural')}
+                />
+              }
+              name="supportedServices">
+              <Select
+                showSearch
+                disabled={isReadOnlyField}
+                filterOption={handleSearchFilterOption}
+                mode="multiple"
+                options={databaseServiceTypes}
+                placeholder={t('message.empty-means-all-services')}
+              />
+            </Form.Item>
+
+            <Form.Item
+              dependencies={['testPlatforms']}
+              label={t('label.supported-data-type-plural')}
+              name="supportedDataTypes"
+              rules={[
+                ({ getFieldValue }: Pick<FormInstance, 'getFieldValue'>) => ({
+                  required: (getFieldValue('testPlatforms') ?? []).includes(
+                    TestPlatform.OpenMetadata
+                  ),
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.supported-data-type-plural'),
+                  }),
+                }),
+              ]}>
+              <Select
+                disabled={isReadOnlyField}
+                mode="multiple"
+                options={Object.values(DataType).map((dataType) => ({
+                  label: dataType,
+                  value: dataType,
+                }))}
+                placeholder={t('label.select-field', {
+                  field: t('label.supported-data-type-plural'),
+                })}
+              />
+            </Form.Item>
+
+            <div onClick={() => handleActiveField('root/parameterDefinition')}>
+              <Form.Item
+                label={
+                  <FormItemLabel
+                    helperText={t(
+                      'message.test-definition-parameters-description'
+                    )}
+                    label={t('label.parameter-plural')}
+                  />
+                }>
+                <Form.List name="parameterDefinition">
+                  {(fields, { add, remove }) => (
+                    <>
+                      {fields.map(({ key, name, ...restField }) => (
+                        <Card
+                          className="m-t-md"
+                          extra={
+                            !isReadOnlyField && (
+                              <MinusCircleOutlined
+                                onClick={() => remove(name)}
+                              />
+                            )
+                          }
+                          key={key}
+                          size="small"
+                          title={`${t('label.parameter')} ${name + 1}`}>
+                          <Form.Item
+                            {...restField}
+                            label={t('label.name')}
+                            name={[name, 'name']}
+                            rules={[
+                              {
+                                required: true,
+                                message: t('message.field-text-is-required', {
+                                  fieldText: t('label.name'),
+                                }),
+                              },
+                            ]}>
+                            <Input
+                              disabled={isReadOnlyField}
+                              placeholder={t('label.parameter-name')}
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            {...restField}
+                            label={t('label.display-name')}
+                            name={[name, 'displayName']}>
+                            <Input
+                              disabled={isReadOnlyField}
+                              placeholder={t('label.parameter-display-name')}
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            {...restField}
+                            label={t('label.description')}
+                            name={[name, 'description']}>
+                            <Input.TextArea
+                              disabled={isReadOnlyField}
+                              placeholder={t('label.parameter-description')}
+                              rows={2}
+                            />
+                          </Form.Item>
+
+                          <Form.Item
+                            {...restField}
+                            label={t('label.data-type')}
+                            name={[name, 'dataType']}>
+                            <Select
+                              showSearch
+                              disabled={isReadOnlyField}
+                              filterOption={handleSearchFilterOption}
+                              options={Object.values(TestDataType).map(
+                                (type) => ({
+                                  label: type,
+                                  value: type,
+                                })
+                              )}
+                              placeholder={t('label.select-field', {
+                                field: t('label.data-type'),
+                              })}
+                            />
+                          </Form.Item>
+
+                          <div className="d-flex items-center gap-2">
+                            <label>{t('label.required')}</label>
+                            <Form.Item
+                              noStyle
+                              {...restField}
+                              name={[name, 'required']}
+                              valuePropName="checked">
+                              <Switch disabled={isReadOnlyField} />
+                            </Form.Item>
+                          </div>
+                        </Card>
+                      ))}
+                      {!isReadOnlyField && (
+                        <Button
+                          block
+                          className="m-t-md"
+                          icon={<PlusOutlined />}
+                          type="dashed"
+                          onClick={() => add()}>
+                          {t('label.add-entity', {
+                            entity: t('label.parameter'),
+                          })}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </Form.List>
+              </Form.Item>
+            </div>
+            {isEditMode && (
+              <div className="d-flex items-center gap-2 m-t-md">
+                <label>{t('label.enabled')}</label>
+                <Form.Item noStyle name="enabled" valuePropName="checked">
+                  <Switch />
+                </Form.Item>
+              </div>
+            )}
+          </Form>
+        </div>
+        <div
+          className={classNames(
+            'drawer-doc-panel service-doc-panel markdown-parser',
+            'tw:my-6 tw:mr-6 tw:min-w-0 tw:basis-[40%]',
+            'tw:overflow-y-auto tw:rounded-xl tw:border',
+            'tw:border-solid tw:border-gray-200 tw:px-5'
+          )}>
+          <ServiceDocPanel
+            activeField={activeField}
+            serviceName={TEST_DEFINITION_FORM}
+            serviceType={OPEN_METADATA}
           />
         </div>
-      )}
-      <Form
-        className="new-form-style"
-        form={form}
-        initialValues={{
-          ...initialValues,
-          testPlatforms: initialValues?.testPlatforms || [
-            TestPlatform.OpenMetadata,
-          ],
-          supportedServices: initialValues?.supportedServices || [],
-        }}
-        layout="vertical"
-        onFinish={handleSubmit}
-        onFinishFailed={scrollToError}>
-        <Form.Item
-          label={t('label.name')}
-          name="name"
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.name'),
-              }),
-            },
-          ]}>
-          <Input
-            disabled={isEditMode}
-            placeholder={t('label.enter-entity-name', {
-              entity: t('label.test-definition'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item label={t('label.display-name')} name="displayName">
-          <Input
-            placeholder={t('label.enter-entity-name', {
-              entity: t('label.display-name'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item label={t('label.description')} name="description">
-          <Input.TextArea
-            placeholder={t('label.enter-entity-description', {
-              entity: t('label.test-definition'),
-            })}
-            rows={4}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={
-            <FormItemLabel
-              helperText={t('message.test-definition-sql-query-help')}
-              label={t('label.sql-query')}
-            />
-          }
-          name="sqlExpression">
-          {isReadOnlyField ? (
-            <Input.TextArea
-              disabled
-              rows={8}
-              style={{ fontFamily: 'monospace', fontSize: '12px' }}
-              value={initialValues?.sqlExpression}
-            />
-          ) : (
-            <CodeEditor
-              refreshEditor
-              showCopyButton
-              className="custom-query-editor query-editor-h-200"
-              mode={{ name: CSMode.SQL }}
-            />
-          )}
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.entity-type')}
-          name="entityType"
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.entity-type'),
-              }),
-            },
-          ]}>
-          <Select
-            disabled={isReadOnlyField}
-            id="entityType"
-            options={Object.values(EntityType).map((type) => ({
-              label: type,
-              value: type,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.entity-type'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.test-platform-plural')}
-          name="testPlatforms"
-          rules={[
-            {
-              required: true,
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.test-platform-plural'),
-              }),
-            },
-          ]}>
-          <Select
-            disabled={isReadOnlyField}
-            id="testPlatforms"
-            mode="multiple"
-            options={Object.values(TestPlatform).map((platform) => ({
-              label: platform,
-              value: platform,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.test-platform-plural'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={t('label.data-quality-dimension')}
-          name="dataQualityDimension">
-          <Select
-            options={Object.values(DataQualityDimensions).map((dimension) => ({
-              label: dimension,
-              value: dimension,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.data-quality-dimension'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={
-            <FormItemLabel
-              helperText={t('message.supported-services-help')}
-              label={t('label.supported-service-plural')}
-            />
-          }
-          name="supportedServices">
-          <Select
-            showSearch
-            disabled={isReadOnlyField}
-            filterOption={handleSearchFilterOption}
-            mode="multiple"
-            options={databaseServiceTypes}
-            placeholder={t('message.empty-means-all-services')}
-          />
-        </Form.Item>
-
-        <Form.Item
-          dependencies={['testPlatforms']}
-          label={t('label.supported-data-type-plural')}
-          name="supportedDataTypes"
-          rules={[
-            ({ getFieldValue }: Pick<FormInstance, 'getFieldValue'>) => ({
-              required: (getFieldValue('testPlatforms') ?? []).includes(
-                TestPlatform.OpenMetadata
-              ),
-              message: t('message.field-text-is-required', {
-                fieldText: t('label.supported-data-type-plural'),
-              }),
-            }),
-          ]}>
-          <Select
-            disabled={isReadOnlyField}
-            mode="multiple"
-            options={Object.values(DataType).map((dataType) => ({
-              label: dataType,
-              value: dataType,
-            }))}
-            placeholder={t('label.select-field', {
-              field: t('label.supported-data-type-plural'),
-            })}
-          />
-        </Form.Item>
-
-        <Form.Item
-          label={
-            <FormItemLabel
-              helperText={t('message.test-definition-parameters-description')}
-              label={t('label.parameter-plural')}
-            />
-          }>
-          <Form.List name="parameterDefinition">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Card
-                    extra={
-                      !isReadOnlyField && (
-                        <MinusCircleOutlined onClick={() => remove(name)} />
-                      )
-                    }
-                    key={key}
-                    size="small"
-                    style={{ marginTop: 16 }}
-                    title={`${t('label.parameter')} ${name + 1}`}>
-                    <Form.Item
-                      {...restField}
-                      label={t('label.name')}
-                      name={[name, 'name']}
-                      rules={[
-                        {
-                          required: true,
-                          message: t('message.field-text-is-required', {
-                            fieldText: t('label.name'),
-                          }),
-                        },
-                      ]}>
-                      <Input
-                        disabled={isReadOnlyField}
-                        placeholder={t('label.parameter-name')}
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      {...restField}
-                      label={t('label.display-name')}
-                      name={[name, 'displayName']}>
-                      <Input
-                        disabled={isReadOnlyField}
-                        placeholder={t('label.parameter-display-name')}
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      {...restField}
-                      label={t('label.description')}
-                      name={[name, 'description']}>
-                      <Input.TextArea
-                        disabled={isReadOnlyField}
-                        placeholder={t('label.parameter-description')}
-                        rows={2}
-                      />
-                    </Form.Item>
-
-                    <Form.Item
-                      {...restField}
-                      label={t('label.data-type')}
-                      name={[name, 'dataType']}>
-                      <Select
-                        showSearch
-                        disabled={isReadOnlyField}
-                        filterOption={handleSearchFilterOption}
-                        options={Object.values(TestDataType).map((type) => ({
-                          label: type,
-                          value: type,
-                        }))}
-                        placeholder={t('label.select-field', {
-                          field: t('label.data-type'),
-                        })}
-                      />
-                    </Form.Item>
-
-                    <div className="d-flex items-center gap-2">
-                      <label>{t('label.required')}</label>
-                      <Form.Item
-                        noStyle
-                        {...restField}
-                        name={[name, 'required']}
-                        valuePropName="checked">
-                        <Switch disabled={isReadOnlyField} />
-                      </Form.Item>
-                    </div>
-                  </Card>
-                ))}
-                {!isReadOnlyField && (
-                  <Button
-                    block
-                    icon={<PlusOutlined />}
-                    style={{ marginTop: 16 }}
-                    type="dashed"
-                    onClick={() => add()}>
-                    {t('label.add-entity', { entity: t('label.parameter') })}
-                  </Button>
-                )}
-              </>
-            )}
-          </Form.List>
-        </Form.Item>
-        {isEditMode && (
-          <div className="d-flex items-center gap-2" style={{ marginTop: 16 }}>
-            <label>{t('label.enabled')}</label>
-            <Form.Item noStyle name="enabled" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </div>
-        )}
-      </Form>
+      </div>
     </Drawer>
   );
 };
