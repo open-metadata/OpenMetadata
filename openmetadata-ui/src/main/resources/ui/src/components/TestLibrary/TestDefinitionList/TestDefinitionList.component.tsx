@@ -319,7 +319,7 @@ const TestDefinitionList = () => {
 
   useEffect(() => {
     handlePageChange(1);
-  }, [searchQuery, urlParams.entityType, urlParams.testPlatforms]);
+  }, [searchQuery, urlParams.entityType, urlParams.testPlatforms, handlePageChange]);
 
   const filteredTestDefinitions = useMemo(() => {
     if (!searchQuery) {
