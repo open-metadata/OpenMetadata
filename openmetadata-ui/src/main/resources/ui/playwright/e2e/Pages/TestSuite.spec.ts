@@ -133,7 +133,9 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
   await tableSuiteRequestReceived.promise;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
-  await expect(page.getByTestId('loader')).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
 
   const bundleSuiteListResponse = page.waitForResponse((response) => {
     const responseUrl = new URL(response.url());

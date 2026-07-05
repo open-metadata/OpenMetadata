@@ -20,6 +20,7 @@ from metadata.core.connections.test_connection.classifier import (
     Matchers,
     when,
 )
+from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     Category,
@@ -140,6 +141,21 @@ def test_all_steps_pass_is_successful():
 
     result, _ = _run(Provider(), _Step("CheckAccess", Category.ConnectionGate))
     assert result.steps[0].status.value == "Passed"
+    assert result.status.value == "Successful"
+
+
+def test_mandatory_caveat_is_a_warning_but_keeps_the_connection_successful():
+    class Provider:
+        errors = ErrorPack()
+
+        @check(DatabaseStep.GetTables)
+        def get_tables(self):
+            return Evidence(summary="0 tables", caveat=Diagnosis(title="No tables visible"))
+
+    result, _ = _run(Provider(), _Step("GetTables", Category.Capability, mandatory=True))
+    assert result.steps[0].status.value == "Warning"
+    assert result.steps[0].passed is True
+    assert result.steps[0].diagnosis.title == "No tables visible"
     assert result.status.value == "Successful"
 
 

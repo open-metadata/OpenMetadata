@@ -69,7 +69,7 @@ logger = ingestion_logger()
 # Type of service linked to the Ingestion Pipeline
 T = TypeVar("T")
 
-REPORTS_INTERVAL_SECONDS = 60
+REPORTS_INTERVAL_SECONDS = 30
 
 
 class InvalidWorkflowJSONException(Exception):  # noqa: N818
@@ -331,7 +331,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                 logger.debug("close_steps failed", exc_info=True)
             try:
                 ingestion_status = self.build_ingestion_status()
-                self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                try:
+                    self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+                finally:
+                    self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
                 try:
                     self.print_status()
                 finally:
@@ -447,6 +450,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f"({metrics.memory_usage_percent:.2f}%) | "
                     f"Processes: {metrics.active_processes}"
                 )
+
+            reporter = self._progress_reporter()
+            if reporter is not None:
+                text = reporter.cli()
+                if text:
+                    logger.info("Ingestion progress:\n%s", text)
 
             # Send progress update to the server for live tracking
             self.send_progress_update()
