@@ -12,11 +12,11 @@
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import {
-  Input as UTInput,
-  Select as UTSelect,
   SelectItemType,
   Toggle,
   ToggleProps,
+  Input as UTInput,
+  Select as UTSelect,
 } from '@openmetadata/ui-core-components';
 import {
   Alert,
@@ -54,9 +54,6 @@ import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDo
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
-import MUIUserTeamSelect, {
-  MUIUserTeamSelectProps,
-} from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -440,23 +437,6 @@ export const getField = (field: FieldProp) => {
           <ColorSwatchPicker
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.USER_TEAM_SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIUserTeamSelect
-            {...(props as unknown as MUIUserTeamSelectProps)}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
           />
         </Form.Item>
       );

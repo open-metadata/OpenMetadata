@@ -12,15 +12,14 @@
  */
 
 import {
-  Avatar,
-  Box,
-  FieldProp,
-  FormField,
-  FormItemLabel,
-  Grid,
-  HintText,
-  HookForm,
-  getField,
+    Avatar,
+    Box,
+    FieldProp,
+    FormField,
+    FormItemLabel, getField, Grid,
+    HintText,
+    HookForm,
+    Toggle
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -29,8 +28,8 @@ import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import {
-  AVAILABLE_ICONS,
-  DEFAULT_TAG_ICON,
+    AVAILABLE_ICONS,
+    DEFAULT_TAG_ICON
 } from '../../components/common/IconPicker';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
@@ -51,21 +50,18 @@ import { getEntityReferenceListFromEntities } from '../../utils/EntityReferenceU
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-  COLOR_FIELD,
-  getDisabledField,
-  getDisplayNameField,
-  getDomainField,
-  getIconField,
-  getMutuallyExclusiveField,
-  getNameField,
-  getOwnerField,
+    COLOR_FIELD,
+    getDisabledField,
+    getDisplayNameField,
+    getDomainField,
+    getIconField,
+    getNameField,
+    getOwnerField
 } from './tagFormFields';
 import './TagsForm.less';
 import {
-  RenameFormProps,
-  TAG_FORM_DEFAULTS,
-  TagFormSelectItem,
-  TagFormValues,
+    RenameFormProps, TagFormSelectItem,
+    TagFormValues, TAG_FORM_DEFAULTS
 } from './TagsPage.interface';
 
 const mapEntityReferenceToSelectItem = (
@@ -110,10 +106,6 @@ const TagsForm = ({
     name: 'style.color',
   });
 
-  const isMutuallyExclusive = useWatch({
-    control: form.control,
-    name: 'mutuallyExclusive',
-  });
 
   useEffect(() => {
     if (initialValues) {
@@ -302,10 +294,11 @@ const TagsForm = ({
 
   const handleSave = useCallback(
     async (formData: TagFormValues) => {
-      const owners = (formData.owners ?? []).map(
+      const { id: _id, ...rest } = formData;
+      const owners = (rest.owners ?? []).map(
         (item) => item.value as EntityReference
       );
-      const domainItems = formData.domains ?? [];
+      const domainItems = rest.domains ?? [];
 
       let domainsData;
       if (domainItems.length > 0) {
@@ -325,19 +318,18 @@ const TagsForm = ({
       }
 
       const submitData = {
-        ...formData,
+        ...rest,
         owners: owners.length ? owners : undefined,
         domains: domainsData,
       } as CreateClassification | CreateTag;
 
       try {
         await onSubmit(submitData);
-        form.reset(TAG_FORM_DEFAULTS);
       } catch {
         // Parent will handle the error
       }
     },
-    [onSubmit, isEditing, form]
+    [onSubmit, isEditing]
   );
 
   useEffect(() => {
@@ -386,7 +378,7 @@ const TagsForm = ({
     (): FieldProp => ({
       ...getOwnerField({
         multiple:
-          entityRules.canAddMultipleUserOwners ||
+          entityRules.canAddMultipleUserOwners &&
           entityRules.canAddMultipleTeamOwner,
         options: userTeamOptions,
         onFocus: handleUserTeamFocus,
@@ -437,19 +429,10 @@ const TagsForm = ({
     };
   }, [t, initialValues, disableDisabledField]);
 
-  const mutuallyExclusiveField = useMemo(() => {
-    const field = getMutuallyExclusiveField({
-      disabled: disableMutuallyExclusiveField,
-      helperText: isMutuallyExclusive
-        ? t('message.mutually-exclusive-alert-info')
-        : undefined,
-    });
-
-    return {
-      ...field,
-      label: t(field.label as string),
-    };
-  }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
+  const mutuallyExclusiveLabel = useMemo(
+    () => t('label.mutually-exclusive'),
+    [t]
+  );
 
   const autoClassificationComponent = useMemo(
     () =>
@@ -521,7 +504,21 @@ const TagsForm = ({
         )}
 
         {showMutuallyExclusive && (
-          getField(mutuallyExclusiveField)
+          <FormField control={form.control} name="mutuallyExclusive">
+            {({ field }) => (
+                <Box align="center" direction="row" gap={2}>
+                  <Toggle
+                    aria-label={mutuallyExclusiveLabel}
+                    data-testid="mutually-exclusive-button"
+                    isDisabled={disableMutuallyExclusiveField}
+                    isSelected={field.value ?? false}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                  />
+                  <FormItemLabel label={mutuallyExclusiveLabel} />
+                </Box>
+            )}
+          </FormField>
         )}
         {getField(ownerField)}
         {getField(domainField)}
