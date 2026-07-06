@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Tag } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
