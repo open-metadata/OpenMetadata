@@ -411,7 +411,9 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row className="m-l-0 m-r-0 m-t-md m-b-md" gutter={[16, 16]}>
+    <Row
+      className="test-suite-pipeline-tab m-l-0 m-r-0 m-t-md m-b-md"
+      gutter={[16, 16]}>
       {dataSource.length > 0 && (
         <Col className="d-flex justify-end" span={24}>
           <Button
@@ -477,7 +479,7 @@ const TestSuitePipelineTab = ({
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72">
+                    <Table.Cell className="tw:align-middle tw:w-72 tw:min-w-56">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 
