@@ -637,13 +637,11 @@ class TestMssqlPerDatabaseQueryStore:
         source._databases_to_scan = lambda: iter(["QsDb", "DmvDb"])
         source._engine_for_database = lambda database: engines[database]
 
-        routed = []
         with patch(
             "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
             side_effect=lambda engine: engine is engines["QsDb"],
         ):
-            for engine in source.get_engine():
-                routed.append((engine, source.resolve_query_log_statement()))
+            routed = [(engine, source.resolve_query_log_statement()) for engine in source.get_engine()]
 
         assert routed == [
             (engines["QsDb"], MSSQL_SQL_STATEMENT_FROM_QUERY_STORE),
