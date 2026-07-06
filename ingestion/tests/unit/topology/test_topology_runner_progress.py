@@ -21,10 +21,11 @@ from metadata.ingestion.models.topology import (
     TopologyContextManager,
     get_topology_node,
 )
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceTopology,
 )
-from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 class TestRunnerProgressSurface:
@@ -38,7 +39,7 @@ class TestRunnerProgressSurface:
         assert TopologyRunnerMixin().progress is not TopologyRunnerMixin().progress
 
     def test_current_progress_path_default_is_empty(self):
-        assert TopologyRunnerMixin().current_progress_path() == []
+        assert TopologyRunnerMixin().progress_tracker.current_path() == []
 
     def test_declare_totals_is_gone(self):
         assert not hasattr(TopologyRunnerMixin, "declare_totals")
@@ -50,13 +51,14 @@ class TestRunnerProgressSurface:
         source = inspect.getsource(topology_runner)
         assert "declare_totals" not in source
 
-    def test_root_node_detection_uses_iter_captured_ids(self):
-        runner = TopologyRunnerMixin()
-        root, child = object(), object()
-        assert runner._is_root_node(root) is False  # nothing captured yet
-        runner.__dict__["_root_node_ids"] = {id(root)}
-        assert runner._is_root_node(root) is True
-        assert runner._is_root_node(child) is False
+
+def test_root_node_detection_uses_walk_captured_ids():
+    runner = TopologyRunnerMixin()
+    root, child = object(), object()
+    assert runner.progress_tracker.is_root_node(root) is False
+    runner.progress_tracker.on_walk_start([root])
+    assert runner.progress_tracker.is_root_node(root) is True
+    assert runner.progress_tracker.is_root_node(child) is False
 
 
 class _WalkRunner(TopologyRunnerMixin):
@@ -65,10 +67,9 @@ class _WalkRunner(TopologyRunnerMixin):
 
     topology = DatabaseServiceTopology()
 
-    def __init__(self, enabled):
-        self.progress_tracking_enabled = enabled
+    def __init__(self, mode=ProgressMode.AUTO):
+        self.progress_mode = mode
         self.context = TopologyContextManager(self.topology)
-        self.__dict__["_root_node_ids"] = set()
         self.status = MagicMock()
 
     def _run_node_producer(self, node):
@@ -94,17 +95,29 @@ def _drive_container(runner):
 
 
 def test_disabled_walk_creates_no_registry():
-    runner = _WalkRunner(enabled=False)
+    runner = _WalkRunner(mode=ProgressMode.OFF)
+    _drive_leaf(runner)
+    assert "_progress_registry" not in runner.__dict__
+
+
+def test_manual_walk_creates_no_registry():
+    runner = _WalkRunner(mode=ProgressMode.MANUAL)
     _drive_leaf(runner)
     assert "_progress_registry" not in runner.__dict__
 
 
 def test_enabled_walk_records_into_registry():
-    runner = _WalkRunner(enabled=True)
+    runner = _WalkRunner()
     _drive_leaf(runner)
     snapshot = runner.progress.snapshot()
     assert snapshot.child_type == "Table"
     assert snapshot.processed == 2
+
+
+def test_plain_connector_gets_progress_by_default():
+    runner = _WalkRunner()
+    _drive_leaf(runner)
+    assert runner.progress.snapshot().processed == 2
 
 
 def test_container_open_none_through_runner():
@@ -112,7 +125,7 @@ def test_container_open_none_through_runner():
     ``progress.open(parent_path, "Database", None)`` — the lazy branch where no
     connector pushes a total — so the registry records ``expected=None`` for
     the Database level."""
-    runner = _WalkRunner(enabled=True)
+    runner = _WalkRunner()
     _drive_container(runner)
     snapshot = runner.progress.snapshot()
     assert snapshot is not None
@@ -123,11 +136,11 @@ def test_container_open_none_through_runner():
 @pytest.fixture
 def progress_runner():
     """A _WalkRunner with progress tracking enabled, pre-seeded with a registry."""
-    return _WalkRunner(enabled=True)
+    return _WalkRunner()
 
 
 def test_container_without_push_is_unknown(progress_runner):
-    # progress_runner: a TopologyRunnerMixin test double with progress_tracking_enabled=True
+    # progress_runner: a TopologyRunnerMixin test double with progress_mode=AUTO
     progress_runner.progress.open(["db1"], "DatabaseSchema", None)
     snap = progress_runner.progress.snapshot()
     assert snap.children[0].expected is None
@@ -143,7 +156,7 @@ def test_runner_has_no_pull_hooks():
 
 class _CtxWalkRunner(_WalkRunner):
     """Like _WalkRunner but writes each entity into the node's context key, so
-    consumer-derived paths and _scope_path_for_node resolve to real names."""
+    consumer-derived paths and scope_path_for_node resolve to real names."""
 
     def _process_stage(self, stage, node_entity):
         if getattr(stage, "context", None):
@@ -152,21 +165,21 @@ class _CtxWalkRunner(_WalkRunner):
 
 
 def test_scope_path_for_node_appends_context_value():
-    runner = _WalkRunner(enabled=True)
+    runner = _WalkRunner()
     database_node = get_topology_node("database", runner.topology)
     key = runner._node_primary_stage(database_node).context
     setattr(runner.context.get(), key, "salesdb")
-    assert runner._scope_path_for_node(database_node, []) == ["salesdb"]
+    assert runner.progress_tracker.scope_path_for_node(database_node, []) == ["salesdb"]
 
 
 def test_scope_path_for_node_is_none_without_context_value():
-    runner = _WalkRunner(enabled=True)
+    runner = _WalkRunner()
     database_node = get_topology_node("database", runner.topology)
-    assert runner._scope_path_for_node(database_node, []) is None
+    assert runner.progress_tracker.scope_path_for_node(database_node, []) is None
 
 
 def test_completed_container_is_closed_through_runner():
-    runner = _CtxWalkRunner(enabled=True)
+    runner = _CtxWalkRunner()
     closed: list = []
     runner.progress.close = lambda path: closed.append(list(path))
     container = get_topology_node("database", runner.topology)
@@ -183,10 +196,9 @@ class _StatefulLeafRunner(TopologyRunnerMixin):
 
     topology = DatabaseServiceTopology()
 
-    def __init__(self, enabled):
-        self.progress_tracking_enabled = enabled
+    def __init__(self, mode=ProgressMode.AUTO):
+        self.progress_mode = mode
         self.context = TopologyContextManager(self.topology)
-        self.__dict__["_root_node_ids"] = set()
         self.status = MagicMock()
         self.state_live_at_stage = []
         self._active = None
@@ -208,20 +220,20 @@ class _StatefulLeafRunner(TopologyRunnerMixin):
 
 
 def test_leaf_is_lazy_when_progress_off_preserving_per_yield_state():
-    runner = _StatefulLeafRunner(enabled=False)
+    runner = _StatefulLeafRunner(mode=ProgressMode.OFF)
     list(runner._process_node(get_topology_node("table", runner.topology)))
     assert runner.state_live_at_stage == ["a", "b"]
 
 
 def test_leaf_is_eager_when_progress_on_recording_count():
-    runner = _StatefulLeafRunner(enabled=True)
+    runner = _StatefulLeafRunner()
     list(runner._process_node(get_topology_node("table", runner.topology)))
     assert runner.state_live_at_stage == [None, None]
     assert runner.progress.snapshot().processed == 2
 
 
 def test_closing_container_tracks_global_done():
-    runner = _CtxWalkRunner(enabled=True)
+    runner = _CtxWalkRunner()
     runner.progress.set_total("Database", 5)
     runner.progress.set_total("DatabaseSchema", 9)
     list(runner._process_node(get_topology_node("database", runner.topology)))
@@ -231,7 +243,7 @@ def test_closing_container_tracks_global_done():
 
 
 def test_reconcilable_container_reconciles_total():
-    runner = _CtxWalkRunner(enabled=True)
+    runner = _CtxWalkRunner()
     runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
     runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
     # upfront total = 2 (1 seeded per declared database)
@@ -247,8 +259,8 @@ class _MultiThreadCtxWalkRunner(_CtxWalkRunner):
     instead of _process_node.  Post-process methods are no-ops because the
     runner stub does not implement the real connector hooks."""
 
-    def __init__(self, enabled):
-        super().__init__(enabled)
+    def __init__(self, mode=ProgressMode.AUTO):
+        super().__init__(mode)
         self.context.threads = 2
 
     def _run_node_post_process(self, node):
@@ -261,7 +273,7 @@ def test_multithread_schema_node_reconciles_and_tracks_done():
     reconcile_scope_total and track are exercised identically to the
     single-thread reconcile test: seed 1 per declared db, observe 2 per db,
     final counters show (done=4, total=4)."""
-    runner = _MultiThreadCtxWalkRunner(enabled=True)
+    runner = _MultiThreadCtxWalkRunner()
     runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
     runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
     # upfront total = 2; driving _process_node(database) recurses into
@@ -271,3 +283,21 @@ def test_multithread_schema_node_reconciles_and_tracks_done():
     counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
     # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
     assert counters["DatabaseSchema"] == (4, 4)
+
+
+class _TotalsWalkRunner(_WalkRunner):
+    def __init__(self):
+        super().__init__()
+        self.declared = 0
+
+    def declare_progress_totals(self, totals):
+        self.declared += 1
+        totals.set_total("Table", 99)
+
+
+def test_declare_progress_totals_called_once_per_walk():
+    runner = _TotalsWalkRunner()
+    _drive_leaf(runner)
+    _drive_leaf(runner)
+    assert runner.declared == 1
+    assert ("Table", 0, 99) in runner.progress.global_counters()
