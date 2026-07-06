@@ -114,9 +114,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
       boolean exhausted = false;
       int requestedParents = from + size + 1;
       int overFetchSize = Math.max(requestedParents * OVER_FETCH_MULTIPLIER, OVER_FETCH_MULTIPLIER);
-      if (threshold <= 0.0) {
-        overFetchSize = Math.min(overFetchSize, k);
-      }
+      // ES native kNN never returns more than k hits (threshold is applied client-side in
+      // collectSearchHits), so a size larger than k fetches nothing extra and, for larger from,
+      // can push from+size past index.max_result_window and 400 the request. Clamp unconditionally.
+      overFetchSize = Math.min(overFetchSize, k);
 
       String indexName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
