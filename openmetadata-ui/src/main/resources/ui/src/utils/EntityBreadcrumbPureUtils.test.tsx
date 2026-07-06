@@ -38,6 +38,7 @@ jest.mock('./RouterUtils', () => ({
 }));
 
 jest.mock('./ServicePureUtils', () => ({
+  getEntityTypeFromServiceCategory: jest.fn(() => EntityType.DATABASE_SERVICE),
   getServiceRouteFromServiceType: jest.fn(),
 }));
 
@@ -62,11 +63,17 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
-        { name: 'mysql_sample', url: '/service/databaseServices/mysql_sample' },
         {
+          isServiceBreadcrumb: true,
+          name: 'mysql_sample',
+          url: '/service/databaseServices/mysql_sample',
+        },
+        {
+          iconType: EntityType.DATABASE,
           name: 'default',
           url: '/database/default',
         },
@@ -89,18 +96,22 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
         {
+          isServiceBreadcrumb: true,
           name: 'sample_data',
           url: mockServiceUrl,
         },
         {
+          iconType: EntityType.DATABASE,
           name: 'ecommerce_db',
           url: mockDatabaseUrl,
         },
         {
+          iconType: EntityType.DATABASE_SCHEMA,
           name: 'shopify',
           url: '/entity/MockDatabase',
         },

@@ -25,4 +25,6 @@ export interface FormItemLabelProps {
   overlayInnerStyle?: React.CSSProperties;
   align?: TooltipProps['align'];
   isBeta?: boolean;
+  labelClassName?: string;
+  betaBadgeClassName?: string;
 }
