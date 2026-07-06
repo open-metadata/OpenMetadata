@@ -370,3 +370,11 @@
     }
   }
 }
+
+// The parameter fields moved inside a wrapper (doc panel focus reporting),
+// so restore the card's vertical rhythm between the individual parameters.
+.test-case-form-v1 {
+  .parameter-fields-wrapper > * + * {
+    margin-top: @size-lg;
+  }
+}

@@ -890,6 +890,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         {showParameterFields && selectedTestDefinition && (
           <div
+            className="parameter-fields-wrapper"
             onFocusCapture={() =>
               handleActiveField(
                 selectedTestType ? `root/${selectedTestType}` : 'root/testType'
