@@ -31,13 +31,19 @@ const dashboard = new DashboardClass();
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
+  // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
+  // setIsLoading on browse selections, so loader-based waiting is unreliable.
+  // Response-based waiting (the same pattern used in expandServiceInExploreTree
+  // etc.) anchors on the actual data fetch so children are fully rendered before
+  // we interact with them.
+  const res = page.waitForResponse('/api/v1/search/query?*index=dataAsset*');
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-
+  await res;
   await waitForAllLoadersToDisappear(page);
 };
 
