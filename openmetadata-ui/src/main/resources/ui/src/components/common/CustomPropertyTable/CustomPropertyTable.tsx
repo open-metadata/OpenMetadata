@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Skeleton, Typography } from 'antd';
+import { Col, Divider, Row, Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, startCase } from 'lodash';
@@ -44,7 +44,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
+import WidgetCard from '../WidgetCard/WidgetCard';
 import './custom-property-table.less';
 import {
   CustomPropertyProps,
@@ -252,14 +252,8 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   }
 
   if (isRenderedInRightPanel) {
-    const header = (
-      <div className={classNames('d-flex justify-between')}>
-        <Typography.Text className={classNames('text-sm font-medium')}>
-          {t('label.custom-property-plural')}
-        </Typography.Text>
-        {viewAllBtn}
-      </div>
-    );
+    const headerTitle = t('label.custom-property-plural');
+    const headerExtra = viewAllBtn;
     const propertyList = (
       <div className="custom-property-right-panel-container">
         {dataSource.map((record, index) => (
@@ -293,13 +287,12 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     }
 
     return (
-      <ExpandableCard
-        cardProps={{
-          className: 'no-scrollbar',
-          title: header,
-        }}>
+      <WidgetCard
+        className="no-scrollbar"
+        headerExtra={headerExtra}
+        title={headerTitle}>
         {propertyList}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 

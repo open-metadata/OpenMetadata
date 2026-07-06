@@ -45,6 +45,22 @@
           "type": "string",
           "format": "uri"
         },
+        "domain": {
+          "description": "Glossary term FQNs (or external class IRIs) a source term must be typed as for this relation. Empty means unconstrained. Stored for RDF round-trip and optional validation; not enforced by default.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "range": {
+          "description": "Glossary term FQNs (or external class IRIs) a target term must be typed as for this relation. Empty means unconstrained. Stored for RDF round-trip and optional validation; not enforced by default.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
         "cardinality": {
           "description": "Preset cardinality for this relation type. CUSTOM lets you set explicit source/target maxima.",
           "$ref": "#/definitions/relationCardinality"
@@ -66,6 +82,31 @@
         },
         "isTransitive": {
           "description": "Whether the relation is transitive (A relates B, B relates C implies A relates C).",
+          "type": "boolean",
+          "default": false
+        },
+        "isFunctional": {
+          "description": "Whether the relation is functional (a source term has at most one target).",
+          "type": "boolean",
+          "default": false
+        },
+        "isInverseFunctional": {
+          "description": "Whether the relation is inverse-functional (a target term has at most one source).",
+          "type": "boolean",
+          "default": false
+        },
+        "isReflexive": {
+          "description": "Whether the relation is reflexive (every term relates to itself).",
+          "type": "boolean",
+          "default": false
+        },
+        "isIrreflexive": {
+          "description": "Whether the relation is irreflexive (no term relates to itself).",
+          "type": "boolean",
+          "default": false
+        },
+        "isAsymmetric": {
+          "description": "Whether the relation is asymmetric (A relates B implies B does not relate A).",
           "type": "boolean",
           "default": false
         },

@@ -98,12 +98,12 @@ const CustomPieChart = ({
       {showLegends && (
         <Space wrap size={16}>
           {data.map((item) => (
-            <Space key={item.name} size={8}>
+            <Space align="center" key={item.name} size={8}>
               <div
                 className="legend-dot"
                 style={{ backgroundColor: item.color }}
               />
-              <Typography.Paragraph className="text-grey-muted m-b-0">
+              <Typography.Paragraph className="text-grey-muted m-b-0 font-medium">
                 {item.name}{' '}
                 <Typography.Text
                   strong
