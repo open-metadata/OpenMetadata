@@ -199,8 +199,8 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
               defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
               entity={t('label.test-case')}
               includePeriodOptions={schedulerOptions}
-              value={field.value}
-              onChange={field.onChange}
+              value={field.value || undefined}
+              onChange={(cron) => field.onChange(cron ?? '')}
             />
           )}
         </FormField>

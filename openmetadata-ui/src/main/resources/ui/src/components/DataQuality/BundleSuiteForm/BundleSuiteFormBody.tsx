@@ -245,8 +245,8 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
                       defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
                       entity={t('label.test-suite')}
                       includePeriodOptions={schedulerOptions}
-                      value={field.value}
-                      onChange={field.onChange}
+                      value={field.value || undefined}
+                      onChange={(cron) => field.onChange(cron ?? '')}
                     />
                   </div>
                 )}

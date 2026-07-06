@@ -50,7 +50,7 @@ export const buildBundlePipelinePayload = (
 
   return {
     airflowConfig: {
-      scheduleInterval: values.cron,
+      scheduleInterval: values.cron || undefined,
     },
     displayName: pipelineName,
     name: generateUUID(),

@@ -158,7 +158,7 @@ export const buildTestSuitePipelinePayload = (
 
   return {
     airflowConfig: {
-      scheduleInterval: values.cron,
+      scheduleInterval: values.cron || undefined,
     },
     displayName: updatedName,
     name: generateUUID(),
