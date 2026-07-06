@@ -186,10 +186,7 @@ export const softDeleteUserProfilePage = async (
 
   await page.getByText('Delete Profile').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
-
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=false&recursive=true'
@@ -232,13 +229,9 @@ export const hardDeleteUserProfilePage = async (
 ) => {
   await page.getByTestId('user-profile-manage-btn').click();
   await page.getByText('Delete Profile').click();
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
+  await page.click('[data-testid="hard-delete"]');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
@@ -463,14 +456,7 @@ export const permanentDeleteUser = async (
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
 
-  if (!isUserSoftDeleted) {
-    // Modal opens with soft-delete as default; wait for the form's
-    // initialization effect before switching, otherwise the click races
-    // with setFieldsValue and the selection gets clobbered.
-    await page
-      .locator('.ant-radio-wrapper-checked [data-testid="soft-delete"]')
-      .waitFor();
-  }
+  await page.getByTestId('delete-modal').waitFor();
 
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
