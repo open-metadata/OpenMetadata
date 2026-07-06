@@ -12,14 +12,16 @@
  */
 
 import {
-    Avatar,
-    Box,
-    FieldProp,
-    FormField,
-    FormItemLabel, getField, Grid,
-    HintText,
-    HookForm,
-    Toggle
+  Avatar,
+  Box,
+  FieldProp,
+  FormField,
+  FormItemLabel,
+  getField,
+  Grid,
+  HintText,
+  HookForm,
+  Toggle,
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
@@ -28,8 +30,8 @@ import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import {
-    AVAILABLE_ICONS,
-    DEFAULT_TAG_ICON
+  AVAILABLE_ICONS,
+  DEFAULT_TAG_ICON,
 } from '../../components/common/IconPicker';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
@@ -50,18 +52,20 @@ import { getEntityReferenceListFromEntities } from '../../utils/EntityReferenceU
 import { getTermQuery } from '../../utils/SearchPureUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
-    COLOR_FIELD,
-    getDisabledField,
-    getDisplayNameField,
-    getDomainField,
-    getIconField,
-    getNameField,
-    getOwnerField
+  COLOR_FIELD,
+  getDisabledField,
+  getDisplayNameField,
+  getDomainField,
+  getIconField,
+  getNameField,
+  getOwnerField,
 } from './tagFormFields';
 import './TagsForm.less';
 import {
-    RenameFormProps, TagFormSelectItem,
-    TagFormValues, TAG_FORM_DEFAULTS
+  RenameFormProps,
+  TagFormSelectItem,
+  TagFormValues,
+  TAG_FORM_DEFAULTS,
 } from './TagsPage.interface';
 
 const mapEntityReferenceToSelectItem = (
@@ -105,7 +109,6 @@ const TagsForm = ({
     control: form.control,
     name: 'style.color',
   });
-
 
   useEffect(() => {
     if (initialValues) {
@@ -282,7 +285,9 @@ const TagsForm = ({
     () =>
       [
         DEFAULT_TAG_ICON,
-        ...AVAILABLE_ICONS.filter((icon) => icon.name !== DEFAULT_TAG_ICON.name),
+        ...AVAILABLE_ICONS.filter(
+          (icon) => icon.name !== DEFAULT_TAG_ICON.name
+        ),
       ].map((icon) => ({
         id: icon.name,
         icon: icon.component,
@@ -451,61 +456,56 @@ const TagsForm = ({
         data-testid="tags-form"
         form={form}
         onSubmit={form.handleSubmit(handleSave)}>
-          <Box direction='col' gap={6}>
-        <Grid colGap="4">
-          <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
-          <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
-        </Grid>
+        <Box direction="col" gap={6}>
+          <Grid colGap="4">
+            <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
+            <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
+          </Grid>
 
-        {!isClassification && (
-          <Box align="start" gap={4}>
-            <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
-              {getField(iconField)}
-            </div>
-            <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
-              {getField(colorField)}
-            </div>
-          </Box>
-        )}
-
-        <FormField
-          control={form.control}
-          name="description"
-          rules={{
-            required: t('label.field-required', {
-              field: t('label.description'),
-            }),
-          }}>
-          {({ field, fieldState }) => (
-            <Box
-              aria-invalid={fieldState.invalid || undefined}
-              className="tw:gap-[6px]"
-              direction="col">
-              <FormItemLabel
-                required
-                label={t('label.description')}
-              />
-              <RichTextEditor
-                className="description-text-area new-form-style"
-                initialValue={initialValues?.description ?? ''}
-                key={descriptionEditorKey}
-                readonly={disableDescriptionField}
-                onTextChange={field.onChange}
-              />
-              {fieldState.error?.message && (
-                <HintText isInvalid>{fieldState.error.message}</HintText>
-              )}
+          {!isClassification && (
+            <Box align="start" gap={4}>
+              <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
+                {getField(iconField)}
+              </div>
+              <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
+                {getField(colorField)}
+              </div>
             </Box>
           )}
-        </FormField>
 
-        {isSystemTag && !isTier && (
-          <div>{getField(disabledField)}</div>
-        )}
+          <FormField
+            control={form.control}
+            name="description"
+            rules={{
+              required: t('label.field-required', {
+                field: t('label.description'),
+              }),
+            }}>
+            {({ field, fieldState }) => (
+              <Box
+                aria-invalid={fieldState.invalid || undefined}
+                className="tw:gap-[6px]"
+                direction="col">
+                <FormItemLabel required label={t('label.description')} />
+                <RichTextEditor
+                  className="description-text-area new-form-style"
+                  initialValue={initialValues?.description ?? ''}
+                  key={descriptionEditorKey}
+                  readonly={disableDescriptionField}
+                  onTextChange={field.onChange}
+                />
+                {fieldState.error?.message && (
+                  <HintText isInvalid>{fieldState.error.message}</HintText>
+                )}
+              </Box>
+            )}
+          </FormField>
 
-        {showMutuallyExclusive && (
-          <FormField control={form.control} name="mutuallyExclusive">
-            {({ field }) => (
+          {isSystemTag && !isTier && <div>{getField(disabledField)}</div>}
+
+          {showMutuallyExclusive && (
+            <FormField control={form.control} name="mutuallyExclusive">
+              {({ field }) => (
                 <Box align="center" direction="row" gap={2}>
                   <Toggle
                     aria-label={mutuallyExclusiveLabel}
@@ -517,14 +517,14 @@ const TagsForm = ({
                   />
                   <FormItemLabel label={mutuallyExclusiveLabel} />
                 </Box>
-            )}
-          </FormField>
-        )}
-        {getField(ownerField)}
-        {getField(domainField)}
-        {autoClassificationComponent && (
-          <Suspense fallback={null}>{autoClassificationComponent}</Suspense>
-        )}
+              )}
+            </FormField>
+          )}
+          {getField(ownerField)}
+          {getField(domainField)}
+          {autoClassificationComponent && (
+            <Suspense fallback={null}>{autoClassificationComponent}</Suspense>
+          )}
         </Box>
       </HookForm>
     </EntityAttachmentProvider>

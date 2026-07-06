@@ -12,12 +12,12 @@
  */
 
 import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'react-hook-form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
@@ -70,8 +70,8 @@ import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
 import {
   DeleteTagsType,
-  TAG_FORM_DEFAULTS,
   TagFormValues,
+  TAG_FORM_DEFAULTS,
 } from './TagsPage.interface';
 
 const TagsPage = () => {

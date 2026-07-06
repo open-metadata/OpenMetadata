@@ -12,11 +12,11 @@
  */
 import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import {
+  Input as UTInput,
+  Select as UTSelect,
   SelectItemType,
   Toggle,
   ToggleProps,
-  Input as UTInput,
-  Select as UTSelect,
 } from '@openmetadata/ui-core-components';
 import {
   Alert,

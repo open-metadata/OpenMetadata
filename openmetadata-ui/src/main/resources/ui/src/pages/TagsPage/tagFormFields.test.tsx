@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  FieldTypes,
-  HelperTextType,
-} from '@openmetadata/ui-core-components';
+import { FieldTypes, HelperTextType } from '@openmetadata/ui-core-components';
 import {
   COLOR_FIELD,
   getDisabledField,
@@ -140,7 +137,10 @@ describe('tagFormFields', () => {
     });
 
     it('should forward disabled prop', () => {
-      expect(getDisabledField({ initialValue: false, disabled: true }).props?.disabled).toBe(true);
+      expect(
+        getDisabledField({ initialValue: false, disabled: true }).props
+          ?.disabled
+      ).toBe(true);
     });
   });
 
@@ -165,7 +165,9 @@ describe('tagFormFields', () => {
     });
 
     it('should forward disabled prop', () => {
-      expect(getMutuallyExclusiveField({ disabled: true }).props?.disabled).toBe(true);
+      expect(
+        getMutuallyExclusiveField({ disabled: true }).props?.disabled
+      ).toBe(true);
     });
   });
 });
