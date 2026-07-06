@@ -212,7 +212,7 @@ export const getContainerDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
+        <LazyTabContent activeTab={tab} tab={EntityTabs.LINEAGE}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={containerData as SourceType}

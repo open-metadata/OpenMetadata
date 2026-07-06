@@ -21,13 +21,16 @@ import { useAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
-import { withPageSuspenseFallback } from './withSuspenseFallback';
+import {
+  withPageSuspenseFallback,
+  withSuspenseFallback,
+} from './withSuspenseFallback';
 
-const AuthenticatedApp = withPageSuspenseFallback(
+const AuthenticatedApp = withSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AuthenticatedRoutes = withPageSuspenseFallback(
+const AuthenticatedRoutes = withSuspenseFallback(
   lazy(() =>
     import('./AuthenticatedRoutes').then((m) => ({
       default: m.AuthenticatedRoutes,

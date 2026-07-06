@@ -882,19 +882,19 @@ export const ActivityFeedTab = ({
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}>
-        {selectedThread || selectedTask || selectedActivity
-          ? getRightPanelContent()
-          : !loading && (
-              <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography.Paragraph className="placeholder-text">
-                    {getRightPanelPlaceholder}
-                  </Typography.Paragraph>
-                </ErrorPlaceHolderNew>
-              </div>
-            )}
+        {selectedThread || selectedTask || selectedActivity ? (
+          getRightPanelContent()
+        ) : (
+          <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
+            <ErrorPlaceHolderNew
+              icon={<NoConversationsIcon />}
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <Typography.Paragraph className="placeholder-text">
+                {getRightPanelPlaceholder}
+              </Typography.Paragraph>
+            </ErrorPlaceHolderNew>
+          </div>
+        )}
       </div>
     </div>
   );

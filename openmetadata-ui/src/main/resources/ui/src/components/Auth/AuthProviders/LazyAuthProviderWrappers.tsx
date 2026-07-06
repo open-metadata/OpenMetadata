@@ -14,7 +14,10 @@
 import type { CacheLocation } from '@auth0/auth0-react';
 import type { IPublicClientApplication } from '@azure/msal-browser';
 import { lazy, ReactNode } from 'react';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import {
+  withPageSuspenseFallback,
+  withSuspenseFallback,
+} from '../../AppRouter/withSuspenseFallback';
 
 const Auth0ProviderComponent = withSuspenseFallback(
   lazy(() =>
@@ -34,7 +37,9 @@ const OktaAuthProviderComponent = withSuspenseFallback(
   )
 );
 
-const BasicAuthProviderComponent = withSuspenseFallback(
+// ponytail: withPageSuspenseFallback blocks form interaction while provider loads,
+// preventing stub-context errors if user submits before BasicAuthProvider mounts.
+const BasicAuthProviderComponent = withPageSuspenseFallback(
   lazy(() => import('./BasicAuthProvider'))
 );
 
