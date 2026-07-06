@@ -25,6 +25,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { ensureComboboxMenuOpen } from '../../../utils/formPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
@@ -171,28 +172,9 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [value, onChange]
   );
 
-  // Clicking this field while a sibling popover is open cancels the menu this
-  // click just opened (the closing popover's teardown races the open). Once
-  // focus settles on the input, re-open via the ArrowDown key handling built
-  // into the Autocomplete trigger. The cancel can land after the first frame,
-  // so re-check once more after the popover teardown window.
-  const ensureMenuOpen = useCallback(() => {
-    const input = containerRef.current?.querySelector('input');
-    if (
-      input &&
-      document.activeElement === input &&
-      input.getAttribute('aria-expanded') !== 'true'
-    ) {
-      input.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
-      );
-    }
-  }, []);
-
   const handleTriggerFocus = useCallback(() => {
-    requestAnimationFrame(ensureMenuOpen);
-    setTimeout(ensureMenuOpen, 150);
-  }, [ensureMenuOpen]);
+    ensureComboboxMenuOpen(() => containerRef.current?.querySelector('input'));
+  }, []);
 
   const displayOptions = useMemo<TagSelectItem[]>(
     () =>

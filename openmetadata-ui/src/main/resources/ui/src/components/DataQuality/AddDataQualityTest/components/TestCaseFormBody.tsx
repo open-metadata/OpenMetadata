@@ -64,6 +64,7 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
@@ -629,6 +630,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           fetchTables();
         }
         handleActiveField('root/table');
+        ensureComboboxMenuOpen(
+          () => document.getElementById('root/table') as HTMLInputElement
+        );
       },
     },
   } as FieldProp;
