@@ -18,6 +18,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -277,6 +278,7 @@ test.describe(
         );
 
         // Click confirm delete
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteTestDefinitionResponse;
@@ -747,6 +749,7 @@ test.describe(
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
@@ -1055,6 +1058,7 @@ test.describe(
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
@@ -1223,6 +1227,7 @@ test.describe(
             response.request().method() === 'GET'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const deleteResult = await deleteResponse;

@@ -30,7 +30,11 @@ import {
   removeAssetsFromDataProduct,
   selectDataProduct,
 } from '../../utils/domain';
-import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  followEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 
@@ -192,6 +196,7 @@ test.describe('Data Products', () => {
       ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
     });

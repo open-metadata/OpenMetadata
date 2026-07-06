@@ -16,6 +16,7 @@ import { TableClass } from '../../../support/entity/TableClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import {
   dragAndDropTerm,
   performExpandAll,
@@ -97,6 +98,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Confirm deletion
 
       const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -246,6 +248,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Confirm deletion
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -386,6 +389,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
       // Confirm deletion
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 

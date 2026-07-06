@@ -229,10 +229,6 @@ test.describe('Domains', () => {
           .getByText(`Delete domain "${domain.data.displayName}"`)
       ).toBeVisible();
 
-      await expect(confirmationInput).toBeVisible();
-      await confirmationInput.click();
-      await confirmationInput.fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeVisible();
@@ -1388,6 +1384,9 @@ test.describe('Domains', () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
+    const confirmationInput = page.locator(
+      '[data-testid="confirmation-text-input"]'
+    );
     await expect(confirmationInput).toBeVisible();
     await confirmationInput.click();
     await confirmationInput.fill('DELETE');

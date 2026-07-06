@@ -399,6 +399,8 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
     glossary.displayName
   );
 
+  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+
   const deleteGlossary = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/glossaries/') &&

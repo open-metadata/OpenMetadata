@@ -14,7 +14,10 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   addSampleDataViaApi,
   navigateToSampleDataTab,
@@ -203,6 +206,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
 
     await test.step('Type DELETE to enable confirm button', async () => {
       const confirmButton = page.getByTestId('confirm-button');
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await expect(confirmButton).toBeEnabled();
     });
 
@@ -254,6 +258,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
           response.status() === 200
       );
 
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteResponse;
       await refetchResponse;

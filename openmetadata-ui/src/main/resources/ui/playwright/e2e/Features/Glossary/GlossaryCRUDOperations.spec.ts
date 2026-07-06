@@ -408,16 +408,8 @@ test.describe('Glossary CRUD Operations', () => {
             state: 'visible',
           });
 
-          const confirmInput = page.locator();
-
-          if (
-            await confirmInput.isVisible({ timeout: 2000 }).catch(() => false)
-          ) {
-            await confirmInput.fill('DELETE');
-
-            const confirmBtn = page.getByTestId('confirm-button');
-            await confirmBtn.click();
-          }
+          const confirmBtn = page.getByTestId('confirm-button');
+          await confirmBtn.click();
         }
       }
 

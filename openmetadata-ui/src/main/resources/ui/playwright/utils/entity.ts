@@ -2618,3 +2618,17 @@ export const validateCopiedLinkFormat = ({
     isValid: true,
   };
 };
+
+/**
+ * Types the DELETE confirmation only when the delete modal renders a
+ * confirmation text input. The radio-based DeleteEntityModal has no input,
+ * while the simple EntityDeleteModal still requires typing DELETE, so this
+ * guard keeps both flows working.
+ */
+export const fillDeleteConfirmationIfPresent = async (page: Page) => {
+  await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
+  const confirmInput = page.getByTestId('confirmation-text-input');
+  if (await confirmInput.isVisible()) {
+    await confirmInput.fill('DELETE');
+  }
+};
