@@ -27,6 +27,7 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import tagClassBase from '../../../utils/TagClassBase';
 import { getTagDisplay } from '../../../utils/TagsPureUtils';
+import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
@@ -43,6 +44,7 @@ export interface TagSuggestionProps {
   onChange?: (newTags: TagLabel[]) => void;
   label?: string;
   required?: boolean;
+  tagType?: TagSource;
 }
 
 const TagSuggestion: FC<TagSuggestionProps> = ({
@@ -52,6 +54,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   initialOptions = [],
   label,
   required = false,
+  tagType = TagSource.Classification,
 }) => {
   const { t } = useTranslation();
   const [options, setOptions] = useState<TagSelectItem[]>([]);
@@ -70,7 +73,10 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
   const fetchOptions = async (searchText: string) => {
     try {
-      const response = await tagClassBase.getTags(searchText, 1, true);
+      const response =
+        tagType === TagSource.Glossary
+          ? await fetchGlossaryList(searchText, 1)
+          : await tagClassBase.getTags(searchText, 1, true);
       const fetched: SelectOption[] = response?.data || [];
       fetched.forEach((opt) => {
         tagDataMap.current.set(opt.value, opt.data as TagLabel);
@@ -138,7 +144,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
       const existingTag = value.find((tag) => tag.tagFQN === String(key));
       const newTag: EntityTags = existingTag ?? {
         tagFQN: String(key),
-        source: TagSource.Classification,
+        source: tagType,
         name: tagData?.name,
         displayName: tagData?.displayName,
         description: tagData?.description,

@@ -41,6 +41,7 @@ import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { TagSource } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import {
   EntityType,
@@ -64,6 +65,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
+import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
 import ParameterFields from './ParameterFields';
 import {
   TablesCache,
@@ -745,34 +747,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   };
 
-  const tagsField: FieldProp = {
-    name: 'tags',
-    label: t('label.tag-plural'),
-    type: FieldTypes.TAG_SUGGESTION,
-    required: false,
-    id: 'root/tags',
-    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
-    props: {
-      'data-testid': 'tags-selector',
-      multiple: true,
-    },
-  };
-
-  const glossaryTermsField: FieldProp = {
-    name: 'glossaryTerms',
-    label: t('label.glossary-term-plural'),
-    type: FieldTypes.GLOSSARY_TAG_SUGGESTION,
-    required: false,
-    id: 'root/glossaryTerms',
-    placeholder: t('label.select-field', {
-      field: t('label.glossary-term-plural'),
-    }),
-    props: {
-      'data-testid': 'glossary-terms-selector',
-      multiple: true,
-    },
-  };
-
   return (
     <div className="test-case-form-v1 drawer-mode test-case-form-body">
       {errorMessage && (
@@ -874,9 +848,42 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           )}
         </FormField>
 
-        {getField(tagsField)}
+        <FormField control={form.control} name="tags">
+          {({ field }) => (
+            <div
+              data-testid="tags-selector"
+              id="root/tags"
+              onFocusCapture={() => handleActiveField('root/tags')}>
+              <TagSuggestion
+                label={t('label.tag-plural')}
+                placeholder={t('label.select-field', {
+                  field: t('label.tag-plural'),
+                })}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            </div>
+          )}
+        </FormField>
 
-        {getField(glossaryTermsField)}
+        <FormField control={form.control} name="glossaryTerms">
+          {({ field }) => (
+            <div
+              data-testid="glossary-terms-selector"
+              id="root/glossaryTerms"
+              onFocusCapture={() => handleActiveField('root/glossaryTerms')}>
+              <TagSuggestion
+                label={t('label.glossary-term-plural')}
+                placeholder={t('label.select-field', {
+                  field: t('label.glossary-term-plural'),
+                })}
+                tagType={TagSource.Glossary}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            </div>
+          )}
+        </FormField>
       </div>
 
       {selectedTableFqn && canCreatePipeline && (
