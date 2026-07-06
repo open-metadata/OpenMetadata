@@ -58,8 +58,9 @@ interface SelectValueProps {
 }
 
 export const sizes = {
-  sm: { root: 'tw:py-2 tw:px-3', shortcut: 'tw:pr-2.5' },
-  md: { root: 'tw:py-2.5 tw:px-3.5', shortcut: 'tw:pr-3' },
+  xs: { root: 'tw:py-1 tw:px-2', shortcut: 'tw:pr-1.5', input: 'tw:text-xs' },
+  sm: { root: 'tw:py-2 tw:px-3', shortcut: 'tw:pr-2.5', input: 'tw:text-sm' },
+  md: { root: 'tw:py-2.5 tw:px-3.5', shortcut: 'tw:pr-3', input: 'tw:text-md' },
 };
 
 const SelectValue = ({
