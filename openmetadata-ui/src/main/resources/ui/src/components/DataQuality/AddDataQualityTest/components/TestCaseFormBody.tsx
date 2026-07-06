@@ -510,6 +510,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         id: testDef.fullyQualifiedName ?? '',
         label: getEntityName(testDef),
         supportingText: testDef.description,
+        testId: testDef.fullyQualifiedName ?? '',
       })),
     [testDefinitions]
   );
@@ -857,6 +858,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
+      data-testid="test-case-form-v1"
       onFocusCapture={handleFormFocusCapture}>
       {errorMessage && (
         <div className="floating-error-alert">

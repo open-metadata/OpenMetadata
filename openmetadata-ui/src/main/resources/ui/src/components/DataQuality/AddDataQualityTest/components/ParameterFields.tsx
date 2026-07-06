@@ -106,6 +106,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
               required: data.required,
               rules: rowRequired ? { required: rowRequired } : undefined,
               placeholder: t('message.enter-a-field', { field: label }),
+              id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {
                 'data-testid': `parameter-${data.name}-${index}`,
               },
@@ -301,6 +302,8 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       rules: buildRules(data, label),
       helperText: data.description,
       helperTextType: HelperTextType.TOOLTIP,
+      // Legacy antd form-item id kept as the stable E2E selector.
+      id: `testCaseFormV1_params_${data.name}`,
       props: { 'data-testid': `parameter-${data.name}` },
     };
 

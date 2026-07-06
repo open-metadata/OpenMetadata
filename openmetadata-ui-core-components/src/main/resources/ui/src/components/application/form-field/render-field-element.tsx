@@ -426,6 +426,7 @@ export const renderFieldElement = (
           {(item) => (
             <Select.Item
               avatarUrl={item.avatarUrl}
+              data-testid={item.testId}
               icon={item.icon}
               id={item.id}
               isDisabled={item.isDisabled}

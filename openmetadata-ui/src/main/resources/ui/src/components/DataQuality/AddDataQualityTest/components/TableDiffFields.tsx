@@ -150,6 +150,7 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
               type: FieldTypes.SELECT,
               required: data.required,
               placeholder: t('message.select-column-name'),
+              id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {
                 'aria-label': label,
                 isDisabled: disabled,
@@ -296,6 +297,7 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
       label,
       type: FieldTypes.TEXT,
       required: data.required,
+      id: `testCaseFormV1_params_${data.name}`,
       rules: data.required
         ? {
             required: t('message.field-text-is-required', {
@@ -334,6 +336,7 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
           required: data.required,
           helperText: data.description,
           placeholder: t('label.table'),
+          id: `testCaseFormV1_params_${TABLE2}`,
           props: {
             'data-testid': TABLE2,
             isLoading: isOptionsLoading,
