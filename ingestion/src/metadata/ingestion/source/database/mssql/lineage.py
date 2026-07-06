@@ -77,9 +77,10 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
         current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
         start = start.strftime(current_datetime_format)
+        use_query_store = self._active_query_store if self._active_query_store is not None else self.uses_query_store()
         template = (
             MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE
-            if self.uses_query_store()
+            if use_query_store
             else MSSQL_GET_STORED_PROCEDURE_QUERIES
         )
         return template.format(start_date=start)

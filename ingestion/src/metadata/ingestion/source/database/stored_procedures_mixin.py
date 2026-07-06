@@ -89,8 +89,8 @@ class StoredProcedureLineageMixin(ABC):
         """
         Yield query and stored procedure object for lineage processing.
         """
-        query = self.get_stored_procedure_sql_statement()
         for engine in self.get_stored_procedure_engines():
+            query = self.get_stored_procedure_sql_statement()
             with engine.connect() as conn:
                 results = conn.execute(text(query)).all()
 

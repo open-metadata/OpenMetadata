@@ -41,6 +41,37 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
 """
 )
 
+# Same as MSSQL_SQL_STATEMENT but scoped to the connected database via t.dbid = DB_ID().
+# Used per-database in ingest-all runs for databases without Query Store, so each
+# database's DMV read returns only its own queries and nothing is double-counted.
+MSSQL_SQL_STATEMENT_CURRENT_DB = textwrap.dedent(
+    """
+      SELECT TOP {result_limit}
+        db.NAME database_name,
+        t.text query_text,
+        s.last_execution_time start_time,
+        DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time) end_time,
+        s.last_elapsed_time/1000000 duration,
+        NULL schema_name,
+        NULL query_type,
+        NULL user_name,
+        NULL aborted
+      FROM sys.dm_exec_cached_plans AS p
+      INNER JOIN sys.dm_exec_query_stats AS s
+        ON p.plan_handle = s.plan_handle
+      CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
+      INNER JOIN sys.databases db
+        ON db.database_id = t.dbid
+      WHERE s.last_execution_time between '{start_time}' and '{end_time}'
+          AND t.dbid = DB_ID()
+          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND p.objtype != 'Prepared'
+          {filters}
+      ORDER BY s.last_execution_time DESC
+"""
+)
+
 # Query Store variant of MSSQL_SQL_STATEMENT: durable per-statement history.
 # object_id = 0 keeps this to ad-hoc statements only, so the statements executed
 # inside stored procedures are left to the stored-procedure lineage path and are

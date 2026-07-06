@@ -29,6 +29,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_QUERY_STORE_DATABASES,
+    MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
 )
 from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
@@ -48,6 +49,9 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
     filters: str
     engine: Engine
     _query_store_enabled: Optional[bool] = None  # noqa: UP045
+    # Query Store state of the engine currently being iterated in the ingest-all
+    # per-database path. None means the single-engine path (use the global decision).
+    _active_query_store: Optional[bool] = None  # noqa: UP045
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -76,52 +80,48 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
 
     def resolve_query_log_statement(self) -> str:
         """
-        The query-log statement template shared by lineage and usage: the Query
-        Store variant when Query Store is enabled, otherwise the plan-cache DMV
-        statement (`sql_stmt`).
+        The query-log statement template shared by lineage and usage. In the ingest-all
+        per-database path each engine is routed by its own Query Store state: the Query
+        Store variant when that database has it, otherwise the database-scoped DMV read.
+        On the single-engine path the global decision picks the Query Store variant or
+        the instance-wide DMV statement.
         """
-        return MSSQL_SQL_STATEMENT_FROM_QUERY_STORE if self.uses_query_store() else self.sql_stmt
+        if self._active_query_store is None:
+            statement = MSSQL_SQL_STATEMENT_FROM_QUERY_STORE if self.uses_query_store() else self.sql_stmt
+        elif self._active_query_store:
+            statement = MSSQL_SQL_STATEMENT_FROM_QUERY_STORE
+        else:
+            statement = MSSQL_SQL_STATEMENT_CURRENT_DB
+        return statement
 
     def get_engine(self):
         """
-        Query Store is a per-database feature, so when ingesting all databases we
-        probe and read each database's own Query Store through its own connection.
-        The plan-cache DMV path stays on the single instance-wide connection because
-        those DMVs already return history for every database on the server in one pass.
+        Query Store is a per-database feature, so when ingesting all databases we read
+        each database through its own connection, using its own Query Store when enabled
+        and a database-scoped DMV read otherwise. Every database is covered, and no
+        database with Query Store is downgraded because another one lacks it. The single
+        instance-wide connection is used only for single-database runs.
         """
-        if self.uses_query_store() and getattr(self.service_connection, "ingestAllDatabases", False):
-            yielded = False
-            for engine in self._query_store_database_engines():
-                yielded = True
-                yield engine
-            if not yielded:
-                logger.info(
-                    "MSSQL query history: no database had a usable Query Store, "
-                    "falling back to the instance-wide plan-cache DMVs."
-                )
-                yield self.engine
+        if getattr(self.service_connection, "ingestAllDatabases", False) and self.uses_query_store():
+            yield from self._per_database_engines()
         else:
+            self._active_query_store = None
             yield self.engine
 
-    def _query_store_database_engines(self) -> Iterator[Engine]:
-        """
-        Yield one engine per user database that has Query Store enabled. Each database
-        is probed on its own connection, so its Query Store state decides routing rather
-        than the initial connection's. Databases without Query Store, or that cannot be
-        reached, are skipped and logged so a single one never aborts the whole run.
-        """
-        for database in self._databases_to_scan():
+    def _per_database_engines(self) -> Iterator[Engine]:
+        databases = list(self._databases_to_scan())
+        if not databases:
+            self._active_query_store = None
+            yield self.engine
+            return
+        for database in databases:
             engine = self._engine_for_database(database)
+            self._active_query_store = is_query_store_enabled(engine)
             try:
-                if is_query_store_enabled(engine):
-                    yield engine
-                else:
-                    logger.info(
-                        f"MSSQL query history: Query Store is not enabled or not accessible on "
-                        f"database {database}, skipping it. Enable Query Store there for coverage."
-                    )
+                yield engine
             finally:
                 engine.dispose()
+        self._active_query_store = None
 
     def _databases_to_scan(self) -> Iterator[str]:
         with self.engine.connect() as conn:

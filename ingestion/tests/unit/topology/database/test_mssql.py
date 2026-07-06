@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_SQL_STATEMENT,
+    MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
 )
 from metadata.ingestion.source.database.mssql.usage import MssqlUsageSource
@@ -626,21 +627,45 @@ class TestMssqlPerDatabaseQueryStore:
         db_engines["SalesDW"].dispose.assert_called_once()
         db_engines["Inventory"].dispose.assert_called_once()
 
-    def test_per_database_skips_databases_without_query_store(self):
+    def test_each_database_routed_by_its_own_query_store(self):
+        # Hybrid completeness: the Query Store database is read via Query Store, the
+        # non-Query-Store database via its own DB-scoped DMV read. Every database is
+        # covered and the Query Store one is never downgraded because the other lacks it.
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
-        engines = {"HasQS": MagicMock(), "NoQS": MagicMock()}
-        source._databases_to_scan = lambda: iter(["HasQS", "NoQS"])
+        source.sql_stmt = MSSQL_SQL_STATEMENT
+        engines = {"QsDb": MagicMock(), "DmvDb": MagicMock()}
+        source._databases_to_scan = lambda: iter(["QsDb", "DmvDb"])
         source._engine_for_database = lambda database: engines[database]
 
+        routed = []
         with patch(
             "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
-            side_effect=lambda engine: engine is engines["HasQS"],
+            side_effect=lambda engine: engine is engines["QsDb"],
         ):
-            yielded = list(source.get_engine())
+            for engine in source.get_engine():
+                routed.append((engine, source.resolve_query_log_statement()))
 
-        assert yielded == [engines["HasQS"]]
-        engines["NoQS"].dispose.assert_called_once()
-        engines["HasQS"].dispose.assert_called_once()
+        assert routed == [
+            (engines["QsDb"], MSSQL_SQL_STATEMENT_FROM_QUERY_STORE),
+            (engines["DmvDb"], MSSQL_SQL_STATEMENT_CURRENT_DB),
+        ]
+        engines["QsDb"].dispose.assert_called_once()
+        engines["DmvDb"].dispose.assert_called_once()
+
+    def test_stored_procedure_statement_routes_by_active_query_store(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.source_config = MagicMock(queryLogDuration=1)
+        with patch(
+            "metadata.ingestion.source.database.mssql.lineage.get_sqlalchemy_engine_dateformat",
+            return_value=None,
+        ):
+            source._active_query_store = True
+            qs_statement = source.get_stored_procedure_sql_statement()
+            source._active_query_store = False
+            dmv_statement = source.get_stored_procedure_sql_statement()
+
+        assert "sys.query_store_query" in qs_statement
+        assert "sys.dm_exec_procedure_stats" in dmv_statement
 
     def test_databases_to_scan_applies_database_filter(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
@@ -654,9 +679,9 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
 
-    def test_falls_back_to_dmv_when_no_database_has_query_store(self):
+    def test_falls_back_to_dmv_when_no_user_databases_scanned(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
-        source._query_store_database_engines = lambda: iter([])
+        source._databases_to_scan = lambda: iter([])
 
         assert list(source.get_engine()) == [source.engine]
 
