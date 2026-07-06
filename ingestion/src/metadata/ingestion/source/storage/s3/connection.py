@@ -15,26 +15,82 @@ The cloudwatch client is used to fetch the total size in bytes for a bucket, and
 the cloudwatch:GetMetricData permissions
 """
 
-from dataclasses import dataclass
-from functools import partial
-from typing import Any, Optional
+from __future__ import annotations
 
-from botocore.client import BaseClient
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
+
+from botocore.exceptions import EndpointConnectionError, NoCredentialsError
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
+from metadata.core.connections.test_connection.checks.storage import (
+    StorageStep,
+    list_buckets,
+    list_metrics,
+    probe_buckets,
 )
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection as S3ConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from botocore.client import BaseClient
+
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.records import Evidence
+
+
+# botocore raises every AWS-side rejection as a ClientError whose message embeds
+# the service error code ("An error occurred (InvalidAccessKeyId) when calling
+# ..."), so the pack matches on those stable codes. Client-side failures
+# (missing credentials, unreachable endpoint) surface as dedicated botocore
+# exception types and are matched by type.
+S3_ERRORS = ErrorPack(
+    when(Matchers.contains("InvalidAccessKeyId")).diagnose(
+        "Invalid AWS access key",
+        fix="The awsAccessKeyId does not exist in AWS; check the configured credentials.",
+    ),
+    when(Matchers.contains("SignatureDoesNotMatch")).diagnose(
+        "AWS secret key does not match",
+        fix="The awsSecretAccessKey is wrong for this awsAccessKeyId; re-enter the credential pair.",
+    ),
+    when(Matchers.contains("UnrecognizedClientException")).diagnose(
+        "AWS credentials not recognized",
+        fix="The security token or access key is invalid; check the configured credentials.",
+    ),
+    when(Matchers.contains("InvalidClientTokenId")).diagnose(
+        "AWS security token is invalid",
+        fix="The awsSessionToken (or access key) is invalid for this region; refresh the credentials.",
+    ),
+    when(Matchers.contains("ExpiredToken")).diagnose(
+        "AWS session token expired",
+        fix="Temporary credentials have expired; refresh the awsSessionToken.",
+    ),
+    when(Matchers.contains("NoSuchBucket")).diagnose(
+        "Bucket not found",
+        fix="Verify the configured bucketNames exist in this AWS account and region.",
+    ),
+    when(Matchers.contains("AccessDenied")).diagnose(
+        "Not authorized",
+        fix="Grant s3:ListAllMyBuckets (or s3:ListBucket on the configured buckets) "
+        "and cloudwatch:ListMetrics to the identity used.",
+    ),
+    when(Matchers.exception(NoCredentialsError)).diagnose(
+        "No AWS credentials found",
+        fix="No credentials were configured or resolvable; set awsAccessKeyId/awsSecretAccessKey "
+        "or make an IAM role available where ingestion runs.",
+    ),
+    when(Matchers.exception(EndpointConnectionError)).diagnose(
+        "Cannot reach the AWS endpoint",
+        fix="Check awsRegion (and endPointURL for S3-compatible services), and that the "
+        "network allows access to it from where ingestion runs.",
+    ),
+).including(NETWORK_ERRORS)
 
 
 @dataclass
@@ -59,39 +115,40 @@ def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
     )
 
 
+class S3Checks:
+    """Test-connection checks for S3.
+
+    The client is built lazily inside the checks: an assume-role configuration
+    calls STS while the boto3 session is created, so building it while the
+    provider is constructed would touch the network before the runner's gate
+    (and outside its per-step timeout). ``connect`` is ``BaseConnection.client``
+    underneath, so both steps share the one cached client.
+    """
+
+    errors = S3_ERRORS
+
+    def __init__(self, connect: Callable[[], S3ObjectStoreClient], bucket_names: list[str] | None) -> None:
+        self._connect = connect
+        self.bucket_names = bucket_names
+
+    @check(StorageStep.ListBuckets)
+    def check_buckets(self) -> Evidence:
+        client = self._connect()
+        if self.bucket_names:
+            return probe_buckets(client.s3_client, self.bucket_names)
+        return list_buckets(client.s3_client)
+
+    @check(StorageStep.GetMetrics)
+    def get_metrics(self) -> Evidence:
+        return list_metrics(self._connect().cloudwatch_client, "AWS/S3")
+
+
 class S3Connection(BaseConnection[S3ConnectionConfig, S3ObjectStoreClient]):
     def _get_client(self) -> S3ObjectStoreClient:
         return get_connection(self.service_connection)
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        client = self.client
-        service_connection = self.service_connection
-
-        def test_buckets(connection: S3ConnectionConfig, client: S3ObjectStoreClient):
-            if connection.bucketNames:
-                for bucket_name in connection.bucketNames:
-                    client.s3_client.list_objects(Bucket=bucket_name)  # pyright: ignore[reportAttributeAccessIssue]
-                return
-            client.s3_client.list_buckets()  # pyright: ignore[reportAttributeAccessIssue]
-
-        test_fn = {
-            "ListBuckets": partial(test_buckets, client=client, connection=service_connection),
-            "GetMetrics": partial(client.cloudwatch_client.list_metrics, Namespace="AWS/S3"),  # pyright: ignore[reportAttributeAccessIssue]
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
+    def checks(self) -> ChecksProvider:
+        return S3Checks(
+            connect=lambda: self.client,
+            bucket_names=self.service_connection.bucketNames,
         )
