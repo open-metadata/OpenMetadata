@@ -300,7 +300,14 @@
     }
 
     div[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
-    button[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
+    button[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'] {
+      border-radius: 4px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      height: 32px;
+      min-height: 32px;
+    }
+
     [role='group'][data-rac] {
       border-radius: 4px;
       padding-top: 4px;
@@ -312,4 +319,12 @@
       display: none;
     }
   }
+}
+
+// The core SlideoutMenu overlay carries no z-index, so positioned page
+// elements (e.g. the table's sticky Actions column) paint through it.
+// 40 sits above page chrome but below the select popovers (z-50).
+.test-case-form-drawer,
+.bundle-suite-form-drawer {
+  z-index: 40;
 }

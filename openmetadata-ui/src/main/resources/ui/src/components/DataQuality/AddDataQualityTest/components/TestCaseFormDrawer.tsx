@@ -226,6 +226,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({
+      className: 'test-case-form-drawer',
       title: title ?? t('label.add-entity', { entity: t('label.test-case') }),
       hookForm: form,
       form: formBody,

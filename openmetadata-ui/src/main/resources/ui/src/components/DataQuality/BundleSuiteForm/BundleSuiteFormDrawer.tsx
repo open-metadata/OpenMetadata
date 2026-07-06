@@ -152,6 +152,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<BundleSuiteFormData>({
+      className: 'bundle-suite-form-drawer',
       title:
         title ?? t('label.add-entity', { entity: t('label.bundle-suite') }),
       hookForm: form,
