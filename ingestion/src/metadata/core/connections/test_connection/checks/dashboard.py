@@ -31,6 +31,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sized
 
 
+# A check only needs to prove the list endpoint is reachable and returns items,
+# not enumerate every one, so ``fetch_list`` reports the count up to this cap and
+# marks it ``+`` beyond, keeping the summary bounded on huge tenants.
+DEFAULT_LIST_CAP = 100
+
+
 class DashboardStep(StepName):
     """The steps a dashboard connector can be asked to verify."""
 
@@ -38,9 +44,15 @@ class DashboardStep(StepName):
     GetDashboards = "GetDashboards"
 
 
-def _count(number: int, noun: str) -> str:
-    """``3 dashboards`` / ``1 dashboard`` - pluralize the noun to match the count."""
-    return f"{number} {noun if number == 1 else noun + 's'}"
+def _count(number: int, noun: str, cap: int | None = None) -> str:
+    """``3 dashboards`` / ``1 dashboard`` - pluralize the noun to match the count.
+
+    When ``cap`` is given and the count reaches it, the figure is rendered
+    ``<cap>+`` so a capped sample is not read as an exact total.
+    """
+    plural = noun if number == 1 else noun + "s"
+    shown = f"{cap}+" if cap is not None and number >= cap else str(number)
+    return f"{shown} {plural}"
 
 
 def verify_access(authenticate: Callable[[], object], command: str) -> Evidence:
@@ -57,16 +69,22 @@ def verify_access(authenticate: Callable[[], object], command: str) -> Evidence:
     return Evidence(summary="authenticated", command=command)
 
 
-def fetch_list(fetch: Callable[[], Sized | None], noun: str, command: str) -> Evidence:
+def fetch_list(
+    fetch: Callable[[], Sized | None],
+    noun: str,
+    command: str,
+    cap: int = DEFAULT_LIST_CAP,
+) -> Evidence:
     """Call a REST list endpoint and report how many items it returned.
 
-    Reports the command it attempted and a count summary. On failure, re-raise as
-    ``CheckError`` carrying the command so the failed step still reports what it
-    ran.
+    Reports the command it attempted and a count summary, capped at ``cap`` (shown
+    as ``<cap>+`` beyond) so a huge tenant does not produce an unbounded figure. On
+    failure, re-raise as ``CheckError`` carrying the command so the failed step
+    still reports what it ran.
     """
     try:
         items = fetch()
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     count = len(items) if items else 0
-    return Evidence(summary=f"{_count(count, noun)} enumerated", command=command)
+    return Evidence(summary=f"{_count(count, noun, cap)} enumerated", command=command)

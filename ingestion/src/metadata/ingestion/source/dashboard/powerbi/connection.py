@@ -67,6 +67,11 @@ def _http_status(*codes: int) -> Matcher:
 
 
 POWERBI_ERRORS = ErrorPack(
+    when(Matchers.contains("authority")).diagnose(
+        "Invalid tenant or authority",
+        fix="The authority could not be resolved. Check the Tenant ID (a valid GUID or "
+        "tenant name) and the Authority URI, e.g. https://login.microsoftonline.com/.",
+    ),
     when(_http_status(401)).diagnose(
         "Authentication failed",
         fix="The service principal token was rejected (401). Check the Client ID, Client Secret, "
@@ -106,26 +111,40 @@ class PowerBIChecks:
 
     ``CheckAccess`` is the gate: it acquires an OAuth token, so a bad service
     principal fails fast before any list endpoint is dialled. ``GetDashboards``
-    then exercises list access. No network call happens at construction; each
-    ``@check`` builds and runs its own call.
+    then exercises list access.
+
+    The REST client is built lazily inside the first check, never at
+    construction: the underlying MSAL client performs authority/instance
+    discovery over the network in its constructor, so building it eagerly would
+    run before the runner's gate and surface as a raw workflow error instead of a
+    classified ``CheckAccess`` failure.
     """
 
     errors = POWERBI_ERRORS
 
-    def __init__(self, client: PowerBiClient) -> None:
-        self.client = client
+    def __init__(self, connection: PowerBIConnectionConfig) -> None:
+        self._connection = connection
+        self._api_client: PowerBiApiClient | None = None
+
+    def _client(self) -> PowerBiApiClient:
+        """Build (once) and return the REST client. The MSAL client it wraps does
+        authority/instance discovery over the network in its constructor, so this
+        is only ever called from inside a check - never at construction."""
+        if self._api_client is None:
+            self._api_client = get_connection(self._connection).api_client
+        return self._api_client
 
     @check(DashboardStep.CheckAccess)
     def check_access(self) -> Evidence:
         return verify_access(
-            self.client.api_client.get_auth_token,
+            lambda: self._client().get_auth_token(),
             command="acquire OAuth token",
         )
 
     @check(DashboardStep.GetDashboards)
     def get_dashboards(self) -> Evidence:
         return fetch_list(
-            self.client.api_client.fetch_dashboards,
+            self._client().fetch_dashboards,
             noun="dashboard",
             command="fetch dashboards",
         )
@@ -136,4 +155,4 @@ class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
         return get_connection(self.service_connection)
 
     def checks(self) -> ChecksProvider:
-        return PowerBIChecks(client=self.client)
+        return PowerBIChecks(connection=self.service_connection)

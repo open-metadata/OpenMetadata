@@ -35,9 +35,11 @@ def _api_error(status_code: int) -> APIError:
     return APIError({"message": "boom", "code": "x"}, http_error)
 
 
-def _checks() -> tuple[PowerBIChecks, MagicMock]:
-    client = MagicMock()
-    return PowerBIChecks(client=client), client
+def _checks(get_connection) -> tuple[PowerBIChecks, MagicMock]:
+    """A provider whose lazily-built REST client is the returned mock."""
+    api_client = MagicMock()
+    get_connection.return_value.api_client = api_client
+    return PowerBIChecks(connection=MagicMock()), api_client
 
 
 def test_powerbi_connection_is_base_connection():
@@ -59,65 +61,79 @@ def test_checks_does_not_touch_the_network():
         provider = conn.checks()
 
     assert isinstance(provider, PowerBIChecks)
-    api_client = mock_get.return_value.api_client
-    api_client.get_auth_token.assert_not_called()
-    api_client.fetch_dashboards.assert_not_called()
+    mock_get.assert_not_called()
 
 
 def test_collect_checks_maps_every_step():
-    provider, _ = _checks()
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, _ = _checks(mock_get)
     collected = collect_checks(provider)
 
     assert set(collected) == {DashboardStep.CheckAccess, DashboardStep.GetDashboards}
 
 
 def test_check_access_authenticates():
-    provider, client = _checks()
-    client.api_client.get_auth_token.return_value = ("token", "3600")
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.get_auth_token.return_value = ("token", "3600")
 
-    evidence = provider.check_access()
+        evidence = provider.check_access()
 
-    client.api_client.get_auth_token.assert_called_once_with()
+    client.get_auth_token.assert_called_once_with()
     assert evidence.summary == "authenticated"
     assert evidence.command == "acquire OAuth token"
 
 
 def test_check_access_wraps_failure_as_check_error():
-    provider, client = _checks()
-    client.api_client.get_auth_token.side_effect = InvalidSourceException("no token")
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.get_auth_token.side_effect = InvalidSourceException("no token")
 
-    with pytest.raises(CheckError) as exc_info:
-        provider.check_access()
+        with pytest.raises(CheckError) as exc_info:
+            provider.check_access()
 
     assert isinstance(exc_info.value.cause, InvalidSourceException)
     assert exc_info.value.evidence.command == "acquire OAuth token"
 
 
 def test_get_dashboards_counts_results():
-    provider, client = _checks()
-    client.api_client.fetch_dashboards.return_value = [object(), object(), object()]
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.fetch_dashboards.return_value = [object(), object(), object()]
 
-    evidence = provider.get_dashboards()
+        evidence = provider.get_dashboards()
 
     assert evidence.summary == "3 dashboards enumerated"
     assert evidence.command == "fetch dashboards"
 
 
-def test_get_dashboards_empty_is_singular_aware():
-    provider, client = _checks()
-    client.api_client.fetch_dashboards.return_value = None
+def test_get_dashboards_caps_the_count():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.fetch_dashboards.return_value = [object()] * 250
 
-    evidence = provider.get_dashboards()
+        evidence = provider.get_dashboards()
+
+    assert evidence.summary == "100+ dashboards enumerated"
+
+
+def test_get_dashboards_empty_is_singular_aware():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.fetch_dashboards.return_value = None
+
+        evidence = provider.get_dashboards()
 
     assert evidence.summary == "0 dashboards enumerated"
 
 
 def test_get_dashboards_wraps_failure_as_check_error():
-    provider, client = _checks()
-    client.api_client.fetch_dashboards.side_effect = _api_error(403)
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.fetch_dashboards.side_effect = _api_error(403)
 
-    with pytest.raises(CheckError) as exc_info:
-        provider.get_dashboards()
+        with pytest.raises(CheckError) as exc_info:
+            provider.get_dashboards()
 
     assert exc_info.value.evidence.command == "fetch dashboards"
 
@@ -129,6 +145,8 @@ def test_get_dashboards_wraps_failure_as_check_error():
         (InvalidSourceException("bad creds"), "Authentication failed"),
         (_api_error(403), "Insufficient permissions"),
         (_api_error(404), "Resource not found"),
+        (ValueError("Unable to get authority configuration for https://login..."), "Invalid tenant or authority"),
+        (ValueError("invalid_instance: The authority you provided is not known"), "Invalid tenant or authority"),
         (socket.gaierror("name resolution failed"), "Host could not be resolved"),
     ],
 )
