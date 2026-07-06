@@ -460,6 +460,32 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: The per-entity AI Context endpoint (inherited from EntityResource) returns an OKF-style
+   * markdown document for this entity type. Verifies the endpoint is reachable and produces a
+   * frontmatter-bearing document for every entity type that extends this base test.
+   */
+  @Test
+  void get_entityAiContext_200_OK(TestNamespace ns) throws Exception {
+    T created = createEntity(createMinimalRequest(ns));
+
+    String url = SdkClients.getServerUrl() + getResourcePath() + created.getId() + "/context";
+    java.net.http.HttpRequest request =
+        java.net.http.HttpRequest.newBuilder()
+            .uri(java.net.URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .GET()
+            .build();
+    HttpResponse<String> response =
+        java.net.http.HttpClient.newHttpClient()
+            .send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(200, response.statusCode());
+    assertTrue(
+        response.body().contains("type:"),
+        "AI context markdown must carry OKF frontmatter with a type for " + getEntityType());
+  }
+
+  /**
    * Test: Get non-existent entity should fail
    * Equivalent to: get_entityNotFound_404 in EntityResourceTest
    */
