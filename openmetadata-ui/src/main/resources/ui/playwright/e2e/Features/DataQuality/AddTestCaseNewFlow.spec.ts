@@ -87,6 +87,7 @@ test.describe(
     }) => {
       const {
         page,
+        testType,
         testTypeId,
         paramsValue,
         expectSchedulerCard = true,
@@ -114,13 +115,20 @@ test.describe(
         await page.getByTestId('test-case-name').locator('input').clear();
       }
 
-      await page.getByTestId('test-case-name').locator('input').fill(`${testTypeId}_test_case`);
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(`${testTypeId}_test_case`);
       await page.click('[id="root\\/testType"]');
       await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
 
       await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-      await page.getByTestId(testTypeId).click();
+      await page
+        .getByRole('option')
+        .filter({ hasText: testType })
+        .first()
+        .click();
 
       await page.locator(`[data-id="${testTypeId}"]`).waitFor({
         state: 'visible',
@@ -212,7 +220,7 @@ test.describe(
     });
 
     const tableTestCaseDetails = {
-      testType: 'table row count to equal',
+      testType: 'Table Row Count To Equal',
       testTypeId: 'tableRowCountToEqual',
       paramsValue: '10',
     };

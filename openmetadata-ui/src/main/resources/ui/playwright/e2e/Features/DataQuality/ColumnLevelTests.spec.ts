@@ -92,13 +92,17 @@ test.describe(
         // Fill test case name and wait for documentation panel
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type and wait for documentation panel
         await page.click('[id="root/testType"]');
         const testTypeOption = page
-          .locator('[role="listbox"]')
-          .getByTestId(testCase.type);
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first();
         await expect(testTypeOption).toBeVisible();
         await testTypeOption.click();
         await expect(
@@ -152,6 +156,7 @@ test.describe(
         displayName: 'Column Values Between Range',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeBetween',
+        label: 'Column Values To Be Between',
         minValue: '0',
         maxValue: '1000',
       };
@@ -184,11 +189,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -239,6 +251,7 @@ test.describe(
         displayName: 'Column Values Should Be Unique',
         column: table.entity?.columns[0].name,
         type: 'columnValuesToBeUnique',
+        label: 'Column Values To Be Unique',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -269,11 +282,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -319,6 +339,7 @@ test.describe(
         name: 'column_values_in_set',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeInSet',
+        label: 'Column Values To Be In Set',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -349,11 +370,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -428,6 +456,7 @@ test.describe(
         name: 'column_values_not_in_set',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeNotInSet',
+        label: 'Column Values To Be Not In Set',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -458,11 +487,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -518,6 +554,7 @@ test.describe(
         name: 'column_values_match_regex',
         column: table.entity?.columns[2].name,
         type: 'columnValuesToMatchRegex',
+        label: 'Column Values To Match Regex Pattern',
         regex: '^[0-9]+$',
       };
 
@@ -549,11 +586,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -600,6 +644,7 @@ test.describe(
         name: 'column_values_not_match_regex',
         column: table.entity?.columns[2].name,
         type: 'columnValuesToNotMatchRegex',
+        label: 'Column Values To Not Match Regex',
         regex: '[a-zA-Z]',
       };
 
@@ -631,11 +676,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -689,6 +741,7 @@ test.describe(
         name: 'column_max_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMaxToBeBetween',
+        label: 'Column Value Max. To Be Between',
         minValueForMaxInCol: '0',
         maxValueForMaxInCol: '10000',
       };
@@ -721,11 +774,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -785,6 +845,7 @@ test.describe(
         name: 'column_min_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMinToBeBetween',
+        label: 'Column Value Min. To Be Between',
         minValueForMinInCol: '0',
         maxValueForMinInCol: '100',
       };
@@ -817,11 +878,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -881,6 +949,7 @@ test.describe(
         name: 'column_mean_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMeanToBeBetween',
+        label: 'Column Value Mean To Be Between',
         minValueForMeanInCol: '0',
         maxValueForMeanInCol: '500',
       };
@@ -913,11 +982,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -981,6 +1057,7 @@ test.describe(
         name: 'column_median_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMedianToBeBetween',
+        label: 'Column Value Median To Be Between',
         minValueForMedianInCol: '0',
         maxValueForMedianInCol: '400',
       };
@@ -1013,11 +1090,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1081,6 +1165,7 @@ test.describe(
         name: 'column_stddev_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueStdDevToBeBetween',
+        label: 'Column Value Std Dev To Be Between',
         minValueForStdDevInCol: '0',
         maxValueForStdDevInCol: '100',
       };
@@ -1113,11 +1198,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1181,6 +1273,7 @@ test.describe(
         name: 'column_sum_between',
         column: table.entity?.columns[1].name,
         type: 'columnValuesSumToBeBetween',
+        label: 'Column Values Sum To Be Between',
         minValueForSumInCol: '0',
         maxValueForSumInCol: '100000',
       };
@@ -1214,11 +1307,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1278,6 +1378,7 @@ test.describe(
         name: 'column_length_between',
         column: table.entity?.columns[2].name,
         type: 'columnValueLengthsToBeBetween',
+        label: 'Column Value Lengths To Be Between',
         minLength: '1',
         maxLength: '50',
       };
@@ -1310,11 +1411,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1364,6 +1472,7 @@ test.describe(
         name: 'column_missing_count_equal',
         column: table.entity?.columns[0].name,
         type: 'columnValuesMissingCount',
+        label: 'Column Values Missing Count',
         missingCountValue: '0',
       };
 
@@ -1395,11 +1504,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1449,6 +1565,7 @@ test.describe(
         name: 'column_value_at_location',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeAtExpectedLocation',
+        label: 'Column Values To Be At Expected Location',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -1479,11 +1596,18 @@ test.describe(
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
         await page.click('[id="root/testType"]');
-        await page.getByTestId(testCase.type).click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.label })
+          .first()
+          .click();
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
         // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
 

@@ -107,7 +107,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -116,7 +119,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableRowCountToBeBetween').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Row Count To Be Between' })
+          .first()
+          .click();
         await page.locator('[data-id="tableRowCountToBeBetween"]').waitFor({
           state: 'visible',
         });
@@ -198,7 +205,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -207,7 +217,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableRowCountToEqual').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Row Count To Equal' })
+          .first()
+          .click();
         await page.locator('[data-id="tableRowCountToEqual"]').waitFor({
           state: 'visible',
         });
@@ -287,7 +301,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -296,7 +313,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableColumnCountToBeBetween').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Column Count To Be Between' })
+          .first()
+          .click();
         await page.locator('[data-id="tableColumnCountToBeBetween"]').waitFor({
           state: 'visible',
         });
@@ -384,7 +405,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -393,7 +417,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableColumnCountToEqual').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Column Count To Equal' })
+          .first()
+          .click();
         await page.locator('[data-id="tableColumnCountToEqual"]').waitFor({
           state: 'visible',
         });
@@ -475,7 +503,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -484,7 +515,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableColumnNameToExist').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Column Name To Exist' })
+          .first()
+          .click();
         await page.locator('[data-id="tableColumnNameToExist"]').waitFor({
           state: 'visible',
         });
@@ -567,7 +602,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -576,7 +614,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableColumnToMatchSet').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Column Names To Match Set' })
+          .first()
+          .click();
         await page.locator('[data-id="tableColumnToMatchSet"]').waitFor({
           state: 'visible',
         });
@@ -667,7 +709,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -679,7 +724,11 @@ test.describe(
         const tableListSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=table*`
         );
-        await page.getByTestId('tableDiff').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Compare 2 tables for differences' })
+          .first()
+          .click();
         await tableListSearchResponse;
 
         const table2KeyColumnsInput = page.locator(
@@ -875,7 +924,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -884,7 +936,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableCustomSQLQuery').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Custom SQL Query' })
+          .first()
+          .click();
         await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
           state: 'visible',
         });
@@ -1001,7 +1057,10 @@ test.describe(
 
         await expect(page.locator('[data-id="name"]')).toBeVisible();
 
-        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
         await page.locator('[data-id="testType"]').waitFor({
@@ -1010,7 +1069,11 @@ test.describe(
 
         await expect(page.locator('[data-id="testType"]')).toBeVisible();
 
-        await page.getByTestId('tableRowInsertedCountToBeBetween').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Table Row Inserted Count To be Between' })
+          .first()
+          .click();
         await page
           .locator('[data-id="tableRowInsertedCountToBeBetween"]')
           .waitFor({

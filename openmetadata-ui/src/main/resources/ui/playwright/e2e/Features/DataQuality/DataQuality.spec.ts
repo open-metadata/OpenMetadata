@@ -194,7 +194,11 @@ test.describe(
           NEW_TABLE_TEST_CASE.name
         );
         await page.click('[id="root\\/testType"]');
-        await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: NEW_TABLE_TEST_CASE.label })
+          .first()
+          .click();
         await page.fill(
           '#testCaseFormV1_params_columnName',
           NEW_TABLE_TEST_CASE.field
@@ -398,7 +402,11 @@ test.describe(
           NEW_COLUMN_TEST_CASE.name
         );
         await page.click('[id="root\\/testType"]');
-        await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE.label })
+          .first()
+          .click();
         await page.fill(
           '#testCaseFormV1_params_minLength',
           NEW_COLUMN_TEST_CASE.min

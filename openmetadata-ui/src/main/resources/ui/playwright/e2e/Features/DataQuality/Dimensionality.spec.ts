@@ -124,9 +124,11 @@ test(
       );
 
       await page.click('[id="root\\/testType"]');
-      await page.click(
-        `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
-      );
+      await page
+        .getByRole('option')
+        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.label })
+        .first()
+        .click();
 
       await submitTestCaseForm(page);
       await expect(
