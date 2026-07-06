@@ -148,6 +148,10 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       createIndexInternal(indexName, indexMappingContent);
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to create index {} due to", indexName, e);
     }

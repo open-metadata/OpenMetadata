@@ -6,12 +6,14 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARG
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +55,7 @@ import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
@@ -342,13 +345,16 @@ public class OpenSearchBulkSink implements BulkSink {
         // matches the cached value the fingerprint supplier is never invoked.
         Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
         if (embeddingsEnabled) {
+          Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
+              new HashMap<>(entityInterfaces.size());
+          for (EntityInterface e : entityInterfaces) {
+            currentById.put(
+                e.getId().toString(),
+                new OpenSearchVectorService.EntityFingerprintInput(
+                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
+          }
           existingEmbeddingsById =
-              VectorEmbeddingBulkHelper.fetchExistingEmbeddings(
-                  OpenSearchVectorService.getInstance(),
-                  entityInterfaces,
-                  VectorEmbeddingBulkHelper.buildCurrentById(entityInterfaces),
-                  indexName,
-                  reindexContext);
+              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
         }
 
         // Per-entity DocBuildContext is prepared by the upstream processor stage (see
@@ -436,7 +442,7 @@ public class OpenSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = applyEmbedding(entity, json, existingEmbeddingsById, tracker);
+        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
       }
 
       String finalJson = json;
@@ -891,40 +897,118 @@ public class OpenSearchBulkSink implements BulkSink {
         && searchRepository.getIndexMapping(entityType) != null;
   }
 
-  private String applyEmbedding(
+  private String enrichWithEmbedding(
       EntityInterface entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker) {
-    VectorEmbeddingBulkHelper.EnrichmentResult result =
-        VectorEmbeddingBulkHelper.enrichWithEmbedding(
-            OpenSearchVectorService.getInstance(),
-            entity,
-            json,
-            existingEmbeddingsById,
-            OBJECT_MAPPER);
-    recordVectorOutcome(result.outcome(), tracker);
-    return result.json();
-  }
+    try {
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return json;
+      }
 
-  private void recordVectorOutcome(
-      VectorEmbeddingBulkHelper.EmbeddingOutcome outcome, StageStatsTracker tracker) {
-    if (outcome == VectorEmbeddingBulkHelper.EmbeddingOutcome.ENRICHED) {
+      JsonNode parsed = OBJECT_MAPPER.readTree(json);
+      if (!(parsed instanceof ObjectNode doc)) {
+        LOG.warn(
+            "Skipping embedding enrichment for entity {} — index doc is not a JSON object",
+            entity.getId());
+        return json;
+      }
+
+      int expectedDimension =
+          vectorService.getEmbeddingClient() != null
+              ? vectorService.getEmbeddingClient().getDimension()
+              : -1;
+      JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
+      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+        // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
+        // service-layer pre-filter only admits entries whose state matches (same fingerprint or
+        // same updatedAt), and fingerprint covers the body text that determines chunk count.
+        doc.setAll((ObjectNode) cached);
+      } else {
+        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
+        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+      }
+
       vectorSuccess.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.SUCCESS);
       }
-    } else if (outcome == VectorEmbeddingBulkHelper.EmbeddingOutcome.FAILED) {
+      return OBJECT_MAPPER.writeValueAsString(doc);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to generate embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
       vectorFailed.incrementAndGet();
       if (tracker != null) {
         tracker.recordVector(StatsResult.FAILED);
       }
+      return json;
     }
+  }
+
+  /**
+   * The cached payload from {@code fetchExistingEmbeddings} is pre-filtered by the service layer
+   * to entries whose state matches. As defense-in-depth at the splice site we also require the
+   * cached doc to (a) be an object, (b) have a non-empty {@code embedding} array, (c) have an
+   * {@code embedding} whose length matches {@code expectedDimension} — the current embedding
+   * client's dimension — and (d) have a textual non-blank {@code fingerprint}.
+   *
+   * <p>The dimension check is essential: the reuse pre-filter keys only on entity content
+   * (fingerprint / {@code updatedAt}), which does not change when the embedding model or dimension
+   * changes. Without this guard, a recreate that switches model/dimension would splice an
+   * old-dimension vector into a staged index built for the new dimension, and the document would be
+   * rejected by the knn field — silently leaving the entity unembedded. When {@code
+   * expectedDimension} is non-positive (no active client) the dimension check is skipped.
+   *
+   * <p>Tree-model access is type-tolerant — a missing or unexpectedly-typed field returns a safe
+   * default rather than throwing — and the fingerprint check ensures we never splice a vector into
+   * the new index without also carrying its fingerprint, which would silently break future reuse
+   * for that entity.
+   */
+  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   @Override
   public int getActiveBulkRequestCount() {
     return bulkProcessor.activeBulkRequests.get();
+  }
+
+  private Map<String, JsonNode> fetchExistingEmbeddings(
+      List<EntityInterface> entities,
+      Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById,
+      String indexName,
+      ReindexContext reindexContext) {
+    try {
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (vectorService == null) {
+        return Collections.emptyMap();
+      }
+
+      String entityType = entities.getFirst().getEntityReference().getType();
+      // During a recreate, read embeddings from the pre-recreate live index (the staged index is
+      // empty by definition). Outside a recreate, read from the canonical index passed in.
+      String sourceIndex =
+          reindexContext != null
+              ? reindexContext.getOriginalIndex(entityType).orElse(indexName)
+              : indexName;
+      return vectorService.getExistingEmbeddingsBatch(sourceIndex, currentById);
+    } catch (Exception e) {
+      LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
+      return Collections.emptyMap();
+    }
   }
 
   @Override
