@@ -797,9 +797,9 @@ test.describe('Domain Type Behavior', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await expect(
-        page.getByTestId('domain-type-label').locator('div')
-      ).toContainText('Source-aligned');
+      await expect(page.getByTestId('domain-type-label')).toContainText(
+        'Source-aligned'
+      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();
@@ -822,9 +822,9 @@ test.describe('Domain Type Behavior', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      await expect(
-        page.getByTestId('domain-type-label').locator('div')
-      ).toContainText('Consumer-aligned');
+      await expect(page.getByTestId('domain-type-label')).toContainText(
+        'Consumer-aligned'
+      );
     } finally {
       await domain.delete(apiContext);
       await afterAction();

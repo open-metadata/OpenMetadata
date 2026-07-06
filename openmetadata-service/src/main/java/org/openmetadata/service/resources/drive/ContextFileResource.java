@@ -173,8 +173,13 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @QueryParam("include") @DefaultValue("non-deleted") Include include,
       @Parameter(description = "Sort files by updatedAt. Supported values: ASC, DESC.")
           @QueryParam("orderBy")
-          String orderBy) {
+          String orderBy,
+      @Parameter(description = "Filter files by folder ID.") @QueryParam("folderId")
+          String folderId) {
     ListFilter filter = new ListFilter(include);
+    if (folderId != null && !folderId.isBlank()) {
+      filter.addQueryParam("folderId", folderId);
+    }
     if (orderBy == null || orderBy.isBlank()) {
       return super.listInternal(
           uriInfo, securityContext, fieldsParam, filter, limit, before, after);
