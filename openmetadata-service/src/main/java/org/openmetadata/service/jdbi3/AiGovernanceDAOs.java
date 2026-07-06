@@ -41,6 +41,15 @@ public interface AiGovernanceDAOs {
   AIGovernancePolicyDAO aiGovernancePolicyDAO();
 
   @CreateSqlObject
+  AIGovernanceFrameworkDAO aiGovernanceFrameworkDAO();
+
+  @CreateSqlObject
+  AIFrameworkControlDAO aiFrameworkControlDAO();
+
+  @CreateSqlObject
+  AuditReportDAO auditReportDAO();
+
+  @CreateSqlObject
   McpServerDAO mcpServerDAO();
 
   @CreateSqlObject
@@ -51,6 +60,59 @@ public interface AiGovernanceDAOs {
 
   @CreateSqlObject
   McpServiceDAO mcpServiceDAO();
+
+  interface AIGovernanceFrameworkDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIGovernanceFramework> {
+    @Override
+    default String getTableName() {
+      return "ai_governance_framework_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIGovernanceFramework> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIGovernanceFramework.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AIFrameworkControlDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIFrameworkControl> {
+    @Override
+    default String getTableName() {
+      return "ai_framework_control_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIFrameworkControl> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIFrameworkControl.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AuditReportDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AuditReport> {
+    @Override
+    default String getTableName() {
+      return "audit_report_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AuditReport> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AuditReport.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
 
   interface AIApplicationDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AIApplication> {
     @Override
