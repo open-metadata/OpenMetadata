@@ -77,6 +77,7 @@ export const ModalWithFunctionEditor = ({
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="700px"
+      zIndex={1050}
       onCancel={onCancel}>
       {isLoading ? (
         <Loader />

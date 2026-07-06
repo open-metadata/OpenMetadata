@@ -2178,9 +2178,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         {!isEditMode && (selectedEdge || selectedNode) && (
           <SlideoutMenu
             isDismissable
-            className="tw:z-999 lineage-entity-panel"
+            className="tw:z-999"
             data-testid="lineage-entity-panel"
-            dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
+            dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0 lineage-entity-panel"
             isOpen={isDrawerOpen}
             width={576}
             onOpenChange={(open) => {
