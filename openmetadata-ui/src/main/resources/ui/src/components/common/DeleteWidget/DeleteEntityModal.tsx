@@ -186,17 +186,20 @@ const DeleteEntityModal = ({
     };
     if (isAsyncDelete) {
       setIsLoading(true);
-      await handleOnAsyncEntityDeleteConfirm({
-        entityName,
-        entityId: entityId ?? '',
-        entityType,
-        deleteType: deletionType,
-        prepareType,
-        isRecursiveDelete: isRecursiveDelete ?? false,
-        afterDeleteAction,
-      });
-      setIsLoading(false);
-      handleOnEntityDeleteCancel();
+      try {
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName,
+          entityId: entityId ?? '',
+          entityType,
+          deleteType: deletionType,
+          prepareType,
+          isRecursiveDelete: isRecursiveDelete ?? false,
+          afterDeleteAction,
+        });
+      } finally {
+        setIsLoading(false);
+        handleOnEntityDeleteCancel();
+      }
     } else {
       onDelete ? onDelete(values) : handleOnEntityDeleteConfirm(values);
     }
