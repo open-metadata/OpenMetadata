@@ -160,6 +160,7 @@ const ContextCenterArticlesPage = () => {
         };
         const response = await postKnowledgePage(data);
         knowledgeCenterPageRef.current?.addKnowledgePage(response);
+        knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         showSuccessToast(
           t('message.entity-saved-successfully', {
             entity: t('label.quick-link'),
