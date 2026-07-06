@@ -13,12 +13,14 @@
 
 import { DrawerProps } from 'antd';
 import { ReactNode } from 'react';
+import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
 import {
   EntityReference,
   TagLabel,
   TestCase,
 } from '../../../../generated/tests/testCase';
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
@@ -35,6 +37,51 @@ export interface TestCaseFormV1Props {
   onCancel?: () => void;
   loading?: boolean;
   testLevel?: TestLevel;
+}
+
+export interface TestCaseFormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onFormSubmit?: (testCase: TestCase) => void;
+  onActiveFieldChange?: (fieldId: string) => void;
+  table?: Table;
+  testSuite?: TestSuite;
+  testLevel?: TestLevel;
+  variant?: 'classic' | 'ai';
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  width?: number | string;
+  showDocPanel?: boolean;
+}
+
+export interface TestCaseFormContext {
+  selectedDefinition?: TestDefinition;
+  selectedTableData?: Table;
+  selectedColumn?: string;
+  selectedTestLevel: TestLevel;
+  generateName: () => string;
+  canCreatePipeline: boolean;
+}
+
+export interface TestCaseFormBodyProps {
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  testSuite?: TestSuite;
+  errorMessage?: string;
+  onErrorDismiss?: () => void;
+  onActiveFieldChange?: (fieldId: string) => void;
+  onContextChange?: (context: TestCaseFormContext) => void;
+}
+
+export interface TestCaseSchedulerSectionProps {
+  form: UseFormReturn<FormValues>;
+  table?: Table;
+  testSuite?: TestSuite;
+  selectedTableData?: Table;
+  hasTestSuite: boolean;
+  canCreatePipeline: boolean;
+  schedulerOptions?: string[];
+  onActiveFieldChange?: (fieldId: string) => void;
 }
 
 // =============================================

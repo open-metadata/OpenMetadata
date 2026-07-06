@@ -95,6 +95,10 @@ jest.mock('../../../../constants/DataInsight.constants', () => ({
 jest.mock('./ProfilerSettingsModal/ProfilerSettingsModal', () =>
   jest.fn().mockReturnValue(<div>ProfilerSettingsModal.component</div>)
 );
+jest.mock(
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
+  () => jest.fn().mockReturnValue(null)
+);
 jest.mock('../../../../constants/constants', () => ({
   PAGE_SIZE: 10,
   ROUTES: {

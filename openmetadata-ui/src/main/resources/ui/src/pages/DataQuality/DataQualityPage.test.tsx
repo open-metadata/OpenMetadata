@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import DataQualityPage from './DataQualityPage';
@@ -159,40 +160,37 @@ jest.mock('../../components/PageHeader/PageHeader.component', () => ({
   )),
 }));
 
-// Mock TestCaseFormV1 and BundleSuiteForm components
+// Mock TestCaseFormDrawer and BundleSuiteFormDrawer components
 jest.mock(
-  '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1',
+  '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () => {
-    return jest.fn().mockImplementation(({ drawerProps, onCancel }) => (
-      <div data-testid="test-case-form-v1-modal">
-        <div>TestCaseFormV1 Modal</div>
-        <button data-testid="test-case-cancel-btn" onClick={onCancel}>
+    return jest.fn().mockImplementation(({ open, onClose }) => (
+      <div data-testid="test-case-form-drawer">
+        <div>TestCaseFormDrawer</div>
+        <button data-testid="test-case-cancel-btn" onClick={onClose}>
           Cancel
         </button>
-        <div>title: {drawerProps?.title}</div>
-        <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
+        <div>open: {open ? 'true' : 'false'}</div>
       </div>
     ));
   }
 );
 
 jest.mock(
-  '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm',
+  '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(({ drawerProps, onCancel, onSuccess }) => (
-        <div data-testid="bundle-suite-form-modal">
-          <div>BundleSuiteForm Modal</div>
-          <button data-testid="bundle-suite-cancel-btn" onClick={onCancel}>
-            Cancel
-          </button>
-          <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
-            Success
-          </button>
-          <div>open: {drawerProps?.open ? 'true' : 'false'}</div>
-        </div>
-      ));
+    return jest.fn().mockImplementation(({ onClose, onSuccess, open }) => (
+      <div data-testid="bundle-suite-form-drawer">
+        <div>BundleSuiteFormDrawer</div>
+        <button data-testid="bundle-suite-cancel-btn" onClick={onClose}>
+          Cancel
+        </button>
+        <button data-testid="bundle-suite-success-btn" onClick={onSuccess}>
+          Success
+        </button>
+        <div>open: {open ? 'true' : 'false'}</div>
+      </div>
+    ));
   }
 );
 
@@ -244,8 +242,13 @@ describe('DataQualityPage', () => {
   });
 
   describe('Modal Functionality', () => {
-    it('should open TestCaseFormV1 modal when Add Test Case button is clicked', async () => {
+    it('should open TestCaseFormDrawer when Add Test Case button is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
+
+      const drawer = await screen.findByTestId('test-case-form-drawer');
+
+      expect(drawer).toBeInTheDocument();
+      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
 
       const addButton = await screen.findByTestId('add-test-case-btn');
 
@@ -254,24 +257,22 @@ describe('DataQualityPage', () => {
       });
 
       expect(
-        await screen.findByTestId('test-case-form-v1-modal')
+        within(drawer).getByText('TestCaseFormDrawer')
       ).toBeInTheDocument();
-      expect(screen.getByText('TestCaseFormV1 Modal')).toBeInTheDocument();
-      expect(screen.getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
     });
 
-    it('should close TestCaseFormV1 modal when cancel is clicked', async () => {
+    it('should close TestCaseFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
+      const drawer = await screen.findByTestId('test-case-form-drawer');
       const addButton = await screen.findByTestId('add-test-case-btn');
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(
-        await screen.findByTestId('test-case-form-v1-modal')
-      ).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('test-case-cancel-btn');
 
@@ -280,14 +281,17 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('test-case-form-v1-modal')
-        ).not.toBeInTheDocument();
+        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
       });
     });
 
-    it('should open BundleSuiteForm modal when Add Test Suite button is clicked', async () => {
+    it('should open BundleSuiteFormDrawer when Add Test Suite button is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
+
+      const drawer = await screen.findByTestId('bundle-suite-form-drawer');
+
+      expect(drawer).toBeInTheDocument();
+      expect(within(drawer).getByText('open: false')).toBeInTheDocument();
 
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
@@ -296,24 +300,22 @@ describe('DataQualityPage', () => {
       });
 
       expect(
-        await screen.findByTestId('bundle-suite-form-modal')
+        within(drawer).getByText('BundleSuiteFormDrawer')
       ).toBeInTheDocument();
-      expect(screen.getByText('BundleSuiteForm Modal')).toBeInTheDocument();
-      expect(screen.getByText('open: true')).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
     });
 
-    it('should close BundleSuiteForm modal when cancel is clicked', async () => {
+    it('should close BundleSuiteFormDrawer when cancel is clicked', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testSuites);
 
+      const drawer = await screen.findByTestId('bundle-suite-form-drawer');
       const addButton = await screen.findByTestId('add-test-suite-btn');
 
       await act(async () => {
         fireEvent.click(addButton);
       });
 
-      expect(
-        await screen.findByTestId('bundle-suite-form-modal')
-      ).toBeInTheDocument();
+      expect(within(drawer).getByText('open: true')).toBeInTheDocument();
 
       const cancelButton = screen.getByTestId('bundle-suite-cancel-btn');
 
@@ -322,9 +324,7 @@ describe('DataQualityPage', () => {
       });
 
       await waitFor(() => {
-        expect(
-          screen.queryByTestId('bundle-suite-form-modal')
-        ).not.toBeInTheDocument();
+        expect(within(drawer).getByText('open: false')).toBeInTheDocument();
       });
     });
   });

@@ -273,8 +273,15 @@ jest.mock(
       )
 );
 
-jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteForm', () =>
-  jest.fn().mockImplementation(() => <div data-testid="bundle-suite-form" />)
+jest.mock('../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () =>
+  jest.fn().mockImplementation(({ onClose, open }) => (
+    <div data-testid="bundle-suite-form-drawer">
+      <div>open: {open ? 'true' : 'false'}</div>
+      <button data-testid="bundle-suite-drawer-close-btn" onClick={onClose}>
+        Close
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../../common/StatusBadge/StatusBadge.component', () =>
@@ -1001,5 +1008,29 @@ describe('DataQualityTab test', () => {
 
     expect(queuedReason).toBeInTheDocument();
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
+  });
+
+  describe('BundleSuiteFormDrawer integration', () => {
+    it('should render BundleSuiteFormDrawer unconditionally with open=false by default', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} enableBulkActions />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
+
+    it('should render BundleSuiteFormDrawer unconditionally even without enableBulkActions', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      expect(
+        await screen.findByTestId('bundle-suite-form-drawer')
+      ).toBeInTheDocument();
+      expect(screen.getByText('open: false')).toBeInTheDocument();
+    });
   });
 });

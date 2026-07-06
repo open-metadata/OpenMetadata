@@ -12,6 +12,7 @@
  */
 
 import { DrawerProps } from 'antd';
+import { ReactNode } from 'react';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
@@ -26,6 +27,22 @@ export interface BundleSuiteFormProps {
     description?: string;
     testCases?: TestCase[];
   };
+}
+
+export interface BundleSuiteFormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: (testSuite: TestSuite) => void;
+  initialValues?: BundleSuiteFormProps['initialValues'];
+  /**
+   * Reserved for AI-mode chrome (Phase 7). Accepted on the props so callers
+   * (including the AI flow) can pass it, but it does not yet change rendering,
+   * so the implementation intentionally does not destructure it.
+   */
+  variant?: 'classic' | 'ai';
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  width?: number | string;
 }
 
 export type BundleSuiteFormData = {
