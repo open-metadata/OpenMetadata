@@ -35,11 +35,11 @@ import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-tes
 import {
   MAX_NAME_LENGTH,
   PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { TagSource } from '../../../../generated/entity/data/container';
@@ -104,8 +104,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 }: TestCaseFormBodyProps) => {
   const { t } = useTranslation();
   const { config } = useLimitStore();
-  const { permissions } = usePermissionProvider();
-  const { ingestionPipeline } = permissions;
+  const { permissions, getEntityPermissionByFqn } = usePermissionProvider();
+  const { ingestionPipeline, testCase } = permissions;
 
   const [selectedTableData, setSelectedTableData] = useState<Table | undefined>(
     table
@@ -162,6 +162,33 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       onActiveFieldChange?.(id);
     },
     [onActiveFieldChange]
+  );
+
+  // Legacy parity: without global testCase.Create, require EditAll/EditTests
+  // on the selected table and gate pipeline creation on the result.
+  const checkTablePermissions = useCallback(
+    async (tableFqn: string): Promise<true | string> => {
+      if (testCase?.Create) {
+        return true;
+      }
+      try {
+        const tablePermissions = await getEntityPermissionByFqn(
+          ResourceEntity.TABLE,
+          tableFqn
+        );
+        const canCreate =
+          tablePermissions.EditAll || tablePermissions.EditTests;
+        setCanCreatePipeline(canCreate);
+        if (!canCreate) {
+          return t('message.no-permission-for-create-test-case-on-table');
+        }
+
+        return true;
+      } catch {
+        return true;
+      }
+    },
+    [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
   // Report the focused field to the doc panel. Rendered controls carry
@@ -273,7 +300,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         const response = await searchQuery({
           query: searchValue ? `*${searchValue}*` : '*',
           pageNumber: 1,
-          pageSize: PAGE_SIZE_MEDIUM,
+          pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
           fetchSource: true,
           trackTotalHits: true,
@@ -406,6 +433,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     if (selectedTestLevel) {
       fetchTestDefinitions();
       form.setValue('testTypeId', undefined as never);
+      if (selectedTestLevel === TestLevel.TABLE) {
+        form.setValue('selectedColumn', undefined as never);
+      }
       setSelectedTestDefinition(undefined);
       setSelectedTestType(undefined);
       setIsCustomQuery(false);
@@ -616,6 +646,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     required: true,
     rules: {
       required: t('label.please-select-entity', { entity: t('label.table') }),
+      validate: (value: unknown) => {
+        const fqn = fqnFromSelectItem(value as FormSelectItem | string | null);
+        if (!fqn || table) {
+          return true;
+        }
+
+        return checkTablePermissions(fqn);
+      },
     },
     id: 'root/table',
     placeholder: t('label.select-entity', { entity: t('label.table') }),

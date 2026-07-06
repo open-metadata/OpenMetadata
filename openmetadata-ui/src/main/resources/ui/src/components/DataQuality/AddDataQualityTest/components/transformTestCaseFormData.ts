@@ -154,7 +154,7 @@ export const buildTestSuitePipelinePayload = (
   );
 
   const updatedName =
-    values.pipelineName ?? getIngestionName(tableName, PipelineType.TestSuite);
+    values.pipelineName || getIngestionName(tableName, PipelineType.TestSuite);
 
   return {
     airflowConfig: {

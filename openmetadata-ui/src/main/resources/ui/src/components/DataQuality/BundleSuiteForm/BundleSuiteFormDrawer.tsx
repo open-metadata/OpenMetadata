@@ -28,6 +28,7 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
@@ -96,6 +97,11 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
         if (isAirflowAvailable) {
           await deployIngestionPipelineById(created.id ?? '');
         }
+        showSuccessToast(
+          t('message.pipeline-deployed-successfully', {
+            pipelineName: getEntityName(created),
+          })
+        );
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -167,6 +173,13 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
+  // Same dismissal funnel as the test case drawer: single parent notify on
+  // cancel/X/Escape/programmatic close, inert backdrop, form reset.
+  const handleDrawerDismiss = useCallback(() => {
+    form.reset();
+    onClose();
+  }, [form, onClose]);
+
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<BundleSuiteFormData>({
       className: 'bundle-suite-form-drawer',
@@ -176,7 +189,8 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       submitLabel: t('label.create'),
       headerActions,
       width,
-      onCancel: onClose,
+      closeOnBackdrop: false,
+      onClose: handleDrawerDismiss,
       form: (
         <HookForm
           form={form}

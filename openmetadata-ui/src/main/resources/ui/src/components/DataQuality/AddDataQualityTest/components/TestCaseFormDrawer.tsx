@@ -224,6 +224,15 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
+  // Every dismissal path (cancel, X, Escape, programmatic close) funnels
+  // through the base drawer's onClose, so the parent is notified exactly once
+  // and the form resets; the backdrop is inert like the legacy maskClosable
+  // drawer.
+  const handleDrawerDismiss = useCallback(() => {
+    form.reset();
+    onClose();
+  }, [form, onClose]);
+
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({
       className: 'test-case-form-drawer',
@@ -232,8 +241,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       form: formBody,
       headerActions,
       width,
+      closeOnBackdrop: false,
       submitLabel: t('label.create'),
-      onCancel: onClose,
+      onClose: handleDrawerDismiss,
       onSubmit: (data) =>
         submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
     });

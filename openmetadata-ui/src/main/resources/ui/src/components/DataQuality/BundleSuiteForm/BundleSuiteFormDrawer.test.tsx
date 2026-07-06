@@ -83,21 +83,21 @@ jest.mock('./BundleSuiteFormBody', () => ({
 // Minimal useFormDrawerWithHook mock: renders form content and exposes a submit
 // trigger so tests can exercise the submit path without real Drawer chrome.
 let capturedOnSubmit: ((data: unknown) => Promise<void>) | undefined;
-let capturedOnCancel: (() => void) | undefined;
+let capturedOnClose: (() => void) | undefined;
 
 jest.mock('../../common/atoms/drawer/useFormDrawer', () => ({
   useFormDrawerWithHook: jest.fn(
     ({
       form: formNode,
       onSubmit,
-      onCancel,
+      onClose,
     }: {
       form: React.ReactNode;
       onSubmit: (data: unknown) => Promise<void>;
-      onCancel?: () => void;
+      onClose?: () => void;
     }) => {
       capturedOnSubmit = onSubmit;
-      capturedOnCancel = onCancel;
+      capturedOnClose = onClose;
 
       return {
         formDrawer: (
@@ -110,15 +110,15 @@ jest.mock('../../common/atoms/drawer/useFormDrawer', () => ({
             </button>
             <button
               data-testid="trigger-cancel"
-              onClick={() => capturedOnCancel?.()}>
+              onClick={() => capturedOnClose?.()}>
               cancel
             </button>
           </div>
         ),
         openDrawer: jest.fn(),
-        // Mirror useCompositeDrawer.closeDrawer: it fires onBeforeClose (= onCancel)
-        // on every programmatic close, including the success path.
-        closeDrawer: jest.fn(() => onCancel?.()),
+        // Mirror the drawer atoms: every close path ends in the base drawer's
+        // onClose (the drawer config's dismissal funnel).
+        closeDrawer: jest.fn(() => onClose?.()),
         isOpen: false,
         isSubmitting: false,
         toggleDrawer: jest.fn(),
@@ -161,23 +161,23 @@ describe('BundleSuiteFormDrawer', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedOnSubmit = undefined;
-    capturedOnCancel = undefined;
+    capturedOnClose = undefined;
     mockCreateTestSuites.mockResolvedValue(mockTestSuite);
     mockAddBulk.mockResolvedValue({});
     mockAddIngestionPipeline.mockResolvedValue({ id: 'pipe-1' });
     mockDeployPipeline.mockResolvedValue({});
   });
 
-  it('wires onCancel to onClose so cancel/X notifies the parent exactly once', async () => {
+  it('funnels every dismissal through onClose so the parent is notified exactly once', async () => {
     const onClose = jest.fn();
     await act(async () => {
       renderDrawer({ onClose });
     });
 
-    expect(capturedOnCancel).toBeDefined();
+    expect(capturedOnClose).toBeDefined();
 
     await act(async () => {
-      capturedOnCancel?.();
+      capturedOnClose?.();
     });
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -234,6 +234,7 @@ describe('BundleSuiteFormDrawer', () => {
     await waitFor(() => {
       expect(mockCreateTestSuites).toHaveBeenCalledTimes(1);
     });
+
     expect(mockAddBulk).toHaveBeenCalledWith('ts-1', {
       selectAll: false,
       includeIds: ['tc-1', 'tc-2'],

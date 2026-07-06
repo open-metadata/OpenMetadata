@@ -28,6 +28,7 @@ import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.consta
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
+import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
@@ -119,18 +120,6 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
     },
   };
 
-  const descriptionField: FieldProp = {
-    name: 'description',
-    label: t('label.description'),
-    type: FieldTypes.DESCRIPTION,
-    required: false,
-    placeholder: t('label.enter-entity', {
-      entity: t('label.description'),
-    }),
-    props: { 'data-testid': 'test-suite-description' },
-    id: 'root/description',
-  };
-
   const enableSchedulerField: FieldProp = {
     name: 'enableScheduler',
     label: t('label.create-entity', { entity: t('label.pipeline') }),
@@ -193,7 +182,20 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
 
       {getField(nameField)}
 
-      {getField(descriptionField)}
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-1"
+            data-testid="test-suite-description"
+            id="root/description">
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              initialValue={field.value ?? ''}
+              onTextChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
 
       <FormField
         control={form.control}
