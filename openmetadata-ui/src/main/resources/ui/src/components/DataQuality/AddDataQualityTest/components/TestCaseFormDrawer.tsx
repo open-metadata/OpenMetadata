@@ -71,7 +71,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   variant = 'classic',
   title,
   headerActions,
-  width,
+  width = '75vw',
   showDocPanel = variant === 'classic',
 }: TestCaseFormDrawerProps) => {
   const { t } = useTranslation();
