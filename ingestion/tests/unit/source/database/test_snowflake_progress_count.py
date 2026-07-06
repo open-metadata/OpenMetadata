@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.snowflake import metadata as snowflake_metadata
 
 SnowflakeSource = snowflake_metadata.SnowflakeSource
@@ -110,7 +111,7 @@ def test_declare_progress_totals_seeds_database_and_schema(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1", "db2"]
     snowflake_source._schema_names_by_database = lambda: {"db1": ["s1", "s2"], "db2": ["s3"]}
     snowflake_source._is_schema_filtered = lambda db, sch: False
-    snowflake_source._declare_progress_totals()
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress))
     counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
     assert counters["Database"] == (0, 2)
     assert counters["DatabaseSchema"] == (0, 3)
@@ -120,7 +121,7 @@ def test_declare_progress_totals_applies_schema_filter(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1"]
     snowflake_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}
     snowflake_source._is_schema_filtered = lambda db, sch: sch == "drop"
-    snowflake_source._declare_progress_totals()
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress))
     counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
     assert counters["DatabaseSchema"] == (0, 1)
 
@@ -128,7 +129,7 @@ def test_declare_progress_totals_applies_schema_filter(snowflake_source):
 def test_declare_progress_totals_falls_back_when_account_show_unavailable(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1"]
     snowflake_source._schema_names_by_database = lambda: None
-    snowflake_source._declare_progress_totals()
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress))
     assert snowflake_source.progress.is_reconcilable("DatabaseSchema") is True
     counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
     assert counters["Database"] == (0, 1)
