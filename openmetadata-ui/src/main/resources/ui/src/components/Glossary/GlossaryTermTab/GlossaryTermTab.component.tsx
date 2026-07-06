@@ -31,19 +31,12 @@ import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
-import {
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent,
-} from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button as AriaButton,
   DropOperation,
   useDragAndDrop,
+  useDrop,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -142,6 +135,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const glossaryTermsDropContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const [containerWidth, setContainerWidth] = useState(0);
   const {
@@ -203,10 +197,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }>({ offset: 0, total: undefined, hasMore: true });
   const [isExpandingAll, setIsExpandingAll] = useState(false);
   const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
-  const [
-    isGlossaryTermsContainerDropTarget,
-    setIsGlossaryTermsContainerDropTarget,
-  ] = useState(false);
 
   // handle search
   const handleSearch = useCallback(async (value: string) => {
@@ -1435,63 +1425,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   }, [handleMoveRow]);
 
-  const isGlossaryTermRowDragTarget = useCallback(
-    (target: EventTarget | null) =>
-      target instanceof Element && Boolean(target.closest('tr[data-row-key]')),
-    []
-  );
-
-  const handleGlossaryTermsContainerDragOverCapture = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      if (
-        !draggedGlossaryTermRef.current ||
-        isGlossaryTermRowDragTarget(event.target)
-      ) {
-        setIsGlossaryTermsContainerDropTarget(false);
-
-        return;
-      }
-
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-      setIsGlossaryTermsContainerDropTarget(true);
-    },
-    [isGlossaryTermRowDragTarget]
-  );
-
-  const handleGlossaryTermsContainerDropCapture = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      if (
-        !draggedGlossaryTermRef.current ||
-        isGlossaryTermRowDragTarget(event.target)
-      ) {
-        return;
-      }
-
-      event.preventDefault();
-      event.stopPropagation();
-      setIsGlossaryTermsContainerDropTarget(false);
-      moveDraggedGlossaryTermToRoot();
-    },
-    [isGlossaryTermRowDragTarget, moveDraggedGlossaryTermToRoot]
-  );
-
-  const handleGlossaryTermsContainerDragLeave = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      if (
-        !(event.relatedTarget instanceof Node) ||
-        !event.currentTarget.contains(event.relatedTarget)
-      ) {
-        setIsGlossaryTermsContainerDropTarget(false);
-      }
-    },
-    []
-  );
-
-  const handleGlossaryTermsContainerDragEndCapture = useCallback(() => {
-    setIsGlossaryTermsContainerDropTarget(false);
-  }, []);
-
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
       setIsTableLoading(true);
@@ -1637,6 +1570,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     },
   });
 
+  const {
+    dropProps: glossaryTermsDropContainerProps,
+    isDropTarget: isGlossaryTermsContainerDropTarget,
+  } = useDrop({
+    ref: glossaryTermsDropContainerRef,
+    getDropOperation: (types) =>
+      types.has(GLOSSARY_TERM_DRAG_TYPE) ? 'move' : 'cancel',
+    onDrop: moveDraggedGlossaryTermToRoot,
+  });
+
   useEffect(() => {
     if (!tableContainerRef.current) {
       return;
@@ -1706,16 +1649,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
         <div
+          {...glossaryTermsDropContainerProps}
           className={`glossary-terms-scroll-container${
             isGlossaryTermsContainerDropTarget
               ? ' glossary-terms-scroll-container-drop-target'
               : ''
           }`}
-          style={{ position: 'relative' }}
-          onDragEndCapture={handleGlossaryTermsContainerDragEndCapture}
-          onDragLeave={handleGlossaryTermsContainerDragLeave}
-          onDragOverCapture={handleGlossaryTermsContainerDragOverCapture}
-          onDropCapture={handleGlossaryTermsContainerDropCapture}>
+          ref={glossaryTermsDropContainerRef}
+          style={{ position: 'relative' }}>
           {glossaryTerms.length > 0 ? (
             <>
               <TableCard.Root size="sm">
