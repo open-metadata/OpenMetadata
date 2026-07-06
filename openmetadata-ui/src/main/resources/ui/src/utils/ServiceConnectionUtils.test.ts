@@ -21,7 +21,9 @@ import {
   buildValidConfig,
   EMPTY_CONNECTION_SCHEMA,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
   getConnectionSchemas,
+  getFieldSchemaForId,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
   getSnowflakeAccountDisplayHost,
@@ -740,5 +742,183 @@ describe('supported connector schema auth coverage', () => {
     }
 
     expect(synthesizedConnectorCount).toBeGreaterThan(0);
+  });
+});
+
+describe('getConnectionFieldSection', () => {
+  const schemaWithRequiredConnectionField: Record<string, unknown> = {
+    required: ['hostPort'],
+    properties: {
+      hostPort: { type: 'string' },
+      password: { type: 'string', format: 'password' },
+      authType: { type: 'object' },
+      connectionOptions: { type: 'object' },
+      billingProjectId: { type: 'string' },
+      usageLocation: { type: 'string' },
+    },
+  };
+
+  it('classifies a required field as connection', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'hostPort')
+    ).toBe('connection');
+  });
+
+  it('classifies a password-format field as authentication', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'password')
+    ).toBe('authentication');
+  });
+
+  it('classifies authType as authentication', () => {
+    expect(
+      getConnectionFieldSection(schemaWithRequiredConnectionField, 'authType')
+    ).toBe('authentication');
+  });
+
+  it('classifies an ADVANCED_PROPERTIES field as advanced', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'connectionOptions'
+      )
+    ).toBe('advanced');
+  });
+
+  it('classifies an OPTIONAL_CONNECTION_PROPERTIES field as connection even when optional', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'billingProjectId'
+      )
+    ).toBe('connection');
+  });
+
+  it('classifies an optional field with no explicit allowlist entry as scope when the schema has an explicit required connection field', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'usageLocation'
+      )
+    ).toBe('scope');
+  });
+
+  it('falls back to the OPTIONAL_SCOPE_PROPERTIES allowlist when the schema has no required connection field', () => {
+    const schemaWithoutRequiredConnectionField: Record<string, unknown> = {
+      required: [],
+      properties: {
+        databaseName: { type: 'string' },
+        someOtherOptionalField: { type: 'string' },
+      },
+    };
+
+    expect(
+      getConnectionFieldSection(
+        schemaWithoutRequiredConnectionField,
+        'databaseName'
+      )
+    ).toBe('scope');
+    expect(
+      getConnectionFieldSection(
+        schemaWithoutRequiredConnectionField,
+        'someOtherOptionalField'
+      )
+    ).toBe('connection');
+  });
+
+  it('resolves a slash-separated field id by its top-level property name', () => {
+    expect(
+      getConnectionFieldSection(
+        schemaWithRequiredConnectionField,
+        'root/hostPort'
+      )
+    ).toBe('connection');
+  });
+
+  it('reproduces the BigQuery usageLocation regression as scope', async () => {
+    const connSch = await loadConnectionSchema(
+      ServiceCategory.DATABASE_SERVICES,
+      'BigQuery'
+    );
+
+    expect(getConnectionFieldSection(connSch.schema, 'usageLocation')).toBe(
+      'scope'
+    );
+  });
+});
+
+describe('getFieldSchemaForId', () => {
+  const schema: Record<string, unknown> = {
+    properties: {
+      hostPort: {
+        type: 'string',
+        title: 'Host and Port',
+        description: 'Host and port of the source service.',
+      },
+      authType: {
+        title: 'Authentication Type',
+        oneOf: [
+          {
+            title: 'Basic Auth',
+            properties: {
+              password: {
+                type: 'string',
+                title: 'Password',
+                description: 'Password to connect to the source.',
+              },
+            },
+          },
+          {
+            title: 'IAM Auth',
+            properties: {
+              awsConfig: {
+                title: 'AWS Config',
+                properties: {
+                  awsRegion: {
+                    type: 'string',
+                    title: 'AWS Region',
+                    description: 'AWS region of the source.',
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  it('resolves title and description for a direct property', () => {
+    expect(getFieldSchemaForId(schema, 'root/hostPort')).toEqual({
+      title: 'Host and Port',
+      description: 'Host and port of the source service.',
+    });
+  });
+
+  it('resolves a field nested inside a oneOf branch', () => {
+    expect(getFieldSchemaForId(schema, 'root/authType/password')).toEqual({
+      title: 'Password',
+      description: 'Password to connect to the source.',
+    });
+  });
+
+  it('resolves a deeply nested field through a oneOf branch', () => {
+    expect(
+      getFieldSchemaForId(schema, 'root/authType/awsConfig/awsRegion')
+    ).toEqual({
+      title: 'AWS Region',
+      description: 'AWS region of the source.',
+    });
+  });
+
+  it('strips the oneof select suffix before resolving', () => {
+    expect(getFieldSchemaForId(schema, 'root/authType__oneof_select')).toEqual({
+      title: 'Authentication Type',
+      description: undefined,
+    });
+  });
+
+  it('returns undefined for an unknown field id', () => {
+    expect(getFieldSchemaForId(schema, 'root/doesNotExist')).toBeUndefined();
   });
 });

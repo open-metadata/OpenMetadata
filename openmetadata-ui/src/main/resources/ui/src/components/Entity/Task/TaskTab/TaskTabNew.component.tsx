@@ -29,7 +29,14 @@ import { useForm } from 'antd/lib/form/Form';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isEqual, isUndefined, last, orderBy } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  last,
+  orderBy,
+  startCase,
+} from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   lazy,
@@ -64,10 +71,12 @@ import {
   TaskAvailableTransition,
   TaskCategory,
 } from '../../../../generated/entity/tasks/task';
+import { EntityReference } from '../../../../generated/entity/type';
 import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
+import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
@@ -95,7 +104,12 @@ import EntityLink from '../../../../utils/EntityLink';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getUserPath } from '../../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getDomainDetailsPath,
+  getGlossaryTermDetailsPath,
+  getUserPath,
+} from '../../../../utils/RouterUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
@@ -146,6 +160,60 @@ const FeedbackApprovalTask = withSuspenseFallback(
   lazy(() => import('../../../../pages/TasksPage/shared/FeedbackApprovalTask'))
 );
 
+type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
+
+const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
+  tags: (fqn) => getClassificationTagPath(fqn),
+  tier: (fqn) => getClassificationTagPath(fqn),
+  glossaryTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  relatedTerms: (fqn) => getGlossaryTermDetailsPath(fqn),
+  domains: (fqn) => getDomainDetailsPath(fqn),
+};
+
+const stripHtmlTags = (value: string): string =>
+  value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    Array.isArray(payload)
+  ) {
+    return null;
+  }
+  const raw = (payload as Record<string, unknown>).proposedChanges;
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    return null;
+  }
+  const normalized: ProposedChanges = Object.create(null) as ProposedChanges;
+  for (const [field, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      continue;
+    }
+    const entry = value as Record<string, unknown>;
+    const added = Array.isArray(entry.added)
+      ? (entry.added as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : [];
+    const removed = Array.isArray(entry.removed)
+      ? (entry.removed as unknown[]).filter(
+          (v): v is string => typeof v === 'string'
+        )
+      : [];
+    if (added.length === 0 && removed.length === 0) {
+      continue;
+    }
+    normalized[field] = { added, removed };
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : null;
+};
+
 const TaskPayloadSchemaFields = withSuspenseFallback(
   lazy(
     () => import('../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
@@ -163,6 +231,47 @@ const DAR_FIELD_ICONS: Record<string, string> = {
 
 const DAR_FIELD_FORMATTERS: Record<string, (value: unknown) => string> = {
   duration: (value) => formatIsoDuration(String(value ?? '')),
+};
+
+const ASSIGNEES_COLLAPSED_COUNT = 5;
+
+/**
+ * Renders the task assignees, clamped to the first few entries. When more
+ * assignees exist a "Show More" toggle reveals the rest.
+ */
+const ClampedAssignees = ({ assignees }: { assignees: EntityReference[] }) => {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  const hasOverflow = assignees.length > ASSIGNEES_COLLAPSED_COUNT;
+  const visibleAssignees =
+    expanded || !hasOverflow
+      ? assignees
+      : assignees.slice(0, ASSIGNEES_COLLAPSED_COUNT);
+
+  return (
+    <div>
+      <div className="d-flex flex-wrap gap-2">
+        {visibleAssignees.map((assignee) => (
+          <div className="d-flex items-center gap-2" key={assignee.id}>
+            <UserPopOverCard userName={assignee.name ?? ''}>
+              <ProfilePicture name={assignee.name ?? ''} width="24" />
+            </UserPopOverCard>
+            <Typography.Text>{getEntityName(assignee)}</Typography.Text>
+          </div>
+        ))}
+      </div>
+      {hasOverflow && (
+        <Button
+          className="p-0 text-xs font-medium"
+          size="small"
+          type="link"
+          onClick={() => setExpanded((prev) => !prev)}>
+          {expanded ? t('label.show-less') : t('label.show-more')}
+        </Button>
+      )}
+    </div>
+  );
 };
 
 export const TaskTabNew = ({
@@ -253,6 +362,10 @@ export const TaskTabNew = ({
     taskHandler.type === 'feedbackApproval';
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
+  const proposedChanges = useMemo(
+    () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
+    [isTaskApprovalRequest, task.payload]
+  );
   const readOnlyTaskPayload = useMemo(
     () =>
       applyTaskFormSchemaDefaults(
@@ -261,6 +374,34 @@ export const TaskTabNew = ({
       ),
     [task, taskFormSchema]
   );
+  // A Data Access Request only needs the "Select Columns" field for
+  // column-level access; hide it entirely for FullAccess / Masked so the
+  // read-only detail doesn't show an empty "--" row.
+  const readOnlyFormSchema = useMemo(() => {
+    const formSchema = taskFormSchema?.formSchema;
+    const uiSchema = taskFormSchema?.uiSchema;
+    const shouldHideColumns =
+      task.category === TaskCategory.DataAccess &&
+      readOnlyTaskPayload?.accessType !== AccessType.ColumnLevel;
+
+    if (!shouldHideColumns || !formSchema) {
+      return { formSchema, uiSchema };
+    }
+
+    const properties = Object.fromEntries(
+      Object.entries(
+        (formSchema.properties as Record<string, unknown>) ?? {}
+      ).filter(([field]) => field !== 'columns')
+    );
+    const uiOrder = (uiSchema?.['ui:order'] as string[] | undefined)?.filter(
+      (field) => field !== 'columns'
+    );
+
+    return {
+      formSchema: { ...formSchema, properties },
+      uiSchema: uiOrder ? { ...uiSchema, 'ui:order': uiOrder } : uiSchema,
+    };
+  }, [task.category, taskFormSchema, readOnlyTaskPayload?.accessType]);
   const initialTaskPayload = useMemo(
     () =>
       applyTaskFormSchemaDefaults(
@@ -433,18 +574,7 @@ export const TaskTabNew = ({
       {
         iconSrc: icAssignees,
         label: t('label.assignee-plural'),
-        value: (
-          <div className="d-flex flex-wrap gap-2">
-            {task.assignees?.map((assignee) => (
-              <div className="d-flex items-center gap-2" key={assignee.id}>
-                <UserPopOverCard userName={assignee.name ?? ''}>
-                  <ProfilePicture name={assignee.name ?? ''} width="24" />
-                </UserPopOverCard>
-                <Typography.Text>{getEntityName(assignee)}</Typography.Text>
-              </div>
-            ))}
-          </div>
-        ),
+        value: <ClampedAssignees assignees={task.assignees ?? []} />,
       },
     ];
   }, [
@@ -1609,6 +1739,66 @@ export const TaskTabNew = ({
       </Col>
       <Divider className="m-0" type="horizontal" />
       {!darHeaderRows && <Col span={24}>{taskHeader}</Col>}
+      {proposedChanges !== null && (
+        <Col span={24}>
+          <div className="task-proposed-changes">
+            <Typography.Text className="task-proposed-changes-title">
+              {t('label.proposed-change-plural')}
+            </Typography.Text>
+            <div className="task-proposed-changes-fields">
+              {Object.entries(proposedChanges).map(
+                ([field, { added, removed }]) => {
+                  const getUrl = FIELD_ROUTE_MAP[field];
+
+                  return (
+                    <div
+                      className="task-proposed-changes-field-row"
+                      key={field}>
+                      <Typography.Text className="task-proposed-changes-field-name">
+                        {startCase(field)}
+                      </Typography.Text>
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}-${index}`}>
+                              {stripHtmlTags(val)}
+                            </span>
+                          )
+                        )}
+                        {added.map((val, index) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}-${index}`}>
+                              {stripHtmlTags(val)}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </Col>
+      )}
       <Col span={24}>
         {isTaskRecognizerFeedbackApproval && task.payload && (
           <div className="feedback-details-container">
@@ -1633,8 +1823,8 @@ export const TaskTabNew = ({
               }
               mode="read"
               payload={readOnlyTaskPayload}
-              schema={taskFormSchema?.formSchema}
-              uiSchema={taskFormSchema?.uiSchema}
+              schema={readOnlyFormSchema.formSchema}
+              uiSchema={readOnlyFormSchema.uiSchema}
             />
           </div>
         )}

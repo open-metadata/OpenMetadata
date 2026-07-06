@@ -1,0 +1,52 @@
+{
+  "framework": {
+    "name": "soc2_ai",
+    "displayName": "SOC 2 (AI addendum)",
+    "description": "AICPA SOC 2 Trust Services Criteria extended with AI-specific considerations for security, availability, processing integrity, confidentiality, and privacy.",
+    "reference": "AICPA",
+    "region": "Global",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Annual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "regions": [],
+      "riskClasses": [],
+      "deploymentStages": ["Production"]
+    }
+  },
+  "controls": [
+    {
+      "code": "soc2-cc1",
+      "name": "soc2-cc1",
+      "displayName": "Control Environment",
+      "category": "Governance",
+      "description": "Demonstrate a commitment to integrity and ethical values for AI/ML systems.",
+      "evidenceRequirements": ["Ethics policy"]
+    },
+    {
+      "code": "soc2-cc2",
+      "name": "soc2-cc2",
+      "displayName": "Communication & Information",
+      "category": "Transparency",
+      "description": "Internal and external communication about AI controls and changes.",
+      "evidenceRequirements": ["Change communication log"]
+    },
+    {
+      "code": "soc2-cc6",
+      "name": "soc2-cc6",
+      "displayName": "Logical & Physical Access Controls",
+      "category": "Data",
+      "description": "Restrict and monitor access to AI training data, models, and inference endpoints.",
+      "evidenceRequirements": ["Access review report"]
+    },
+    {
+      "code": "soc2-cc7",
+      "name": "soc2-cc7",
+      "displayName": "System Operations",
+      "category": "Quality",
+      "description": "Monitor AI system performance, detect deviations, and respond appropriately.",
+      "evidenceRequirements": ["Monitoring runbook"]
+    }
+  ]
+}
