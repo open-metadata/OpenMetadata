@@ -140,6 +140,52 @@ describe('TableDiffFields', () => {
     );
   });
 
+  it('renders generic inputs for the remaining tableDiff parameters', async () => {
+    const extendedDefinition = {
+      ...TABLE_DIFF_DEFINITION,
+      parameterDefinition: [
+        ...(TABLE_DIFF_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'where',
+          displayName: 'SQL Where Clause',
+          dataType: TestDataType.String,
+        },
+        {
+          name: 'threshold',
+          displayName: 'Threshold',
+          dataType: TestDataType.Int,
+        },
+        {
+          name: 'caseSensitiveColumns',
+          displayName: 'Case sensitive columns',
+          dataType: TestDataType.Boolean,
+        },
+      ],
+    } as TestDefinition;
+
+    const Wrapper = () => {
+      const form = useForm<FormValues>();
+
+      return (
+        <HookForm form={form} onSubmit={jest.fn()}>
+          <TableDiffFields
+            definition={extendedDefinition}
+            form={form}
+            table={MAIN_TABLE}
+          />
+        </HookForm>
+      );
+    };
+
+    render(<Wrapper />);
+
+    expect(await screen.findByTestId('parameter-where')).toBeInTheDocument();
+    expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('parameter-caseSensitiveColumns')
+    ).toBeInTheDocument();
+  });
+
   it('renders the table2 async select', async () => {
     await act(async () => {
       renderFields(MAIN_TABLE);

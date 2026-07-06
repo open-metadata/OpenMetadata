@@ -73,6 +73,52 @@ describe('ParameterFields', () => {
     ).toBeInTheDocument();
   });
 
+  it('falls back to a text input for parameter types without dedicated handling', () => {
+    const definition = {
+      name: 'tableDataToBeFresh',
+      parameterDefinition: [
+        {
+          name: 'maxAge',
+          displayName: 'Max Age',
+          dataType: TestDataType.Timestamp,
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(definition);
+
+    expect(screen.getByText('Max Age')).toBeInTheDocument();
+    expect(screen.getByTestId('parameter-maxAge')).toBeInTheDocument();
+  });
+
+  it('binds the sql expression editor to the form value', async () => {
+    const definition = {
+      name: 'tableCustomSQLQuery',
+      parameterDefinition: [
+        {
+          name: 'sqlExpression',
+          displayName: 'SQL Expression',
+          dataType: TestDataType.String,
+          required: true,
+        },
+      ],
+    } as TestDefinition;
+
+    const handleSubmit = jest.fn();
+    renderWithForm(definition, undefined, handleSubmit);
+
+    expect(screen.getByTestId('parameter-sqlExpression')).toBeInTheDocument();
+
+    // Required + empty: submit must be blocked with the field error.
+    fireEvent.click(screen.getByText('submit'));
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.field-text-is-required')
+      ).toBeInTheDocument();
+    });
+    expect(handleSubmit).not.toHaveBeenCalled();
+  });
+
   it('renders a select offering the option values for an option parameter', () => {
     const definition = {
       name: 'columnValueLengthsToBeBetween',

@@ -211,6 +211,36 @@ describe('BundleSuiteFormDrawer', () => {
     expect(screen.getByTestId('bundle-suite-form-body')).toBeInTheDocument();
   });
 
+  it('seeds preselected test cases into the form value so submit includes them', async () => {
+    await act(async () => {
+      renderDrawer({
+        initialValues: {
+          name: 'suite-from-selection',
+          testCases: [
+            { id: 'tc-1', name: 'test-1' },
+            { id: 'tc-2', name: 'test-2' },
+          ] as never,
+        },
+      });
+    });
+
+    // Submit through the real HookForm so react-hook-form resolves the
+    // seeded default values (not a hand-built payload).
+    const formElement = document.querySelector('form');
+    await act(async () => {
+      fireEvent.submit(formElement as HTMLFormElement);
+    });
+
+    await waitFor(() => {
+      expect(mockCreateTestSuites).toHaveBeenCalledTimes(1);
+    });
+    expect(mockAddBulk).toHaveBeenCalledWith('ts-1', {
+      selectAll: false,
+      includeIds: ['tc-1', 'tc-2'],
+      excludeIds: [],
+    });
+  });
+
   it('calls createTestSuites then addTestCasesToLogicalTestSuiteBulk on submit', async () => {
     await act(async () => {
       renderDrawer();

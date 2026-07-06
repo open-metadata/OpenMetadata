@@ -14,10 +14,13 @@ import {
   Button,
   FieldProp,
   FieldTypes,
+  FormField,
+  FormItemLabel,
   FormItemLayout,
   FormSelectItem,
   getField,
   HelperTextType,
+  HintText,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
@@ -114,6 +117,56 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
         </div>
       ))}
     </div>
+  );
+};
+
+interface SqlExpressionFieldProps {
+  form: UseFormReturn<FormValues>;
+  data: TestCaseParameterDefinition;
+}
+
+const SqlExpressionField: React.FC<SqlExpressionFieldProps> = ({
+  form,
+  data,
+}) => {
+  const { t } = useTranslation();
+  const label = getEntityName(data);
+
+  return (
+    <FormField
+      control={form.control}
+      name={`params.${data.name}` as never}
+      rules={
+        data.required
+          ? {
+              required: t('message.field-text-is-required', {
+                fieldText: label,
+              }),
+            }
+          : undefined
+      }>
+      {({ field, fieldState }) => (
+        <div
+          className="tw:flex tw:flex-col tw:gap-1"
+          data-testid={`parameter-${data.name}`}>
+          <FormItemLabel
+            label={label}
+            required={data.required}
+            tooltip={data.description}
+          />
+          <CodeEditor
+            showCopyButton
+            className="custom-query-editor query-editor-h-200"
+            mode={{ name: CSMode.SQL }}
+            value={(field.value as string) ?? ''}
+            onChange={field.onChange}
+          />
+          {fieldState.error && (
+            <HintText isInvalid>{fieldState.error.message}</HintText>
+          )}
+        </div>
+      )}
+    </FormField>
   );
 };
 
@@ -216,23 +269,6 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
         definition.name === 'tableRowInsertedCountToBeBetween' &&
         data.name === 'columnName');
 
-    if (data.name === 'sqlExpression') {
-      return {
-        ...baseField,
-        type: FieldTypes.COMPONENT,
-        props: {
-          ...baseField.props,
-          children: (
-            <CodeEditor
-              showCopyButton
-              className="custom-query-editor query-editor-h-200"
-              mode={{ name: CSMode.SQL }}
-            />
-          ),
-        },
-      };
-    }
-
     if (isColumnField) {
       return {
         ...baseField,
@@ -296,7 +332,13 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       };
     }
 
-    return null;
+    // Match the legacy form: any parameter type without dedicated handling
+    // (TIMESTAMP, DATE, TIME, BYTES, ...) still gets a plain text input.
+    return {
+      ...baseField,
+      type: FieldTypes.TEXT,
+      placeholder: t('message.enter-a-field', { field: label }),
+    };
   };
 
   const isArrayOrSet = (data: TestCaseParameterDefinition): boolean =>
@@ -315,6 +357,14 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
           return (
             <div key={data.name}>
               <ParamArrayField data={data} form={form} />
+            </div>
+          );
+        }
+
+        if (data.name === 'sqlExpression') {
+          return (
+            <div key={data.name}>
+              <SqlExpressionField data={data} form={form} />
             </div>
           );
         }

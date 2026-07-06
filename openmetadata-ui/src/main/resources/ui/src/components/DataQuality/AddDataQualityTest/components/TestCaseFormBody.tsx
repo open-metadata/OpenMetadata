@@ -838,9 +838,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         {!isCustomQuery && getField(testTypeField)}
 
-        {additionalFields.length === 0 &&
-          selectedTestDefinition?.supportsDynamicAssertion &&
-          getField(dynamicAssertionField)}
+        {additionalFields.length > 0
+          ? additionalFields.map((field) => (
+              <div key={field.name}>{getField(field)}</div>
+            ))
+          : selectedTestDefinition?.supportsDynamicAssertion &&
+            getField(dynamicAssertionField)}
 
         {showParameterFields && selectedTestDefinition && (
           <ParameterFields

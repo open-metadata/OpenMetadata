@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FieldProp } from '@openmetadata/ui-core-components';
 import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
@@ -18,7 +19,6 @@ import { TestCaseFormType } from '../../../components/DataQuality/AddDataQuality
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
-import { FieldProp } from '../../../interface/FormUtils.interface';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';

@@ -60,6 +60,8 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
 
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  const initialTestCases = initialValues?.testCases ?? [];
+
   const form = useForm<BundleSuiteFormData>({
     defaultValues: {
       enableScheduler: false,
@@ -68,6 +70,21 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       enableDebugLog: false,
       name: initialValues?.name ?? '',
       description: initialValues?.description ?? '',
+      // Preselected test cases (e.g. "create bundle suite from selection")
+      // must reach the form value, not just the display list, or the
+      // selection validator rejects the submit.
+      ...(initialTestCases.length > 0
+        ? {
+            testCaseSelection: {
+              selectAll: false,
+              includeIds: initialTestCases
+                .map((tc) => tc.id ?? '')
+                .filter(Boolean),
+              excludeIds: [],
+              testCases: initialTestCases,
+            },
+          }
+        : {}),
     },
   });
 
