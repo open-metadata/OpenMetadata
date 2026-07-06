@@ -8,14 +8,36 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Unit tests for Power BI connection handling."""
+"""Unit tests for Power BI test-connection checks."""
 
+import socket
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.core.connections.test_connection.check import CheckError, collect_checks
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.source.dashboard.powerbi.connection import PowerBIConnection
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.source.dashboard.powerbi.connection import (
+    POWERBI_ERRORS,
+    PowerBIChecks,
+    PowerBIConnection,
+)
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.powerbi.connection"
+
+
+def _api_error(status_code: int) -> APIError:
+    http_error = MagicMock()
+    http_error.response.status_code = status_code
+    return APIError({"message": "boom", "code": "x"}, http_error)
+
+
+def _checks() -> tuple[PowerBIChecks, MagicMock]:
+    client = MagicMock()
+    return PowerBIChecks(client=client), client
 
 
 def test_powerbi_connection_is_base_connection():
@@ -31,10 +53,91 @@ def test_get_client_delegates_to_get_connection():
     mock_get.assert_called_once_with(conn.service_connection)
 
 
-def test_test_connection_runs_steps():
-    conn = PowerBIConnection(MagicMock())
-    conn._client = MagicMock()
-    with patch(f"{CONNECTION_MODULE}.test_connection_steps") as mock_step:
-        result = conn.test_connection(metadata=MagicMock())
+def test_checks_does_not_touch_the_network():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = PowerBIConnection(MagicMock())
+        provider = conn.checks()
 
-    assert result is mock_step.return_value
+    assert isinstance(provider, PowerBIChecks)
+    api_client = mock_get.return_value.api_client
+    api_client.get_auth_token.assert_not_called()
+    api_client.fetch_dashboards.assert_not_called()
+
+
+def test_collect_checks_maps_every_step():
+    provider, _ = _checks()
+    collected = collect_checks(provider)
+
+    assert set(collected) == {DashboardStep.CheckAccess, DashboardStep.GetDashboards}
+
+
+def test_check_access_authenticates():
+    provider, client = _checks()
+    client.api_client.get_auth_token.return_value = ("token", "3600")
+
+    evidence = provider.check_access()
+
+    client.api_client.get_auth_token.assert_called_once_with()
+    assert evidence.summary == "authenticated"
+    assert evidence.command == "acquire OAuth token"
+
+
+def test_check_access_wraps_failure_as_check_error():
+    provider, client = _checks()
+    client.api_client.get_auth_token.side_effect = InvalidSourceException("no token")
+
+    with pytest.raises(CheckError) as exc_info:
+        provider.check_access()
+
+    assert isinstance(exc_info.value.cause, InvalidSourceException)
+    assert exc_info.value.evidence.command == "acquire OAuth token"
+
+
+def test_get_dashboards_counts_results():
+    provider, client = _checks()
+    client.api_client.fetch_dashboards.return_value = [object(), object(), object()]
+
+    evidence = provider.get_dashboards()
+
+    assert evidence.summary == "3 dashboards enumerated"
+    assert evidence.command == "fetch dashboards"
+
+
+def test_get_dashboards_empty_is_singular_aware():
+    provider, client = _checks()
+    client.api_client.fetch_dashboards.return_value = None
+
+    evidence = provider.get_dashboards()
+
+    assert evidence.summary == "0 dashboards enumerated"
+
+
+def test_get_dashboards_wraps_failure_as_check_error():
+    provider, client = _checks()
+    client.api_client.fetch_dashboards.side_effect = _api_error(403)
+
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_dashboards()
+
+    assert exc_info.value.evidence.command == "fetch dashboards"
+
+
+@pytest.mark.parametrize(
+    ("error", "title"),
+    [
+        (_api_error(401), "Authentication failed"),
+        (InvalidSourceException("bad creds"), "Authentication failed"),
+        (_api_error(403), "Insufficient permissions"),
+        (_api_error(404), "Resource not found"),
+        (socket.gaierror("name resolution failed"), "Host could not be resolved"),
+    ],
+)
+def test_error_pack_classifies(error, title):
+    diagnosis = POWERBI_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == title
+
+
+def test_error_pack_ignores_unknown_error():
+    assert POWERBI_ERRORS.classify(ValueError("something else")) is None
