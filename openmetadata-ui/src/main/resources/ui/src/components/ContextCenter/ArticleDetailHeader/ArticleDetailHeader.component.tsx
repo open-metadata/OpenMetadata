@@ -573,7 +573,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 color="tertiary"
                 data-testid="follow-btn"
                 disabled={isFollowLoading || knowledgePage?.deleted}
-                icon={isFollowing ? <FollowIcon height={18} width={18} /> : <FollowActiveIcon height={18} width={18} /> }
+                icon={isFollowing ? <FollowActiveIcon height={18} width={18} /> : <FollowIcon height={18} width={18} /> }
                 tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
                 onClick={handleFollowClick}
               />
