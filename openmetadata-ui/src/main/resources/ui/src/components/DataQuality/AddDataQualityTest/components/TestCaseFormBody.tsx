@@ -674,6 +674,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     helperText: selectedTestDefinition?.description,
     props: {
       'data-testid': 'test-type',
+      popoverClassName: 'test-type-popover',
       options: testTypeOptions,
       onSelectionChange: () => handleActiveField('root/testType'),
     },

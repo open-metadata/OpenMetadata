@@ -328,3 +328,15 @@
 .bundle-suite-form-drawer {
   z-index: 40;
 }
+
+// Test type dropdown: show the full option description instead of a
+// clipped single line (core option spans come with whitespace-nowrap).
+.test-type-popover {
+  [role='option'] {
+    span {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+    }
+  }
+}
