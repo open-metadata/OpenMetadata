@@ -184,6 +184,7 @@ class CreateTaskTest {
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Cancelled));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Failed));
     assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Revoked));
+    assertTrue(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Expired));
   }
 
   @Test
@@ -191,6 +192,9 @@ class CreateTaskTest {
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Open));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.InProgress));
     assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.Pending));
+    // ManualRevoke is a live substate — access is still granted at the source and the workflow
+    // is parked waiting for a human to confirm the revoke — so it must classify as non-terminal.
+    assertFalse(CreateTask.isTerminalTaskStatus(TaskEntityStatus.ManualRevoke));
     // Approved and Granted are non-terminal so the next-stage CreateTask listener
     // (e.g. Data Access Request's ApprovedAccess → GrantedAccess advancement) can
     // update status/workflowStageId/availableTransitions instead of preserving

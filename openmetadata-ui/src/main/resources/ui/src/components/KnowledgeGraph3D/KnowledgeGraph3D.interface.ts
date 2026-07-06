@@ -36,6 +36,11 @@ export interface KnowledgeGraph3DSceneProps {
   getNodeTooltip: (node: GraphNode3D) => string;
   /** Builds the on-hover tooltip for a link (the relationship), translated. */
   getLinkTooltip: (link: GraphLink3D) => string;
+  /**
+   * Whether the graph is in fullscreen. Toggling it re-fits the camera so the
+   * graph fills the resized stage; free-form window resizes are left alone.
+   */
+  isFullscreen: boolean;
   /** Imperative reset handle wired by the parent to the "Reset view" control. */
   registerResetView?: (resetView: () => void) => void;
   /** Imperative PNG-export handle wired to the "Export" control. */

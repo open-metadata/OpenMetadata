@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, test } from '@playwright/test';
+import { APIRequestContext, expect, Page, test } from '@playwright/test';
 import * as fs from 'fs';
 import { Glossary } from '../../support/glossary/Glossary';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   uploadCSVAndWaitForGrid,
   validateImportStatus,
@@ -31,10 +36,25 @@ const cleanupTempFile = (filePath: string | undefined): void => {
   }
 };
 
+const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
+  await page.getByTestId('manage-button').click();
+
+  const manageDropdown = page
+    .locator('.glossary-manage-dropdown-list-container')
+    .last();
+
+  await expect(manageDropdown).toBeVisible();
+  await manageDropdown.getByTestId(itemTestId).click();
+};
+
 type GlossaryTermsResponse = {
   data?: Array<{
     name?: string;
   }>;
+};
+
+type CsvExportResponse = {
+  jobId: string;
 };
 
 const waitForGlossaryTerms = async (
@@ -93,8 +113,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       await sourceGlossary.create(apiContext);
       await sourceGlossary.visitPage(page);
 
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="import-button-description"]');
+      await selectGlossaryManageItem(page, 'import-button');
 
       let tempFilePath: string | undefined;
       try {
@@ -166,17 +185,28 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
     await test.step('Export CSV and verify it contains properly escaped quotes', async () => {
       await sourceGlossary.visitPage(page);
 
-      const downloadPromise = page.waitForEvent('download');
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="export-button-description"]');
-      await page.fill('#fileName', sourceGlossary.data.displayName);
-      await page.click('#submit-button');
-      const download = await downloadPromise;
+      const exportResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/glossaries/name/') &&
+          response.url().includes('/exportAsync') &&
+          response.request().method() === 'GET'
+      );
+
+      await selectGlossaryManageItem(page, 'export-button');
+
+      const exportResponse = await exportResponsePromise;
+      expect(exportResponse.ok()).toBeTruthy();
+
+      const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+      const csvContent = await fetchCompletedCsvAsyncJobResult(
+        apiContext,
+        jobId
+      );
 
       exportedCsvPath = `downloads/exported-${uuid()}.csv`;
-      await download.saveAs(exportedCsvPath);
+      fs.mkdirSync('downloads', { recursive: true });
+      fs.writeFileSync(exportedCsvPath, csvContent);
 
-      const csvContent = fs.readFileSync(exportedCsvPath, 'utf-8');
       expect(csvContent).toContain('Term1');
       expect(csvContent).toContain('TermWithComma,AndQuote');
       expect(csvContent).toContain('""');
@@ -188,8 +218,7 @@ test.describe('CSV Import with Commas and Quotes - All Entity Types', () => {
       await targetGlossary.create(apiContext);
       await targetGlossary.visitPage(page);
 
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="import-button-description"]');
+      await selectGlossaryManageItem(page, 'import-button');
 
       try {
         await uploadCSVAndWaitForGrid(page, exportedCsvPath, {

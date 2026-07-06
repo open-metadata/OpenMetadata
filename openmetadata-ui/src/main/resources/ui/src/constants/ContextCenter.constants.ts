@@ -19,9 +19,9 @@ import {
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-export const RECENT_DASHBOARD_ARTICLES_LIMIT = 10;
-export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 10;
-export const RECENT_DASHBOARD_MEMORIES_LIMIT = 10;
+export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
+export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
+export const FOLDER_FILES_PAGE_SIZE = 10;
 
 export const PILLAR_TONE_TEXT_CLASS: Record<string, string> = {
   info: 'tw:text-utility-brand-700',
@@ -66,3 +66,12 @@ export const VISIBILITY_OPTIONS = [
     iconName: 'FileLock02' as const,
   },
 ];
+
+export const MEMORIES_PER_PAGE = 10;
+export const MEMORY_FIELDS =
+  'owners,tags,domains,primaryEntity,relatedEntities,sourceEntity';
+
+export const FILTER_TABS = [
+  { id: 'all', label: 'label.all' },
+  { id: 'created-by-me', label: 'label.created-by-me' },
+] as const;

@@ -90,6 +90,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
+    conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -160,6 +161,21 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.MENTIONED_IN.ordinal());
     }
     return result;
+  }
+
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
+    }
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
   }
 
   private String getAssignee() {
@@ -1093,8 +1109,13 @@ public class ListFilter extends Filter<ListFilter> {
       if ("open".equalsIgnoreCase(statusGroup)) {
         return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
       } else if ("active".equalsIgnoreCase(statusGroup)) {
+        // ManualRevoke means access is still live at the source waiting for a human to confirm
+        // the revoke — non-terminal, so belongs in 'active'. Keep in sync with
+        // {@code CreateTask.isTerminalTaskStatus} and {@code
+        // TaskRepository.NON_TERMINAL_TASK_STATUSES}.
         return String.format(
-            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted')", column);
+            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')",
+            column);
       } else if ("closed".equalsIgnoreCase(statusGroup)) {
         // 'Approved' is intentionally a member of both 'active' and 'closed' because the
         // same status maps to different lifecycle meanings depending on the task type:
@@ -1105,7 +1126,7 @@ public class ListFilter extends Filter<ListFilter> {
         // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
         // A future refactor could make status group resolution task-type aware.
         return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked')",
+            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')",
             column);
       }
     }

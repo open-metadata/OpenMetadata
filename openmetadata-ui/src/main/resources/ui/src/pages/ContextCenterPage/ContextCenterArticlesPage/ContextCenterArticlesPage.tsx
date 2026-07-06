@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { Box, Button, Card, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
 import ArticleVersionHeader from '../../../components/ContextCenter/ArticleVersionHeader/ArticleVersionHeader.component';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
-import KnowledgeCenterLayout from '../../../components/KnowledgeCenter/KnowledgeCenterLayout/KnowledgeCenterLayout';
+import '../../../components/KnowledgeCenter/KnowledgeCenterLayout/knowledge-center-layout.less';
 import KnowledgePageDetailComponent from '../../../components/KnowledgeCenter/KnowledgePageDetailComponent/KnowledgePageDetailComponent';
 import KnowledgePageListComponent from '../../../components/KnowledgeCenter/KnowledgePageListComponent/KnowledgePageListComponent';
 import KnowledgePagesHierarchy from '../../../components/KnowledgeCenter/KnowledgePagesHierarchy/KnowledgePagesHierarchy';
@@ -62,7 +65,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import KnowledgePageVersionPage from '../../KnowledgePageVersionPage/KnowledgePageVersionPage';
 
 const ContextCenterArticlesPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { version } = useRequiredParams<{ version?: string }>();
@@ -264,13 +267,7 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[
-          {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          { label: t('label.article-plural') },
-        ]}
+        breadcrumbs={[{ label: t('label.article-plural') }]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {
           entity: t('label.article-plural'),
@@ -286,24 +283,11 @@ const ContextCenterArticlesPage = () => {
   const isActivityFeedTab =
     Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
 
-  const layoutClassName = useMemo(() => {
-    if (version) {
-      return 'knowledge-version-page';
-    }
-
-    if (fqn) {
-      return 'knowledge-details-page';
-    }
-
-    return undefined;
-  }, [version, fqn]);
-
   const leftSidebar = isActivityFeedTab ? null : (
     <KnowledgePagesHierarchy
       activeKey={fqn}
       activePage={page.data}
       homeRoute={contextCenterClassBase.getArticlesListPath()}
-      isPageHeaderAvailable={Boolean(fqn)}
       permissions={permissions}
       ref={knowledgePagesHierarchyRef}
       onPageDelete={knowledgeCenterPageRef.current?.onPageDelete}
@@ -368,14 +352,90 @@ const ContextCenterArticlesPage = () => {
       data-testid="context-center-articles-page">
       {renderHeader()}
 
-      <KnowledgeCenterLayout
-        centerNoPadding={isActivityFeedTab && !version}
-        className={layoutClassName}
-        leftSidebar={leftSidebar}
-        pageTitle={page.title || t('label.article-plural')}
-        rightSidebar={rightSidebar}>
-        {centerContent}
-      </KnowledgeCenterLayout>
+      <Box
+        className="tw:flex-1 tw:min-h-0 "
+        dir={i18n.dir()}
+        direction="col"
+        id="knowledge-center-layout-container">
+        <DocumentTitle title={page.title || t('label.article-plural')} />
+        <ReflexContainer
+          className="knowledge-center-layout tw:h-full"
+          orientation="vertical">
+          {/* left */}
+          <ReflexElement
+            propagateDimensions
+            className={classNames('left-panel', {
+              'left-panel-collapsed': !leftSidebar,
+            })}
+            data-testid="left-panel"
+            flex={0.2}
+            minSize={280}>
+            {leftSidebar}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter left-panel-splitter', {
+              hidden: !leftSidebar,
+            })}>
+            {leftSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          {/* middle */}
+          <ReflexElement
+            propagateDimensions
+            className={classNames('center-panel', {
+              'has-sidebar': leftSidebar,
+            })}
+            data-testid="center-panel"
+            flex={rightSidebar ? 0.6 : 1}
+            minSize={700}>
+            {fqn || version ? (
+              <Card className="tw:h-full tw:flex tw:flex-col tw:p-0">
+                <Card.Content
+                  className={classNames(
+                    'tw:flex-1 tw:min-h-0 tw:overflow-auto',
+                    isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+                  )}>
+                  {centerContent}
+                </Card.Content>
+              </Card>
+            ) : (
+              <Box
+                className="tw:h-full tw:min-h-0 tw:overflow-auto tw:py-0.5"
+                direction="col">
+                {centerContent}
+              </Box>
+            )}
+          </ReflexElement>
+
+          <ReflexSplitter
+            className={classNames('splitter right-panel-splitter', {
+              hidden: !rightSidebar,
+            })}>
+            {!!rightSidebar && (
+              <div className="panel-grabber-vertical">
+                <div className="handle-icon handle-icon-vertical" />
+              </div>
+            )}
+          </ReflexSplitter>
+
+          <ReflexElement
+            propagateDimensions
+            className={classNames('right-panel', {
+              'right-panel-collapsed': !rightSidebar,
+            })}
+            data-testid="right-panel"
+            flex={rightSidebar ? 0.2 : 0}
+            minSize={280}
+            style={rightSidebar ? {} : { display: 'none' }}>
+            {rightSidebar}
+          </ReflexElement>
+        </ReflexContainer>
+      </Box>
 
       <QuickLinkFormModal
         isOpen={showAddLinkModal}

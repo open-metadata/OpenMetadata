@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
-import classNames from 'classnames';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import type { ComponentType } from 'react';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -23,34 +20,21 @@ import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
-import type { UserSelectableListProps } from '../../common/UserSelectableList/UserSelectableList.interface';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-
-const EditIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.EditIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
-
-const PlusIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.PlusIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const UserSelectableList = withSuspenseFallback(
   lazy(() =>
     import('../../common/UserSelectableList/UserSelectableList.component').then(
-      (module) => ({ default: module.UserSelectableList })
+      (m) => ({ default: m.UserSelectableList })
     )
-  )
-) as ComponentType<UserSelectableListProps>;
+  ),
+  null
+);
 
 export const DomainExpertWidget = () => {
   const {
@@ -91,41 +75,26 @@ export const DomainExpertWidget = () => {
     }
   };
 
-  const header = (
-    <div className={`d-flex items-center gap-2 `}>
-      <Typography.Text
-        className={classNames('text-sm font-medium')}
-        data-testid="domain-expert-heading-name">
-        {t('label.expert-plural')}
-      </Typography.Text>
-      {!isVersionView && editOwnerPermission && (
-        <UserSelectableList
-          hasPermission
-          popoverProps={{ placement: 'topLeft' }}
-          selectedUsers={domain.experts ?? []}
-          onUpdate={handleExpertsUpdate}>
-          {isEmpty(domain.experts) ? (
-            <PlusIconButton
-              data-testid="Add"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.expert-plural'),
-              })}
-            />
-          ) : (
-            <EditIconButton
-              newLook
-              data-testid="edit-expert-button"
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.expert-plural'),
-              })}
-            />
-          )}
-        </UserSelectableList>
-      )}
-    </div>
-  );
+  const headerExtra =
+    !isVersionView && editOwnerPermission ? (
+      <UserSelectableList
+        hasPermission
+        popoverProps={{ placement: 'topLeft' }}
+        selectedUsers={domain.experts ?? []}
+        onUpdate={handleExpertsUpdate}>
+        {isEmpty(domain.experts) ? (
+          <WidgetPlusButton
+            data-testid="Add"
+            title={t('label.add-entity', { entity: t('label.expert-plural') })}
+          />
+        ) : (
+          <WidgetEditButton
+            data-testid="edit-expert-button"
+            title={t('label.edit-entity', { entity: t('label.expert-plural') })}
+          />
+        )}
+      </UserSelectableList>
+    ) : null;
 
   const content = isEmpty(domain.experts) ? null : (
     <div>
@@ -139,13 +108,12 @@ export const DomainExpertWidget = () => {
   );
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
+    <WidgetCard
       dataTestId="domain-expert-name"
-      isExpandDisabled={isEmpty(domain.experts)}>
+      headerExtra={headerExtra}
+      isExpandDisabled={isEmpty(domain.experts)}
+      title={t('label.expert-plural')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
