@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  Box,
   FileIcon,
   Tree,
   Typography,
@@ -77,6 +78,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
     <ContextSimplePillarCard
       dataTestId="dashboard-folders-card"
       emptyMessage={t('label.no-entity', { entity: t('label.folder-plural') })}
+      icon={FolderIcon}
       isEmpty={folders.length === 0}
       isLoading={isLoading}
       title={t('label.folder-plural')}>
@@ -97,20 +99,25 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
               <Tree.ItemContent
                 hasChildItems={hasChildItems}
                 showExpandIcon={false}>
-                <div className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:min-w-0">
+                <Box align='center' className="tw:flex-1 tw:min-w-0" gap={2} justify='between'>
+                <Box align='center' gap={2}>
+
                   <FolderIcon
-                    className="tw:size-4 tw:shrink-0 tw:text-quaternary"
+                    className="tw:size-3 tw:shrink-0 tw:text-quaternary"
                     height={16}
                     width={16}
                   />
                   <Typography
                     ellipsis
                     className="tw:flex-1 tw:min-w-0 tw:text-secondary"
-                    size="text-sm"
+                    size="text-xs"
                     weight="medium">
                     {getEntityName(folder)}
                   </Typography>
-                  <Badge size="sm" type="color">
+                 
+                  </Box>
+                  <Box align='center' gap={2}>
+             <Badge size="xs" type="color">
                     {folder.childrenCount ?? 0}
                   </Badge>
                   <Tree.ExpandButton
@@ -118,7 +125,9 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                       !hasChildItems && 'tw:invisible tw:pointer-events-none'
                     )}
                   />
-                </div>
+                  </Box>
+                  
+                </Box>
               </Tree.ItemContent>
 
               {children.map((file) => (

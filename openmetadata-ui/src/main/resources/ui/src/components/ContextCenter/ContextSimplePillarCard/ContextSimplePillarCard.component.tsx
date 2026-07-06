@@ -13,6 +13,7 @@
 import {
   Box,
   Card,
+  FeaturedIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -26,19 +27,30 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
   emptyMessage,
   dataTestId,
   children,
+  icon: Icon,
 }) => {
   return (
     <Card
-      className="tw:h-full tw:flex tw:flex-col tw:p-4"
+      className="tw:h-full tw:flex tw:flex-col tw:p-5"
       data-testid={dataTestId}>
-      <div className="tw:mb-3 tw:shrink-0">
-        <Typography
-          className="tw:text-quaternary tw:uppercase"
-          size="text-xs"
-          weight="semibold">
-          {title}
-        </Typography>
-      </div>
+         <Box align="center" className="tw:mb-3.5" gap={3}>
+                <FeaturedIcon
+                  className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
+                  color="brand"
+                  icon={Icon}
+                  size="sm"
+                  theme="light"
+                />
+          <div className="tw:flex-1 tw:min-w-0">
+            <Typography
+              as="div"
+              className="tw:text-primary"
+              size="text-sm"
+              weight="semibold">
+              {title}
+            </Typography>
+          </div>
+        </Box>
 
       <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         {isLoading ? (
