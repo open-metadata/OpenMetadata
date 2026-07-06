@@ -230,11 +230,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       )}
                     </div>
                     <div className="item-path-container">
-                      {item.path &&
-                        getTruncatedPath(
-                          item.path,
-                          'condensed-breadcrumb-container'
-                        )}
+                      {item.path && getTruncatedPath(item.path)}
                     </div>
                   </div>
                   <div className="lineage-item-direction">
