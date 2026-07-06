@@ -35,6 +35,12 @@ import org.openmetadata.schema.type.aicontext.TableContext;
  * Structural markdown is preferred over prose because it aids both human reading and agent retrieval.
  */
 public final class AIContextMarkdown {
+  /** Media type of the OKF-style markdown document produced by {@link #render}. */
+  public static final String TEXT_MARKDOWN = "text/markdown";
+
+  /** {@code ?format=} value that selects the structured AIContext JSON over markdown. */
+  public static final String FORMAT_JSON = "json";
+
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
 

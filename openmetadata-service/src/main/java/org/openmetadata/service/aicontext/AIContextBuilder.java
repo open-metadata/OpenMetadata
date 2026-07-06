@@ -350,7 +350,28 @@ public class AIContextBuilder {
   }
 
   private static String fieldsFor(String entityType) {
-    return Entity.TABLE.equals(entityType) ? TABLE_FIELDS : DEFAULT_FIELDS;
+    String result;
+    if (Entity.TABLE.equals(entityType)) {
+      result = TABLE_FIELDS;
+    } else {
+      result = supportsTags(entityType) ? DEFAULT_FIELDS : "";
+    }
+    return result;
+  }
+
+  /**
+   * Not every entity type carries tags (e.g. user, team) — requesting the field would fail the
+   * fetch. This keeps the generic context path safe for the full entity surface.
+   */
+  private static boolean supportsTags(String entityType) {
+    boolean supported = false;
+    try {
+      supported =
+          Entity.getEntityRepository(entityType).getAllowedFields().contains(Entity.FIELD_TAGS);
+    } catch (Exception e) {
+      LOG.debug("AIContext: cannot resolve repository for {}: {}", entityType, e.getMessage());
+    }
+    return supported;
   }
 
   private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface entity) {
