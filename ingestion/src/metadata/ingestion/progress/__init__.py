@@ -20,6 +20,12 @@ Ownership contract:
   it (CLI tree + SSE payload).
 """
 
+from metadata.ingestion.progress.modes import (
+    ManualProgress,
+    ProgressMode,
+    ProgressModeError,
+    TotalsDeclarer,
+)
 from metadata.ingestion.progress.registry import (
     DEFAULT_ACTIVE_LEAF_CAP,
     GlobalCounter,
@@ -32,8 +38,12 @@ from metadata.ingestion.progress.tracking import ProgressTrackingMixin
 __all__ = [
     "DEFAULT_ACTIVE_LEAF_CAP",
     "GlobalCounter",
+    "ManualProgress",
+    "ProgressMode",
+    "ProgressModeError",
     "ProgressNode",
     "ProgressNodeSnapshot",
     "ProgressRegistry",
     "ProgressTrackingMixin",
+    "TotalsDeclarer",
 ]

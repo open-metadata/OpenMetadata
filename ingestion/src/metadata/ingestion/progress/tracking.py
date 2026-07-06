@@ -15,10 +15,23 @@ workflow reporter (which scans steps for the ``_progress_registry`` attribute),
 without participating in the topology runner.
 """
 
+from typing import ClassVar
+
+from metadata.ingestion.progress.modes import (
+    ManualProgress,
+    ProgressMode,
+    ProgressModeError,
+    TotalsDeclarer,
+)
 from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 class ProgressTrackingMixin:
+    progress_mode: ClassVar[ProgressMode] = ProgressMode.AUTO
+    """AUTO (default): the topology runner counts processed entities.
+    MANUAL: the runner makes zero progress calls; the source drives
+    ``manual_progress`` itself. OFF: no progress at all."""
+
     @property
     def progress(self) -> ProgressRegistry:
         """Per-Source progress registry. First access is single-threaded
@@ -28,3 +41,24 @@ class ProgressTrackingMixin:
             registry = ProgressRegistry()
             self.__dict__["_progress_registry"] = registry
         return registry
+
+    @property
+    def manual_progress(self) -> ManualProgress:
+        """MANUAL-mode counting facade. Raises for AUTO/OFF sources — the
+        runner counts AUTO sources, so a manual increment would double-count."""
+        if self.progress_mode is not ProgressMode.MANUAL:
+            raise ProgressModeError(
+                f"manual_progress requires progress_mode=MANUAL, but {type(self).__name__} "
+                f"declares {self.progress_mode.name}. AUTO sources are counted by the topology "
+                "runner and may only declare totals via declare_progress_totals()."
+            )
+        facade = self.__dict__.get("_manual_progress")
+        if facade is None:
+            facade = ManualProgress(self.progress)
+            self.__dict__["_manual_progress"] = facade
+        return facade
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Optional connector hook: declare denominators (totals) so the run
+        renders % and ETA. Called exactly once by the topology runner, just
+        before the first non-root node is processed. Default: no totals."""
