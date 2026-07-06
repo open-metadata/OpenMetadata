@@ -946,7 +946,9 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify downstream count for all the entities', async ({ page }) => {
-      test.slow();
+      // Visits one instance of every entity type sequentially, each a full
+      // page navigation, so the default slow (3x = 180s) budget is too tight.
+      test.setTimeout(300_000);
 
       // validate main entity count
       const count = entities.length;

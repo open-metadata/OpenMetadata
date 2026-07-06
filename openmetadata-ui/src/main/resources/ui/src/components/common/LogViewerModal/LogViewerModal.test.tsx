@@ -13,6 +13,22 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import LogViewerModal from './LogViewerModal.component';
+import { useLogStream } from './useLogStream';
+
+jest.mock('./useLogStream', () => ({
+  useLogStream: jest.fn(),
+}));
+
+// Default return value for all tests — static mode ignores hook output,
+// but the hook is still called so it must return a valid shape.
+beforeEach(() => {
+  (useLogStream as jest.Mock).mockReturnValue({
+    error: null,
+    loading: false,
+    logs: '',
+    streamDone: false,
+  });
+});
 
 const onCopyToClipBoard = jest.fn();
 
@@ -276,5 +292,168 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('log-viewer-last-run')).toHaveTextContent(
       '2026-06-22 10:10 UTC'
     );
+  });
+});
+
+describe('LogViewerModal — stream mode', () => {
+  const streamBaseProps = {
+    fqn: 'service.pipeline',
+    mode: 'stream' as const,
+    onClose: jest.fn(),
+    open: true,
+    runId: 'run-abc',
+    title: 'Live ingestion logs',
+  };
+
+  beforeEach(() => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: '',
+      streamDone: false,
+    });
+  });
+
+  it('shows the live indicator while the stream is active', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: 'line 1',
+      streamDone: false,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} />);
+
+    expect(screen.getByTestId('log-viewer-live-indicator')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('log-viewer-done-indicator')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the done indicator and hides the live indicator when the stream ends', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: 'line 1',
+      streamDone: true,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} />);
+
+    expect(
+      screen.queryByTestId('log-viewer-live-indicator')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('log-viewer-done-indicator')).toBeInTheDocument();
+  });
+
+  it('forces follow=true while streaming, regardless of the prop', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: 'line 1',
+      streamDone: false,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} follow={false} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'true'
+    );
+  });
+
+  it('stops forcing follow after the stream is done', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: 'line 1',
+      streamDone: true,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} follow={false} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveAttribute(
+      'data-follow',
+      'false'
+    );
+  });
+
+  it('shows the loader while the stream is connecting', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: true,
+      logs: '',
+      streamDone: false,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} />);
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('lazy-log')).not.toBeInTheDocument();
+  });
+
+  it('appends an ERROR line to the log body when the stream errors', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: 'Network failure',
+      loading: false,
+      logs: 'line 1',
+      streamDone: false,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} />);
+
+    expect(screen.getByTestId('lazy-log')).toHaveTextContent(
+      '[ERROR] Could not connect to log stream: Network failure'
+    );
+  });
+
+  it('seeds the log body with the optional logs prop before stream lines', () => {
+    (useLogStream as jest.Mock).mockReturnValue({
+      error: null,
+      loading: false,
+      logs: 'live line',
+      streamDone: false,
+    });
+
+    render(<LogViewerModal {...streamBaseProps} logs="historical line" />);
+
+    const log = screen.getByTestId('lazy-log');
+
+    expect(log).toHaveTextContent('historical line');
+    expect(log).toHaveTextContent('live line');
+  });
+
+  it('calls useLogStream with enabled=true when open and mode=stream', () => {
+    render(<LogViewerModal {...streamBaseProps} />);
+
+    expect(useLogStream).toHaveBeenCalledWith(
+      'service.pipeline',
+      'run-abc',
+      true
+    );
+  });
+
+  it('calls useLogStream with enabled=false when closed', () => {
+    render(<LogViewerModal {...streamBaseProps} open={false} />);
+
+    expect(useLogStream).toHaveBeenCalledWith(
+      'service.pipeline',
+      'run-abc',
+      false
+    );
+  });
+
+  it('static mode callers still work with useLogStream disabled', () => {
+    render(
+      <LogViewerModal
+        open
+        logs="static log"
+        title="Static"
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(useLogStream).toHaveBeenCalledWith('', '', false);
+    expect(screen.getByTestId('lazy-log')).toHaveTextContent('static log');
   });
 });

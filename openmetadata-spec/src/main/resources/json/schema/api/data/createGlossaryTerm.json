@@ -24,6 +24,11 @@
       "description": "Display Name that identifies this glossary term.",
       "type": "string"
     },
+    "iri": {
+      "description": "Canonical IRI of this term in its source ontology. Preserves identity across ontology import/export round-trips.",
+      "type": "string",
+      "format": "uri"
+    },
     "description": {
       "description": "Description of the glossary term.",
       "$ref": "../../type/basic.json#/definitions/markdown"

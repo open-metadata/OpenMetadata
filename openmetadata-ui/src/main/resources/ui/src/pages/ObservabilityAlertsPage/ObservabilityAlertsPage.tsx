@@ -10,406 +10,68 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Table, TableCard } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Skeleton, Tooltip, Typography } from 'antd';
-import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
-import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../constants/constants';
-import { ALERTS_DOCS } from '../../constants/docs.constants';
-import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
-import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
-import {
-  AlertType,
-  EventSubscription,
-  ProviderType,
-} from '../../generated/events/eventSubscription';
-import { Paging } from '../../generated/type/paging';
-import LimitWrapper from '../../hoc/LimitWrapper';
-import { usePaging } from '../../hooks/paging/usePaging';
-import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  AlertTableColumn,
-  ALERT_TABLE_COLUMN_IDS,
-} from './ObservabilityAlertsPage.constants';
-import {
-  getAlertTableCellLayoutClassName,
-  getAlertTableHeaderLayoutClassName,
-} from './ObservabilityAlertsPage.utils';
+import ObservabilityAlertsHeader from './components/ObservabilityAlertsHeader';
+import ObservabilityAlertsTable from './components/ObservabilityAlertsTable';
+import { useObservabilityAlerts } from './hooks/useObservabilityAlerts';
 
 const ObservabilityAlertsPage = () => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [loadingCount, setLoadingCount] = useState(0);
-  const [alerts, setAlerts] = useState<EventSubscription[]>([]);
-  const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
   const {
+    alertPermissions,
+    alertResourcePermission,
+    alerts,
+    columnList,
     pageSize,
     currentPage,
-    handlePageChange,
+    getAlertDetailsPath,
     handlePageSizeChange,
-    handlePagingChange,
     showPagination,
     paging,
-    pagingCursor,
-  } = usePaging();
-  const { getResourceLimit } = useLimitStore();
-  const { getEntityPermissionByFqn, getResourcePermission } =
-    usePermissionProvider();
-  const [alertPermissions, setAlertPermissions] = useState<
-    {
-      id: string;
-      edit: boolean;
-      delete: boolean;
-    }[]
-  >();
-  const [alertResourcePermission, setAlertResourcePermission] =
-    useState<OperationPermission>();
-
-  const fetchAlertResourcePermission = async () => {
-    try {
-      setLoadingCount((count) => count + 1);
-      const permission = await getResourcePermission(
-        ResourceEntity.EVENT_SUBSCRIPTION
-      );
-
-      setAlertResourcePermission(permission);
-    } catch {
-      // Error
-    } finally {
-      setLoadingCount((count) => count - 1);
-    }
-  };
-
-  const fetchAlertPermissionByFqn = async (alertDetails: EventSubscription) => {
-    const permission = await getEntityPermissionByFqn(
-      ResourceEntity.EVENT_SUBSCRIPTION,
-      alertDetails.fullyQualifiedName ?? ''
-    );
-
-    const editPermission = permission.EditAll;
-    const deletePermission = permission.Delete;
-
-    return {
-      id: alertDetails.id,
-      edit: editPermission,
-      delete: deletePermission,
-    };
-  };
-
-  const fetchAllAlertsPermission = async (alerts: EventSubscription[]) => {
-    try {
-      setLoadingCount((count) => count + 1);
-      const response = alerts.map((alert) => fetchAlertPermissionByFqn(alert));
-
-      setAlertPermissions(await Promise.all(response));
-    } catch {
-      // Error
-    } finally {
-      setLoadingCount((count) => count - 1);
-    }
-  };
-
-  const fetchAlerts = useCallback(
-    async (params?: Partial<Paging>) => {
-      setLoading(true);
-      try {
-        const { data, paging } = await getAllAlerts({
-          after: params?.after,
-          before: params?.before,
-          limit: pageSize,
-          alertType: AlertType.Observability,
-        });
-        const alertsList = data.filter(
-          (d) => d.provider !== ProviderType.System
-        );
-
-        setAlerts(alertsList);
-        handlePagingChange(paging);
-        fetchAllAlertsPermission(alertsList);
-      } catch {
-        showErrorToast(
-          t('server.entity-fetch-error', { entity: t('label.alert-plural') })
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [pageSize]
-  );
-
-  useEffect(() => {
-    fetchAlertResourcePermission();
-  }, []);
-
-  useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
-
-    if (cursorType && cursorValue) {
-      fetchAlerts({ [cursorType]: cursorValue });
-    } else {
-      fetchAlerts();
-    }
-  }, [pageSize, pagingCursor]);
-
-  const handleAlertDelete = useCallback(async () => {
-    try {
-      setSelectedAlert(undefined);
-      await getResourceLimit('eventsubscription', true, true);
-      fetchAlerts();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [fetchAlerts]);
-
-  const onPageChange = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        handlePageChange(
-          currentPage,
-          { cursorType, cursorValue: paging[cursorType] },
-          pageSize
-        );
-      }
-    },
-    [paging, pageSize, handlePageChange]
-  );
-
-  const columnList = useMemo<AlertTableColumn[]>(
-    () => [
-      {
-        id: ALERT_TABLE_COLUMN_IDS.NAME,
-        name: t('label.name'),
-      },
-      {
-        id: ALERT_TABLE_COLUMN_IDS.TRIGGER,
-        name: t('label.trigger'),
-      },
-      {
-        id: ALERT_TABLE_COLUMN_IDS.DESCRIPTION,
-        name: t('label.description'),
-      },
-      {
-        id: ALERT_TABLE_COLUMN_IDS.ACTIONS,
-        name: t('label.action-plural'),
-      },
-    ],
-    [t]
-  );
-
-  const renderActionsCell = (record: EventSubscription) => {
-    const alertPermission = alertPermissions?.find(
-      (alert) => alert.id === record.id
-    );
-
-    if (loadingCount > 0) {
-      return <Skeleton active className="p-r-lg" paragraph={false} />;
-    }
-
-    if (
-      isUndefined(alertPermission) ||
-      (!alertPermission.edit && !alertPermission.delete)
-    ) {
-      return (
-        <Typography.Text className="p-l-xs">
-          {NO_DATA_PLACEHOLDER}
-        </Typography.Text>
-      );
-    }
-
-    return (
-      <div className="d-flex items-center">
-        {alertPermission.edit && (
-          <Tooltip placement="bottom" title={t('label.edit')}>
-            <Link
-              to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-                record.fullyQualifiedName ?? ''
-              )}>
-              <Button
-                className="flex flex-center"
-                data-testid={`alert-edit-${record.name}`}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-                type="text"
-              />
-            </Link>
-          </Tooltip>
-        )}
-        {alertPermission.delete && (
-          <Tooltip placement="bottom" title={t('label.delete')}>
-            <Button
-              className="flex flex-center"
-              data-testid={`alert-delete-${record.name}`}
-              disabled={record.provider === ProviderType.System}
-              icon={<DeleteIcon height={16} width={16} />}
-              type="text"
-              onClick={() => setSelectedAlert(record)}
-            />
-          </Tooltip>
-        )}
-      </div>
-    );
-  };
-
-  const renderRow = (record: EventSubscription) => (
-    <Table.Row data-row-key={record.id} id={record.id} key={record.id}>
-      <Table.Cell
-        className={getAlertTableCellLayoutClassName(
-          ALERT_TABLE_COLUMN_IDS.NAME
-        )}>
-        <Link
-          data-testid="alert-name"
-          to={observabilityRouterClassBase.getObservabilityAlertDetailsPath(
-            record.fullyQualifiedName ?? ''
-          )}>
-          {getEntityName(record)}
-        </Link>
-      </Table.Cell>
-      <Table.Cell
-        className={getAlertTableCellLayoutClassName(
-          ALERT_TABLE_COLUMN_IDS.TRIGGER
-        )}>
-        {record.filteringRules?.resources?.join(', ') || '--'}
-      </Table.Cell>
-      <Table.Cell
-        className={getAlertTableCellLayoutClassName(
-          ALERT_TABLE_COLUMN_IDS.DESCRIPTION
-        )}>
-        <RichTextEditorPreviewerNew markdown={record.description ?? ''} />
-      </Table.Cell>
-      <Table.Cell
-        className={getAlertTableCellLayoutClassName(
-          ALERT_TABLE_COLUMN_IDS.ACTIONS
-        )}>
-        <div className="tw:flex tw:h-full tw:items-start">
-          {renderActionsCell(record)}
-        </div>
-      </Table.Cell>
-    </Table.Row>
-  );
-
-  const pageHeaderData = useMemo(
-    () => ({
-      header: t('label.observability-alert'),
-      subHeader: t('message.alerts-description'),
-    }),
-    [t]
-  );
+    loading,
+    loadingCount,
+    selectedAlert,
+    handleAddAlert,
+    handleAlertDelete,
+    handleSelectAlert,
+    onViewAlert,
+    onPageChange,
+  } = useObservabilityAlerts();
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
       <Row gutter={[0, 16]}>
         <Col span={24}>
-          <Card>
-            <Row>
-              <Col span={16}>
-                <PageHeader
-                  data={pageHeaderData}
-                  learningPageId={LEARNING_PAGE_IDS.DATA_OBSERVABILITY}
-                  title={t('label.observability-alert')}
-                />
-              </Col>
-              <Col className="d-flex justify-end" span={8}>
-                {(alertResourcePermission?.Create ||
-                  alertResourcePermission?.All) && (
-                  <LimitWrapper resource="eventsubscription">
-                    <Button
-                      data-testid="create-observability"
-                      type="primary"
-                      onClick={() =>
-                        navigate(
-                          observabilityRouterClassBase.getAddObservabilityAlertsPath()
-                        )
-                      }>
-                      {t('label.add-entity', { entity: t('label.alert') })}
-                    </Button>
-                  </LimitWrapper>
-                )}
-              </Col>
-            </Row>
-          </Card>
+          <ObservabilityAlertsHeader
+            canCreate={Boolean(
+              alertResourcePermission?.Create || alertResourcePermission?.All
+            )}
+            onAddAlert={handleAddAlert}
+          />
         </Col>
         <Col span={24}>
-          <TableCard.Root>
-            <div className="tw:border-b tw:border-secondary">
-              <Table
-                aria-label={t('label.observability-alert')}
-                data-testid="alert-table">
-                <Table.Header columns={columnList}>
-                  {(col) => (
-                    <Table.Head
-                      className={getAlertTableHeaderLayoutClassName(col.id)}
-                      id={col.id}
-                      key={col.id}
-                      label={col.name}
-                    />
-                  )}
-                </Table.Header>
-                <Table.Body
-                  dependencies={[loadingCount, alertPermissions]}
-                  items={loading ? [] : alerts}
-                  renderEmptyState={() =>
-                    loading ? (
-                      <></>
-                    ) : (
-                      <ErrorPlaceHolder
-                        permission
-                        className="p-y-md border-none"
-                        doc={ALERTS_DOCS}
-                        heading={t('label.alert')}
-                        permissionValue={t('label.create-entity', {
-                          entity: t('label.alert'),
-                        })}
-                        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                        onClick={() =>
-                          navigate(
-                            observabilityRouterClassBase.getAddObservabilityAlertsPath()
-                          )
-                        }
-                      />
-                    )
-                  }>
-                  {(record) => renderRow(record as EventSubscription)}
-                </Table.Body>
-              </Table>
-            </div>
-            {showPagination && (
-              <div className="tw:py-3">
-                <NextPrevious
-                  currentPage={currentPage}
-                  isLoading={loading}
-                  pageSize={pageSize}
-                  paging={paging}
-                  pagingHandler={onPageChange}
-                  onShowSizeChange={handlePageSizeChange}
-                />
-              </div>
-            )}
-          </TableCard.Root>
+          <ObservabilityAlertsTable
+            alertPermissions={alertPermissions}
+            alerts={alerts}
+            columnList={columnList}
+            currentPage={currentPage}
+            getAlertDetailsPath={getAlertDetailsPath}
+            loading={loading}
+            loadingCount={loadingCount}
+            pageSize={pageSize}
+            paging={paging}
+            showPagination={showPagination}
+            onAddAlert={handleAddAlert}
+            onPageChange={onPageChange}
+            onPageSizeChange={handlePageSizeChange}
+            onSelectAlert={handleSelectAlert}
+            onViewAlert={onViewAlert}
+          />
         </Col>
         <Col span={24}>
           <DeleteWidgetModal
@@ -419,9 +81,7 @@ const ObservabilityAlertsPage = () => {
             entityName={getEntityName(selectedAlert)}
             entityType={EntityType.SUBSCRIPTION}
             visible={Boolean(selectedAlert)}
-            onCancel={() => {
-              setSelectedAlert(undefined);
-            }}
+            onCancel={() => handleSelectAlert(undefined)}
           />
         </Col>
       </Row>

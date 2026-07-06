@@ -55,9 +55,13 @@ jest.mock('../../../utils/KnowledgePageUtils', () => ({
 jest.mock('../../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
   default: {
+    isEmbeddedMode: jest.fn(() => false),
+    getContextCenterRootBreadcrumb: jest.fn(() => ({
+      label: 'label.context-center',
+      href: '/context-center',
+    })),
     isBreadcrumbInsideCard: jest.fn(() => false),
-    getCardStyle: jest.fn(() => ({})),
-    getBreadcrumbClassName: jest.fn(() => ''),
+    getHeaderCardClassName: jest.fn(() => ({})),
     getContextCenterPath: jest.fn(() => '/context-center'),
     getArticlesListPath: jest.fn(() => '/context-center/articles'),
     getArticleVersionPath: jest.fn(
@@ -468,7 +472,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('share-btn'));
+    fireEvent.click(screen.getByTestId('copy-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });

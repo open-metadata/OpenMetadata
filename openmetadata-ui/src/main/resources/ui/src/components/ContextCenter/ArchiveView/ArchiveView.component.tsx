@@ -16,14 +16,13 @@ import {
   ButtonUtility,
   Card,
   Dot,
+  FileIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06, RefreshCcw01, Trash01 } from '@untitledui/icons';
-import classNames from 'classnames';
+import { RefreshCcw01, Trash01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -65,32 +64,18 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const Icon = item.type === 'article' ? File06 : FolderIcon;
-
   return (
     <Box
       align="center"
       className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:last:border-0"
       data-testid={`archive-row-${item.id}`}
       gap={4}>
-      <Box
-        align="center"
-        className={classNames(
-          'tw:h-8 tw:w-8 tw:shrink-0 tw:rounded-lg',
-          item.type === 'article'
-            ? 'tw:bg-utility-brand-50'
-            : 'tw:bg-utility-purple-50'
-        )}
-        justify="center">
-        <Icon
-          className={classNames(
-            'tw:size-4',
-            item.type === 'article'
-              ? 'tw:text-utility-brand-700'
-              : 'tw:text-utility-purple-500'
-          )}
-        />
-      </Box>
+      <FileIcon
+        className="tw:size-8 tw:shrink-0"
+        theme="light"
+        type={item.fileExtension ?? ''}
+        variant="default"
+      />
 
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Typography ellipsis size="text-sm" weight="medium">

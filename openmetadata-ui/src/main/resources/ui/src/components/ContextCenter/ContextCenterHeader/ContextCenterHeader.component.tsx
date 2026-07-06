@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -39,7 +40,13 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  const resolvedBreadcrumbs = [
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
+    ...breadcrumbs,
+  ];
 
   const defaultActions = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
@@ -65,18 +72,19 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      showHome
-      className={contextCenterClassBase.getBreadcrumbClassName()}
-      items={breadcrumbs}
-    />
+    <HeaderBreadcrumb items={resolvedBreadcrumbs} showHome={!isEmbedded} />
   );
 
   return (
     <div className="tw:flex tw:flex-col" data-testid="context-center-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className={`tw:mb-5 tw:p-5 ${className}`} style={cardStyle}>
+      <Card
+        className={classNames(
+          'tw:mb-5 tw:p-5',
+          className,
+          headerCardClassName
+        )}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
           <div>

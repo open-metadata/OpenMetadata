@@ -17,17 +17,18 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetric;
 import org.openmetadata.schema.entity.services.ingestionPipelines.OperationMetricsBatch;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressNode;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdate;
 import org.openmetadata.schema.entity.services.ingestionPipelines.ProgressUpdateType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.ServiceProgressEvent;
 
 class IngestionProgressTrackerTest {
 
@@ -45,12 +46,14 @@ class IngestionProgressTrackerTest {
     String pipelineFqn = "service.pipeline";
     UUID runId = UUID.randomUUID();
 
-    Map<String, Object> progress = new HashMap<>();
-    Map<String, Object> tableProgress = new HashMap<>();
-    tableProgress.put("total", 100);
-    tableProgress.put("processed", 50);
-    tableProgress.put("estimatedRemainingSeconds", 300);
-    progress.put("Table", tableProgress);
+    ProgressNode progress =
+        new ProgressNode()
+            .withLabel("")
+            .withEntityType("Table")
+            .withProcessed(50)
+            .withExpected(100)
+            .withActive(true)
+            .withOverflow(0);
 
     ProgressUpdate update =
         new ProgressUpdate()
@@ -66,40 +69,7 @@ class IngestionProgressTrackerTest {
     assertNotNull(state.getLatestUpdate());
     assertEquals(runId.toString(), state.getLatestUpdate().getRunId());
     assertEquals(ProgressUpdateType.PROCESSING, state.getLatestUpdate().getUpdateType());
-  }
-
-  @Test
-  void testEntityProgressState() {
-    String pipelineFqn = "service.pipeline";
-    UUID runId = UUID.randomUUID();
-
-    Map<String, Object> progress = new HashMap<>();
-    Map<String, Object> tableProgress = new HashMap<>();
-    tableProgress.put("total", 100);
-    tableProgress.put("processed", 25);
-    tableProgress.put("estimatedRemainingSeconds", 450);
-    progress.put("Table", tableProgress);
-
-    ProgressUpdate update =
-        new ProgressUpdate()
-            .withRunId(runId.toString())
-            .withTimestamp(System.currentTimeMillis())
-            .withUpdateType(ProgressUpdateType.PROCESSING)
-            .withProgress(progress);
-
-    tracker.updateProgress(pipelineFqn, runId, update);
-
-    IngestionProgressTracker.ProgressState state = tracker.getProgressState(pipelineFqn, runId);
-    assertNotNull(state);
-
-    Map<String, IngestionProgressTracker.EntityProgressState> entityProgress =
-        state.getEntityProgress();
-    assertTrue(entityProgress.containsKey("Table"));
-
-    IngestionProgressTracker.EntityProgressState tableState = entityProgress.get("Table");
-    assertEquals(100, tableState.getTotal());
-    assertEquals(25, tableState.getProcessed());
-    assertEquals(450, tableState.getEstimatedRemainingSeconds());
+    assertEquals("Table", state.getLatestUpdate().getProgress().getEntityType());
   }
 
   @Test
@@ -290,5 +260,91 @@ class IngestionProgressTrackerTest {
     double metricsCount =
         meterRegistry.find("om_operation_metrics_batches_total").counter().count();
     assertEquals(1.0, metricsCount);
+  }
+
+  @Test
+  void testServiceListenerReceivesAllPipelinesOfService() {
+    UUID run1 = UUID.randomUUID();
+    UUID run2 = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m"));
+    tracker.updateProgress("svc.lineage", run2, processing(run2, "l"));
+
+    assertEquals(2, received.size());
+    assertEquals("svc.metadata", received.get(0).getPipelineFqn());
+    assertEquals("svc.lineage", received.get(1).getPipelineFqn());
+    assertEquals(run1.toString(), received.get(0).getRunId());
+  }
+
+  @Test
+  void testServiceListenerIsolation() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> svcA = new ArrayList<>();
+    tracker.registerServiceListener("svcA", svcA::add);
+
+    tracker.updateProgress("svcB.metadata", run, processing(run, "b"));
+
+    assertTrue(svcA.isEmpty());
+  }
+
+  @Test
+  void testActiveRunSnapshotsReflectLatestAndDropOnTerminal() {
+    UUID run1 = UUID.randomUUID();
+    UUID run2 = UUID.randomUUID();
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m1"));
+    tracker.updateProgress("svc.metadata", run1, processing(run1, "m2"));
+    tracker.updateProgress("svc.lineage", run2, processing(run2, "l1"));
+
+    List<ServiceProgressEvent> snaps = tracker.getActiveRunSnapshots("svc");
+    assertEquals(2, snaps.size());
+
+    tracker.updateProgress("svc.metadata", run1, terminal(run1));
+
+    List<ServiceProgressEvent> after = tracker.getActiveRunSnapshots("svc");
+    assertEquals(1, after.size());
+    assertEquals("svc.lineage", after.get(0).getPipelineFqn());
+  }
+
+  @Test
+  void testTerminalEventIsForwardedBeforeDrop() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    tracker.registerServiceListener("svc", received::add);
+
+    tracker.updateProgress("svc.metadata", run, processing(run, "p"));
+    tracker.updateProgress("svc.metadata", run, terminal(run));
+
+    assertEquals(2, received.size());
+    assertEquals(ProgressUpdateType.PIPELINE_COMPLETE, received.get(1).getEvent().getUpdateType());
+    assertTrue(tracker.getActiveRunSnapshots("svc").isEmpty());
+  }
+
+  @Test
+  void testUnregisterServiceListenerStopsDelivery() {
+    UUID run = UUID.randomUUID();
+    List<ServiceProgressEvent> received = new ArrayList<>();
+    Consumer<ServiceProgressEvent> listener = received::add;
+    tracker.registerServiceListener("svc", listener);
+    tracker.updateProgress("svc.metadata", run, processing(run, "a"));
+    tracker.unregisterServiceListener("svc", listener);
+    tracker.updateProgress("svc.metadata", run, processing(run, "b"));
+    assertEquals(1, received.size());
+  }
+
+  private static ProgressUpdate processing(UUID runId, String msg) {
+    return new ProgressUpdate()
+        .withRunId(runId.toString())
+        .withTimestamp(System.currentTimeMillis())
+        .withUpdateType(ProgressUpdateType.PROCESSING)
+        .withMessage(msg);
+  }
+
+  private static ProgressUpdate terminal(UUID runId) {
+    return new ProgressUpdate()
+        .withRunId(runId.toString())
+        .withTimestamp(System.currentTimeMillis())
+        .withUpdateType(ProgressUpdateType.PIPELINE_COMPLETE);
   }
 }

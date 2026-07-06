@@ -1207,8 +1207,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     EntityInterface parent = getCachedInheritanceParent(parentRef, fields);
     if (parent == null) {
-      parent = Entity.getEntityForInheritance(parentRef.getType(), parentRef.getId(), fields, ALL);
-      cacheInheritanceParent(parentRef, fields, parent);
+      try {
+        parent =
+            Entity.getEntityForInheritance(parentRef.getType(), parentRef.getId(), fields, ALL);
+        cacheInheritanceParent(parentRef, fields, parent);
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Inheritance parent {} {} no longer exists; skipping inheritance",
+            parentRef.getType(),
+            parentRef.getId());
+      }
     }
     if (!parentClass.isInstance(parent)) {
       return null;

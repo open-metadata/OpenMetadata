@@ -108,7 +108,10 @@ export interface ExploreProps {
   showDeleted?: boolean;
   onChangeShowDeleted: (showDeleted: boolean) => void;
 
-  onChangePage?: (page: number, size?: number) => void;
+  currentPage?: number;
+  pageSize?: number;
+  onChangePage?: (page: number) => void;
+  onChangePageSize?: (size: number) => void;
 
   loading?: boolean;
 

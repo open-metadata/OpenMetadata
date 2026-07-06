@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   lazy,
@@ -29,7 +28,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { NavigationGuardModal } from '../../components/common/NavigationGuardModal/NavigationGuardModal';
@@ -48,6 +47,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
 import { postService } from '../../rest/serviceAPI';
@@ -81,6 +81,31 @@ const ServiceDocPanel = lazy(
   () => import('../../components/common/ServiceDocPanel/ServiceDocPanel')
 );
 
+// Fallback "back" target when a deep-link does not specify one (e.g. the
+// onboarding connector picker), instead of the connector grid the user skipped.
+const DEFAULT_BACK_PATH = '/';
+
+// Only honour a deep-linked serviceType that is actually a supported connector
+// for the current category; otherwise fall back to the connector grid so we
+// never land on the Connect step with an unknown/empty connector.
+const getValidatedServiceType = (
+  state: unknown,
+  serviceCategory: ServiceCategory
+): string => {
+  const requested = (state as { serviceType?: string } | null)?.serviceType;
+  if (!requested) {
+    return '';
+  }
+  const supported = (
+    serviceUtilClassBase.getSupportedServiceFromList() as Record<
+      string,
+      string[]
+    >
+  )[serviceCategory];
+
+  return (supported ?? []).includes(requested) ? requested : '';
+};
+
 const EmbeddedAddServicePage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -88,15 +113,28 @@ const EmbeddedAddServicePage = () => {
     serviceCategory: ServiceCategory;
   }>();
   const { currentUser, setInlineAlertDetails } = useApplicationStore();
+  const { state: locationState } = useLocation();
+  const preselectedServiceType = useMemo(
+    () => getValidatedServiceType(locationState, serviceCategory),
+    [locationState, serviceCategory]
+  );
+  const backPath = useMemo(
+    () =>
+      (locationState as { backTo?: string } | null)?.backTo ??
+      DEFAULT_BACK_PATH,
+    [locationState]
+  );
 
   const [showErrorMessage, setShowErrorMessage] = useState(
     SERVICE_DEFAULT_ERROR_MAP
   );
-  const [activeServiceStep, setActiveServiceStep] = useState(1);
+  const [activeServiceStep, setActiveServiceStep] = useState(
+    preselectedServiceType ? 2 : 1
+  );
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig>({
     name: '',
     description: '',
-    serviceType: '',
+    serviceType: preselectedServiceType,
     connection: {
       config: {},
     },
@@ -104,7 +142,13 @@ const EmbeddedAddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [isConnectionVerified, setIsConnectionVerified] = useState(false);
-  const [activeField, setActiveField] = useState<string>('');
+  const {
+    activeField,
+    activeFieldMeta,
+    handleFieldBlur,
+    handleFieldFocus,
+    resetActiveField,
+  } = useFieldFocusManagement();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
   const connectionFormRef = useRef<ConnectionConfigFormHandle>(null);
@@ -123,7 +167,7 @@ const EmbeddedAddServicePage = () => {
 
   const handleConnectorChangeClick = useCallback(() => {
     resetNameValidation();
-    setActiveField('');
+    resetActiveField();
     setActiveServiceStep(1);
     setIsConnectionVerified(false);
     setServiceConfig({
@@ -219,6 +263,7 @@ const EmbeddedAddServicePage = () => {
           fieldText: t('label.service-name'),
         })
       );
+      document.getElementById('service-name')?.focus();
 
       return;
     }
@@ -305,17 +350,8 @@ const EmbeddedAddServicePage = () => {
     }
   };
 
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
-  };
-
   useEffect(() => {
-    setActiveField('');
+    resetActiveField(activeServiceStep === 2 ? 'serviceName' : '');
   }, [activeServiceStep]);
 
   const hideSecondPanel = useMemo(
@@ -333,7 +369,9 @@ const EmbeddedAddServicePage = () => {
   const handleBreadcrumbAction = useCallback(
     (id: React.Key) => {
       if (id === 'add-service') {
-        if (activeServiceStepRef.current > 1) {
+        if (preselectedServiceType) {
+          navigate(backPath);
+        } else if (activeServiceStepRef.current > 1) {
           setShowResetConfirm(true);
         } else {
           handleConnectorChangeClick();
@@ -342,7 +380,13 @@ const EmbeddedAddServicePage = () => {
         navigate(`/connections`);
       }
     },
-    [handleConnectorChangeClick, navigate, serviceCategory]
+    [
+      backPath,
+      handleConnectorChangeClick,
+      navigate,
+      preselectedServiceType,
+      serviceCategory,
+    ]
   );
 
   const isStep2NextDisabled =
@@ -351,7 +395,11 @@ const EmbeddedAddServicePage = () => {
   const showFooter = activeServiceStep === 2 || activeServiceStep === 3;
 
   const handleFooterBack = () => {
-    setShowBackStepConfirm(true);
+    if (activeServiceStep === 2 && preselectedServiceType) {
+      navigate(backPath);
+    } else {
+      setShowBackStepConfirm(true);
+    }
   };
 
   const handleConfirmedStepBack = () => {
@@ -437,6 +485,7 @@ const EmbeddedAddServicePage = () => {
                       name={serviceConfig.name}
                       nameError={nameError}
                       serviceType={serviceConfig.serviceType}
+                      onBlur={handleFieldBlur}
                       onDescriptionChange={(description) =>
                         setServiceConfig((prev) => ({ ...prev, description }))
                       }
@@ -448,17 +497,45 @@ const EmbeddedAddServicePage = () => {
                     />
                     <ConnectionConfigForm
                       hideFooter
+                      additionalMissingFieldsCount={
+                        !serviceConfig.name.trim() ||
+                        Boolean(nameError) ||
+                        isServiceNameChecking
+                          ? 1
+                          : 0
+                      }
                       data={serviceConfig as ServicesType}
                       isSubmitDisabled={isStep2NextDisabled}
                       ref={connectionFormRef}
                       serviceCategory={serviceCategory}
                       serviceType={serviceConfig.serviceType}
                       status={saveServiceState}
+                      onBlur={handleFieldBlur}
                       onFocus={handleFieldFocus}
                       onSave={async (e) => {
                         e.formData && (await handleConfigUpdate(e.formData));
                       }}
                       onTestConnectionStatusChange={setIsConnectionVerified}
+                      onValidateAdditionalRequiredFields={() => {
+                        if (!serviceConfig.name.trim()) {
+                          setNameError(
+                            t('message.field-text-is-required', {
+                              fieldText: t('label.service-name'),
+                            })
+                          );
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        if (nameError || isServiceNameChecking) {
+                          document.getElementById('service-name')?.focus();
+
+                          return false;
+                        }
+
+                        return true;
+                      }}
                     />
                   </div>
                 )}
@@ -515,6 +592,7 @@ const EmbeddedAddServicePage = () => {
   return (
     <NavigationBlocker
       enabled={activeServiceStep > 1 && !isSavingService}
+      leaveTo={preselectedServiceType ? backPath : undefined}
       renderModal={({ isOpen, onLeave, onStay }) => (
         <NavigationGuardModal
           isOpen={isOpen}
@@ -540,6 +618,7 @@ const EmbeddedAddServicePage = () => {
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceConfig.serviceType}
                   serviceType={getServiceType(serviceCategory)}
                 />

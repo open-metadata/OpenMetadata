@@ -97,6 +97,9 @@ const linkWidthFor = (
   highlight: HighlightSet | null
 ): number => {
   let width = link.kind === 'ontology' ? 0.8 : 1.2;
+  if (link.derived) {
+    width = 1.7;
+  }
   if (highlight && highlight.links.has(link)) {
     width = 2.4;
   }
@@ -110,8 +113,11 @@ const linkParticlesFor = (
   reducedMotion: boolean
 ): number => {
   const active = Boolean(highlight && highlight.links.has(link));
+  // Derived ontology edges always animate so they read as semantic (not
+  // technical) links; other ontology edges animate only while highlighted.
+  const animated = link.derived || (link.kind === 'ontology' && active);
 
-  return !reducedMotion && link.kind === 'ontology' && active ? 2 : 0;
+  return !reducedMotion && animated ? 2 : 0;
 };
 
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
@@ -124,11 +130,14 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   onSelectLink,
   getNodeTooltip,
   getLinkTooltip,
+  isFullscreen,
   registerResetView,
   registerExportImage,
 }) => {
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const didMountRef = useRef(false);
+  const refitPendingRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -236,6 +245,30 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
 
     return () => observer.disconnect();
   }, []);
+
+  // Arm a re-fit when fullscreen is toggled. The fit itself runs below, once
+  // the stage has actually resized, so it never fits against stale dimensions.
+  // The first render is skipped because the data-load effect already fits.
+  useEffect(() => {
+    if (didMountRef.current) {
+      refitPendingRef.current = true;
+    } else {
+      didMountRef.current = true;
+    }
+  }, [isFullscreen]);
+
+  // Run the armed re-fit once the ResizeObserver reports the new stage size, so
+  // the graph fills it. Plain window resizes (no pending toggle) are ignored,
+  // preserving any manual zoom/pan.
+  useEffect(() => {
+    let raf = 0;
+    if (refitPendingRef.current && size.width > 0 && size.height > 0) {
+      refitPendingRef.current = false;
+      raf = window.requestAnimationFrame(resetView);
+    }
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [size.width, size.height, resetView]);
 
   useEffect(() => {
     const charge = fgRef.current?.d3Force('charge');
