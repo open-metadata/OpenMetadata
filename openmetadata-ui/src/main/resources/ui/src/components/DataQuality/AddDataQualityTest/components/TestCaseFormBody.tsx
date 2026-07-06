@@ -20,6 +20,7 @@ import {
   FormItemLayout,
   FormSelectItem,
   getField,
+  HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -689,11 +690,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
     placeholder: t('label.select-test-type'),
     helperText: selectedTestDefinition?.description,
+    helperTextType: HelperTextType.TOOLTIP,
     props: {
       'data-testid': 'test-type',
       popoverClassName: 'test-type-popover',
       options: testTypeOptions,
-      onSelectionChange: () => handleActiveField('root/testType'),
+      onSelectionChange: (key?: string | number | null) =>
+        handleActiveField(key ? `root/${key}` : 'root/testType'),
     },
   };
 
@@ -715,6 +718,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.SWITCH,
     required: false,
     helperText: t('message.compute-row-count-helper-text'),
+    helperTextType: HelperTextType.TOOLTIP,
     id: 'root/computePassedFailedRowCount',
     formItemLayout: FormItemLayout.HORIZONTAL,
     props: {

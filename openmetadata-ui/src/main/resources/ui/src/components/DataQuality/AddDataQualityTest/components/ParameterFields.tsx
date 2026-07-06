@@ -17,6 +17,7 @@ import {
   FormItemLayout,
   FormSelectItem,
   getField,
+  HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
@@ -259,6 +260,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       required: data.required,
       rules: buildRules(data, label),
       helperText: data.description,
+      helperTextType: HelperTextType.TOOLTIP,
       props: { 'data-testid': `parameter-${data.name}` },
     };
 

@@ -340,3 +340,18 @@
     }
   }
 }
+
+// Match the legacy form: the test type trigger shows only the selected
+// test name (descriptions stay in the dropdown options), and the Custom
+// Query toggle uses regular weight.
+.test-case-form-v1 {
+  .test-type-card {
+    button[aria-haspopup='listbox'] section p + p {
+      display: none;
+    }
+
+    .custom-test-type-container button {
+      font-weight: @font-regular;
+    }
+  }
+}
