@@ -699,7 +699,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
-      isDisabled: Boolean(table),
+      disabled: Boolean(table),
       isLoading: isTableLoading,
       options: tableOptions,
       onSearchChange: debouncedFetchTables,
@@ -742,7 +742,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
-      isDisabled: !selectedTableFqn,
+      disabled: !selectedTableFqn,
       options: columnOptions,
     },
   };
@@ -757,7 +757,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'dimensionColumns',
-      isDisabled: !selectedTableFqn,
+      disabled: !selectedTableFqn,
       multiple: true,
       options: dimensionColumnOptions,
     },

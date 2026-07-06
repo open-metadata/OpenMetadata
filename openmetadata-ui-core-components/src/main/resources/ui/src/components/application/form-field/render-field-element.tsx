@@ -112,6 +112,9 @@ export const renderFieldElement = (
     options: _options,
     items: _items,
     multiple: _multiple,
+    // Pulled out so react-aria components receive the `isDisabled` convention
+    // (mapped below) rather than a raw `disabled` prop they would ignore.
+    disabled,
     ...rest
   } = props;
   const isInvalid = fieldState.invalid;
@@ -155,6 +158,7 @@ export const renderFieldElement = (
       <Autocomplete
         aria-label={ariaLabel}
         id={id}
+        isDisabled={disabled}
         isInvalid={isInvalid}
         items={selectItems}
         multiple={multiple}
@@ -408,6 +412,7 @@ export const renderFieldElement = (
         <Select
           aria-label={ariaLabel}
           id={id}
+          isDisabled={disabled}
           isInvalid={isInvalid}
           items={selectItems}
           name={field.name}

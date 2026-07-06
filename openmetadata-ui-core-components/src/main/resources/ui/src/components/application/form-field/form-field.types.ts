@@ -93,7 +93,6 @@ export interface FieldPropsMap {
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;
-  isDisabled?: boolean;
   filterOption?: (option: FormSelectItem, searchText: string) => boolean;
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   emptyStateLabel?: string;
