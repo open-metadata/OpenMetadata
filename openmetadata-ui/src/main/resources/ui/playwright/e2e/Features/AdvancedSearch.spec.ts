@@ -1570,8 +1570,9 @@ test.describe(
   { tag: ['@advanced-search'] },
   () => {
     // 150 values: initial asyncFetch returns items 0-99, scroll triggers items 100-149
-    const ENUM_VALUES = Array.from({ length: 150 }, (_, i) =>
-      `enum_val_${String(i).padStart(3, '0')}`
+    const ENUM_VALUES = Array.from(
+      { length: 150 },
+      (_, i) => `enum_val_${String(i).padStart(3, '0')}`
     );
     const FIRST_PAGE_VALUE = 'enum_val_000';
     const SECOND_PAGE_VALUE = 'enum_val_100';
@@ -1626,7 +1627,9 @@ test.describe(
       }
     );
 
-    const openEnumValueDropdown = async (page: Parameters<typeof redirectToHomePage>[0]) => {
+    const openEnumValueDropdown = async (
+      page: Parameters<typeof redirectToHomePage>[0]
+    ) => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
@@ -1666,75 +1669,75 @@ test.describe(
       return { ruleLocator, valueSelector, dropdown };
     };
 
-    test(
-      'should append page-2 items and make them visible when Load more button is clicked',
-      async ({ page }) => {
-        test.slow();
+    test('should append page-2 items and make them visible when Load more button is clicked', async ({
+      page,
+    }) => {
+      test.slow();
 
-        const { dropdown } = await openEnumValueDropdown(page);
+      const { dropdown } = await openEnumValueDropdown(page);
 
-        // Page 1 items present; page-2 item not yet visible
-        await expect(
-          dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
-        ).toBeVisible({ timeout: 10000 });
-        await expect(
-          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-        ).not.toBeVisible();
+      // Page 1 items present; page-2 item not yet visible
+      await expect(
+        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+      ).not.toBeVisible();
 
-        // "Load more..." button visible at the bottom of the list
-        const loadMoreBtn = dropdown.locator('a').filter({ hasText: /load more/i });
+      // "Load more..." button visible at the bottom of the list
+      const loadMoreBtn = dropdown
+        .locator('a')
+        .filter({ hasText: /load more/i });
 
-        await expect(loadMoreBtn).toBeVisible();
+      await expect(loadMoreBtn).toBeVisible();
 
-        // Click Load more → page-2 items append
-        await loadMoreBtn.click();
+      // Click Load more → page-2 items append
+      await loadMoreBtn.click();
 
-        // Hover over the virtual list so mouse wheel events target it
-        const virtualListHolder = dropdown.locator('.rc-virtual-list-holder');
+      // Hover over the virtual list so mouse wheel events target it
+      const virtualListHolder = dropdown.locator('.rc-virtual-list-holder');
 
-        await expect(virtualListHolder).toBeVisible();
-        await virtualListHolder.hover();
+      await expect(virtualListHolder).toBeVisible();
+      await virtualListHolder.hover();
 
-        // Wheel-scroll in small increments until the page-2 item comes into view
-        const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
-        let found = await secondPageItem.isVisible();
+      // Wheel-scroll in small increments until the page-2 item comes into view
+      const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
+      let found = await secondPageItem.isVisible();
 
-        for (let i = 0; i < 20 && !found; i++) {
-          await page.mouse.wheel(0, 200);
-          found = await secondPageItem.isVisible();
-        }
-
-        await expect(secondPageItem).toBeVisible({ timeout: 5000 });
+      for (let i = 0; i < 20 && !found; i++) {
+        await page.mouse.wheel(0, 200);
+        found = await secondPageItem.isVisible();
       }
-    );
 
-    test(
-      'should find page-2 items via search without clicking Load more',
-      async ({ page }) => {
-        test.slow();
+      await expect(secondPageItem).toBeVisible({ timeout: 5000 });
+    });
 
-        const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
+    test('should find page-2 items via search without clicking Load more', async ({
+      page,
+    }) => {
+      test.slow();
 
-        // Page 1 items load; page-2 item is not yet visible
-        await expect(
-          dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
-        ).toBeVisible({ timeout: 10000 });
-        await expect(
-          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-        ).not.toBeVisible();
+      const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
 
-        // Type to search — asyncFetch filters the full values array, not just the loaded page
-        const searchInput = ruleLocator.locator(
-          '.rule--widget .ant-select-selection-search-input'
-        );
+      // Page 1 items load; page-2 item is not yet visible
+      await expect(
+        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+      ).not.toBeVisible();
 
-        await searchInput.fill(SECOND_PAGE_VALUE);
+      // Type to search — asyncFetch filters the full values array, not just the loaded page
+      const searchInput = ruleLocator.locator(
+        '.rule--widget .ant-select-selection-search-input'
+      );
 
-        // Item appears immediately without clicking Load more
-        await expect(
-          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-        ).toBeVisible({ timeout: 10000 });
-      }
-    );
+      await searchInput.fill(SECOND_PAGE_VALUE);
+
+      // Item appears immediately without clicking Load more
+      await expect(
+        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+      ).toBeVisible({ timeout: 10000 });
+    });
   }
 );
