@@ -36,7 +36,7 @@ public class WorkflowVariableHandler {
    * Per-input variable namespace map for a workflow node. A node can read several inputs from
    * different node/global namespaces, so the wrapper is plural: InputNamespaces.
    */
-  public static record InputNamespaces(Map<String, String> namespaces) {
+  public record InputNamespaces(Map<String, String> namespaces) {
     public InputNamespaces {
       namespaces =
           namespaces != null
@@ -57,6 +57,8 @@ public class WorkflowVariableHandler {
     }
 
     public static InputNamespaces read(Object rawValue) {
+      // Flowable delivers process variables as untyped Object — a String when the caller stored
+      // the JSON form (taskService.setVariable(name, json)) or a Map when set via a delegate.
       Map<String, String> map =
           rawValue instanceof String str
               ? JsonUtils.readValue(str, INPUT_NAMESPACE_TYPE)
