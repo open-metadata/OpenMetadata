@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Drawer } from '@mui/material';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  SlideoutMenu,
+} from '@openmetadata/ui-core-components';
 import { Home02 } from '@untitledui/icons';
-import { Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
@@ -139,7 +144,6 @@ import {
   parseLineageData,
   removeLineageHandler,
 } from '../../utils/EntityLineagePureUtils';
-import { getLoadingStatusValue } from '../../utils/EntityLineageUtils';
 import { updateNodeType } from '../../utils/EntityPureUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
@@ -2172,19 +2176,18 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
         {!isEditMode && (selectedEdge || selectedNode) && (
-          <Drawer
-            anchor="right"
-            className="lineage-entity-panel"
+          <SlideoutMenu
+            isDismissable
+            className="tw:z-999 lineage-entity-panel"
             data-testid="lineage-entity-panel"
-            open={isDrawerOpen}
-            sx={{
-              zIndex: 999,
-              '& .MuiDrawer-paper': {
-                width: 576,
-              },
-            }}
-            transitionDuration={300}
-            onClose={onCloseDrawer}>
+            dialogClassName="tw:gap-0 tw:items-stretch tw:min-h-0 tw:overflow-hidden tw:p-0"
+            isOpen={isDrawerOpen}
+            width={576}
+            onOpenChange={(open) => {
+              if (!open) {
+                onCloseDrawer();
+              }
+            }}>
             {selectedNode && (
               <EntitySummaryPanel
                 isSideDrawer
@@ -2208,26 +2211,47 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
                 onEdgeDetailsUpdate={onEdgeDetailsUpdate}
               />
             )}
-          </Drawer>
+          </SlideoutMenu>
         )}
 
         {showDeleteModal && (
-          <Modal
-            data-testid="delete-edge-confirmation-modal"
-            maskClosable={false}
-            okText={getLoadingStatusValue(
-              t('label.confirm'),
-              deletionState.loading,
-              deletionState.status
-            )}
-            open={showDeleteModal}
-            title={t('message.remove-lineage-edge')}
-            onCancel={() => {
-              setShowDeleteModal(false);
-            }}
-            onOk={onRemove}>
-            {getModalBodyText(selectedEdge as Edge)}
-          </Modal>
+          <ModalOverlay
+            isDismissable={!deletionState.loading}
+            isOpen={showDeleteModal}
+            style={{ zIndex: 999 }}
+            onOpenChange={(open) => {
+              if (!open && !deletionState.loading) {
+                setShowDeleteModal(false);
+              }
+            }}>
+            <Modal>
+              <Dialog
+                data-testid="delete-edge-confirmation-modal"
+                width={400}
+                onClose={() => setShowDeleteModal(false)}>
+                <Dialog.Header title={t('message.remove-lineage-edge')} />
+                <Dialog.Content>
+                  {getModalBodyText(selectedEdge as Edge)}
+                </Dialog.Content>
+                <Dialog.Footer>
+                  <Button
+                    color="tertiary"
+                    data-testid="cancel-button"
+                    onPress={() => setShowDeleteModal(false)}>
+                    {t('label.cancel')}
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="confirm-button"
+                    isDisabled={deletionState.loading}
+                    isLoading={deletionState.loading}
+                    onPress={onRemove}>
+                    {t('label.confirm')}
+                  </Button>
+                </Dialog.Footer>
+              </Dialog>
+            </Modal>
+          </ModalOverlay>
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal

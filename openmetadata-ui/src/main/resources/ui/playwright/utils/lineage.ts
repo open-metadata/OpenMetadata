@@ -189,7 +189,9 @@ export const deleteEdge = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
     .dispatchEvent('click');
   await deleteRes;
 };
@@ -611,7 +613,9 @@ export const removeColumnLineage = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
     .dispatchEvent('click');
   await deleteRes;
 
