@@ -18,6 +18,7 @@ import static org.mockito.Mockito.mock;
 
 import io.modelcontextprotocol.spec.McpSchema;
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
@@ -209,6 +210,90 @@ class DefaultToolContextTest {
         .contains("\"tool\":\"get_entity_details\"")
         .contains("\"maxResponseChars\":" + McpResponseTrim.MAX_RESPONSE_CHARS)
         .doesNotContain("zzzz");
+  }
+
+  @Test
+  void logicalErrorTrueWhenResultCarriesErrorKey() {
+    assertThat(DefaultToolContext.logicalError(Map.of("error", "query is required"))).isTrue();
+  }
+
+  @Test
+  void logicalErrorFalseForTruncatedEnvelope() {
+    Map<String, Object> envelope =
+        McpResponseTrim.oversizedEnvelope(200_000, Map.of("tool", "get_entity_details"), "advice");
+
+    assertThat(DefaultToolContext.logicalError(envelope)).isFalse();
+  }
+
+  @Test
+  void logicalErrorFalseForHasMorePartialPage() {
+    assertThat(
+            DefaultToolContext.logicalError(
+                Map.of("results", List.of("a", "b"), "hasMore", Boolean.TRUE, "nextOffset", 2)))
+        .isFalse();
+  }
+
+  @Test
+  void logicalErrorFalseForCleanResultAndNonMapAndNull() {
+    assertThat(DefaultToolContext.logicalError(Map.of("fqn", "svc.db.orders"))).isFalse();
+    assertThat(DefaultToolContext.logicalError(List.of("not", "a", "map"))).isFalse();
+    assertThat(DefaultToolContext.logicalError(null)).isFalse();
+  }
+
+  @Test
+  void buildSuccessResultFlagsErrorMapAndAttachesStructuredContent() {
+    Map<String, Object> result =
+        Map.of("error", "Semantic search is not enabled", "statusCode", 400);
+
+    McpSchema.CallToolResult built =
+        DefaultToolContext.buildSuccessResult(result, "semantic_search");
+
+    assertThat(built.isError()).isTrue();
+    assertThat(built.structuredContent()).isEqualTo(result);
+    assertThat(textOf(built)).contains("Semantic search is not enabled");
+  }
+
+  @Test
+  void buildSuccessResultLeavesCleanResultUnflaggedWithStructuredContent() {
+    Map<String, Object> result = Map.of("fqn", "svc.db.orders", "status", "success");
+
+    McpSchema.CallToolResult built =
+        DefaultToolContext.buildSuccessResult(result, "get_entity_details");
+
+    assertThat(built.isError()).isFalse();
+    assertThat(built.structuredContent()).isEqualTo(result);
+  }
+
+  @Test
+  void buildSuccessResultOversizedStaysUnflaggedAndStructuredContentIsEnvelope() {
+    Map<String, Object> result =
+        Map.of("blob", "z".repeat(McpResponseTrim.MAX_RESPONSE_CHARS + 1), "tool", "ignored");
+
+    McpSchema.CallToolResult built =
+        DefaultToolContext.buildSuccessResult(result, "get_entity_details");
+
+    assertThat(built.isError()).isFalse();
+    assertThat(textOf(built)).contains("\"truncated\":true").doesNotContain("zzzz");
+    assertThat(built.structuredContent()).isInstanceOf(Map.class);
+    assertThat(asMap(built.structuredContent())).containsEntry("truncated", Boolean.TRUE);
+  }
+
+  @Test
+  void unknownToolErrorResultCarriesStructuredContent() {
+    DefaultToolContext.CallToolOutcome outcome = invokeWithToolName("not_a_real_tool");
+
+    assertThat(outcome.result().isError()).isTrue();
+    assertThat(outcome.result().structuredContent()).isNotNull();
+    assertThat(asMap(outcome.result().structuredContent())).containsKey("error");
+  }
+
+  private static String textOf(McpSchema.CallToolResult result) {
+    return ((McpSchema.TextContent) result.content().getFirst()).text();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> asMap(Object value) {
+    return (Map<String, Object>) value;
   }
 
   private static DefaultToolContext.CallToolOutcome invokeWithToolName(String toolName) {
