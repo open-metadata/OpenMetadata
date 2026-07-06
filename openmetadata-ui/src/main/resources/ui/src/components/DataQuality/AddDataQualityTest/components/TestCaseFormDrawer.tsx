@@ -20,7 +20,7 @@ import {
 import { Lightbulb02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
@@ -43,6 +43,7 @@ import {
 } from '../../../../rest/ingestionPipelineAPI';
 import { createTestCase } from '../../../../rest/testAPI';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
+import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
@@ -209,11 +210,21 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     </div>
   ) : null;
 
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
+      }),
+    []
+  );
+
   const formBody = (
     <HookForm
       form={form}
-      onSubmit={form.handleSubmit((data) =>
-        submitAndClose(data, handleSubmit, () => closeDrawerRef.current())
+      onSubmit={form.handleSubmit(
+        (data) =>
+          submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
+        () => scrollToError()
       )}>
       <div className="drawer-content-wrapper">
         <div className="drawer-form-content">{testCaseFormBody}</div>
@@ -243,6 +254,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       width,
       closeOnBackdrop: false,
       submitLabel: t('label.create'),
+      submitTestId: 'create-btn',
       onClose: handleDrawerDismiss,
       onSubmit: (data) =>
         submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
@@ -306,14 +318,16 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         open={open}
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? t('label.add-entity', { entity: t('label.test-case') })}
-        onClose={onClose}
-        onSubmit={form.handleSubmit((data) =>
-          submitAndClose(data, handleSubmit, onClose)
+        onClose={handleDrawerDismiss}
+        onSubmit={form.handleSubmit(
+          (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
+          () => scrollToError()
         )}>
         <HookForm
           form={form}
-          onSubmit={form.handleSubmit((data) =>
-            submitAndClose(data, handleSubmit, onClose)
+          onSubmit={form.handleSubmit(
+            (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
+            () => scrollToError()
           )}>
           {testCaseFormBody}
         </HookForm>

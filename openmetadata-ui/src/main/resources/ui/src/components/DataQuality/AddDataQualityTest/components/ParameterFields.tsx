@@ -82,7 +82,11 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
   return (
     <div>
       <div className="tw:flex tw:items-center tw:gap-2 tw:mb-1">
-        <span>{label}</span>
+        <FormItemLabel
+          label={label}
+          required={data.required}
+          tooltip={data.description}
+        />
         <Button
           data-testid={`add-${data.name}`}
           size="xs"

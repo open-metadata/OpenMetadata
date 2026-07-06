@@ -227,6 +227,11 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
       {ingestionPipeline.Create && (
         <div className="scheduler-section" data-testid="scheduler-card">
           {getField(enableSchedulerField)}
+          <p className="tw:text-sm tw:text-tertiary">
+            {`${t('message.pipeline-entity-description', {
+              entity: t('label.bundle-suite'),
+            })} (${t('label.optional')})`}
+          </p>
 
           {enableScheduler && (
             <>

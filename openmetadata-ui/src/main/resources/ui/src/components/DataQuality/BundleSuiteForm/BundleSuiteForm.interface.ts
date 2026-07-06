@@ -34,11 +34,7 @@ export interface BundleSuiteFormDrawerProps {
   onClose: () => void;
   onSuccess?: (testSuite: TestSuite) => void;
   initialValues?: BundleSuiteFormProps['initialValues'];
-  /**
-   * Reserved for AI-mode chrome (Phase 7). Accepted on the props so callers
-   * (including the AI flow) can pass it, but it does not yet change rendering,
-   * so the implementation intentionally does not destructure it.
-   */
+  /** 'classic' renders the slideout drawer; 'ai' renders the centered modal. */
   variant?: 'classic' | 'ai';
   title?: ReactNode;
   headerActions?: ReactNode;

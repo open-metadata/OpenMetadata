@@ -146,7 +146,7 @@ describe('TestCaseForm integration (real transform)', () => {
       seedRealisticFormValues?.();
     });
 
-    const submitBtn = await screen.findByTestId('save-btn');
+    const submitBtn = await screen.findByTestId('create-btn');
 
     await act(async () => {
       fireEvent.click(submitBtn);

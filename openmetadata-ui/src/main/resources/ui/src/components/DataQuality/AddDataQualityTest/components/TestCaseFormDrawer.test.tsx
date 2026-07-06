@@ -190,7 +190,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onFormSubmit, onClose });
 
-    const submitBtn = await screen.findByTestId('save-btn');
+    const submitBtn = await screen.findByTestId('create-btn');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -218,7 +218,7 @@ describe('TestCaseFormDrawer', () => {
     const onClose = jest.fn();
     renderDrawer({ onClose });
 
-    const submitBtn = await screen.findByTestId('save-btn');
+    const submitBtn = await screen.findByTestId('create-btn');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -279,7 +279,7 @@ describe('TestCaseFormDrawer', () => {
     const onFormSubmit = jest.fn();
     renderDrawer({ onClose, onFormSubmit });
 
-    const submitBtn = await screen.findByTestId('save-btn');
+    const submitBtn = await screen.findByTestId('create-btn');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -329,7 +329,7 @@ describe('TestCaseFormDrawer', () => {
       emitContextFn?.(mockContextWithPipeline);
     });
 
-    const submitBtn = await screen.findByTestId('save-btn');
+    const submitBtn = await screen.findByTestId('create-btn');
 
     await act(async () => {
       fireEvent.click(submitBtn);
@@ -395,7 +395,7 @@ describe('TestCaseFormDrawer', () => {
       expect(
         await screen.findByTestId('test-case-form-body')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('save-btn')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('create-btn')).not.toBeInTheDocument();
       expect(screen.queryByTestId('cancel-btn')).not.toBeInTheDocument();
     });
 

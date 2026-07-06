@@ -884,11 +884,16 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             getField(dynamicAssertionField)}
 
         {showParameterFields && selectedTestDefinition && (
-          <ParameterFields
-            definition={selectedTestDefinition}
-            form={form}
-            table={selectedTableData}
-          />
+          <div
+            id={
+              selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+            }>
+            <ParameterFields
+              definition={selectedTestDefinition}
+              form={form}
+              table={selectedTableData}
+            />
+          </div>
         )}
 
         {isComputeRowCountFieldVisible && getField(computeRowCountField)}

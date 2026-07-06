@@ -51,7 +51,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   variant = 'classic',
   title,
   headerActions,
-  width = '80vw',
+  width = 736,
 }: BundleSuiteFormDrawerProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -190,6 +190,8 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       headerActions,
       width,
       closeOnBackdrop: false,
+      submitTestId: 'submit-button',
+      cancelTestId: 'cancel-button',
       onClose: handleDrawerDismiss,
       form: (
         <HookForm
@@ -230,14 +232,22 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
         title={
           title ?? t('label.add-entity', { entity: t('label.bundle-suite') })
         }
-        onClose={onClose}
+        onClose={handleDrawerDismiss}
         onSubmit={form.handleSubmit((data) =>
-          submitAndClose(data, handleFormSubmitWithErrorCapture, onClose)
+          submitAndClose(
+            data,
+            handleFormSubmitWithErrorCapture,
+            handleDrawerDismiss
+          )
         )}>
         <HookForm
           form={form}
           onSubmit={form.handleSubmit((data) =>
-            submitAndClose(data, handleFormSubmitWithErrorCapture, onClose)
+            submitAndClose(
+              data,
+              handleFormSubmitWithErrorCapture,
+              handleDrawerDismiss
+            )
           )}>
           {bundleSuiteFormBody}
         </HookForm>
