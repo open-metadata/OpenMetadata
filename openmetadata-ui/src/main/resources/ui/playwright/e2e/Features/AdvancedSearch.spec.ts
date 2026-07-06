@@ -1577,6 +1577,7 @@ test.describe(
     const SECOND_PAGE_VALUE = 'enum_val_100';
 
     let enumCPName: string;
+    let enumCPId: string;
     let lazyLoadTable: TableClass;
 
     test.beforeAll(
@@ -1604,7 +1605,7 @@ test.describe(
 
           enumCPName = `enum-lazy-${uuid()}`;
 
-          await apiContext.put(
+          const cpRes = await apiContext.put(
             `/api/v1/metadata/types/${cpMetadataType.id}`,
             {
               data: {
@@ -1617,74 +1618,62 @@ test.describe(
               },
             }
           );
+          const cpData = await cpRes.json();
+          enumCPId = cpData.id;
         } finally {
           await afterAction();
         }
       }
     );
 
-    test.afterAll(
-      'Cleanup enum custom property and table',
-      async ({ browser }) => {
-        const { apiContext, afterAction } = await performAdminLogin(browser);
-        try {
-          await lazyLoadTable.delete(apiContext);
-        } finally {
-          await afterAction();
-        }
-      }
-    );
+    const openEnumValueDropdown = async (page: Parameters<typeof redirectToHomePage>[0]) => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.EXPLORE);
+      await showAdvancedSearchDialog(page);
+
+      const ruleLocator = page.locator('.rule').nth(0);
+
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Custom Properties',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        'Table',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--field .ant-select'),
+        enumCPName,
+        true
+      );
+
+      const valueSelector = ruleLocator.locator(
+        '.rule--widget .ant-select-selector'
+      );
+
+      await expect(valueSelector).toBeVisible({ timeout: 15000 });
+      await valueSelector.click();
+
+      const dropdown = page.locator('.ant-select-dropdown:visible');
+
+      await expect(dropdown).toBeVisible();
+
+      return { ruleLocator, valueSelector, dropdown };
+    };
 
     test(
-      'should lazy-load enum options on scroll in the advanced filter value dropdown',
+      'should append page-2 items and make them visible when Load more button is clicked',
       async ({ page }) => {
         test.slow();
 
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.EXPLORE);
-        await showAdvancedSearchDialog(page);
+        const { dropdown } = await openEnumValueDropdown(page);
 
-        const ruleLocator = page.locator('.rule').nth(0);
-
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--field .ant-select'),
-          'Custom Properties',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--field .ant-select'),
-          'Table',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--field .ant-select'),
-          enumCPName,
-          true
-        );
-        await selectOption(
-            page,
-            ruleLocator.locator('.rule--operator .ant-select'),
-            'Equals',
-          );
-
-        // Wait for the value widget to mount after field selection
-        const valueSelector = ruleLocator.locator(
-          '.ant-select-selection-overflow'
-        );
-
-        await expect(valueSelector).toBeVisible({ timeout: 15000 });
-
-        // Open the value dropdown
-        await valueSelector.click();
-
-        const dropdown = page.locator('.ant-select-dropdown:visible');
-
-        await expect(dropdown).toBeVisible();
-
-        // First page items (0-99) must be present; second page item (100) must not yet appear
+        // Page 1 items present; page-2 item not yet visible
         await expect(
           dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
         ).toBeVisible({ timeout: 10000 });
@@ -1692,15 +1681,56 @@ test.describe(
           dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
         ).not.toBeVisible();
 
-        // Scroll to the bottom of the virtual list to trigger second page load
-        const holder = dropdown.locator('.rc-virtual-list-holder').last();
+        // "Load more..." button visible at the bottom of the list
+        const loadMoreBtn = dropdown.locator('a').filter({ hasText: /load more/i });
 
-await holder.evaluate((el: HTMLElement) => {
-  el.scrollTop = el.scrollHeight;
-  el.dispatchEvent(new Event('scroll'));
-});
+        await expect(loadMoreBtn).toBeVisible();
 
-        // After scroll, second page item must now appear
+        // Click Load more → page-2 items append
+        await loadMoreBtn.click();
+
+        // Hover over the virtual list so mouse wheel events target it
+        const virtualListHolder = dropdown.locator('.rc-virtual-list-holder');
+
+        await expect(virtualListHolder).toBeVisible();
+        await virtualListHolder.hover();
+
+        // Wheel-scroll in small increments until the page-2 item comes into view
+        const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
+        let found = await secondPageItem.isVisible();
+
+        for (let i = 0; i < 20 && !found; i++) {
+          await page.mouse.wheel(0, 200);
+          found = await secondPageItem.isVisible();
+        }
+
+        await expect(secondPageItem).toBeVisible({ timeout: 5000 });
+      }
+    );
+
+    test(
+      'should find page-2 items via search without clicking Load more',
+      async ({ page }) => {
+        test.slow();
+
+        const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
+
+        // Page 1 items load; page-2 item is not yet visible
+        await expect(
+          dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+        ).toBeVisible({ timeout: 10000 });
+        await expect(
+          dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        ).not.toBeVisible();
+
+        // Type to search — asyncFetch filters the full values array, not just the loaded page
+        const searchInput = ruleLocator.locator(
+          '.rule--widget .ant-select-selection-search-input'
+        );
+
+        await searchInput.fill(SECOND_PAGE_VALUE);
+
+        // Item appears immediately without clicking Load more
         await expect(
           dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
         ).toBeVisible({ timeout: 10000 });

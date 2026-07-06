@@ -357,7 +357,7 @@ describe('getCustomPropertiesSubFields', () => {
           asyncFetch: expect.any(Function),
           showSearch: true,
           useAsyncSearch: true,
-          useScrollLoad: true,
+          useLoadMore: true,
         },
       },
     });
@@ -877,7 +877,7 @@ describe('getCustomPropertiesSubFields', () => {
               asyncFetch: expect.any(Function),
               showSearch: true,
               useAsyncSearch: true,
-              useScrollLoad: true,
+              useLoadMore: true,
             },
           },
         });
@@ -916,7 +916,7 @@ describe('getCustomPropertiesSubFields', () => {
               asyncFetch: expect.any(Function),
               showSearch: true,
               useAsyncSearch: true,
-              useScrollLoad: true,
+              useLoadMore: true,
             },
           },
         });

@@ -46,7 +46,6 @@ import type { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
 import type { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import EnumAsyncSelectWidget from '../components/Explore/EnumAsyncSelectWidget/EnumAsyncSelectWidget.component';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
@@ -110,26 +109,6 @@ class AdvancedSearchClassBase {
       useLoadMore: false,
       customProps: {
         popupClassName: 'w-max-600',
-      },
-      factory: (props: any, ctx: any) => {
-        if (props.useScrollLoad && props.asyncFetch) {
-          return ctx.RCE(EnumAsyncSelectWidget, {
-            asyncFetch: props.asyncFetch,
-            disabled: props.readonly,
-            multiple: true,
-            placeholder: props.placeholder,
-            setValue: props.setValue,
-            value: props.value,
-          });
-        }
-        const {
-          RCE,
-          W: { AutocompleteWidget, MultiSelectWidget },
-        } = ctx;
-
-        return props.asyncFetch || props.showSearch
-          ? RCE(AutocompleteWidget, { ...props, multiple: true })
-          : RCE(MultiSelectWidget, props);
       },
     },
     select: {
@@ -1439,7 +1418,7 @@ class AdvancedSearchClassBase {
               asyncFetch: this.buildEnumAsyncFetch(enumValues),
               showSearch: true,
               useAsyncSearch: true,
-              useScrollLoad: true,
+              useLoadMore: true,
             },
           },
         };
