@@ -190,14 +190,10 @@ test.describe(
        */
       await test.step('Create', async () => {
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_TABLE_TEST_CASE.name
         );
         await page.click('[id="root\\/testType"]');
-        await page
-          .locator(`text=${NEW_TABLE_TEST_CASE.label}`)
-          .first()
-          .waitFor();
         await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
         await page.fill(
           '#testCaseFormV1_params_columnName',
@@ -219,10 +215,10 @@ test.describe(
         );
         await tagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await page.keyboard.press('Escape');
         // Add glossary terms to test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const glossarySearchResponse = page.waitForResponse(
@@ -235,11 +231,11 @@ test.describe(
         await glossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await page.keyboard.press('Escape');
         await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
@@ -390,11 +386,15 @@ test.describe(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
         await page.click('[id="root\\/column"]');
-        await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_COLUMN_TEST_CASE.name
         );
         await page.click('[id="root\\/testType"]');
@@ -423,10 +423,10 @@ test.describe(
         );
         await columnTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await page.keyboard.press('Escape');
 
         // Add glossary terms to column test case
         await page.click('[data-testid="glossary-terms-selector"] input');
@@ -440,11 +440,11 @@ test.describe(
         await columnGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await page.keyboard.press('Escape');
 
         await submitTestCaseForm(page);
 

@@ -344,7 +344,7 @@ export const fillAndSubmitBundleSuiteForm = async (
   page: Page,
   name: string
 ) => {
-  await page.getByTestId('test-suite-name').fill(name);
+  await page.getByTestId('test-suite-name').locator('input').fill(name);
   const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
   await page.getByTestId('submit-button').click();
   await createResponse;
@@ -373,8 +373,8 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
-  const dropdown = page.locator('.ant-select-dropdown:visible');
-  const option = dropdown.locator('.ant-select-item-option', {
+  const dropdown = page.locator('[role="listbox"]');
+  const option = dropdown.locator('[role="option"]', {
     hasText: suiteName,
   });
 

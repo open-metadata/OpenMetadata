@@ -90,9 +90,11 @@ test(
 
       await expect(page.locator('[data-id="column"]')).toBeVisible();
 
-      await page.click(
-        `[title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-      );
+      await page
+        .getByRole('option')
+        .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
+        .first()
+        .click();
 
       await page.locator('[id="root\\/dimensionColumns"]').click();
       await page.locator('[data-id="dimensionColumns"]').waitFor({
@@ -100,29 +102,28 @@ test(
       });
 
       await expect(
-        page.locator(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-        )
+        page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
       ).not.toBeVisible();
 
       for (const dimension of NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.dimensions) {
-        await page.click(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${dimension}"]`
-        );
+        await page
+          .getByRole('option')
+          .filter({ hasText: dimension })
+          .first()
+          .click();
       }
 
-      await page.locator('[data-id="dimensionColumns"]').click();
+      await page.keyboard.press('Escape');
 
-      await page.getByTestId('test-case-name').click();
+      await page.locator('[data-testid="test-case-name"] input').click();
       await page.fill(
-        '[data-testid="test-case-name"]',
+        '[data-testid="test-case-name"] input',
         NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name
       );
 
-      await page.fill(
-        '[id="root\\/testType"]',
-        NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type
-      );
+      await page.click('[id="root\\/testType"]');
       await page.click(
         `[data-testid="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.type}"]`
       );

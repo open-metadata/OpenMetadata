@@ -61,9 +61,9 @@ test(
         .click();
       await page.getByTestId('profiler-add-table-test-btn').click();
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
-      await page.getByTestId('test-case-name').clear();
-      await page.getByTestId('test-case-name').fill(testCaseName);
-      await page.getByTestId('test-type').locator('div').click();
+      await page.getByTestId('test-case-name').locator('input').clear();
+      await page.getByTestId('test-case-name').locator('input').fill(testCaseName);
+      await page.click('[id="root\\/testType"]');
       await page.getByTestId('tableColumnCountToEqual').click();
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);

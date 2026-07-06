@@ -79,26 +79,25 @@ test.describe(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
         const columnOption = page
-          .locator('.ant-select-dropdown:visible')
-          .locator(`[title="${testCase.column}"]`);
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first();
         await expect(columnOption).toBeVisible();
         await columnOption.click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close after selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name and wait for documentation panel
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type and wait for documentation panel
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         const testTypeOption = page
-          .locator('.ant-select-dropdown:visible')
+          .locator('[role="listbox"]')
           .getByTestId(testCase.type);
         await expect(testTypeOption).toBeVisible();
         await testTypeOption.click();
@@ -107,9 +106,7 @@ test.describe(
         ).toBeVisible();
 
         // Wait for dropdown to close after test type selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.locator(descriptionBox).fill(testCase.description);
 
@@ -174,30 +171,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
@@ -259,30 +256,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -339,49 +336,47 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill allowed values
         await page.fill(
           '#testCaseFormV1_params_allowedValues_0_value',
           'active'
         );
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-allowedValues').click();
         await page.fill(
           '#testCaseFormV1_params_allowedValues_1_value',
           'inactive'
         );
 
-        await page.click('#testCaseFormV1_params_matchEnum');
-        await page
-          .locator('#testCaseFormV1_params_matchEnum[aria-checked="true"]')
-          .waitFor({ state: 'attached' });
+        // The react-aria Toggle's label intercepts clicks on the hidden input.
+        await page.getByTestId('parameter-matchEnum').click();
         await expect(
           page.locator('#testCaseFormV1_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'true');
+        ).toBeChecked();
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -450,34 +445,34 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill forbidden values
         await page.fill('#testCaseFormV1_params_forbiddenValues_0_value', '-1');
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-forbiddenValues').click();
         await page.fill(
           '#testCaseFormV1_params_forbiddenValues_1_value',
           '-999'
@@ -541,30 +536,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_regex', testCase.regex);
 
@@ -623,30 +618,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_forbiddenRegex',
@@ -713,30 +708,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMaxInCol',
@@ -809,30 +804,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMinInCol',
@@ -905,30 +900,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMeanInCol',
@@ -1005,30 +1000,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMedianInCol',
@@ -1105,30 +1100,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForStdDevInCol',
@@ -1206,30 +1201,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForColSum',
@@ -1302,30 +1297,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minLength', testCase.minLength);
         await page.fill('#testCaseFormV1_params_maxLength', testCase.maxLength);
@@ -1387,30 +1382,30 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_missingCountValue',
@@ -1471,42 +1466,41 @@ test.describe(
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
         await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page.getByTestId('test-case-name').locator('input').fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
+        await page.click('[id="root/testType"]');
         await page.getByTestId(testCase.type).click();
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
         // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Select location reference type from dropdown
         await page.click('#testCaseFormV1_params_locationReferenceType');
-        const postalCodeOption = page.locator(
-          `.ant-select-dropdown:visible [title="POSTAL_CODE"]`
-        );
+        const postalCodeOption = page
+          .getByRole('option')
+          .filter({ hasText: 'POSTAL_CODE' })
+          .first();
         await expect(postalCodeOption).toBeVisible();
         await postalCodeOption.click();
 
         // Wait for dropdown to close after selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_longitudeColumnName',
