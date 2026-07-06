@@ -270,6 +270,36 @@ export default [
     },
   },
 
+  // E2E spec files: warn on bare browser.newPage() (no storageState arg).
+  //
+  // There are two valid reasons to keep a warning here rather than an error:
+  //   • ANTI-PATTERN (warn is appropriate): a test that only needs an admin
+  //     page calls browser.newPage() + adminUser.login(page) per test instead
+  //     of using test.use({ storageState: 'playwright/.auth/admin.json' }).
+  //     That leaks the page on assertion failure and re-runs a full auth flow.
+  //   • LEGITIMATE (warning, not error, avoids false positives): multi-user
+  //     tests that need a second page as a *different* user (reviewer, data
+  //     consumer, team member) genuinely need browser.newPage() because the
+  //     `page` fixture only provides one pre-authenticated admin page.
+  //
+  // When you see this warning, ask: "do all assertions in this test need only
+  // one (admin) perspective?" If yes, switch to the fixture. If no (you need
+  // a second user), the warning is expected — leave it as-is.
+  {
+    files: ['playwright/e2e/**/*.spec.{js,jsx,ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector:
+            "CallExpression[callee.object.name='browser'][callee.property.name='newPage'][arguments.length=0]",
+          message:
+            "Prefer the `page` fixture (test.use({ storageState })) over browser.newPage() + manual login for single-user admin tests. For multi-user tests that need a second non-admin page, this warning is expected — no action needed.",
+        },
+      ],
+    },
+  },
+
   // Test setup files
   {
     files: [

@@ -55,6 +55,7 @@ class DatabaseStep(StepName):
     GetQueries = "GetQueries"
     GetTags = "GetTags"
     GetStreams = "GetStreams"
+    GetAccessHistory = "GetAccessHistory"
     GetColumnMetadata = "GetColumnMetadata"
     GetTableComments = "GetTableComments"
     GetInformationSchemaColumns = "GetInformationSchemaColumns"
