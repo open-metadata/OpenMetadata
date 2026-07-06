@@ -1657,7 +1657,7 @@ test.describe(
       await selectOption(
         page,
         ruleLocator.locator('.rule--operator .ant-select'),
-        "Equals",
+        'Equals'
       );
 
       const valueSelector = ruleLocator.locator(
