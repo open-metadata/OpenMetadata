@@ -21,6 +21,7 @@ import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactFlowInstance } from 'reactflow';
 import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
 import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';
@@ -39,13 +40,29 @@ import { StyledMenu } from '../../../LineageTable/LineageTable.styled';
 const LineageControlButtons: FC<{
   onToggleMiniMap: () => void;
   miniMapVisible?: boolean;
-}> = ({ onToggleMiniMap, miniMapVisible = false }) => {
+  reactFlowInstance?: ReactFlowInstance;
+  onFitView?: () => void;
+  onRearrange?: () => void;
+  onRefocusHome?: () => void;
+  onRefocusSelected?: () => void;
+}> = ({
+  onToggleMiniMap,
+  miniMapVisible = false,
+  reactFlowInstance: controlledReactFlowInstance,
+  onFitView,
+  onRearrange,
+  onRefocusHome,
+  onRefocusSelected,
+}) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
     useState<null | HTMLElement>(null);
 
-  const { reactFlowInstance, redraw } = useLineageProvider();
+  const { reactFlowInstance: providerReactFlowInstance, redraw } =
+    useLineageProvider();
+  const reactFlowInstance =
+    controlledReactFlowInstance ?? providerReactFlowInstance;
   const navigate = useNavigate();
   const location = useCustomLocation();
 
@@ -72,34 +89,58 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
+    if (onFitView) {
+      onFitView();
+      setLineageViewOptionsAnchorEl(null);
+
+      return;
+    }
     const currentZoom = reactFlowInstance?.getZoom() ?? 1;
     reactFlowInstance?.fitView({ padding: 0.2 });
     reactFlowInstance?.zoomTo(currentZoom);
 
     setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
+  }, [onFitView, reactFlowInstance]);
 
   const handleRearrange = useCallback(() => {
+    if (onRearrange) {
+      onRearrange();
+      setLineageViewOptionsAnchorEl(null);
+
+      return;
+    }
     redraw?.();
     setLineageViewOptionsAnchorEl(null);
-  }, [redraw]);
+  }, [onRearrange, redraw]);
 
   const handleRefocusSelected = useCallback(() => {
+    if (onRefocusSelected) {
+      onRefocusSelected();
+      setLineageViewOptionsAnchorEl(null);
+
+      return;
+    }
     const selectedElement = reactFlowInstance
       ?.getNodes()
       .find((el) => el.selected);
 
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
     setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
+  }, [onRefocusSelected, reactFlowInstance]);
 
   const handleRefocusHome = useCallback(() => {
+    if (onRefocusHome) {
+      onRefocusHome();
+      setLineageViewOptionsAnchorEl(null);
+
+      return;
+    }
     const selectedElement = reactFlowInstance
       ?.getNodes()
       .find((el) => el.data.isRootNode);
     selectedElement && centerNodePosition(selectedElement, reactFlowInstance);
     setLineageViewOptionsAnchorEl(null);
-  }, [reactFlowInstance]);
+  }, [onRefocusHome, reactFlowInstance]);
 
   return (
     <ToggleButtonGroup

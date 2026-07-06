@@ -22,6 +22,8 @@ export interface NodeChildrenProps {
   isConnectable: boolean;
   isChildrenListExpanded: boolean;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
+  onColumnHover?: (columnFqn?: string) => void;
+  onColumnSelect?: (columnFqn?: string) => void;
 }
 
 export type EntityChildrenItem =
