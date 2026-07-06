@@ -681,3 +681,85 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
 };
+
+/** Returns the first table asset from ES, or undefined if none exist. */
+export const fetchFirstTable = async (page: Page) => {
+  const res = await page.request.get(
+    '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
+  );
+  if (!res.ok()) {
+    return undefined;
+  }
+  const data = await res.json();
+
+  return data.hits?.hits?.[0]?._source;
+};
+
+export const patchMemory = async (
+  apiContext: APIRequestContext,
+  id: string,
+  patch: Record<string, unknown>[]
+) => {
+  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
+    data: patch,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+export interface LoggedInUser {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+/** Identifies the currently authenticated user via their own session. */
+export const getLoggedInUser = async (
+  apiContext: APIRequestContext
+): Promise<LoggedInUser> => {
+  const res = await apiContext.get('/api/v1/users/loggedInUser');
+  expect(res.ok()).toBeTruthy();
+  const data = await res.json();
+
+  return {
+    id: data.id,
+    name: data.name,
+    displayName: data.displayName ?? data.name,
+  };
+};
+
+export const createMemoryViaApi = async (
+  apiContext: APIRequestContext,
+  overrides: Record<string, unknown>
+) => {
+  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  expect(res.status()).toBe(201);
+
+  return res.json();
+};
+
+/**
+ * Searches for a memory by a unique query string and returns its row locator.
+ * The list is paginated, so a memory created earlier in the suite may not be
+ * on the currently loaded page — searching re-queries page 1 and guarantees
+ * the row is present if it matches.
+ */
+export const searchAndGetMemoryRow = async (
+  page: Page,
+  query: string,
+  memoryId: string
+) => {
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes(MEMORIES_API) &&
+      res.url().includes('q=') &&
+      res.request().method() === 'GET'
+  );
+  await page.getByTestId('search-input').locator('input').fill(query);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  return page.getByTestId(`memory-row-${memoryId}`);
+};
