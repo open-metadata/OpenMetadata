@@ -930,7 +930,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
 
     } catch (ApiException e) {
       LOG.error("Failed to check queued pipeline status: {}", e.getResponseBody());
-    } catch (RuntimeException e) {
+    } catch (IllegalArgumentException e) {
       // client-java could not deserialize a job returned by a newer Kubernetes
       // than its models (see getServiceStatusInternal). Treat as "no queued jobs
       // visible" rather than propagating the error to the caller.
@@ -1010,11 +1010,12 @@ public class K8sPipelineClient extends PipelineServiceClient {
               e.getResponseBody());
       LOG.error(error);
       return buildUnhealthyStatus(error);
-    } catch (RuntimeException e) {
+    } catch (IllegalArgumentException e) {
       // The list calls above reached the API server successfully (any real
-      // access/RBAC failure would be an ApiException, handled above). A
-      // RuntimeException here means the bundled Kubernetes client (client-java)
-      // could not DESERIALIZE a pod/job in the response — typically because the
+      // access/RBAC failure would be an ApiException, handled above). An
+      // IllegalArgumentException here is thrown by the bundled Kubernetes client
+      // (client-java) when it cannot DESERIALIZE a pod/job in the response —
+      // typically because the
       // cluster runs a newer Kubernetes than the client models and the response
       // carries an unmodeled status field, e.g.:
       //   IllegalArgumentException: The field `allocatedResources` in the JSON
@@ -1154,7 +1155,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     } catch (ApiException e) {
       LOG.error("Failed to get logs for pipeline {}: {}", pipelineName, e.getResponseBody());
       return Map.of("logs", FAILED_LOGS_MESSAGE + e.getMessage());
-    } catch (RuntimeException e) {
+    } catch (IllegalArgumentException e) {
       // client-java could not deserialize a pod returned by a newer Kubernetes
       // than its models (see getServiceStatusInternal). Return a graceful message
       // instead of propagating the error.
