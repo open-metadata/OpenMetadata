@@ -111,6 +111,8 @@ export interface AutocompleteProps
   multiple?: boolean;
   allowsCreation?: boolean;
   hideDropdown?: boolean;
+  /** Called when the options list is scrolled near its end (infinite scroll). */
+  onLoadMore?: () => void;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -361,11 +363,37 @@ export const AutocompleteBase = ({
   maxVisibleItems,
   allowsCreation = false,
   hideDropdown = false,
+  onLoadMore,
   name: _name,
   className: _className,
   ...props
 }: AutocompleteProps) => {
   const { contains } = useFilter({ sensitivity: 'base' });
+
+  const onLoadMoreRef = useRef(onLoadMore);
+  onLoadMoreRef.current = onLoadMore;
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
+  // The popover is the scroll container; watch it from the list box ref so
+  // consumers can page in more options as the user scrolls.
+  const attachListBoxScroll = useCallback((node: HTMLElement | null) => {
+    scrollCleanupRef.current?.();
+    scrollCleanupRef.current = null;
+    const container = node?.parentElement;
+    if (!container || !onLoadMoreRef.current) {
+      return;
+    }
+    const handleScroll = () => {
+      const nearEnd =
+        container.scrollTop + container.clientHeight >=
+        container.scrollHeight - 50;
+      if (nearEnd) {
+        onLoadMoreRef.current?.();
+      }
+    };
+    container.addEventListener('scroll', handleScroll);
+    scrollCleanupRef.current = () =>
+      container.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const [internalSelected, setInternalSelected] = useState<SelectItemType[]>(
     resolveSelectedItems(selectedItems)
@@ -555,6 +583,7 @@ export const AutocompleteBase = ({
                   triggerRef={triggerRef}>
                   <AriaListBox
                     className="tw:size-full tw:outline-hidden"
+                    ref={attachListBoxScroll}
                     selectionMode="multiple">
                     {children}
                   </AriaListBox>
