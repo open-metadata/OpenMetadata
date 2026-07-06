@@ -35,7 +35,7 @@ import {
   EntityName,
   EntityNameValidationRule,
 } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
-import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
+import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
@@ -308,7 +308,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     <>
       {items.length ? renderDropdownTrigger() : null}
       {isDelete && (
-        <DeleteEntityModal
+        <DeleteWidgetModal
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}
