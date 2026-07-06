@@ -59,6 +59,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -100,6 +101,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
+  const { removeDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState<QueryVoteType | null>(null);
@@ -173,6 +175,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     setIsDeleting(true);
     try {
       await deleteKnowledgePage(knowledgePage.id);
+      removeDraft(knowledgePage.id);
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage.id)
       );
@@ -184,7 +187,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy]);
+  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy, removeDraft]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
