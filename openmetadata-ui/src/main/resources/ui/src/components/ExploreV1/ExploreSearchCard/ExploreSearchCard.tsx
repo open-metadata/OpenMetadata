@@ -385,7 +385,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 {!isEmpty(
                   (source as Table)?.certification?.tagLabel?.tagFQN
                 ) && (
-                  <div className="p-l-sm">
+                  <div className="tw:ml-1.5">
                     <CertificationTag
                       certification={
                         (source as Table).certification as AssetCertification

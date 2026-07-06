@@ -55,9 +55,6 @@ const CertificationTag = ({
 
     const tagStyle = showName
       ? {
-          backgroundColor: certification.tagLabel.style?.color
-            ? certification.tagLabel.style?.color + '33'
-            : '#f8f8f8',
           padding: '2px 6px',
         }
       : {};
