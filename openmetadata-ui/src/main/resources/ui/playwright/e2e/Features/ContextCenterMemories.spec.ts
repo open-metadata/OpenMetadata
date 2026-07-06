@@ -700,7 +700,7 @@ test.describe(
         );
         // Click the "Created by Me" summary card
         await page
-          .locator('[data-test-id="memory-count-card-created-by-me"]')
+          .locator('[data-testid="memory-count-card-created-by-me"]')
           .click();
         await listResPromise;
         await waitForAllLoadersToDisappear(page);
