@@ -100,6 +100,12 @@ class ProgressReporter:
         reported even when the active tree is momentarily empty."""
         return self._registry.global_counters()
 
+    def assets_ingested(self) -> int:
+        """Monotonic run-total of leaf assets ingested (tables + stored
+        procedures + other leaf entities). Independent of the tree, so it stays
+        correct after scope pruning and is authoritative on the terminal event."""
+        return self._registry.assets_ingested()
+
     def _driver_counter(
         self,
         counters: "Optional[List[Tuple[str, int, Optional[int]]]]" = None,  # noqa: UP006,UP045

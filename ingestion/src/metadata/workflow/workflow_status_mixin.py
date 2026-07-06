@@ -203,6 +203,7 @@ class WorkflowStatusMixin:
                 progress_data = reporter.payload() if reporter is not None else None
                 counters = reporter.global_counters() if reporter is not None else []
                 eta_seconds = reporter.eta_seconds() if reporter is not None else None
+                total_assets = reporter.assets_ingested() if reporter is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
@@ -213,6 +214,7 @@ class WorkflowStatusMixin:
                         {"entityType": type_, "done": done, "total": total} for type_, done, total in counters
                     ],
                     estimatedSecondsRemaining=eta_seconds,
+                    totalAssetsIngested=total_assets,
                     stepName=None,
                     currentEntity=None,
                     message=None,

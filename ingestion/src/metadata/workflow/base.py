@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineState,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -289,6 +292,13 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         pipeline_state = PipelineState.success
         self.timer.trigger()
         diagnostics.install(self)
+        # Emit a "run started" update immediately. The reporting timer's first
+        # tick is a full REPORTS_INTERVAL_SECONDS away, so without this a run
+        # that finishes inside that window would only ever emit its terminal
+        # event — and any live viewer would see nothing while it ran. This
+        # registers the run with the server up front so it is visible the moment
+        # it starts, regardless of duration.
+        self.send_progress_update(ProgressUpdateType.DISCOVERY)
         # `self.config` is typed Union[Any, Dict]; getattr keeps the static
         # checker happy without changing behavior (the Dict branch never
         # carries this attribute at runtime).

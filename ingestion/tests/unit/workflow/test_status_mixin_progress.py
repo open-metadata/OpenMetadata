@@ -13,6 +13,9 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
+)
 from metadata.utils.progress_registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -60,3 +63,39 @@ class TestEstimatedSecondsRemaining:
         reg.set_total("DatabaseSchema", 10)
         _Harness(reg, metadata).send_progress_update()
         assert _sent_update(metadata).estimatedSecondsRemaining is None
+
+
+class TestTotalAssetsIngested:
+    def test_processing_update_carries_leaf_total(self):
+        reg = ProgressRegistry()
+        metadata = MagicMock()
+        reg.open([], "Database", None)
+        reg.open(["db", "sch"], "Table", 3)
+        reg.open(["db", "sch"], "StoredProcedure", 2)
+        for _ in range(3):
+            reg.advance(["db", "sch"], "Table")
+        for _ in range(2):
+            reg.advance(["db", "sch"], "StoredProcedure")
+        _Harness(reg, metadata).send_progress_update()
+        assert _sent_update(metadata).totalAssetsIngested == 5
+
+    def test_terminal_update_carries_final_total_after_pruning(self):
+        reg = ProgressRegistry()
+        metadata = MagicMock()
+        reg.open([], "Database", None)
+        reg.open(["db", "sch"], "Table", 2)
+        reg.advance(["db", "sch"], "Table")
+        reg.advance(["db", "sch"], "Table")
+        reg.close(["db", "sch"])
+        reg.close(["db"])
+        _Harness(reg, metadata).send_progress_update(ProgressUpdateType.PIPELINE_COMPLETE)
+        update = _sent_update(metadata)
+        assert update.updateType is ProgressUpdateType.PIPELINE_COMPLETE
+        assert update.totalAssetsIngested == 2
+
+    def test_null_when_no_registry(self):
+        metadata = MagicMock()
+        harness = _Harness(ProgressRegistry(), metadata)
+        harness._steps = []
+        harness.send_progress_update()
+        assert _sent_update(metadata).totalAssetsIngested is None
