@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Reusable per-group progress helpers on DashboardServiceSource."""
 
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 
 
@@ -19,6 +20,8 @@ class _BareSource(DashboardServiceSource):
     # Overriding the abstract methods clears __abstractmethods__; __new__ then
     # skips the heavy __init__. The helpers and the ``progress`` property only
     # touch ``self.__dict__``, so no further setup is needed.
+    progress_mode = ProgressMode.MANUAL
+
     def create(self, *args, **kwargs): ...
     def get_dashboard_details(self, *args, **kwargs): ...
     def get_dashboard_name(self, *args, **kwargs): ...
