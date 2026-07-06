@@ -109,6 +109,10 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await redirectToHomePage(page);
   });
 
+  test.afterEach(async ({ page }) => {
+    await page.goto('about:blank');
+  });
+
   test.describe('Lineage Layers Toggle', () => {
     test('Verify multiple non-platform layers can be active simultaneously', async ({
       page,
