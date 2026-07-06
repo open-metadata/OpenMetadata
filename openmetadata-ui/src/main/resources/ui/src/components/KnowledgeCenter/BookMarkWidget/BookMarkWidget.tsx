@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+import { Star01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
-import { ReactComponent as BookMarkIcon } from '../../../assets/svg/ic-bookmark.svg';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
 import Loader from '../../../components/common/Loader/Loader';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
@@ -58,16 +58,10 @@ const BookMarkWidget = ({
     }
   };
 
-  const header = useMemo(() => {
-    return (
-      <div className="flex items-center gap-2">
-        <BookMarkIcon height={16} width={16} />
-        <Typography className="text-sm font-medium">
-          {t('label.bookmark-plural')}
-        </Typography>
-      </div>
-    );
-  }, [t]);
+  const titleIcon = useMemo(
+    () => <Star01 className="tw:text-quaternary" height={16} width={16} />,
+    []
+  );
 
   useEffect(() => {
     fetchBookMarks();
@@ -84,19 +78,16 @@ const BookMarkWidget = ({
   }
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      isExpandDisabled={isEmpty(data)}>
-      {isEmpty(data) ? (
-        t('message.not-bookmark-anything')
-      ) : (
-        <Space direction="vertical" size={8}>
+    <WidgetCard
+      isExpandDisabled={isEmpty(data)}
+      title={t('label.bookmark-plural')}
+      titleIcon={titleIcon}>
+      {isEmpty(data) ? null : (
+        <Box direction="col" gap={2}>
           {map(data, (instance) => getLink(instance, 'bookmarked'))}
-        </Space>
+        </Box>
       )}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

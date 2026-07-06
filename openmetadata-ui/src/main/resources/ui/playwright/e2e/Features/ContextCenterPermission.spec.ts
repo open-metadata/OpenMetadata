@@ -31,10 +31,13 @@ import {
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
+  scrollHierarchyToNode,
+  scrollListingToCard,
   uploadDisposableDocument,
   waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { test as testWithRolesPages } from '../fixtures/pages';
 
 const deleteDisposableArticleByFqn = async (
   apiContext: APIRequestContext,
@@ -528,10 +531,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('hierarchy tree delete button is hidden for articles', async () => {
         await navigateToArticles(viewOnlyPage);
 
-        const articleNode = viewOnlyPage.getByTestId(
-          `page-node-${articleEntity.responseData.displayName}`
+        const articleNode = await scrollHierarchyToNode(
+          viewOnlyPage,
+          articleEntity.responseData.displayName
         );
-        await expect(articleNode).toBeVisible();
         await articleNode.hover();
         await expect(
           viewOnlyPage.getByTestId(
@@ -543,10 +546,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('quick link card has no edit or delete buttons', async () => {
         await navigateToArticles(viewOnlyPage);
 
-        const qlCard = viewOnlyPage.getByTestId(
-          `knowledge-card-${quickLinkDisplayName}`
+        const qlCard = await scrollListingToCard(
+          viewOnlyPage,
+          quickLinkDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(
           qlCard.getByTestId('edit-quick-link-btn')
         ).not.toBeVisible();
@@ -573,7 +576,7 @@ test.describe('Context Center Permissions', () => {
       });
 
       await test.step('can copy article link', async () => {
-        const shareBtn = viewOnlyPage.getByTestId('share-btn');
+        const shareBtn = viewOnlyPage.getByTestId('copy-btn');
         await expect(shareBtn).toBeVisible();
         await shareBtn.click();
 
@@ -676,10 +679,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('hierarchy tree delete button is hidden for articles', async () => {
         await navigateToArticles(createAllPage);
 
-        const articleNode = createAllPage.getByTestId(
-          `page-node-${articleEntity.responseData.displayName}`
+        const articleNode = await scrollHierarchyToNode(
+          createAllPage,
+          articleEntity.responseData.displayName
         );
-        await expect(articleNode).toBeVisible();
         await articleNode.hover();
         await expect(
           createAllPage.getByTestId(
@@ -824,12 +827,15 @@ test.describe('Context Center Permissions', () => {
         );
 
         await navigateToArticles(createAllPage);
-        await createAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-        await createAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .dragTo(createAllPage.getByTestId(`page-node-${parentDisplayName}`));
+        const childNode = await scrollHierarchyToNode(
+          createAllPage,
+          childDisplayName
+        );
+        const parentNode = await scrollHierarchyToNode(
+          createAllPage,
+          parentDisplayName
+        );
+        await childNode.dragTo(parentNode);
 
         const confirmationModal =
           createAllPage.getByTestId('confirmation-modal');
@@ -864,10 +870,10 @@ test.describe('Context Center Permissions', () => {
       await test.step('quick link card shows edit button but not delete button', async () => {
         await navigateToArticles(editAllPage);
 
-        const qlCard = editAllPage.getByTestId(
-          `knowledge-card-${quickLinkDisplayName}`
+        const qlCard = await scrollListingToCard(
+          editAllPage,
+          quickLinkDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(qlCard.getByTestId('edit-quick-link-btn')).toBeVisible();
         await expect(
           qlCard.getByTestId('delete-quick-link-btn')
@@ -938,13 +944,15 @@ test.describe('Context Center Permissions', () => {
         );
 
         await navigateToArticles(editAllPage);
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .dragTo(editAllPage.getByTestId(`page-node-${parentDisplayName}`));
+        const childNode = await scrollHierarchyToNode(
+          editAllPage,
+          childDisplayName
+        );
+        const parentNodeForDrag = await scrollHierarchyToNode(
+          editAllPage,
+          parentDisplayName
+        );
+        await childNode.dragTo(parentNodeForDrag);
 
         const confirmationModal = editAllPage.getByTestId('confirmation-modal');
         await expect(confirmationModal).toBeVisible();
@@ -962,19 +970,12 @@ test.describe('Context Center Permissions', () => {
         expect(moveRes.status()).toBe(200);
         await expect(confirmationModal).not.toBeVisible();
 
-        await editAllPage
-          .getByTestId(`page-node-${parentDisplayName}`)
-          .waitFor({ state: 'visible' });
-        const parentNode = editAllPage.getByTestId(
-          `page-node-${parentDisplayName}`
+        const parentNode = await scrollHierarchyToNode(
+          editAllPage,
+          parentDisplayName
         );
         await parentNode.click();
-        await editAllPage
-          .getByTestId(`page-node-${childDisplayName}`)
-          .waitFor({ state: 'visible' });
-        await expect(
-          editAllPage.getByTestId(`page-node-${childDisplayName}`)
-        ).toBeVisible();
+        await scrollHierarchyToNode(editAllPage, childDisplayName);
 
         const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
           await getDefaultAdminAPIContext(browser);
@@ -1015,10 +1016,10 @@ test.describe('Context Center Permissions', () => {
 
         await navigateToArticles(deleteAllPage);
 
-        const qlCard = deleteAllPage.getByTestId(
-          `knowledge-card-${disposableQlDisplayName}`
+        const qlCard = await scrollListingToCard(
+          deleteAllPage,
+          disposableQlDisplayName
         );
-        await expect(qlCard).toBeVisible();
         await expect(
           qlCard.getByTestId('edit-quick-link-btn')
         ).not.toBeVisible();
@@ -1904,5 +1905,188 @@ test.describe('Context Center Permissions', () => {
         dialog.getByRole('button', { name: /^cancel$/i })
       ).toBeVisible();
     });
+  });
+
+  // ─── Article Role-Based Access (Standard Roles) ──────────────────────────
+
+  test.describe('Article Role-Based Access (Standard Roles)', () => {
+    test('ViewAll-only user cannot create or edit articles', async ({
+      viewOnlyPage,
+    }) => {
+      await navigateToArticles(viewOnlyPage);
+
+      await expect(
+        viewOnlyPage.getByTestId('create-knowledge-page-btn')
+      ).not.toBeVisible();
+
+      const articleResponse = viewOnlyPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/contextCenter/pages/') &&
+          response.request().method() === 'GET'
+      );
+
+      await viewOnlyPage
+        .getByTestId('knowledge-pages-hierarchy')
+        .getByRole('link')
+        .first()
+        .click();
+
+      await articleResponse;
+      await waitForAllLoadersToDisappear(viewOnlyPage);
+
+      await expect(
+        viewOnlyPage.getByTestId('entity-header-display-name')
+      ).toHaveAttribute('readOnly', '');
+      await expect(viewOnlyPage.getByTestId('add-domain')).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId('data-products-container')
+          .getByTestId('add-data-product')
+      ).not.toBeVisible();
+      await expect(viewOnlyPage.getByTestId('Add')).not.toBeVisible();
+      await expect(
+        viewOnlyPage.getByTestId('edit-owner-btn')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.Tags')
+          .getByTestId('tags-container')
+          .getByTestId('add-tag')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage
+          .getByTestId('KnowledgePanel.GlossaryTerms')
+          .getByTestId('glossary-container')
+          .getByTestId('add-tag')
+      ).not.toBeVisible();
+      await expect(
+        viewOnlyPage.getByTestId('related-data-assets')
+      ).not.toBeVisible();
+    });
+
+    testWithRolesPages(
+      'Data Consumer can view and edit content but cannot add article, domain, reviewer, data product, or data assets',
+      async ({ dataConsumerPage }) => {
+        await navigateToArticles(dataConsumerPage);
+
+        await expect(
+          dataConsumerPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+
+        const articleResponse = dataConsumerPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'GET'
+        );
+
+        await dataConsumerPage
+          .getByTestId('knowledge-pages-hierarchy')
+          .getByRole('link')
+          .first()
+          .click();
+
+        await articleResponse;
+        await waitForAllLoadersToDisappear(dataConsumerPage);
+
+        await expect(
+          dataConsumerPage.getByTestId('entity-header-display-name')
+        ).toBeVisible();
+
+        const editor = dataConsumerPage
+          .locator('[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toHaveAttribute('contenteditable', 'true');
+        await expect(
+          dataConsumerPage.getByTestId('add-domain')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage
+            .getByTestId('KnowledgePanel.DataProducts')
+            .getByTestId('data-products-container')
+            .getByTestId('add-data-product')
+        ).not.toBeVisible();
+        await expect(dataConsumerPage.getByTestId('Add')).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('edit-owner-btn')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('add-data-assets-container')
+        ).not.toBeVisible();
+        await expect(
+          dataConsumerPage.getByTestId('edit-data-assets')
+        ).not.toBeVisible();
+      }
+    );
+
+    testWithRolesPages(
+      'Data Steward can edit content, title, owners, tags, and glossary terms but cannot add article, domain, reviewer, data product, or data assets',
+      async ({ dataStewardPage }) => {
+        await navigateToArticles(dataStewardPage);
+
+        await expect(
+          dataStewardPage.getByTestId('create-knowledge-page-btn')
+        ).not.toBeVisible();
+
+        const articleResponse = dataStewardPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'GET'
+        );
+
+        await dataStewardPage
+          .getByTestId('knowledge-pages-hierarchy')
+          .getByRole('link')
+          .first()
+          .click();
+
+        await articleResponse;
+        await waitForAllLoadersToDisappear(dataStewardPage);
+
+        const titleInput = dataStewardPage.getByTestId(
+          'entity-header-display-name'
+        );
+
+        await expect(titleInput).not.toHaveAttribute('readOnly', '');
+
+        const editor = dataStewardPage
+          .locator('[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toHaveAttribute('contenteditable', 'true');
+        await expect(
+          dataStewardPage.getByTestId('edit-owner-btn')
+        ).toBeVisible();
+
+        const rightPanel = dataStewardPage.getByTestId('right-panel');
+
+        await rightPanel.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+
+        await expect(
+          dataStewardPage.getByTestId('tags-container').getByTestId('add-tag')
+        ).toBeVisible();
+        await expect(
+          dataStewardPage
+            .getByTestId('glossary-container')
+            .getByTestId('add-tag')
+        ).toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('add-domain')
+        ).not.toBeVisible();
+        await expect(
+          dataStewardPage
+            .getByTestId('data-products-container')
+            .getByTestId('add-data-product')
+        ).not.toBeVisible();
+        await expect(dataStewardPage.getByTestId('Add')).not.toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('add-data-assets-container')
+        ).not.toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('edit-data-assets')
+        ).not.toBeVisible();
+      }
+    );
   });
 });
