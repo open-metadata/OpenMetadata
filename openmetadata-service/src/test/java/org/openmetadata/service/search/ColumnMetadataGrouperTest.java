@@ -19,7 +19,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -405,8 +404,9 @@ class ColumnMetadataGrouperTest {
   }
 
   @Test
-  void testGroupColumns_nullColumnNameSortsLastWithoutError() {
-    // A null column name (e.g. a null map key) must not throw; it sorts last (nullsLast).
+  void testGroupColumns_nullColumnNameIsSkipped() {
+    // A null column name (e.g. a null map key) is dropped, not returned with a null required field,
+    // and must not throw. The remaining valid columns still come back sorted.
     Map<String, List<ColumnMetadataGrouper.ColumnWithContext>> columnsByName =
         new LinkedHashMap<>();
     columnsByName.put("beta", singleOccurrence("beta"));
@@ -416,7 +416,7 @@ class ColumnMetadataGrouperTest {
     List<ColumnGridItem> result = ColumnMetadataGrouper.groupColumns(columnsByName);
 
     List<String> actual = result.stream().map(ColumnGridItem::getColumnName).toList();
-    assertEquals(Arrays.asList("alpha", "beta", null), actual);
+    assertEquals(List.of("alpha", "beta"), actual);
   }
 
   private static List<ColumnMetadataGrouper.ColumnWithContext> singleOccurrence(String columnName) {
