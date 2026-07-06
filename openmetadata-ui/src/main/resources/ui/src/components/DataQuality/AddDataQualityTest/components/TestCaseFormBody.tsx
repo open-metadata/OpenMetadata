@@ -26,7 +26,7 @@ import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -286,11 +286,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     return result;
   }, [columnOptions, selectedColumn]);
 
-  // Paging state for the table search (legacy AsyncSelect infinite scroll).
-  const tablePagingRef = useRef({ search: '', page: 1, hasMore: true });
-
   const fetchTables = useCallback(
-    async (searchValue = '', page = 1) => {
+    async (searchValue = '') => {
       if (table) {
         setTableOptions([
           {
@@ -306,18 +303,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       try {
         const response = await searchQuery({
           query: searchValue ? `*${searchValue}*` : '*',
-          pageNumber: page,
+          pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
           fetchSource: true,
           trackTotalHits: true,
         });
-
-        tablePagingRef.current = {
-          search: searchValue,
-          page,
-          hasMore: page * PAGE_SIZE_LARGE < response.hits.total.value,
-        };
 
         setTablesCache((prev) => {
           const newCache = new Map(prev);
@@ -336,42 +327,24 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           return newCache;
         });
 
-        const pageOptions = response.hits.hits.map((hit) => {
-          const source = hit._source as TableSearchSource;
+        setTableOptions(
+          response.hits.hits.map((hit) => {
+            const source = hit._source as TableSearchSource;
 
-          return {
-            id: source.fullyQualifiedName ?? source.name,
-            label: source.fullyQualifiedName ?? source.name,
-          };
-        });
-
-        setTableOptions((prev) =>
-          page > 1 ? [...prev, ...pageOptions] : pageOptions
+            return {
+              id: source.fullyQualifiedName ?? source.name,
+              label: source.fullyQualifiedName ?? source.name,
+            };
+          })
         );
       } catch {
-        if (page === 1) {
-          setTableOptions([]);
-        }
+        setTableOptions([]);
       } finally {
         setIsTableLoading(false);
       }
     },
     [table]
   );
-
-  const isLoadingMoreTablesRef = useRef(false);
-  const loadMoreTables = useCallback(async () => {
-    const { search, page, hasMore } = tablePagingRef.current;
-    if (!hasMore || isLoadingMoreTablesRef.current) {
-      return;
-    }
-    isLoadingMoreTablesRef.current = true;
-    try {
-      await fetchTables(search, page + 1);
-    } finally {
-      isLoadingMoreTablesRef.current = false;
-    }
-  }, [fetchTables]);
 
   // Legacy AsyncSelect fetched options on mount, so the table list (and the
   // spec-observable search request) is ready before the field is focused.
@@ -516,7 +489,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         id: testDef.fullyQualifiedName ?? '',
         label: getEntityName(testDef),
         supportingText: testDef.description,
-        testId: testDef.fullyQualifiedName ?? '',
       })),
     [testDefinitions]
   );
@@ -699,7 +671,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
-      disabled: Boolean(table),
+      isDisabled: Boolean(table),
       isLoading: isTableLoading,
       options: tableOptions,
       onSearchChange: debouncedFetchTables,
@@ -726,7 +698,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         form.trigger('selectedTable');
         handleActiveField('root/table');
       },
-      onLoadMore: loadMoreTables,
     },
   } as FieldProp;
 
@@ -742,7 +713,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
-      disabled: !selectedTableFqn,
+      isDisabled: !selectedTableFqn,
       options: columnOptions,
     },
   };
@@ -757,7 +728,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'dimensionColumns',
-      disabled: !selectedTableFqn,
+      isDisabled: !selectedTableFqn,
       multiple: true,
       options: dimensionColumnOptions,
     },

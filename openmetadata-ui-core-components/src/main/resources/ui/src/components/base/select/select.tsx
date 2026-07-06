@@ -25,8 +25,6 @@ export type SelectItemType = {
   isDisabled?: boolean;
   supportingText?: string;
   icon?: FC | ReactNode;
-  /** Optional data-testid rendered on the option element. */
-  testId?: string;
 };
 
 export interface SelectCommonProps {

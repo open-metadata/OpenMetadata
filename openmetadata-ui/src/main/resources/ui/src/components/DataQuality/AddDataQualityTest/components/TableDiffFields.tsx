@@ -159,7 +159,7 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {
                 'aria-label': label,
-                disabled,
+                isDisabled: disabled,
                 options,
                 'data-testid': `parameter-${data.name}-${index}`,
               },
