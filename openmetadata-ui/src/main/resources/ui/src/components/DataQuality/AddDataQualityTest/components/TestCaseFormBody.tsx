@@ -162,6 +162,21 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [onActiveFieldChange]
   );
 
+  // Report the focused field to the doc panel. Rendered controls carry
+  // `root/<fieldName>` ids, so one capture handler covers every field the
+  // same way the legacy antd form's form-level onFocus did.
+  const handleFormFocusCapture = useCallback(
+    (event: React.FocusEvent<HTMLDivElement>) => {
+      const fieldId = (event.target as HTMLElement).closest?.(
+        '[id^="root/"]'
+      )?.id;
+      if (fieldId) {
+        handleActiveField(fieldId);
+      }
+    },
+    [handleActiveField]
+  );
+
   const testLevelOptions: TestLevelOption[] = useMemo(
     () => [
       {
@@ -748,7 +763,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   };
 
   return (
-    <div className="test-case-form-v1 drawer-mode test-case-form-body">
+    <div
+      className="test-case-form-v1 drawer-mode test-case-form-body"
+      onFocusCapture={handleFormFocusCapture}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
@@ -850,10 +867,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="tags">
           {({ field }) => (
-            <div
-              data-testid="tags-selector"
-              id="root/tags"
-              onFocusCapture={() => handleActiveField('root/tags')}>
+            <div data-testid="tags-selector" id="root/tags">
               <TagSuggestion
                 label={t('label.tag-plural')}
                 placeholder={t('label.select-field', {
@@ -868,10 +882,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="glossaryTerms">
           {({ field }) => (
-            <div
-              data-testid="glossary-terms-selector"
-              id="root/glossaryTerms"
-              onFocusCapture={() => handleActiveField('root/glossaryTerms')}>
+            <div data-testid="glossary-terms-selector" id="root/glossaryTerms">
               <TagSuggestion
                 label={t('label.glossary-term-plural')}
                 placeholder={t('label.select-field', {
