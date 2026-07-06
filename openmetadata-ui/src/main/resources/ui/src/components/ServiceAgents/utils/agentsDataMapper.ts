@@ -321,16 +321,21 @@ const resolveRunStepStatus = (
 
 const buildStepAttention = (step: StepSummary): RunAttention | undefined => {
   const firstFailure = step.failures?.[0];
+  let result: RunAttention | undefined;
 
-  return firstFailure
-    ? {
-        severity: 'error',
-        title: firstFailure.name,
-        message: firstFailure.error,
-        hint: undefined,
-        stackTrace: firstFailure.stackTrace,
-      }
-    : undefined;
+  if (firstFailure) {
+    result = {
+      severity: 'error',
+      title: firstFailure.name,
+      message: firstFailure.error,
+      hint: undefined,
+      ...(firstFailure.stackTrace
+        ? { stackTrace: firstFailure.stackTrace }
+        : {}),
+    };
+  }
+
+  return result;
 };
 
 export const mapStepSummaryToRunStep = (step: StepSummary): RunStep => {

@@ -25,8 +25,11 @@ import { Agent } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
-  fmtEta,
+  formatEtaLong,
   fmtNum,
+  getEtaInfo,
+  getUnitLabelKey,
+  getUnitVerbLabelKey,
   RUN_DOT_CLASS,
   RUN_META,
 } from '../utils/agents.utils';
@@ -62,6 +65,9 @@ const AgentCard: FC<AgentCardProps> = ({
   const finishedSuffix = agent.finishedAt
     ? ` · ${t('label.finished-lowercase')} ${agent.finishedAt}`
     : '';
+  const unitLabel = t(getUnitLabelKey(agent.unit));
+  const unitVerbLabel = t(getUnitVerbLabelKey(agent.verb));
+  const etaLabel = formatEtaLong(getEtaInfo(agent.eta), t);
   const unitIcon =
     agent.unit === 'queries' ? (
       <TerminalIcon height={15} width={15} />
@@ -106,20 +112,20 @@ const AgentCard: FC<AgentCardProps> = ({
             {isRunning && (
               <Metric
                 icon={unitIcon}
-                label={`${agent.unit} ${agent.verb}`}
+                label={unitVerbLabel}
                 value={fmtNum(agent.assets)}
               />
             )}
             {isRunning && (
               <Metric
                 icon={<ClockIcon height={15} width={15} />}
-                value={fmtEta(agent.eta)}
+                value={etaLabel}
               />
             )}
             {showLastRunMetric && (
               <Metric
                 icon={unitIcon}
-                label={`${agent.unit}${finishedSuffix}`}
+                label={`${unitLabel}${finishedSuffix}`}
                 value={fmtNum(agent.assets)}
               />
             )}
@@ -134,7 +140,7 @@ const AgentCard: FC<AgentCardProps> = ({
             {isFailed && agent.failStep && (
               <Metric
                 icon={<AlertCircleIcon height={15} width={15} />}
-                label={`· ${fmtNum(agent.assets)} ${agent.unit} ${t(
+                label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
                   'label.before-error'
                 )}`}
                 tone="error"

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TFunction } from 'i18next';
 import { ReactComponent as BookIcon } from '../../../assets/svg/agents/book.svg';
 import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
 import { ReactComponent as DatabaseIcon } from '../../../assets/svg/agents/database.svg';
@@ -24,19 +25,70 @@ import { AgentStatus, RunStatus } from '../AgentsPage.interface';
 
 export const fmtNum = (n: number): string => n.toLocaleString();
 
-export const fmtEta = (s: number | null): string => {
-  let result = '—';
+export type EtaState = 'idle' | 'wrapping' | 'seconds' | 'minutes';
+
+export interface EtaInfo {
+  state: EtaState;
+  value?: number;
+}
+
+export const getEtaInfo = (s: number | null): EtaInfo => {
+  let result: EtaInfo = { state: 'idle' };
   if (s !== null) {
     if (s <= 0) {
-      result = 'wrapping up';
+      result = { state: 'wrapping' };
     } else if (s < 60) {
-      result = `~${s}s left`;
+      result = { state: 'seconds', value: s };
     } else {
-      result = `~${Math.round(s / 60)} min left`;
+      result = { state: 'minutes', value: Math.round(s / 60) };
     }
   }
 
   return result;
+};
+
+export const UNIT_LABEL_KEY: Record<string, string> = {
+  queries: 'label.query-plural-lowercase',
+  assets: 'label.asset-plural-lowercase',
+  models: 'label.model-plural-lowercase',
+};
+
+export const UNIT_VERB_LABEL_KEY: Record<string, string> = {
+  scanned: 'label.queries-scanned',
+  processed: 'label.queries-processed',
+  ingested: 'label.assets-ingested',
+  profiled: 'label.assets-profiled',
+  parsed: 'label.models-parsed',
+};
+
+export const getUnitLabelKey = (unit: string): string =>
+  UNIT_LABEL_KEY[unit] ?? 'label.asset-plural-lowercase';
+
+export const getUnitVerbLabelKey = (verb: string): string =>
+  UNIT_VERB_LABEL_KEY[verb] ?? 'label.assets-ingested';
+
+const EM_DASH = '—';
+
+export const formatEtaLong = (info: EtaInfo, t: TFunction): string => {
+  const byState: Record<EtaState, string> = {
+    idle: EM_DASH,
+    wrapping: t('label.wrapping-up'),
+    seconds: t('message.seconds-left', { count: info.value }),
+    minutes: t('message.minutes-left', { count: info.value }),
+  };
+
+  return byState[info.state];
+};
+
+export const formatEtaShort = (info: EtaInfo, t: TFunction): string => {
+  const byState: Record<EtaState, string> = {
+    idle: EM_DASH,
+    wrapping: t('label.wrapping-up'),
+    seconds: t('message.seconds-short', { count: info.value }),
+    minutes: t('message.minutes-short', { count: info.value }),
+  };
+
+  return byState[info.state];
 };
 
 export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {

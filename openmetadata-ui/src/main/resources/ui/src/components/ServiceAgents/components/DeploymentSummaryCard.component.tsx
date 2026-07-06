@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/agents/check.svg';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { Agent } from '../AgentsPage.interface';
-import { fmtEta, fmtNum } from '../utils/agents.utils';
+import { formatEtaShort, fmtNum, getEtaInfo } from '../utils/agents.utils';
 
 interface DeploymentSummaryCardProps {
   agents: Agent[];
@@ -63,7 +63,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   const etas = agents
     .filter((a) => a.status === 'running' && a.eta !== null)
     .map((a) => a.eta as number);
-  const maxEta = etas.length ? Math.max(...etas) : 0;
+  const maxEta = etas.length ? Math.max(...etas) : null;
   const overall =
     total > 0
       ? Math.round(agents.reduce((sum, a) => sum + a.pct, 0) / total)
@@ -74,12 +74,10 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
     return null;
   }
 
-  const etaDisplay = maxEta
-    ? fmtEta(maxEta).replace('~', '').replace(' left', '')
-    : '—';
+  const etaDisplay = formatEtaShort(getEtaInfo(maxEta), t);
 
   const failedSuffix =
-    failed > 0 ? ` · ${failed} ${t('label.failed').toLowerCase()}` : '';
+    failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
   const attentionSuffix =
     failed > 0
       ? ` · ${failed} ${t('label.need-attention')}`
@@ -134,7 +132,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
             value={fmtNum(assets)}
           />
           <SummaryStat
-            label={t('label.error-plural').toLowerCase()}
+            label={t('label.error-plural-lowercase')}
             tone={errors > 0 ? 'error' : 'ok'}
             value={fmtNum(errors)}
           />

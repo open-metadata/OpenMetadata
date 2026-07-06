@@ -12,7 +12,7 @@
  */
 
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -44,19 +44,33 @@ export const useAgentLogs = (
   const [after, setAfter] = useState<string | undefined>();
   const [total, setTotal] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState(false);
+  const requestIdRef = useRef(0);
 
   const fetchLogs = useCallback(
     (cursor?: string) => {
+      const requestId = requestIdRef.current;
+      const isCurrent = () => requestId === requestIdRef.current;
       setIsLoading(true);
       getIngestionPipelineLogById(id, cursor)
         .then((res) => {
+          if (!isCurrent()) {
+            return;
+          }
           const chunk = getLogTaskFieldForType(res.data, pipelineType);
           setRawText((prev) => (cursor ? prev + chunk : chunk));
           setAfter(res.data.after);
           setTotal(res.data.total);
         })
-        .catch((err) => showErrorToast(err as AxiosError))
-        .finally(() => setIsLoading(false));
+        .catch((err) => {
+          if (isCurrent()) {
+            showErrorToast(err as AxiosError);
+          }
+        })
+        .finally(() => {
+          if (isCurrent()) {
+            setIsLoading(false);
+          }
+        });
     },
     [id, pipelineType]
   );
@@ -65,10 +79,15 @@ export const useAgentLogs = (
     if (!enabled || !id) {
       return;
     }
+    requestIdRef.current += 1;
     setRawText('');
     setAfter(undefined);
     setTotal(undefined);
     fetchLogs();
+
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [id, enabled, fetchLogs]);
 
   const lines = useMemo(() => parseLogLines(rawText), [rawText]);

@@ -45,13 +45,16 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
     ? 'tw:text-fg-error-primary'
     : 'tw:text-fg-warning-primary';
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
+    if (!navigator.clipboard?.writeText) {
+      return;
+    }
     try {
-      navigator.clipboard.writeText(att.message);
+      await navigator.clipboard.writeText(att.message);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
-    } catch (_e) {
-      // clipboard unavailable in non-secure contexts
+    } catch {
+      // clipboard write rejected (permission denied / non-secure context)
     }
   };
 
@@ -146,15 +149,11 @@ const RunStepRow: FC<RunStepRowProps> = ({ step, isLast }) => {
   const secondary: string[] = [];
 
   if (step.filtered) {
-    secondary.push(
-      `${fmtNum(step.filtered)} ${t('label.filtered').toLowerCase()}`
-    );
+    secondary.push(`${fmtNum(step.filtered)} ${t('label.filtered-lowercase')}`);
   }
 
   if (step.updated) {
-    secondary.push(
-      `${fmtNum(step.updated)} ${t('label.updated').toLowerCase()}`
-    );
+    secondary.push(`${fmtNum(step.updated)} ${t('label.updated-lowercase')}`);
   }
 
   if (step.warnings) {

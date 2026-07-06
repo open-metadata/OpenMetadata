@@ -157,11 +157,15 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
     try {
       const blob = new Blob([rawText], { type: 'text/plain' });
+      const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
-      anchor.href = URL.createObjectURL(blob);
+      anchor.href = objectUrl;
       anchor.download = `${logsFor.name.replace(/\s+/g, '_')}_logs.txt`;
+      anchor.style.display = 'none';
+      document.body.appendChild(anchor);
       anchor.click();
-      URL.revokeObjectURL(anchor.href);
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
@@ -205,6 +209,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       />
       {runsFor && (
         <RunHistoryDrawer
+          open
           agent={runsFor.agent}
           initialRunId={runsFor.runId}
           onClose={() => setRunsFor(null)}
@@ -212,6 +217,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
             setRunsFor(null);
             setLogsFor(agent);
           }}
+          onRun={onRun}
         />
       )}
       {logsFor && (

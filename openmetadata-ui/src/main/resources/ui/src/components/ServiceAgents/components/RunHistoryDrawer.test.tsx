@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent, AgentRun } from '../AgentsPage.interface';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
@@ -19,6 +19,10 @@ import RunHistoryDrawer from './RunHistoryDrawer.component';
 jest.mock('./RunStepRow.component', () =>
   jest.fn().mockImplementation(() => <p>RunStepRow</p>)
 );
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  getUtcOffsetLabel: jest.fn().mockReturnValue('UTC+05:30'),
+}));
 
 const emptyTotals = {
   records: 0,
@@ -80,22 +84,30 @@ const agent: Agent = {
   recentRuns: [],
 };
 
+const mockOnRun = jest.fn();
+
 const renderDrawer = (initialRunId?: string) =>
   render(
     <RunHistoryDrawer
+      open
       agent={agent}
       initialRunId={initialRunId}
       onClose={jest.fn()}
       onOpenLogs={jest.fn()}
+      onRun={mockOnRun}
     />
   );
 
 describe('RunHistoryDrawer', () => {
+  beforeEach(() => {
+    mockOnRun.mockClear();
+  });
+
   it('should pre-select the run matching initialRunId', () => {
     renderDrawer('run-middle');
 
     expect(
-      screen.getByText(/May 26, 2026 · 08:10 \(UTC−07:00\)/)
+      screen.getByText(/May 26, 2026 · 08:10 \(UTC\+05:30\)/)
     ).toBeInTheDocument();
   });
 
@@ -103,7 +115,7 @@ describe('RunHistoryDrawer', () => {
     renderDrawer();
 
     expect(
-      screen.getByText(/May 27, 2026 · 08:10 \(UTC−07:00\)/)
+      screen.getByText(/May 27, 2026 · 08:10 \(UTC\+05:30\)/)
     ).toBeInTheDocument();
   });
 
@@ -111,7 +123,15 @@ describe('RunHistoryDrawer', () => {
     renderDrawer('run-evicted');
 
     expect(
-      screen.getByText(/May 27, 2026 · 08:10 \(UTC−07:00\)/)
+      screen.getByText(/May 27, 2026 · 08:10 \(UTC\+05:30\)/)
     ).toBeInTheDocument();
+  });
+
+  it('should trigger onRun when the Run now button is clicked', () => {
+    renderDrawer();
+
+    fireEvent.click(screen.getByText('label.run-now'));
+
+    expect(mockOnRun).toHaveBeenCalledWith(agent);
   });
 });

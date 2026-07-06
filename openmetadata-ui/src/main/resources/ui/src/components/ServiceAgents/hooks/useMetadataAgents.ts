@@ -57,6 +57,15 @@ export const useMetadataAgents = (
   const liveOverridesRef = useRef<Map<string, Agent>>(new Map());
   const lastRunEventRef = useRef<Map<string, LastRunEvent>>(new Map());
   const completedThisSessionRef = useRef<Set<string>>(new Set());
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setAgents(
@@ -84,7 +93,11 @@ export const useMetadataAgents = (
         fields: TabSpecificField.PIPELINE_STATUSES,
       });
       const mapped = mapPipelineToAgent(fresh);
-      setAgents((prev) => prev.map((a) => (a.id === mapped.id ? mapped : a)));
+      if (isMountedRef.current) {
+        setAgents((prev) =>
+          prev.map((a) => (a.fqn === mapped.fqn ? mapped : a))
+        );
+      }
     } catch {
       // A transient status fetch failure must not disrupt the list.
     }

@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 
-import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
-import { FC, useEffect, useState } from 'react';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  SlideoutMenu,
+} from '@openmetadata/ui-core-components';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/agents/close.svg';
 import { ReactComponent as LogsIcon } from '../../../assets/svg/agents/logs.svg';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
+import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
 import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
 import { useAgentRuns } from '../hooks/useAgentRuns';
 import { AGENT_TYPE_ICON, fmtNum, RUN_META } from '../utils/agents.utils';
@@ -68,6 +74,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
         const isSelected = r.id === selectedId;
+        const [startDate, startTime] = r.startedAt.split(' · ');
 
         return (
           <button
@@ -90,10 +97,11 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
               </span>
             </Box>
             <div className="tw:truncate tw:text-xs tw:font-medium tw:leading-tight tw:text-secondary">
-              {r.startedAt.split(' · ')[0]}
+              {startDate}
             </div>
             <div className="tw:mt-px tw:text-xs tw:leading-tight tw:text-quaternary">
-              {r.startedAt.split(' · ')[1]} &middot; {r.duration}m
+              {startTime ? `${startTime} · ` : ''}
+              {t('label.duration-in-minute', { duration: r.duration })}
             </div>
           </button>
         );
@@ -105,16 +113,20 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 // ---- drawer ----
 interface RunHistoryDrawerProps {
   agent: Agent;
+  open: boolean;
   initialRunId?: string;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
+  onRun: (agent: Agent) => void;
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
+  open,
   initialRunId,
   onClose,
   onOpenLogs,
+  onRun,
 }) => {
   const { t } = useTranslation();
   const { runs, isLoading } = useAgentRuns(agent.fqn, true);
@@ -135,30 +147,28 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   const runLabel = m ? t(m.labelKey) : '';
   const tot = run?.totals;
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+  const handleOpenChange = useCallback(
+    (isOpen: boolean) => {
+      if (!isOpen) {
         onClose();
       }
-    };
-    document.addEventListener('keydown', handleKey);
-
-    return () => document.removeEventListener('keydown', handleKey);
-  }, [onClose]);
+    },
+    [onClose]
+  );
 
   return (
-    <Box
-      className="tw:fixed tw:inset-0 tw:z-50 tw:bg-overlay/60 tw:backdrop-blur-xs"
-      justify="end"
-      onClick={onClose}>
-      <Box
-        className="agents-drawer tw:h-full tw:w-[720px] tw:max-w-[94vw] tw:bg-secondary tw:shadow-2xl"
-        direction="col"
-        onClick={(e) => e.stopPropagation()}>
-        {/* header */}
-        <Box
-          align="center"
-          className="tw:gap-3 tw:border-b tw:border-secondary tw:bg-primary tw:px-5.5 tw:py-4.5">
+    <SlideoutMenu
+      isDismissable
+      className="tw:z-50"
+      data-testid="run-history-drawer"
+      dialogClassName="tw:gap-0"
+      isOpen={open}
+      width={720}
+      onOpenChange={handleOpenChange}>
+      <SlideoutMenu.Header
+        className="tw:gap-3 tw:border-b tw:border-secondary tw:bg-primary tw:px-5.5 tw:py-4.5"
+        onClose={onClose}>
+        <Box align="center" className="tw:flex-1 tw:gap-3 tw:mr-8">
           <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
             <Icon height={18} width={18} />
           </span>
@@ -182,110 +192,102 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
             color="secondary"
             iconLeading={<PlayIcon height={14} width={14} />}
-            size="sm">
+            size="sm"
+            onClick={() => onRun(agent)}>
             {t('label.run-now')}
           </Button>
-          <Button
-            aria-label={t('label.close')}
-            className="tw:text-quaternary"
-            color="tertiary"
-            iconLeading={<CloseIcon height={20} width={20} />}
-            size="sm"
-            onClick={onClose}
-          />
         </Box>
+      </SlideoutMenu.Header>
 
-        {/* scroll body */}
-        <div className="tw:flex-1 tw:overflow-y-auto tw:px-5.5 tw:pb-10 tw:pt-5 tw:bg-disabled_subtle">
-          {/* run history rail */}
-          <div className="tw:mb-2.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-quaternary">
-            {t('label.recent-run-plural')}
-          </div>
-          <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
-
-          {run && m && tot ? (
-            <>
-              {/* selected run header */}
-              <Box align="center" className="tw:mb-3.5 tw:mt-5.5 tw:gap-2.5">
-                <RunGlyph size={20} status={run.status} />
-                <div className="tw:flex-1">
-                  <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
-                    {runLabel}
-                  </div>
-                  <div className="tw:text-xs tw:text-tertiary">
-                    {run.startedAt} (UTC−07:00) &middot; ran for {run.duration}{' '}
-                    min
-                  </div>
-                </div>
-                <Badge
-                  className="tw:font-semibold"
-                  color={m.color}
-                  size="sm"
-                  type="pill-color">
-                  {runLabel}
-                </Badge>
-              </Box>
-
-              {/* stat strip */}
-              <Box className="tw:mb-5.5 tw:gap-2.5">
-                <StatTile
-                  label={t('label.records-processed')}
-                  value={fmtNum(tot.records)}
-                />
-                <StatTile
-                  label={t('label.filtered').toLowerCase()}
-                  value={fmtNum(tot.filtered)}
-                />
-                <StatTile
-                  label={t('label.updated').toLowerCase()}
-                  value={fmtNum(tot.updated)}
-                />
-                <StatTile
-                  label={t('label.warning-plural-lowercase')}
-                  tone={tot.warnings ? 'warn' : undefined}
-                  value={fmtNum(tot.warnings)}
-                />
-                <StatTile
-                  label={t('label.error-plural-lowercase')}
-                  tone={tot.errors ? 'error' : undefined}
-                  value={fmtNum(tot.errors)}
-                />
-              </Box>
-
-              {/* steps card */}
-              <Card
-                className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
-                variant="ghost">
-                <Box
-                  align="center"
-                  className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
-                  justify="between">
-                  <span className="tw:text-sm tw:font-semibold tw:text-secondary">
-                    {t('label.steps')}
-                  </span>
-                  <span className="tw:text-xs tw:text-quaternary">
-                    {run.steps.length} {t('label.steps').toLowerCase()}
-                  </span>
-                </Box>
-                {run.steps.map((s, idx) => (
-                  <RunStepRow
-                    isLast={idx === run.steps.length - 1}
-                    key={idx}
-                    step={s}
-                  />
-                ))}
-              </Card>
-            </>
-          ) : (
-            <div className="tw:px-1 tw:py-10 tw:text-center tw:text-sm tw:text-quaternary">
-              {isLoading
-                ? `${t('label.loading')}...`
-                : t('message.no-recent-runs')}
-            </div>
-          )}
+      <SlideoutMenu.Content className="tw:overflow-y-auto tw:px-5.5 tw:pb-10 tw:pt-5 tw:bg-disabled_subtle tw:gap-0">
+        {/* run history rail */}
+        <div className="tw:mb-2.5 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wider tw:text-quaternary">
+          {t('label.recent-run-plural')}
         </div>
-      </Box>
-    </Box>
+        <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
+
+        {run && m && tot ? (
+          <>
+            {/* selected run header */}
+            <Box align="center" className="tw:mb-3.5 tw:mt-5.5 tw:gap-2.5">
+              <RunGlyph size={20} status={run.status} />
+              <div className="tw:flex-1">
+                <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
+                  {runLabel}
+                </div>
+                <div className="tw:text-xs tw:text-tertiary">
+                  {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
+                  {t('message.ran-for-duration', { duration: run.duration })}
+                </div>
+              </div>
+              <Badge
+                className="tw:font-semibold"
+                color={m.color}
+                size="sm"
+                type="pill-color">
+                {runLabel}
+              </Badge>
+            </Box>
+
+            {/* stat strip */}
+            <Box className="tw:mb-5.5 tw:gap-2.5">
+              <StatTile
+                label={t('label.processed')}
+                value={fmtNum(tot.records)}
+              />
+              <StatTile
+                label={t('label.filtered-lowercase')}
+                value={fmtNum(tot.filtered)}
+              />
+              <StatTile
+                label={t('label.updated-lowercase')}
+                value={fmtNum(tot.updated)}
+              />
+              <StatTile
+                label={t('label.warning-plural-lowercase')}
+                tone={tot.warnings ? 'warn' : undefined}
+                value={fmtNum(tot.warnings)}
+              />
+              <StatTile
+                label={t('label.error-plural-lowercase')}
+                tone={tot.errors ? 'error' : undefined}
+                value={fmtNum(tot.errors)}
+              />
+            </Box>
+
+            {/* steps card */}
+            <Card
+              className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
+              variant="ghost">
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:pb-2.5 tw:pt-3.5"
+                justify="between">
+                <span className="tw:text-sm tw:font-semibold tw:text-secondary">
+                  {t('label.steps')}
+                </span>
+                <span className="tw:text-xs tw:text-quaternary">
+                  {run.steps.length} {t('label.steps-lowercase')}
+                </span>
+              </Box>
+              {run.steps.map((s, idx) => (
+                <RunStepRow
+                  isLast={idx === run.steps.length - 1}
+                  key={idx}
+                  step={s}
+                />
+              ))}
+            </Card>
+          </>
+        ) : (
+          <div className="tw:px-1 tw:py-10 tw:text-center tw:text-sm tw:text-quaternary">
+            {isLoading
+              ? `${t('label.loading')}...`
+              : t('message.no-recent-runs')}
+          </div>
+        )}
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 
