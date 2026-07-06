@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  Box,
   Button,
   ButtonUtility,
   Card,
@@ -393,7 +394,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         className="tw:p-1"
                         color="secondary"
                         data-testid="edit-domain-btn"
-                        icon={<EditIcon height={11} width={11} />}
+                        icon={<EditIcon className="tw:text-gray-500 tw:hover:text-gray-600" height={11} width={11} />}
                         tooltip={t('label.edit-entity', {
                           entity: t('label.domain'),
                         })}
@@ -450,7 +451,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         className="tw:p-1"
                         color="secondary"
                         data-testid="edit-owner-btn"
-                        icon={<EditIcon height={11} width={11} />}
+                        icon={<EditIcon className="tw:text-gray-500 tw:hover:text-gray-600" height={11} width={11} />}
                         tooltip={t('label.edit-entity', {
                           entity: t('label.owner-plural'),
                         })}
@@ -490,8 +491,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </div>
 
           {/* Action buttons */}
-          <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
+          <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
+            <Box align="center" className="tw:mr-1.5" gap={3}>
             {contentChangeIcon}
+            </Box>
 
             <Tooltip title={t('label.version-plural')}>
               <TooltipTrigger>
