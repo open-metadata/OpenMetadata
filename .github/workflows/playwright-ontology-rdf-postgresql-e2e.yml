@@ -1,0 +1,175 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Postgresql PR Ontology RDF E2E Tests
+on:
+  workflow_dispatch:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - ".github/actions/setup-openmetadata-test-environment/action.yml"
+      - ".github/workflows/playwright-ontology-rdf-postgresql-e2e.yml"
+      - "docker/run_local_docker.sh"
+      - "docker/run_local_docker_common.sh"
+      - "docker/run_local_docker_rdf.sh"
+      - "docker/development/docker-compose-fuseki.yml"
+      - "docker/development/docker-compose-postgres-fuseki.yml"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**"
+      - "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
+      - "openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json"
+      - "openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json"
+      - "openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/OntologyImportRdf.spec.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**"
+      - "openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**"
+      - "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-ontology-rdf-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Install antlr cli
+        run: sudo make install_antlr_cli
+
+      - name: Build with Maven
+        run: mvn -DskipTests clean package
+
+      - name: Upload Maven build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmetadata-build
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          retention-days: 1
+
+  playwright-ontology-rdf-postgresql:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() && needs.build.result == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+    environment: test
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Prepare temporary directory for Maven build artifact
+        run: mkdir -p "${{ runner.temp }}/openmetadata-build-artifact"
+
+      - name: Download Maven build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openmetadata-build
+          path: ${{ runner.temp }}/openmetadata-build-artifact
+
+      - name: Copy Maven build artifact into workspace
+        run: |
+          mkdir -p openmetadata-dist/target
+          cp -a "${{ runner.temp }}/openmetadata-build-artifact/." openmetadata-dist/target/
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -s true"
+          startup-script: "./docker/run_local_docker_rdf.sh"
+          ingestion_dependency: "all"
+
+      - name: Wait for Fuseki to be healthy
+        run: |
+          echo "Verifying Fuseki is healthy before running tests..."
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:3030/\$/ping" > /dev/null 2>&1; then
+              echo "Fuseki is healthy"
+              exit 0
+            fi
+            echo "Waiting for Fuseki ($i/30)..."
+            sleep 10
+          done
+          echo "Fuseki failed health check. Container logs:"
+          docker logs openmetadata-fuseki --tail 100
+          exit 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.57.0 install chromium --with-deps
+
+      - name: Run Ontology RDF Playwright tests
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: npx playwright test --project="Ontology RDF"
+        env:
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-ontology-rdf-report
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
+          retention-days: 5
+
+      - name: Clean Up
+        if: always()
+        run: |
+          docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
+          docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
+          sudo rm -rf ${PWD}/docker/development/docker-volume

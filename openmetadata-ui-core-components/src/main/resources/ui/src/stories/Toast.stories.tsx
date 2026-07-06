@@ -114,6 +114,23 @@ export const LongMessage: Story = {
   },
 };
 
+// ─── Overflowing message (scrollable) ─────────────────────────────────────────
+
+export const OverflowingMessage: Story = {
+  args: { position: 'bottom-center' },
+  render: (args) => {
+    useEffect(() => {
+      const line =
+        'illegal_argument_exception: Result window is too large, from + size must be less than or equal to: [10000] but was [10015]. See the scroll api for a more efficient way to request large data sets. This limit can be set by changing the [index.max_result_window] index level setting.;';
+      toast.error(Array.from({ length: 20 }, () => line).join(' '), {
+        timeout: 0,
+      });
+    }, []);
+
+    return <ToastProvider {...args} />;
+  },
+};
+
 // ─── Stacking ─────────────────────────────────────────────────────────────────
 
 export const Stacked: Story = {
