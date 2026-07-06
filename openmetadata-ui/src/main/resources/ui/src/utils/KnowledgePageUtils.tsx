@@ -20,9 +20,9 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Box } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
+import { ReactComponent as FileIcon } from '../assets/svg/action-icons/file.svg';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
@@ -123,7 +123,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
             width={16}
           />
         ) : (
-          <File06 size={16} strokeWidth={1.5} />
+          <FileIcon height={16} width={16} />
         )}
 
         <span className="tw:truncate">

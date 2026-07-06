@@ -25,16 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy06,
-  DotsVertical,
-  File06,
-  Globe01,
-  MessageChatSquare,
-  ThumbsDown,
-  ThumbsUp,
-  Trash01,
   UploadCloud01,
-  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -42,11 +33,22 @@ import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as EditorIcon } from '../../../assets/svg/ic-editor.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as EditorIcon } from '../../../assets/svg/action-icons/editor.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/action-icons/file.svg';
+import { ReactComponent as FollowActiveIcon } from '../../../assets/svg/action-icons/follow-active.svg';
+import { ReactComponent as FollowIcon } from '../../../assets/svg/action-icons/follow.svg';
+import { ReactComponent as GlobeIcon } from '../../../assets/svg/action-icons/globe.svg';
+import { ReactComponent as ChatIcon } from '../../../assets/svg/action-icons/message-chat.svg';
+import { ReactComponent as ThumbsDownActiveIcon } from '../../../assets/svg/action-icons/thumbs-down-active.svg';
+import { ReactComponent as ThumbsDownIcon } from '../../../assets/svg/action-icons/thumbs-down.svg';
+import { ReactComponent as ThumbsUpActiveIcon } from '../../../assets/svg/action-icons/thumbs-up-active.svg';
+import { ReactComponent as ThumbsUpIcon } from '../../../assets/svg/action-icons/thumbs-up.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as UserIcon } from '../../../assets/svg/action-icons/user.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-star.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
@@ -334,10 +336,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
             <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
-              <File06
+              <FileIcon
                 className="tw:text-quaternary"
                 height={40}
-                strokeWidth={1.2}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
                 width={40}
               />
@@ -358,9 +359,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <div className="tw:flex tw:items-center tw:gap-1.5">
                   <Tooltip title={t('label.domain')}>
                     <TooltipTrigger className="tw:leading-0">
-                      <Globe01
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
-                        size={16}
+                      <GlobeIcon
+                        className="tw:shrink-0 tw:text-quaternary"
+                        height={16}
+                        width={16}
                       />
                     </TooltipTrigger>
                   </Tooltip>
@@ -407,9 +409,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <div className="tw:flex tw:items-center tw:gap-1.5">
                   <Tooltip title={t('label.owner-plural')}>
                     <TooltipTrigger className="tw:leading-0">
-                      <User03
-                        className="tw:h-4 tw:w-4 tw:shrink-0 tw:text-quaternary"
-                        size={16}
+                      <UserIcon
+                        className="tw:shrink-0 tw:text-quaternary"
+                        height={16}
+                        width={16}
                       />
                     </TooltipTrigger>
                   </Tooltip>
@@ -505,113 +508,91 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             </Tooltip>
 
             {/* Up vote */}
-            <Tooltip title={t('label.up-vote')}>
-              <TooltipTrigger>
+
                 <ButtonUtility
                   className={
                     voteStatus === QueryVoteType.votedUp
                       ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
-                  color="secondary"
+                  color="tertiary"
                   data-testid="upvote-btn"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
-                    <ThumbsUp
-                      className={
-                        voteStatus === QueryVoteType.votedUp
-                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
-                          : 'tw:fill-none'
-                      }
+                    voteStatus === QueryVoteType.votedUp ? <ThumbsUpActiveIcon
+                      height={18}
+                      width={18}
+                    /> :
+                    <ThumbsUpIcon
                       height={18}
                       width={18}
                     />
                   }
+                  tooltip={t('label.up-vote')}
                   onClick={() => handleVoteChange(QueryVoteType.votedUp)}
                 />
-              </TooltipTrigger>
-            </Tooltip>
-
             {/* Down vote */}
-            <Tooltip title={t('label.down-vote')}>
-              <TooltipTrigger>
+
                 <ButtonUtility
-                  className={
+                className={
                     voteStatus === QueryVoteType.votedDown
                       ? 'tw:text-fg-brand-primary'
                       : undefined
                   }
-                  color="secondary"
+                  color="tertiary"
                   data-testid="downvote-btn"
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
-                    <ThumbsDown
-                      className={
-                        voteStatus === QueryVoteType.votedDown
-                          ? 'tw:fill-utility-blue-500 tw:stroke-white'
-                          : 'tw:fill-none'
-                      }
+                     voteStatus === QueryVoteType.votedDown ? <ThumbsDownActiveIcon
+                      height={18}
+                      width={18}
+                    /> :
+                    <ThumbsDownIcon
                       height={18}
                       width={18}
                     />
                   }
+                  tooltip={t('label.down-vote')}
                   onClick={() => handleVoteChange(QueryVoteType.votedDown)}
                 />
-              </TooltipTrigger>
-            </Tooltip>
 
-            <Tooltip title={t('label.conversation')}>
-              <TooltipTrigger>
+
                 <ButtonUtility
-                  color="secondary"
+                  color="tertiary"
                   data-testid="conversation"
-                  icon={<MessageChatSquare height={20} width={20} />}
+                  icon={<ChatIcon height={18} width={18} />}
+                  tooltip={t('label.conversation')}
                   onClick={handleOpenConversation}
                 />
-              </TooltipTrigger>
-            </Tooltip>
 
-            <Tooltip
-              title={isFollowing ? t('label.un-follow') : t('label.follow')}>
-              <TooltipTrigger>
-                <ButtonUtility
-                  className={
-                    isFollowing ? 'tw:text-fg-brand-primary' : undefined
-                  }
-                  color="secondary"
-                  data-testid="follow-btn"
-                  disabled={isFollowLoading || knowledgePage?.deleted}
-                  icon={isFollowing ? StarFilledIcon : StarIcon}
-                  onClick={handleFollowClick}
-                />
-              </TooltipTrigger>
-            </Tooltip>
-
+ 
+              <ButtonUtility
+                color="tertiary"
+                data-testid="follow-btn"
+                disabled={isFollowLoading || knowledgePage?.deleted}
+                icon={isFollowing ? <FollowIcon height={18} width={18} /> : <FollowActiveIcon height={18} width={18} /> }
+                tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
+                onClick={handleFollowClick}
+              />
             <CopyLinkButton
-              className="tw:w-8 tw:h-8"
-              color="secondary"
+              className="tw:w-7.5 tw:h-7.5"
+              color="tertiary"
               testId="copy-btn"
               url={window.location.href}>
-              <Copy06 height={20} width={20} />
+              <CopyIcon height={18} width={18} />
             </CopyLinkButton>
 
             {permissions?.Delete && (
               <Dropdown.Root>
-                <Tooltip
-                  title={t('label.manage-entity', {
-                    entity: t('label.article'),
-                  })}>
-                  <TooltipTrigger>
-                    <ButtonUtility
-                      data-testid="manage-button"
-                      icon={DotsVertical}
-                      size="sm"
-                      tooltip={t('label.manage-entity', {
-                        entity: t('label.article'),
-                      })}
-                    />
-                  </TooltipTrigger>
-                </Tooltip>
+                 <ButtonUtility
+                  color="tertiary"
+                  data-testid="edit-memory-btn"
+                  icon={ <DotsVerticalIcon height={18} width={18} />}
+                  size="sm"
+                  tooltip={t('label.manage-entity', {
+                              entity: t('label.article'),
+                            })}
+                />
                 <Dropdown.Popover className="tw:w-30">
                   <Dropdown.Menu
                     onAction={(key) => {
@@ -621,9 +602,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     }}>
                     <Dropdown.Item data-testid="delete-btn" id="delete">
                       <div className="tw:flex tw:items-center tw:gap-2">
-                        <Trash01
+                        <TrashIcon
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                          className="ttw:shrink-0 tw:text-error-primary"
+                          height={18}
+                          width={18}
                         />
                         <Typography
                           ellipsis

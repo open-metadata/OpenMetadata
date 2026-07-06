@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Archive, Cube01, File06, Lightbulb03 } from '@untitledui/icons';
+import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
@@ -23,8 +23,6 @@ import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';
-import { ReactComponent as FolderIcon } from '../assets/svg/ic-folder-new.svg';
-import { ReactComponent as GridIcon } from '../assets/svg/ic-grid-new.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
@@ -36,6 +34,11 @@ import { ReactComponent as WorkflowsNavIcon } from '../assets/svg/ic-workflows.s
 import { ReactComponent as InsightsIcon } from '../assets/svg/lamp-charge.svg';
 import { ReactComponent as LogoutIcon } from '../assets/svg/logout.svg';
 import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import { ReactComponent as ArchiveIcon } from '../assets/svg/sidebar-icons/archive.svg';
+import { ReactComponent as ArticlesIcon } from '../assets/svg/sidebar-icons/articles.svg';
+import { ReactComponent as DashboardIcon } from '../assets/svg/sidebar-icons/dashboard.svg';
+import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/documents.svg';
+import { ReactComponent as MemoriesIcon } from '../assets/svg/sidebar-icons/memories.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
@@ -219,35 +222,35 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         key: ROUTES.CONTEXT_CENTER_DASHBOARD,
         title: 'label.dashboard',
         redirect_url: ROUTES.CONTEXT_CENTER_DASHBOARD,
-        icon: GridIcon,
+        icon: DashboardIcon,
         dataTestId: `app-bar-item-${SidebarItem.DASHBOARD}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARTICLES,
         title: 'label.article-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_ARTICLES,
-        icon: createIconWithStroke(File06 as UntitledIconType, 1.2),
+        icon: ArticlesIcon,
         dataTestId: `app-bar-item-${SidebarItem.ARTICLES}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_DOCUMENTS,
         title: 'label.document-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_DOCUMENTS,
-        icon: FolderIcon,
+        icon: DocumentsIcon,
         dataTestId: `app-bar-item-${SidebarItem.DOCUMENTS}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_MEMORIES,
         title: 'label.memory-plural',
         redirect_url: ROUTES.CONTEXT_CENTER_MEMORIES,
-        icon: createIconWithStroke(Lightbulb03 as UntitledIconType, 1.2),
+        icon: MemoriesIcon,
         dataTestId: `app-bar-item-${SidebarItem.MEMORIES}`,
       },
       {
         key: ROUTES.CONTEXT_CENTER_ARCHIVE,
         title: 'label.archive',
         redirect_url: ROUTES.CONTEXT_CENTER_ARCHIVE,
-        icon: createIconWithStroke(Archive as UntitledIconType, 1.2),
+        icon: ArchiveIcon,
         dataTestId: `app-bar-item-context-center-archive`,
       },
     ],
