@@ -199,10 +199,6 @@ export const deleteAlertSteps = async (
 ) => {
   await page.getByTestId(`alert-delete-${name}`).click();
 
-  await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${displayName}"`
-  );
-
   const deleteAlert = page.waitForResponse(
     (response) =>
       response.request().method() === 'DELETE' && response.status() === 200

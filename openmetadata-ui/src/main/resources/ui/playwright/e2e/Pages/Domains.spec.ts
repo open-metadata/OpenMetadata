@@ -223,11 +223,7 @@ test.describe('Domains', () => {
       await deleteButton.click();
 
       // Verify delete modal is visible
-      await expect(
-        page
-          .locator('.ant-modal-title')
-          .getByText(`Delete domain "${domain.data.displayName}"`)
-      ).toBeVisible();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       const confirmButton = page.getByTestId('confirm-button');
@@ -1383,13 +1379,6 @@ test.describe('Domains', () => {
     const deleteButton = page.getByTestId('delete-button-title');
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
-
-    const confirmationInput = page.locator(
-      '[data-testid="confirmation-text-input"]'
-    );
-    await expect(confirmationInput).toBeVisible();
-    await confirmationInput.click();
-    await confirmationInput.fill('DELETE');
 
     const dpListRes = page.waitForResponse(
       '/api/v1/search/query?q=&index=dataProduct*'

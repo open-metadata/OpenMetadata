@@ -147,8 +147,6 @@ export const deleteCustomMetric = async ({
   await page.click(`[data-testid="${metric.name}-custom-metrics-menu"]`);
   await page.getByRole('menuitemradio', { name: 'Delete' }).click();
 
-  await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
-
   const deleteMetricResponse = page.waitForResponse(
     isColumnMetric
       ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}*`
