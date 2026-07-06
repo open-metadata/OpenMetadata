@@ -59,15 +59,14 @@ def _http_status(*codes: int) -> Matcher:
     wanted = frozenset(codes)
 
     def match(error: BaseException) -> bool:
-        result = False
         for current in exception_chain(error):
             code = getattr(current, "status_code", None)
             if code is None:
                 response = getattr(current, "response", None)
                 code = getattr(response, "status_code", None)
             if isinstance(code, int) and code in wanted:
-                result = True
-        return result
+                return True
+        return False
 
     return match
 
@@ -151,11 +150,13 @@ class PowerBIChecks:
         self._api_client: PowerBiApiClient | None = None
 
     def _client(self) -> PowerBiApiClient:
-        """Build (once) and return the REST client. The MSAL client it wraps does
-        authority/instance discovery over the network in its constructor, so this
-        is only ever called from inside a check - never at construction."""
+        """Build (once) and return the REST client. Built directly rather than via
+        ``get_connection`` so the file client (unused by the checks) is never
+        constructed. The MSAL client it wraps does authority/instance discovery
+        over the network in its constructor, so this is only ever called from
+        inside a check - never at construction."""
         if self._api_client is None:
-            self._api_client = get_connection(self._connection).api_client
+            self._api_client = PowerBiApiClient(self._connection)
         return self._api_client
 
     @check(DashboardStep.CheckAccess)

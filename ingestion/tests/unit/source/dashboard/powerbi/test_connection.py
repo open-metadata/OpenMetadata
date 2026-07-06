@@ -44,10 +44,10 @@ def _raw_http_error(status_code: int) -> HTTPError:
     return HTTPError("server said no", response=response)
 
 
-def _checks(get_connection) -> tuple[PowerBIChecks, MagicMock]:
+def _checks(api_client_cls) -> tuple[PowerBIChecks, MagicMock]:
     """A provider whose lazily-built REST client is the returned mock."""
     api_client = MagicMock()
-    get_connection.return_value.api_client = api_client
+    api_client_cls.return_value = api_client
     return PowerBIChecks(connection=MagicMock()), api_client
 
 
@@ -65,25 +65,25 @@ def test_get_client_delegates_to_get_connection():
 
 
 def test_checks_does_not_touch_the_network():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
         conn = PowerBIConnection(MagicMock())
         provider = conn.checks()
 
     assert isinstance(provider, PowerBIChecks)
-    mock_get.assert_not_called()
+    mock_client.assert_not_called()
 
 
 def test_collect_checks_maps_every_step():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, _ = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, _ = _checks(mock_client)
     collected = collect_checks(provider)
 
     assert set(collected) == {DashboardStep.CheckAccess, DashboardStep.GetDashboards}
 
 
 def test_check_access_authenticates():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.get_auth_token.return_value = ("token", "3600")
 
         evidence = provider.check_access()
@@ -94,8 +94,8 @@ def test_check_access_authenticates():
 
 
 def test_check_access_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.get_auth_token.side_effect = InvalidSourceException("no token")
 
         with pytest.raises(CheckError) as exc_info:
@@ -106,8 +106,8 @@ def test_check_access_wraps_failure_as_check_error():
 
 
 def test_get_dashboards_counts_results():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.fetch_dashboards.return_value = [object(), object(), object()]
 
         evidence = provider.get_dashboards()
@@ -117,8 +117,8 @@ def test_get_dashboards_counts_results():
 
 
 def test_get_dashboards_caps_the_count():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.fetch_dashboards.return_value = [object()] * 250
 
         evidence = provider.get_dashboards()
@@ -127,8 +127,8 @@ def test_get_dashboards_caps_the_count():
 
 
 def test_get_dashboards_empty_is_singular_aware():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.fetch_dashboards.return_value = None
 
         evidence = provider.get_dashboards()
@@ -137,8 +137,8 @@ def test_get_dashboards_empty_is_singular_aware():
 
 
 def test_get_dashboards_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
         client.fetch_dashboards.side_effect = _api_error(403)
 
         with pytest.raises(CheckError) as exc_info:
