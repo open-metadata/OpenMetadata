@@ -13,9 +13,8 @@
 Regression tests for the BigQuery test-connection fix:
 
 - multi-project test connection scopes each probe to its own project
-- ``_test_connection`` invokes the test function with the migrated signature
-  (``metadata`` only) so a service-connection object can never leak into
-  ``timeout_seconds`` again
+- ``_test_connection`` drives the runner once per project with a valid timeout
+  so a service-connection object can never leak into ``timeout_seconds`` again
 - the engine built for the test connection is always disposed
 """
 
@@ -32,6 +31,7 @@ from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
 
 _CONNECTION_MODULE = "metadata.ingestion.source.database.bigquery.connection"
 _METADATA_MODULE = "metadata.ingestion.source.database.bigquery.metadata"
+_BASE_CONNECTION_MODULE = "metadata.ingestion.connections.connection"
 
 _GCP_CONFIG = {
     "type": "service_account",
@@ -63,10 +63,10 @@ def test_clone_connection_scopes_to_single_project():
     assert connection.credentials.gcpConfig.projectId.root == ["proj-a", "proj-b"]
 
 
-@patch(f"{_CONNECTION_MODULE}.test_connection_steps")
+@patch(f"{_BASE_CONNECTION_MODULE}.TestConnectionRunner")
 @patch(f"{_CONNECTION_MODULE}.create_generic_db_connection")
 @patch(f"{_CONNECTION_MODULE}.set_google_credentials")
-def test_test_connection_probes_each_project_with_a_valid_timeout(mock_creds, mock_create, mock_steps):
+def test_test_connection_probes_each_project_with_a_valid_timeout(mock_creds, mock_create, mock_runner):
     mock_create.return_value = MagicMock()
     source = object.__new__(BigquerySource)
     source.metadata = MagicMock()
@@ -75,22 +75,23 @@ def test_test_connection_probes_each_project_with_a_valid_timeout(mock_creds, mo
     source.temp_credentials_file_path = []
 
     # real clone_connection_for_project + get_test_connection_fn path; only the
-    # external boundaries (engine factory, credentials, step runner) are stubbed
+    # external boundaries (engine factory, credentials, runner) are stubbed
     BigquerySource._test_connection(source)
 
-    assert mock_steps.call_count == 2
-    for call in mock_steps.call_args_list:
-        assert call.kwargs["service_type"] == "BigQuery"
+    assert mock_runner.call_count == 2
+    for call in mock_runner.call_args_list:
+        service_type, timeout_seconds = call.args[1], call.args[2]
+        assert service_type == "BigQuery"
         # the regression guard: the original bug passed the service connection
         # positionally into timeout_seconds, which then reached signal.alarm().
-        # A valid timeout reaching the step runner proves the signature is right.
-        assert isinstance(call.kwargs["timeout_seconds"], int)
+        # A valid timeout reaching the runner proves the signature is right.
+        assert isinstance(timeout_seconds, int)
 
 
-@patch(f"{_CONNECTION_MODULE}.test_connection_steps")
+@patch(f"{_BASE_CONNECTION_MODULE}.TestConnectionRunner")
 @patch(f"{_CONNECTION_MODULE}.create_generic_db_connection")
 @patch(f"{_CONNECTION_MODULE}.set_google_credentials")
-def test_test_connection_disposes_engine(mock_creds, mock_create, mock_steps):
+def test_test_connection_disposes_engine(mock_creds, mock_create, mock_runner):
     engine = MagicMock()
     mock_create.return_value = engine
 
@@ -99,5 +100,5 @@ def test_test_connection_disposes_engine(mock_creds, mock_create, mock_steps):
 
     mock_create.assert_called_once()
     # both halves of the fix: _get_client registers engine.dispose AND
-    # test_connection calls self.close(), so the engine is always released.
+    # BaseConnection.test_connection calls self.close(), so the engine is always released.
     engine.dispose.assert_called_once()
