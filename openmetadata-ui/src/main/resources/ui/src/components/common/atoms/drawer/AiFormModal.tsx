@@ -33,6 +33,9 @@ export interface AiFormModalProps {
   isSubmitting?: boolean;
   onClose: () => void;
   onSubmit: () => void | Promise<unknown>;
+  /** Footer button test ids, defaulted to match the classic test case drawer. */
+  submitTestId?: string;
+  cancelTestId?: string;
 }
 
 /**
@@ -54,6 +57,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   isSubmitting,
   onClose,
   onSubmit,
+  submitTestId = 'create-btn',
+  cancelTestId = 'cancel-btn',
 }) => {
   const { t } = useTranslation();
 
@@ -107,11 +112,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
               {children}
             </Dialog.Content>
             <Dialog.Footer>
-              <Button color="secondary" onClick={onClose}>
+              <Button
+                color="secondary"
+                data-testid={cancelTestId}
+                onClick={onClose}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
+                data-testid={submitTestId}
                 isLoading={isSubmitting}
                 onClick={handleSubmit}>
                 {t('label.create')}

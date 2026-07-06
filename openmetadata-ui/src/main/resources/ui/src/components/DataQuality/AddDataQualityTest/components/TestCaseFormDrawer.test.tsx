@@ -395,8 +395,12 @@ describe('TestCaseFormDrawer', () => {
       expect(
         await screen.findByTestId('test-case-form-body')
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('create-btn')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('cancel-btn')).not.toBeInTheDocument();
+      // The AI modal exposes the same footer test ids as the classic drawer so
+      // the shared submit helpers drive either variant.
+      expect(screen.getByTestId('create-btn')).toBeInTheDocument();
+      expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
+      // But not the slideout drawer chrome.
+      expect(screen.queryByTestId('drawer-title')).not.toBeInTheDocument();
     });
 
     it('should render the default ai header title', async () => {

@@ -260,8 +260,10 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   if (isAiVariant) {
     return (
       <AiFormModal
+        cancelTestId="cancel-button"
         headerActions={headerActions}
         open={open}
+        submitTestId="submit-button"
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={
           title ?? t('label.add-entity', { entity: t('label.bundle-suite') })
