@@ -438,7 +438,10 @@ test.describe('Data Contracts', () => {
 
           await page.keyboard.press('Escape');
 
-          await page.getByTestId('pipeline-name').locator('input').fill('test-pipeline');
+          await page
+            .getByTestId('pipeline-name')
+            .locator('input')
+            .fill('test-pipeline');
 
           await page.getByTestId('schedular-on-demand').click();
 

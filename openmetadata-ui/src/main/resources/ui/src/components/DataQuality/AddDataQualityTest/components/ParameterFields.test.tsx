@@ -116,6 +116,7 @@ describe('ParameterFields', () => {
         screen.getByText('message.field-text-is-required')
       ).toBeInTheDocument();
     });
+
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
