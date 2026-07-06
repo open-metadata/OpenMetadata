@@ -1654,15 +1654,20 @@ test.describe(
         enumCPName,
         true
       );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        "Equals",
+      );
 
       const valueSelector = ruleLocator.locator(
-        '.rule--widget .ant-select-selector'
+        '.ant-select-selection-overflow'
       );
 
       await expect(valueSelector).toBeVisible({ timeout: 15000 });
       await valueSelector.click();
 
-      const dropdown = page.locator('.ant-select-dropdown:visible');
+      const dropdown = page.locator('.ant-select-dropdown:visible').last();
 
       await expect(dropdown).toBeVisible();
 
