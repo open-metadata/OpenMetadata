@@ -1595,8 +1595,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return !!term && Fqn.split(term.fullyQualifiedName ?? '').length === 2;
     };
 
+    const isRowDropTargetActive = () =>
+      !!scrollEl.querySelector('tr[data-drop-target]');
+
     const onDragOver = (event: DragEvent) => {
       if (isAlreadyTopLevel()) {
+        return;
+      }
+
+      if (isRowDropTargetActive()) {
+        setIsTopLevelDropActive(false);
+
         return;
       }
 
@@ -1619,6 +1628,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
 
     const onDrop = (event: DragEvent) => {
+      if (isRowDropTargetActive()) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       setIsTopLevelDropActive(false);
