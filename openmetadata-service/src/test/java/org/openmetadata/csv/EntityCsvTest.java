@@ -73,6 +73,7 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
@@ -1736,7 +1737,7 @@ public class EntityCsvTest {
                   Entity.getEntityByNameWithExcludedFields(
                       Entity.DATABASE_SCHEMA,
                       "service.db.sales",
-                      "owners,tags,domains,extension",
+                      "owners,tags,extension",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -2056,7 +2057,7 @@ public class EntityCsvTest {
                   Entity.getEntityByName(
                       Entity.STORED_PROCEDURE,
                       storedProcedureFqn,
-                      "name,displayName,fullyQualifiedName",
+                      "name,displayName,fullyQualifiedName,domains",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -2130,7 +2131,7 @@ public class EntityCsvTest {
         .getEntityWithDependencyResolution(
             Entity.STORED_PROCEDURE,
             storedProcedureFqn,
-            "name,displayName,fullyQualifiedName",
+            "name,displayName,fullyQualifiedName,domains",
             org.openmetadata.schema.type.Include.NON_DELETED);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
@@ -2207,7 +2208,7 @@ public class EntityCsvTest {
                   Entity.getEntityByName(
                       Entity.STORED_PROCEDURE,
                       storedProcedureFqn,
-                      "name,displayName,fullyQualifiedName",
+                      "name,displayName,fullyQualifiedName,domains",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -2943,17 +2944,28 @@ public class EntityCsvTest {
   }
 
   @Test
-  void test_getDomainsKeepsExistingDomainsWhenCsvColumnEmpty() {
+  void test_getDomainsEmptyColumnKeepsOnlyInheritedDomains() {
     TestCsv testCsv = new TestCsv();
     testCsv.enableProcessing();
     testCsv.addEntity(Entity.DOMAIN, "finance", domain("finance"));
-    List<EntityReference> existingDomains = List.of(ref(Entity.DOMAIN, "inheritedDomain"));
+    EntityReference inheritedDomain = ref(Entity.DOMAIN, "inheritedDomain").withInherited(true);
+    EntityReference directDomain = ref(Entity.DOMAIN, "directDomain");
+    List<EntityReference> existingDomains = List.of(inheritedDomain, directDomain);
 
     List<EntityReference> keptWhenEmpty =
         testCsv.getDomains(
             mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, existingDomains);
     assertEquals(
-        existingDomains, keptWhenEmpty, "Empty domain column must keep the existing domains");
+        List.of(inheritedDomain),
+        keptWhenEmpty,
+        "Empty domain column must keep only inherited domains and clear direct ones");
+
+    List<EntityReference> clearedWhenNoInherited =
+        testCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, List.of(directDomain));
+    assertNull(
+        clearedWhenNoInherited,
+        "Empty domain column with only direct domains must clear them (pre-existing behavior)");
 
     List<EntityReference> parsedWhenPresent =
         testCsv.getDomains(
@@ -3052,12 +3064,18 @@ public class EntityCsvTest {
         entityStatic.when(() -> Entity.getEntityRepository(ignoredType)).thenReturn(ignoredRepo);
       }
       entityStatic.when(Entity::getSystemRepository).thenReturn(mock(SystemRepository.class));
-      entityStatic
-          .when(
-              () ->
-                  Entity.getEntities(
-                      Mockito.anyList(), Mockito.eq("domains"), Mockito.eq(Include.NON_DELETED)))
-          .thenReturn(List.of(dataProduct));
+      CollectionDAO collectionDAO = mock(CollectionDAO.class);
+      CollectionDAO.EntityRelationshipDAO relationshipDAO =
+          mock(CollectionDAO.EntityRelationshipDAO.class);
+      EntityRelationshipRepository relationshipRepository =
+          mock(EntityRelationshipRepository.class);
+      entityStatic.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entityStatic.when(Entity::getEntityRelationshipRepository).thenReturn(relationshipRepository);
+      Mockito.when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+      Mockito.when(
+              relationshipRepository.getEntityReferences(
+                  Mockito.anyList(), Mockito.eq(Include.NON_DELETED)))
+          .thenReturn(dataProduct.getDomains());
       settingsCache
           .when(
               () ->
