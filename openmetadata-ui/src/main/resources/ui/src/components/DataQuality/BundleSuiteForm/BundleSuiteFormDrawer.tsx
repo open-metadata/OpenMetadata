@@ -12,7 +12,7 @@
  */
 import { HookForm } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
@@ -30,6 +30,7 @@ import {
 } from '../../../rest/testAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
@@ -61,19 +62,19 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
 
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const initialTestCases = initialValues?.testCases ?? [];
+  // Preselected test cases (e.g. "create bundle suite from selection") must
+  // reach the form value, not just the display list, or the selection
+  // validator rejects the submit.
+  const computeDefaultValues = useCallback((): BundleSuiteFormData => {
+    const initialTestCases = initialValues?.testCases ?? [];
 
-  const form = useForm<BundleSuiteFormData>({
-    defaultValues: {
+    return {
       enableScheduler: false,
       raiseOnError: true,
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
       enableDebugLog: false,
       name: initialValues?.name ?? '',
       description: initialValues?.description ?? '',
-      // Preselected test cases (e.g. "create bundle suite from selection")
-      // must reach the form value, not just the display list, or the
-      // selection validator rejects the submit.
       ...(initialTestCases.length > 0
         ? {
             testCaseSelection: {
@@ -86,8 +87,21 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
             },
           }
         : {}),
-    },
+    } as BundleSuiteFormData;
+  }, [initialValues]);
+
+  const form = useForm<BundleSuiteFormData>({
+    defaultValues: computeDefaultValues(),
   });
+
+  // The drawer host stays mounted between opens, so useForm's defaultValues
+  // freeze before callers (e.g. DataQualityTab bulk selection) provide
+  // initialValues. Re-seed on every open so the current initialValues win.
+  useEffect(() => {
+    if (open) {
+      form.reset(computeDefaultValues());
+    }
+  }, [open]);
 
   const createAndDeployPipeline = useCallback(
     async (values: BundleSuiteFormData, testSuite: TestSuite) => {
@@ -171,6 +185,14 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
     />
   );
 
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
+      }),
+    []
+  );
+
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
   // Same dismissal funnel as the test case drawer: single parent notify on
@@ -196,10 +218,12 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
       form: (
         <HookForm
           form={form}
-          onSubmit={form.handleSubmit((data) =>
-            submitAndClose(data, handleFormSubmitWithErrorCapture, () =>
-              closeDrawerRef.current()
-            )
+          onSubmit={form.handleSubmit(
+            (data) =>
+              submitAndClose(data, handleFormSubmitWithErrorCapture, () =>
+                closeDrawerRef.current()
+              ),
+            () => scrollToError()
           )}>
           {bundleSuiteFormBody}
         </HookForm>
@@ -233,21 +257,25 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
           title ?? t('label.add-entity', { entity: t('label.bundle-suite') })
         }
         onClose={handleDrawerDismiss}
-        onSubmit={form.handleSubmit((data) =>
-          submitAndClose(
-            data,
-            handleFormSubmitWithErrorCapture,
-            handleDrawerDismiss
-          )
-        )}>
-        <HookForm
-          form={form}
-          onSubmit={form.handleSubmit((data) =>
+        onSubmit={form.handleSubmit(
+          (data) =>
             submitAndClose(
               data,
               handleFormSubmitWithErrorCapture,
               handleDrawerDismiss
-            )
+            ),
+          () => scrollToError()
+        )}>
+        <HookForm
+          form={form}
+          onSubmit={form.handleSubmit(
+            (data) =>
+              submitAndClose(
+                data,
+                handleFormSubmitWithErrorCapture,
+                handleDrawerDismiss
+              ),
+            () => scrollToError()
           )}>
           {bundleSuiteFormBody}
         </HookForm>

@@ -242,6 +242,46 @@ describe('BundleSuiteFormDrawer', () => {
     });
   });
 
+  it('re-seeds test cases provided after mount when the drawer opens (always-mounted host)', async () => {
+    // Production topology (DataQualityTab): the drawer mounts closed with no
+    // selection; the user bulk-selects and THEN opens it with initialValues.
+    let rerender: ReturnType<typeof renderDrawer>['rerender'];
+    await act(async () => {
+      ({ rerender } = renderDrawer({
+        open: false,
+        initialValues: { testCases: [] as never },
+      }));
+    });
+
+    await act(async () => {
+      rerender(
+        <BundleSuiteFormDrawer
+          {...defaultProps}
+          open
+          initialValues={{
+            name: 'suite-from-late-selection',
+            testCases: [{ id: 'tc-9', name: 'test-9' }] as never,
+          }}
+        />
+      );
+    });
+
+    const formElement = document.querySelector('form');
+    await act(async () => {
+      fireEvent.submit(formElement as HTMLFormElement);
+    });
+
+    await waitFor(() => {
+      expect(mockCreateTestSuites).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockAddBulk).toHaveBeenCalledWith('ts-1', {
+      selectAll: false,
+      includeIds: ['tc-9'],
+      excludeIds: [],
+    });
+  });
+
   it('calls createTestSuites then addTestCasesToLogicalTestSuiteBulk on submit', async () => {
     await act(async () => {
       renderDrawer();

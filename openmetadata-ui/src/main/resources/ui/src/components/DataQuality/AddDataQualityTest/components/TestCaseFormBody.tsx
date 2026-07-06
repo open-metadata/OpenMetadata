@@ -672,6 +672,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           () => document.getElementById('root/table') as HTMLInputElement
         );
       },
+      // Legacy antd validated on change: surface the table permission error
+      // (and gate the scheduler) at selection time, not first at submit.
+      onItemInserted: () => {
+        form.trigger('selectedTable');
+      },
     },
   } as FieldProp;
 
@@ -885,8 +890,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         {showParameterFields && selectedTestDefinition && (
           <div
-            id={
-              selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+            onFocusCapture={() =>
+              handleActiveField(
+                selectedTestType ? `root/${selectedTestType}` : 'root/testType'
+              )
             }>
             <ParameterFields
               definition={selectedTestDefinition}
