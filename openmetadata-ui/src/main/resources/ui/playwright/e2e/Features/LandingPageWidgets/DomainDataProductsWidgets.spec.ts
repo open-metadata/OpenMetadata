@@ -265,8 +265,6 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page.getByTestId('assets').click();
     await dataProductAssetsResponse;
 
-  
-
     let hasAssets = true;
     while (hasAssets) {
       const checkboxes = page.locator(
