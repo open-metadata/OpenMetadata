@@ -522,6 +522,15 @@ public interface CollectionDAO {
   AIGovernancePolicyDAO aiGovernancePolicyDAO();
 
   @CreateSqlObject
+  AIGovernanceFrameworkDAO aiGovernanceFrameworkDAO();
+
+  @CreateSqlObject
+  AIFrameworkControlDAO aiFrameworkControlDAO();
+
+  @CreateSqlObject
+  AuditReportDAO auditReportDAO();
+
+  @CreateSqlObject
   McpServerDAO mcpServerDAO();
 
   @CreateSqlObject
@@ -2309,6 +2318,30 @@ public interface CollectionDAO {
         @BindUUID("fromId") UUID fromId,
         @Bind("fromEntity") String fromEntity,
         @BindList("relation") List<Integer> relation);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL)")
+    int countNonDeletedChildFiles(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildFilesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
 
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
@@ -12047,6 +12080,59 @@ public interface CollectionDAO {
     @Override
     default Class<org.openmetadata.schema.entity.ai.AIGovernancePolicy> getEntityClass() {
       return org.openmetadata.schema.entity.ai.AIGovernancePolicy.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AIGovernanceFrameworkDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIGovernanceFramework> {
+    @Override
+    default String getTableName() {
+      return "ai_governance_framework_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIGovernanceFramework> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIGovernanceFramework.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AIFrameworkControlDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIFrameworkControl> {
+    @Override
+    default String getTableName() {
+      return "ai_framework_control_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIFrameworkControl> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIFrameworkControl.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AuditReportDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AuditReport> {
+    @Override
+    default String getTableName() {
+      return "audit_report_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AuditReport> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AuditReport.class;
     }
 
     @Override

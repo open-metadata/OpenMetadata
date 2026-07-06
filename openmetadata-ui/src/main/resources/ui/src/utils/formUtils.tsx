@@ -53,7 +53,6 @@ import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelec
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
-import MUISelect from '../components/common/MUISelect/MUISelect';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
   MUIUserTeamSelectProps,
@@ -293,26 +292,6 @@ export const getField = (field: FieldProp) => {
 
       break;
 
-    case FieldTypes.SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUISelect
-            {...props}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
     case FieldTypes.SLIDER_INPUT:
       fieldElement = (
         <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
