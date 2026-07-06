@@ -30,7 +30,7 @@ import { test } from '../fixtures/pages';
 let table: TableClass;
 let bundleTestSuite: BundleTestSuiteClass;
 
-test.describe.skip(
+test.describe(
   'Logs viewer page',
   {
     tag: [

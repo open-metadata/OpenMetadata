@@ -13,4 +13,5 @@
 
 export interface DestinationFormItemV2Props {
   isViewMode?: boolean;
+  isRequired?: boolean;
 }

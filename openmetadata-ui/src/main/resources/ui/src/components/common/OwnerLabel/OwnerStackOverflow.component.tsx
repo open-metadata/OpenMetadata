@@ -141,7 +141,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
             {totalCount} {t('label.owner-plural')}
           </Typography>
 
-          <Divider className="tw-border-t tw:border-secondary" />
+          <Divider className="tw:border-t tw:border-secondary" />
 
           {teamOwners.length > 0 && (
             <>
@@ -157,7 +157,7 @@ export const OwnerStackOverflow: React.FC<OwnerStackOverflowProps> = ({
                 </Typography>
                 {teamOwners.map(renderOwnerRow)}
               </div>
-              <Divider className="tw-border-t tw:border-secondary" />
+              <Divider className="tw:border-t tw:border-secondary" />
             </>
           )}
 

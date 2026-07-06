@@ -391,7 +391,7 @@ describe('StringUtils', () => {
   describe('getPermissionErrorText', () => {
     it('should return the friendly permission message for a 403 error', () => {
       const error = {
-        response: { status: 403, data: { message: "operations not allowed" } },
+        response: { status: 403, data: { message: 'operations not allowed' } },
       } as AxiosError;
 
       expect(getPermissionErrorText(error, 'fallback')).toBe(
