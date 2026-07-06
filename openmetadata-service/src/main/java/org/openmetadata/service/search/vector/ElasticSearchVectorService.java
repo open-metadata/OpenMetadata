@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -346,8 +347,88 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  @Override
-  public Map<String, JsonNode> fetchSourceByIds(
+  /**
+   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. Mirrors the OpenSearch
+   * service; kept engine-local so the ES path stays self-contained.
+   */
+  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
+
+  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
+
+  private static final List<String> EMBEDDING_SOURCE_FIELDS =
+      List.of(
+          "fingerprint",
+          "embedding",
+          "textToLLMContext",
+          "textToEmbed",
+          "chunkIndex",
+          "chunkCount",
+          "parentId");
+
+  /**
+   * Two-step batch fetch of cached embedding documents for entities whose cached state matches the
+   * caller-provided current state. Step 1 reads only fingerprint+updatedAt and keeps matching ids;
+   * step 2 pulls the full embedding _source for those, so large vectors stay off the wire for
+   * entities that will be re-embedded anyway. Mirrors OpenSearchVectorService (ES uses _search).
+   */
+  public Map<String, JsonNode> getExistingEmbeddingsBatch(
+      String indexName, Map<String, EntityFingerprintInput> currentById) {
+    if (currentById == null || currentById.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    try {
+      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      List<String> matchingIds = new ArrayList<>();
+      for (Map.Entry<String, JsonNode> entry :
+          fetchSourceByIds(indexName, entityIds, FINGERPRINT_HEADER_FIELDS).entrySet()) {
+        EntityFingerprintInput input = currentById.get(entry.getKey());
+        if (input != null
+            && entry.getValue().isObject()
+            && cachedStateMatches(entry.getValue(), input)) {
+          matchingIds.add(entry.getKey());
+        }
+      }
+      if (matchingIds.isEmpty()) {
+        return Collections.emptyMap();
+      }
+      Map<String, JsonNode> result = new HashMap<>();
+      for (Map.Entry<String, JsonNode> entry :
+          fetchSourceByIds(indexName, matchingIds, EMBEDDING_SOURCE_FIELDS).entrySet()) {
+        if (isSpliceable(entry.getValue())) {
+          result.put(entry.getKey(), entry.getValue());
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.error("Failed to batch get embeddings in index={}", indexName, e);
+      return Collections.emptyMap();
+    }
+  }
+
+  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
+    JsonNode cachedUpdatedAt = header.path("updatedAt");
+    if (cachedUpdatedAt.isIntegralNumber()
+        && input.updatedAt() != null
+        && cachedUpdatedAt.asLong() == input.updatedAt()) {
+      return true;
+    }
+    String cachedFp = header.path("fingerprint").asText(null);
+    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
+  }
+
+  private static boolean isSpliceable(JsonNode cached) {
+    if (cached == null || !cached.isObject()) {
+      return false;
+    }
+    JsonNode embedding = cached.path("embedding");
+    if (!embedding.isArray() || embedding.isEmpty()) {
+      return false;
+    }
+    JsonNode fingerprint = cached.path("fingerprint");
+    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
+  }
+
+  private Map<String, JsonNode> fetchSourceByIds(
       String indexName, List<String> ids, List<String> sourceFields) {
     Map<String, JsonNode> result = new HashMap<>();
     try {
