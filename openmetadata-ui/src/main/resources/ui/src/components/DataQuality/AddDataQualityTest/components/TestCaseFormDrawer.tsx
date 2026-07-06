@@ -254,7 +254,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       width,
       submitLabel: t('label.create'),
       submitTestId: 'create-btn',
-      loading: formContext?.isCheckingPermissions ?? false,
+      submitLoading: formContext?.isCheckingPermissions ?? false,
       onClose: handleDrawerDismiss,
       onSubmit: (data) =>
         submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),

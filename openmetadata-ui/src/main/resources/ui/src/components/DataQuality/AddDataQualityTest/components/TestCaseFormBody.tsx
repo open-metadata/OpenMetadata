@@ -359,12 +359,19 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [table]
   );
 
-  const loadMoreTables = useCallback(() => {
+  const isLoadingMoreTablesRef = useRef(false);
+  const loadMoreTables = useCallback(async () => {
     const { search, page, hasMore } = tablePagingRef.current;
-    if (hasMore && !isTableLoading) {
-      fetchTables(search, page + 1);
+    if (!hasMore || isLoadingMoreTablesRef.current) {
+      return;
     }
-  }, [fetchTables, isTableLoading]);
+    isLoadingMoreTablesRef.current = true;
+    try {
+      await fetchTables(search, page + 1);
+    } finally {
+      isLoadingMoreTablesRef.current = false;
+    }
+  }, [fetchTables]);
 
   const debouncedFetchTables = useMemo(
     () => debounce(fetchTables, 500),
@@ -706,9 +713,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         form.trigger('selectedTable');
         handleActiveField('root/selected-entity');
       },
-      // Clearing an unauthorized table must clear the stale permission error.
+      // Clearing an unauthorized table must clear the stale permission error
+      // and switch the doc panel back to the generic table section.
       onItemCleared: () => {
         form.trigger('selectedTable');
+        handleActiveField('root/table');
       },
       onLoadMore: loadMoreTables,
     },
