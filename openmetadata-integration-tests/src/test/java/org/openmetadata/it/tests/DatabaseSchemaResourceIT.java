@@ -1746,6 +1746,119 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   /**
+   * Export→import round-trip for #28523: an inherited domain must not be written to the CSV domains
+   * column on export. Otherwise re-import reads it back as a plain FQN (the inherited flag is lost in
+   * serialization), {@code dropInheritedDomains} cannot recognize it, and it gets materialized as a
+   * direct domain. Asserts the exported table row has an empty domain column, then re-imports the
+   * export verbatim (only the description edited) and confirms the domain stays inherited.
+   */
+  @Test
+  void test_exportCsv_inheritedDomainNotExported_roundTripDoesNotMaterialize(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+
+    org.openmetadata.schema.entity.domains.Domain domain =
+        client
+            .domains()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDomain()
+                    .withName(ns.prefix("roundtrip_domain"))
+                    .withDomainType(
+                        org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain inherited by the round-trip table under test"));
+
+    CreateDatabase createDb = new CreateDatabase();
+    createDb.setName(ns.prefix("roundtrip_db"));
+    createDb.setService(service.getFullyQualifiedName());
+    createDb.setDomains(List.of(domain.getFullyQualifiedName()));
+    Database database = client.databases().create(createDb);
+
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("roundtrip_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = createEntity(createSchema);
+
+    org.openmetadata.schema.entity.domains.DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new org.openmetadata.schema.api.domains.CreateDataProduct()
+                    .withName(ns.prefix("roundtrip_product"))
+                    .withDescription("Data product sharing the table's inherited domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+
+    String tableName = ns.prefix("roundtrip_table");
+    CreateTable createTable = new CreateTable();
+    createTable.setName(tableName);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Initial Table Description");
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    org.openmetadata.schema.entity.data.Table table = client.tables().create(createTable);
+
+    org.openmetadata.schema.type.api.BulkAssets addAsset =
+        new org.openmetadata.schema.type.api.BulkAssets()
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(
+            org.openmetadata.sdk.network.HttpMethod.PUT,
+            "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add",
+            addAsset,
+            Void.class);
+
+    String exportedCsv = client.databaseSchemas().exportCsv(schema.getFullyQualifiedName(), true);
+    java.util.List<String> csvLines = java.util.Arrays.asList(exportedCsv.split("\\n"));
+    java.util.List<String> modified = new java.util.ArrayList<>();
+    modified.add(csvLines.get(0));
+    boolean tableRowFound = false;
+    for (String line : csvLines.subList(1, csvLines.size())) {
+      String[] cols = line.split(",", -1);
+      if (cols.length > 12 && "table".equals(cols[12].trim())) {
+        assertTrue(
+            cols[10].trim().isEmpty(),
+            "Export must not write the inherited domain to the CSV domains column: " + line);
+        cols[2] = "Round Trip Edited";
+        line = String.join(",", cols);
+        tableRowFound = true;
+      }
+      modified.add(line);
+    }
+    assertTrue(tableRowFound, "Exported CSV should contain the table row");
+    String newCsv = String.join("\n", modified) + "\n";
+
+    String dryRunRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, true, true);
+    CsvImportResult dryRun = JsonUtils.readValue(dryRunRaw, CsvImportResult.class);
+    assertEquals(
+        0,
+        dryRun.getNumberOfRowsFailed(),
+        "Round-trip dry run must not fail with an inherited domain: " + dryRunRaw);
+    assertFalse(
+        dryRunRaw.contains("Data Product Domain Validation"),
+        "Inherited domain must satisfy Data Product Domain Validation: " + dryRunRaw);
+
+    String importRaw =
+        client.databaseSchemas().importCsv(schema.getFullyQualifiedName(), newCsv, false, true);
+    CsvImportResult importResult = JsonUtils.readValue(importRaw, CsvImportResult.class);
+    assertEquals(
+        0, importResult.getNumberOfRowsFailed(), "Round-trip import should pass: " + importRaw);
+
+    org.openmetadata.schema.entity.data.Table afterImport =
+        client.tables().get(table.getId().toString(), "domains");
+    assertTrue(
+        afterImport.getDomains() == null
+            || afterImport.getDomains().stream()
+                .allMatch(d -> Boolean.TRUE.equals(d.getInherited())),
+        "Inherited domain must not be materialized as a direct domain after round-trip import");
+    assertEquals("Round Trip Edited", afterImport.getDescription());
+  }
+
+  /**
    * Test that importing a table with APPROVED glossary terms as tags succeeds.
    */
   @Test
