@@ -1539,9 +1539,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     acceptedDragTypes: [GLOSSARY_TERM_DRAG_TYPE],
     onDragStart: (event) => {
       const key = Array.from(event.keys)[0];
-      draggedGlossaryTermRef.current = key
-        ? (glossaryTermByFqn.get(String(key)) as GlossaryTerm | undefined)
-        : undefined;
+      const record = key ? glossaryTermByFqn.get(String(key)) : undefined;
+
+      if (!record || record.isLoadMoreButton) {
+        draggedGlossaryTermRef.current = undefined;
+
+        return;
+      }
+
+      draggedGlossaryTermRef.current = record as GlossaryTerm;
       setIsDraggingTerm(true);
     },
     onDragEnd: () => {
