@@ -52,12 +52,17 @@ public class SystemSettingsService {
   }
 
   /**
-   * Register a glossary term relation type. Idempotent: if a type with the same name already
-   * exists, this is a no-op that returns the current settings unchanged. Otherwise the type is
-   * appended via JSON Patch so other callers' types are never clobbered.
+   * Register a glossary term relation type by appending it via JSON Patch ({@code add
+   * /relationTypes/-}), which never overwrites other callers' types the way a full {@code PUT}
+   * would. The name check makes repeated registration idempotent under normal sequential use.
+   *
+   * <p>The check is not atomic: two callers registering the same new name concurrently can both
+   * pass the check and both append, and the server does not dedupe {@code relationTypes}. Treat
+   * registration as a one-time setup step; callers racing on the same new name should reconcile
+   * duplicates.
    *
    * @param relationType the relation type to register
-   * @return the resulting settings
+   * @return the updated settings, or the current settings unchanged if the name already existed
    */
   public Settings defineGlossaryRelationType(GlossaryTermRelationType relationType)
       throws OpenMetadataException {

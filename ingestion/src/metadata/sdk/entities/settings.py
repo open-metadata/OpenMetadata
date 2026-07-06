@@ -65,11 +65,18 @@ class Settings:
         cls,
         relation_type: dict[str, Any],
     ) -> Optional[dict[str, Any]]:  # noqa: UP045
-        """Register a glossary term relation type (idempotent).
+        """Register a glossary term relation type.
 
-        Appends via JSON Patch so concurrent callers never clobber each other's
-        relation types. If a type with the same ``name`` already exists this is a
-        no-op that returns ``None``; otherwise it returns the updated settings.
+        Appends via JSON Patch (``add /relationTypes/-``) so it never overwrites
+        other callers' types the way a full ``PUT`` would. The name check makes
+        repeated registration idempotent under normal sequential use.
+
+        The check is not atomic, however: two callers registering the *same* new
+        name concurrently can both pass the check and both append, and the server
+        does not dedupe ``relationTypes``. Treat registration as a one-time setup
+        step; callers racing on the same new name should reconcile duplicates.
+
+        Returns the updated settings, or ``None`` if the name already existed.
         """
         name = relation_type.get("name")
         if not name:

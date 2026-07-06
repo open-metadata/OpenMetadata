@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import uuid
 from typing import Any, Optional, Sequence, Type, Union  # noqa: UP035
+from urllib.parse import urlencode
 
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
@@ -73,7 +74,7 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
         to_id = cls._resolve_term_id(to_term)
         path = f"{endpoint}/{from_id}/relations/{to_id}"
         if relation_type:
-            path = f"{path}?relationType={relation_type}"
+            path = f"{path}?{urlencode({'relationType': relation_type})}"
         response = rest_client.delete(path)
         return cls._coerce_entity(response)
 
@@ -87,9 +88,11 @@ class GlossaryTerms(BaseEntity[GlossaryTerm, CreateGlossaryTermRequest]):
     ) -> dict[str, Any]:
         """Fetch the relation graph rooted at ``term`` (a ``nodes`` + ``edges`` map)."""
         rest_client, endpoint = cls._relations_context()
-        path = f"{endpoint}/{cls._resolve_term_id(term)}/relationsGraph?depth={depth}"
+        params: dict[str, Any] = {"depth": depth}
         if relation_types:
-            path = f"{path}&relationTypes={','.join(relation_types)}"
+            params["relationTypes"] = ",".join(relation_types)
+        term_id = cls._resolve_term_id(term)
+        path = f"{endpoint}/{term_id}/relationsGraph?{urlencode(params, safe=',')}"
         return rest_client.get(path)
 
     @classmethod

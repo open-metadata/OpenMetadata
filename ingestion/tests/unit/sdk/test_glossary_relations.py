@@ -47,6 +47,12 @@ def test_remove_relation_targets_relation_type(rest_client):
     rest_client.delete.assert_called_once_with(f"/glossaryTerms/{FROM_ID}/relations/{TO_ID}?relationType=prescribes")
 
 
+def test_remove_relation_encodes_special_chars(rest_client):
+    GlossaryTerms.remove_relation(FROM_ID, TO_ID, "a&b")
+
+    rest_client.delete.assert_called_once_with(f"/glossaryTerms/{FROM_ID}/relations/{TO_ID}?relationType=a%26b")
+
+
 def test_relations_graph_builds_query(rest_client):
     rest_client.get.return_value = {"nodes": [], "edges": []}
 
