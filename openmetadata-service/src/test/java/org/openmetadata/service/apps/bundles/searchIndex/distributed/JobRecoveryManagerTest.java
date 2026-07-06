@@ -460,15 +460,17 @@ class JobRecoveryManagerTest {
 
     when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
     when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    // A genuinely crashed coordinator: its lock expired (no refresh) before updatedAt could go this
+    // stale — the lock TTL (5 min) is shorter than the 10 min staleness threshold by design.
     when(lockDAO.getLockInfo(anyString()))
         .thenReturn(
             new SearchReindexLockDAO.LockInfo(
                 "SEARCH_REINDEX_LOCK",
                 jobId.toString(),
                 TEST_SERVER_ID,
-                now - TimeUnit.MINUTES.toMillis(5),
-                now - 1000,
-                now + TimeUnit.MINUTES.toMillis(5)));
+                now - TimeUnit.MINUTES.toMillis(20),
+                now - TimeUnit.MINUTES.toMillis(16),
+                now - TimeUnit.MINUTES.toMillis(11)));
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
@@ -480,6 +482,37 @@ class JobRecoveryManagerTest {
 
     assertEquals(1, result.orphanedJobsFound());
     assertEquals(1, result.jobsMarkedFailed());
+  }
+
+  @Test
+  void testStartupRecovery_LiveLockKeepsStaleLongRunningJobAlive() {
+    // Regression: a large-catalog reindex running for ~2h whose updatedAt write lagged (15 min
+    // stale) while its coordinator is alive — the lock was refreshed 30s ago, still well within its
+    // 5-min TTL. The old code marked it orphaned and, being older than the 1h recovery window,
+    // failed it with "Job abandoned due to server crash or shutdown". A live lock must keep it
+    // alive.
+    UUID jobId = UUID.randomUUID();
+    long now = System.currentTimeMillis();
+    SearchIndexJobRecord jobRecord =
+        createJobRecordWithStartTime(
+            jobId, IndexJobStatus.RUNNING, now - TimeUnit.HOURS.toMillis(2));
+
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString()))
+        .thenReturn(
+            new SearchReindexLockDAO.LockInfo(
+                "SEARCH_REINDEX_LOCK",
+                jobId.toString(),
+                TEST_SERVER_ID,
+                now - TimeUnit.HOURS.toMillis(2),
+                now - TimeUnit.SECONDS.toMillis(30),
+                now + TimeUnit.MINUTES.toMillis(4) + TimeUnit.SECONDS.toMillis(30)));
+
+    JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
+
+    assertEquals(0, result.orphanedJobsFound());
+    assertEquals(0, result.jobsMarkedFailed());
   }
 
   @Test

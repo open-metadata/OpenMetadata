@@ -52,6 +52,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -73,6 +74,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
       RdfBatchProcessor.EXCLUDED_RELATIONSHIP_ENTITY_TYPES;
   private static final Set<Integer> EXCLUDED_RELATIONSHIP_TYPES =
       RdfBatchProcessor.EXCLUDED_RELATIONSHIP_TYPES;
+  private static final Set<String> EXCLUDED_ENTITY_TYPES =
+      RdfExcludedEntities.EXCLUDED_ENTITY_TYPES;
 
   private final RdfRepository rdfRepository;
   private final RdfBatchProcessor batchProcessor;
@@ -893,17 +896,23 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
     Set<String> resolvedEntities = new LinkedHashSet<>();
     List<String> skippedEntities = new ArrayList<>();
+    List<String> excludedEntities = new ArrayList<>();
     for (String entityType : entitiesToResolve) {
       if (entityType == null || entityType.isBlank() || ALL.equals(entityType)) {
         continue;
       }
-      if (isIndexableEntityType(entityType)) {
+      if (EXCLUDED_ENTITY_TYPES.contains(entityType)) {
+        excludedEntities.add(entityType);
+      } else if (isIndexableEntityType(entityType)) {
         resolvedEntities.add(entityType);
       } else {
         skippedEntities.add(entityType);
       }
     }
 
+    if (!excludedEntities.isEmpty()) {
+      LOG.info("Skipping RDF indexing for entity types excluded from RDF: {}", excludedEntities);
+    }
     if (!skippedEntities.isEmpty()) {
       LOG.info("Skipping RDF indexing for non repository-backed entity types: {}", skippedEntities);
     }

@@ -91,6 +91,7 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final String COLLECTION_PATH = "/v1/tasks";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
   public static final String FIELD_ASSIGNEES = "assignees";
+
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_WATCHERS = "watchers";
   public static final String FIELD_ABOUT = "about";
@@ -105,10 +106,12 @@ public class TaskRepository extends EntityRepository<Task> {
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
    * Granted are intermediate stages in multi-stage approval/grant workflows, not terminal states.
-   * Every other status — Rejected, Revoked, Completed, Cancelled, Failed, and any future status
-   * such as Expired — is terminal and frees the creator to file a new Data Access Request for the
-   * same entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus}
-   * predicate and the {@code active} status group in {@link ListFilter}.
+   * ManualRevoke means access was granted at the source and the workflow is parked waiting for a
+   * human to confirm the revoke — the access is still live, so a new DAR against the same entity
+   * must be blocked. Every other status — Rejected, Revoked, Completed, Cancelled, Failed,
+   * Expired — is terminal and frees the creator to file a new Data Access Request for the same
+   * entity. Must stay in sync with the canonical {@code CreateTask.isTerminalTaskStatus} predicate
+   * and the {@code active} status group in {@link ListFilter}.
    */
   public static final List<TaskEntityStatus> NON_TERMINAL_TASK_STATUSES =
       List.of(
@@ -116,7 +119,20 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskEntityStatus.InProgress,
           TaskEntityStatus.Pending,
           TaskEntityStatus.Approved,
-          TaskEntityStatus.Granted);
+          TaskEntityStatus.Granted,
+          TaskEntityStatus.ManualRevoke);
+
+  /**
+   * Set view of {@link #NON_TERMINAL_TASK_STATUSES} for O(1) membership checks. Derived from the
+   * canonical list so the two cannot drift — the DAR duplicate-check test guards the list, and this
+   * inherits that guarantee automatically.
+   */
+  public static final Set<TaskEntityStatus> NON_TERMINAL_STATUSES =
+      Set.copyOf(NON_TERMINAL_TASK_STATUSES);
+
+  public static boolean isTerminalStatus(TaskEntityStatus status) {
+    return status != null && !NON_TERMINAL_STATUSES.contains(status);
+  }
 
   private static final List<String> NON_TERMINAL_TASK_STATUS_VALUES =
       NON_TERMINAL_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
@@ -1123,6 +1139,7 @@ public class TaskRepository extends EntityRepository<Task> {
       case Cancelled -> TaskEntityStatus.Cancelled;
       case Revoked -> TaskEntityStatus.Revoked;
       case TimedOut -> TaskEntityStatus.Failed;
+      case Expired -> TaskEntityStatus.Expired;
     };
   }
 
@@ -1589,9 +1606,12 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
-        if (updated.getStatus() != TaskEntityStatus.Open
-            && updated.getStatus() != TaskEntityStatus.InProgress
-            && updated.getStatus() != TaskEntityStatus.Pending) {
+        // Only stamp a fallback Completed resolution when the task is actually moving to a
+        // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
+        // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)
+        // are still in-flight — a Completed resolution at that point misrepresents the lifecycle
+        // and leaks into downstream consumers / reporting.
+        if (isTerminalStatus(updated.getStatus())) {
           updated.setResolution(
               updated.getResolution() != null
                   ? updated.getResolution()

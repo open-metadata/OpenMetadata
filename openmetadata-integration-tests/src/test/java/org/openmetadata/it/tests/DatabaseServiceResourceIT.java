@@ -550,6 +550,11 @@ public class DatabaseServiceResourceIT
                     .withDatabaseSchema(schema.getFullyQualifiedName())
                     .withColumns(
                         List.of(new Column().withName("c1").withDataType(ColumnDataType.INT))));
+    // The column_search_index cleanup on recursive hard delete is covered by the unit test
+    // SearchRepositoryBehaviorTest and the scale IT ServiceDeleteSearchCleanupScaleIT. It is not
+    // asserted here: under the full concurrent IT suite the per-delete column delete-by-query
+    // contends on the shared column_search_index, delaying visibility of a freshly indexed column
+    // doc past the precondition timeout and flaking this otherwise-unrelated regression.
     return new DeletableSubtree(
         service.getId().toString(),
         List.of(database.getId().toString(), schema.getId().toString(), table.getId().toString()),

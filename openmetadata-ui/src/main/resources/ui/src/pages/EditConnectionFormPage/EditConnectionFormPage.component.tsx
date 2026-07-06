@@ -47,14 +47,13 @@ import {
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useFieldFocusManagement } from '../../hooks/useFieldFocusManagement';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../utils/ConnectionsRouterClassBase';
-import {
-  getEntityMissingError,
-  getServiceLogo,
-} from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getServiceLogo } from '../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
@@ -105,7 +104,8 @@ function EditConnectionFormPage() {
   const [slashedBreadcrumb, setSlashedBreadcrumb] = useState<BreadcrumbItem[]>(
     []
   );
-  const [activeField, setActiveField] = useState<string>('');
+  const { activeField, activeFieldMeta, handleFieldFocus } =
+    useFieldFocusManagement();
   const [serviceConfig, setServiceConfig] = useState<ServicesType>();
   const [showBackStepConfirm, setShowBackStepConfirm] = useState(false);
 
@@ -218,15 +218,6 @@ function EditConnectionFormPage() {
   const handleConfirmedStepBack = () => {
     setShowBackStepConfirm(false);
     handleFiltersInputBackClick();
-  };
-
-  const handleFieldFocus = (fieldName: string) => {
-    if (isEmpty(fieldName)) {
-      return;
-    }
-    setTimeout(() => {
-      setActiveField(fieldName);
-    }, 50);
   };
 
   const handleBreadcrumbAction = useCallback(
@@ -407,6 +398,7 @@ function EditConnectionFormPage() {
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
+                  activeFieldMeta={activeFieldMeta}
                   serviceName={serviceDetails?.serviceType ?? ''}
                   serviceType={getServiceType(serviceCategory)}
                 />

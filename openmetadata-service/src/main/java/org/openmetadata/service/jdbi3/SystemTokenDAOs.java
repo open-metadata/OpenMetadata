@@ -51,6 +51,7 @@ import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -233,6 +234,7 @@ public interface SystemTokenDAOs {
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
             case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
+            case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

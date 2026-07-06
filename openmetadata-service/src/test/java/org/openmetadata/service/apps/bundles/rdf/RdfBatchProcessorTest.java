@@ -28,6 +28,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,12 +36,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 
@@ -255,5 +260,41 @@ class RdfBatchProcessorTest {
     verify(rdfRepository, atLeastOnce()).createOrUpdate(eq(a));
     verify(rdfRepository, never()).createOrUpdate(eq(b));
     verify(rdfRepository, never()).createOrUpdate(eq(c));
+  }
+
+  @Test
+  @DisplayName("relationships whose endpoint is an excluded entity type (aiChart) are filtered out")
+  void relationshipsToExcludedEntityTypesAreSkipped() {
+    EntityInterface dashboard = mockEntity();
+
+    EntityRelationshipObject aiChartEdge =
+        EntityRelationshipObject.builder()
+            .fromId(dashboard.getId().toString())
+            .toId(UUID.randomUUID().toString())
+            .fromEntity("dashboard")
+            .toEntity("aiChart")
+            .relation(Relationship.CONTAINS.ordinal())
+            .build();
+    EntityRelationshipObject tableEdge =
+        EntityRelationshipObject.builder()
+            .fromId(dashboard.getId().toString())
+            .toId(UUID.randomUUID().toString())
+            .fromEntity("dashboard")
+            .toEntity("table")
+            .relation(Relationship.CONTAINS.ordinal())
+            .build();
+
+    when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+        .thenReturn(List.of(aiChartEdge, tableEdge));
+
+    processor.processBatchRelationships("dashboard", List.of(dashboard));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<EntityRelationship>> captor = ArgumentCaptor.forClass(List.class);
+    verify(rdfRepository).bulkAddRelationships(captor.capture(), any());
+
+    List<EntityRelationship> stored = captor.getValue();
+    assertEquals(1, stored.size(), "aiChart edge filtered; only the table edge remains");
+    assertEquals("table", stored.get(0).getToEntity());
   }
 }

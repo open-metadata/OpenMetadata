@@ -25,7 +25,7 @@ import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
   TASK_ENTITIES,
-} from '../../../utils/TasksUtils';
+} from '../../../utils/TaskNavigationUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
@@ -71,9 +71,12 @@ const DescriptionV1 = ({
   showSuggestions = false,
   isDescriptionExpanded,
   entityFullyQualifiedName,
+  changeSummaryEntry,
 }: DescriptionProps) => {
   const navigate = useNavigate();
   const { isVersionView, changeSummary } = useGenericContext<Domain>();
+  const descriptionChangeSummary =
+    changeSummaryEntry ?? changeSummary?.['description'];
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -231,8 +234,8 @@ const DescriptionV1 = ({
   }, [description, suggestionData, isDescriptionExpanded]);
 
   const shouldShowDescriptionMetadata = useMemo(
-    () => changeSummary?.['description']?.changeSource != null,
-    [changeSummary]
+    () => descriptionChangeSummary?.changeSource != null,
+    [descriptionChangeSummary]
   );
 
   const header = useMemo(() => {
@@ -250,7 +253,7 @@ const DescriptionV1 = ({
             {t('label.description')}
           </Text>
           <DescriptionSourceBadge
-            changeSummaryEntry={changeSummary?.['description']}
+            changeSummaryEntry={descriptionChangeSummary}
             showAcceptedBy={false}
             showTimestamp={false}
           />
@@ -259,7 +262,13 @@ const DescriptionV1 = ({
         {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
       </div>
     );
-  }, [showActions, actionButtons, suggestions, showSuggestions, changeSummary]);
+  }, [
+    showActions,
+    actionButtons,
+    suggestions,
+    showSuggestions,
+    descriptionChangeSummary,
+  ]);
 
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
@@ -278,7 +287,7 @@ const DescriptionV1 = ({
           {!suggestionData && shouldShowDescriptionMetadata && (
             <div className="description-v1-metadata">
               <DescriptionSourceBadge
-                changeSummaryEntry={changeSummary?.['description']}
+                changeSummaryEntry={descriptionChangeSummary}
                 showBadge={false}
               />
             </div>

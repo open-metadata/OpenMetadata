@@ -1206,6 +1206,30 @@ public interface CoreRelationshipDAOs {
         @Bind("relationType") String relationType,
         @Bind("limit") int limit);
 
+    @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId = :fromId AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL)")
+    int countNonDeletedChildFiles(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(er.toId) FROM entity_relationship er "
+            + "JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<fromIds>) AND er.fromEntity = :fromEntity AND er.relation = :relation "
+            + "AND er.toEntity = :toEntity AND (cf.deleted = false OR cf.deleted IS NULL) "
+            + "GROUP BY er.fromId")
+    @RegisterRowMapper(ToRelationshipCountMapper.class)
+    List<EntityRelationshipCount> countNonDeletedChildFilesBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("relation") int relation,
+        @Bind("toEntity") String toEntity);
+
     //
     // Delete Operations
     //

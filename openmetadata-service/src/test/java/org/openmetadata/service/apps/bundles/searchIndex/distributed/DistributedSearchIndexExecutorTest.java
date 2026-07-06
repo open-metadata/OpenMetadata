@@ -32,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1242,6 +1243,86 @@ class DistributedSearchIndexExecutorTest {
     worker.interrupt();
     worker.join(1_000);
     assertFalse(worker.isAlive());
+  }
+
+  @Test
+  void awaitWorkersUnwindsWhenJobTerminalEvenIfWorkersNeverFinish() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob failed =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
+    SearchIndexJob running =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
+    setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(failed));
+
+    CountDownLatch neverDrains = new CountDownLatch(1);
+
+    long start = System.nanoTime();
+    invokePrivate(
+        "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
+    long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+
+    assertTrue(elapsedMs < 30_000, "orchestrator must unwind, not hang, on a wedged worker");
+    assertTrue(executor.isStopped(), "terminal detection must trigger stop()");
+    verify(coordinator).requestStop(jobId);
+  }
+
+  @Test
+  void awaitWorkersKeepsWaitingWhenJobStateUnreadableThenUnwindsOnCleanPoll() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob running =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build();
+    SearchIndexJob failed =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build();
+    setField("currentJob", running);
+    setField("latchPollIntervalSeconds", 1L);
+
+    when(coordinator.getJob(jobId))
+        .thenThrow(new RuntimeException("transient db error"))
+        .thenReturn(Optional.of(failed));
+
+    CountDownLatch neverDrains = new CountDownLatch(1);
+
+    invokePrivate(
+        "awaitWorkers", new Class<?>[] {CountDownLatch.class, UUID.class}, neverDrains, jobId);
+
+    assertTrue(
+        executor.isStopped(), "a transient read error must not abort; later clean poll unwinds");
+    verify(coordinator).requestStop(jobId);
+  }
+
+  @Test
+  void isJobTerminalOrStoppingReflectsJobState() throws Exception {
+    UUID jobId = UUID.randomUUID();
+
+    when(coordinator.getJob(jobId)).thenReturn(Optional.empty());
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.FAILED).build()));
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(
+                SearchIndexJob.builder().id(jobId).status(IndexJobStatus.STOPPING).build()));
+    assertTrue(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId))
+        .thenReturn(
+            Optional.of(SearchIndexJob.builder().id(jobId).status(IndexJobStatus.RUNNING).build()));
+    assertFalse(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId));
+
+    when(coordinator.getJob(jobId)).thenThrow(new RuntimeException("transient db error"));
+    assertFalse(
+        (boolean) invokePrivate("isJobTerminalOrStopping", new Class<?>[] {UUID.class}, jobId),
+        "an unreadable job state must be treated as non-terminal so the wait continues");
   }
 
   private SearchIndexPartition partition(UUID jobId, String entityType, PartitionStatus status) {

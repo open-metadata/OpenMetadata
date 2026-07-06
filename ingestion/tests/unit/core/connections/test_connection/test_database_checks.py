@@ -10,6 +10,9 @@
 #  limitations under the License.
 """Unit tests for the shared database check helpers."""
 
+import socket
+from unittest.mock import MagicMock, patch
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
@@ -23,6 +26,17 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.network import NetworkUnreachableError
+
+_MODULE = "metadata.core.connections.test_connection.checks.database"
+
+
+def _closed_port() -> int:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    return port
 
 
 @pytest.fixture()
@@ -43,9 +57,21 @@ def test_database_step_values_match_schema():
 
 
 def test_ping_succeeds_on_a_live_engine(engine):
+    # the in-memory sqlite URL carries no host:port, so the preflight is skipped.
     evidence = ping(engine)
     assert evidence.summary == "connection established"
     assert evidence.command == "SELECT 1"
+
+
+def test_ping_fails_as_a_network_error_when_the_host_is_unreachable():
+    port = _closed_port()
+    client = MagicMock()
+    client.url.host = "127.0.0.1"
+    client.url.port = port
+    with pytest.raises(CheckError) as exc:
+        ping(client)
+    assert exc.value.evidence.command == f"TCP connect 127.0.0.1:{port}"
+    assert isinstance(exc.value.cause, NetworkUnreachableError)
 
 
 def test_run_sql_reports_the_same_statement_it_ran(engine):
@@ -79,8 +105,40 @@ def test_auto_select_skips_connector_supplied_system_schemas():
     assert summary == ("1 table in schema 'userschema', auto-selected because no databaseSchema was configured")
 
 
+def test_list_tables_has_no_caveat_when_tables_exist(engine):
+    assert list_tables(engine, "main").caveat is None
+
+
+def test_list_tables_warns_when_no_tables_visible():
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    evidence = list_tables(eng, "main")
+    assert evidence.summary == "0 tables in schema 'main'"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible in schema 'main'"
+    assert "permission" in evidence.caveat.remediation
+
+
+def test_list_views_never_warns_when_empty():
+    # An empty view list is normal, so list_views stays silent (no caveat).
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    assert list_views(eng, "main").caveat is None
+
+
 def test_list_schemas_summarizes_count(engine):
     assert list_schemas(engine).summary == "1 schema enumerated"
+
+
+def test_list_schemas_has_no_caveat_when_schemas_exist(engine):
+    assert list_schemas(engine).caveat is None
+
+
+def test_list_schemas_warns_when_no_schemas_visible(engine):
+    with patch(f"{_MODULE}.inspect") as inspect_mock:
+        inspect_mock.return_value.get_schema_names.return_value = []
+        evidence = list_schemas(engine)
+    assert evidence.summary == "0 schemas enumerated"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No schemas visible in the database"
 
 
 def test_run_sql_failure_carries_the_attempted_command(engine):
