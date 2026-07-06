@@ -15,6 +15,7 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
+  fuseki-data:
 services:
   mysql:
     build:
@@ -183,6 +184,13 @@ services:
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
+      # RDF / SPARQL backend (optional; default off). Start fuseki with `--profile rdf`.
+      RDF_ENABLED: ${RDF_ENABLED:-false}
+      RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-"http://fuseki:3030/openmetadata"}
+      RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-"admin"}
+      RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-"admin"}
+      RDF_DATASET: ${RDF_DATASET:-"openmetadata"}
       # ElasticSearch Configurations
       ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
@@ -411,6 +419,13 @@ services:
       DB_HOST: ${DB_HOST:-mysql}
       DB_PORT: ${DB_PORT:-3306}
       OM_DATABASE: ${OM_DATABASE:-openmetadata_db}
+      # RDF / SPARQL backend (optional; default off). Start fuseki with `--profile rdf`.
+      RDF_ENABLED: ${RDF_ENABLED:-false}
+      RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-"http://fuseki:3030/openmetadata"}
+      RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-"admin"}
+      RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-"admin"}
+      RDF_DATASET: ${RDF_DATASET:-"openmetadata"}
       # ElasticSearch Configurations
       ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:- elasticsearch}
       ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
@@ -604,6 +619,29 @@ services:
       retries: 5
     profiles:
       - sso-test
+
+  # Apache Jena Fuseki triplestore for the optional RDF/SPARQL backend (ontology
+  # round-trip, semantic search). Start with `--profile rdf` and set RDF_ENABLED=true.
+  # The glossary RDF import works without this; it only adds the transparent triplestore.
+  fuseki:
+    build:
+      context: ../rdf-store
+    container_name: openmetadata-fuseki
+    environment:
+      # The admin user carries the writer role; the server connects as
+      # RDF_REMOTE_USERNAME=admin, so keep this password in sync with
+      # RDF_REMOTE_PASSWORD. Dataset (/openmetadata) is baked into the image.
+      - FUSEKI_ADMIN_PASSWORD=${RDF_REMOTE_PASSWORD:-admin}
+    networks:
+      - local_app_net
+    expose:
+      - 3030
+    ports:
+      - "3030:3030"
+    volumes:
+      - fuseki-data:/fuseki-data
+    profiles:
+      - rdf
 
 networks:
   local_app_net:
