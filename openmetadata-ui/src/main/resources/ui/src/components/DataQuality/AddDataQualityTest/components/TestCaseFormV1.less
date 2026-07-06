@@ -355,3 +355,16 @@
     }
   }
 }
+
+// Center the label help icon with the label text (the core tooltip button
+// leaves its icon top-aligned in the label line box).
+.test-case-form-v1 {
+  [data-testid='form-item-label'] + button {
+    display: inline-flex;
+    align-items: center;
+
+    svg {
+      display: block;
+    }
+  }
+}

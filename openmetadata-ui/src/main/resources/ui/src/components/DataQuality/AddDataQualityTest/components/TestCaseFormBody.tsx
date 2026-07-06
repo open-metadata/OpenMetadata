@@ -689,8 +689,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
     id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
     placeholder: t('label.select-test-type'),
-    helperText: selectedTestDefinition?.description,
-    helperTextType: HelperTextType.TOOLTIP,
     props: {
       'data-testid': 'test-type',
       popoverClassName: 'test-type-popover',
