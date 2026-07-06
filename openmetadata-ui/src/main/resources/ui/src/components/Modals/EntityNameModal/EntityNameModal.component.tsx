@@ -35,6 +35,11 @@ const buildValidate =
   (value: string | undefined): string | true => {
     const v = value ?? '';
     for (const rule of rules) {
+      // Skip length/pattern checks for empty non-required values,
+      // mirroring antd async-validator behavior.
+      if (v.length === 0 && !rule.required) {
+        continue;
+      }
       if (rule.min !== undefined && v.length < rule.min) {
         return rule.message ?? '';
       }
@@ -116,7 +121,11 @@ const EntityNameModal = <T extends EntityName>({
         displayName: entity.displayName ?? '',
       });
     }
-  }, [visible, entity, reset]);
+    // Depend on primitive values, not the entity object reference —
+    // inline objects (e.g. ManageButton's entity={{ name, displayName }})
+    // are recreated every render, which would wipe in-progress edits.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, entity.name, entity.displayName, reset]);
 
   const onSubmit = async (data: EntityName) => {
     setIsLoading(true);
