@@ -1238,7 +1238,7 @@ describe('buildEnumAsyncFetch', () => {
   });
 
   it('should be case-insensitive when filtering', async () => {
-    const values = ['Active', 'ACTIVE', 'inactive'];
+    const values = ['Active', 'ACTIVE', 'Pending'];
     const fetchFn = advancedSearchClassBase.buildEnumAsyncFetch(values);
     const result = await fetchFn!('active');
 
