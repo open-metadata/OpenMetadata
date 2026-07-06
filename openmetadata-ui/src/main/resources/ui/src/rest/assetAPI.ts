@@ -90,7 +90,8 @@ export const createFolder = async (
 
 export const listFolders = async (): Promise<Folder[]> => {
   const response = await APIClient.get<{ data: Folder[] }>(
-    '/contextCenter/drive/folders'
+    '/contextCenter/drive/folders',
+    { params: { fields: 'childrenCount' } }
   );
 
   return response.data.data ?? [];
@@ -105,7 +106,9 @@ export const deleteFolder = async (
   });
 };
 
-export const listContextFiles = async (params: ListParams = {}) => {
+type ListContextFilesParams = ListParams & { folderId?: string };
+
+export const listContextFiles = async (params: ListContextFilesParams = {}) => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
     {
@@ -116,6 +119,15 @@ export const listContextFiles = async (params: ListParams = {}) => {
         ...params,
       },
     }
+  );
+
+  return response.data;
+};
+
+export const getContextFileById = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.get<ContextFile>(
+    `/contextCenter/drive/files/${id}`,
+    { params: { fields: 'folder,memoryCount' } }
   );
 
   return response.data;
