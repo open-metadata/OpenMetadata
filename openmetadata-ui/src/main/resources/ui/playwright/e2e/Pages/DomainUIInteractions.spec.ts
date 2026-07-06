@@ -374,8 +374,6 @@ test.describe('Data Product UI Operations', () => {
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
       await page.getByTestId('confirm-button').click();
       await deleteRes;
@@ -513,8 +511,6 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('delete-button').click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByTestId('confirm-button').click();
@@ -846,8 +842,6 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.getByTestId('delete-button-title').click();
 
       await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByTestId('confirm-button').click();

@@ -169,8 +169,6 @@ test.describe(
 
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
         const deletePromise = page.waitForResponse(
           (response) =>
             response.request().method() === 'DELETE' &&

@@ -408,9 +408,7 @@ test.describe('Glossary CRUD Operations', () => {
             state: 'visible',
           });
 
-          const confirmInput = page.locator(
-            '[data-testid="confirmation-text-input"]'
-          );
+          const confirmInput = page.locator();
 
           if (
             await confirmInput.isVisible({ timeout: 2000 }).catch(() => false)

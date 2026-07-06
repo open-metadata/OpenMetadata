@@ -2131,8 +2131,6 @@ test.describe('Glossary tests', () => {
 
         await expect(page.getByTestId('body-text')).toContainText('DELETE');
 
-        const confirmationInput = page.getByTestId('confirmation-text-input');
-
         await expect(confirmationInput).toBeVisible();
 
         await confirmationInput.fill('DELETE');

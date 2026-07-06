@@ -95,7 +95,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaries/async/*');
       await page.getByTestId('confirm-button').click();
@@ -245,7 +244,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
       await page.getByTestId('confirm-button').click();
@@ -386,7 +384,6 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await expect(page.locator('[role="dialog"]')).toBeVisible();
 
       // Confirm deletion
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
       await page.getByTestId('confirm-button').click();

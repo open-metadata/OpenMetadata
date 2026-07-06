@@ -399,8 +399,6 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
     glossary.displayName
   );
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
   const deleteGlossary = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/glossaries/') &&
@@ -1128,8 +1126,6 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     entityName
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
     ? '/api/v1/glossaryTerms/async/*'

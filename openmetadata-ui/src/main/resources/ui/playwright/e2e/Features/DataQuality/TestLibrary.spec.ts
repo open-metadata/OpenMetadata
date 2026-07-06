@@ -269,8 +269,6 @@ test.describe(
           page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
         ).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         // Wait for API call
         const deleteTestDefinitionResponse = page.waitForResponse(
           (response) =>
@@ -743,8 +741,6 @@ test.describe(
           page.getByText(`Delete ${createdTestDisplayName}`)
         ).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         const deleteResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -1053,8 +1049,6 @@ test.describe(
 
         await expect(page.locator('.ant-modal')).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         const deleteResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
@@ -1215,7 +1209,6 @@ test.describe(
           .click();
 
         await expect(page.locator('.ant-modal')).toBeVisible();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         // Set up both DELETE and the subsequent GET response waits BEFORE clicking
         const deleteResponse = page.waitForResponse(

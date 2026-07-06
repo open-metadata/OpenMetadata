@@ -149,7 +149,6 @@ export const deleteCustomMetric = async ({
 
   await expect(page.locator('.ant-modal-header')).toContainText(metric.name);
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteMetricResponse = page.waitForResponse(
     isColumnMetric
       ? `/api/v1/tables/*/customMetric/${metric.column}/${metric.name}*`

@@ -112,7 +112,7 @@ import {
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -1103,7 +1103,7 @@ const DomainDetails = ({
       />
 
       {domain && (
-        <DeleteWidgetModal
+        <DeleteEntityModal
           afterDeleteAction={() => onDelete(domain.id)}
           allowSoftDelete={false}
           entityId={domain.id}

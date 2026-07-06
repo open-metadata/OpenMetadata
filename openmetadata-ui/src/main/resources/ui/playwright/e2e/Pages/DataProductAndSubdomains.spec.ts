@@ -799,8 +799,6 @@ test.describe('Multiple Subdomains Tests', () => {
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByTestId('confirm-button').click();
       await deleteRes;
