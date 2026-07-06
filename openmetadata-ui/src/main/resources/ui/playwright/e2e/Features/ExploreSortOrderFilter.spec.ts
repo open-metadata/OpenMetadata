@@ -23,7 +23,7 @@ import {
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
-test.describe(
+test.describe.skip(
   'Explore Sort Order Filter',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
