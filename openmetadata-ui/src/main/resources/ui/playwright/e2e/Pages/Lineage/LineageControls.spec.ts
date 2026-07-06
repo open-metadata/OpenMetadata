@@ -126,7 +126,9 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('Verify fit view options menu', async ({ page }) => {
     await page.getByTestId('fit-screen').click();
-    await expect(page.getByRole('menu')).toBeVisible();
+    await expect(
+      page.getByRole('menu', { name: 'Lineage View Options' })
+    ).toBeVisible();
 
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
