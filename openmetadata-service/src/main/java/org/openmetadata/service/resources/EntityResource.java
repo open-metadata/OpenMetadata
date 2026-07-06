@@ -1527,13 +1527,19 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       @Parameter(description = "Output format: markdown (default) or json")
           @QueryParam("format")
           @DefaultValue("markdown")
-          String format) {
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextById(id));
     EntityReference reference = Entity.getEntityReferenceById(entityType, id, Include.NON_DELETED);
-    return renderAiContext(reference.getFullyQualifiedName(), securityContext, format);
+    return renderAiContext(reference.getFullyQualifiedName(), securityContext, format, query);
   }
 
   @GET
@@ -1558,17 +1564,27 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       @Parameter(description = "Output format: markdown (default) or json")
           @QueryParam("format")
           @DefaultValue("markdown")
-          String format) {
+          String format,
+      @Parameter(
+              description =
+                  "Optional question; truncated knowledge items are excerpted to the passage most "
+                      + "relevant to it instead of the positional lead")
+          @QueryParam("query")
+          String query) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContextByName(fqn));
-    return renderAiContext(fqn, securityContext, format);
+    return renderAiContext(fqn, securityContext, format, query);
   }
 
-  private Response renderAiContext(String fqn, SecurityContext securityContext, String format) {
+  private Response renderAiContext(
+      String fqn, SecurityContext securityContext, String format, String query) {
     AIContext context =
-        new AIContextBuilder(entityType, fqn).withSecurity(authorizer, securityContext).build();
+        new AIContextBuilder(entityType, fqn)
+            .withQuery(query)
+            .withSecurity(authorizer, securityContext)
+            .build();
     Response response;
     if (AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)) {
       response = Response.ok(context, MediaType.APPLICATION_JSON).build();

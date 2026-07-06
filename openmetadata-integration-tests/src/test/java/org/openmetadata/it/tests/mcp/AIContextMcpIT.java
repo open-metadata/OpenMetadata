@@ -52,8 +52,11 @@ class AIContextMcpIT extends McpTestBase {
   private static final String LONG_ARTICLE_TAIL = "REFUNDEXCLUSIONZZ";
   private static final String LONG_ARTICLE_BODY =
       LONG_ARTICLE_LEAD
-          + " opening section. "
-          + "detail ".repeat(400)
+          + " opening paragraph on revenue recognition.\n\n"
+          + "## Recognition timing\n\n"
+          + "detail ".repeat(150)
+          + "\n\n## Refund exclusions\n\n"
+          + "detail ".repeat(150)
           + " "
           + LONG_ARTICLE_TAIL
           + ".";
@@ -271,8 +274,13 @@ class AIContextMcpIT extends McpTestBase {
     JsonNode longArticle = findArticle(context.path("articles"), longArticleFqn);
     assertThat(longArticle).isNotNull();
     assertThat(longArticle.path("contentTruncated").asBoolean()).isTrue();
-    assertThat(longArticle.path("content").asText()).contains(LONG_ARTICLE_LEAD);
-    assertThat(longArticle.path("content").asText()).doesNotContain(LONG_ARTICLE_TAIL);
+    String excerpt = longArticle.path("content").asText();
+    assertThat(excerpt).contains(LONG_ARTICLE_LEAD);
+    assertThat(excerpt).doesNotContain(LONG_ARTICLE_TAIL);
+    // With no query, the excerpt is a structural preview: lead paragraph + a heading outline so the
+    // agent can see what the article covers before fetching the full body.
+    assertThat(excerpt).contains("Sections:");
+    assertThat(excerpt).contains("Refund exclusions");
   }
 
   @Test

@@ -48,8 +48,12 @@ public class GetAssetContextTool implements McpTool {
           entityType,
           fqn,
           format);
+      String query = (String) params.get("query");
       AIContext context =
-          new AIContextBuilder(entityType, fqn).withSecurity(authorizer, securityContext).build();
+          new AIContextBuilder(entityType, fqn)
+              .withQuery(query)
+              .withSecurity(authorizer, securityContext)
+              .build();
       result =
           FORMAT_JSON.equalsIgnoreCase(format)
               ? JsonUtils.getMap(context)

@@ -277,6 +277,10 @@
               "json"
             ],
             "default": "markdown"
+          },
+          "query": {
+            "type": "string",
+            "description": "Optional. The user's question. When set, each attached knowledge item whose body is truncated is excerpted to the passage most relevant to this question (instead of the article's opening), so you can judge whether to fetch the full body via get_knowledge_content."
           }
         },
         "required": [

@@ -67,6 +67,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -100,20 +101,35 @@ public class AIContextBuilder {
   static final int MAX_ITEM_CHARS = 1500;
 
   /** Length of the lead excerpt substituted for an item that does not fit in full. */
-  static final int EXCERPT_CHARS = 500;
+  static final int EXCERPT_CHARS = 800;
 
   /** Below this remaining budget an item is emitted as a reference (content omitted). */
   private static final int MIN_EXCERPT_CHARS = 120;
+
+  /** Max markdown headings surfaced in a structural preview's "Sections:" outline. */
+  private static final int MAX_OUTLINE_HEADINGS = 8;
 
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
   private SecurityContext securityContext;
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
+  private String query;
 
   public AIContextBuilder(String entityType, String fqn) {
     this.entityType = entityType;
     this.fqn = fqn;
+  }
+
+  /**
+   * Supply the user's question so a truncated knowledge item's excerpt is the passage most relevant
+   * to it (top chunk from the per-chunk embeddings, issue #4789) rather than the positional lead —
+   * giving the agent a decision-grade snippet for whether to fetch the full body. Ignored when
+   * blank or when vector search is unavailable, where the structural preview is used instead.
+   */
+  public AIContextBuilder withQuery(String query) {
+    this.query = nullOrEmpty(query) ? null : query;
+    return this;
   }
 
   /**
@@ -195,7 +211,7 @@ public class AIContextBuilder {
       if (content.length() <= MAX_ITEM_CHARS && content.length() <= remaining) {
         budget = remaining - content.length();
       } else if (remaining >= MIN_EXCERPT_CHARS) {
-        String lead = excerpt(content, Math.min(EXCERPT_CHARS, remaining));
+        String lead = buildExcerpt(item, content, Math.min(EXCERPT_CHARS, remaining));
         item.withContent(lead).withContentTruncated(true);
         budget = remaining - lead.length();
       } else {
@@ -203,6 +219,87 @@ public class AIContextBuilder {
       }
     }
     return budget;
+  }
+
+  /**
+   * The excerpt shown for a truncated item: the query-relevant chunk when a question is set and the
+   * item is embedded, otherwise a structural preview (lead paragraph + heading outline) that lets an
+   * agent judge relevance far better than an arbitrary positional cut.
+   */
+  private String buildExcerpt(KnowledgeItem item, String content, int limit) {
+    String result = query == null ? null : queryRelevantExcerpt(item, limit);
+    if (result == null) {
+      result = structuralPreview(content, limit);
+    }
+    return result;
+  }
+
+  /** Top chunk of the item's body by relevance to the query (issue #4789), or null when absent. */
+  private String queryRelevantExcerpt(KnowledgeItem item, int limit) {
+    String result = null;
+    try {
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (item.getType() != null
+          && vectorService != null
+          && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
+        EntityReference reference =
+            Entity.getEntityReferenceByName(
+                item.getType().value(), item.getFullyQualifiedName(), Include.NON_DELETED);
+        List<String> passages =
+            vectorService.searchChunksByParent(reference.getId().toString(), query, 1);
+        if (!nullOrEmpty(passages)) {
+          result = excerpt(passages.getFirst(), limit);
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "AIContext: query-relevant excerpt failed for {}: {}",
+          item.getFullyQualifiedName(),
+          e.getMessage());
+    }
+    return result;
+  }
+
+  /**
+   * A relevance-judgeable preview of long content: the lead paragraph plus a {@code Sections:}
+   * outline of the body's markdown headings, so an agent sees what the document covers (not just its
+   * opening) before deciding to fetch the full body.
+   */
+  static String structuralPreview(String content, int limit) {
+    List<String> headings = extractHeadings(content);
+    String result = excerpt(leadParagraph(content), limit);
+    if (headings.size() >= 2) {
+      result =
+          result + "\n\nSections: " + String.join(" · ", capList(headings, MAX_OUTLINE_HEADINGS));
+    }
+    return result;
+  }
+
+  private static List<String> extractHeadings(String content) {
+    List<String> headings = new ArrayList<>();
+    for (String line : content.split("\n")) {
+      String trimmed = line.strip();
+      if (trimmed.startsWith("#")) {
+        String heading = trimmed.replaceFirst("^#+\\s*", "").strip();
+        if (!heading.isEmpty()) {
+          headings.add(heading);
+        }
+      }
+    }
+    return headings;
+  }
+
+  /** First non-empty, non-heading paragraph of the body (falls back to the whole content). */
+  private static String leadParagraph(String content) {
+    String result = content;
+    for (String paragraph : content.strip().split("\n\\s*\n")) {
+      String candidate = paragraph.strip();
+      if (!candidate.isEmpty() && !candidate.startsWith("#")) {
+        result = candidate;
+        break;
+      }
+    }
+    return result;
   }
 
   /** A lead excerpt bounded to {@code limit} characters, cut on a word boundary. */
@@ -486,8 +583,14 @@ public class AIContextBuilder {
 
   private List<KnowledgeItem> resolveArticles(EntityInterface entity) {
     List<KnowledgeItem> items = new ArrayList<>();
-    addItems(items, capList(findAttachedPages(entity), MAX_ARTICLES), this::toArticleKnowledgeItem);
-    addItems(items, capList(findAttachedPills(entity), MAX_ARTICLES), this::toPillKnowledgeItem);
+    addItems(
+        items,
+        capWithLog(findAttachedPages(entity), MAX_ARTICLES, "articles"),
+        this::toArticleKnowledgeItem);
+    addItems(
+        items,
+        capWithLog(findAttachedPills(entity), MAX_ARTICLES, "pills"),
+        this::toPillKnowledgeItem);
     return items;
   }
 
@@ -793,5 +896,23 @@ public class AIContextBuilder {
 
   private static <T> List<T> capList(List<T> values, int max) {
     return values.size() > max ? new ArrayList<>(values.subList(0, max)) : values;
+  }
+
+  /**
+   * Caps to {@code max} and surfaces any overflow: the kept subset is currently unranked, so a
+   * dropped item could be more relevant than a kept one. Logging keeps the truncation from being
+   * silent until relevance/recency ranking is added.
+   */
+  private <T> List<T> capWithLog(List<T> values, int max, String label) {
+    if (values.size() > max) {
+      LOG.debug(
+          "AIContext {}: dropped {} of {} {} at the cap of {} (unranked overflow)",
+          fqn,
+          values.size() - max,
+          values.size(),
+          label,
+          max);
+    }
+    return capList(values, max);
   }
 }

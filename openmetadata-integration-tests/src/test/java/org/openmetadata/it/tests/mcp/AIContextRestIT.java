@@ -113,6 +113,18 @@ class AIContextRestIT extends McpTestBase {
   }
 
   @Test
+  void tableContext_acceptsQueryParamAndDegradesGracefully() throws Exception {
+    // With vector search disabled in the harness the query-relevant excerpt falls back to the
+    // structural preview; the endpoint must still accept ?query and return a valid document.
+    HttpResponse<String> response =
+        getResponse(
+            "tables/name/" + table.getFullyQualifiedName() + "/context?query=refund%20rules",
+            authToken);
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.body()).contains("type: \"table\"");
+  }
+
+  @Test
   void glossaryTermContext_genericNonDataAssetPath() throws Exception {
     HttpResponse<String> response =
         getResponse("glossaryTerms/name/" + glossaryTermFqn + "/context", authToken);

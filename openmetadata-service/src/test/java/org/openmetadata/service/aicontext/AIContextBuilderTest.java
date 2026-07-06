@@ -114,6 +114,28 @@ class AIContextBuilderTest {
   }
 
   @Test
+  void structuralPreview_outlinesHeadingsPlusLeadParagraph() {
+    String body =
+        "Revenue recognition handbook opening paragraph.\n\n"
+            + "## Recognition timing\n\nRecognize revenue when earned.\n\n"
+            + "## Refund exclusions\n\nExclude refunded orders.";
+    String preview = AIContextBuilder.structuralPreview(body, 800);
+    assertTrue(
+        preview.contains("Revenue recognition handbook opening paragraph"),
+        "preview must lead with the first non-heading paragraph");
+    assertTrue(
+        preview.contains("Sections: Recognition timing · Refund exclusions"),
+        "preview must outline the body's headings so the agent can judge relevance");
+  }
+
+  @Test
+  void structuralPreview_shortNoHeadingContentIsReturnedAsIs() {
+    assertEquals(
+        "A single short definition.",
+        AIContextBuilder.structuralPreview("A single short definition.", 800));
+  }
+
+  @Test
   void excerpt_boundsOnWordBoundaryAndLeavesShortContentAlone() {
     assertEquals("short body", AIContextBuilder.excerpt("short body", 100));
     String lead = AIContextBuilder.excerpt("alpha beta gamma delta epsilon", 12);
