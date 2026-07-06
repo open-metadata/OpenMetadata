@@ -860,7 +860,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="description">
           {({ field }) => (
-            <div data-testid="description" id="root/description">
+            <div
+              className="tw:flex tw:flex-col tw:gap-1"
+              data-testid="description"
+              id="root/description">
               <FormItemLabel label={t('label.description')} />
               <RichTextEditor
                 initialValue={field.value ?? ''}
