@@ -13,9 +13,10 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { AdminClass } from '../../../support/user/AdminClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addTermRelation,
@@ -24,7 +25,7 @@ import {
   waitForGraphLoaded,
 } from '../../../utils/ontologyExplorer';
 
-const adminUser = new AdminClass();
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const glossaryA = new Glossary();
 const termA1 = new GlossaryTerm(glossaryA);
@@ -43,7 +44,7 @@ const termFromC = new GlossaryTerm(glossaryC);
 const termC2 = new GlossaryTerm(glossaryC);
 
 test.beforeAll('Seed test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await glossaryA.create(apiContext);
   await termA1.create(apiContext);
@@ -70,7 +71,7 @@ test.beforeAll('Seed test data', async ({ browser }) => {
 });
 
 test.afterAll('Cleanup test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await termA1Grandchild.delete(apiContext);
   await termA1Child.delete(apiContext);
@@ -91,11 +92,8 @@ test.afterAll('Cleanup test data', async ({ browser }) => {
 
 test.describe('Glossary — Relations Graph tab', () => {
   test('Relations Graph tab renders the ontology explorer for a glossary with related terms', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -103,16 +101,11 @@ test.describe('Glossary — Relations Graph tab', () => {
     await page.getByRole('tab', { name: 'Relations Graph' }).click();
     await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     await waitForGraphLoaded(page);
-
-    await page.close();
   });
 
   test('related terms from the glossary appear as nodes in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -131,16 +124,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA2.responseData.id],
       'termA2 must appear as a node in the glossaryA Relations Graph'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('an edge with the correct relationType exists between the related terms', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -166,16 +154,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       edge?.relationType,
       'The edge relationType must be "relatedTo"'
     ).toBe('relatedTo');
-
-    await page.close();
   });
 
   test('isolated term within the same glossary IS shown in the Relations Graph by default', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -198,16 +181,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA2.responseData.id],
       'termA2 must still be visible'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('cross-glossary related term appears as a node in the glossary Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -222,16 +200,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termFromC.responseData.id],
       'termFromC (from a different glossary, related to termA1) must appear as a node'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('cross-glossary related term has an edge to the term in the viewed glossary', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -253,16 +226,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       hasEdge,
       'An edge between termA1 and the cross-glossary termFromC must be rendered'
     ).toBe(true);
-
-    await page.close();
   });
 
   test('term from an unrelated glossary is NOT shown in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -288,16 +256,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA2.responseData.id],
       'termA2 must still be visible'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('clicking a node in the Relations Graph opens the entity summary panel', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -315,16 +278,11 @@ test.describe('Glossary — Relations Graph tab', () => {
     await expect(
       page.getByTestId('entity-summary-panel-container')
     ).toBeVisible();
-
-    await page.close();
   });
 
   test('search in the Relations Graph filters to the matching node and its neighbours', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -354,17 +312,12 @@ test.describe('Glossary — Relations Graph tab', () => {
     expect(Object.keys(restored).length).toBeGreaterThanOrEqual(
       Object.keys(filtered).length
     );
-
-    await page.close();
   });
 
   test('search returns empty state when no term matches the query', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -382,17 +335,12 @@ test.describe('Glossary — Relations Graph tab', () => {
 
     await searchInput.clear();
     await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
-
-    await page.close();
   });
 
   test('global filter toolbar is NOT shown in glossary scope', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -404,17 +352,12 @@ test.describe('Glossary — Relations Graph tab', () => {
     await expect(
       page.getByTestId('ontology-explorer-header')
     ).not.toBeVisible();
-
-    await page.close();
   });
 
   test('zoom and fit-view controls are visible in glossary scope', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -426,16 +369,11 @@ test.describe('Glossary — Relations Graph tab', () => {
     await expect(page.getByTestId('fit-view')).toBeVisible();
     await expect(page.getByTestId('zoom-in')).toBeVisible();
     await expect(page.getByTestId('zoom-out')).toBeVisible();
-
-    await page.close();
   });
 
   test('nested child term appears as a node in the glossary Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -454,16 +392,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA1.responseData.id],
       'termA1 (parent) must still be visible'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('a parentOf edge exists between a parent term and its child in the Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -489,16 +422,11 @@ test.describe('Glossary — Relations Graph tab', () => {
     expect(edge?.relationType, 'The edge relationType must be "parentOf"').toBe(
       'parentOf'
     );
-
-    await page.close();
   });
 
   test('deeply nested grandchild term appears as a node in the glossary Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -517,16 +445,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA1Child.responseData.id],
       'termA1Child (intermediate parent) must also be visible'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('cross-glossary term related to a nested child appears as a node in the glossary Relations Graph', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -545,16 +468,11 @@ test.describe('Glossary — Relations Graph tab', () => {
       positions[termA1Child.responseData.id],
       'termA1Child (the nested term that holds the relation) must also be visible'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('an edge exists between a nested child and its cross-glossary related term', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await glossaryA.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -577,7 +495,5 @@ test.describe('Glossary — Relations Graph tab', () => {
       hasEdge,
       'A relatedTo edge between the nested termA1Child and the cross-glossary termC2 must be rendered'
     ).toBe(true);
-
-    await page.close();
   });
 });

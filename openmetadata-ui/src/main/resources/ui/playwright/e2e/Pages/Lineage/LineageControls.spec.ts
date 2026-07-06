@@ -92,6 +92,10 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 // ====================
 // Suite 1: Canvas Control Buttons (4 tests)
 // ====================

@@ -107,6 +107,10 @@ type EntityClassUnion =
   | SpreadsheetClass
   | WorksheetClass;
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
@@ -145,12 +149,15 @@ test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       test.setTimeout(5 * 60 * 1000);
 
       await test.step('prepare entity', async () => {
-        const { apiContext } = await getApiContext(page);
-
-        await lineageEntity.create(apiContext);
-        await lineageEntity.visitEntityPage(page);
-        await visitLineageTab(page);
-        await editLineageClick(page);
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          await lineageEntity.create(apiContext);
+          await lineageEntity.visitEntityPage(page);
+          await visitLineageTab(page);
+          await editLineageClick(page);
+        } finally {
+          await afterAction();
+        }
       });
 
       await test.step('should create lineage with normal edge', async () => {
