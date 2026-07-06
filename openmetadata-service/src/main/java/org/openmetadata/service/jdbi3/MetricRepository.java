@@ -75,10 +75,10 @@ import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
-  private static final String UPDATE_FIELDS = "relatedMetrics,appliedToAssets";
-  private static final String PATCH_FIELDS = "relatedMetrics,appliedToAssets";
+  private static final String UPDATE_FIELDS = "relatedMetrics,assets";
+  private static final String PATCH_FIELDS = "relatedMetrics,assets";
   static final String FIELD_DERIVED_FROM = "derivedFrom";
-  static final String FIELD_APPLIED_TO_ASSETS = "appliedToAssets";
+  static final String FIELD_ASSETS = "assets";
 
   public MetricRepository() {
     super(
@@ -104,7 +104,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   public void prepare(Metric metric, boolean update) {
     validateRelatedTerms(metric, metric.getRelatedMetrics());
     validateCustomUnitOfMeasurement(metric);
-    metric.setAppliedToAssets(EntityUtil.populateEntityReferences(metric.getAppliedToAssets()));
+    metric.setAssets(EntityUtil.populateEntityReferences(metric.getAssets()));
   }
 
   private void validateCustomUnitOfMeasurement(Metric metric) {
@@ -129,10 +129,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       Metric metric, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
-    metric.setAppliedToAssets(
-        fields.contains(FIELD_APPLIED_TO_ASSETS)
-            ? getAppliedToAssets(metric)
-            : metric.getAppliedToAssets());
+    metric.setAssets(fields.contains(FIELD_ASSETS) ? getAssets(metric) : metric.getAssets());
     if (fields.contains(FIELD_DERIVED_FROM)) {
       metric.setDerivedFrom(getDerivedFrom(metric));
     }
@@ -141,8 +138,7 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
-    entity.setAppliedToAssets(
-        fields.contains(FIELD_APPLIED_TO_ASSETS) ? entity.getAppliedToAssets() : null);
+    entity.setAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
     if (!fields.contains(FIELD_DERIVED_FROM)) {
       entity.setDerivedFrom(null);
     }
@@ -152,7 +148,7 @@ public class MetricRepository extends EntityRepository<Metric> {
    * Data assets this metric applies to. Edge direction: from=metric to=asset via APPLIED_TO;
    * findTo resolves the to-side (the assets).
    */
-  private List<EntityReference> getAppliedToAssets(Metric metric) {
+  private List<EntityReference> getAssets(Metric metric) {
     return findTo(metric.getId(), METRIC, Relationship.APPLIED_TO, null);
   }
 
@@ -177,7 +173,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("relatedMetrics", "appliedToAssets");
+    return List.of("relatedMetrics", "assets");
   }
 
   @Override
@@ -204,7 +200,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       addRelationship(
           metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO, true);
     }
-    for (EntityReference asset : listOrEmpty(metric.getAppliedToAssets())) {
+    for (EntityReference asset : listOrEmpty(metric.getAssets())) {
       addRelationship(
           metric.getId(), asset.getId(), METRIC, asset.getType(), Relationship.APPLIED_TO);
     }
@@ -505,7 +501,7 @@ public class MetricRepository extends EntityRepository<Metric> {
             }
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
-      compareAndUpdate(FIELD_APPLIED_TO_ASSETS, () -> updateAppliedToAssets(original, updated));
+      compareAndUpdate(FIELD_ASSETS, () -> updateAssets(original, updated));
       MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
     }
 
@@ -538,15 +534,15 @@ public class MetricRepository extends EntityRepository<Metric> {
      * the single passed target type — so the diff runs once per asset type over the union of
      * original and updated types.
      */
-    private void updateAppliedToAssets(Metric original, Metric updated) {
-      List<EntityReference> originalAssets = typedAssets(original.getAppliedToAssets());
-      List<EntityReference> updatedAssets = typedAssets(updated.getAppliedToAssets());
+    private void updateAssets(Metric original, Metric updated) {
+      List<EntityReference> originalAssets = typedAssets(original.getAssets());
+      List<EntityReference> updatedAssets = typedAssets(updated.getAssets());
       Set<String> assetTypes = new TreeSet<>();
       originalAssets.forEach(asset -> assetTypes.add(asset.getType()));
       updatedAssets.forEach(asset -> assetTypes.add(asset.getType()));
       for (String assetType : assetTypes) {
         updateToRelationships(
-            FIELD_APPLIED_TO_ASSETS,
+            FIELD_ASSETS,
             METRIC,
             original.getId(),
             Relationship.APPLIED_TO,

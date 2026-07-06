@@ -168,42 +168,41 @@ class AIContextMcpIT extends McpTestBase {
             .withName("aicontext_revenue_" + suffix)
             .withDescription("Total revenue from completed orders.")
             .withMetricExpression(new MetricExpression().withCode(METRIC_CODE))
-            .withAppliedToAssets(
+            .withAssets(
                 List.of(new EntityReference().withId(ordersTable.getId()).withType("table")));
     return post("metrics", createMetric, Metric.class);
   }
 
   @Test
-  void metricAppliedToAssets_updateViaPatchRewiresTheEdge() throws Exception {
+  void metricAssets_updateViaPatchRewiresTheEdge() throws Exception {
     Metric metric =
         post(
             "metrics",
             new CreateMetric()
                 .withName("aicontext_patch_metric_" + suffix)
                 .withDescription("Metric whose applied assets get rewired.")
-                .withAppliedToAssets(
+                .withAssets(
                     List.of(new EntityReference().withId(ordersTable.getId()).withType("table"))),
             Metric.class);
 
     String rewirePatch =
         String.format(
-            "[{\"op\":\"add\",\"path\":\"/appliedToAssets\",\"value\":[{\"id\":\"%s\",\"type\":\"table\"}]}]",
+            "[{\"op\":\"add\",\"path\":\"/assets\",\"value\":[{\"id\":\"%s\",\"type\":\"table\"}]}]",
             customersTable.getId());
     patch("metrics/" + metric.getId(), rewirePatch);
 
-    JsonNode updated =
-        get("metrics/name/" + metric.getName() + "?fields=appliedToAssets", JsonNode.class);
-    JsonNode assets = updated.get("appliedToAssets");
+    JsonNode updated = get("metrics/name/" + metric.getName() + "?fields=assets", JsonNode.class);
+    JsonNode assets = updated.get("assets");
     assertThat(assets).isNotNull();
     assertThat(assets.size()).isEqualTo(1);
     assertThat(assets.get(0).get("id").asText()).isEqualTo(customersTable.getId().toString());
   }
 
   @Test
-  void metricAppliedToAssets_roundTripsThroughApi() throws Exception {
+  void metricAssets_roundTripsThroughApi() throws Exception {
     JsonNode metric =
-        get("metrics/name/" + revenueMetric.getName() + "?fields=appliedToAssets", JsonNode.class);
-    JsonNode assets = metric.get("appliedToAssets");
+        get("metrics/name/" + revenueMetric.getName() + "?fields=assets", JsonNode.class);
+    JsonNode assets = metric.get("assets");
     assertThat(assets).isNotNull();
     assertThat(assets.isArray()).isTrue();
     assertThat(assets.get(0).get("id").asText()).isEqualTo(ordersTable.getId().toString());

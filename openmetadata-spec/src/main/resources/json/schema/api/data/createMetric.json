@@ -46,7 +46,7 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "appliedToAssets": {
+    "assets": {
       "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
