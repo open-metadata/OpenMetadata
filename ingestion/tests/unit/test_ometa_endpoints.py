@@ -147,7 +147,5 @@ def test_get_context_builds_okf_markdown_path():
 
     result = metadata.get_context(Table, "svc.db.sch.orders", query="refund rules")
 
-    metadata.client.get.assert_called_once_with(
-        "/tables/name/svc.db.sch.orders/context?query=refund%20rules"
-    )
+    metadata.client.get.assert_called_once_with("/tables/name/svc.db.sch.orders/context?query=refund%20rules")
     assert result == '---\ntype: "table"\n---\n'

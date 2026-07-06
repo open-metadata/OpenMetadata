@@ -576,13 +576,12 @@ class OpenMetadata(
             to the passage most relevant to it instead of the positional lead
         :return: the markdown document, or None if the entity is not found
         """
-        path = f"{self.get_suffix(entity)}/name/{quote(model_str(fqn), safe='')}/context"
+        path = f"{self.get_suffix(entity)}/name/{quote(fqn)}/context"
         if query:
             path += f"?query={quote(query)}"
         resp = self.client.get(path)
-        if resp is None:
-            return None
-        return resp.text if hasattr(resp, "text") else resp
+        text = getattr(resp, "text", resp)
+        return text if isinstance(text, str) else None
 
     def _get(
         self,
