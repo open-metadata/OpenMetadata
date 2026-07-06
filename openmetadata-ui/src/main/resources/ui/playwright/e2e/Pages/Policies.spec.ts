@@ -320,7 +320,7 @@ test.describe(
         await deleteButton.waitFor({ state: 'visible' });
         await deleteButton.click();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         await page.locator('[data-testid="confirm-button"]').click();
 
