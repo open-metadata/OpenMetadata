@@ -62,6 +62,7 @@ import {
   getServiceTypeForTestDefinition,
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import ParameterFields from './ParameterFields';
 import {
@@ -743,17 +744,6 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   };
 
-  const descriptionField: FieldProp = {
-    name: 'description',
-    label: t('label.description'),
-    type: FieldTypes.DESCRIPTION,
-    required: false,
-    id: 'root/description',
-    props: {
-      'data-testid': 'description',
-    },
-  };
-
   const tagsField: FieldProp = {
     name: 'tags',
     label: t('label.tag-plural'),
@@ -783,7 +773,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   };
 
   return (
-    <div className="test-case-form-body">
+    <div className="test-case-form-v1 drawer-mode test-case-form-body">
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
@@ -796,37 +786,42 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
-      <FormField control={form.control} name="testLevel">
-        {({ field }) => (
-          <>
-            <FormItemLabel required label={t('message.select-test-level')} />
-            <SelectionCardGroup
-              options={testLevelOptions}
-              value={field.value}
-              onChange={(value) => {
-                field.onChange(value);
-                handleActiveField('root/testLevel');
-              }}
-            />
-          </>
-        )}
-      </FormField>
+      <div className="form-card-section" data-testid="select-table-card">
+        <FormField control={form.control} name="testLevel">
+          {({ field }) => (
+            <>
+              <FormItemLabel required label={t('message.select-test-level')} />
+              <SelectionCardGroup
+                options={testLevelOptions}
+                value={field.value}
+                onChange={(value) => {
+                  field.onChange(value);
+                  handleActiveField('root/testLevel');
+                }}
+              />
+            </>
+          )}
+        </FormField>
 
-      {getField(selectedTableField)}
+        {getField(selectedTableField)}
 
-      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+        {selectedTestLevel === TestLevel.COLUMN &&
+          getField(selectedColumnField)}
 
-      {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
-        getField(dimensionColumnsField)}
+        {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+          getField(dimensionColumnsField)}
 
-      {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
-        getField(topDimensionsField)}
+        {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+          getField(topDimensionsField)}
+      </div>
 
-      <div className="test-type-section" data-testid="test-type-card">
+      <div
+        className="form-card-section test-type-card test-type-section"
+        data-testid="test-type-card">
         {selectedTestLevel === TestLevel.TABLE && (
           <div
             className={classNames(
-              'custom-test-type-container',
+              'custom-test-type-container d-flex items-center',
               isCustomQuery ? 'justify-between' : 'justify-end'
             )}>
             {isCustomQuery && <FormItemLabel label={t('label.test-type')} />}
@@ -860,10 +855,23 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         {isComputeRowCountFieldVisible && getField(computeRowCountField)}
       </div>
 
-      <div className="test-details-section" data-testid="test-details-card">
+      <div
+        className="form-card-section test-details-section"
+        data-testid="test-details-card">
         {getField(testNameField)}
 
-        {getField(descriptionField)}
+        <FormField control={form.control} name="description">
+          {({ field }) => (
+            <div data-testid="description" id="root/description">
+              <FormItemLabel label={t('label.description')} />
+              <RichTextEditor
+                initialValue={field.value ?? ''}
+                onFocus={() => handleActiveField('root/description')}
+                onTextChange={field.onChange}
+              />
+            </div>
+          )}
+        </FormField>
 
         {getField(tagsField)}
 

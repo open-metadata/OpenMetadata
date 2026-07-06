@@ -134,9 +134,22 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
       </Alert>
 
       <div
-        className="scheduler-card"
+        className="form-card-section scheduler-card"
         id="root/cron"
         onClick={() => onActiveFieldChange?.('root/cron')}>
+        <div className="card-title-container">
+          <p className="card-title-text">
+            {t('label.create-entity', {
+              entity: t('label.pipeline'),
+            })}
+          </p>
+          <p className="card-title-description">
+            {t('message.pipeline-entity-description', {
+              entity: t('label.test-case'),
+            })}
+          </p>
+        </div>
+
         {isSelectAllTestCasesEnabled && (
           <>
             {getField(selectAllField)}

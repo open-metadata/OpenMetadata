@@ -31,6 +31,13 @@ import {
 import TestCaseFormBody from './TestCaseFormBody';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';
 
+jest.mock('../../../common/RichTextEditor/RichTextEditor', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="rich-text-editor" />),
+}));
+
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));

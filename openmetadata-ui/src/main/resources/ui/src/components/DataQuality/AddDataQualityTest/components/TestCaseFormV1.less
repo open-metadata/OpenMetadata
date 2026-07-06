@@ -255,3 +255,16 @@
     width: auto;
   }
 }
+
+// RHF bodies render plain divs instead of antd <Card>, so the
+// .ant-card-body inner padding never applies — pad the section itself.
+.test-case-form-v1,
+.bundle-suite-form {
+  .form-card-section:not(.ant-card) {
+    padding: @size-md;
+
+    > * + * {
+      margin-top: @size-lg;
+    }
+  }
+}
