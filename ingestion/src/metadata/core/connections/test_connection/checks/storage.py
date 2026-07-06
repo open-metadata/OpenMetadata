@@ -31,6 +31,12 @@ if TYPE_CHECKING:
     from botocore.client import BaseClient
 
 
+# A check only needs to prove a listing is reachable, not enumerate the whole
+# account, so every listing probe stops at this many assets and reports whether
+# more exist beyond the cap.
+DEFAULT_LIST_LIMIT = 100
+
+
 class StorageStep(StepName):
     """The steps a storage connector can be asked to verify."""
 
@@ -43,8 +49,16 @@ def _count(n: int, noun: str) -> str:
     return f"{n} {noun if n == 1 else noun + 's'}"
 
 
-def list_buckets(client: BaseClient) -> Evidence:
-    """Enumerate every bucket the identity can see.
+def _more_suffix(shown: int, more: bool) -> str:
+    """Mark a summary as capped when the listing has more assets beyond ``shown``."""
+    return f" (showing first {shown}; more exist)" if more else ""
+
+
+def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
+    """Enumerate the buckets the identity can see, up to ``limit``.
+
+    Capped at ``limit`` via ``MaxBuckets``; when the account holds more, the
+    response carries a ``ContinuationToken`` and the summary says so.
 
     An empty listing never raises - the account may simply hold no buckets -
     so 'none visible' surfaces as a non-blocking caveat for the user to judge.
@@ -53,7 +67,7 @@ def list_buckets(client: BaseClient) -> Evidence:
     """
     command = "s3:ListBuckets"
     try:
-        response = client.list_buckets()  # pyright: ignore[reportAttributeAccessIssue]
+        response = client.list_buckets(MaxBuckets=limit)  # pyright: ignore[reportAttributeAccessIssue]
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     buckets = response.get("Buckets", [])
@@ -63,19 +77,19 @@ def list_buckets(client: BaseClient) -> Evidence:
             title="No buckets visible",
             remediation="Verify the identity can list buckets, or configure bucketNames explicitly.",
         )
-    return Evidence(
-        summary=f"{_count(len(buckets), 'bucket')} enumerated",
-        command=command,
-        caveat=caveat,
+    summary = f"{_count(len(buckets), 'bucket')} enumerated" + _more_suffix(
+        len(buckets), bool(response.get("ContinuationToken"))
     )
+    return Evidence(summary=summary, command=command, caveat=caveat)
 
 
 def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
     """Prove each configured bucket exists and its objects can be listed.
 
-    The probe only needs access to be granted, not the contents, so it caps the
-    listing at a single key - a large bucket must not turn a connection test into
-    an expensive full enumeration.
+    This is an access probe over an explicit, config-bounded set - not an open
+    enumeration - so it caps each bucket's listing at a single key: proving
+    access never needs the contents, and a large bucket must not turn a
+    connection test into an expensive full listing.
     """
     for bucket in buckets:
         try:
@@ -88,8 +102,12 @@ def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
     )
 
 
-def list_metrics(client: BaseClient, namespace: str) -> Evidence:
-    """Enumerate the CloudWatch metrics for ``namespace``.
+def list_metrics(client: BaseClient, namespace: str, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
+    """Enumerate the CloudWatch metrics for ``namespace``, up to ``limit``.
+
+    ``list_metrics`` has no page-size parameter (AWS returns up to 500 per page),
+    so the count is capped to ``limit`` here; a ``NextToken`` (or a page already
+    past the cap) means more exist and the summary says so.
 
     Metrics feed object-count and size extraction; without them ingestion still
     works, so an empty listing only reports what was (not) found.
@@ -100,7 +118,7 @@ def list_metrics(client: BaseClient, namespace: str) -> Evidence:
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     metrics = response.get("Metrics", [])
-    summary = f"{_count(len(metrics), 'metric')} visible in namespace '{namespace}'"
-    if response.get("NextToken"):
-        summary += " (first page; more exist)"
+    more = bool(response.get("NextToken")) or len(metrics) > limit
+    shown = min(len(metrics), limit)
+    summary = f"{_count(shown, 'metric')} visible in namespace '{namespace}'" + _more_suffix(shown, more)
     return Evidence(summary=summary, command=command)

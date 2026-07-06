@@ -78,7 +78,20 @@ def test_check_buckets_lists_all_buckets_when_none_configured():
     assert evidence.summary == "2 buckets enumerated"
     assert evidence.command == "s3:ListBuckets"
     assert evidence.caveat is None
+    client.s3_client.list_buckets.assert_called_once_with(MaxBuckets=100)
     client.s3_client.list_objects.assert_not_called()
+
+
+def test_check_buckets_flags_truncation_beyond_the_cap():
+    client = MagicMock()
+    client.s3_client.list_buckets.return_value = {
+        "Buckets": [{"Name": "a"}],
+        "ContinuationToken": "more",
+    }
+
+    evidence = _checks(client).check_buckets()
+
+    assert "more exist" in evidence.summary
 
 
 def test_check_buckets_warns_when_no_buckets_visible():
@@ -130,7 +143,7 @@ def test_get_metrics_flags_truncated_results():
 
     evidence = _checks(client).get_metrics()
 
-    assert "first page; more exist" in evidence.summary
+    assert "more exist" in evidence.summary
 
 
 def _client_error(code: str, operation: str) -> ClientError:
