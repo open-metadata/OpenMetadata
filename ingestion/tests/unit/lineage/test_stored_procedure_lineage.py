@@ -730,3 +730,39 @@ class TestMatchProcedureDisambiguation:
     def test_no_candidates_returns_none(self):
         assert StoredProcedureLineageMixin._match_procedure(None, self._query("usp_load")) is None
         assert StoredProcedureLineageMixin._match_procedure([], self._query("usp_load")) is None
+
+    @staticmethod
+    def _row(procedure_name, database, schema="dbo"):
+        row = {
+            "PROCEDURE_NAME": procedure_name,
+            "QUERY_TYPE": "INSERT",
+            "QUERY_TEXT": "INSERT INTO t_sp SELECT id, val FROM src1",
+            "QUERY_DATABASE_NAME": database,
+            "QUERY_SCHEMA_NAME": schema,
+            "PROCEDURE_TEXT": f"CALL {procedure_name}()",
+            "PROCEDURE_START_TIME": datetime(2026, 7, 6),
+            "PROCEDURE_END_TIME": datetime(2026, 7, 6),
+        }
+        mock_row = Mock()
+        mock_row._asdict.return_value = row
+        mock_row.keys.return_value = list(row.keys())
+        return mock_row
+
+    def test_producer_attributes_collided_names_by_reporting_database(self):
+        """End-to-end producer flow: three databases each own a usp_load, and each
+        query row is attributed to the procedure in the database it reported."""
+        mixin = TestableStoredProcedureMixin()
+        mixin.metadata.paginate_es.return_value = iter(
+            [self._procedure("usp_load", database, "dbo") for database in ("db_a", "db_b", "db_c")]
+        )
+        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+            self._row("usp_load", "db_c"),
+            self._row("usp_load", "db_a"),
+        ]
+
+        results = list(mixin.procedure_lineage_producer())
+
+        attributed = {
+            result.query_by_procedure.query_database_name: result.procedure.database.name for result in results
+        }
+        assert attributed == {"db_c": "db_c", "db_a": "db_a"}
