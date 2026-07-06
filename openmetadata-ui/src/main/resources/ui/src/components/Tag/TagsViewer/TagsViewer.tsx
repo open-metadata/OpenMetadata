@@ -59,7 +59,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
             delay={500}
             key={tag.tagFQN}
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-           <TooltipTrigger>
+            <TooltipTrigger>
               <Link
                 className={classNames(
                   'w-full',

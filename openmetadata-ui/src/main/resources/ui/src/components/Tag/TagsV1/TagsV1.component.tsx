@@ -14,7 +14,7 @@ import {
   Badge,
   Tooltip,
   TooltipTrigger,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Tag } from 'antd';
 import classNames from 'classnames';
@@ -256,10 +256,10 @@ const TagsV1 = ({
 
   const addTagChip = useMemo(
     () => (
-       <Tag
+      <Tag
         className="tag-chip tag-chip-add-button"
         icon={<PlusIcon height={16} name="plus" width={16} />}>
-       <Typography
+        <Typography
           ellipsis
           className="m-0"
           data-testid="add-tag"
@@ -303,9 +303,7 @@ const TagsV1 = ({
         arrow
         placement="top"
         title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-        <TooltipTrigger>
-           {automatedTagChip}
-        </TooltipTrigger>
+        <TooltipTrigger>{automatedTagChip}</TooltipTrigger>
       </Tooltip>
     );
   }
@@ -317,9 +315,7 @@ const TagsV1 = ({
       arrow
       placement="top"
       title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-        <TooltipTrigger>
-          {tagChip}
-        </TooltipTrigger>
+      <TooltipTrigger>{tagChip}</TooltipTrigger>
     </Tooltip>
   );
 };
