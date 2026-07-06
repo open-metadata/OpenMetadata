@@ -2801,7 +2801,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void initializeVectorSearchServiceInitializesElasticSearchVectorSupport() throws Exception {
     NaturalLanguageSearchConfiguration nlConfig =
-        new NaturalLanguageSearchConfiguration().withEmbeddingProvider("openai");
+        new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true);
     SearchRepository esRepository =
         newRepository(
             Map.of(Entity.TABLE, TABLE_MAPPING),

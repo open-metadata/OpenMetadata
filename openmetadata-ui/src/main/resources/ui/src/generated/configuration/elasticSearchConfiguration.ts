@@ -125,10 +125,6 @@ export interface Aws {
  */
 export interface NaturalLanguageSearch {
     /**
-     * The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).
-     */
-    embeddingProvider?: string;
-    /**
      * Enable or disable natural language search
      */
     enabled?: boolean;
@@ -150,11 +146,6 @@ export interface NaturalLanguageSearch {
      * cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
-    /**
-     * Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore
-     * used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.
-     */
-    maxConcurrentRequests?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */

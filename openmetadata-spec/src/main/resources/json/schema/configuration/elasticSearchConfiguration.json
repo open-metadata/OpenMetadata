@@ -191,17 +191,6 @@
           "type": "number",
           "default": 0.6
         },
-        "embeddingProvider": {
-          "description": "The provider to use for generating vector embeddings (e.g., bedrock, openai, google, djl).",
-          "type": "string",
-          "default": "bedrock"
-        },
-        "maxConcurrentRequests": {
-          "description": "Maximum number of concurrent embedding and NLQ provider requests. Controls the semaphore used to throttle calls to the providers and prevent overwhelming HTTP/2 connection limits.",
-          "type": "integer",
-          "default": 10,
-          "minimum": 1
-        },
         "knnNumCandidatesMultiplier": {
           "description": "Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the cost of latency. Defaults to 2.",
           "type": "integer",
