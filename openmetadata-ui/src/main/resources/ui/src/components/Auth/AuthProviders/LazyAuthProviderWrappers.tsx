@@ -37,8 +37,8 @@ const OktaAuthProviderComponent = withSuspenseFallback(
   )
 );
 
-// ponytail: withPageSuspenseFallback blocks form interaction while provider loads,
-// preventing stub-context errors if user submits before BasicAuthProvider mounts.
+// withPageSuspenseFallback blocks form interaction while the provider loads,
+// preventing stub-context errors if the user submits before BasicAuthProvider mounts.
 const BasicAuthProviderComponent = withPageSuspenseFallback(
   lazy(() => import('./BasicAuthProvider'))
 );

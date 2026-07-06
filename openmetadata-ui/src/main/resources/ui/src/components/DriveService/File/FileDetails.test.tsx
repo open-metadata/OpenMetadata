@@ -83,8 +83,12 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
 
 jest.mock('../../common/Loader/Loader', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(() => <div data-testid="loader">Loading...</div>),
-  PageLoader: jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>),
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loading...</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
 }));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({

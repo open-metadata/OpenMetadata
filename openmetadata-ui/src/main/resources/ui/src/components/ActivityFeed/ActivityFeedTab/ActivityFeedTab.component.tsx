@@ -884,7 +884,7 @@ export const ActivityFeedTab = ({
         })}>
         {selectedThread || selectedTask || selectedActivity ? (
           getRightPanelContent()
-        ) : (
+        ) : !loading ? (
           <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
             <ErrorPlaceHolderNew
               icon={<NoConversationsIcon />}

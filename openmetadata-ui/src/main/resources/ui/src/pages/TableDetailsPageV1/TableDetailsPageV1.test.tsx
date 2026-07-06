@@ -307,7 +307,9 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(() => <>testLoader</>),
-  PageLoader: jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
 }));
 
 jest.useFakeTimers();
