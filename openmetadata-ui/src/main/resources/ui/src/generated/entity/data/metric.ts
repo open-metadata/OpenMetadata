@@ -22,8 +22,8 @@ export interface Metric {
      * Establishes a first-class metric-to-asset relationship so the metric can be surfaced as
      * context for those assets.
      */
-    appliedToAssets?: EntityReference[];
-    certification?:   AssetCertification;
+    assets?:        EntityReference[];
+    certification?: AssetCertification;
     /**
      * Change that lead to this version of the entity.
      */

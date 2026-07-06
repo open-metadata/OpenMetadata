@@ -17,7 +17,7 @@ export interface CreateMetric {
     /**
      * Data assets (tables, dashboards, etc.) this metric is computed on or applies to.
      */
-    appliedToAssets?: EntityReference[];
+    assets?: EntityReference[];
     /**
      * Custom unit of measurement when unitOfMeasurement is OTHER.
      */
