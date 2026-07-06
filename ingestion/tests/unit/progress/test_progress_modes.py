@@ -96,7 +96,7 @@ def test_manual_group_flow_drives_registry_like_the_old_helpers():
     counters = {t: (done, total) for t, done, total in registry.global_counters()}
     assert counters["Workspaces"] == (1, 2)
     assert registry.assets_ingested() == 3
-    assert registry.snapshot() is not None
+    assert registry.snapshot() is None
 
 
 def test_manual_counter_api_passthrough():

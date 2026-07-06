@@ -80,7 +80,6 @@ class ManualProgress:
         remember its label so ``close_group`` can count completions on it."""
         self._group_label = label
         self._registry.set_total(label, total)
-        self._registry.open([], label, total)
 
     def open_group(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006,UP045
         """Open one child node per asset type under ``group``; ``expected`` may
