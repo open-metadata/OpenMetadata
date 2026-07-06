@@ -26,6 +26,7 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
 import { getMcpChatEnabled } from '../../../../rest/mcpClientAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
+import Loader from '../../../common/Loader/Loader';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
 import { McpChatPlugin } from '../plugins/McpChatPlugin';
@@ -35,6 +36,7 @@ export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
+  const [loading, setLoading] = useState(true);
   const [mcpChatEnabled, setMcpChatEnabled] = useState(false);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
@@ -44,6 +46,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchApplicationList = useCallback(async () => {
     try {
+      setLoading(true);
       const data = await getInstalledApplicationList();
 
       setApplications(data);
@@ -54,10 +57,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     } catch {
       // do not handle error
     } finally {
-      // Signal to downstream consumers (plugins, mode-aware code) that
-      // `applications` reflects server state. Set unconditionally —
-      // even on fetch error the list is "as loaded as it's going to
-      // be" and consumers should stop waiting.
+      setLoading(false);
       setApplicationsLoaded(true);
     }
   }, []);
@@ -66,9 +66,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     if (!isEmpty(permissions)) {
       fetchApplicationList();
     } else {
-      // No permissions to fetch — applications stays `[]` but the
-      // "loaded" signal still needs to flip so downstream consumers
-      // gating on it don't wait forever.
+      setLoading(false);
       setApplicationsLoaded(true);
     }
   }, [permissions]);
@@ -120,7 +118,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {children}
+      {loading ? <Loader fullScreen /> : children}
     </ApplicationsContext.Provider>
   );
 };

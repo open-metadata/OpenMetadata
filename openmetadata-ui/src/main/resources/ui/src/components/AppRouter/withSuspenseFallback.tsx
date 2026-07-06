@@ -12,7 +12,7 @@
  */
 
 import { ComponentType, forwardRef, ReactNode, Suspense } from 'react';
-import { PageLoader } from '../common/Loader/Loader';
+import Loader from '../common/Loader/Loader';
 
 export function withSuspenseFallback<T extends object>(
   Component: ComponentType<T>,
@@ -31,7 +31,7 @@ export function withSuspenseFallback<T extends object>(
 export function withPageSuspenseFallback<T extends object>(
   Component: ComponentType<T>
 ) {
-  return withSuspenseFallback(Component, <PageLoader />);
+  return withSuspenseFallback(Component, <Loader fullScreen />);
 }
 
 export default withSuspenseFallback;
