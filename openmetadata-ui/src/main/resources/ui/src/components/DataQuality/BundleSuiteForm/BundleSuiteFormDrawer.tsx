@@ -50,7 +50,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   variant = 'classic',
   title,
   headerActions,
-  width = '75vw',
+  width = '80vw',
 }: BundleSuiteFormDrawerProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
