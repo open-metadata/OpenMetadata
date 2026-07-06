@@ -129,9 +129,7 @@ test.describe(
         page.locator('[data-testid="confirm-button"]')
       ).toBeDisabled();
 
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill(DELETE_TERM);
+      await page.fill(DELETE_TERM);
 
       const deleteResponse = page.waitForResponse(
         `/api/v1/teams/*?hardDelete=true&recursive=true`

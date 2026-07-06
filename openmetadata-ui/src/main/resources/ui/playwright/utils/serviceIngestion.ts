@@ -98,8 +98,6 @@ export const deleteService = async (
   await page.click('[data-testid="hard-delete-option"]');
   await page.click(`[data-testid="hard-delete-option"] >> text=${serviceName}`);
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
   const deleteResponse = page.waitForResponse((response) =>
     response
       .url()

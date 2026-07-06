@@ -323,9 +323,7 @@ test.describe(
         await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
         // Type 'DELETE' in the confirmation text input
-        await page
-          .locator('[data-testid="confirmation-text-input"]')
-          .fill('DELETE');
+        await page.fill('DELETE');
 
         // Click on confirm button
         await page.locator('[data-testid="confirm-button"]').click();
@@ -412,9 +410,7 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill('DELETE');
+      await page.fill('DELETE');
       await page.locator('[data-testid="confirm-button"]').click();
 
       await expect(policyLocator).not.toBeVisible();

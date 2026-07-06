@@ -121,10 +121,7 @@ export const softDeleteTeam = async (page: Page) => {
 
   await page.waitForLoadState('domcontentloaded');
 
-  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
-
   await page.click('[data-testid="soft-delete-option"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=false&recursive=true'
@@ -149,7 +146,6 @@ export const hardDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'

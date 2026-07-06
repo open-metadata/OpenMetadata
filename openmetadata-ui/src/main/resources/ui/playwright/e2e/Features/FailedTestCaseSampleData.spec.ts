@@ -115,7 +115,6 @@ test(
       await page.click('[data-testid="sample-data-manage-button"]');
       await page.click('[data-testid="delete-button"]');
       await page.locator('.ant-modal-body').waitFor({ state: 'visible' });
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteSampleData = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*/failedRowsSample'
       );

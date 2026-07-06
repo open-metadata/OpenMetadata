@@ -283,9 +283,7 @@ test.describe.serial('Persona operations', () => {
 
     await expect(page.locator('[data-testid="confirm-button"]')).toBeDisabled();
 
-    await page
-      .locator('[data-testid="confirmation-text-input"]')
-      .fill(DELETE_TERM);
+    await page.fill(DELETE_TERM);
 
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`

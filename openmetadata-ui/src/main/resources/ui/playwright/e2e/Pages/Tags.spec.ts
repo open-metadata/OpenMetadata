@@ -67,7 +67,6 @@ const permanentDeleteModal = async (page: Page, entity: string) => {
     `Delete ${entity}`
   );
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   await page.click('[data-testid="confirm-button"]');
 };
 
@@ -495,7 +494,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="delete-button"]');
 
     await page.click('[data-testid="hard-delete-option"]');
-    await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     const deleteClassification = page.waitForResponse(
       (response) =>

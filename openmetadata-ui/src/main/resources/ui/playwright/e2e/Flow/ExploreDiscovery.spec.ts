@@ -238,9 +238,6 @@ test.describe('Explore Assets Discovery', () => {
         )
     ).toBeVisible();
 
-    await page.getByTestId('confirmation-text-input').click();
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
     await expect(page.getByTestId('confirm-button')).toBeEnabled();
 
     await page.getByTestId('confirm-button').click();

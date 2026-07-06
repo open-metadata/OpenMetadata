@@ -25,7 +25,6 @@ import {
   ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
-import { DELETE_TERM } from '../constant/common';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
@@ -203,8 +202,6 @@ export const deleteAlertSteps = async (
   await expect(page.locator('.ant-modal-header')).toHaveText(
     `Delete subscription "${displayName}"`
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
 
   const deleteAlert = page.waitForResponse(
     (response) =>

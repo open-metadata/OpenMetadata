@@ -202,8 +202,6 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE to enable confirm button', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeEnabled();
     });
@@ -234,8 +232,6 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteResponse = page.waitForResponse(
         (response) =>
           response

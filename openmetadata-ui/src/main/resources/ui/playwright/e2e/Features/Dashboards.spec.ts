@@ -134,7 +134,6 @@ test.describe(
 
       await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 
-      await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = page.waitForResponse(
         `/api/v1/${EntityTypeEndpoint.Dashboard}/async/*?hardDelete=false&recursive=true`
       );

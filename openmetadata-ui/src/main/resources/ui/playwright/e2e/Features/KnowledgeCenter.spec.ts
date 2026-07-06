@@ -519,7 +519,6 @@ test.describe('Knowledge Center', () => {
 
     //       await page.click('[data-testid="hard-delete-option"]');
     //       await page.check('[data-testid="hard-delete"]');
-    //       await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
     //       const deleteResponse = page.waitForResponse(
     //         '/api/v1/contextCenter/pages/*?hardDelete=true&recursive=true'

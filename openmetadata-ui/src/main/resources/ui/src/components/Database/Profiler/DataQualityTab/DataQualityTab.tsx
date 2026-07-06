@@ -57,7 +57,7 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
@@ -891,7 +891,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       ) : (
-        <DeleteWidgetModal
+        <DeleteEntityModal
           isRecursiveDelete
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={false}

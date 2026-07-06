@@ -191,8 +191,6 @@ test.describe('Data Products', () => {
         page.getByTestId('modal-header').getByText(dataProduct.data.name)
       ).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
       await page.getByTestId('confirm-button').click();
       await deleteRes;

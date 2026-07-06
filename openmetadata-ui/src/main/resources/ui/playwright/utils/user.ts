@@ -191,8 +191,6 @@ export const softDeleteUserProfilePage = async (
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=false&recursive=true'
   );
@@ -241,7 +239,6 @@ export const hardDeleteUserProfilePage = async (
 
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/users/*?hardDelete=true&recursive=true'
@@ -371,7 +368,6 @@ export const softDeleteUser = async (
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
   // Soft deleting the user
   await page.click('[data-testid="soft-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const fetchUpdatedUsers = page.waitForResponse('/api/v1/users/*');
   const deleteResponse = page.waitForResponse(
@@ -478,7 +474,6 @@ export const permanentDeleteUser = async (
 
   // Click on hard delete
   await page.click('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const reFetchUsers = page.waitForResponse(
     '/api/v1/users?**include=non-deleted'

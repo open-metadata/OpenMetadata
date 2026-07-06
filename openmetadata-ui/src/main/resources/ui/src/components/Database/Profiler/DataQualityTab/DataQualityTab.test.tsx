@@ -330,11 +330,11 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <span>Loader</span>)
 );
 
-jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
   jest.fn().mockImplementation(({ visible, onCancel }) =>
     visible ? (
       <div>
-        <p>DeleteWidgetModal</p>
+        <p>DeleteEntityModal</p>
         <button onClick={onCancel}>cancel</button>
       </div>
     ) : null

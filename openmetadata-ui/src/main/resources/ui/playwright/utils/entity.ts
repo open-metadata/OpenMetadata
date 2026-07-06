@@ -2132,7 +2132,6 @@ export const softDeleteEntity = async (
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
@@ -2230,7 +2229,6 @@ export const hardDeleteEntity = async (
 
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
