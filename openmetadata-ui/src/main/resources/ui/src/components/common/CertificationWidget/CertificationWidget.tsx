@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +23,12 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import Certification from '../../Certification/Certification.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import CertificationTag from '../CertificationTag/CertificationTag';
-import ExpandableCard from '../ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../IconButtons/EditIconButton';
+import {
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../WidgetCard/WidgetCard';
+
 const CertificationWidget = () => {
   const {
     data: entity,
@@ -56,26 +58,21 @@ const CertificationWidget = () => {
     }
   };
 
-  const header = (
-    <div className={classNames('d-flex items-center gap-2')}>
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="certification-heading-name">
-        {t('label.certification')}
-      </Typography.Text>
-      {canEdit && (
-        <EditIconButton
-          newLook
-          data-testid="edit-certification"
-          size="small"
-          title={t('label.edit-entity', {
-            entity: t('label.certification'),
-          })}
-          onClick={() => setIsEditing(true)}
-        />
-      )}
-    </div>
-  );
+  const headerExtra = canEdit ? (
+    entity.certification ? (
+      <WidgetEditButton
+        data-testid="edit-certification"
+        title={t('label.edit-entity', { entity: t('label.certification') })}
+        onClick={() => setIsEditing(true)}
+      />
+    ) : (
+      <WidgetPlusButton
+        data-testid="add-certification"
+        title={t('label.add-entity', { entity: t('label.certification') })}
+        onClick={() => setIsEditing(true)}
+      />
+    )
+  ) : null;
 
   const content = (
     <Certification
@@ -91,24 +88,23 @@ const CertificationWidget = () => {
       }}
       onCertificationUpdate={handleCertificationUpdate}
       onClose={() => setIsEditing(false)}>
-      <div data-testid="certification-label">
-        {entity.certification ? (
+      {entity.certification && (
+        <div data-testid="certification-label">
           <CertificationTag showName certification={entity.certification} />
-        ) : (
-          <span className="no-data-placeholder">
-            {t('label.no-entity-assigned', {
-              entity: t('label.certification'),
-            })}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </Certification>
   );
 
   return (
-    <ExpandableCard cardProps={{ title: header }} dataTestId="certification">
+    <WidgetCard
+      dataTestId="certification"
+      forceExpand={isEditing}
+      headerExtra={headerExtra}
+      isExpandDisabled={!entity.certification && !isEditing}
+      title={t('label.certification')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

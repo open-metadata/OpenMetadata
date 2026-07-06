@@ -54,6 +54,7 @@ def test_database_step_values_match_schema():
     assert DatabaseStep.CheckAccess.value == "CheckAccess"
     assert DatabaseStep.GetTables.value == "GetTables"
     assert DatabaseStep.GetStreams.value == "GetStreams"
+    assert DatabaseStep.GetAccessHistory.value == "GetAccessHistory"
 
 
 def test_ping_succeeds_on_a_live_engine(engine):
