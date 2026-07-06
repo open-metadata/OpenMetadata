@@ -13,9 +13,13 @@
 
 import { CreateUser } from '../../../../generated/api/teams/createUser';
 
+export type CreateUserFormData = CreateUser & {
+  allowImpersonation?: boolean;
+};
+
 export interface CreateUserProps {
   isLoading?: boolean;
-  onSave: (data: CreateUser) => void;
+  onSave: (data: CreateUserFormData) => void;
   onCancel: () => void;
   forceBot: boolean;
 }

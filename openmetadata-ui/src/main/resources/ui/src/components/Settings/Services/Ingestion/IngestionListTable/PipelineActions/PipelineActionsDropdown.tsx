@@ -66,12 +66,14 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const { editPermission, deletePermission } = useMemo(() => {
+  const { editPermission, deletePermission, triggerPermission } = useMemo(() => {
     const pipelinePermission = ingestionPipelinePermissions?.[name];
 
     return {
       editPermission: pipelinePermission?.[Operation.EditAll],
       deletePermission: pipelinePermission?.[Operation.Delete],
+      triggerPermission:
+        pipelinePermission?.[Operation.Trigger] ?? false,
     };
   }, [ingestionPipelinePermissions, name]);
 
@@ -165,7 +167,7 @@ function PipelineActionsDropdown({
                 id,
                 <RunIcon height={12} width={12} />
               ),
-              hidden: !editPermission,
+              hidden: !triggerPermission,
               onClick: () =>
                 handleTriggerIngestion(id, getEntityName(ingestion)),
               key: 'run-button',
@@ -200,7 +202,7 @@ function PipelineActionsDropdown({
               'data-testid': 'deploy-button',
             },
           ],
-    [ingestion, currTrigger, id, currDeploy, editPermission]
+    [ingestion, currTrigger, id, currDeploy, triggerPermission, editPermission]
   );
 
   const menuItems = useMemo(() => {

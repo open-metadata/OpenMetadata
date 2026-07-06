@@ -40,6 +40,10 @@ const buildOversizedExpression = (): string => {
 
 const table = new TableClass();
 const leafColumnName = `deepleaf${lettersToken()}`;
+// A shallow, within-depth-limit column with a letters-only name. Columns deeper than
+// index.mapping.depth.limit (the 25-level leaf above) are intentionally dropped from
+// columnNamesFuzzy; that limit is tunable via the search-index-mappings API.
+const searchableColumnName = `findablecol${lettersToken()}`;
 
 // A struct column nested NESTING_DEPTH levels deep (past index.mapping.depth.limit) whose deepest
 // leaf carries the oversized expression — the combined depth + immense-term worst case.
@@ -67,8 +71,15 @@ const buildDeeplyNestedOversizedColumn = (): Column => {
 test.describe('Search index - deeply nested oversized columns', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    const searchableColumn = {
+      name: searchableColumnName,
+      dataType: DataType.Varchar,
+      dataLength: 64,
+      dataTypeDisplay: 'varchar(64)',
+    } as Column;
     table.entity.columns = [
       buildDeeplyNestedOversizedColumn(),
+      searchableColumn,
       ...table.entity.columns,
     ];
     await table.create(apiContext);
@@ -106,7 +117,7 @@ test.describe('Search index - deeply nested oversized columns', () => {
     await redirectToHomePage(page);
   });
 
-  test('25-level oversized nested column indexes and is searchable by its deep column name', async ({
+  test('oversized deeply nested column indexes and an in-limit column name is searchable', async ({
     page,
   }) => {
     const searchInput = page.getByTestId('searchBox');
@@ -123,11 +134,12 @@ test.describe('Search index - deeply nested oversized columns', () => {
     await expect(suggestions).toBeVisible();
     await expect(suggestions).toContainText(table.entity.name);
 
-    // Searching: the 25-level-deep column name surfaces the table via columnNamesFuzzy - the
-    // mechanism that replaced the dropped flattened columns.children.name search field.
+    // Searching: an in-depth-limit column name surfaces the table via columnNamesFuzzy - the
+    // mechanism that replaced the dropped flattened columns.children.name search field. The
+    // 25-level-deep leaf is past the default depth limit and is intentionally not indexed here.
     await searchInput.clear();
     const byColumnResponse = page.waitForResponse('/api/v1/search/query?*');
-    await searchInput.fill(leafColumnName);
+    await searchInput.fill(searchableColumnName);
     await byColumnResponse;
 
     await expect(suggestions).toBeVisible();

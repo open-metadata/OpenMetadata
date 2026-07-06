@@ -747,12 +747,14 @@ export const DataAssetsHeader = ({
                 />
               </>
             )}
+
             <OwnerLabel
               showDashPlaceholder
               avatarSize={24}
+              className="header-owner-heading"
               hasPermission={editOwnerPermission}
               isCompactView={false}
-              maxVisibleOwners={4}
+              maxVisibleOwners={3}
               multiple={{
                 user: entityRules.canAddMultipleUserOwners,
                 team: entityRules.canAddMultipleTeamOwner,
@@ -760,6 +762,7 @@ export const DataAssetsHeader = ({
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />
+
             <Divider className="self-center vertical-divider" type="vertical" />
             {tierSuggestionRender ?? (
               <Space
