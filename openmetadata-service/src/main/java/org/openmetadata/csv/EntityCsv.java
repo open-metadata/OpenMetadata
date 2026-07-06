@@ -435,14 +435,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
       CSVRecord csvRecord,
       int fieldNumber,
       List<EntityReference> existingDomains) {
-    List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
-    List<EntityReference> result = parsedFromCsv;
-    if (parsedFromCsv == null) {
-      List<EntityReference> inheritedDomains =
-          listOrEmpty(existingDomains).stream()
-              .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
-              .toList();
-      result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+    List<EntityReference> result = null;
+    if (processRecord) {
+      List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
+      result = parsedFromCsv;
+      if (parsedFromCsv == null) {
+        List<EntityReference> inheritedDomains =
+            listOrEmpty(existingDomains).stream()
+                .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
+                .toList();
+        result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+      }
     }
     return result;
   }

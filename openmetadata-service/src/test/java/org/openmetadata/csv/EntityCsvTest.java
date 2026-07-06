@@ -2974,6 +2974,12 @@ public class EntityCsvTest {
         List.of("finance"),
         parsedWhenPresent.stream().map(EntityReference::getName).toList(),
         "A provided domain column must override the existing domains");
+
+    TestCsv deadRowCsv = new TestCsv();
+    assertNull(
+        deadRowCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, existingDomains),
+        "A failed row (processRecord=false) must not carry over any domains");
   }
 
   @Test
