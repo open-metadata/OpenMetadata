@@ -25,8 +25,8 @@ import { Agent } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
-  formatEtaLong,
   fmtNum,
+  formatEtaLong,
   getEtaInfo,
   getUnitLabelKey,
   getUnitVerbLabelKey,

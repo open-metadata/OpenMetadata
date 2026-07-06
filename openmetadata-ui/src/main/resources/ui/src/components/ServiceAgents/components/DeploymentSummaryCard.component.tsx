@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/agents/check.svg';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { Agent } from '../AgentsPage.interface';
-import { formatEtaShort, fmtNum, getEtaInfo } from '../utils/agents.utils';
+import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
 
 interface DeploymentSummaryCardProps {
   agents: Agent[];
