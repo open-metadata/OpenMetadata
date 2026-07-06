@@ -461,28 +461,29 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
   /**
    * Test: The per-entity AI Context endpoint (inherited from EntityResource) returns an OKF-style
-   * markdown document for this entity type. Verifies the endpoint is reachable and produces a
-   * frontmatter-bearing document for every entity type that extends this base test.
+   * markdown document for this entity type, exercised through the SDK's getContext/getContextByName
+   * (which manage their own connection pool). Runs for every entity type whose IT wires the SDK
+   * service via getEntityService().
    */
   @Test
   void get_entityAiContext_200_OK(TestNamespace ns) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(
+        service != null, getEntityType() + " has no SDK service wired via getEntityService()");
     T created = createEntity(createMinimalRequest(ns));
 
-    String url = SdkClients.getServerUrl() + getResourcePath() + created.getId() + "/context";
-    java.net.http.HttpRequest request =
-        java.net.http.HttpRequest.newBuilder()
-            .uri(java.net.URI.create(url))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .GET()
-            .build();
-    HttpResponse<String> response =
-        java.net.http.HttpClient.newHttpClient()
-            .send(request, HttpResponse.BodyHandlers.ofString());
-
-    assertEquals(200, response.statusCode());
+    String byId = service.getContext(created.getId().toString());
     assertTrue(
-        response.body().contains("type:"),
-        "AI context markdown must carry OKF frontmatter with a type for " + getEntityType());
+        byId.startsWith("---"),
+        "AI context by id must be an OKF markdown document (YAML frontmatter) for "
+            + getEntityType());
+    assertTrue(
+        byId.contains("type:"), "AI context frontmatter must carry a type for " + getEntityType());
+
+    String byName = service.getContextByName(created.getFullyQualifiedName());
+    assertTrue(
+        byName.startsWith("---"),
+        "AI context by name must be an OKF markdown document for " + getEntityType());
   }
 
   /**

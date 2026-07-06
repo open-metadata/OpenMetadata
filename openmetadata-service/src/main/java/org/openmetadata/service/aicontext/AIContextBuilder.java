@@ -109,12 +109,16 @@ public class AIContextBuilder {
   /** Max markdown headings surfaced in a structural preview's "Sections:" outline. */
   private static final int MAX_OUTLINE_HEADINGS = 8;
 
+  /** Max query-relevant vector lookups per bundle; items beyond it use the structural preview. */
+  private static final int MAX_QUERY_EXCERPTS = 5;
+
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
   private SecurityContext securityContext;
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
   private String query;
+  private int queryExcerptsRemaining = MAX_QUERY_EXCERPTS;
 
   public AIContextBuilder(String entityType, String fqn) {
     this.entityType = entityType;
@@ -227,7 +231,12 @@ public class AIContextBuilder {
    * agent judge relevance far better than an arbitrary positional cut.
    */
   private String buildExcerpt(KnowledgeItem item, String content, int limit) {
-    String result = query == null ? null : queryRelevantExcerpt(item, limit);
+    String result = null;
+    if (query != null && queryExcerptsRemaining > 0) {
+      // Count the attempt (not just hits) so total vector round-trips per bundle stay bounded.
+      queryExcerptsRemaining--;
+      result = queryRelevantExcerpt(item, limit);
+    }
     if (result == null) {
       result = structuralPreview(content, limit);
     }
@@ -267,12 +276,14 @@ public class AIContextBuilder {
    */
   static String structuralPreview(String content, int limit) {
     List<String> headings = extractHeadings(content);
-    String result = excerpt(leadParagraph(content), limit);
-    if (headings.size() >= 2) {
-      result =
-          result + "\n\nSections: " + String.join(" · ", capList(headings, MAX_OUTLINE_HEADINGS));
-    }
-    return result;
+    String outline =
+        headings.size() >= 2
+            ? "\n\nSections: " + String.join(" · ", capList(headings, MAX_OUTLINE_HEADINGS))
+            : "";
+    // Reserve room for the outline so lead + Sections together stay within limit and the item
+    // never overruns its share of the knowledge budget.
+    String lead = excerpt(leadParagraph(content), Math.max(0, limit - outline.length()));
+    return lead + outline;
   }
 
   private static List<String> extractHeadings(String content) {
