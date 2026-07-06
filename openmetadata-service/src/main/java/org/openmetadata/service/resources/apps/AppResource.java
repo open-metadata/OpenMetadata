@@ -67,6 +67,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
@@ -276,7 +277,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
     applications
         .getData()
-        .forEach(app -> app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName())));
+        .forEach(
+            app -> {
+              app.setEnabled(ApplicationHandler.getInstance().isEnabled(app.getName()));
+              // Defense-in-depth: the list path does not inject runtime secrets today, but strip
+              // them unconditionally so a future change that decrypts here cannot leak them.
+              unsetAppRuntimeProperties(app);
+            });
     return applications;
   }
 
@@ -699,7 +706,25 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the app", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
+    // Defense-in-depth: version snapshots are already stripped at storage time
+    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // returned snapshot too so this path never depends on those guarantees alone.
+    List<Object> versions =
+        entityHistory.getVersions().stream()
+            .map(
+                json -> {
+                  try {
+                    App app = JsonUtils.readValue((String) json, App.class);
+                    unsetAppRuntimeProperties(app);
+                    return JsonUtils.pojoToJson(app);
+                  } catch (Exception e) {
+                    return json;
+                  }
+                })
+            .collect(Collectors.toList());
+    entityHistory.setVersions(versions);
+    return entityHistory;
   }
 
   @GET
@@ -814,7 +839,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    App app = super.getVersionInternal(securityContext, id, version);
+    // Defense-in-depth: no upstream code sets runtime secrets on the version path today, but strip
+    // them so the guarantee holds structurally rather than by that assumption.
+    unsetAppRuntimeProperties(app);
+    return app;
   }
 
   @POST
