@@ -14,6 +14,7 @@ import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
+from requests.exceptions import HTTPError
 
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
@@ -29,10 +30,18 @@ from metadata.ingestion.source.dashboard.powerbi.connection import (
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.powerbi.connection"
 
 
-def _api_error(status_code: int) -> APIError:
+def _api_error(status_code: int, message: str = "boom") -> APIError:
     http_error = MagicMock()
     http_error.response.status_code = status_code
-    return APIError({"message": "boom", "code": "x"}, http_error)
+    return APIError({"message": message, "code": "x"}, http_error)
+
+
+def _raw_http_error(status_code: int) -> HTTPError:
+    """A bare requests.HTTPError as the client re-raises when the body has no
+    'code' field - status lives on .response.status_code, not .status_code."""
+    response = MagicMock()
+    response.status_code = status_code
+    return HTTPError("server said no", response=response)
 
 
 def _checks(get_connection) -> tuple[PowerBIChecks, MagicMock]:
@@ -145,6 +154,12 @@ def test_get_dashboards_wraps_failure_as_check_error():
         (InvalidSourceException("bad creds"), "Authentication failed"),
         (_api_error(403), "Insufficient permissions"),
         (_api_error(404), "Resource not found"),
+        (_raw_http_error(401), "Authentication failed"),
+        (_raw_http_error(403), "Insufficient permissions"),
+        (_raw_http_error(404), "Resource not found"),
+        # A 401 whose message echoes the authority URL must still classify as an
+        # auth failure, not be shadowed by the broad 'authority' matcher.
+        (_api_error(401, "AADSTS700016 https://login.microsoftonline.com/<tenant> authority"), "Authentication failed"),
         (ValueError("Unable to get authority configuration for https://login..."), "Invalid tenant or authority"),
         (ValueError("invalid_instance: The authority you provided is not known"), "Invalid tenant or authority"),
         (

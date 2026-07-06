@@ -50,15 +50,21 @@ if TYPE_CHECKING:
 def _http_status(*codes: int) -> Matcher:
     """Match a PowerBI REST error by HTTP status.
 
-    The REST client raises ``APIError`` carrying the response status on its
-    ``.status_code`` property; we walk the cause chain and match on it. The status
-    is the stable signal - the message body varies by tenant and endpoint."""
+    The status is the stable signal - the message body varies by tenant and
+    endpoint. Two shapes carry it: the client's ``APIError`` exposes it on a
+    top-level ``.status_code`` property, but when the error body has no ``code``
+    field the client re-raises the raw ``requests.HTTPError`` unchanged, which
+    carries the status at ``.response.status_code``. We consult both, across the
+    cause chain."""
     wanted = frozenset(codes)
 
     def match(error: BaseException) -> bool:
         result = False
         for current in exception_chain(error):
             code = getattr(current, "status_code", None)
+            if code is None:
+                response = getattr(current, "response", None)
+                code = getattr(response, "status_code", None)
             if isinstance(code, int) and code in wanted:
                 result = True
         return result
@@ -82,11 +88,6 @@ def _contains_any(*tokens: str) -> Matcher:
 
 
 POWERBI_ERRORS = ErrorPack(
-    when(_contains_any("authority", "should consist of an https url")).diagnose(
-        "Invalid tenant or authority",
-        fix="The authority could not be resolved. Check the Tenant ID (a valid GUID or "
-        "tenant name) and the Authority URI, e.g. https://login.microsoftonline.com/.",
-    ),
     when(_http_status(401)).diagnose(
         "Authentication failed",
         fix="The service principal token was rejected (401). Check the Client ID, Client Secret, "
@@ -107,6 +108,14 @@ POWERBI_ERRORS = ErrorPack(
         "Resource not found",
         fix="The requested resource was not found (404). Check the API URL and that the configured "
         "tenant/workspace exists and is visible to the service principal.",
+    ),
+    # Kept last: authority/instance-discovery failures are MSAL ValueErrors that
+    # carry no HTTP status, so a broad substring match here must not shadow a
+    # status-coded 401/403/404 whose message happens to echo the authority URL.
+    when(_contains_any("authority", "should consist of an https url")).diagnose(
+        "Invalid tenant or authority",
+        fix="The authority could not be resolved. Check the Tenant ID (a valid GUID or "
+        "tenant name) and the Authority URI, e.g. https://login.microsoftonline.com/.",
     ),
 ).including(NETWORK_ERRORS)
 
