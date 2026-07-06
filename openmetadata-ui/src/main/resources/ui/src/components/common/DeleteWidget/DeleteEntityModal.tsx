@@ -252,8 +252,9 @@ const DeleteEntityModal = ({
               {t('label.delete')} &quot;{entityName}&quot; {entityTypeName}
             </Typography>
           </Dialog.Header>
-          <Dialog.Content className="tw:pt-4 tw:px-4 tw:sm:px-4">
+          <Dialog.Content className="tw:px-5 tw:sm:px-5">
             <RadioGroup
+              className="tw:gap-3"
               size="md"
               value={deletionType}
               onChange={(value) => setDeletionType(value as DeleteType)}>
@@ -291,7 +292,7 @@ const DeleteEntityModal = ({
               ))}
             </RadioGroup>
           </Dialog.Content>
-          <Dialog.Footer>
+          <div className="tw:flex tw:justify-end tw:gap-3 tw:p-4 tw:py-6">
             <Button
               color="secondary"
               data-testid="discard-button"
@@ -309,7 +310,7 @@ const DeleteEntityModal = ({
               onPress={onConfirm}>
               {t('label.delete')}
             </Button>
-          </Dialog.Footer>
+          </div>
         </Dialog>
       </Modal>
     </ModalOverlay>
