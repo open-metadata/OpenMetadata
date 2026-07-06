@@ -68,6 +68,7 @@ export type SourceType = (
       | 'dataType'
       | 'dataTypeDisplay'
       | 'table'
+      | 'entityType'
     >
   | Pick<TopicSearchSource, Fields>
   | Pick<ContainerSearchSource, Fields>
