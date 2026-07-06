@@ -58,9 +58,11 @@ const ContractTab = withSuspenseFallback(
   )
 );
 
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
   )
 );
 

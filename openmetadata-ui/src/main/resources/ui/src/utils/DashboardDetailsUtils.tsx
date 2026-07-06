@@ -13,13 +13,14 @@
 
 import { AxiosError } from 'axios';
 import { get } from 'lodash';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Loader from '../components/common/Loader/Loader';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { ChartType } from '../components/Dashboard/DashboardDetails/DashboardDetails.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -173,12 +174,14 @@ export const getDashboardDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={dashboardDetails as SourceType}
-          entityType={EntityType.DASHBOARD}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={dashboardDetails as SourceType}
+            entityType={EntityType.DASHBOARD}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

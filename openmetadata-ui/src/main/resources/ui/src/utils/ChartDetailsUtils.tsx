@@ -13,13 +13,14 @@
 
 import { t } from 'i18next';
 import { get } from 'lodash';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -125,12 +126,14 @@ export const getChartDetailPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={chartDetails as SourceType}
-          entityType={EntityType.CHART}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={chartDetails as SourceType}
+            entityType={EntityType.CHART}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

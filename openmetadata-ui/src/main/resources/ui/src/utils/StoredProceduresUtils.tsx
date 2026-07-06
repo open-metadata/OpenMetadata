@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import { get } from 'lodash';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
@@ -125,12 +126,14 @@ export const getStoredProcedureDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={storedProcedure as SourceType}
-          entityType={EntityType.STORED_PROCEDURE}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={storedProcedure as SourceType}
+            entityType={EntityType.STORED_PROCEDURE}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

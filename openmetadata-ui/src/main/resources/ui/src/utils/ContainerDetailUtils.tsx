@@ -13,7 +13,7 @@
 
 import { Col, Row } from 'antd';
 import { get } from 'lodash';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -21,6 +21,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -211,12 +212,14 @@ export const getContainerDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={containerData as SourceType}
-          entityType={EntityType.CONTAINER}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={containerData as SourceType}
+            entityType={EntityType.CONTAINER}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

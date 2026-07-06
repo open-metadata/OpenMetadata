@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Loader from '../../components/common/Loader/Loader';
 import type { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -153,12 +154,14 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(metricDetails?.deleted)}
-          entity={metricDetails as SourceType}
-          entityType={EntityType.METRIC}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(metricDetails?.deleted)}
+            entity={metricDetails as SourceType}
+            entityType={EntityType.METRIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

@@ -12,13 +12,14 @@
  */
 import { Card } from 'antd';
 import { get } from 'lodash';
-import { lazy } from 'react';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -175,12 +176,14 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={dataModelData as SourceType}
-          entityType={EntityType.DASHBOARD_DATA_MODEL}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={dataModelData as SourceType}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

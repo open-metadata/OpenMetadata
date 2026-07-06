@@ -14,7 +14,14 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -355,12 +362,14 @@ function DirectoryDetails({
         />
       ),
       lineageTab: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={directoryDetails as SourceType}
-          entityType={EntityType.DIRECTORY}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={directoryDetails as SourceType}
+            entityType={EntityType.DIRECTORY}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
       customPropertiesTab: directoryDetails && (
         <CustomPropertyTable<EntityType.DIRECTORY>
