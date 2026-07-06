@@ -711,7 +711,10 @@ test.describe(
         await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
         await adminOption.first().click();
 
-        await stewardInput.press('Escape');
+        // Selecting the option collapses the Steward picker's input into a
+        // read-only chip, so `stewardInput` no longer resolves. Press Escape on
+        // the page (not the vanished input) to close the Autocomplete popper.
+        await page.keyboard.press('Escape');
         await expect(listbox).toBeHidden();
       });
 
