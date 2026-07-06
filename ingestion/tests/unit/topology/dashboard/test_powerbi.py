@@ -2421,8 +2421,6 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(55)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_yield_dashboard_advances_workspace_progress(self, *_):
-        from metadata.workflow.progress_render import ProgressReporter
-
         self.powerbi.state = WorkspaceState()
         self.powerbi.__dict__.pop("_progress_registry", None)
 
@@ -2444,7 +2442,7 @@ class PowerBIUnitTest(TestCase):
         list(self.powerbi.yield_dashboard(Group(id="ws-1", name="Sales")))
 
         assert self.powerbi.progress.assets_ingested() == 2
-        out = ProgressReporter(self.powerbi.progress).cli()
+        out = self.powerbi.progress.render_cli()
         assert "Sales.Dashboard" in out
         assert "Dashboard 2" in out
 
@@ -2508,8 +2506,6 @@ class PowerBIUnitTest(TestCase):
     @pytest.mark.order(58)
     @patch.object(fqn, "build", side_effect=lambda *args, **kwargs: kwargs.get("chart_name"))
     def test_unnamed_workspace_keys_progress_on_id(self, *_):
-        from metadata.workflow.progress_render import ProgressReporter
-
         self.powerbi.__dict__.pop("_progress_registry", None)
 
         self.powerbi.state.add_filtered_dashboard(PowerBIDashboard(id="dash-1", displayName="One", tiles=[]))
@@ -2524,7 +2520,7 @@ class PowerBIUnitTest(TestCase):
         self.powerbi._open_group_progress("ws-x", {"Dashboard": None})
         list(self.powerbi.yield_dashboard(Group(id="ws-x", name=None)))
 
-        out = ProgressReporter(self.powerbi.progress).cli()
+        out = self.powerbi.progress.render_cli()
         assert "ws-x.Dashboard" in out
         assert "None.Dashboard" not in out
 

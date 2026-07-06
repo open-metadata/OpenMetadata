@@ -20,6 +20,11 @@ Ownership contract:
   it (CLI tree + SSE payload).
 """
 
+from metadata.ingestion.progress._render import (
+    format_eta,
+    render_progress_tree,
+    snapshot_to_progress_payload,
+)
 from metadata.ingestion.progress.modes import (
     ManualProgress,
     ProgressMode,
@@ -46,4 +51,7 @@ __all__ = [
     "ProgressRegistry",
     "ProgressTrackingMixin",
     "TotalsDeclarer",
+    "format_eta",
+    "render_progress_tree",
+    "snapshot_to_progress_payload",
 ]

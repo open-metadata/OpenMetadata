@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""send_progress_update maps ProgressReporter.eta_seconds into the SSE payload."""
+"""send_progress_update maps ProgressRegistry.eta_seconds into the SSE payload."""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch

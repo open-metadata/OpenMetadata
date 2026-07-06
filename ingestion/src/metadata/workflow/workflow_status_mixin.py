@@ -16,10 +16,7 @@ import traceback
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Optional, Tuple  # noqa: UP035
-
-if TYPE_CHECKING:
-    from metadata.workflow.progress_render import ProgressReporter
+from typing import Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -40,9 +37,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
-from metadata.workflow.progress_render import ProgressReporter
 
 logger = ometa_logger()
 
@@ -176,17 +173,17 @@ class WorkflowStatusMixin:
             ]
         )
 
-    def _progress_reporter(self) -> Optional["ProgressReporter"]:
-        """Reporter for the first workflow step that ran a topology walk. Reads
-        the backing attribute so we never create an empty registry on a step
-        that never tracked progress."""
-        reporter = None
+    def _find_progress_registry(self) -> Optional[ProgressRegistry]:  # noqa: UP045
+        """Registry of the first workflow step that tracked progress. Reads the
+        backing attribute so we never create an empty registry on a step that
+        never tracked progress."""
+        result = None
         for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
             registry = getattr(step, "_progress_registry", None)
             if registry is not None:
-                reporter = ProgressReporter(registry)
+                result = registry
                 break
-        return reporter
+        return result
 
     def send_progress_update(self, update_type: ProgressUpdateType = ProgressUpdateType.PROCESSING) -> None:
         """
@@ -199,11 +196,11 @@ class WorkflowStatusMixin:
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                reporter = self._progress_reporter()
-                progress_data = reporter.payload() if reporter is not None else None
-                counters = reporter.global_counters() if reporter is not None else []
-                eta_seconds = reporter.eta_seconds() if reporter is not None else None
-                total_assets = reporter.assets_ingested() if reporter is not None else None
+                registry = self._find_progress_registry()
+                progress_data = registry.sse_payload() if registry is not None else None
+                counters = registry.global_counters() if registry is not None else []
+                eta_seconds = registry.eta_seconds() if registry is not None else None
+                total_assets = registry.assets_ingested() if registry is not None else None
 
                 progress_update = ProgressUpdate(
                     runId=self.run_id,
