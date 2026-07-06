@@ -61,6 +61,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   const { t } = useTranslation();
   const [options, setOptions] = useState<TagSelectItem[]>([]);
   const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const selectedItems = useMemo<TagSelectItem[]>(
     () =>
@@ -170,6 +171,29 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [value, onChange]
   );
 
+  // Clicking this field while a sibling popover is open cancels the menu this
+  // click just opened (the closing popover's teardown races the open). Once
+  // focus settles on the input, re-open via the ArrowDown key handling built
+  // into the Autocomplete trigger. The cancel can land after the first frame,
+  // so re-check once more after the popover teardown window.
+  const ensureMenuOpen = useCallback(() => {
+    const input = containerRef.current?.querySelector('input');
+    if (
+      input &&
+      document.activeElement === input &&
+      input.getAttribute('aria-expanded') !== 'true'
+    ) {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
+      );
+    }
+  }, []);
+
+  const handleTriggerFocus = useCallback(() => {
+    requestAnimationFrame(ensureMenuOpen);
+    setTimeout(ensureMenuOpen, 150);
+  }, [ensureMenuOpen]);
+
   const displayOptions = useMemo<TagSelectItem[]>(
     () =>
       options.length > 0
@@ -179,7 +203,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   );
 
   return (
-    <div data-testid="tag-suggestion">
+    <div data-testid="tag-suggestion" ref={containerRef}>
       <Autocomplete
         filterOption={() => true}
         isRequired={required}
@@ -210,6 +234,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
           );
         }}
         selectedItems={selectedItems}
+        onFocus={handleTriggerFocus}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
         onSearchChange={handleSearchChange}>
