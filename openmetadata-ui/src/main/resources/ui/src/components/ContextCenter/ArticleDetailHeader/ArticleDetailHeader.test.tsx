@@ -472,7 +472,7 @@ describe('ArticleDetailHeader', () => {
   it('calls onCopyToClipBoard when the share button is clicked', async () => {
     render(<ArticleDetailHeader {...defaultProps} />);
 
-    fireEvent.click(screen.getByTestId('share-btn'));
+    fireEvent.click(screen.getByTestId('copy-btn'));
 
     await waitFor(() => expect(mockCopyToClipBoard).toHaveBeenCalled());
   });
