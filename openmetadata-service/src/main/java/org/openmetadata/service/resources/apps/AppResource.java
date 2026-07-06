@@ -719,6 +719,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
                     unsetAppRuntimeProperties(app);
                     return JsonUtils.pojoToJson(app);
                   } catch (Exception e) {
+                    // Fallback returns the original snapshot, which could still carry runtime
+                    // secrets if a snapshot ever escaped the storage/migration guards — log so a
+                    // parse regression in this defense-in-depth path is observable.
+                    LOG.warn(
+                        "Failed to strip runtime secrets from app version snapshot; "
+                            + "returning snapshot as-is",
+                        e);
                     return json;
                   }
                 })
