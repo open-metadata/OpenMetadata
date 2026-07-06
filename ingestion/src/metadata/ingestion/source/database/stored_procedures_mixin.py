@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -113,6 +114,43 @@ class StoredProcedureLineageMixin(ABC):
                         )
                     )
 
+    @staticmethod
+    def _reference_name(reference: EntityReference | None) -> str:
+        return reference.name.lower() if reference is not None and reference.name else ""
+
+    @staticmethod
+    def _disambiguate_procedure(
+        candidates: list[StoredProcedure], query_by_procedure: QueryByProcedure
+    ) -> StoredProcedure | None:
+        database = (query_by_procedure.query_database_name or "").lower()
+        schema = (query_by_procedure.query_schema_name or "").lower()
+        scoped = [
+            candidate
+            for candidate in candidates
+            if (not database or StoredProcedureLineageMixin._reference_name(candidate.database) == database)
+            and (not schema or StoredProcedureLineageMixin._reference_name(candidate.databaseSchema) == schema)
+        ]
+        return scoped[0] if len(scoped) == 1 else None
+
+    @staticmethod
+    def _match_procedure(
+        candidates: list[StoredProcedure] | None, query_by_procedure: QueryByProcedure
+    ) -> StoredProcedure | None:
+        """
+        Resolve which stored procedure a query belongs to. The same procedure name can
+        exist in several databases or schemas on an ingest-all run, so when more than one
+        candidate shares the name we disambiguate by the database and schema the query
+        reported. Returns None when the name stays ambiguous, so lineage is never attached
+        to the wrong procedure.
+        """
+        if not candidates:
+            matched = None
+        elif len(candidates) == 1:
+            matched = candidates[0]
+        else:
+            matched = StoredProcedureLineageMixin._disambiguate_procedure(candidates, query_by_procedure)
+        return matched
+
     def procedure_lineage_producer(self) -> Iterator[ProcedureAndQuery]:
         """
         Generate lineage for a list of stored procedures
@@ -134,7 +172,7 @@ class StoredProcedureLineageMixin(ABC):
         query_filter = json.dumps(query)
         logger.info("Processing Lineage for Stored Procedures")
 
-        procedures_dict = {}
+        procedures_by_name = defaultdict(list)
         queries = self.yield_stored_procedure_queries()
         queries_count_per_procedure = defaultdict(int)
 
@@ -161,7 +199,7 @@ class StoredProcedureLineageMixin(ABC):
                     )
                     continue
                 logger.debug(f"Processing Lineage for [{procedure.name}]")
-                procedures_dict[procedure.name.root.lower()] = procedure
+                procedures_by_name[procedure.name.root.lower()].append(procedure)
 
         # Yield the ProcedureAndQuery for filtered stored procedure
         for query_by_procedure in queries:
@@ -171,9 +209,10 @@ class StoredProcedureLineageMixin(ABC):
             procedure_name = query_by_procedure.procedure_name.lower()
             queries_count_per_procedure[procedure_name] += 1
 
-            if procedure_name in procedures_dict:
+            procedure = self._match_procedure(procedures_by_name.get(procedure_name), query_by_procedure)
+            if procedure is not None:
                 yield ProcedureAndQuery(
-                    procedure=procedures_dict[procedure_name],
+                    procedure=procedure,
                     query_by_procedure=query_by_procedure,
                 )
 
