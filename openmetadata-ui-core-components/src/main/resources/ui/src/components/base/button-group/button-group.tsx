@@ -34,7 +34,7 @@ export const styles = sortCx({
   sizes: {
     sm: {
       root: 'tw:gap-1.5 tw:px-3.5 tw:py-2 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*3.5)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3 tw:data-icon-only:p-2',
-      icon: 'tw:size-5',
+      icon: 'tw:size-4',
     },
     md: {
       root: 'tw:gap-1.5 tw:px-4 tw:py-2.5 tw:text-sm tw:not-last:pr-[calc(calc(theme(--spacing)*4)+1px)] tw:first:rounded-l-lg tw:last:rounded-r-lg tw:data-icon-leading:pl-3.5 tw:data-icon-only:px-3',
