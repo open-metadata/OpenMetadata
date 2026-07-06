@@ -55,10 +55,14 @@ def _more_suffix(shown: int, more: bool) -> str:
 
 
 def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
-    """Enumerate the buckets the identity can see, up to ``limit``.
+    """Enumerate the buckets the identity can see, reporting at most ``limit``.
 
-    Capped at ``limit`` via ``MaxBuckets``; when the account holds more, the
-    response carries a ``ContinuationToken`` and the summary says so.
+    The cap is applied to the reported count locally, not pushed to the API: the
+    request stays a parameter-less ``list_buckets()`` so it behaves identically
+    on AWS and on S3-compatible stores (MinIO, Ceph, ...) reached via an
+    ``endPointURL`` that may not understand AWS's newer ``MaxBuckets`` parameter.
+    A bucket list is inherently small (account-bounded), so this never pulls an
+    unbounded payload; the summary flags when more than ``limit`` exist.
 
     An empty listing never raises - the account may simply hold no buckets -
     so 'none visible' surfaces as a non-blocking caveat for the user to judge.
@@ -67,7 +71,7 @@ def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidenc
     """
     command = "s3:ListBuckets"
     try:
-        response = client.list_buckets(MaxBuckets=limit)  # pyright: ignore[reportAttributeAccessIssue]
+        response = client.list_buckets()  # pyright: ignore[reportAttributeAccessIssue]
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     buckets = response.get("Buckets", [])
@@ -77,9 +81,8 @@ def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidenc
             title="No buckets visible",
             remediation="Verify the identity can list buckets, or configure bucketNames explicitly.",
         )
-    summary = f"{_count(len(buckets), 'bucket')} enumerated" + _more_suffix(
-        len(buckets), bool(response.get("ContinuationToken"))
-    )
+    shown = min(len(buckets), limit)
+    summary = f"{_count(shown, 'bucket')} enumerated" + _more_suffix(shown, len(buckets) > limit)
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 

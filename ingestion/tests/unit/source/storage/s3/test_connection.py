@@ -18,6 +18,7 @@ import pytest
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
 
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
+from metadata.core.connections.test_connection.checks.storage import list_buckets
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.storage.s3.connection import (
     S3_ERRORS,
@@ -78,20 +79,18 @@ def test_check_buckets_lists_all_buckets_when_none_configured():
     assert evidence.summary == "2 buckets enumerated"
     assert evidence.command == "s3:ListBuckets"
     assert evidence.caveat is None
-    client.s3_client.list_buckets.assert_called_once_with(MaxBuckets=100)
+    client.s3_client.list_buckets.assert_called_once_with()
     client.s3_client.list_objects.assert_not_called()
 
 
-def test_check_buckets_flags_truncation_beyond_the_cap():
+def test_list_buckets_caps_reported_count_and_flags_more():
     client = MagicMock()
-    client.s3_client.list_buckets.return_value = {
-        "Buckets": [{"Name": "a"}],
-        "ContinuationToken": "more",
-    }
+    client.list_buckets.return_value = {"Buckets": [{"Name": "a"}, {"Name": "b"}, {"Name": "c"}]}
 
-    evidence = _checks(client).check_buckets()
+    evidence = list_buckets(client, limit=2)
 
-    assert "more exist" in evidence.summary
+    assert evidence.summary == "2 buckets enumerated (showing first 2; more exist)"
+    client.list_buckets.assert_called_once_with()
 
 
 def test_check_buckets_warns_when_no_buckets_visible():
