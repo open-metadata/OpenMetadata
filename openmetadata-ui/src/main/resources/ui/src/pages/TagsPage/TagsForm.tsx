@@ -25,8 +25,8 @@ import {
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import {
   AVAILABLE_ICONS,
@@ -53,11 +53,11 @@ import tagClassBase from '../../utils/TagClassBase';
 import {
   COLOR_FIELD,
   getDisabledField,
+  getDisplayNameField,
   getDomainField,
   getIconField,
   getMutuallyExclusiveField,
   getNameField,
-  getDisplayNameField,
   getOwnerField,
 } from './tagFormFields';
 import './TagsForm.less';
@@ -468,6 +468,7 @@ const TagsForm = ({
         data-testid="tags-form"
         form={form}
         onSubmit={form.handleSubmit(handleSave)}>
+          <Box direction='col' gap={6}>
         <Grid colGap="4">
           <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
           <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
@@ -498,8 +499,8 @@ const TagsForm = ({
               className="tw:gap-[6px]"
               direction="col">
               <FormItemLabel
-                label={t('label.description')}
                 required
+                label={t('label.description')}
               />
               <RichTextEditor
                 className="description-text-area new-form-style"
@@ -520,17 +521,14 @@ const TagsForm = ({
         )}
 
         {showMutuallyExclusive && (
-          <div className="tw:mb-6">{getField(mutuallyExclusiveField)}</div>
+          getField(mutuallyExclusiveField)
         )}
-
-        <Grid>
-          <Grid.Item>{getField(ownerField)}</Grid.Item>
-          <Grid.Item>{getField(domainField)}</Grid.Item>
-        </Grid>
-
+        {getField(ownerField)}
+        {getField(domainField)}
         {autoClassificationComponent && (
           <Suspense fallback={null}>{autoClassificationComponent}</Suspense>
         )}
+        </Box>
       </HookForm>
     </EntityAttachmentProvider>
   );
