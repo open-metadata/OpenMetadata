@@ -40,6 +40,11 @@ public class ColumnMetadataGrouper {
 
     for (Map.Entry<String, List<ColumnWithContext>> entry : columnsByName.entrySet()) {
       String columnName = entry.getKey();
+      if (columnName == null) {
+        // A column with no name isn't a valid grid row (columnName is required in the response);
+        // skip the malformed bucket so we return the remaining valid columns.
+        continue;
+      }
       List<ColumnWithContext> occurrences = entry.getValue();
 
       Map<String, ColumnMetadataGroup> groups = new HashMap<>();
