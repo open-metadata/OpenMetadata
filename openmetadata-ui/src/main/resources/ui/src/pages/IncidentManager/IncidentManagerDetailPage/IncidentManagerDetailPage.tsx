@@ -180,7 +180,7 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase, isDimensionPage, dimensionKey, t]);
+  }, [testCase, testCaseFQN, activeTab, isDimensionPage, dimensionKey, t]);
 
   const breadcrumbItems = useMemo(
     () =>
