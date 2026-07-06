@@ -37,3 +37,33 @@ export interface SummaryPieChartCardProps {
     className?: string;
   };
 }
+
+export enum TestSummaryCardKey {
+  TotalTests = 'total-tests',
+  Healthy = 'healthy',
+  Coverage = 'coverage',
+}
+
+export enum TestSummarySegmentId {
+  Success = 'success',
+  Aborted = 'aborted',
+  Failed = 'failed',
+  Healthy = 'healthy',
+  Unhealthy = 'unhealthy',
+  Covered = 'covered',
+  Uncovered = 'uncovered',
+}
+
+export interface TestSummarySegment {
+  id: TestSummarySegmentId;
+  name: string;
+  value: number;
+}
+
+export interface TestSummaryCard {
+  key: TestSummaryCardKey;
+  title: string;
+  value: number;
+  percentage: number | string;
+  segments: TestSummarySegment[];
+}

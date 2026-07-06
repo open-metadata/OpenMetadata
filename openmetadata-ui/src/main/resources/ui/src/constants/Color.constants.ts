@@ -55,6 +55,12 @@ export const GRAY_600 = '#535862';
 export const COLOR_GREY_400 = '#98A2B3';
 export const COLOR_GREY_300 = '#D0D5DD';
 
+// Data Quality dashboard chart palette (2.0 redesign shades)
+export const DQ_CHART_SUCCESS_COLOR = '#17b26a';
+export const DQ_CHART_WARNING_COLOR = '#f79009';
+export const DQ_CHART_FAILED_COLOR = '#cb5a50';
+export const DQ_CHART_BLUE_COLOR = '#1570ef';
+
 export const SEVERITY_COLORS: Record<string, { bg: string; color: string }> = {
   Severity1: {
     bg: 'rgba(222, 57, 49, 0.1)',
