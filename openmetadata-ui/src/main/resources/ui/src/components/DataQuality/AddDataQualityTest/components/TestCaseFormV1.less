@@ -268,3 +268,48 @@
     }
   }
 }
+
+// Classic drawer only: compact the core-components controls to match the
+// legacy antd form (~32px controls, 4px radius, medium gray labels, no
+// leading search icon). The AI modal keeps design-system defaults.
+.drawer-content-wrapper {
+  .test-case-form-v1,
+  .bundle-suite-form {
+    [data-testid='form-item-label'] {
+      color: @grey-700;
+      font-weight: @font-medium;
+    }
+
+    // Overlay the Custom Query action on the Select Test Type label row,
+    // like the legacy absolute-positioned header row.
+    .test-type-card {
+      position: relative;
+
+      .custom-test-type-container {
+        position: absolute;
+        top: @size-md;
+        left: @size-md;
+        right: @size-md;
+        z-index: 1;
+        margin: 0;
+      }
+
+      .custom-test-type-container + * {
+        margin-top: 0;
+      }
+    }
+
+    div[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
+    button[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
+    [role='group'][data-rac] {
+      border-radius: 4px;
+      padding-top: 4px;
+      padding-bottom: 4px;
+      min-height: 32px;
+    }
+
+    [role='group'][data-rac] > svg:first-child {
+      display: none;
+    }
+  }
+}
