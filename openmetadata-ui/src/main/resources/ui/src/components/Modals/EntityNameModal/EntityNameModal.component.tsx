@@ -10,12 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Modal, Typography } from 'antd';
+import {
+  Button,
+  Dialog,
+  InputBase,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
+import { TextField as AriaTextField } from 'react-aria-components';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
-import SanitizedInput from '../../common/SanitizedInput/SanitizedInput';
-import { EntityName, EntityNameModalProps } from './EntityNameModal.interface';
+import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import {
+  EntityName,
+  EntityNameModalProps,
+  EntityNameValidationRule,
+} from './EntityNameModal.interface';
+
+const buildValidate =
+  (rules: EntityNameValidationRule[] = []) =>
+  (value: string | undefined): string | true => {
+    const v = value ?? '';
+    for (const rule of rules) {
+      if (rule.min !== undefined && v.length < rule.min) {
+        return rule.message ?? '';
+      }
+      if (rule.max !== undefined && v.length > rule.max) {
+        return rule.message ?? '';
+      }
+      if (rule.pattern && !rule.pattern.test(v)) {
+        return rule.message ?? '';
+      }
+    }
+
+    return true;
+  };
+
+interface SanitizedFieldProps {
+  id: string;
+  value: string;
+  onChange: (val: string) => void;
+  isDisabled?: boolean;
+  isInvalid?: boolean;
+  placeholder?: string;
+}
+
+/**
+ * Wraps InputBase in an AriaTextField to get proper onChange(string) handling.
+ * The id prop flows through AriaTextField → InputContext → AriaInput → <input id={id}>.
+ * The AriaTextField wrapper div does NOT receive the id (deleted from DOMProps).
+ */
+const SanitizedField = ({
+  id,
+  value,
+  onChange,
+  isDisabled,
+  isInvalid,
+  placeholder,
+}: SanitizedFieldProps) => (
+  <AriaTextField
+    id={id}
+    isDisabled={isDisabled}
+    isInvalid={isInvalid}
+    value={value}
+    onChange={(val) => onChange(getSanitizeContent(val))}>
+    <InputBase
+      inputDataTestId={id}
+      isDisabled={isDisabled}
+      isInvalid={isInvalid}
+      placeholder={placeholder}
+    />
+  </AriaTextField>
+);
 
 const EntityNameModal = <T extends EntityName>({
   visible,
@@ -31,84 +100,142 @@ const EntityNameModal = <T extends EntityName>({
   displayNameValidationRules = [],
 }: EntityNameModalProps<T>) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave: FormProps['onFinish'] = async (obj) => {
+  const { control, handleSubmit, reset } = useForm<EntityName>({
+    defaultValues: {
+      name: entity.name,
+      displayName: entity.displayName ?? '',
+    },
+  });
+
+  useEffect(() => {
+    if (visible) {
+      reset({
+        name: entity.name,
+        displayName: entity.displayName ?? '',
+      });
+    }
+  }, [visible, entity, reset]);
+
+  const onSubmit = async (data: EntityName) => {
     setIsLoading(true);
-    await form.validateFields();
-    // Error must be handled by the parent component
-    await onSave(obj);
+    await onSave(data as T);
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    form.setFieldsValue(entity);
-  }, [visible]);
-
   return (
-    <Modal
-      destroyOnClose
-      closable={false}
-      footer={[
-        <Button key="cancel-btn" type="link" onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save-button"
-          key="save-btn"
-          loading={isLoading}
-          type="primary"
-          onClick={() => form.submit()}>
-          {t('label.save')}
-        </Button>,
-      ]}
-      maskClosable={false}
-      okText={t('label.save')}
-      open={visible}
-      title={
-        <Typography.Text strong data-testid="header">
-          {title}
-        </Typography.Text>
-      }
-      wrapProps={{
-        'data-react-aria-top-layer': 'true',
-      }}
-      onCancel={onCancel}>
-      <Form form={form} layout="vertical" onFinish={handleSave}>
-        <Form.Item
-          label={t('label.name')}
-          name="name"
-          rules={[
-            {
-              required: true,
-              message: `${t('label.field-required', {
-                field: t('label.name'),
-              })}`,
-            },
-            {
-              pattern: ENTITY_NAME_REGEX,
-              message: t('message.entity-name-validation'),
-            },
-            ...nameValidationRules,
-          ]}>
-          <SanitizedInput
-            disabled={!allowRename}
-            placeholder={t('label.enter-entity-name', {
-              entity: t('label.glossary'),
-            })}
-          />
-        </Form.Item>
-        <Form.Item
-          label={t('label.display-name')}
-          name="displayName"
-          rules={displayNameValidationRules}>
-          <SanitizedInput placeholder={t('message.enter-display-name')} />
-        </Form.Item>
+    <ModalOverlay
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog width={520}>
+          <Dialog.Header>
+            <Typography
+              as="h3"
+              className="tw:text-md tw:font-semibold tw:text-primary"
+              data-testid="header">
+              {title}
+            </Typography>
+          </Dialog.Header>
+          <Dialog.Content>
+            <form
+              className="tw:flex tw:flex-col tw:gap-4"
+              onSubmit={handleSubmit(onSubmit)}>
+              <div className="tw:flex tw:flex-col tw:gap-1.5">
+                <label
+                  className="tw:text-sm tw:font-medium tw:text-secondary"
+                  htmlFor="name">
+                  {t('label.name')}
+                </label>
+                <Controller
+                  control={control}
+                  name="name"
+                  rules={{
+                    required: `${t('label.field-required', {
+                      field: t('label.name'),
+                    })}`,
+                    pattern: {
+                      value: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                    validate: buildValidate(nameValidationRules),
+                  }}
+                  render={({ field, fieldState }) => (
+                    <>
+                      <SanitizedField
+                        id="name"
+                        isDisabled={!allowRename}
+                        isInvalid={!!fieldState.error}
+                        placeholder={t('label.enter-entity-name', {
+                          entity: t('label.glossary'),
+                        })}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                      {fieldState.error && (
+                        <span
+                          className="tw:text-sm tw:text-error-primary"
+                          id="name_help">
+                          {fieldState.error.message}
+                        </span>
+                      )}
+                    </>
+                  )}
+                />
+              </div>
 
-        {additionalFields}
-      </Form>
-    </Modal>
+              <div className="tw:flex tw:flex-col tw:gap-1.5">
+                <label
+                  className="tw:text-sm tw:font-medium tw:text-secondary"
+                  htmlFor="displayName">
+                  {t('label.display-name')}
+                </label>
+                <Controller
+                  control={control}
+                  name="displayName"
+                  rules={{
+                    validate: buildValidate(displayNameValidationRules),
+                  }}
+                  render={({ field, fieldState }) => (
+                    <>
+                      <SanitizedField
+                        id="displayName"
+                        isInvalid={!!fieldState.error}
+                        placeholder={t('message.enter-display-name')}
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                      />
+                      {fieldState.error && (
+                        <span className="tw:text-sm tw:text-error-primary">
+                          {fieldState.error.message}
+                        </span>
+                      )}
+                    </>
+                  )}
+                />
+              </div>
+
+              {additionalFields}
+            </form>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" size="md" onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save-button"
+              isLoading={isLoading}
+              size="md"
+              onClick={handleSubmit(onSubmit)}>
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 
