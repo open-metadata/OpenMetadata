@@ -31,6 +31,8 @@ import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 type TagSelectItem = SelectItemType & { labelColor?: string };
 
+const NO_DATA_OPTION_ID = '__no-data__';
+
 export type SelectOption = {
   label: string;
   value: string;
@@ -140,6 +142,9 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
 
   const handleItemInserted = useCallback(
     (key: string | number) => {
+      if (String(key) === NO_DATA_OPTION_ID) {
+        return;
+      }
       const tagData = tagDataMap.current.get(String(key));
       const existingTag = value.find((tag) => tag.tagFQN === String(key));
       const newTag: EntityTags = existingTag ?? {
@@ -165,12 +170,20 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [value, onChange]
   );
 
+  const displayOptions = useMemo<TagSelectItem[]>(
+    () =>
+      options.length > 0
+        ? options
+        : [{ id: NO_DATA_OPTION_ID, label: t('label.no-data') }],
+    [options, t]
+  );
+
   return (
     <div data-testid="tag-suggestion">
       <Autocomplete
         filterOption={() => true}
         isRequired={required}
-        items={options}
+        items={displayOptions}
         label={label}
         placeholder={
           placeholder ??
@@ -202,6 +215,23 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
         onSearchChange={handleSearchChange}>
         {(item) => {
           const tagItem = item as TagSelectItem;
+
+          if (tagItem.id === NO_DATA_OPTION_ID) {
+            return (
+              <Autocomplete.Item
+                isDisabled
+                data-testid="no-data-option"
+                id={NO_DATA_OPTION_ID}
+                key={NO_DATA_OPTION_ID}
+                label={tagItem.label}>
+                {() => (
+                  <span className="tw:text-sm tw:text-tertiary">
+                    {tagItem.label}
+                  </span>
+                )}
+              </Autocomplete.Item>
+            );
+          }
 
           return (
             <Autocomplete.Item
