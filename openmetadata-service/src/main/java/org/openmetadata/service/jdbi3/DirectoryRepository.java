@@ -250,12 +250,15 @@ public class DirectoryRepository extends EntityRepository<Directory> {
       return;
     }
     fetchAndSetDefaultService(entities);
-    fetchAndSetParents(entities, fields);
+    fetchAndSetParents(entities);
     fetchAndSetStatistics(entities, fields);
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
     for (Directory entity : entities) {
       clearFieldsInternal(entity, fields);
+      if (!fields.contains(FIELD_PARENT)) {
+        entity.withParent(null);
+      }
     }
   }
 
@@ -264,10 +267,12 @@ public class DirectoryRepository extends EntityRepository<Directory> {
     directories.forEach(directory -> directory.withService(serviceMap.get(directory.getId())));
   }
 
-  private void fetchAndSetParents(List<Directory> directories, EntityUtil.Fields fields) {
-    if (!fields.contains(FIELD_PARENT)) {
-      return;
-    }
+  /**
+   * Parent is always resolved (not only when requested): setInheritedFields needs it to inherit a
+   * nested directory's domain from its parent directory instead of the drive service, matching the
+   * single-entity setFields path. It is nulled out after inheritance if not requested.
+   */
+  private void fetchAndSetParents(List<Directory> directories) {
     Map<UUID, EntityReference> parentMap = batchFetchFromByType(directories, DIRECTORY);
     directories.forEach(directory -> directory.withParent(parentMap.get(directory.getId())));
   }
