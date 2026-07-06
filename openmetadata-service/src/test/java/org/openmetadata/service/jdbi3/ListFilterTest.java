@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 
 class ListFilterTest {
   @Test
@@ -357,5 +358,44 @@ class ListFilterTest {
   void test_getTaskCreatedAtRangeCondition_absentWhenNoParams() {
     String condition = new ListFilter().getCondition("task_entity");
     assertFalse(condition.contains("createdAt"), condition);
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdAbsent() {
+    assertEquals("", new ListFilter(Include.ALL).getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdBlank() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "");
+    assertEquals("", filter.getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_buildsParameterizedContainsSubquery() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "folder-123");
+
+    String expected =
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = "
+            + Relationship.CONTAINS.ordinal()
+            + "))";
+
+    assertEquals(expected, filter.getFolderCondition());
+    assertEquals("folder-123", filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_getFolderCondition_folderIdIsNotInlined_soNoInjection() {
+    String hostile = "x') OR 1=1 --";
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", hostile);
+
+    String condition = filter.getFolderCondition();
+    assertFalse(condition.contains("OR 1=1"), condition);
+    assertTrue(condition.contains(":folderIdParam"), condition);
+    assertEquals(hostile, filter.getQueryParam("folderIdParam"));
   }
 }

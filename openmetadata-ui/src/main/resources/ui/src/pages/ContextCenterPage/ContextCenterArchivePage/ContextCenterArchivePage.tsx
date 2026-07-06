@@ -78,6 +78,7 @@ const ContextCenterArchivePage: FC = () => {
         id: file.id,
         name: getEntityName(file),
         type: 'document' as const,
+        fileExtension: file.fileExtension,
         updatedBy: file.updatedBy,
         updatedAt: file.updatedAt,
       }));
@@ -158,15 +159,11 @@ const ContextCenterArchivePage: FC = () => {
       <ContextCenterHeader
         breadcrumbs={[
           {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
             label: t('label.archive'),
           },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.context-center-archive-subtitle')}
+        subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
       <div className="tw:pb-5">

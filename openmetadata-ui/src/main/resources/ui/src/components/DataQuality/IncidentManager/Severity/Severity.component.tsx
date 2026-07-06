@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
@@ -71,25 +71,29 @@ const Severity = ({
 
   if (headerName) {
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-2">
-          <span className="font-medium text-blue text-sm">{headerName}</span>
+      <div className="tw:flex tw:flex-col tw:gap-1.5">
+        <div className="tw:flex tw:items-center tw:gap-1">
+          <Typography
+            as="span"
+            className="tw:whitespace-nowrap tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {headerName}
+          </Typography>
           {onSubmit && hasEditPermission && (
-            <Tooltip
+            <EditIconButton
+              data-testid="edit-severity-icon"
+              icon={<EditIcon width="12px" />}
+              newLook={newLook}
+              size="small"
               title={t('label.edit-entity', {
                 entity: t('label.severity'),
-              })}>
-              <EditIconButton
-                data-testid="edit-severity-icon"
-                icon={<EditIcon width="14px" />}
-                newLook={newLook}
-                size="small"
-                onClick={onEditSeverity}
-              />
-            </Tooltip>
+              })}
+              onClick={onEditSeverity}
+            />
           )}
         </div>
-        <Space align="center">
+        <div className="tw:flex tw:items-center">
           {severity ? (
             <AppBadge
               className={classNames('severity', toLower(severity))}
@@ -98,7 +102,7 @@ const Severity = ({
           ) : (
             NO_DATA_PLACEHOLDER
           )}
-        </Space>
+        </div>
 
         {isEditSeverity && (
           <SeverityModal
@@ -113,7 +117,7 @@ const Severity = ({
 
   return (
     <>
-      <Space align="center">
+      <div className="tw:flex tw:items-center tw:gap-2">
         {severity ? (
           <AppBadge
             className={classNames('severity', toLower(severity))}
@@ -135,7 +139,7 @@ const Severity = ({
             onClick={onEditSeverity}
           />
         )}
-      </Space>
+      </div>
 
       {isEditSeverity && (
         <SeverityModal

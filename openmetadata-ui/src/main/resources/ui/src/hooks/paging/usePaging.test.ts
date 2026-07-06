@@ -18,6 +18,12 @@ import { usePaging } from './usePaging';
 const mockPageSize = PAGE_SIZE_BASE;
 const mockSetPreference = jest.fn();
 const mockSetFilters = jest.fn();
+const mockUrlParams = {
+  cursorType: undefined,
+  cursorValue: undefined,
+  currentPage: '1',
+  pageSize: String(mockPageSize),
+};
 
 jest.mock('../currentUserStore/useCurrentUserStore', () => ({
   useCurrentUserPreferences: jest.fn(() => ({
@@ -30,12 +36,7 @@ jest.mock('../currentUserStore/useCurrentUserStore', () => ({
 
 jest.mock('../useTableFilters', () => ({
   useTableFilters: jest.fn(() => ({
-    filters: {
-      cursorType: undefined,
-      cursorValue: undefined,
-      currentPage: '1',
-      pageSize: String(mockPageSize),
-    },
+    filters: mockUrlParams,
     setFilters: mockSetFilters,
   })),
 }));
@@ -43,6 +44,8 @@ jest.mock('../useTableFilters', () => ({
 describe('usePaging', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUrlParams.currentPage = '1';
+    mockUrlParams.pageSize = String(mockPageSize);
   });
 
   it('shows pagination when cursor paging is available without a total count', () => {
@@ -56,5 +59,20 @@ describe('usePaging', () => {
     });
 
     expect(result.current.showPagination).toBe(true);
+  });
+
+  it('syncs pagination state when url paging params are updated externally', () => {
+    const { result, rerender } = renderHook(() => usePaging());
+
+    expect(result.current.currentPage).toBe(1);
+    expect(result.current.pageSize).toBe(mockPageSize);
+
+    mockUrlParams.currentPage = '3';
+    mockUrlParams.pageSize = '25';
+
+    rerender();
+
+    expect(result.current.currentPage).toBe(3);
+    expect(result.current.pageSize).toBe(25);
   });
 });
