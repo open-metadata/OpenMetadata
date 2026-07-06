@@ -71,10 +71,15 @@ def list_buckets(client: BaseClient) -> Evidence:
 
 
 def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
-    """Prove each configured bucket exists and its objects can be listed."""
+    """Prove each configured bucket exists and its objects can be listed.
+
+    The probe only needs access to be granted, not the contents, so it caps the
+    listing at a single key - a large bucket must not turn a connection test into
+    an expensive full enumeration.
+    """
     for bucket in buckets:
         try:
-            client.list_objects(Bucket=bucket)  # pyright: ignore[reportAttributeAccessIssue]
+            client.list_objects(Bucket=bucket, MaxKeys=1)  # pyright: ignore[reportAttributeAccessIssue]
         except Exception as cause:
             raise CheckError(cause, Evidence(command=f"s3:ListBucket ({bucket})")) from cause
     return Evidence(
@@ -95,7 +100,7 @@ def list_metrics(client: BaseClient, namespace: str) -> Evidence:
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     metrics = response.get("Metrics", [])
-    return Evidence(
-        summary=f"{_count(len(metrics), 'metric')} visible in namespace '{namespace}'",
-        command=command,
-    )
+    summary = f"{_count(len(metrics), 'metric')} visible in namespace '{namespace}'"
+    if response.get("NextToken"):
+        summary += " (first page; more exist)"
+    return Evidence(summary=summary, command=command)

@@ -97,8 +97,8 @@ def test_check_buckets_probes_each_configured_bucket():
     evidence = _checks(client, bucket_names=["one", "two"]).check_buckets()
 
     assert evidence.summary == "2 configured buckets accessible"
-    client.s3_client.list_objects.assert_any_call(Bucket="one")
-    client.s3_client.list_objects.assert_any_call(Bucket="two")
+    client.s3_client.list_objects.assert_any_call(Bucket="one", MaxKeys=1)
+    client.s3_client.list_objects.assert_any_call(Bucket="two", MaxKeys=1)
     client.s3_client.list_buckets.assert_not_called()
 
 
@@ -122,6 +122,15 @@ def test_get_metrics_lists_the_s3_namespace():
 
     assert evidence.summary == "1 metric visible in namespace 'AWS/S3'"
     client.cloudwatch_client.list_metrics.assert_called_once_with(Namespace="AWS/S3")
+
+
+def test_get_metrics_flags_truncated_results():
+    client = MagicMock()
+    client.cloudwatch_client.list_metrics.return_value = {"Metrics": [{}], "NextToken": "more"}
+
+    evidence = _checks(client).get_metrics()
+
+    assert "first page; more exist" in evidence.summary
 
 
 def _client_error(code: str, operation: str) -> ClientError:
