@@ -252,7 +252,7 @@ const DeleteEntityModal = ({
               {t('label.delete')} &quot;{entityName}&quot; {entityTypeName}
             </Typography>
           </Dialog.Header>
-          <Dialog.Content>
+          <Dialog.Content className="tw:pt-4 tw:px-4 tw:sm:px-4">
             <RadioGroup
               size="md"
               value={deletionType}
@@ -268,9 +268,23 @@ const DeleteEntityModal = ({
                     )
                   }
                   data-testid={option.type}
-                  hint={option.description}
+                  hint={
+                    <Typography
+                      as="span"
+                      className="tw:text-tertiary"
+                      size="text-sm">
+                      {option.description}
+                    </Typography>
+                  }
                   key={option.type}
-                  label={option.title}
+                  label={
+                    <Typography
+                      as="span"
+                      className="tw:text-primary"
+                      size="text-sm">
+                      {option.title}
+                    </Typography>
+                  }
                   size="md"
                   value={option.type}
                 />
