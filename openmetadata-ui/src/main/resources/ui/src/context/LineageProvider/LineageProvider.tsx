@@ -2225,10 +2225,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               }
             }}>
             <Modal>
-              <Dialog
-                data-testid="delete-edge-confirmation-modal"
-                width={400}
-                onClose={() => setShowDeleteModal(false)}>
+              <Dialog data-testid="delete-edge-confirmation-modal" width={400}>
                 <Dialog.Header title={t('message.remove-lineage-edge')} />
                 <Dialog.Content>
                   {getModalBodyText(selectedEdge as Edge)}

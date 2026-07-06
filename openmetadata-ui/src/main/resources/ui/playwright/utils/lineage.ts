@@ -192,7 +192,7 @@ export const deleteEdge = async (
     .locator(
       '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
     )
-    .dispatchEvent('click');
+    .click();
   await deleteRes;
 };
 
@@ -616,7 +616,7 @@ export const removeColumnLineage = async (
     .locator(
       '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
     )
-    .dispatchEvent('click');
+    .click();
   await deleteRes;
 
   await editLineageClick(page);
