@@ -25,7 +25,11 @@ import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import {
+  redirectToHomePage,
+  uuid,
+  waitForMetricsSearchResponse,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
 import { test } from '../fixtures/pages';
@@ -198,7 +202,10 @@ const parseResponse = async <T>(
 const getNameSuffix = () => uuid().replaceAll('-', '_').slice(0, 12);
 
 const createEntityReference = (
-  entity: EntityReference,
+  entity: Pick<
+    EntityReference,
+    'displayName' | 'fullyQualifiedName' | 'id' | 'name'
+  >,
   type: string
 ): EntityReference => ({
   id: entity.id,
@@ -532,11 +539,7 @@ const cleanupFixtures = async () => {
 };
 
 const waitForMetricsPage = async (page: Page) => {
-  const metricsResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/metrics?') &&
-      response.request().method() === 'GET'
-  );
+  const metricsResponse = waitForMetricsSearchResponse(page);
   await page.goto('/metrics');
   await metricsResponse;
   await waitForAllLoadersToDisappear(page);

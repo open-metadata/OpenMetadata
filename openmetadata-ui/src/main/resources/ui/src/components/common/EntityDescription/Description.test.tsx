@@ -43,8 +43,8 @@ jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test.fqn' }),
 }));
 
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskNavigationUtils'),
   getRequestDescriptionPath: jest.fn().mockReturnValue('/request-path'),
   getUpdateDescriptionPath: jest.fn().mockReturnValue('/update-path'),
 }));
@@ -98,8 +98,13 @@ jest.mock('./EntityAttachmentProvider/EntityAttachmentProvider', () => ({
 jest.mock('../DescriptionSourceBadge/DescriptionSourceBadge', () =>
   jest
     .fn()
-    .mockImplementation(({ showBadge }) =>
-      showBadge === false ? <div data-testid="authored-by-footer" /> : null
+    .mockImplementation(({ showBadge, changeSummaryEntry }) =>
+      showBadge === false ? (
+        <div
+          data-changed-by={changeSummaryEntry?.changedBy}
+          data-testid="authored-by-footer"
+        />
+      ) : null
     )
 );
 
@@ -329,6 +334,54 @@ describe('Description', () => {
     render(<Description {...defaultProps} />);
 
     expect(screen.queryByTestId('authored-by-footer')).not.toBeInTheDocument();
+  });
+
+  it('should render the authored-by footer from the explicit changeSummaryEntry prop', () => {
+    render(
+      <Description
+        {...defaultProps}
+        changeSummaryEntry={{
+          changeSource: ChangeSource.Manual,
+          changedBy: 'prop-author',
+          changedAt: 1783100000000,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('authored-by-footer')).toHaveAttribute(
+      'data-changed-by',
+      'prop-author'
+    );
+  });
+
+  it('should prefer the explicit changeSummaryEntry prop over the provider change summary', () => {
+    mockUseGenericContext.mockReturnValue({
+      isVersionView: false,
+      changeSummary: {
+        description: {
+          changeSource: ChangeSource.Manual,
+          changedBy: 'context-author',
+          changedAt: 1700000000000,
+        },
+      },
+      onThreadLinkSelect: mockOnThreadLinkSelect,
+    });
+
+    render(
+      <Description
+        {...defaultProps}
+        changeSummaryEntry={{
+          changeSource: ChangeSource.Manual,
+          changedBy: 'prop-author',
+          changedAt: 1783100000000,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('authored-by-footer')).toHaveAttribute(
+      'data-changed-by',
+      'prop-author'
+    );
   });
 
   it('should pass the truncation class to the previewer when reduceDescription is set', () => {

@@ -158,7 +158,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     />
   );
 
-  return { Alert, Box, Button, Card, Divider, Dropdown, Toggle, Typography };
+  const PaginationCardWithControls = () => (
+    <div data-testid="explore-pagination" />
+  );
+
+  return {
+    Alert,
+    Box,
+    Button,
+    Card,
+    Divider,
+    Dropdown,
+    PaginationCardWithControls,
+    Toggle,
+    Typography,
+  };
 });
 
 jest.mock('@untitledui/icons', () => ({
@@ -248,6 +262,7 @@ jest.mock(
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     })),
   })
@@ -362,6 +377,7 @@ const onChangeSortOder = jest.fn();
 const onChangeSortValue = jest.fn();
 const onChangeShowDeleted = jest.fn();
 const onChangePage = jest.fn();
+const onChangePageSize = jest.fn();
 
 const props = {
   aggregations: {},
@@ -394,6 +410,7 @@ const props = {
   onChangeShowDeleted: onChangeShowDeleted,
   showDeleted: false,
   onChangePage: onChangePage,
+  onChangePageSize: onChangePageSize,
   loading: false,
   quickFilters: {
     query: {
@@ -436,10 +453,12 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe('ExploreV1', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.location.search = '';
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     }));
     (searchQuery as jest.Mock).mockResolvedValue({
@@ -457,10 +476,24 @@ describe('ExploreV1', () => {
     expect(screen.getByText('ExploreTree')).toBeInTheDocument();
   });
 
+  it('normalizes out-of-range current page to the last available page', async () => {
+    render(<ExploreV1 {...props} currentPage={999} pageSize={10} />, {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(onChangePage).toHaveBeenCalledWith(2);
+    });
+  });
+
   it('does not render the toolbar Clear All when no filters are active', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('explore-query-filter-chips')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
   });
 
   it('uses the query-panel Clear action when a browse filter is active', () => {
@@ -482,21 +515,43 @@ describe('ExploreV1', () => {
     expect(screen.getByTestId('clear-all-chips')).toBeInTheDocument();
   });
 
-  it('shows query-panel Clear for an advanced-search-only filter', () => {
+  it('shows query-panel empty text for an advanced-search-only filter', () => {
     const onResetAllFilters = jest.fn();
     (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
       toggleModal: jest.fn(),
       sqlQuery: 'serviceType = BigQuery',
       queryFilter: { query: { bool: { must: [] } } },
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters,
     }));
 
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('clear-all-chips'));
-
+    expect(
+      screen.getByTestId('explore-query-filter-chips')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('query-bar-empty-text')).toBeInTheDocument();
     expect(screen.queryByTestId('clear-filters')).not.toBeInTheDocument();
-    expect(onResetAllFilters).toHaveBeenCalledTimes(1);
+    expect(onResetAllFilters).not.toHaveBeenCalled();
+  });
+
+  it('clears only advanced search when advanced search filter is cleared', () => {
+    const onResetQueryFilter = jest.fn();
+    const onResetAllFilters = jest.fn();
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => ({
+      toggleModal: jest.fn(),
+      sqlQuery: 'serviceType = BigQuery',
+      queryFilter: { query: { bool: { must: [] } } },
+      onResetQueryFilter,
+      onResetAllFilters,
+    }));
+
+    render(<ExploreV1 {...props} />, { wrapper: Wrapper });
+
+    fireEvent.click(screen.getByTestId('advance-search-clear-btn'));
+
+    expect(onResetQueryFilter).toHaveBeenCalledTimes(1);
+    expect(onResetAllFilters).not.toHaveBeenCalled();
   });
 
   it('changes sort order when sort button is clicked', () => {
@@ -638,6 +693,7 @@ describe('ExploreV1', () => {
       toggleModal: jest.fn(),
       sqlQuery: '',
       queryFilter: undefined,
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     });
 
@@ -659,6 +715,7 @@ describe('ExploreV1', () => {
       queryFilter: {
         query: { bool: { must: [{ term: { 'owner.name': 'alice' } }] } },
       },
+      onResetQueryFilter: jest.fn(),
       onResetAllFilters: jest.fn(),
     }));
 

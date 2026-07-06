@@ -73,10 +73,13 @@ const Description = ({
   showSuggestions = false,
   isDescriptionExpanded,
   entityFullyQualifiedName,
+  changeSummaryEntry,
 }: DescriptionProps) => {
   const navigate = useNavigate();
   const { isVersionView, changeSummary, onThreadLinkSelect } =
     useGenericContext<Domain>();
+  const descriptionChangeSummary =
+    changeSummaryEntry ?? changeSummary?.['description'];
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -242,8 +245,8 @@ const Description = ({
   ]);
 
   const shouldShowDescriptionMetadata = useMemo(
-    () => changeSummary?.['description']?.changeSource != null,
-    [changeSummary]
+    () => descriptionChangeSummary?.changeSource != null,
+    [descriptionChangeSummary]
   );
 
   const header = (
@@ -257,7 +260,7 @@ const Description = ({
           {t('label.description')}
         </Typography>
         <DescriptionSourceBadge
-          changeSummaryEntry={changeSummary?.['description']}
+          changeSummaryEntry={descriptionChangeSummary}
           showAcceptedBy={false}
           showTimestamp={false}
         />
@@ -285,7 +288,7 @@ const Description = ({
           <>
             <Divider />
             <DescriptionSourceBadge
-              changeSummaryEntry={changeSummary?.['description']}
+              changeSummaryEntry={descriptionChangeSummary}
               showBadge={false}
             />
           </>

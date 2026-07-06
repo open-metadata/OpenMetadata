@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -275,5 +281,52 @@ describe('AlertDetailsPage', () => {
       }),
       expect.anything()
     );
+  });
+
+  it('should refetch alert details when fqn prop changes', async () => {
+    const getObservabilityAlertByFQNSpy = jest.spyOn(
+      ObservabilityAPIs,
+      'getObservabilityAlertByFQN'
+    );
+    const getAlertEventsDiagnosticsInfoSpy = jest.spyOn(
+      ObservabilityAPIs,
+      'getAlertEventsDiagnosticsInfo'
+    );
+
+    const { rerender } = render(
+      <AlertDetailsPage fqn="firstAlert" isNotificationAlert={false} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    await waitFor(() => {
+      expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith('firstAlert', {
+        fields: 'owners',
+      });
+    });
+
+    expect(getAlertEventsDiagnosticsInfoSpy).toHaveBeenCalledWith({
+      fqn: 'firstAlert',
+      listCountOnly: true,
+    });
+
+    rerender(
+      <AlertDetailsPage fqn="secondAlert" isNotificationAlert={false} />
+    );
+
+    await waitFor(() => {
+      expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith(
+        'secondAlert',
+        {
+          fields: 'owners',
+        }
+      );
+    });
+
+    expect(getAlertEventsDiagnosticsInfoSpy).toHaveBeenCalledWith({
+      fqn: 'secondAlert',
+      listCountOnly: true,
+    });
   });
 });

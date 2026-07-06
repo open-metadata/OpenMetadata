@@ -508,6 +508,41 @@ class RdfIndexAppTest {
         assertEquals(Set.of("table"), emptySelection);
       }
     }
+
+    @Test
+    @DisplayName("Should never index entity types excluded from RDF even when repository-backed")
+    void testResolveEntityTypesSkipsExcludedEntities() throws Exception {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        EntityRepository<?> mockRepository = mock(EntityRepository.class);
+        entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepository);
+
+        var method = RdfIndexApp.class.getDeclaredMethod("resolveEntityTypes", Set.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Set<String> result = (Set<String>) method.invoke(rdfIndexApp, Set.of("table", "aiChart"));
+
+        assertEquals(Set.of("table"), result);
+      }
+    }
+
+    @Test
+    @DisplayName("Should exclude RDF-excluded entity types when expanding the full entity list")
+    void testResolveEntityTypesExcludesExcludedEntitiesFromAll() throws Exception {
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        EntityRepository<?> mockRepository = mock(EntityRepository.class);
+        entityMock.when(Entity::getEntityList).thenReturn(Set.of("table", "aiChart"));
+        entityMock.when(() -> Entity.getEntityRepository("table")).thenReturn(mockRepository);
+
+        var method = RdfIndexApp.class.getDeclaredMethod("resolveEntityTypes", Set.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Set<String> result = (Set<String>) method.invoke(rdfIndexApp, Set.of());
+
+        assertEquals(Set.of("table"), result);
+      }
+    }
   }
 
   @Nested

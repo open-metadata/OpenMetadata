@@ -13,52 +13,19 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { Tooltip } from 'antd';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import chunk from 'lodash/chunk';
 import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import startCase from 'lodash/startCase';
-import toString from 'lodash/toString';
-import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 
-import { EntityTags } from 'Models';
-import { useParams } from 'react-router-dom';
-import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
-import { EntityField } from '../../../../constants/Feeds.constants';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../../generated/entity/policies/policy';
-import {
-  ChangeDescription,
-  TagLabel,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
-import { TestDefinition } from '../../../../generated/tests/testDefinition';
-import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import {
-  getTestDefinitionById,
-  updateTestCaseById,
-} from '../../../../rest/testAPI';
-import {
-  getComputeRowCountDiffDisplay,
-  getParameterValueDiffDisplay,
-} from '../../../../utils/EntityVersionUtils';
-import { VersionEntityTypes } from '../../../../utils/EntityVersionUtils.interface';
-import {
-  getEntityVersionByField,
-  getEntityVersionTags,
-} from '../../../../utils/EntityVersionUtilsPure';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
-import {
-  getTagsWithoutTier,
-  getTierTags,
-} from '../../../../utils/TablePureUtils';
-import { createTagObject } from '../../../../utils/TagsPureUtils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import { ChangeDescription } from '../../../../generated/tests/testCase';
+import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import Description from '../../../common/EntityDescription/Description';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
@@ -69,7 +36,10 @@ import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
-import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
+import {
+  ParameterDisplayItem,
+  useTestCaseResultTab,
+} from './useTestCaseResultTab';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
 );
@@ -92,283 +62,38 @@ function ParameterTooltipText({
   );
 }
 
-const TestCaseResultTab = () => {
+const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
     setTestCase,
-    showAILearningBanner,
-    testCasePermission,
-    isTabExpanded,
-  } = useTestCaseStore();
-  const { version } = useParams<{ version: string }>();
-  const isVersionPage = !isUndefined(version);
-  const additionalComponent =
-    testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
-  const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
-  const [testDefinition, setTestDefinition] = useState<TestDefinition>();
-
-  const fetchTestDefinition = useCallback(async () => {
-    if (testCaseData?.testDefinition?.id) {
-      try {
-        const definition = await getTestDefinitionById(
-          testCaseData.testDefinition.id
-        );
-        setTestDefinition(definition);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  }, [testCaseData?.testDefinition?.id]);
-
-  useEffect(() => {
-    fetchTestDefinition();
-  }, [fetchTestDefinition]);
-
-  const showComputeRowCount = useMemo(() => {
-    return (
-      !isUndefined(testCaseData?.computePassedFailedRowCount) &&
-      (testDefinition?.supportsRowLevelPassedFailed ?? false)
-    );
-  }, [
-    testCaseData?.computePassedFailedRowCount,
-    testDefinition?.supportsRowLevelPassedFailed,
-  ]);
-
-  const {
+    isVersionPage,
+    showComputeRowCount,
+    computeRowCountDisplay,
     hasEditPermission,
     hasEditDescriptionPermission,
     hasEditTagsPermission,
     hasEditGlossaryTermsPermission,
-  } = useMemo(() => {
-    return isVersionPage
-      ? {
-          hasEditPermission: false,
-          hasEditDescriptionPermission: false,
-          hasEditTagsPermission: false,
-          hasEditGlossaryTermsPermission: false,
-        }
-      : {
-          hasEditPermission: testCasePermission?.EditAll,
-          hasEditDescriptionPermission:
-            testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditDescription
-            ),
-          hasEditTagsPermission:
-            testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditTags
-            ),
-          hasEditGlossaryTermsPermission:
-            testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditGlossaryTerms
-            ),
-        };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
-
-  const { withSqlParams, withoutSqlParams } = useMemo(() => {
-    const params = testCaseData?.parameterValues ?? [];
-
-    return params.reduce(
-      (result, param) => {
-        if (param.name === 'sqlExpression') {
-          result.withSqlParams.push(param);
-        } else {
-          result.withoutSqlParams.push(param);
-        }
-
-        return result;
-      },
-      { withSqlParams: [], withoutSqlParams: [] } as {
-        withSqlParams: TestCaseParameterValue[];
-        withoutSqlParams: TestCaseParameterValue[];
-      }
-    );
-  }, [testCaseData?.parameterValues]);
-
-  const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    if (!testCaseData) {
-      return;
-    }
-    // Preserve tier tags
-    const tierTag = getTierTags(testCaseData.tags ?? []);
-    const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
-
-    const updatedTestCase = {
-      ...testCaseData,
-      tags: [...(tierTag ? [tierTag] : []), ...(updatedTags ?? [])],
-    };
-    const jsonPatch = compare(testCaseData, updatedTestCase);
-    if (jsonPatch.length) {
-      try {
-        const res = await updateTestCaseById(testCaseData.id ?? '', jsonPatch);
-        setTestCase(res);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    }
-  };
-
-  const handleDataProductsSave = useCallback(
-    async (dataProducts: DataProduct[]) => {
-      if (!testCaseData) {
-        return;
-      }
-
-      const updatedDataProducts = dataProducts.map((dp) => ({
-        id: dp.id ?? '',
-        type: 'dataProduct',
-        name: dp.name,
-        fullyQualifiedName: dp.fullyQualifiedName,
-        displayName: dp.displayName,
-      }));
-
-      const patch = compare(testCaseData, {
-        ...testCaseData,
-        dataProducts: updatedDataProducts,
-      });
-
-      if (patch.length) {
-        try {
-          const res = await updateTestCaseById(testCaseData.id ?? '', patch);
-          setTestCase(res);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
-    },
-    [testCaseData, setTestCase]
-  );
-
-  const handleDescriptionChange = useCallback(
-    async (description: string) => {
-      if (testCaseData) {
-        const updatedTestCase = {
-          ...testCaseData,
-          description,
-        };
-        const jsonPatch = compare(testCaseData, updatedTestCase);
-
-        if (jsonPatch.length) {
-          try {
-            const res = await updateTestCaseById(
-              testCaseData.id ?? '',
-              jsonPatch
-            );
-            setTestCase(res);
-            showSuccessToast(
-              t('server.update-entity-success', {
-                entity: t('label.test-case'),
-              })
-            );
-          } catch (error) {
-            showErrorToast(error as AxiosError);
-          }
-        }
-      }
-    },
-    [testCaseData, updateTestCaseById, setTestCase]
-  );
-
-  const handleCancelParameter = useCallback(
-    () => setIsParameterEdit(false),
-    []
-  );
-
-  const AlertComponent = useMemo(
-    () => testCaseResultTabClassBase.getAlertBanner(),
-    []
-  );
-
-  const description = useMemo(() => {
-    return isVersionPage
-      ? getEntityVersionByField(
-          testCaseData?.changeDescription as ChangeDescription,
-          EntityField.DESCRIPTION,
-          testCaseData?.description
-        )
-      : testCaseData?.description;
-  }, [
-    testCaseData?.changeDescription,
-    testCaseData?.description,
-    isVersionPage,
-  ]);
-
-  const updatedTags = isVersionPage
-    ? getEntityVersionTags(
-        testCaseData as VersionEntityTypes,
-        testCaseData?.changeDescription as ChangeDescription
-      )
-    : getTagsWithoutTier(testCaseData?.tags ?? []);
-
-  const computeRowCountDisplay = useMemo(() => {
-    if (isVersionPage) {
-      return getComputeRowCountDiffDisplay(
-        testCaseData?.changeDescription as ChangeDescription,
-        testCaseData?.computePassedFailedRowCount
-      );
-    }
-
-    return toString(testCaseData?.computePassedFailedRowCount);
-  }, [
-    testCaseData?.changeDescription,
-    testCaseData?.computePassedFailedRowCount,
-    isVersionPage,
-  ]);
-
-  const parameterItems = useMemo(() => {
-    const items: Array<{ label?: string; value: string | React.ReactNode }> =
-      [];
-
-    if (isVersionPage) {
-      // For version page, we'll handle it differently
-      return null;
-    }
-
-    if (testCaseData?.useDynamicAssertion) {
-      items.push({
-        value: (
-          <label
-            className="parameter-value-text tw:inline-flex"
-            data-testid="dynamic-assertion">
-            <StarIcon aria-hidden className="tw:h-3 tw:w-3 tw:mr-1 tw:mt-1" />{' '}
-            {t('label.dynamic-assertion')}
-          </label>
-        ),
-      });
-    } else if (!isEmpty(withoutSqlParams)) {
-      withoutSqlParams.forEach((param) => {
-        items.push({
-          label: param.name ?? '',
-          value: param.value ?? '',
-        });
-      });
-    }
-
-    // Add compute row count to parameters if it should be shown
-    if (showComputeRowCount) {
-      items.push({
-        label: t('label.compute-row-count'),
-        value: computeRowCountDisplay,
-      });
-    }
-
-    return items.length > 0 ? items : null;
-  }, [
-    withoutSqlParams,
-    testCaseData?.useDynamicAssertion,
-    showComputeRowCount,
-    computeRowCountDisplay,
-    isVersionPage,
-  ]);
+    withSqlParams,
+    parameterItems,
+    description,
+    descriptionChangeSummaryEntry,
+    updatedTags,
+    handleTagSelection,
+    handleDataProductsSave,
+    handleDescriptionChange,
+    isParameterEdit,
+    setIsParameterEdit,
+    handleCancelParameter,
+    showAILearningBanner,
+    isTabExpanded,
+    AlertComponent,
+    additionalComponents,
+  } = useTestCaseResultTab();
+  const isSidePanelVisible = showSidePanel ?? isTabExpanded;
 
   const renderParameterRows = useCallback(
-    (items: Array<{ label?: string; value: string | React.ReactNode }>) => {
+    (items: ParameterDisplayItem[]) => {
       if (items.length === 0) {
         return (
           <Typography as="span" className="tw:text-body tw:text-tertiary">
@@ -484,12 +209,13 @@ const TestCaseResultTab = () => {
       data-testid="test-case-result-tab-container">
       <div
         className={`transition-all-200ms ${
-          isTabExpanded ? 'tw:col-span-9' : 'tw:col-span-12'
+          isSidePanelVisible ? 'tw:col-span-9' : 'tw:col-span-12'
         }`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
           <div className="tw:w-full">
             <Description
               wrapInCard
+              changeSummaryEntry={descriptionChangeSummaryEntry}
               description={description}
               entityType={EntityType.TEST_CASE}
               hasEditAccess={hasEditDescriptionPermission}
@@ -585,8 +311,8 @@ const TestCaseResultTab = () => {
             </div>
           )}
 
-          {!isEmpty(additionalComponent) &&
-            additionalComponent.map(({ Component, id }) => (
+          {!isEmpty(additionalComponents) &&
+            additionalComponents.map(({ Component, id }) => (
               <Component key={id} testCaseData={testCaseData} />
             ))}
 
@@ -601,7 +327,7 @@ const TestCaseResultTab = () => {
           )}
         </div>
       </div>
-      {isTabExpanded && (
+      {isSidePanelVisible && (
         <div className="transition-all-200ms tw:col-span-3">
           <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
             <div className="tw:w-full">
