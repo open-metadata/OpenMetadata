@@ -24,7 +24,7 @@ from metadata.ingestion.models.topology import (
 from metadata.ingestion.source.database.database_service import (
     DatabaseServiceTopology,
 )
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 class TestRunnerProgressSurface:

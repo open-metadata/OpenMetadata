@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 
@@ -46,7 +46,7 @@ class TestEstimatedSecondsRemaining:
     def test_maps_eta_seconds_into_payload(self):
         reg = ProgressRegistry()
         metadata = MagicMock()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("DatabaseSchema", 10)

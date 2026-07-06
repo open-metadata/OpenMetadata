@@ -16,7 +16,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate
     ProgressNode,
     ProgressUpdate,
 )
-from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressNodeSnapshot, ProgressRegistry
 from metadata.workflow.progress_render import (
     ProgressReporter,
     format_eta,
@@ -270,7 +270,7 @@ class TestEtaSeconds:
 
     def test_computable_without_open_when_counter_active(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.set_total("DatabaseSchema", 10)
             for _ in range(2):
@@ -280,7 +280,7 @@ class TestEtaSeconds:
 
     def test_normal_case_uses_cumulative_rate(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("DatabaseSchema", 10)
@@ -291,7 +291,7 @@ class TestEtaSeconds:
 
     def test_driver_is_last_counter_with_total(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("Database", 4)
@@ -306,7 +306,7 @@ class TestEtaSeconds:
 class TestEtaInHeader:
     def test_eta_suffix_on_driver_line_only(self):
         reg = ProgressRegistry()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("Database", 4)

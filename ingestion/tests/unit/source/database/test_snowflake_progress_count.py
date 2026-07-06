@@ -61,7 +61,7 @@ class TestSnowflakeDatabaseCount:
         source.status.filter.assert_called_once()
 
     def test_producer_setup_runs_per_kept_database_without_re_filtering(self):
-        from metadata.utils.progress_registry import ProgressRegistry
+        from metadata.ingestion.progress.registry import ProgressRegistry
 
         source = _source(["A", "B"])
         for setup in (
@@ -87,7 +87,7 @@ class TestSnowflakeDatabaseCount:
 @pytest.fixture
 def snowflake_source():
     """Minimal SnowflakeSource stub for push-totals tests."""
-    from metadata.utils.progress_registry import ProgressRegistry
+    from metadata.ingestion.progress.registry import ProgressRegistry
 
     source = object.__new__(SnowflakeSource)
     source.config = SimpleNamespace(

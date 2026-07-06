@@ -15,7 +15,7 @@ workflow reporter (which scans steps for the ``_progress_registry`` attribute),
 without participating in the topology runner.
 """
 
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 class ProgressTrackingMixin:

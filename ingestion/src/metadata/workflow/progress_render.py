@@ -18,7 +18,7 @@ status mixin can import it without a circular dependency.
 
 from typing import List, Optional, Tuple  # noqa: UP035
 
-from metadata.utils.progress_registry import ProgressNodeSnapshot, ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressNodeSnapshot, ProgressRegistry
 
 
 def render_progress_tree(root: Optional[ProgressNodeSnapshot]) -> str:  # noqa: UP045

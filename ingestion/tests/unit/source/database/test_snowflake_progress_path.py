@@ -16,7 +16,7 @@ from unittest.mock import MagicMock
 
 from metadata.ingestion.source.database import database_service
 from metadata.ingestion.source.database.snowflake import metadata as snowflake_metadata
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 
 
 class _ConcreteSource(database_service.DatabaseServiceSource):

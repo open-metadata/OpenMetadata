@@ -10,8 +10,8 @@
 #  limitations under the License.
 """Unit tests for the shared ProgressTrackingMixin."""
 
-from metadata.utils.progress_registry import ProgressRegistry
-from metadata.utils.progress_tracking import ProgressTrackingMixin
+from metadata.ingestion.progress.registry import ProgressRegistry
+from metadata.ingestion.progress.tracking import ProgressTrackingMixin
 
 
 class _Owner(ProgressTrackingMixin):

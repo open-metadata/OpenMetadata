@@ -46,7 +46,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
-from metadata.utils.progress_tracking import ProgressTrackingMixin
+from metadata.ingestion.progress.tracking import ProgressTrackingMixin
 from metadata.utils.source_hash import generate_source_hash
 
 logger = ingestion_logger()
