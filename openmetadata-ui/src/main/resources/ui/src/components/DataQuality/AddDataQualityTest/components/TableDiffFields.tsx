@@ -72,9 +72,15 @@ const paramFieldName = (name: string): string =>
   `params.${sanitizeParamName(name)}`;
 
 const getSelectedColumnNames = (
-  rows: Array<{ value?: string }> | undefined
+  rows: Array<{ value?: string | FormSelectItem }> | undefined
 ): Set<string> =>
-  new Set((rows ?? []).map((row) => row?.value).filter(Boolean) as string[]);
+  new Set(
+    (rows ?? [])
+      .map((row) =>
+        typeof row?.value === 'string' ? row.value : row?.value?.id
+      )
+      .filter(Boolean) as string[]
+  );
 
 interface ColumnArrayFieldProps {
   form: UseFormReturn<FormValues>;

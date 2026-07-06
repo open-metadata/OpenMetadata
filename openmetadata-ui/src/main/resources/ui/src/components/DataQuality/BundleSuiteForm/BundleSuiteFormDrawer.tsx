@@ -91,6 +91,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   }, [initialValues]);
 
   const form = useForm<BundleSuiteFormData>({
+    mode: 'onChange',
     defaultValues: computeDefaultValues(),
   });
 

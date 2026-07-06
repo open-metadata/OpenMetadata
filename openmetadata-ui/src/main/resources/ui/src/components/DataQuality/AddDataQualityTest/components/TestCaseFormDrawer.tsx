@@ -82,6 +82,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const { ingestionPipeline } = permissions;
 
   const form = useForm<FormValues>({
+    // Legacy antd validated fields on change (name regex/uniqueness errors
+    // surface while typing); mirror that instead of RHF's submit-time default.
+    mode: 'onChange',
     defaultValues: {
       testLevel: testLevel ?? TestLevel.TABLE,
       useDynamicAssertion: false,

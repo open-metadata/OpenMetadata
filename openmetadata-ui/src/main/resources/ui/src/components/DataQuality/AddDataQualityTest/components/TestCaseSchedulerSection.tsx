@@ -121,7 +121,7 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
   return (
     <div
       className="test-case-scheduler-section"
-      data-testid="scheduler-section">
+      data-testid="scheduler-card">
       <Alert closable={false} title="" variant="gray">
         <Transi18next
           i18nKey="message.entity-pipeline-information"

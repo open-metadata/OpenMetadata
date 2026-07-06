@@ -360,7 +360,9 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {definition.parameterDefinition?.map((data) => {
-        if (isArrayOrSet(data)) {
+        // Enum params (optionValues) render as a single select even when the
+        // schema types them ARRAY, matching the legacy precedence.
+        if (isArrayOrSet(data) && !data.optionValues?.length) {
           return (
             <div key={data.name}>
               <ParamArrayField data={data} form={form} />

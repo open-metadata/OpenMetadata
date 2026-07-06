@@ -373,6 +373,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     }
   }, [fetchTables]);
 
+  // Legacy AsyncSelect fetched options on mount, so the table list (and the
+  // spec-observable search request) is ready before the field is focused.
+  useEffect(() => {
+    fetchTables();
+  }, [fetchTables]);
+
   const debouncedFetchTables = useMemo(
     () => debounce(fetchTables, 500),
     [fetchTables]
