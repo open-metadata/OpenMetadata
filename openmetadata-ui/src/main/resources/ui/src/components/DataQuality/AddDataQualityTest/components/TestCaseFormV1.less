@@ -281,11 +281,13 @@
     }
 
     // Overlay the Custom Query action on the Select Test Type label row,
-    // like the legacy absolute-positioned header row.
+    // like the legacy absolute-positioned header row. In custom query mode
+    // the container holds its own Test Type label and must flow normally so
+    // it does not overlap the SQL Expression label.
     .test-type-card {
       position: relative;
 
-      .custom-test-type-container {
+      .custom-test-type-container:not(.justify-between) {
         position: absolute;
         top: @size-md;
         left: @size-md;
@@ -294,7 +296,7 @@
         margin: 0;
       }
 
-      .custom-test-type-container + * {
+      .custom-test-type-container:not(.justify-between) + * {
         margin-top: 0;
       }
     }
