@@ -606,10 +606,24 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source.get_engine()) == [source.engine]
 
-    def test_single_engine_when_query_store_disabled(self):
+    def test_per_database_even_when_initial_database_lacks_query_store(self):
+        # Routing is decided per database, not by the initial connection: an ingest-all
+        # run reaches every database even when the connection database has Query Store
+        # off, so a Query Store database is never missed.
         source = self._source(query_store_enabled=False, ingest_all_databases=True)
+        db_engines = {"NoQsInit": MagicMock(), "HasQs": MagicMock()}
+        source._databases_to_scan = lambda: iter(["NoQsInit", "HasQs"])
+        source._engine_for_database = lambda database: db_engines[database]
 
-        assert list(source.get_engine()) == [source.engine]
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            side_effect=lambda engine: engine is db_engines["HasQs"],
+        ):
+            engines = list(source.get_engine())
+
+        assert engines == [db_engines["NoQsInit"], db_engines["HasQs"]]
+        db_engines["NoQsInit"].dispose.assert_called_once()
+        db_engines["HasQs"].dispose.assert_called_once()
 
     def test_per_database_engines_when_query_store_and_ingest_all(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)

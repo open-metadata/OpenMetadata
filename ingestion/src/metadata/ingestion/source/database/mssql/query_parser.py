@@ -98,11 +98,13 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         """
         Query Store is a per-database feature, so when ingesting all databases we read
         each database through its own connection, using its own Query Store when enabled
-        and a database-scoped DMV read otherwise. Every database is covered, and no
-        database with Query Store is downgraded because another one lacks it. The single
+        and a database-scoped DMV read otherwise. Routing is decided per database, never
+        by the initially connected database, so a Query Store database is still used even
+        when the connection database has Query Store off. Every database is covered, and
+        no database with Query Store is downgraded because another one lacks it. The single
         instance-wide connection is used only for single-database runs.
         """
-        if getattr(self.service_connection, "ingestAllDatabases", False) and self.uses_query_store():
+        if getattr(self.service_connection, "ingestAllDatabases", False):
             yield from self._per_database_engines()
         else:
             self._active_query_store = None
