@@ -13,7 +13,14 @@
 
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import { ReactElement, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Area,
@@ -108,13 +115,18 @@ function TestSummaryGraph({
       entityThread,
       testCaseFqn,
     });
-    setShowAILearningBanner(data.showAILearningBanner);
     const isFreshnessTest = data.information.some(
       (value) => value.label === TABLE_FRESHNESS_KEY
     );
 
     return { chartData: data, isFreshnessTest };
   }, [testCaseResults, entityThread, testCaseParameterValue, testCaseFqn]);
+
+  // A store write during render (inside the memo above) triggers React
+  // update-depth loops; it must stay in an effect.
+  useEffect(() => {
+    setShowAILearningBanner(chartData.showAILearningBanner);
+  }, [chartData.showAILearningBanner, setShowAILearningBanner]);
 
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({

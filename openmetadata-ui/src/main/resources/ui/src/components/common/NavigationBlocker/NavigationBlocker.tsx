@@ -21,6 +21,7 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
   enabled = false,
   onConfirm,
   onCancel,
+  leaveTo,
   renderModal,
 }) => {
   const navigate = useNavigate();
@@ -171,16 +172,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
     };
   }, [isBlocking]);
 
-  const handleLeave = useCallback(async () => {
-    setIsModalVisible(false);
-    isNavigatingRef.current = true;
-    setIsBlocking(false);
-
-    const pendingUrl = pendingNavigationRef.current;
-    pendingNavigationRef.current = null;
-
-    setTimeout(() => {
-      if (pendingUrl === 'back') {
+  const performPendingNavigation = useCallback(
+    (pendingUrl: string | null) => {
+      if (pendingUrl === 'back' && leaveTo) {
+        navigate(leaveTo);
+      } else if (pendingUrl === 'back') {
         // go(-2): past the re-pushed guard entry AND past the original page entry.
         globalThis.history.go(-2);
       } else if (pendingUrl === 'reload') {
@@ -199,8 +195,20 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       } else if (pendingUrl) {
         navigate(pendingUrl);
       }
-    }, 50);
-  }, [navigate]);
+    },
+    [navigate, leaveTo]
+  );
+
+  const handleLeave = useCallback(async () => {
+    setIsModalVisible(false);
+    isNavigatingRef.current = true;
+    setIsBlocking(false);
+
+    const pendingUrl = pendingNavigationRef.current;
+    pendingNavigationRef.current = null;
+
+    setTimeout(() => performPendingNavigation(pendingUrl), 50);
+  }, [performPendingNavigation]);
 
   const handleSaveAndLeave = useCallback(async () => {
     setLoading(true);
@@ -214,30 +222,11 @@ export const NavigationBlocker: React.FC<NavigationBlockerProps> = ({
       const pendingUrl = pendingNavigationRef.current;
       pendingNavigationRef.current = null;
 
-      setTimeout(() => {
-        if (pendingUrl === 'back') {
-          globalThis.history.go(-2);
-        } else if (pendingUrl === 'reload') {
-          globalThis.location.reload();
-        } else if (pendingUrl?.startsWith('http')) {
-          try {
-            const parsed = new URL(pendingUrl);
-            if (parsed.origin === globalThis.location.origin) {
-              navigate(parsed.pathname + parsed.search + parsed.hash);
-            } else {
-              globalThis.location.href = pendingUrl;
-            }
-          } catch {
-            globalThis.location.href = pendingUrl;
-          }
-        } else if (pendingUrl) {
-          navigate(pendingUrl);
-        }
-      }, 50);
+      setTimeout(() => performPendingNavigation(pendingUrl), 50);
     } catch {
       setLoading(false);
     }
-  }, [navigate, onConfirm]);
+  }, [onConfirm, performPendingNavigation]);
 
   const handleModalClose = useCallback(() => {
     setIsModalVisible(false);

@@ -44,6 +44,7 @@ import DestinationSelectItemV2 from './DestinationSelectItemV2/DestinationSelect
 
 function DestinationFormItemV2({
   isViewMode = false,
+  isRequired = false,
 }: Readonly<DestinationFormItemV2Props>) {
   const { t } = useTranslation();
   const { control, setError, clearErrors, formState } = useFormContext();
@@ -67,7 +68,7 @@ function DestinationFormItemV2({
   const selectedSource = selectedResources[0];
 
   useEffect(() => {
-    if (fields.length === 0) {
+    if (fields.length === 0 && isRequired) {
       setError('destinations', {
         type: 'manual',
         message: t('message.minimum-count-error', {
@@ -78,7 +79,7 @@ function DestinationFormItemV2({
     } else {
       clearErrors('destinations');
     }
-  }, [fields.length, setError, clearErrors, t]);
+  }, [fields.length, setError, clearErrors, t, isRequired]);
 
   const isExternalDestinationSelected = useMemo(
     () =>
@@ -159,7 +160,7 @@ function DestinationFormItemV2({
                   )})`}
                   ref={field.ref}
                   type="number"
-                  value={field.value !== undefined ? String(field.value) : ''}
+                  value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
                   onChange={(val) => field.onChange(val)}
                 />
@@ -193,7 +194,7 @@ function DestinationFormItemV2({
                   })} (${t('label.second-plural')})`}
                   ref={field.ref}
                   type="number"
-                  value={field.value !== undefined ? String(field.value) : ''}
+                  value={field.value === undefined ? '' : String(field.value)}
                   onBlur={field.onBlur}
                   onChange={(val) => field.onChange(val)}
                 />
