@@ -27,10 +27,11 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.lineage.masker import masked_query_cache
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
+from metadata.ingestion.progress.tracking import ProgressTrackingMixin
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
-from metadata.ingestion.progress.tracking import ProgressTrackingMixin
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = ingestion_logger()
@@ -45,6 +46,8 @@ class QueryParserSource(ProgressTrackingMixin, Source, ABC):
     from the Source to its children, while providing
     some utilities to be overwritten when necessary
     """
+
+    progress_mode = ProgressMode.MANUAL
 
     sql_stmt: str
     dialect: str
