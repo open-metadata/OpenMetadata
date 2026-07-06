@@ -131,7 +131,6 @@ export interface SearchedDataProps {
   selectedEntityId: string;
   data: SearchHitBody<ExploreSearchIndex, SourceType>[];
   isLoading?: boolean;
-  onPaginationChange: (value: number, pageSize?: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
   isSummaryPanelVisible: boolean;

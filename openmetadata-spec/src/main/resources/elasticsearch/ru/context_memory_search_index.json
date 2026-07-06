@@ -171,6 +171,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "pinned": {
+        "type": "boolean"
+      },
       "sourceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -348,7 +351,14 @@
         "format": "epoch_second"
       },
       "updatedBy": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "href": {
         "type": "text"

@@ -289,5 +289,67 @@ describe('DataAssetPickerShell', () => {
 
       expect(ordersOption.className).toContain('tw:bg-utility-gray-blue-50');
     });
+
+    it('keeps keyboard focus when more options are appended (pagination)', () => {
+      const { rerender } = render(
+        <DataAssetPickerShell {...defaultProps} searchText="" />
+      );
+      openPicker();
+
+      pressKey('ArrowDown');
+      pressKey('ArrowDown');
+      pressKey('ArrowDown');
+
+      const usersOption = screen.getByRole('option', { name: /Users/i });
+
+      expect(usersOption.className).toContain('tw:bg-utility-gray-blue-50');
+
+      const appendedOptions: DataAssetPickerOption[] = [
+        ...OPTIONS,
+        { id: 'table-4', label: 'Payments', displayName: 'Payments' },
+      ];
+      rerender(
+        <DataAssetPickerShell
+          {...defaultProps}
+          options={appendedOptions}
+          searchText=""
+        />
+      );
+
+      const usersOptionAfterAppend = screen.getByRole('option', {
+        name: /Users/i,
+      });
+
+      expect(usersOptionAfterAppend.className).toContain(
+        'tw:bg-utility-gray-blue-50'
+      );
+    });
+
+    it('resets keyboard focus when the search text changes', () => {
+      const { rerender } = render(
+        <DataAssetPickerShell {...defaultProps} searchText="" />
+      );
+      openPicker();
+
+      pressKey('ArrowDown');
+
+      const firstOption = screen.getByRole('option', { name: /Orders/i });
+
+      expect(firstOption.className).toContain('tw:bg-utility-gray-blue-50');
+
+      rerender(
+        <DataAssetPickerShell
+          {...defaultProps}
+          options={[OPTIONS[1]]}
+          searchText="prod"
+        />
+      );
+
+      const productsOption = screen.getByRole('option', { name: /Products/i });
+
+      expect(productsOption.className).not.toContain(
+        'tw:bg-utility-gray-blue-50'
+      );
+    });
   });
 });

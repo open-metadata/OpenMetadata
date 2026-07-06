@@ -150,20 +150,10 @@
 
 .full-screen-knowledge-graph-3d {
   position: fixed;
-  top: @om-navbar-height;
-  left: @sidebar-width;
-  width: calc(100vw - @sidebar-width);
-  height: calc(100vh - @om-navbar-height - 60px);
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   z-index: 999;
   background: @white;
-
-  &.sidebar-collapsed {
-    left: calc(72px + @padding-mlg);
-    width: calc(100vw - 72px - @size-xl);
-  }
-
-  &.sidebar-expanded {
-    left: calc(228px + @padding-mlg);
-    width: calc(100vw - 228px - @size-xl);
-  }
 }
