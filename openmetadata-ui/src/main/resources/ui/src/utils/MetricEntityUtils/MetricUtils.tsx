@@ -18,7 +18,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { LazyTabContent } from '../../components/common/LazyTabContent/LazyTabContent';
 import type { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -154,14 +153,12 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(metricDetails?.deleted)}
-            entity={metricDetails as SourceType}
-            entityType={EntityType.METRIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(metricDetails?.deleted)}
+          entity={metricDetails as SourceType}
+          entityType={EntityType.METRIC}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

@@ -20,7 +20,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { ChartType } from '../components/Dashboard/DashboardDetails/DashboardDetails.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -174,14 +173,12 @@ export const getDashboardDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={dashboardDetails as SourceType}
-            entityType={EntityType.DASHBOARD}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={dashboardDetails as SourceType}
+          entityType={EntityType.DASHBOARD}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

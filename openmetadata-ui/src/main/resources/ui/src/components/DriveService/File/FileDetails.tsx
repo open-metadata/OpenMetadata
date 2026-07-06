@@ -60,7 +60,6 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
-import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -325,14 +324,12 @@ function FileDetails({
         />
       ),
       lineageTab: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={fileDetails as SourceType}
-            entityType={EntityType.FILE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={fileDetails as SourceType}
+          entityType={EntityType.FILE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: fileDetails && (
         <CustomPropertyTable<EntityType.FILE>

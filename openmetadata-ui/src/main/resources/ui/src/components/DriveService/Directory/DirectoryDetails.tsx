@@ -62,7 +62,6 @@ import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/Activ
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
-import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -356,14 +355,12 @@ function DirectoryDetails({
         />
       ),
       lineageTab: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={directoryDetails as SourceType}
-            entityType={EntityType.DIRECTORY}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={directoryDetails as SourceType}
+          entityType={EntityType.DIRECTORY}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: directoryDetails && (
         <CustomPropertyTable<EntityType.DIRECTORY>

@@ -67,7 +67,6 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
-import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import type { GenericProviderProps } from '../../Customization/GenericProvider/GenericProvider.interface';
 import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -434,14 +433,12 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={topicDetails as SourceType}
-            entityType={EntityType.TOPIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={topicDetails as SourceType}
+          entityType={EntityType.TOPIC}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>

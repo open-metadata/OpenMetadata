@@ -20,7 +20,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -126,14 +125,12 @@ export const getChartDetailPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={chartDetails as SourceType}
-            entityType={EntityType.CHART}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={chartDetails as SourceType}
+          entityType={EntityType.CHART}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

@@ -60,7 +60,6 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
-import { LazyTabContent } from '../../common/LazyTabContent/LazyTabContent';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
@@ -338,14 +337,12 @@ function SpreadsheetDetails({
         />
       ),
       lineageTab: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={spreadsheetDetails as SourceType}
-            entityType={EntityType.SPREADSHEET}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={spreadsheetDetails as SourceType}
+          entityType={EntityType.SPREADSHEET}
+          hasEditAccess={editLineagePermission}
+        />
       ),
       customPropertiesTab: spreadsheetDetails && (
         <CustomPropertyTable<EntityType.SPREADSHEET>

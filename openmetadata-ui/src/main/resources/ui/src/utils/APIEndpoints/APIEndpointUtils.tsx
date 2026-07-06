@@ -18,7 +18,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { LazyTabContent } from '../../components/common/LazyTabContent/LazyTabContent';
 import type { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -143,14 +142,12 @@ export const getApiEndpointDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(apiEndpoint?.deleted)}
-            entity={apiEndpoint as SourceType}
-            entityType={EntityType.API_ENDPOINT}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(apiEndpoint?.deleted)}
+          entity={apiEndpoint as SourceType}
+          entityType={EntityType.API_ENDPOINT}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

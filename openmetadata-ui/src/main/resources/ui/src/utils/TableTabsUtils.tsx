@@ -20,7 +20,6 @@ import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
-import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import type { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -291,14 +290,12 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={tableDetails as SourceType}
+          entityType={EntityType.TABLE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
@@ -315,20 +312,18 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.KNOWLEDGE_GRAPH,
       children: (
-        <LazyTabContent activeTab={activeTab} tab={EntityTabs.KNOWLEDGE_GRAPH}>
-          <KnowledgeGraph
-            depth={1}
-            entity={
-              tableDetails
-                ? {
-                    ...tableDetails,
-                    type: EntityType.TABLE,
-                  }
-                : undefined
-            }
-            entityType={EntityType.TABLE}
-          />
-        </LazyTabContent>
+        <KnowledgeGraph
+          depth={1}
+          entity={
+            tableDetails
+              ? {
+                  ...tableDetails,
+                  type: EntityType.TABLE,
+                }
+              : undefined
+          }
+          entityType={EntityType.TABLE}
+        />
       ),
       isHidden: !useApplicationStore.getState().rdfEnabled,
     },

@@ -21,7 +21,6 @@ import type {
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { LazyTabContent } from '../components/common/LazyTabContent/LazyTabContent';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { ContainerWidget } from '../components/Container/ContainerWidget/ContainerWidget';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
@@ -212,14 +211,12 @@ export const getContainerDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LazyTabContent activeTab={tab} tab={EntityTabs.LINEAGE}>
-          <EntityLineageTab
-            deleted={Boolean(deleted)}
-            entity={containerData as SourceType}
-            entityType={EntityType.CONTAINER}
-            hasEditAccess={editLineagePermission}
-          />
-        </LazyTabContent>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={containerData as SourceType}
+          entityType={EntityType.CONTAINER}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
