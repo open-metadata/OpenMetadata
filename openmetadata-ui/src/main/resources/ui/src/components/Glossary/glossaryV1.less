@@ -178,6 +178,40 @@
 
 // Background color for nested glossary terms
 .glossary-terms-table {
+  .glossary-term-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    line-height: 0;
+    color: inherit;
+    vertical-align: baseline;
+    background: transparent;
+    border: 0;
+  }
+
+  .glossary-term-drag-handle-hidden {
+    display: none;
+  }
+
+  tbody > tr.glossary-term-draggable-row {
+    cursor: move;
+
+    .glossary-term-drag-handle,
+    .drag-icon {
+      cursor: move;
+    }
+
+    &[data-dragging='true'],
+    &:active {
+      cursor: move;
+
+      .glossary-term-drag-handle,
+      .drag-icon {
+        cursor: move;
+      }
+    }
+  }
+
   tbody > tr.glossary-nested-row > td {
     background-color: @grey-50;
   }

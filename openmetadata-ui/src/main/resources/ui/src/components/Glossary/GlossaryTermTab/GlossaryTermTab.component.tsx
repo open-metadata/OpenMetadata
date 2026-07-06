@@ -32,7 +32,11 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DropOperation, useDragAndDrop } from 'react-aria-components';
+import {
+  Button as AriaButton,
+  DropOperation,
+  useDragAndDrop,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
@@ -1272,8 +1276,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const isExpanded = expandedRowKeys.includes(
         record.fullyQualifiedName || ''
       );
+      const rowClasses: string[] = [];
 
-      return isNested || isExpanded ? 'glossary-nested-row' : '';
+      if (!record.isLoadMoreButton) {
+        rowClasses.push('glossary-term-draggable-row');
+      }
+      if (isNested || isExpanded) {
+        rowClasses.push('glossary-nested-row');
+      }
+
+      return rowClasses.join(' ');
     },
     [expandedRowKeys]
   );
@@ -1284,15 +1296,35 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         const isLoadMoreRow = record.isLoadMoreButton;
 
         if (isLoadMoreRow) {
-          return <span className="expand-cell-empty-icon-container" />;
+          return (
+            <>
+              <AriaButton
+                aria-hidden="true"
+                className="glossary-term-drag-handle-hidden"
+                slot="drag"
+                tabIndex={-1}
+              />
+              <span className="expand-cell-empty-icon-container" />
+            </>
+          );
         }
 
         const { children, childrenCount } = record;
         const isLoading = loadingChildren[record.fullyQualifiedName || ''];
+        const dragHandle = (
+          <AriaButton
+            aria-label={t('label.move-the-entity', {
+              entity: t('label.term-lowercase'),
+            })}
+            className="glossary-term-drag-handle m-r-xs"
+            slot="drag">
+            <IconDrag className="drag-icon" height={12} width={8} />
+          </AriaButton>
+        );
 
         return (childrenCount ?? children?.length ?? 0) > 0 ? (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            {dragHandle}
             {isLoading ? (
               <span className="m-r-xs expand-loader">
                 <Loader size="x-small" />
@@ -1309,7 +1341,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           </>
         ) : (
           <>
-            <IconDrag className="m-r-xs drag-icon" height={12} width={8} />
+            {dragHandle}
             <span className="expand-cell-empty-icon-container" />
           </>
         );
@@ -1357,6 +1389,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       loadingChildren,
       fetchChildTerms,
       glossaryChildTerms,
+      t,
     ]
   );
 
