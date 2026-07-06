@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -56,13 +57,15 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
         return (
           <Tooltip
+            arrow
             delay={500}
             key={tag.tagFQN}
+            placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <TooltipTrigger>
+            <Focusable>
               <Link
                 className={classNames(
-                  'w-full',
+                  'tw:w-max',
                   { 'diff-added tw-mx-1': tag?.added },
                   { 'diff-removed': tag?.removed }
                 )}
@@ -77,7 +80,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                   variant="blueGray"
                 />
               </Link>
-            </TooltipTrigger>
+            </Focusable>
           </Tooltip>
         );
       }

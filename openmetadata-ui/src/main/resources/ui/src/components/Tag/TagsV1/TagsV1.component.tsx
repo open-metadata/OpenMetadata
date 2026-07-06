@@ -13,12 +13,12 @@
 import {
   Badge,
   Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Tag } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
+import { Focusable } from 'react-aria-components';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AutomatedTag } from '../../../assets/svg/automated-tag.svg';
 import { ReactComponent as IconTerm } from '../../../assets/svg/book.svg';
@@ -234,12 +234,14 @@ const TagsV1 = ({
         }
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}
-        <Link
-          className="no-underline h-full w-max-stretch"
-          data-testid="tag-redirect-link"
-          to={redirectLink}>
-          {tagContent}
-        </Link>
+        <Focusable>
+          <Link
+            className="no-underline h-full w-max-stretch"
+            data-testid="tag-redirect-link"
+            to={redirectLink}>
+            {tagContent}
+          </Link>
+        </Focusable>
       </Tag>
     ),
     [
@@ -303,7 +305,7 @@ const TagsV1 = ({
         arrow
         placement="top"
         title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-        <TooltipTrigger>{automatedTagChip}</TooltipTrigger>
+        <Focusable>{automatedTagChip}</Focusable>
       </Tooltip>
     );
   }
@@ -315,7 +317,7 @@ const TagsV1 = ({
       arrow
       placement="top"
       title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}>
-      <TooltipTrigger>{tagChip}</TooltipTrigger>
+      {tagChip}
     </Tooltip>
   );
 };
