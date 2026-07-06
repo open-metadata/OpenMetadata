@@ -59,7 +59,7 @@ test.describe('Lineage PNG export — snapshot regression', () => {
 
     // perform fit view to ensure all the nodes are in view
     await page.getByTestId('fit-screen').click();
-    await expect(page.locator('#lineage-view-options-menu')).toBeVisible();
+    await expect(page.getByRole('menu')).toBeVisible();
 
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
