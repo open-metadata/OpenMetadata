@@ -46,9 +46,10 @@ def _count(n: int, noun: str) -> str:
 def list_buckets(client: BaseClient) -> Evidence:
     """Enumerate every bucket the identity can see.
 
-    An empty listing never raises - the account may simply hold no buckets, or
-    the identity may lack ``s3:ListAllMyBuckets``-style permissions on them -
+    An empty listing never raises - the account may simply hold no buckets -
     so 'none visible' surfaces as a non-blocking caveat for the user to judge.
+    A missing list permission is a different case: it raises ``AccessDenied``,
+    which fails the step rather than producing a caveat.
     """
     command = "s3:ListBuckets"
     try:

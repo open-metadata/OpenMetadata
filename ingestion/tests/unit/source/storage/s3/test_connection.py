@@ -146,6 +146,12 @@ def test_error_pack_unrecognized_client():
     assert "not recognized" in diagnosis.title.lower()
 
 
+def test_error_pack_invalid_client_token():
+    diagnosis = S3_ERRORS.classify(_client_error("InvalidClientTokenId", "ListBuckets"))
+    assert diagnosis is not None
+    assert "security token" in diagnosis.title.lower()
+
+
 def test_error_pack_expired_token():
     diagnosis = S3_ERRORS.classify(_client_error("ExpiredToken", "ListBuckets"))
     assert diagnosis is not None
