@@ -127,7 +127,7 @@ RUN python /home/airflow/scripts/datamodel_generation.py
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install ".[powerbi,snowflake,pii-processor]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
