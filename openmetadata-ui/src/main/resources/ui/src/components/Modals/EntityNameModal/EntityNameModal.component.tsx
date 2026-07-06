@@ -152,16 +152,6 @@ const EntityNameModal = <T extends EntityName>({
                 <Controller
                   control={control}
                   name="name"
-                  rules={{
-                    required: `${t('label.field-required', {
-                      field: t('label.name'),
-                    })}`,
-                    pattern: {
-                      value: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                    validate: buildValidate(nameValidationRules),
-                  }}
                   render={({ field, fieldState }) => (
                     <>
                       <SanitizedField
@@ -183,6 +173,16 @@ const EntityNameModal = <T extends EntityName>({
                       )}
                     </>
                   )}
+                  rules={{
+                    required: `${t('label.field-required', {
+                      field: t('label.name'),
+                    })}`,
+                    pattern: {
+                      value: ENTITY_NAME_REGEX,
+                      message: t('message.entity-name-validation'),
+                    },
+                    validate: buildValidate(nameValidationRules),
+                  }}
                 />
               </div>
 
@@ -195,9 +195,6 @@ const EntityNameModal = <T extends EntityName>({
                 <Controller
                   control={control}
                   name="displayName"
-                  rules={{
-                    validate: buildValidate(displayNameValidationRules),
-                  }}
                   render={({ field, fieldState }) => (
                     <>
                       <SanitizedField
@@ -214,6 +211,9 @@ const EntityNameModal = <T extends EntityName>({
                       )}
                     </>
                   )}
+                  rules={{
+                    validate: buildValidate(displayNameValidationRules),
+                  }}
                 />
               </div>
 
