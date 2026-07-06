@@ -103,9 +103,11 @@ class SearchClusterFitnessResourceIT {
             .GET()
             .build();
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    // Admin-only endpoints deny non-admins with 403, or 404 to avoid leaking endpoint existence
+    // (same convention as AppOperationPermissionsIT). 401 covers token-rejection paths.
     assertThat(response.statusCode())
         .as("DataConsumer must not be able to call admin-only fitness endpoint")
-        .isIn(401, 403);
+        .isIn(401, 403, 404);
   }
 
   @Test
