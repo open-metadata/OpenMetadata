@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { IconButton, ToggleButtonGroup } from '@mui/material';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
@@ -55,17 +54,6 @@ jest.mock('../../utils/Lineage/LineagePureUtils');
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-jest.mock('./LineageTable.styled', () => {
-  const { Menu: MuiMenu } = jest.requireActual('@mui/material');
-
-  return {
-    StyledMenu: (props: React.ComponentProps<typeof MuiMenu>) => (
-      <MuiMenu {...props} />
-    ),
-    StyledToggleButtonGroup: ToggleButtonGroup,
-    StyledIconButton: IconButton,
-  };
-});
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),
@@ -535,7 +523,7 @@ describe('LineageTable', () => {
 
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const upstreamButton = screen.getByRole('button', {
+    const upstreamButton = screen.getByRole('radio', {
       name: /label.upstream/,
     });
     fireEvent.click(upstreamButton);
