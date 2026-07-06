@@ -382,7 +382,7 @@ const ContextCenterDashboardPage: FC = () => {
         className="tw:h-full tw:min-h-0"
         data-testid="dashboard-detail-card"
         direction="col"
-        gap={6}>
+        gap={5}>
         <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:shrink-0">
           <ContextKnowledgePillarCard
             cta={t('label.view-all-entity', {
@@ -489,7 +489,7 @@ const ContextCenterDashboardPage: FC = () => {
             <Box direction="col">
               {mostCitedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                      <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                      <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
                       <Box
                         align="center"
                         className="tw:min-w-0 tw:flex-1"

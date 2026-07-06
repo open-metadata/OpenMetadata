@@ -147,7 +147,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                     <Typography
                       ellipsis
                       className="tw:truncate tw:text-secondary"
-                      size="text-sm">
+                      size="text-xs">
                       {getEntityName(file)}
                     </Typography>
                   </Tree.ItemContent>
