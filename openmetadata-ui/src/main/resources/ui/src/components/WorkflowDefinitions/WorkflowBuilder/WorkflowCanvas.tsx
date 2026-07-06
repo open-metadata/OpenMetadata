@@ -131,7 +131,7 @@ const WorkflowCanvasInternal: React.FC<WorkflowCanvasProps> = ({
             strokeWidth: 2,
           },
         }}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
         edgeTypes={edgeTypes}
         edges={edges.map((edge) => {
           let shouldDimEdge = false;

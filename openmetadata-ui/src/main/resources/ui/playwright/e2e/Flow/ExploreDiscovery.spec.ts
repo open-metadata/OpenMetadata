@@ -86,7 +86,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -108,7 +110,9 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -130,7 +134,9 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&queryFilter=${JSON.stringify(queryFilter)}`
+      `/explore?currentPage=1&pageSize=15&queryFilter=${JSON.stringify(
+        queryFilter
+      )}`
     );
 
     await waitForAllLoadersToDisappear(page);
@@ -151,7 +157,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -175,7 +181,7 @@ test.describe('Explore Assets Discovery', () => {
       true
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );
@@ -199,7 +205,7 @@ test.describe('Explore Assets Discovery', () => {
       false
     );
     await page.goto(
-      `/explore?page=1&size=10&showDeleted=true&queryFilter=${JSON.stringify(
+      `/explore?currentPage=1&pageSize=15&showDeleted=true&queryFilter=${JSON.stringify(
         queryFilter
       )}`
     );

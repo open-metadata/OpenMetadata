@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
@@ -459,6 +460,26 @@ describe('BulkEntityImportPage', () => {
           url: ROUTES.METRICS,
         },
       ]);
+    });
+
+    it('dispatches the CSV jobs refresh event to activate the tray when a preview starts', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+      const dispatchEventSpy = jest.spyOn(window, 'dispatchEvent');
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      expect(dispatchEventSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ type: CSV_JOBS_REFRESH_EVENT })
+      );
+
+      dispatchEventSpy.mockRestore();
     });
 
     it('should render uploaded metric CSV preview with the shared bulk edit view', async () => {
