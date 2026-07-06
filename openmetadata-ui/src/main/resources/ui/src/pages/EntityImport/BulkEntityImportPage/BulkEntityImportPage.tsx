@@ -13,11 +13,13 @@
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Dialog,
   Modal,
   ModalOverlay,
   ProgressBar,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
@@ -47,7 +49,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
-import { CsvJobsTray } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
 import { ImportStatus } from '../../../components/common/EntityImport/ImportStatus/ImportStatus.component';
 import {
@@ -738,6 +740,9 @@ const BulkEntityImportPage = () => {
 
       setActiveAsyncImportJob(initialLoadJobData);
       activeAsyncImportJobRef.current = initialLoadJobData;
+      // Activate the lazily mounted background-jobs tray so import progress
+      // surfaces there even if the user navigates away from this page.
+      window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
 
       await validateCsvString(
         selectedCsvFile.content,
@@ -1374,13 +1379,24 @@ const BulkEntityImportPage = () => {
         </div>
         <div className="csv-import-copy text-center">
           <h2>{t('message.import-csv-processing-title')}</h2>
-          <p>
-            <File06 size={14} />
-            <span className="csv-import-processing-file-name">
-              {selectedCsvFile?.name ?? t('label.csv')}
+          <Box
+            align="center"
+            className="tw:text-tertiary tw:text-sm tw:leading-5"
+            gap={2}
+            justify="center">
+            <File06 className="tw:shrink-0" size={14} />
+            <Box className="tw:min-w-0">
+              <Typography
+                as="span"
+                className="csv-import-processing-file-name"
+                ellipsis={{ tooltip: selectedCsvFile?.name }}>
+                {selectedCsvFile?.name ?? t('label.csv')}
+              </Typography>
+            </Box>
+            <span className="tw:shrink-0">
+              {getCsvRowCountLabel(selectedCsvFile?.rowCount ?? 0)}
             </span>
-            <span>{getCsvRowCountLabel(selectedCsvFile?.rowCount ?? 0)}</span>
-          </p>
+          </Box>
         </div>
         <ProgressBar value={previewProcessingProgress} />
         <div className="csv-processing-stage-list">
@@ -1468,7 +1484,7 @@ const BulkEntityImportPage = () => {
         {renderSelectedCsvFile()}
 
         <Alert title={t('label.tip')} variant="brand">
-          {t('message.import-metrics-csv-tip')}
+          {t('message.import-entity-csv-tip', { entity: entityDisplayName })}
         </Alert>
       </div>
     </div>
@@ -1874,7 +1890,6 @@ const BulkEntityImportPage = () => {
           </>
         )}
       </div>
-      <CsvJobsTray />
     </PageLayoutV1>
   );
 };
