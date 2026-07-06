@@ -29,6 +29,7 @@ import {
 } from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -134,6 +135,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const [containerWidth, setContainerWidth] = useState(0);
   const {
@@ -194,6 +196,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     hasMore: boolean;
   }>({ offset: 0, total: undefined, hasMore: true });
   const [isExpandingAll, setIsExpandingAll] = useState(false);
+  const [isDraggingTerm, setIsDraggingTerm] = useState(false);
+  const [isTopLevelDropActive, setIsTopLevelDropActive] = useState(false);
   const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
 
   // handle search
@@ -1299,11 +1303,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           return (
             <>
               <AriaButton
-                aria-hidden="true"
+                aria-label={t('label.move-the-entity', {
+                  entity: t('label.term-lowercase'),
+                })}
                 className="glossary-term-drag-handle-hidden"
-                slot="drag"
-                tabIndex={-1}
-              />
+                slot="drag">
+                <span />
+              </AriaButton>
               <span className="expand-cell-empty-icon-container" />
             </>
           );
@@ -1413,6 +1419,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     },
     []
   );
+
+  const moveDraggedGlossaryTermToRoot = useCallback(() => {
+    const dragRecord = draggedGlossaryTermRef.current;
+    draggedGlossaryTermRef.current = undefined;
+
+    if (dragRecord) {
+      handleMoveRow(dragRecord);
+    }
+  }, [handleMoveRow]);
 
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
@@ -1527,9 +1542,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       draggedGlossaryTermRef.current = key
         ? (glossaryTermByFqn.get(String(key)) as GlossaryTerm | undefined)
         : undefined;
+      setIsDraggingTerm(true);
     },
     onDragEnd: () => {
       draggedGlossaryTermRef.current = undefined;
+      setIsDraggingTerm(false);
+      setIsTopLevelDropActive(false);
     },
     getDropOperation: (target, types) => {
       let operation: DropOperation = 'move';
@@ -1555,14 +1573,72 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
     },
     onRootDrop: () => {
-      const dragRecord = draggedGlossaryTermRef.current;
-      draggedGlossaryTermRef.current = undefined;
-
-      if (dragRecord) {
-        handleMoveRow(dragRecord);
-      }
+      moveDraggedGlossaryTermToRoot();
     },
   });
+
+  useEffect(() => {
+    const scrollEl = scrollContainerRef.current;
+
+    if (!isDraggingTerm || !scrollEl) {
+      return;
+    }
+
+    const targets = [
+      scrollEl.querySelector('thead'),
+      scrollEl.querySelector('.p-x-md.p-y-md'),
+    ].filter((el): el is HTMLElement => el instanceof HTMLElement);
+
+    const isAlreadyTopLevel = () => {
+      const term = draggedGlossaryTermRef.current;
+
+      return !!term && Fqn.split(term.fullyQualifiedName ?? '').length === 2;
+    };
+
+    const onDragOver = (event: DragEvent) => {
+      if (isAlreadyTopLevel()) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = 'move';
+      }
+
+      setIsTopLevelDropActive(true);
+    };
+
+    const onDragLeave = (event: DragEvent) => {
+      const element = event.currentTarget as HTMLElement;
+
+      if (!element.contains(event.relatedTarget as Node | null)) {
+        setIsTopLevelDropActive(false);
+      }
+    };
+
+    const onDrop = (event: DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsTopLevelDropActive(false);
+      moveDraggedGlossaryTermToRoot();
+    };
+
+    targets.forEach((element) => {
+      element.addEventListener('dragover', onDragOver);
+      element.addEventListener('dragleave', onDragLeave);
+      element.addEventListener('drop', onDrop);
+    });
+
+    return () => {
+      targets.forEach((element) => {
+        element.removeEventListener('dragover', onDragOver);
+        element.removeEventListener('dragleave', onDragLeave);
+        element.removeEventListener('drop', onDrop);
+      });
+    };
+  }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
   useEffect(() => {
     if (!tableContainerRef.current) {
@@ -1633,7 +1709,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
         <div
-          className="glossary-terms-scroll-container"
+          className={classNames('glossary-terms-scroll-container', {
+            'glossary-terms-scroll-container-drop-target': isTopLevelDropActive,
+          })}
+          ref={scrollContainerRef}
           style={{ position: 'relative' }}>
           {glossaryTerms.length > 0 ? (
             <>

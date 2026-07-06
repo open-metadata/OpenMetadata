@@ -18,6 +18,7 @@ import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   changeTermHierarchyFromModal,
+  confirmationDragAndDropGlossary,
   dragAndDropTerm,
   performExpandAll,
   selectActiveGlossary,
@@ -76,6 +77,53 @@ test.describe('Glossary Hierarchy', () => {
       await selectActiveGlossary(page, glossary.data.displayName);
 
       // The child term should now be visible at root level
+      await expect(
+        page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
+      ).toBeVisible();
+    } finally {
+      await childTerm.delete(apiContext);
+      await parentTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // H-M03b: Drag nested term to top level (root) of same glossary
+  test('should drag nested term to root level of same glossary', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const parentTerm = new GlossaryTerm(glossary);
+    const childTerm = new GlossaryTerm(glossary);
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+      childTerm.data.parent = parentTerm.responseData.fullyQualifiedName;
+      await childTerm.create(apiContext);
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await performExpandAll(page);
+
+      await dragAndDropTerm(page, childTerm.data.displayName, 'Terms');
+      await confirmationDragAndDropGlossary(
+        page,
+        childTerm.data.name,
+        glossary.responseData.displayName,
+        true
+      );
+
+      const refreshed = await apiContext.get(
+        `/api/v1/glossaryTerms/${childTerm.responseData.id}`
+      );
+      childTerm.responseData = await refreshed.json();
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
       await expect(
         page.locator(`[data-row-key*="${childTerm.responseData.name}"]`)
       ).toBeVisible();
