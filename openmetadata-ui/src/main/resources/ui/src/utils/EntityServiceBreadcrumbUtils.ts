@@ -12,6 +12,7 @@
  */
 
 import { startCase } from 'lodash';
+import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -26,17 +27,21 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
+} from './ServicePureUtils';
 
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
-) => [
+): TitleLink[] => [
   {
     name: startCase(serviceCategory),
     url: getSettingPath(
       GlobalSettingsMenuCategory.SERVICES,
       getServiceRouteFromServiceType(serviceCategory)
     ),
+    iconType: getEntityTypeFromServiceCategory(serviceCategory),
   },
 ];
 
@@ -51,6 +56,7 @@ export const getBreadcrumbForDatabaseService = (
     items.push({
       name: entityName,
       url: getServiceDetailsPath(fqn, ServiceCategory.DATABASE_SERVICES),
+      isServiceBreadcrumb: true,
     });
   }
 
@@ -66,6 +72,8 @@ export const getBreadcrumbForDatabase = (entity: Database) => [
       entity.fullyQualifiedName ?? '',
       ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
     ),
+    iconType:
+      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE,
   },
 ];
 
@@ -81,6 +89,7 @@ export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
           ]
         )
       : '',
+    isServiceBreadcrumb: true,
   },
   {
     name: getEntityName(entity.database),
@@ -88,6 +97,7 @@ export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
       EntityType.DATABASE,
       entity.database?.fullyQualifiedName ?? ''
     ),
+    iconType: EntityType.DATABASE,
   },
   {
     name: entity.name,
@@ -96,5 +106,8 @@ export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
       ((entity as unknown as SourceType).entityType as EntityType) ??
         EntityType.DATABASE_SCHEMA
     ),
+    iconType:
+      ((entity as unknown as SourceType).entityType as EntityType) ??
+      EntityType.DATABASE_SCHEMA,
   },
 ];

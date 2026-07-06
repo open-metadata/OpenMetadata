@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -217,6 +218,65 @@ class RdfUpdaterTest {
       Awaitility.await()
           .atMost(Duration.ofSeconds(5))
           .untilAsserted(() -> verify(mockRepository, times(1)).removeRelationship(rel));
+    }
+  }
+
+  @Nested
+  @DisplayName("entity types excluded from RDF (aiChart) are never written")
+  class ExcludedEntityTypes {
+
+    @Test
+    @DisplayName("deleteEntity for an excluded type never reaches the repository")
+    void deleteExcludedEntityIsSkipped() {
+      EntityReference ref = new EntityReference().withId(UUID.randomUUID()).withType("aiChart");
+
+      RdfUpdater.deleteEntity(ref);
+
+      verify(mockRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("deleteEntity for a normal type still flows through")
+    void deleteNormalEntityFlowsThrough() {
+      EntityReference ref = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+
+      RdfUpdater.deleteEntity(ref);
+
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(5))
+          .untilAsserted(() -> verify(mockRepository, times(1)).delete(ref));
+    }
+
+    @Test
+    @DisplayName("addRelationship with an excluded endpoint never reaches the repository")
+    void addRelationshipWithExcludedEndpointIsSkipped() {
+      EntityRelationship rel =
+          new EntityRelationship()
+              .withFromId(UUID.randomUUID())
+              .withToId(UUID.randomUUID())
+              .withFromEntity(Entity.DASHBOARD)
+              .withToEntity("aiChart")
+              .withRelationshipType(Relationship.CONTAINS);
+
+      RdfUpdater.addRelationship(rel);
+
+      verify(mockRepository, never()).addRelationship(any());
+    }
+
+    @Test
+    @DisplayName("removeRelationship with an excluded endpoint never reaches the repository")
+    void removeRelationshipWithExcludedEndpointIsSkipped() {
+      EntityRelationship rel =
+          new EntityRelationship()
+              .withFromId(UUID.randomUUID())
+              .withToId(UUID.randomUUID())
+              .withFromEntity("aiChart")
+              .withToEntity(Entity.DASHBOARD)
+              .withRelationshipType(Relationship.CONTAINS);
+
+      RdfUpdater.removeRelationship(rel);
+
+      verify(mockRepository, never()).removeRelationship(any());
     }
   }
 
