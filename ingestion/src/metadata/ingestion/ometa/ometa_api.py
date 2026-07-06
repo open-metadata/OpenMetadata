@@ -558,6 +558,32 @@ class OpenMetadata(
             nullable=nullable,
         )
 
+    def get_context(
+        self,
+        entity: Type[T],  # noqa: UP006
+        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        query: Optional[str] = None,  # noqa: UP045
+    ) -> Optional[str]:  # noqa: UP045
+        """
+        Return the AI Context (Context Profile) for an entity as an OKF-style
+        markdown document: its attached business knowledge (glossary terms,
+        Context Center articles, applied metrics), type-specific structural
+        context, and depth-1 lineage, assembled server-side for LLM use.
+
+        :param entity: entity type, e.g. Table
+        :param fqn: fully qualified name of the entity
+        :param query: optional question; truncated knowledge items are excerpted
+            to the passage most relevant to it instead of the positional lead
+        :return: the markdown document, or None if the entity is not found
+        """
+        path = f"{self.get_suffix(entity)}/name/{quote(model_str(fqn), safe='')}/context"
+        if query:
+            path += f"?query={quote(query)}"
+        resp = self.client.get(path)
+        if resp is None:
+            return None
+        return resp.text if hasattr(resp, "text") else resp
+
     def _get(
         self,
         entity: Type[T],  # noqa: UP006
