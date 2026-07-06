@@ -70,6 +70,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -435,6 +436,15 @@ public class CreateTask implements TaskListener {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
       return null;
     }
+    Object priorApprovalPayload =
+        existingTask == null
+            ? findPriorOpenApprovalPayload(
+                taskRepository,
+                entity,
+                taskCategory,
+                resolvedWorkflowDefinitionId,
+                workflowInstanceId)
+            : null;
     if (existingTask != null) {
       LOG.info(
           "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
@@ -477,7 +487,10 @@ public class CreateTask implements TaskListener {
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
-          requestedPayload != null ? requestedPayload : updatedTask.getPayload());
+          requestedPayload != null
+              ? ChangePreviewUtils.preserveProposedChanges(
+                  requestedPayload, updatedTask.getPayload())
+              : updatedTask.getPayload());
       if (effectiveWorkflowDefinitionId != null) {
         updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }
@@ -506,6 +519,8 @@ public class CreateTask implements TaskListener {
       }
       updatedTask.setPayload(
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
+      updatedTask.setPayload(
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -542,7 +557,12 @@ public class CreateTask implements TaskListener {
             .withAvailableTransitions(availableTransitions)
             .withDescription(
                 taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
-            .withPayload(requestedPayload != null ? requestedPayload : payload)
+            .withPayload(
+                ChangePreviewUtils.preserveProposedChanges(
+                    requestedPayload != null
+                        ? requestedPayload
+                        : (payload != null ? payload : priorApprovalPayload),
+                    priorApprovalPayload))
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy);
@@ -568,6 +588,7 @@ public class CreateTask implements TaskListener {
       task.setDueDate(effectiveDueDate);
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
+    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -646,6 +667,45 @@ public class CreateTask implements TaskListener {
             e.getMessage());
       }
     }
+  }
+
+  /**
+   * Find an open prior approval task on the same entity bound to the same workflow definition but
+   * a different workflow instance, and return its payload. Used to carry forward the {@code
+   * proposedChanges} blob across re-edits, since each entity edit spawns a fresh workflow run that
+   * creates a new Task (the prior task is closed asynchronously by {@link
+   * #supersedePriorApprovalTask}). Returns {@code null} when no eligible prior task exists.
+   */
+  static Object findPriorOpenApprovalPayload(
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId) {
+    Object priorPayload = null;
+    if (taskCategory == TaskCategory.Approval && entity != null) {
+      try {
+        priorPayload =
+            taskRepository
+                .listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory)
+                .stream()
+                .filter(
+                    prior ->
+                        isSupersedablePriorApprovalTask(
+                            prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                .map(Task::getPayload)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to lookup prior approval task payload for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+    return priorPayload;
   }
 
   static boolean isSupersedablePriorApprovalTask(
@@ -880,6 +940,21 @@ public class CreateTask implements TaskListener {
       LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
       throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
     }
+  }
+
+  /**
+   * For approval task types (GlossaryApproval, RequestApproval), augment the task payload with a
+   * {@code proposedChanges} map computed from the target entity's change description, merged
+   * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
+   * the payload unchanged for non-approval task types or when the entity carries no change
+   * description.
+   */
+  static Object applyProposedChangesIfApproval(
+      TaskEntityType taskType, EntityInterface entity, Object payload) {
+    if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
+      return payload;
+    }
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
