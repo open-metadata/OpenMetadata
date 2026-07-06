@@ -36,6 +36,7 @@ import {
   Button as AriaButton,
   DropOperation,
   useDragAndDrop,
+  useDrop,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -134,6 +135,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const glossaryTermsDropContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const [containerWidth, setContainerWidth] = useState(0);
   const {
@@ -1414,6 +1416,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     []
   );
 
+  const moveDraggedGlossaryTermToRoot = useCallback(() => {
+    const dragRecord = draggedGlossaryTermRef.current;
+    draggedGlossaryTermRef.current = undefined;
+
+    if (dragRecord) {
+      handleMoveRow(dragRecord);
+    }
+  }, [handleMoveRow]);
+
   const handleChangeGlossaryTerm = async () => {
     if (movedGlossaryTerm) {
       setIsTableLoading(true);
@@ -1555,13 +1566,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
     },
     onRootDrop: () => {
-      const dragRecord = draggedGlossaryTermRef.current;
-      draggedGlossaryTermRef.current = undefined;
-
-      if (dragRecord) {
-        handleMoveRow(dragRecord);
-      }
+      moveDraggedGlossaryTermToRoot();
     },
+  });
+
+  const {
+    dropProps: glossaryTermsDropContainerProps,
+    isDropTarget: isGlossaryTermsContainerDropTarget,
+  } = useDrop({
+    ref: glossaryTermsDropContainerRef,
+    getDropOperation: (types) =>
+      types.has(GLOSSARY_TERM_DRAG_TYPE) ? 'move' : 'cancel',
+    onDrop: moveDraggedGlossaryTermToRoot,
   });
 
   useEffect(() => {
@@ -1633,7 +1649,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       {/* Have use the col to set the width of the table, to only use the viewport width for the table columns */}
       <Col className="w-full" ref={tableContainerRef} span={24}>
         <div
-          className="glossary-terms-scroll-container"
+          {...glossaryTermsDropContainerProps}
+          className={`glossary-terms-scroll-container${
+            isGlossaryTermsContainerDropTarget
+              ? ' glossary-terms-scroll-container-drop-target'
+              : ''
+          }`}
+          ref={glossaryTermsDropContainerRef}
           style={{ position: 'relative' }}>
           {glossaryTerms.length > 0 ? (
             <>
