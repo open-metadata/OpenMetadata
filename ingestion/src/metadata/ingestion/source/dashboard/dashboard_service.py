@@ -216,7 +216,12 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     chart_source_state: Set = set()  # noqa: RUF012, UP006
 
     def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
-        """Declare the grouping axis (e.g. workspaces) as a global counter."""
+        """Declare the grouping axis (e.g. workspaces) as a global counter.
+
+        These group helpers drive ``self.manual_progress`` and therefore require
+        the connector to set ``progress_mode = ProgressMode.MANUAL`` (as PowerBI
+        does); calling them from a default AUTO source raises ``ProgressModeError``
+        and would double-count against the runner's own tracking."""
         self.manual_progress.declare_groups(label, total)
 
     def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
