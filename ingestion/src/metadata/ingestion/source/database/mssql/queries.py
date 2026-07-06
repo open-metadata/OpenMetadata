@@ -364,6 +364,7 @@ WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (
   from sys.dm_exec_procedure_stats s
   CROSS APPLY sys.dm_exec_sql_text(s.plan_handle)
   WHERE OBJECT_NAME(object_id, database_id) IS NOT NULL
+    AND s.database_id = DB_ID()
     AND s.last_execution_time > '{start_date}'
 ),
 Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type, schema_name, user_name) AS (
@@ -390,6 +391,7 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
+    AND t.dbid = DB_ID()
     AND s.last_execution_time > '{start_date}'
 )
 select 
