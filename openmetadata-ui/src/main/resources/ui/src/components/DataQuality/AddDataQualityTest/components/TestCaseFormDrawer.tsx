@@ -235,10 +235,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const closeDrawerRef = useRef<() => void>(() => undefined);
 
-  // Every dismissal path (cancel, X, Escape, programmatic close) funnels
-  // through the base drawer's onClose, so the parent is notified exactly once
-  // and the form resets; the backdrop is inert like the legacy maskClosable
-  // drawer.
+  // Every dismissal path (cancel, X, Escape, backdrop, programmatic close)
+  // funnels through the base drawer's onClose, so the parent is notified
+  // exactly once and the form resets. The backdrop stays dismissable to match
+  // the legacy antd drawer (only the bundle suite drawer was mask-locked).
   const handleDrawerDismiss = useCallback(() => {
     form.reset();
     onClose();
@@ -252,9 +252,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       form: formBody,
       headerActions,
       width,
-      closeOnBackdrop: false,
       submitLabel: t('label.create'),
       submitTestId: 'create-btn',
+      loading: formContext?.isCheckingPermissions ?? false,
       onClose: handleDrawerDismiss,
       onSubmit: (data) =>
         submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),

@@ -26,7 +26,7 @@ import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -123,6 +123,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const [existingTestCases, setExistingTestCases] = useState<string[]>([]);
   const [canCreatePipeline, setCanCreatePipeline] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
   const [isTestNameManuallyEdited, setIsTestNameManuallyEdited] =
     useState(false);
 
@@ -171,6 +172,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       if (testCase?.Create) {
         return true;
       }
+      setIsCheckingPermissions(true);
       try {
         const tablePermissions = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -186,6 +188,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         return true;
       } catch {
         return true;
+      } finally {
+        setIsCheckingPermissions(false);
       }
     },
     [testCase?.Create, getEntityPermissionByFqn, t]
@@ -282,8 +286,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     return result;
   }, [columnOptions, selectedColumn]);
 
+  // Paging state for the table search (legacy AsyncSelect infinite scroll).
+  const tablePagingRef = useRef({ search: '', page: 1, hasMore: true });
+
   const fetchTables = useCallback(
-    async (searchValue = '') => {
+    async (searchValue = '', page = 1) => {
       if (table) {
         setTableOptions([
           {
@@ -299,12 +306,18 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       try {
         const response = await searchQuery({
           query: searchValue ? `*${searchValue}*` : '*',
-          pageNumber: 1,
+          pageNumber: page,
           pageSize: PAGE_SIZE_LARGE,
           searchIndex: SearchIndex.TABLE,
           fetchSource: true,
           trackTotalHits: true,
         });
+
+        tablePagingRef.current = {
+          search: searchValue,
+          page,
+          hasMore: page * PAGE_SIZE_LARGE < response.hits.total.value,
+        };
 
         setTablesCache((prev) => {
           const newCache = new Map(prev);
@@ -323,24 +336,35 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           return newCache;
         });
 
-        setTableOptions(
-          response.hits.hits.map((hit) => {
-            const source = hit._source as TableSearchSource;
+        const pageOptions = response.hits.hits.map((hit) => {
+          const source = hit._source as TableSearchSource;
 
-            return {
-              id: source.fullyQualifiedName ?? source.name,
-              label: source.fullyQualifiedName ?? source.name,
-            };
-          })
+          return {
+            id: source.fullyQualifiedName ?? source.name,
+            label: source.fullyQualifiedName ?? source.name,
+          };
+        });
+
+        setTableOptions((prev) =>
+          page > 1 ? [...prev, ...pageOptions] : pageOptions
         );
       } catch {
-        setTableOptions([]);
+        if (page === 1) {
+          setTableOptions([]);
+        }
       } finally {
         setIsTableLoading(false);
       }
     },
     [table]
   );
+
+  const loadMoreTables = useCallback(() => {
+    const { search, page, hasMore } = tablePagingRef.current;
+    if (hasMore && !isTableLoading) {
+      fetchTables(search, page + 1);
+    }
+  }, [fetchTables, isTableLoading]);
 
   const debouncedFetchTables = useMemo(
     () => debounce(fetchTables, 500),
@@ -628,6 +652,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       selectedTestLevel,
       generateName: generateDynamicTestName,
       canCreatePipeline,
+      isCheckingPermissions,
     });
   }, [
     selectedTestDefinition,
@@ -636,6 +661,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     selectedTestLevel,
     generateDynamicTestName,
     canCreatePipeline,
+    isCheckingPermissions,
     onContextChange,
   ]);
 
@@ -673,10 +699,18 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         );
       },
       // Legacy antd validated on change: surface the table permission error
-      // (and gate the scheduler) at selection time, not first at submit.
+      // (and gate the scheduler) at selection time, not first at submit. The
+      // doc panel switches to the selected table's entity summary, like the
+      // legacy option onclick did.
       onItemInserted: () => {
         form.trigger('selectedTable');
+        handleActiveField('root/selected-entity');
       },
+      // Clearing an unauthorized table must clear the stale permission error.
+      onItemCleared: () => {
+        form.trigger('selectedTable');
+      },
+      onLoadMore: loadMoreTables,
     },
   } as FieldProp;
 

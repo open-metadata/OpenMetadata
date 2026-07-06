@@ -60,13 +60,6 @@ const TABLE2_KEY_COLUMNS = 'table2.keyColumns';
 const KEY_COLUMNS = 'keyColumns';
 const USE_COLUMNS = 'useColumns';
 
-const DEDICATED_PARAMS = new Set([
-  TABLE2,
-  TABLE2_KEY_COLUMNS,
-  KEY_COLUMNS,
-  USE_COLUMNS,
-]);
-
 const NUMERIC_DATA_TYPES = [
   TestDataType.Number,
   TestDataType.Int,
@@ -290,27 +283,9 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
     return new Set<string>([...keySet, ...useSet]);
   }, [keyColumnsRows, useColumnsRows]);
 
-  const parameterMap = useMemo(() => {
-    const map: Record<string, TestCaseParameterDefinition> = {};
-    definition.parameterDefinition?.forEach((data) => {
-      if (data.name) {
-        map[data.name] = data;
-      }
-    });
-
-    return map;
-  }, [definition.parameterDefinition]);
-
-  const table2Definition = parameterMap[TABLE2];
-  const keyColumnsDefinition = parameterMap[KEY_COLUMNS];
-  const table2KeyColumnsDefinition = parameterMap[TABLE2_KEY_COLUMNS];
-  const useColumnsDefinition = parameterMap[USE_COLUMNS];
-
   // Remaining tableDiff parameters (where, threshold, caseSensitiveColumns,
   // ...) get generic inputs by data type, like the legacy form's default.
-  const remainingDefinitions = (definition.parameterDefinition ?? []).filter(
-    (data) => data.name && !DEDICATED_PARAMS.has(data.name)
-  );
+  // Rendered in parameterDefinition order via renderParameter below.
 
   const getRemainingFieldProp = (
     data: TestCaseParameterDefinition
@@ -349,59 +324,62 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
     return baseField;
   };
 
-  return (
-    <>
-      {table2Definition && (
-        <div>
-          {getField({
-            name: paramFieldName(TABLE2),
-            label: getEntityName(table2Definition),
-            type: FieldTypes.ASYNC_SELECT,
-            required: table2Definition.required,
-            helperText: table2Definition.description,
-            placeholder: t('label.table'),
-            props: {
-              'data-testid': TABLE2,
-              isLoading: isOptionsLoading,
-              options: tableOptions,
-              onSearchChange: debounceFetchTableData,
-            },
-          } as FieldProp)}
-        </div>
-      )}
-      {keyColumnsDefinition && (
-        <div>
+  const renderParameter = (data: TestCaseParameterDefinition) => {
+    switch (data.name) {
+      case TABLE2:
+        return getField({
+          name: paramFieldName(TABLE2),
+          label: getEntityName(data),
+          type: FieldTypes.ASYNC_SELECT,
+          required: data.required,
+          helperText: data.description,
+          placeholder: t('label.table'),
+          props: {
+            'data-testid': TABLE2,
+            isLoading: isOptionsLoading,
+            options: tableOptions,
+            onSearchChange: debounceFetchTableData,
+          },
+        } as FieldProp);
+      case KEY_COLUMNS:
+        return (
           <ColumnArrayField
             columns={table?.columns}
-            data={keyColumnsDefinition}
+            data={data}
             excludedColumns={crossListExcludedColumns}
             form={form}
           />
-        </div>
-      )}
-      {table2KeyColumnsDefinition && (
-        <div>
+        );
+      case TABLE2_KEY_COLUMNS:
+        return (
           <ColumnArrayField
             columns={table2Columns}
-            data={table2KeyColumnsDefinition}
+            data={data}
             disabled={!table2Fqn}
             form={form}
           />
-        </div>
-      )}
-      {useColumnsDefinition && (
-        <div>
+        );
+      case USE_COLUMNS:
+        return (
           <ColumnArrayField
             columns={table?.columns}
-            data={useColumnsDefinition}
+            data={data}
             excludedColumns={crossListExcludedColumns}
             form={form}
           />
-        </div>
-      )}
-      {remainingDefinitions.map((data) => (
-        <div key={data.name}>{getField(getRemainingFieldProp(data))}</div>
-      ))}
+        );
+      default:
+        return getField(getRemainingFieldProp(data));
+    }
+  };
+
+  return (
+    <>
+      {(definition.parameterDefinition ?? [])
+        .filter((data) => data.name)
+        .map((data) => (
+          <div key={data.name}>{renderParameter(data)}</div>
+        ))}
     </>
   );
 };

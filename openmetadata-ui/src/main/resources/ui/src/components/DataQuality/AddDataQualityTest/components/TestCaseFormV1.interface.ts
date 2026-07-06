@@ -61,6 +61,7 @@ export interface TestCaseFormContext {
   selectedTestLevel: TestLevel;
   generateName: () => string;
   canCreatePipeline: boolean;
+  isCheckingPermissions?: boolean;
 }
 
 export interface TestCaseFormBodyProps {

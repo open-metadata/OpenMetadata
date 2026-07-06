@@ -96,12 +96,21 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
 
   // The drawer host stays mounted between opens, so useForm's defaultValues
   // freeze before callers (e.g. DataQualityTab bulk selection) provide
-  // initialValues. Re-seed on every open so the current initialValues win.
+  // initialValues. Re-seed on every open — and, for hosts that supply
+  // initialValues after opening, whenever the seed CONTENT changes. Keying on
+  // content (not object identity) keeps inline initialValues objects from
+  // wiping user edits on unrelated parent re-renders.
+  const seedSignature = JSON.stringify([
+    initialValues?.name ?? '',
+    initialValues?.description ?? '',
+    (initialValues?.testCases ?? []).map((tc) => tc.id),
+  ]);
+
   useEffect(() => {
     if (open) {
       form.reset(computeDefaultValues());
     }
-  }, [open]);
+  }, [open, seedSignature]);
 
   const createAndDeployPipeline = useCallback(
     async (values: BundleSuiteFormData, testSuite: TestSuite) => {
