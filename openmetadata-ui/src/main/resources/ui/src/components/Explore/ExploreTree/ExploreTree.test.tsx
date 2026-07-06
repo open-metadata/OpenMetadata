@@ -87,6 +87,33 @@ describe('ExploreTree', () => {
     expect(searchQuerySpy).not.toHaveBeenCalled();
   });
 
+  it('fetches entity counts when the product tour closes', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const renderWithTour = (isTourOpen: boolean) => (
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    const { rerender } = render(renderWithTour(true));
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+
+    rerender(renderWithTour(false));
+
+    await waitFor(() => {
+      expect(searchQuerySpy).toHaveBeenCalled();
+    });
+  });
+
   it('grays out categories that cannot contain the selected asset type', async () => {
     const { getByText, queryByTestId } = render(
       <ExploreTree

@@ -402,9 +402,7 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
-    // On the product tour the Explore page is fully mock-driven; skip the real
-    // aggregation calls so the tree stays static and the tour-step target card
-    // paints without the backend roundtrip resetting tour state.
+    // Explore is mock-driven during the tour; skip the real aggregation calls.
     if (isTourOpen) {
       setIsLoading(false);
 
@@ -528,6 +526,15 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
+
+  const previousIsTourOpenRef = useRef(isTourOpen);
+  useEffect(() => {
+    // Fetch the counts skipped during the tour once it closes.
+    if (previousIsTourOpenRef.current && !isTourOpen) {
+      fetchEntityCounts();
+    }
+    previousIsTourOpenRef.current = isTourOpen;
+  }, [isTourOpen, fetchEntityCounts]);
 
   const filterSignature = useMemo(
     () =>
