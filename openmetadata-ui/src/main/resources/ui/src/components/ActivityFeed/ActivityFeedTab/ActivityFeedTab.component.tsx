@@ -894,7 +894,7 @@ export const ActivityFeedTab = ({
               </Typography.Paragraph>
             </ErrorPlaceHolderNew>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
