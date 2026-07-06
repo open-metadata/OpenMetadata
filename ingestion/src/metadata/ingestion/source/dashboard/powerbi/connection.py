@@ -66,8 +66,23 @@ def _http_status(*codes: int) -> Matcher:
     return match
 
 
+def _contains_any(*tokens: str) -> Matcher:
+    """Match when any of ``tokens`` appears in the error (or its cause chain).
+
+    MSAL reports a bad authority through more than one message shape - a malformed
+    tenant, a blank tenant - so a single ``Matchers.contains`` token would miss
+    some; this ORs the stable tokens across those shapes."""
+    lowered = tuple(token.lower() for token in tokens)
+
+    def match(error: BaseException) -> bool:
+        chain = " ".join(str(current) for current in exception_chain(error)).lower()
+        return any(token in chain for token in lowered)
+
+    return match
+
+
 POWERBI_ERRORS = ErrorPack(
-    when(Matchers.contains("authority")).diagnose(
+    when(_contains_any("authority", "should consist of an https url")).diagnose(
         "Invalid tenant or authority",
         fix="The authority could not be resolved. Check the Tenant ID (a valid GUID or "
         "tenant name) and the Authority URI, e.g. https://login.microsoftonline.com/.",

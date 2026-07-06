@@ -147,6 +147,10 @@ def test_get_dashboards_wraps_failure_as_check_error():
         (_api_error(404), "Resource not found"),
         (ValueError("Unable to get authority configuration for https://login..."), "Invalid tenant or authority"),
         (ValueError("invalid_instance: The authority you provided is not known"), "Invalid tenant or authority"),
+        (
+            ValueError("Your given address (https://login...) should consist of an https url"),
+            "Invalid tenant or authority",
+        ),
         (socket.gaierror("name resolution failed"), "Host could not be resolved"),
     ],
 )
