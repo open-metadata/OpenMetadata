@@ -11,44 +11,83 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
-import { Form } from 'antd';
-import { castArray } from 'lodash';
-import { Suspense, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import MUIFormItemLabel from '../../components/common/MUIFormItemLabel/MUIFormItemLabel';
-import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
-  DEFAULT_FORM_VALUE,
-  TAG_NAME_VALIDATION_RULES,
-} from '../../constants/Tags.constant';
+  Avatar,
+  Box,
+  FieldProp,
+  FormField,
+  FormItemLabel,
+  Grid,
+  HintText,
+  HookForm,
+  getField,
+} from '@openmetadata/ui-core-components';
+import { Users01 } from '@untitledui/icons';
+import { debounce } from 'lodash';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useWatch } from 'react-hook-form';
+import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
+import {
+  AVAILABLE_ICONS,
+  DEFAULT_TAG_ICON,
+} from '../../components/common/IconPicker';
+import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
+import { PAGE_SIZE_MEDIUM } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import { CreateTag } from '../../generated/api/classification/createTag';
 import { Classification } from '../../generated/entity/classification/classification';
 import { Tag } from '../../generated/entity/classification/tag';
 import { EntityReference } from '../../generated/entity/type';
 import { useEntityRules } from '../../hooks/useEntityRules';
-import { FieldProp } from '../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../utils/formUtils';
+import { searchDomains } from '../../rest/domainAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { formatTeamsResponse } from '../../utils/APIUtils';
+import { getRandomColor } from '../../utils/ColorUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../utils/EntityReferenceUtils';
+import { getTermQuery } from '../../utils/SearchPureUtils';
 import tagClassBase from '../../utils/TagClassBase';
 import {
   COLOR_FIELD,
-  getDescriptionField,
   getDisabledField,
-  getDisplayNameField,
   getDomainField,
   getIconField,
   getMutuallyExclusiveField,
   getNameField,
+  getDisplayNameField,
   getOwnerField,
 } from './tagFormFields';
 import './TagsForm.less';
-import { RenameFormProps } from './TagsPage.interface';
+import {
+  RenameFormProps,
+  TAG_FORM_DEFAULTS,
+  TagFormSelectItem,
+  TagFormValues,
+} from './TagsPage.interface';
+
+const mapEntityReferenceToSelectItem = (
+  ref: EntityReference
+): TagFormSelectItem => ({
+  id: ref.id,
+  label: getEntityName(ref),
+  supportingText: ref.fullyQualifiedName ?? ref.type,
+  value: ref,
+});
+
+const convertToTagFormValues = (
+  entity: Classification | Tag
+): Partial<TagFormValues> => ({
+  ...entity,
+  owners: (entity.owners ?? []).map(mapEntityReferenceToSelectItem),
+  domains: (entity.domains ?? []).map(mapEntityReferenceToSelectItem),
+});
 
 const TagsForm = ({
-  formRef,
+  form,
+  submitRef,
   initialValues,
   onSubmit,
   showMutuallyExclusive = false,
@@ -60,22 +99,35 @@ const TagsForm = ({
 }: RenameFormProps) => {
   const { t } = useTranslation();
   const { entityRules } = useEntityRules(EntityType.CLASSIFICATION);
-  const selectedColor = Form.useWatch(['style', 'color'], formRef);
-  const selectedDomain = Form.useWatch<EntityReference[] | undefined>(
-    'domains',
-    formRef
+  const [userTeamOptions, setUserTeamOptions] = useState<TagFormSelectItem[]>(
+    []
   );
-  const selectedOwners = Form.useWatch<
-    EntityReference | EntityReference[] | undefined
-  >('owners', formRef);
-  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
-    'mutuallyExclusive',
-    formRef
-  );
+  const [domainOptions, setDomainOptions] = useState<TagFormSelectItem[]>([]);
+  const [descriptionEditorKey, setDescriptionEditorKey] = useState(0);
+
+  const selectedColor = useWatch({
+    control: form.control,
+    name: 'style.color',
+  });
+
+  const isMutuallyExclusive = useWatch({
+    control: form.control,
+    name: 'mutuallyExclusive',
+  });
 
   useEffect(() => {
-    formRef?.setFieldsValue(initialValues);
-  }, [initialValues, formRef]);
+    if (initialValues) {
+      form.reset(convertToTagFormValues(initialValues) as TagFormValues);
+    } else {
+      form.reset(TAG_FORM_DEFAULTS);
+    }
+  }, [initialValues, form]);
+
+  useEffect(() => {
+    if (form.formState.isSubmitSuccessful) {
+      setDescriptionEditorKey((prev) => prev + 1);
+    }
+  }, [form.formState.isSubmitSuccessful]);
 
   const disableNameField = useMemo(
     () => isEditing && isSystemTag,
@@ -111,48 +163,196 @@ const TagsForm = ({
     [isEditing, isClassification, permissions]
   );
 
-  const iconField = useMemo(() => {
-    const field = getIconField(selectedColor);
+  const fetchUserTeamOptions = useCallback(async (searchText = '') => {
+    try {
+      const [usersResponse, teamsResponse] = await Promise.all([
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({ isBot: 'false' }),
+          searchIndex: SearchIndex.USER,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        }),
+        searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_MEDIUM,
+          query: searchText,
+          queryFilter: getTermQuery({}, 'must', undefined, {
+            matchTerms: { teamType: 'Group' },
+          }),
+          searchIndex: SearchIndex.TEAM,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        }),
+      ]);
 
-    return {
-      ...field,
-      muiLabel: <MUIFormItemLabel label={t(field.muiLabel)} />,
-      props: {
-        ...field.props,
-        placeholder: t(field.placeholder),
-      },
-    };
-  }, [t, selectedColor]);
+      const userOptions = usersResponse.hits.hits.map((hit) => {
+        const source = hit._source;
+        const name = getEntityName(source);
+        const { color, backgroundColor, character } = getRandomColor(
+          source.displayName ?? source.name ?? ''
+        );
 
-  const colorField = useMemo(
-    () => ({
-      ...COLOR_FIELD,
-      muiLabel: <MUIFormItemLabel label={t(COLOR_FIELD.muiLabel)} />,
-    }),
-    [t]
+        return {
+          id: source.id,
+          label: name,
+          supportingText: source.fullyQualifiedName ?? EntityType.USER,
+          icon: (
+            <Avatar
+              initials={character}
+              size="xs"
+              src={source.profile?.images?.image ?? undefined}
+              style={{ color, backgroundColor }}
+            />
+          ),
+          value: {
+            id: source.id,
+            type: EntityType.USER,
+            name: source.name,
+            displayName: source.displayName,
+            fullyQualifiedName: source.fullyQualifiedName,
+          } as EntityReference,
+        };
+      });
+
+      const teams = getEntityReferenceListFromEntities(
+        formatTeamsResponse(teamsResponse.hits.hits),
+        EntityType.TEAM
+      );
+
+      setUserTeamOptions([
+        ...userOptions,
+        ...teams.map((reference) => ({
+          ...mapEntityReferenceToSelectItem(reference),
+          icon: <Avatar placeholderIcon={Users01} size="xs" />,
+        })),
+      ]);
+    } catch {
+      setUserTeamOptions([]);
+    }
+  }, []);
+
+  const fetchDomainOptions = useCallback(async (searchText = '') => {
+    try {
+      const domains = await searchDomains(searchText, 1);
+      const nextOptions = domains.map((domain) =>
+        mapEntityReferenceToSelectItem({
+          displayName: domain.displayName,
+          fullyQualifiedName: domain.fullyQualifiedName,
+          id: domain.id,
+          name: domain.name,
+          type: EntityType.DOMAIN,
+        })
+      );
+      setDomainOptions(nextOptions);
+    } catch {
+      setDomainOptions([]);
+    }
+  }, []);
+
+  const handleUserTeamFocus = useCallback(() => {
+    void fetchUserTeamOptions();
+  }, [fetchUserTeamOptions]);
+
+  const handleDomainFocus = useCallback(() => {
+    void fetchDomainOptions();
+  }, [fetchDomainOptions]);
+
+  const debouncedUserTeamSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchUserTeamOptions(searchText),
+        250
+      ),
+    [fetchUserTeamOptions]
   );
+
+  const debouncedDomainSearch = useMemo(
+    () =>
+      debounce(
+        (searchText: string) => void fetchDomainOptions(searchText),
+        250
+      ),
+    [fetchDomainOptions]
+  );
+
+  useEffect(
+    () => () => {
+      debouncedUserTeamSearch.cancel();
+      debouncedDomainSearch.cancel();
+    },
+    [debouncedUserTeamSearch, debouncedDomainSearch]
+  );
+
+  const iconOptions = useMemo(
+    () =>
+      [
+        DEFAULT_TAG_ICON,
+        ...AVAILABLE_ICONS.filter((icon) => icon.name !== DEFAULT_TAG_ICON.name),
+      ].map((icon) => ({
+        id: icon.name,
+        icon: icon.component,
+        label: icon.name,
+        value: icon.name,
+      })),
+    []
+  );
+
+  const handleSave = useCallback(
+    async (formData: TagFormValues) => {
+      const owners = (formData.owners ?? []).map(
+        (item) => item.value as EntityReference
+      );
+      const domainItems = formData.domains ?? [];
+
+      let domainsData;
+      if (domainItems.length > 0) {
+        if (isEditing) {
+          domainsData = domainItems.map(
+            (item) => item.value as EntityReference
+          );
+        } else {
+          domainsData = domainItems
+            .map((item) => {
+              const ref = item.value as EntityReference;
+
+              return ref.fullyQualifiedName ?? ref.name;
+            })
+            .filter(Boolean);
+        }
+      }
+
+      const submitData = {
+        ...formData,
+        owners: owners.length ? owners : undefined,
+        domains: domainsData,
+      } as CreateClassification | CreateTag;
+
+      try {
+        await onSubmit(submitData);
+        form.reset(TAG_FORM_DEFAULTS);
+      } catch {
+        // Parent will handle the error
+      }
+    },
+    [onSubmit, isEditing, form]
+  );
+
+  useEffect(() => {
+    if (submitRef) {
+      submitRef.current = () => void form.handleSubmit(handleSave)();
+    }
+  }, [form, handleSave, submitRef]);
 
   const nameField = useMemo(() => {
     const field = getNameField(disableNameField || false);
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
-      placeholder: t(field.placeholder),
-      rules: TAG_NAME_VALIDATION_RULES.map((rule) => ({
-        ...rule,
-        message: rule.message
-          ? t(rule.message, {
-              ...rule.messageData,
-              field: rule.messageData?.field
-                ? t(rule.messageData.field)
-                : undefined,
-              entity: rule.messageData?.entity
-                ? t(rule.messageData.entity)
-                : undefined,
-            })
-          : undefined,
-      })),
+      label: t(field.label as string),
+      placeholder: t(field.placeholder ?? ''),
     };
   }, [t, disableNameField]);
 
@@ -161,83 +361,93 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
-      placeholder: t(field.placeholder),
+      label: t(field.label as string),
+      placeholder: t(field.placeholder ?? ''),
     };
   }, [t, disableDisplayNameField]);
 
-  const ownerField = useMemo(() => {
-    const field = getOwnerField({
-      canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
-      canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
+  const iconField = useMemo(
+    () => ({
+      ...getIconField(selectedColor, iconOptions as TagFormSelectItem[]),
+      label: t('label.icon'),
+    }),
+    [t, selectedColor, iconOptions]
+  );
+
+  const colorField = useMemo(
+    () => ({
+      ...COLOR_FIELD,
+      label: t('label.color'),
+    }),
+    [t]
+  );
+
+  const ownerField = useMemo(
+    (): FieldProp => ({
+      ...getOwnerField({
+        multiple:
+          entityRules.canAddMultipleUserOwners ||
+          entityRules.canAddMultipleTeamOwner,
+        options: userTeamOptions,
+        onFocus: handleUserTeamFocus,
+        onSearchChange: (searchText: string) =>
+          debouncedUserTeamSearch(searchText),
+      }),
+      label: t('label.owner-plural'),
+    }),
+    [
+      t,
+      entityRules.canAddMultipleUserOwners,
+      entityRules.canAddMultipleTeamOwner,
+      userTeamOptions,
+      handleUserTeamFocus,
+      debouncedUserTeamSearch,
+    ]
+  );
+
+  const domainField = useMemo(
+    (): FieldProp => ({
+      ...getDomainField({
+        canAddMultipleDomains: entityRules.canAddMultipleDomains,
+        options: domainOptions,
+        onFocus: handleDomainFocus,
+        onSearchChange: (searchText: string) =>
+          debouncedDomainSearch(searchText),
+      }),
+      label: t('label.domain-plural'),
+    }),
+    [
+      t,
+      entityRules.canAddMultipleDomains,
+      domainOptions,
+      handleDomainFocus,
+      debouncedDomainSearch,
+    ]
+  );
+
+  const disabledField = useMemo(() => {
+    const field = getDisabledField({
+      initialValue: (initialValues as Tag)?.disabled ?? false,
+      disabled: disableDisabledField,
     });
 
     return {
       ...field,
-      muiLabel: t(field.muiLabel),
+      label: t(field.label as string),
     };
-  }, [
-    t,
-    entityRules.canAddMultipleUserOwners,
-    entityRules.canAddMultipleTeamOwner,
-  ]);
-
-  const domainField = useMemo(() => {
-    const field = getDomainField({
-      canAddMultipleDomains: entityRules.canAddMultipleDomains,
-    });
-
-    return {
-      ...field,
-      muiLabel: t(field.muiLabel),
-    };
-  }, [entityRules.canAddMultipleDomains, t]);
-
-  const formFields: FieldProp[] = useMemo(() => {
-    const descriptionField = getDescriptionField({
-      initialValue: initialValues?.description ?? '',
-      readonly: disableDescriptionField,
-    });
-
-    const fields: FieldProp[] = [
-      {
-        ...descriptionField,
-        label: <MUIFormItemLabel label={t(descriptionField.label)} />,
-      },
-    ];
-
-    if (isSystemTag && !isTier) {
-      const disabledField = getDisabledField({
-        initialValue: initialValues?.disabled ?? false,
-        disabled: disableDisabledField,
-      });
-
-      fields.push({
-        ...disabledField,
-        label: t(disabledField.label),
-      });
-    }
-
-    return fields;
-  }, [
-    t,
-    initialValues?.description,
-    initialValues?.disabled,
-    disableDescriptionField,
-    disableDisabledField,
-    isSystemTag,
-    isTier,
-  ]);
+  }, [t, initialValues, disableDisabledField]);
 
   const mutuallyExclusiveField = useMemo(() => {
     const field = getMutuallyExclusiveField({
       disabled: disableMutuallyExclusiveField,
-      showHelperText: Boolean(isMutuallyExclusive),
+      helperText: isMutuallyExclusive
+        ? t('message.mutually-exclusive-alert-info')
+        : undefined,
     });
 
     return {
       ...field,
-      label: t(field.label),
+      label: t(field.label as string),
     };
   }, [t, disableMutuallyExclusiveField, isMutuallyExclusive]);
 
@@ -247,76 +457,81 @@ const TagsForm = ({
     [isClassification]
   );
 
-  const handleSave = async (data: Classification | Tag | undefined) => {
-    const domains = castArray(selectedDomain).filter(Boolean);
-    const owners = castArray(selectedOwners).filter(Boolean);
-
-    try {
-      let domainsData;
-      if (domains?.length) {
-        if (isEditing) {
-          domainsData = domains;
-        } else {
-          domainsData = domains
-            .map((domain) => domain.fullyQualifiedName ?? domain.name)
-            .filter(Boolean);
-        }
-      }
-
-      const submitData = {
-        ...data,
-        owners: owners?.length ? owners : undefined,
-        domains: domainsData,
-      } as CreateClassification | CreateTag;
-      await onSubmit(submitData);
-      formRef.setFieldsValue(DEFAULT_FORM_VALUE);
-    } catch {
-      // Parent will handle the error
-    }
-  };
-
   return (
     <EntityAttachmentProvider
       entityFqn={initialValues?.fullyQualifiedName}
       entityType={
         isClassification ? EntityType.CLASSIFICATION : EntityType.TAG
       }>
-      <Form
-        className="tags-form"
+      <HookForm
+        className="tags-form tw:flex tw:flex-col tw:gap-6"
         data-testid="tags-form"
-        form={formRef}
-        initialValues={initialValues ?? DEFAULT_FORM_VALUE}
-        layout="vertical"
-        name="tags"
-        validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSave}>
+        form={form}
+        onSubmit={form.handleSubmit(handleSave)}>
         <Grid colGap="4">
           <Grid.Item span={12}>{getField(nameField)}</Grid.Item>
           <Grid.Item span={12}>{getField(displayNameField)}</Grid.Item>
         </Grid>
 
         {!isClassification && (
-          <Grid colGap="4">
-            <Grid.Item span={4}>{getField(iconField)}</Grid.Item>
-            <Grid.Item span={20}>{getField(colorField)}</Grid.Item>
-          </Grid>
+          <Box align="start" gap={4}>
+            <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
+              {getField(iconField)}
+            </div>
+            <div className="tw:min-w-0 tw:basis-[90%] tw:flex-[0_0_90%]">
+              {getField(colorField)}
+            </div>
+          </Box>
         )}
 
-        {generateFormFields(formFields)}
-        <div className="tw:mb-6">
-          {showMutuallyExclusive && getField(mutuallyExclusiveField)}
-        </div>
+        <FormField
+          control={form.control}
+          name="description"
+          rules={{
+            required: t('label.field-required', {
+              field: t('label.description'),
+            }),
+          }}>
+          {({ field, fieldState }) => (
+            <Box
+              aria-invalid={fieldState.invalid || undefined}
+              className="tw:gap-[6px]"
+              direction="col">
+              <FormItemLabel
+                label={t('label.description')}
+                required
+              />
+              <RichTextEditor
+                className="description-text-area new-form-style"
+                initialValue={initialValues?.description ?? ''}
+                key={descriptionEditorKey}
+                readonly={disableDescriptionField}
+                onTextChange={field.onChange}
+              />
+              {fieldState.error?.message && (
+                <HintText isInvalid>{fieldState.error.message}</HintText>
+              )}
+            </Box>
+          )}
+        </FormField>
+
+        {isSystemTag && !isTier && (
+          <div>{getField(disabledField)}</div>
+        )}
+
+        {showMutuallyExclusive && (
+          <div className="tw:mb-6">{getField(mutuallyExclusiveField)}</div>
+        )}
 
         <Grid>
           <Grid.Item>{getField(ownerField)}</Grid.Item>
           <Grid.Item>{getField(domainField)}</Grid.Item>
         </Grid>
 
-        {/* Auto Classification fields */}
         {autoClassificationComponent && (
           <Suspense fallback={null}>{autoClassificationComponent}</Suspense>
         )}
-      </Form>
+      </HookForm>
     </EntityAttachmentProvider>
   );
 };

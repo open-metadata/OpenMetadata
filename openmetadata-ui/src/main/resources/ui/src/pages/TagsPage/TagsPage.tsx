@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
+import { useForm } from 'react-hook-form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -68,15 +68,21 @@ import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
-import { DeleteTagsType } from './TagsPage.interface';
+import {
+  DeleteTagsType,
+  TAG_FORM_DEFAULTS,
+  TagFormValues,
+} from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
-  const [tagForm] = useForm();
-  const [classificationForm] = useForm();
+  const tagForm = useForm<TagFormValues>({ defaultValues: TAG_FORM_DEFAULTS });
+  const classificationForm = useForm<TagFormValues>({
+    defaultValues: TAG_FORM_DEFAULTS,
+  });
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -597,7 +603,7 @@ const TagsPage = () => {
 
   const handleTagDrawerClose = useCallback(() => {
     setIsTagDrawerOpen(false);
-    tagForm.resetFields();
+    tagForm.reset();
     setEditTag(undefined);
   }, [tagForm]);
 
@@ -607,12 +613,12 @@ const TagsPage = () => {
 
   const handleClassificationDrawerClose = useCallback(() => {
     setIsClassificationDrawerOpen(false);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleClassificationDrawerOpen = useCallback(() => {
     setIsClassificationDrawerOpen(true);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleTagFormSubmit = useCallback(
@@ -651,7 +657,7 @@ const TagsPage = () => {
 
   const handleAddNewTagClick = useCallback(() => {
     setEditTag(undefined);
-    tagForm.resetFields();
+    tagForm.reset();
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
@@ -671,7 +677,7 @@ const TagsPage = () => {
                   iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
                   size="sm"
                   onClick={() => {
-                    classificationForm.resetFields();
+                    classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
                   <span className="tw:text-brand-600 tw:font-normal">
@@ -807,7 +813,7 @@ const TagsPage = () => {
 
       <TagFormDrawer
         editTag={editTag}
-        formRef={tagForm}
+        form={tagForm}
         isLoading={isTagFormLoading}
         isTier={isTier}
         open={isTagDrawerOpen}
@@ -819,7 +825,7 @@ const TagsPage = () => {
 
       <ClassificationFormDrawer
         classifications={classifications}
-        formRef={classificationForm}
+        form={classificationForm}
         isLoading={isClassificationFormLoading}
         isTier={isTier}
         open={isClassificationDrawerOpen}

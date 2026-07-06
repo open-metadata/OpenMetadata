@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
 import {
   FieldTypes,
-  FormItemLayout,
   HelperTextType,
-} from '../../interface/FormUtils.interface';
+} from '@openmetadata/ui-core-components';
 import {
   COLOR_FIELD,
-  getDescriptionField,
   getDisabledField,
   getDisplayNameField,
   getDomainField,
@@ -29,430 +26,146 @@ import {
   getOwnerField,
 } from './tagFormFields';
 
-jest.mock('../../utils/DomainUtils', () => ({
-  iconTooltipDataRender: jest.fn(() => 'mocked-tooltip'),
-}));
+const noopFn = jest.fn();
 
 describe('tagFormFields', () => {
   describe('getIconField', () => {
-    it('should return icon field configuration with default values', () => {
+    it('should return icon field with ICON_PICKER type', () => {
       const result = getIconField();
 
-      expect(result).toEqual({
-        name: ['style', 'iconURL'],
-        id: 'root/style/iconURL',
-        label: 'label.icon',
-        muiLabel: 'label.icon',
-        required: false,
-        type: FieldTypes.ICON_PICKER_MUI,
-        helperText: 'mocked-tooltip',
-        placeholder: 'label.icon-url',
-        formItemLayout: FormItemLayout.HORIZONTAL,
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-        props: {
-          'data-testid': 'icon-picker-btn',
-          allowUrl: true,
-          backgroundColor: undefined,
-          defaultIcon: DEFAULT_TAG_ICON,
-          customStyles: {
-            searchBoxWidth: 366,
-          },
-        },
-      });
+      expect(result.name).toBe('style.iconURL');
+      expect(result.type).toBe(FieldTypes.ICON_PICKER);
+      expect(result.required).toBe(false);
     });
 
-    it('should return icon field configuration with selected color', () => {
+    it('should pass backgroundColor from selected color', () => {
       const selectedColor = '#FF5733';
       const result = getIconField(selectedColor);
 
       expect(result.props?.backgroundColor).toBe(selectedColor);
     });
-
-    it('should have correct formItemProps', () => {
-      const result = getIconField();
-
-      expect(result.formItemProps).toEqual({
-        valuePropName: 'value',
-        trigger: 'onChange',
-      });
-    });
-
-    it('should have correct custom styles', () => {
-      const result = getIconField();
-
-      expect(result.props?.customStyles).toEqual({
-        searchBoxWidth: 366,
-      });
-    });
   });
 
   describe('COLOR_FIELD', () => {
-    it('should have correct color field configuration', () => {
-      expect(COLOR_FIELD).toEqual({
-        name: ['style', 'color'],
-        id: 'root/style/color',
-        label: 'label.color',
-        muiLabel: 'label.color',
-        required: false,
-        type: FieldTypes.COLOR_PICKER_MUI,
-        formItemLayout: FormItemLayout.HORIZONTAL,
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-      });
-    });
-
-    it('should be a constant field', () => {
-      expect(COLOR_FIELD.type).toBe(FieldTypes.COLOR_PICKER_MUI);
+    it('should have COLOR_PICKER type and correct name', () => {
+      expect(COLOR_FIELD.type).toBe(FieldTypes.COLOR_PICKER);
+      expect(COLOR_FIELD.name).toBe('style.color');
       expect(COLOR_FIELD.required).toBe(false);
     });
   });
 
   describe('getNameField', () => {
-    it('should return name field configuration when disabled is false', () => {
+    it('should return TEXT type with data-testid', () => {
       const result = getNameField(false);
 
-      expect(result).toEqual({
-        name: 'name',
-        id: 'root/name',
-        label: 'label.name',
-        muiLabel: 'label.name',
-        required: true,
-        placeholder: 'label.name',
-        type: FieldTypes.TEXT_MUI,
-        props: {
-          inputProps: {
-            'data-testid': 'name',
-          },
-          disabled: false,
-        },
-        formItemProps: {
-          validateTrigger: ['onChange', 'onBlur'],
-        },
-      });
-    });
-
-    it('should return name field configuration when disabled is true', () => {
-      const result = getNameField(true);
-
-      expect(result.props?.disabled).toBe(true);
-    });
-
-    it('should be a required field', () => {
-      const result = getNameField(false);
-
+      expect(result.type).toBe(FieldTypes.TEXT);
+      expect(result.name).toBe('name');
       expect(result.required).toBe(true);
+      expect(result.props?.['data-testid']).toBe('name');
     });
 
-    it('should have correct validation triggers', () => {
-      const result = getNameField(false);
-
-      expect(result.formItemProps?.validateTrigger).toEqual([
-        'onChange',
-        'onBlur',
-      ]);
+    it('should forward disabled prop', () => {
+      expect(getNameField(true).props?.disabled).toBe(true);
+      expect(getNameField(false).props?.disabled).toBe(false);
     });
   });
 
   describe('getDisplayNameField', () => {
-    it('should return display name field configuration when disabled is false', () => {
+    it('should return TEXT type and be optional', () => {
       const result = getDisplayNameField(false);
 
-      expect(result).toEqual({
-        name: 'displayName',
-        id: 'root/displayName',
-        label: 'label.display-name',
-        muiLabel: 'label.display-name',
-        required: false,
-        placeholder: 'label.display-name',
-        type: FieldTypes.TEXT_MUI,
-        props: {
-          inputProps: {
-            'data-testid': 'displayName',
-          },
-          disabled: false,
-        },
-      });
-    });
-
-    it('should return display name field configuration when disabled is true', () => {
-      const result = getDisplayNameField(true);
-
-      expect(result.props?.disabled).toBe(true);
-    });
-
-    it('should be an optional field', () => {
-      const result = getDisplayNameField(false);
-
+      expect(result.type).toBe(FieldTypes.TEXT);
+      expect(result.name).toBe('displayName');
       expect(result.required).toBe(false);
+    });
+
+    it('should forward disabled prop', () => {
+      expect(getDisplayNameField(true).props?.disabled).toBe(true);
     });
   });
 
   describe('getOwnerField', () => {
-    it('should return owner field configuration with multiple users and teams disabled', () => {
+    it('should return USER_TEAM_SELECT_INPUT with provided options and callbacks', () => {
+      const options = [{ id: '1', label: 'Alice', value: 'ref1' }];
       const result = getOwnerField({
-        canAddMultipleUserOwners: false,
-        canAddMultipleTeamOwner: false,
+        multiple: true,
+        options,
+        onFocus: noopFn,
+        onSearchChange: noopFn,
       });
 
-      expect(result).toEqual({
-        name: 'owners',
-        id: 'root/owner',
-        required: false,
-        label: 'label.owner-plural',
-        muiLabel: 'label.owner-plural',
-        type: FieldTypes.USER_TEAM_SELECT_MUI,
-        props: {
-          multipleUser: false,
-          multipleTeam: false,
-        },
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-      });
-    });
-
-    it('should return owner field configuration with multiple users enabled', () => {
-      const result = getOwnerField({
-        canAddMultipleUserOwners: true,
-        canAddMultipleTeamOwner: false,
-      });
-
-      expect(result.props?.multipleUser).toBe(true);
-      expect(result.props?.multipleTeam).toBe(false);
-    });
-
-    it('should return owner field configuration with multiple teams enabled', () => {
-      const result = getOwnerField({
-        canAddMultipleUserOwners: false,
-        canAddMultipleTeamOwner: true,
-      });
-
-      expect(result.props?.multipleUser).toBe(false);
-      expect(result.props?.multipleTeam).toBe(true);
-    });
-
-    it('should return owner field configuration with both multiple options enabled', () => {
-      const result = getOwnerField({
-        canAddMultipleUserOwners: true,
-        canAddMultipleTeamOwner: true,
-      });
-
-      expect(result.props?.multipleUser).toBe(true);
-      expect(result.props?.multipleTeam).toBe(true);
+      expect(result.type).toBe(FieldTypes.USER_TEAM_SELECT_INPUT);
+      expect(result.name).toBe('owners');
+      expect(result.props?.multiple).toBe(true);
+      expect(result.props?.options).toBe(options);
+      expect(result.props?.onFocus).toBe(noopFn);
+      expect(result.props?.onSearchChange).toBe(noopFn);
     });
   });
 
   describe('getDomainField', () => {
-    it('should return domain field configuration with multiple domains disabled', () => {
-      const result = getDomainField({
-        canAddMultipleDomains: false,
-      });
-
-      expect(result).toEqual({
-        name: 'domains',
-        id: 'root/domains',
-        required: false,
-        label: 'label.domain-plural',
-        muiLabel: 'label.domain-plural',
-        type: FieldTypes.DOMAIN_SELECT_MUI,
-        props: {
-          'data-testid': 'domain-select',
-          hasPermission: true,
-          multiple: false,
-        },
-        formItemProps: {
-          valuePropName: 'value',
-          trigger: 'onChange',
-        },
-      });
-    });
-
-    it('should return domain field configuration with multiple domains enabled', () => {
+    it('should return DOMAIN_SELECT with multiple flag from canAddMultipleDomains', () => {
       const result = getDomainField({
         canAddMultipleDomains: true,
+        options: [],
+        onFocus: noopFn,
+        onSearchChange: noopFn,
       });
 
+      expect(result.type).toBe(FieldTypes.DOMAIN_SELECT);
+      expect(result.name).toBe('domains');
       expect(result.props?.multiple).toBe(true);
     });
 
-    it('should always have hasPermission set to true', () => {
+    it('should set multiple to false when canAddMultipleDomains is false', () => {
       const result = getDomainField({
         canAddMultipleDomains: false,
+        options: [],
+        onFocus: noopFn,
+        onSearchChange: noopFn,
       });
 
-      expect(result.props?.hasPermission).toBe(true);
-    });
-  });
-
-  describe('getDescriptionField', () => {
-    it('should return description field configuration with default values', () => {
-      const initialValue = 'Test description';
-      const result = getDescriptionField({
-        initialValue,
-        readonly: false,
-      });
-
-      expect(result).toEqual({
-        name: 'description',
-        required: true,
-        label: 'label.description',
-        id: 'root/description',
-        type: FieldTypes.DESCRIPTION,
-        props: {
-          'data-testid': 'description',
-          initialValue,
-          readonly: false,
-          className: 'description-text-area',
-        },
-        formItemProps: {
-          className: 'description-form-item',
-        },
-      });
-    });
-
-    it('should return description field configuration with readonly true', () => {
-      const result = getDescriptionField({
-        initialValue: '',
-        readonly: true,
-      });
-
-      expect(result.props?.readonly).toBe(true);
-    });
-
-    it('should be a required field', () => {
-      const result = getDescriptionField({
-        initialValue: '',
-        readonly: false,
-      });
-
-      expect(result.required).toBe(true);
-    });
-
-    it('should preserve initialValue', () => {
-      const initialValue = 'Custom initial value';
-      const result = getDescriptionField({
-        initialValue,
-        readonly: false,
-      });
-
-      expect(result.props?.initialValue).toBe(initialValue);
+      expect(result.props?.multiple).toBe(false);
     });
   });
 
   describe('getDisabledField', () => {
-    it('should return disabled field configuration with default values', () => {
-      const result = getDisabledField({
-        initialValue: false,
-        disabled: false,
-      });
+    it('should return SWITCH type with disabled prop', () => {
+      const result = getDisabledField({ initialValue: false, disabled: false });
 
-      expect(result).toEqual({
-        name: 'disabled',
-        required: false,
-        label: 'label.disable-tag',
-        id: 'root/disabled',
-        type: FieldTypes.UT_SWITCH,
-        formItemLayout: FormItemLayout.HORIZONTAL,
-        props: {
-          'data-testid': 'disabled',
-          initialValue: false,
-          isDisabled: false,
-        },
-      });
+      expect(result.type).toBe(FieldTypes.SWITCH);
+      expect(result.name).toBe('disabled');
+      expect(result.required).toBe(false);
+      expect(result.props?.['data-testid']).toBe('disabled');
     });
 
-    it('should return disabled field with initialValue true', () => {
-      const result = getDisabledField({
-        initialValue: true,
-        disabled: false,
-      });
-
-      expect(result.props?.initialValue).toBe(true);
-    });
-
-    it('should return disabled field with disabled true', () => {
-      const result = getDisabledField({
-        initialValue: false,
-        disabled: true,
-      });
-
-      expect(result.props?.isDisabled).toBe(true);
-    });
-
-    it('should have horizontal form item layout', () => {
-      const result = getDisabledField({
-        initialValue: false,
-        disabled: false,
-      });
-
-      expect(result.formItemLayout).toBe(FormItemLayout.HORIZONTAL);
+    it('should forward disabled prop', () => {
+      expect(getDisabledField({ initialValue: false, disabled: true }).props?.disabled).toBe(true);
     });
   });
 
   describe('getMutuallyExclusiveField', () => {
-    it('should return mutually exclusive field configuration with helper text hidden', () => {
-      const result = getMutuallyExclusiveField({
-        disabled: false,
-        showHelperText: false,
-      });
+    it('should return SWITCH type with ALERT helper text type', () => {
+      const result = getMutuallyExclusiveField({ disabled: false });
 
-      expect(result).toEqual({
-        name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
-        type: FieldTypes.UT_SWITCH,
-        required: false,
-        props: {
-          id: 'tags_mutuallyExclusive',
-          'data-testid': 'mutually-exclusive-button',
-          isDisabled: false,
-          className: 'mutually-exclusive-switch',
-        },
-        helperTextType: HelperTextType.ALERT,
-        showHelperText: false,
-        id: 'root/mutuallyExclusive',
-      });
-    });
-
-    it('should return mutually exclusive field with helper text shown', () => {
-      const result = getMutuallyExclusiveField({
-        disabled: false,
-        showHelperText: true,
-      });
-
-      expect(result.showHelperText).toBe(true);
-    });
-
-    it('should return mutually exclusive field with disabled true', () => {
-      const result = getMutuallyExclusiveField({
-        disabled: true,
-        showHelperText: false,
-      });
-
-      expect(result.props?.isDisabled).toBe(true);
-    });
-
-    it('should have ALERT helper text type', () => {
-      const result = getMutuallyExclusiveField({
-        disabled: false,
-        showHelperText: false,
-      });
-
-      expect(result.helperTextType).toBe(HelperTextType.ALERT);
-    });
-
-    it('should be an optional field', () => {
-      const result = getMutuallyExclusiveField({
-        disabled: false,
-        showHelperText: false,
-      });
-
+      expect(result.type).toBe(FieldTypes.SWITCH);
+      expect(result.name).toBe('mutuallyExclusive');
       expect(result.required).toBe(false);
+      expect(result.helperTextType).toBe(HelperTextType.ALERT);
+      expect(result.props?.['data-testid']).toBe('mutually-exclusive-button');
+    });
+
+    it('should set helperText when provided', () => {
+      const result = getMutuallyExclusiveField({
+        disabled: false,
+        helperText: 'Alert message',
+      });
+
+      expect(result.helperText).toBe('Alert message');
+    });
+
+    it('should forward disabled prop', () => {
+      expect(getMutuallyExclusiveField({ disabled: true }).props?.disabled).toBe(true);
     });
   });
 });
