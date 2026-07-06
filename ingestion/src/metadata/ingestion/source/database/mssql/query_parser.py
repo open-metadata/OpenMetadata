@@ -90,7 +90,16 @@ class MssqlQueryParserSource(QueryParserSource, ABC):
         those DMVs already return history for every database on the server in one pass.
         """
         if self.uses_query_store() and getattr(self.service_connection, "ingestAllDatabases", False):
-            yield from self._query_store_database_engines()
+            yielded = False
+            for engine in self._query_store_database_engines():
+                yielded = True
+                yield engine
+            if not yielded:
+                logger.info(
+                    "MSSQL query history: no database had a usable Query Store, "
+                    "falling back to the instance-wide plan-cache DMVs."
+                )
+                yield self.engine
         else:
             yield self.engine
 

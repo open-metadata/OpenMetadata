@@ -654,6 +654,12 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
 
+    def test_falls_back_to_dmv_when_no_database_has_query_store(self):
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source._query_store_database_engines = lambda: iter([])
+
+        assert list(source.get_engine()) == [source.engine]
+
     def test_stored_procedure_engines_follow_get_engine(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=False)
 
