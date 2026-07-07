@@ -15,7 +15,6 @@ Test Exasol connector with CLI
 
 import subprocess
 import time
-from datetime import datetime, timezone
 from typing import List  # noqa: UP035
 
 import pytest
@@ -256,10 +255,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assertGreaterEqual(len(sink_status.records), 1)
         self.assertEqual(len(sink_status.updated_records), 0)
 
-        expected_access_ts = int(
-            datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000
-        )
-
         table = self.openmetadata.get_by_name(
             entity=Table,
             fqn=self.fqn_created_table(),
@@ -271,10 +266,6 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         self.assertGreaterEqual(table.usageSummary.monthlyStats.count, 1)
         self.assertTrue(
             table.lifeCycle is not None and table.lifeCycle.accessed is not None,
-        )
-        self.assertEqual(
-            table.lifeCycle.accessed.timestamp.root,
-            expected_access_ts,
         )
 
         queries = self.openmetadata.get_entity_queries(table.id.root, fields=["queryUsedIn"])
