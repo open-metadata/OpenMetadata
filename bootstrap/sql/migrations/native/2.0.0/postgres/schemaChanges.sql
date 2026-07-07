@@ -382,12 +382,14 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
     deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
     status VARCHAR(32) GENERATED ALWAYS AS (json->>'status') STORED,
+    requestSignature VARCHAR(512) GENERATED ALWAYS AS (json->>'requestSignature') STORED,
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
 CREATE INDEX IF NOT EXISTS audit_report_name_index ON audit_report_entity(name);
 CREATE INDEX IF NOT EXISTS audit_report_status_index ON audit_report_entity(status);
 CREATE INDEX IF NOT EXISTS audit_report_deleted_index ON audit_report_entity(deleted);
+CREATE INDEX IF NOT EXISTS audit_report_request_signature_index ON audit_report_entity(requestSignature);
 COMMENT ON TABLE audit_report_entity IS 'AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS user_session (
@@ -467,8 +469,3 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
-
--- AI audit reports: indexed request signature backs O(1) idempotent-submission dedup
--- (a retried submit returns the in-flight report instead of generating the same pack twice).
-ALTER TABLE audit_report_entity ADD COLUMN IF NOT EXISTS requestSignature VARCHAR(512) GENERATED ALWAYS AS (json ->> 'requestSignature') STORED;
-CREATE INDEX IF NOT EXISTS audit_report_request_signature_index ON audit_report_entity (requestSignature);

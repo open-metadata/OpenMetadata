@@ -427,11 +427,13 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
     deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
     status VARCHAR(32) GENERATED ALWAYS AS (json ->> '$.status') VIRTUAL,
+    requestSignature VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.requestSignature') STORED,
     PRIMARY KEY (id),
     UNIQUE KEY unique_name (fqnHash),
     INDEX name_index (name),
     INDEX status_index (status),
-    INDEX deleted_index (deleted)
+    INDEX deleted_index (deleted),
+    INDEX request_signature_index (requestSignature)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS `user_session` (
@@ -508,8 +510,3 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- AI audit reports: indexed request signature backs O(1) idempotent-submission dedup
--- (a retried submit returns the in-flight report instead of generating the same pack twice).
-ALTER TABLE audit_report_entity ADD COLUMN requestSignature VARCHAR(512) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.requestSignature'))) STORED;
-CREATE INDEX audit_report_request_signature_index ON audit_report_entity (requestSignature);
