@@ -389,14 +389,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   }, []);
 
   const endTrackedSave = useCallback(
-    (savedArticleId: string) => {
+    (savedArticleId: string, didSucceed: boolean) => {
       const remaining = Math.max(0, getPendingSaveCount(savedArticleId) - 1);
       if (remaining === 0) {
         pendingSaveCountByArticleRef.current.delete(savedArticleId);
         if (savedArticleId === knowledgePageIdRef.current) {
-          setContentChangeState(ContentChangeState.SAVED);
+          setContentChangeState(
+            didSucceed ? ContentChangeState.SAVED : ContentChangeState.UN_SAVED
+          );
         }
-        removeDraft(savedArticleId);
+        if (didSucceed) {
+          removeDraft(savedArticleId);
+        }
       } else {
         pendingSaveCountByArticleRef.current.set(savedArticleId, remaining);
       }
@@ -420,6 +424,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         return;
       }
 
+      let didSucceed = false;
       try {
         beginTrackedSave(currentKnowledgePage.id);
 
@@ -446,10 +451,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             version: response.version,
           };
         });
+        didSucceed = true;
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        endTrackedSave(currentKnowledgePage.id);
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
     [
@@ -573,6 +579,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         displayName: updatedDisplayName.trim(),
       };
 
+      let didSucceed = false;
       try {
         beginTrackedSave(currentKnowledgePage.id);
 
@@ -603,10 +610,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             version: response.version,
           };
         });
+        didSucceed = true;
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        endTrackedSave(currentKnowledgePage.id);
+        endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
     },
     [

@@ -773,8 +773,10 @@ export const searchAndGetMemoryRow = async (
   await waitForAllLoadersToDisappear(page);
 
   return page.getByTestId(`memory-row-${memoryId}`);
-}
-export const readDraftStore = async (page: Page): Promise<Record<string, unknown>> => {
+};
+export const readDraftStore = async (
+  page: Page
+): Promise<Record<string, unknown>> => {
   const raw = await page.evaluate(
     (key: string) => localStorage.getItem(key),
     'om-article-drafts'
