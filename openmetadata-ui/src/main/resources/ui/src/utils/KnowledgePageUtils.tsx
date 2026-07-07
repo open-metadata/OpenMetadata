@@ -12,11 +12,11 @@
  */
 import { get } from 'lodash';
 import {
-    KnowledgePage,
-    PageType,
-    QuickLink,
-    RecentlyViewedQuickLinks,
-    RecentViewedKnowledgePage,
+  KnowledgePage,
+  PageType,
+  QuickLink,
+  RecentlyViewedQuickLinks,
+  RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 
 import { Box } from '@openmetadata/ui-core-components';

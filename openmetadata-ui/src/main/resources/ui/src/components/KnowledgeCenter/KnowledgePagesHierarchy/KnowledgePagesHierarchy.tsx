@@ -758,7 +758,11 @@ const KnowledgePagesHierarchy = forwardRef<
             justify="between">
             <Box align="center" gap={3}>
               <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
-                <FileIcon className="tw:text-quaternary" height={20} width={20} />
+                <FileIcon
+                  className="tw:text-quaternary"
+                  height={20}
+                  width={20}
+                />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">

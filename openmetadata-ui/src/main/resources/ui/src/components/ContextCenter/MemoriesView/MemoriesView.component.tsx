@@ -49,13 +49,13 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
 
   return (
     <Dropdown.Root>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="edit-memory-btn"
-          icon={ <DotsVerticalIcon height={20} width={20} />}
-          size="sm"
-          tooltip={t('label.manage-entity', { entity: t('label.memory') })}
-        />
+      <ButtonUtility
+        color="tertiary"
+        data-testid="edit-memory-btn"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.memory') })}
+      />
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {

@@ -23,8 +23,8 @@ import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
-    KNOWLEDGE_CENTER_CLASSIFICATION,
-    PAGE_SIZE_MEDIUM,
+  KNOWLEDGE_CENTER_CLASSIFICATION,
+  PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -32,8 +32,8 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-    KnowledgePage,
-    RecentlyViewedQuickLinks,
+  KnowledgePage,
+  RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';

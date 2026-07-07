@@ -278,7 +278,11 @@ const ContextCenterDashboardPage: FC = () => {
               width={13}
             />
           ) : (
-            <FileIcon className="tw:text-quaternary tw:shrink-0" height={14} width={14} />
+            <FileIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={14}
+              width={14}
+            />
           );
 
         return {

@@ -21,12 +21,9 @@ import {
   Dropdown,
   FileIcon,
   Skeleton,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronRight
-} from '@untitledui/icons';
+import { Check, ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';
@@ -170,7 +167,7 @@ const FileActions: FC<FileActionsProps> = ({
       <ButtonUtility
         color="tertiary"
         data-testid="manage-button"
-        icon={ <DotsVerticalIcon height={20} width={20} />}
+        icon={<DotsVerticalIcon height={20} width={20} />}
         size="sm"
         tooltip={t('label.manage-entity', { entity: t('label.document') })}
       />
@@ -188,12 +185,18 @@ const FileActions: FC<FileActionsProps> = ({
                 isDisabled={isMoving || folders.length === 0}>
                 {() => (
                   <Box align="center" justify="between">
-                    <Box align='center' gap={2}>
-                      <MoveFolderIcon className="tw:text-secondary" height={20} width={20} />
-                      <Typography ellipsis className="tw:grow tw:text-secondary">
+                    <Box align="center" gap={2}>
+                      <MoveFolderIcon
+                        className="tw:text-secondary"
+                        height={20}
+                        width={20}
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:grow tw:text-secondary">
                         {t('label.move-to-folder')}
                       </Typography>
-                     </Box>
+                    </Box>
                     <ChevronRight
                       aria-hidden="true"
                       className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
