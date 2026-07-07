@@ -21,6 +21,7 @@ import {
   FormSelectItem,
   getField,
   HelperTextType,
+  useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -758,7 +759,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       required: t('label.select-test-type'),
     },
     id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
-    doc: t('message.doc-field-test-type'),
+    doc:
+      selectedTestDefinition?.description ?? t('message.doc-field-test-type'),
     placeholder: t('label.select-test-type'),
     props: {
       'data-testid': 'test-type',
@@ -836,6 +838,30 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
   };
 
+  const testLevelDoc = useFieldDoc({
+    name: 'testLevel',
+    label: t('message.select-test-level'),
+    doc: t('message.doc-field-test-level'),
+  });
+
+  const tagsDoc = useFieldDoc({
+    name: 'tags',
+    label: t('label.tag-plural'),
+    doc: t('message.doc-field-tags'),
+  });
+
+  const glossaryTermsDoc = useFieldDoc({
+    name: 'glossaryTerms',
+    label: t('label.glossary-term-plural'),
+    doc: t('message.doc-field-glossary-terms'),
+  });
+
+  const pipelineDoc = useFieldDoc({
+    name: 'pipeline',
+    label: t('label.pipeline'),
+    doc: t('message.doc-field-pipeline'),
+  });
+
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
@@ -854,21 +880,26 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       )}
 
       <div className="form-card-section" data-testid="select-table-card">
-        <FormField control={form.control} name="testLevel">
-          {({ field }) => (
-            <>
-              <FormItemLabel required label={t('message.select-test-level')} />
-              <SelectionCardGroup
-                options={testLevelOptions}
-                value={field.value}
-                onChange={(value) => {
-                  field.onChange(value);
-                  handleActiveField('root/testLevel');
-                }}
-              />
-            </>
-          )}
-        </FormField>
+        <div onFocusCapture={testLevelDoc.onFocusCapture}>
+          <FormField control={form.control} name="testLevel">
+            {({ field }) => (
+              <>
+                <FormItemLabel
+                  required
+                  label={t('message.select-test-level')}
+                />
+                <SelectionCardGroup
+                  options={testLevelOptions}
+                  value={field.value}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    handleActiveField('root/testLevel');
+                  }}
+                />
+              </>
+            )}
+          </FormField>
+        </div>
 
         {getField(selectedTableField)}
 
@@ -956,7 +987,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="tags">
           {({ field }) => (
-            <div data-testid="tags-selector" id="root/tags">
+            <div
+              data-testid="tags-selector"
+              id="root/tags"
+              onFocusCapture={tagsDoc.onFocusCapture}>
               <TagSuggestion
                 label={t('label.tag-plural')}
                 placeholder={t('label.select-field', {
@@ -971,7 +1005,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="glossaryTerms">
           {({ field }) => (
-            <div data-testid="glossary-terms-selector" id="root/glossaryTerms">
+            <div
+              data-testid="glossary-terms-selector"
+              id="root/glossaryTerms"
+              onFocusCapture={glossaryTermsDoc.onFocusCapture}>
               <TagSuggestion
                 label={t('label.glossary-term-plural')}
                 placeholder={t('label.select-field', {
@@ -987,16 +1024,18 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       </div>
 
       {selectedTableFqn && canCreatePipeline && (
-        <TestCaseSchedulerSection
-          canCreatePipeline={canCreatePipeline}
-          form={form}
-          hasTestSuite={hasTestSuite}
-          schedulerOptions={schedulerOptions}
-          selectedTableData={selectedTableData}
-          table={table}
-          testSuite={testSuite}
-          onActiveFieldChange={onActiveFieldChange}
-        />
+        <div onFocusCapture={pipelineDoc.onFocusCapture}>
+          <TestCaseSchedulerSection
+            canCreatePipeline={canCreatePipeline}
+            form={form}
+            hasTestSuite={hasTestSuite}
+            schedulerOptions={schedulerOptions}
+            selectedTableData={selectedTableData}
+            table={table}
+            testSuite={testSuite}
+            onActiveFieldChange={onActiveFieldChange}
+          />
+        </div>
       )}
     </div>
   );
