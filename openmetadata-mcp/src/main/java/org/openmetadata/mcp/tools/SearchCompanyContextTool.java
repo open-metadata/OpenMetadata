@@ -11,6 +11,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
@@ -95,7 +96,38 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("query", query);
     result.put("results", pills);
     result.put("returnedCount", pills.size());
+    fitResultsToBudget(result, pills);
     return result;
+  }
+
+  /**
+   * Keeps the response under the dispatch-level size cap by returning fewer <em>pills</em> (never
+   * mangling the content of the ones kept), so the tool never falls through to the empty-stub nuke.
+   * Uses {@link ResponseBudget} to fit pills by measuring each pill's real serialized size.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result, List<Map<String, Object>> pills) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(pills, overhead);
+    if (fit < pills.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(pills.subList(0, fit));
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d knowledge pills to stay within the response size budget. "
+                  + "Refine the query or lower 'size' for a smaller response.",
+              trimmed.size(), pills.size()));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   private Map<String, Object> projectPill(Map<String, Object> hit) {

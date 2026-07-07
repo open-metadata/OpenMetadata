@@ -35,6 +35,30 @@ def _tree_snapshot():
     return reg.snapshot()
 
 
+class TestReporterAssetsIngested:
+    def test_counts_all_leaf_types(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.open(["db"], "DatabaseSchema", 1)
+        reg.open(["db", "sch"], "Table", 3)
+        reg.open(["db", "sch"], "StoredProcedure", 2)
+        for _ in range(3):
+            reg.advance(["db", "sch"], "Table")
+        for _ in range(2):
+            reg.advance(["db", "sch"], "StoredProcedure")
+        assert ProgressReporter(reg).assets_ingested() == 5
+
+    def test_survives_scope_pruning(self):
+        reg = ProgressRegistry()
+        reg.open([], "Database", None)
+        reg.open(["db", "sch"], "Table", 2)
+        reg.advance(["db", "sch"], "Table")
+        reg.advance(["db", "sch"], "Table")
+        reg.close(["db", "sch"])
+        reg.close(["db"])
+        assert ProgressReporter(reg).assets_ingested() == 2
+
+
 class TestProgressRendering:
     def test_cli_renders_database_line(self):
         out = render_progress_tree(_tree_snapshot())
