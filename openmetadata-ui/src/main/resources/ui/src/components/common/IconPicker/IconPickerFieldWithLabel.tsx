@@ -31,16 +31,27 @@ const IconPickerFieldWithLabel: FC<IconPickerFieldWithLabelProps> = ({
   required,
   value,
   ...iconPickerProps
-}) => (
-  <div className="tw:flex tw:flex-col tw:gap-1.5">
-    {label && (
-      <div className="tw:inline-flex tw:items-center tw:gap-1">
-        <FormItemLabel label={label} required={required} />
-        {tooltip}
-      </div>
-    )}
-    <IconPickerField {...iconPickerProps} value={value ?? ''} />
-  </div>
-);
+}) => {
+  // Plain string/undefined content is shown via FormItemLabel's own hover
+  // tooltip. Anything else (e.g. iconTooltipDataRender()) is already a
+  // fully-built icon+tooltip widget, so it's rendered as-is instead of being
+  // wrapped in a second tooltip.
+  const hasPlainTooltipContent = tooltip === undefined || typeof tooltip === 'string';
+
+  return (
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      {label &&
+        (hasPlainTooltipContent ? (
+          <FormItemLabel label={label} required={required} tooltip={tooltip} />
+        ) : (
+          <div className="tw:inline-flex tw:items-center tw:gap-1">
+            <FormItemLabel label={label} required={required} />
+            {tooltip}
+          </div>
+        ))}
+      <IconPickerField {...iconPickerProps} value={value ?? ''} />
+    </div>
+  );
+};
 
 export default IconPickerFieldWithLabel;
