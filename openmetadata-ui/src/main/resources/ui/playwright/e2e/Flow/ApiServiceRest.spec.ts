@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { GlobalSettingOptions } from '../../constant/settings';
@@ -20,6 +20,7 @@ import {
   toastNotification,
   uuid,
 } from '../../utils/common';
+import { testConnection } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const apiServiceConfig = {
@@ -32,6 +33,80 @@ const apiServiceConfig = {
   token: '********',
 };
 
+const mockSuccessfulRestTestConnection = async (page: Page) => {
+  const workflowId = 'pw-rest-test-workflow';
+
+  await page.route(
+    '**/api/v1/services/testConnectionDefinitions/name/**',
+    (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          name: 'Rest.testConnectionDefinition',
+          steps: [
+            {
+              name: 'CheckAccess',
+              mandatory: true,
+              description: 'Validate REST API access',
+            },
+          ],
+        }),
+      })
+  );
+  await page.route('**/api/v1/automations/workflows', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+
+      return;
+    }
+
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id: workflowId,
+        name: workflowId,
+        status: 'Running',
+        workflowType: 'TEST_CONNECTION',
+      }),
+    });
+  });
+  await page.route('**/api/v1/automations/workflows/trigger/**', (route) =>
+    route.fulfill({ status: 200, body: '{}' })
+  );
+  await page.route(
+    `**/api/v1/automations/workflows/${workflowId}**`,
+    (route) => {
+      if (route.request().method() === 'DELETE') {
+        return route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({ id: workflowId }),
+        });
+      }
+
+      return route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: workflowId,
+          name: workflowId,
+          status: 'Successful',
+          workflowType: 'TEST_CONNECTION',
+          response: {
+            status: 'Successful',
+            steps: [
+              {
+                name: 'CheckAccess',
+                mandatory: true,
+                passed: true,
+                message: 'Connected',
+              },
+            ],
+          },
+        }),
+      });
+    }
+  );
+};
+
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -41,24 +116,26 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test('add update and delete api service type REST', async ({ page }) => {
+    await mockSuccessfulRestTestConnection(page);
     await settingClick(page, GlobalSettingOptions.APIS);
 
     await page.getByTestId('add-service-button').click();
     await page.getByTestId('Rest').click();
-    await page.getByTestId('next-button').click();
+    await page.locator('#service-name').waitFor();
 
-    // step 1
-    await page.getByTestId('service-name').fill(apiServiceConfig.name);
+    await page.locator('#service-name').fill(apiServiceConfig.name);
+    await page.getByTestId('add-description-button').click();
     await page.locator(descriptionBox).fill(apiServiceConfig.description);
-    await page.getByTestId('next-button').click();
 
-    // step 2
     await page
       .locator('#root\\/openAPISchemaConnection\\/openAPISchemaURL')
       .fill(apiServiceConfig.openAPISchemaConnection.openAPISchemaURL);
 
     await page.locator('#root\\/token').fill(apiServiceConfig.token);
-    await page.getByTestId('submit-btn').click();
+
+    await testConnection(page);
+
+    await page.getByTestId('next-button').click();
 
     const autoPilotApplicationRequest = page.waitForRequest(
       (request) =>
@@ -66,11 +143,10 @@ test.describe('API service', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         request.method() === 'POST'
     );
 
-    await page.getByTestId('submit-btn').getByText('Save').click();
+    await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
     await autoPilotApplicationRequest;
 
-    // step 3
     await expect(page.getByTestId('entity-header-name')).toHaveText(
       apiServiceConfig.name
     );

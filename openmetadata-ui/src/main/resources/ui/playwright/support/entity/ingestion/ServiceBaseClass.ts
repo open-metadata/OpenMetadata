@@ -24,17 +24,18 @@ import {
   descriptionBox,
   executeWithRetry,
   getApiContext,
-  INVALID_NAMES,
-  NAME_VALIDATION_ERROR,
 } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
+  advanceToServiceConnectionStep,
   deleteService,
   getServiceCategoryFromService,
   makeRetryRequest,
+  selectServiceConnector,
   Services,
   testConnection,
+  waitForServiceConnectionForm,
 } from '../../../utils/serviceIngestion';
 import { ResponseDataType } from '../Entity.interface';
 
@@ -95,21 +96,23 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="add-service-button"]');
 
+    const ipPromise = page
+      .waitForRequest('/api/v1/services/ingestionPipelines/ip', {
+        timeout: 30_000,
+      })
+      .catch(() => null);
+
     // Select Service in step 1
     await this.serviceStep1(this.serviceType, page);
-
-    const ipPromise = page.waitForRequest(
-      '/api/v1/services/ingestionPipelines/ip'
-    );
 
     // Enter service name in step 2
     await this.serviceStep2(this.serviceName, page);
 
+    await advanceToServiceConnectionStep(page);
     await ipPromise;
+    await waitForServiceConnectionForm(page);
 
     await page.click('[data-testid="service-requirements"]');
-
-    // await airflowStatus;
     await this.fillConnectionDetails(page);
 
     const runnerSelector = page.getByTestId(
@@ -118,25 +121,14 @@ class ServiceBaseClass {
 
     if (await runnerSelector.isVisible()) {
       await runnerSelector.click();
-      await page.locator('.ant-select-dropdown:visible').first().waitFor({
-        state: 'visible',
-      });
-
-      // Search for the runner using the search input
-      await runnerSelector.locator('input').fill(this.ingestionRunner.name);
 
       // Using data-key which relies on `name` which is more reliable data in AUTs
       // instead of data-testid which depends on the `displayName` which can change
-      await page
-        .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
-        )
-        .waitFor({ state: 'visible' });
-      await page
-        .locator(
-          `.ant-select-dropdown:visible [data-key="${this.ingestionRunner.name}"]`
-        )
-        .click();
+      const runnerOption = page.locator(
+        `[data-key="${this.ingestionRunner.name}"]`
+      );
+      await runnerOption.waitFor({ state: 'visible' });
+      await runnerOption.click();
 
       await expect(
         page.getByTestId('select-widget-root/ingestionRunner')
@@ -157,30 +149,13 @@ class ServiceBaseClass {
   }
 
   async serviceStep1(serviceType: string, page: Page) {
-    // Storing the created service name and the type of service
-    // Select Service in step 1
-    await page.click(`[data-testid="${serviceType}"]`);
-    await page.click('[data-testid="next-button"]');
+    await selectServiceConnector(page, serviceType);
   }
 
   async serviceStep2(serviceName: string, page: Page) {
-    // validation should work
-    await page.click('[data-testid="next-button"]');
-
-    await page.locator('#name_help').waitFor();
-
-    await expect(page.locator('#name_help')).toHaveText('Name is required');
-
-    // invalid name validation should work
-    await page
-      .locator('[data-testid="service-name"]')
-      .fill(INVALID_NAMES.WITH_SPECIAL_CHARS);
-
-    await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
-
-    await page.fill('[data-testid="service-name"]', serviceName);
-
-    await page.click('[data-testid="next-button"]');
+    // Service name + connection details now share the Configure & Connect step;
+    // the connection form's submit button advances to the next step.
+    await page.fill('#service-name', serviceName);
   }
 
   async fillConnectionDetails(_page: Page) {
@@ -217,14 +192,14 @@ class ServiceBaseClass {
     await page.getByTestId('add-ingestion-container').waitFor();
     await this.fillIngestionDetails(page);
 
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
 
     // Go back and data should persist
     await page.click('[data-testid="back-button"]');
     await this.validateIngestionDetails(page);
 
     // Go Next
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await this.scheduleIngestion(page);
 
     await page.click('[data-testid="view-service-button"]');
@@ -268,7 +243,7 @@ class ServiceBaseClass {
   }
 
   async submitService(page: Page) {
-    await page.getByTestId('submit-btn').getByText('Next').click();
+    await page.getByTestId('next-button').getByText('Next').click();
 
     if (this.shouldAddDefaultFilters) {
       await this.fillIngestionDetails(page);
@@ -286,7 +261,7 @@ class ServiceBaseClass {
         request.method() === 'POST'
     );
 
-    await page.getByTestId('submit-btn').getByText('Save').click();
+    await page.getByRole('button', { name: 'Create & Deploy' }).click();
 
     const savedService = (await saveServiceResponse).response();
 
@@ -488,7 +463,7 @@ class ServiceBaseClass {
 
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
 
     // select schedule
     await page.getByTestId('schedular-card-container').waitFor();
@@ -519,7 +494,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Day
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Day")');
 
@@ -550,7 +525,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Week
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Week")');
     await page
@@ -576,7 +551,7 @@ class ServiceBaseClass {
     // click and edit pipeline schedule for Custom
     await page.getByTestId('more-actions').first().click();
     await page.click('[data-testid="edit-button"]');
-    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
 

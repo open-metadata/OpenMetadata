@@ -446,9 +446,7 @@ test.describe('Data Contracts', () => {
 
           await page.getByTestId('pipeline-name').fill('test-pipeline');
 
-          await page
-            .locator('.selection-title', { hasText: 'On Demand' })
-            .click();
+          await page.getByTestId('schedular-on-demand').click();
 
           await expect(page.locator('.expression-text')).toContainText(
             'Pipeline will only be triggered manually.'
@@ -505,16 +503,10 @@ test.describe('Data Contracts', () => {
         });
 
         await test.step('Validate inside the Observability, bundle test suites, that data contract test suite is present', async () => {
-          await validateDataContractInsideBundleTestSuites(page);
-
-          await expect(
-            page
-              .getByTestId('test-suite-table')
-              .locator('[role="gridcell"]')
-              .filter({
-                hasText: `Data Contract - ${DATA_CONTRACT_DETAILS.name}`,
-              })
-          ).toBeVisible();
+          await validateDataContractInsideBundleTestSuites(
+            page,
+            DATA_CONTRACT_DETAILS.name
+          );
         });
 
         await test.step('Edit quality expectations from the data contract and validate', async () => {

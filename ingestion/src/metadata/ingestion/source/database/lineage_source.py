@@ -364,7 +364,19 @@ class LineageSource(QueryParserSource, ABC):
         logger.info("Processing Query Lineage")
         connection_type = str(self.service_connection.type.value)
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-        producer_fn = self.query_lineage_producer
+
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        if result_limit is not None:
+            self.progress.seed_scope_total("Queries", "run", result_limit)
+        produced = 0
+
+        def producer_fn():
+            nonlocal produced
+            for table_query in self.query_lineage_producer():
+                produced += 1
+                self.progress.track("Queries")
+                yield table_query
+
         processor_fn = query_lineage_processor
         args = (
             self.metadata,
@@ -382,6 +394,7 @@ class LineageSource(QueryParserSource, ABC):
             args,
             max_threads=self.source_config.threads,  # pyright: ignore[reportAttributeAccessIssue]
         )
+        self.progress.reconcile_scope_total("Queries", "run", produced)
 
     def view_lineage_producer(self) -> Iterable[TableView]:
         """

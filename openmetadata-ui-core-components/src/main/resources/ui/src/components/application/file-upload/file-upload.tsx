@@ -32,6 +32,7 @@ import type {
   ComponentProps,
   ComponentPropsWithRef,
   DragEvent,
+  KeyboardEvent,
 } from 'react';
 import { useId, useRef, useState } from 'react';
 import { MdFileIcon } from './icons';
@@ -215,21 +216,44 @@ export const FileUploadDropZone = ({
     processFiles(Array.from(event.target.files || []));
   };
 
+  const openFilePicker = () => {
+    if (isDisabled) {
+      return;
+    }
+
+    inputRef.current?.click();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openFilePicker();
+    }
+  };
+
   return (
     <div
       data-dropzone
+      aria-disabled={isDisabled}
+      aria-labelledby={`${id}-label`}
       className={cx(
         'tw:relative tw:flex tw:flex-col tw:items-center tw:gap-3 tw:rounded-xl tw:bg-primary tw:px-6 tw:py-4 tw:text-tertiary tw:ring-1 tw:ring-secondary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
         isDraggingOver && 'tw:ring-2 tw:ring-brand',
-        isDisabled && 'tw:cursor-not-allowed tw:bg-secondary',
+        isDisabled
+          ? 'tw:cursor-not-allowed tw:bg-secondary'
+          : 'tw:cursor-pointer',
         className
       )}
       data-testid={dataTestId}
+      role="button"
+      tabIndex={isDisabled ? -1 : 0}
+      onClick={openFilePicker}
       onDragEnd={handleDragOut}
       onDragEnter={handleDragIn}
       onDragLeave={handleDragOut}
       onDragOver={handleDragIn}
-      onDrop={handleDrop}>
+      onDrop={handleDrop}
+      onKeyDown={handleKeyDown}>
       <FeaturedIcon
         className={cx(isDisabled && 'tw:opacity-50')}
         color="gray"
@@ -241,6 +265,7 @@ export const FileUploadDropZone = ({
       <div className="tw:flex tw:flex-col tw:gap-1 tw:text-center">
         <div className="tw:flex tw:justify-center tw:gap-1 tw:text-center">
           <input
+            aria-hidden
             accept={accept}
             className="tw:peer tw:sr-only"
             data-testid={inputDataTestId}
@@ -248,18 +273,19 @@ export const FileUploadDropZone = ({
             id={id}
             multiple={allowsMultiple}
             ref={inputRef}
+            tabIndex={-1}
             type="file"
             onChange={handleInputFileChange}
+            onClick={(e) => e.stopPropagation()}
           />
-          <label className="tw:flex tw:cursor-pointer" htmlFor={id}>
-            <Button
-              color="link-color"
-              isDisabled={isDisabled}
-              size="md"
-              onClick={() => inputRef.current?.click()}>
-              {clickToUploadLabel}
-            </Button>
-          </label>
+          <span
+            className={cx(
+              'tw:text-sm tw:font-semibold tw:text-brand-secondary',
+              isDisabled && 'tw:opacity-50'
+            )}
+            id={`${id}-label`}>
+            {clickToUploadLabel}
+          </span>
           <span className="tw:text-sm">{orDragAndDropLabel}</span>
         </div>
         {hint && (

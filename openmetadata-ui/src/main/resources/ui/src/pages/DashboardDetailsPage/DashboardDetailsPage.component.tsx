@@ -45,7 +45,7 @@ import {
   dashboardQueryKey,
 } from '../../rest/queries/dashboardQuery';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isUndefined, lowerCase } from 'lodash';
+import { escapeRegExp, isUndefined, lowerCase } from 'lodash';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
@@ -101,7 +101,7 @@ export const highlightSearchText = (
     return text ?? '';
   }
 
-  const regex = new RegExp(`(${searchText})`, 'gi');
+  const regex = new RegExp(`(${escapeRegExp(searchText)})`, 'gi');
 
   return text.replace(
     regex,
@@ -123,7 +123,9 @@ export const highlightSearchArrayElement = (
   if (!searchText || !text) {
     return text ?? '';
   }
-  const stringParts = text.split(new RegExp(`(${searchText})`, 'gi'));
+  const stringParts = text.split(
+    new RegExp(`(${escapeRegExp(searchText)})`, 'gi')
+  );
 
   return stringParts.map((part, index) =>
     part.toLowerCase() === (searchText ?? '').toLowerCase() ? (

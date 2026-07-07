@@ -12,6 +12,7 @@
  */
 import { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
@@ -91,10 +92,14 @@ test.beforeEach(async ({ page }) => {
   await redirectToHomePage(page);
 });
 
+test.afterEach(async ({ page }) => {
+  await page.goto('about:blank');
+});
+
 // ====================
 // Suite 1: Canvas Control Buttons (4 tests)
 // ====================
-test.describe('Canvas Controls', () => {
+test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
     await table.visitEntityPage(page);
     await visitLineageTab(page);
@@ -121,7 +126,9 @@ test.describe('Canvas Controls', () => {
 
   test('Verify fit view options menu', async ({ page }) => {
     await page.getByTestId('fit-screen').click();
-    await expect(page.locator('#lineage-view-options-menu')).toBeVisible();
+    await expect(
+      page.getByRole('menu', { name: 'Lineage View Options' })
+    ).toBeVisible();
 
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
@@ -164,7 +171,7 @@ test.describe('Canvas Controls', () => {
   });
 });
 
-test.describe('Lineage Layers', () => {
+test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.describe('Data Observability Layer', () => {
     test.beforeEach(async ({ page }) => {
       await table.visitEntityPage(page);

@@ -63,17 +63,19 @@ const mockProps: StyleModalProps = {
 };
 
 jest.mock('../../common/ColorPicker', () => ({
-  MUIColorPicker: jest.fn().mockImplementation(({ label, value, onChange }) => (
-    <div data-testid="color-picker">
-      <label>{label}</label>
-      <input
-        data-testid="color-input"
-        type="text"
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-    </div>
-  )),
+  ColorSwatchPicker: jest
+    .fn()
+    .mockImplementation(({ label, value, onChange }) => (
+      <div data-testid="color-picker">
+        <label>{label}</label>
+        <input
+          data-testid="color-input"
+          type="text"
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+        />
+      </div>
+    )),
 }));
 
 jest.mock('../../common/IconPicker', () => ({

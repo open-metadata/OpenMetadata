@@ -122,7 +122,7 @@ jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('column_x'),
 }));
 
-jest.mock('../../../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn().mockReturnValue('delete-message'),
 }));
 

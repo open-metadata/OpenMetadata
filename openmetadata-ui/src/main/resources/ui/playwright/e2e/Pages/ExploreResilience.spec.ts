@@ -52,9 +52,7 @@ test.describe(
       // indexing banner (which links to the indexing app) explains the failure.
       await expect(page.getByTestId('explore-page')).toBeVisible();
       await expect(page.getByTestId('search-container')).toHaveCount(0);
-      await expect(
-        page.locator('[href*="SearchIndexingApplication"]')
-      ).toBeVisible();
+      await expect(page.getByTestId('index-not-found-banner')).toBeVisible();
 
       // Recovers once the backend responds normally again.
       await page.unroute(SEARCH_QUERY_API);
@@ -63,9 +61,7 @@ test.describe(
       await recovered;
 
       await expect(page.getByTestId('search-container')).toBeVisible();
-      await expect(
-        page.locator('[href*="SearchIndexingApplication"]')
-      ).toHaveCount(0);
+      await expect(page.getByTestId('index-not-found-banner')).toHaveCount(0);
     });
 
     test('does not white-screen when the search request fails at the network level', async ({

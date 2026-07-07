@@ -31,7 +31,7 @@ import {
   removeDriveAssetFollower,
   updateDriveAssetVotes,
 } from '../../rest/driveAPI';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { fileDefaultFields } from '../../utils/FileDetailsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../utils/RouterUtils';
@@ -213,7 +213,7 @@ jest.mock('../../components/AppRouter/withActivityFeed', () => ({
 }));
 
 // Mock utils
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('File not found'),
 }));
 

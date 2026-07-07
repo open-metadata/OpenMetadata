@@ -212,6 +212,10 @@ export const PAGE_HEADERS = {
     header: 'label.search',
     subHeader: 'message.page-sub-header-for-search-setting',
   },
+  SEARCH_INDEX_MAPPINGS: {
+    header: 'label.search-mapping-plural',
+    subHeader: 'message.page-sub-header-for-search-index-mappings',
+  },
   LINEAGE_CONFIG: {
     header: 'label.lineage-config',
     subHeader: 'message.page-sub-header-for-lineage-config-setting',

@@ -59,7 +59,8 @@ export const saveAndTriggerDataContractValidation = async (
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
-  page: Page
+  page: Page,
+  contractName?: string
 ) => {
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -81,6 +82,26 @@ export const validateDataContractInsideBundleTestSuites = async (
   await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+
+  // Search by the contract name so the suite row is guaranteed on the first
+  // page regardless of how many bundle suites exist (avoids pagination misses).
+  if (contractName) {
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('test-suite-table')
+        .getByRole('rowheader', { name: `Data Contract - ${contractName}` })
+    ).toBeVisible();
+  }
 };
 
 export const waitForDataContractExecution = async (
@@ -149,12 +170,13 @@ export const waitForContractExecutionWithFallback = async (
   } catch {
     // The test suite has results but the contract's latestResult was not updated in time.
     // Verify execution status directly from the DataQuality Bundle Suites page.
-    await validateDataContractInsideBundleTestSuites(page);
+    await validateDataContractInsideBundleTestSuites(page, contractName);
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('[role="gridcell"]')
-      .filter({ hasText: `Data Contract - ${contractName}` });
+      .getByRole('rowheader', {
+        name: `Data Contract - ${contractName}`,
+      });
 
     await expect(suiteNameCell).toBeVisible();
 
@@ -328,31 +350,33 @@ export const saveSecurityAndSLADetails = async (
   await page.getByTestId('refresh-frequency-unit-select').click();
   await expect(
     page.locator(
-      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
     )
   ).toBeVisible();
   await page
     .locator(
-      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
+      `.refresh-frequency-unit-select [title*='${data.refreshFrequencyUnitSelect}']`
     )
     .click();
 
   await page.getByTestId('max-latency-unit-select').click();
   await expect(
     page.locator(
-      `.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`
+      `.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`
     )
   ).toBeVisible();
   await page
-    .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
+    .locator(`.max-latency-unit-select [title*='${data.maxLatencyUnitSelect}']`)
     .click();
 
   await page.getByTestId('retention-unit-select').click();
   await expect(
-    page.locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+    page.locator(
+      `.retention-unit-select [title*='${data.retentionUnitSelect}']`
+    )
   ).toBeVisible();
   await page
-    .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
+    .locator(`.retention-unit-select [title*='${data.retentionUnitSelect}']`)
     .click();
 
   await page

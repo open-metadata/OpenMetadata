@@ -22,6 +22,7 @@ import {
   buildMustEsFilterForTags,
   buildMustEsFilterForTier,
 } from '../utils/DataQuality/DataQualityPureUtils';
+import { batchedDataQualityReport } from './dataQualityReportBatcher';
 import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (
@@ -30,7 +31,7 @@ export const fetchEntityCoveredWithDQ = (
 ) => {
   const mustFilter = buildDataQualityDashboardFilters({ filters, unhealthy });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -52,7 +53,7 @@ export const fetchTotalEntityCount = (
     isTableApi: true,
   });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -71,7 +72,7 @@ export const fetchTestCaseSummary = (
 ) => {
   const mustFilter = buildDataQualityDashboardFilters({ filters });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -91,7 +92,7 @@ export const fetchTestCaseSummaryByDimension = (
 ) => {
   const mustFilter = buildDataQualityDashboardFilters({ filters });
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -123,7 +124,7 @@ export const fetchTestCaseSummaryByNoDimension = (
     mustFilter.push(buildMustEsFilterForDataProducts(filters.dataProductFqns));
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -159,7 +160,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
     );
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -205,7 +206,7 @@ export const fetchIncidentTimeMetrics = (
     );
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {
@@ -269,7 +270,7 @@ export const fetchTestCaseStatusMetricsByDays = (
     });
   }
 
-  return getDataQualityReport({
+  return batchedDataQualityReport({
     q: JSON.stringify({
       query: {
         bool: {

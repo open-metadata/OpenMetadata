@@ -32,6 +32,9 @@ const CoreTextAreaWidget = ({
   onBlur,
   onFocus,
 }: WidgetProps) => {
+  const handleChange = (nextValue: string) =>
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
+
   return (
     <TextArea
       autoFocus={autofocus}
@@ -45,7 +48,7 @@ const CoreTextAreaWidget = ({
       textAreaRef={undefined}
       value={value ?? ''}
       onBlur={() => onBlur(id, value)}
-      onChange={onChange}
+      onChange={handleChange}
       onFocus={() => onFocus(id, value)}
     />
   );

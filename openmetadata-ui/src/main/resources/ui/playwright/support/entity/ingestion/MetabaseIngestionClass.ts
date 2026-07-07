@@ -61,6 +61,8 @@ class MetabaseIngestionClass extends ServiceBaseClass {
     const metabasePassword = process.env.PLAYWRIGHT_METABASE_PASSWORD ?? '';
     const metabaseHostPort = process.env.PLAYWRIGHT_METABASE_HOST_PORT ?? '';
 
+    await page.getByTestId('connection-section-scope').click();
+
     await page.fill('#root\\/username', metabaseUsername);
     await checkServiceFieldSectionHighlighting(page, 'username');
     await page.fill('#root\\/password', metabasePassword);
@@ -71,11 +73,18 @@ class MetabaseIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     await page
-      .locator('#root\\/dashboardFilterPattern\\/includes')
+      .getByTestId('dashboardFilterPattern-only-specific-button')
+      .click();
+    await page
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.tableName);
 
     await page
-      .locator('#root\\/dashboardFilterPattern\\/includes')
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

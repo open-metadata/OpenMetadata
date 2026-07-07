@@ -66,24 +66,14 @@ class BigQueryIngestionClass extends ServiceBaseClass {
       process.env.PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY ?? '';
 
     await page
-      .getByTestId('select-widget-root/credentials/gcpConfig__oneof_select')
-      .getByRole('combobox')
-      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="GCP Credentials Values"]'
-    );
+      .getByRole('button', { name: 'GCP Credentials Values GCP' })
+      .click();
+    await page.getByRole('option', { name: 'GCP Credentials Values' }).click();
 
     await page
-      .getByTestId(
-        'select-widget-root/credentials/gcpConfig/projectId__oneof_select'
-      )
-      .getByRole('combobox')
-      // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-      .click({ force: true });
-    await page.click(
-      '.ant-select-dropdown:visible [title="Multiple Project ID"]'
-    );
+      .getByRole('button', { name: 'Single Project ID Project ID' })
+      .click();
+    await page.getByRole('option', { name: 'Multiple Project ID' }).click();
 
     const projectIds = projectId.split(',');
     for (const id of projectIds) {
@@ -107,6 +97,10 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'clientEmail');
     await page.fill('#root\\/credentials\\/gcpConfig\\/clientId', clientId);
     await checkServiceFieldSectionHighlighting(page, 'clientId');
+
+    await page
+      .getByRole('button', { name: 'Show advanced credential' })
+      .click();
     await page.fill(
       '#root\\/credentials\\/gcpConfig\\/clientX509CertUrl',
       `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
@@ -115,16 +109,24 @@ class BigQueryIngestionClass extends ServiceBaseClass {
     );
     await checkServiceFieldSectionHighlighting(page, 'clientX509CertUrl');
 
+    await page.getByTestId('connection-section-scope').click();
+
     await page.fill(`#root\\/taxonomyProjectID`, projectIdTaxonomy);
     await page.locator(`#root\\/taxonomyProjectID`).press('Enter');
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill(
-      '#root\\/schemaFilterPattern\\/includes',
-      `${this.filterPattern}`
-    );
-    await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
+    await page.getByTestId('schemaFilterPattern-only-specific-button').click();
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .fill(this.filterPattern);
+    await page
+      .getByTestId('filter-section-schemaFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
+      .press('Enter');
   }
 
   async deleteService(page: Page) {

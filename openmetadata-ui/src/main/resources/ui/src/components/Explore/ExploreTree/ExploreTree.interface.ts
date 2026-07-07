@@ -12,6 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import type { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 
 export type ExploreTreeNode = {
@@ -42,6 +43,7 @@ export type ExploreTreeProps = {
   // Entity types selected in the Data Assets filter. Top-level categories that
   // cannot contain any of these types are grayed out and non-selectable.
   selectedEntityTypes?: string[];
+  additionalQueryFilter?: QueryFilterInterface;
 };
 
 export type TreeNodeData = {
