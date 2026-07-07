@@ -179,7 +179,7 @@ public class AppRepository extends EntityRepository<App> {
   // openMetadataServerConnection and privateConfiguration are runtime-only fields
   // (re-injected on demand by ApplicationHandler.setAppRuntimeProperties). They carry
   // secrets (app bot JWT, external tokens) and must never be persisted or serialized.
-  private static final List<String> RUNTIME_SECRET_FIELDS =
+  public static final List<String> RUNTIME_SECRET_FIELDS =
       List.of("openMetadataServerConnection", "privateConfiguration");
 
   @Override

@@ -9,6 +9,8 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -113,6 +115,7 @@ import org.quartz.SchedulerException;
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/";
+  private static final String REDACTED_APP_SNAPSHOT = "{}";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
@@ -214,6 +217,37 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private void unsetAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(null);
     app.setPrivateConfiguration(null);
+  }
+
+  private Object stripRuntimeSecretsFromSnapshot(Object snapshot) {
+    Object stripped;
+    try {
+      App app = JsonUtils.readValue((String) snapshot, App.class);
+      unsetAppRuntimeProperties(app);
+      stripped = JsonUtils.pojoToJson(app);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to parse app version snapshot as App; redacting runtime secrets from raw JSON",
+          e);
+      stripped = redactRuntimeSecretsFromRawSnapshot(snapshot);
+    }
+    return stripped;
+  }
+
+  static Object redactRuntimeSecretsFromRawSnapshot(Object snapshot) {
+    Object redacted = REDACTED_APP_SNAPSHOT;
+    try {
+      JsonNode node = JsonUtils.readTree(snapshot.toString());
+      if (node instanceof ObjectNode objectNode) {
+        objectNode.remove(AppRepository.RUNTIME_SECRET_FIELDS);
+        redacted = objectNode.toString();
+      }
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to redact runtime secrets from raw app version snapshot; dropping snapshot body",
+          e);
+    }
+    return redacted;
   }
 
   @GET
@@ -710,27 +744,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
     // Defense-in-depth: version snapshots are already stripped at storage time
-    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // (AppRepository.serializeForVersionHistory) and by the 1.13.2 migration, but strip each
     // returned snapshot too so this path never depends on those guarantees alone.
     List<Object> versions =
         entityHistory.getVersions().stream()
-            .map(
-                json -> {
-                  try {
-                    App app = JsonUtils.readValue((String) json, App.class);
-                    unsetAppRuntimeProperties(app);
-                    return JsonUtils.pojoToJson(app);
-                  } catch (Exception e) {
-                    // Fallback returns the original snapshot, which could still carry runtime
-                    // secrets if a snapshot ever escaped the storage/migration guards — log so a
-                    // parse regression in this defense-in-depth path is observable.
-                    LOG.warn(
-                        "Failed to strip runtime secrets from app version snapshot; "
-                            + "returning snapshot as-is",
-                        e);
-                    return json;
-                  }
-                })
+            .map(this::stripRuntimeSecretsFromSnapshot)
             .collect(Collectors.toList());
     entityHistory.setVersions(versions);
     return entityHistory;
