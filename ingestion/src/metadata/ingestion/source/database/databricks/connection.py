@@ -194,7 +194,10 @@ class DatabricksEngineWrapper:
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
-            self.schemas = self.inspector.get_schema_names(database=self.first_catalog)
+            # get_schema_names reflects the full list (no driver-side cap); bound it
+            # to the sample size so a catalog with thousands of schemas can't balloon
+            # the cached list. A probe only needs to prove schemas are reachable.
+            self.schemas = self.inspector.get_schema_names(database=self.first_catalog)[:DEFAULT_SAMPLE_ROWS]
             if self.schemas:
                 for schema in self.schemas:
                     if schema.lower() not in SYSTEM_SCHEMAS:
@@ -211,7 +214,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return tables.fetchall()
+                return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
         return []
 
     def get_views(self):
@@ -221,7 +224,7 @@ class DatabricksEngineWrapper:
         if self.first_schema:
             with self.engine.connect() as connection:
                 views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
-            return views.fetchall()
+                return views.fetchmany(DEFAULT_SAMPLE_ROWS)
         return []
 
     def get_catalogs(self, catalog_name: Optional[str] = None):  # noqa: UP045
@@ -230,7 +233,7 @@ class DatabricksEngineWrapper:
             self.first_catalog = catalog_name
             return [catalog_name]
         with self.engine.connect() as connection:
-            catalogs = connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchall()
+            catalogs = connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchmany(DEFAULT_SAMPLE_ROWS)
         for catalog in catalogs:
             if catalog[0] != "__databricks_internal":
                 self.first_catalog = catalog[0]

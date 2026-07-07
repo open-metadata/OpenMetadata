@@ -586,7 +586,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("table1",), ("table2",)]
+        mock_result.fetchmany.return_value = [("table1",), ("table2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -620,7 +620,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("table1",), ("table2",)]
+        mock_result.fetchmany.return_value = [("table1",), ("table2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -669,7 +669,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("view1",), ("view2",)]
+        mock_result.fetchmany.return_value = [("view1",), ("view2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -703,7 +703,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("view1",), ("view2",)]
+        mock_result.fetchmany.return_value = [("view1",), ("view2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()

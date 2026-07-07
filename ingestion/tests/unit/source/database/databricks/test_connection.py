@@ -212,6 +212,32 @@ def test_first_catalog_uses_configured_catalog_without_querying():
     engine.connect.assert_not_called()
 
 
+def test_listing_caps_rows_at_the_sample_size_at_the_source():
+    # The wrapper must bound the fetch (fetchmany), not pull the whole result and
+    # slice - a catalog with 100k tables would otherwise balloon memory. This cap
+    # is test-connection only; real ingestion goes through the common framework.
+    from metadata.core.connections.test_connection.checks.database import (
+        DEFAULT_SAMPLE_ROWS,
+    )
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksEngineWrapper,
+    )
+
+    result = MagicMock()
+    result.fetchmany.return_value = [("t",)]
+    conn = MagicMock()
+    conn.execute.return_value = result
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value = conn
+
+    wrapper = DatabricksEngineWrapper(engine)
+    wrapper.first_catalog = "my_catalog"
+    wrapper.first_schema = "my_schema"
+    wrapper.get_tables()
+    result.fetchmany.assert_called_once_with(DEFAULT_SAMPLE_ROWS)
+    result.fetchall.assert_not_called()
+
+
 def test_get_databases_reports_catalog_count():
     checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
     with patch.object(
