@@ -35,10 +35,12 @@ from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 
+from metadata.ingestion.source.database.mssql.models import QueryStoreState
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -52,9 +54,7 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(
-    self, connection, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
+def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -112,9 +112,7 @@ def get_identity_values(coltype, identity_start, identity_increment):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(
-    self, connection, tablename, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -306,7 +304,9 @@ def get_columns(
             }
 
         if is_identity is not None:
-            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
+            cdict["identity"] = get_identity_values(
+                coltype, identity_start, identity_increment
+            )
 
         cols.append(cdict)
     return cols
@@ -314,9 +314,7 @@ def get_columns(
 
 @reflection.cache
 @db_plus_owner
-def get_view_definition(
-    self, connection, viewname, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,
@@ -457,9 +455,7 @@ def get_foreign_keys(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_table_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -477,9 +473,7 @@ def get_table_names(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_view_names(
-    self, connection, dbname, owner, schema, **kw
-):  # pylint: disable=unused-argument
+def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -505,4 +499,24 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return
+    return  # noqa: RET502
+
+
+def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    enabled = False
+    if engine is not None:
+        try:
+            with engine.connect() as conn:
+                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
+            enabled = actual_state in (
+                QueryStoreState.READ_ONLY,
+                QueryStoreState.READ_WRITE,
+            )
+        except Exception as exc:
+            logger.debug(
+                "Query Store availability probe failed, using plan-cache DMVs: %s",
+                exc,
+                exc_info=True,
+            )
+    return enabled

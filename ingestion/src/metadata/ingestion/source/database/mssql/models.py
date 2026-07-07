@@ -9,6 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """MSSQL models"""
+
+from enum import IntEnum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -19,6 +21,15 @@ STORED_PROC_LANGUAGE_MAP = {
     "SQL": Language.SQL,
     "EXTERNAL": Language.External,
 }
+
+
+class QueryStoreState(IntEnum):
+    """Values of sys.database_query_store_options.actual_state."""
+
+    OFF = 0
+    READ_ONLY = 1
+    READ_WRITE = 2
+    ERROR = 3
 
 
 class MssqlStoredProcedure(BaseModel):

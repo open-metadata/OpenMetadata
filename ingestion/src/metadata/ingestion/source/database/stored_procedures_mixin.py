@@ -11,6 +11,7 @@
 """
 Mixin class with common Stored Procedures logic aimed at lineage.
 """
+
 import json
 import traceback
 from abc import ABC, abstractmethod
@@ -29,6 +30,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -76,32 +78,92 @@ class StoredProcedureLineageMixin(ABC):
         Return the SQL statement to get the stored procedure queries
         """
 
+    def get_stored_procedure_engines(self) -> Iterator[Engine]:
+        """
+        Engines to read stored-procedure query history from. Defaults to the single
+        source connection. Sources whose query history is per-database (such as MSSQL
+        Query Store) override this to yield one engine per database.
+        """
+        yield self.engine
+
     def yield_stored_procedure_queries(self) -> Iterator[QueryByProcedure]:
         """
         Yield query and stored procedure object for lineage processing.
         """
-        query = self.get_stored_procedure_sql_statement()
-        with self.engine.connect() as conn:
-            results = conn.execute(text(query)).all()
+        for engine in self.get_stored_procedure_engines():
+            query = self.get_stored_procedure_sql_statement()
+            with engine.connect() as conn:
+                results = conn.execute(text(query)).all()
 
-        for row in results:
-            try:
-                query_by_procedure = QueryByProcedure.model_validate(row._asdict())
-                query_by_procedure.procedure_name = (
-                    query_by_procedure.procedure_name
-                    or get_procedure_name_from_call(
-                        query_text=query_by_procedure.procedure_text,
+            for row in results:
+                try:
+                    query_by_procedure = QueryByProcedure.model_validate(row._asdict())
+                    # procedure_name is typed str but the model accepts None and the parser may
+                    # return None. Assigning str | None is tolerated at runtime by pydantic.
+                    query_by_procedure.procedure_name = (  # pyright: ignore[reportAttributeAccessIssue]
+                        query_by_procedure.procedure_name
+                        or get_procedure_name_from_call(
+                            query_text=query_by_procedure.procedure_text
+                        )
                     )
-                )
-                yield query_by_procedure
-            except Exception as exc:
-                self.status.failed(
-                    StackTraceError(
-                        name="Stored Procedure",
-                        error=f"Error trying to get procedure name due to [{exc}]",
-                        stackTrace=traceback.format_exc(),
+                    yield query_by_procedure
+                except Exception as exc:
+                    self.status.failed(
+                        StackTraceError(
+                            name="Stored Procedure",
+                            error=f"Error trying to get procedure name due to [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        )
                     )
-                )
+
+    @staticmethod
+    def _reference_name(reference: EntityReference | None) -> str:
+        return (
+            reference.name.lower() if reference is not None and reference.name else ""
+        )
+
+    @staticmethod
+    def _disambiguate_procedure(
+        candidates: list[StoredProcedure], query_by_procedure: QueryByProcedure
+    ) -> StoredProcedure | None:
+        database = (query_by_procedure.query_database_name or "").lower()
+        schema = (query_by_procedure.query_schema_name or "").lower()
+        scoped = [
+            candidate
+            for candidate in candidates
+            if (
+                not database
+                or StoredProcedureLineageMixin._reference_name(candidate.database)
+                == database
+            )
+            and (
+                not schema
+                or StoredProcedureLineageMixin._reference_name(candidate.databaseSchema)
+                == schema
+            )
+        ]
+        return scoped[0] if len(scoped) == 1 else None
+
+    @staticmethod
+    def _match_procedure(
+        candidates: list[StoredProcedure] | None, query_by_procedure: QueryByProcedure
+    ) -> StoredProcedure | None:
+        """
+        Resolve which stored procedure a query belongs to. The same procedure name can
+        exist in several databases or schemas on an ingest-all run, so when more than one
+        candidate shares the name we disambiguate by the database and schema the query
+        reported. Returns None when the name stays ambiguous, so lineage is never attached
+        to the wrong procedure.
+        """
+        if not candidates:
+            matched = None
+        elif len(candidates) == 1:
+            matched = candidates[0]
+        else:
+            matched = StoredProcedureLineageMixin._disambiguate_procedure(
+                candidates, query_by_procedure
+            )
+        return matched
 
     def procedure_lineage_producer(self) -> Iterator[ProcedureAndQuery]:
         """
@@ -134,7 +196,7 @@ class StoredProcedureLineageMixin(ABC):
         query_filter = json.dumps(query)
         logger.info("Processing Lineage for Stored Procedures")
 
-        procedures_dict = {}
+        procedures_by_name = defaultdict(list)
         queries = self.yield_stored_procedure_queries()
         queries_count_per_procedure = defaultdict(int)
 
@@ -166,7 +228,7 @@ class StoredProcedureLineageMixin(ABC):
                     )
                     continue
                 logger.debug(f"Processing Lineage for [{procedure.name}]")
-                procedures_dict[procedure.name.root.lower()] = procedure
+                procedures_by_name[procedure.name.root.lower()].append(procedure)
 
         # Yield the ProcedureAndQuery for filtered stored procedure
         for query_by_procedure in queries:
@@ -176,9 +238,12 @@ class StoredProcedureLineageMixin(ABC):
             procedure_name = query_by_procedure.procedure_name.lower()
             queries_count_per_procedure[procedure_name] += 1
 
-            if procedure_name in procedures_dict:
+            procedure = self._match_procedure(
+                procedures_by_name.get(procedure_name), query_by_procedure
+            )
+            if procedure is not None:
                 yield ProcedureAndQuery(
-                    procedure=procedures_dict[procedure_name],
+                    procedure=procedure,
                     query_by_procedure=query_by_procedure,
                 )
 
