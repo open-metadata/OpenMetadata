@@ -145,8 +145,7 @@ class DataRetentionAppTest {
 
     verify(workflowDAO, times(1))
         .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE));
-    verify(workflowRepository, times(1))
-        .delete(eq("admin"), eq(workflowId), eq(true), eq(true));
+    verify(workflowRepository, times(1)).delete(eq("admin"), eq(workflowId), eq(true), eq(true));
 
     StepStats stepStats = getReverseIngestionStepStats();
     assertNotNull(stepStats);
