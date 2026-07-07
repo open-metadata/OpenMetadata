@@ -452,19 +452,18 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
-  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
-  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
-  // delete query that always returns a non-zero count (e.g., rows it can't actually
-  // delete due to FK constraints) would otherwise spin forever and block the rest of
-  // the DataRetention job.
-  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
+  // Safety cap on batch cleanup loops. With BATCH_SIZE=10k this allows up to 10M
+  // rows per entity per run — well above any healthy catalog's row count. A delete
+  // path that never makes progress (e.g., every item in a full batch fails) would
+  // otherwise spin forever and block the rest of the DataRetention job.
+  private static final int MAX_BATCH_CLEANUP_ITERATIONS = 1000;
 
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
     int totalDeleted = 0;
     int totalFailed = 0;
     boolean stoppedByCondition = false;
 
-    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
+    for (int iteration = 0; iteration < MAX_BATCH_CLEANUP_ITERATIONS; iteration++) {
       try {
         int deleted = deleteFunction.get();
         totalDeleted += deleted;
@@ -492,7 +491,7 @@ public class DataRetention extends AbstractNativeApplication {
           "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
               + "remaining rows will be retried on the next DataRetention run.",
           entity,
-          MAX_ORPHAN_CLEANUP_ITERATIONS);
+          MAX_BATCH_CLEANUP_ITERATIONS);
     }
 
     updateStats(entity, totalDeleted, totalFailed);
@@ -518,17 +517,21 @@ public class DataRetention extends AbstractNativeApplication {
       String entity, Supplier<List<T>> listBatchFunction, Consumer<T> deleteFunction) {
     int totalDeleted = 0;
     int totalFailed = 0;
+    boolean stoppedByCondition = false;
 
-    while (true) {
+    for (int iteration = 0; iteration < MAX_BATCH_CLEANUP_ITERATIONS; iteration++) {
       List<T> entities = listBatchFunction.get();
       if (entities.isEmpty()) {
+        stoppedByCondition = true;
         break;
       }
 
+      int batchDeleted = 0;
       for (T item : entities) {
         try {
           deleteFunction.accept(item);
           totalDeleted++;
+          batchDeleted++;
         } catch (Exception ex) {
           LOG.warn("Failed to clean entity: {} item: {}", entity, item, ex);
           totalFailed++;
@@ -537,9 +540,18 @@ public class DataRetention extends AbstractNativeApplication {
         }
       }
 
-      if (entities.size() < BATCH_SIZE) {
+      if (entities.size() < BATCH_SIZE || batchDeleted == 0) {
+        stoppedByCondition = true;
         break;
       }
+    }
+
+    if (!stoppedByCondition) {
+      LOG.warn(
+          "Per-entity batch cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          MAX_BATCH_CLEANUP_ITERATIONS);
     }
 
     updateStats(entity, totalDeleted, totalFailed);
