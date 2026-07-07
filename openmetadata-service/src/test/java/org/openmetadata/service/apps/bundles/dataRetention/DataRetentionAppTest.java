@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -124,6 +125,33 @@ class DataRetentionAppTest {
     assertNotNull(stepStats);
     assertEquals(expectedDeleted, stepStats.getSuccessRecords());
     assertEquals(0, stepStats.getFailedRecords());
+  }
+
+  @Test
+  void reverseWorkflowDeletionStopsWhenBatchDeletesAllFail() throws Exception {
+    invokeInitializeStatsDefaults();
+
+    int retentionDays = 5;
+    UUID workflowId = UUID.randomUUID();
+
+    when(workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE)))
+        .thenReturn(List.of(workflowId));
+
+    doThrow(new RuntimeException("delete failed"))
+        .when(workflowRepository)
+        .delete(eq("admin"), eq(workflowId), eq(true), eq(true));
+
+    invokeCleanReverseIngestionWorkflows(retentionDays);
+
+    verify(workflowDAO, times(1))
+        .listTerminalReverseIngestionWorkflowIdsBeforeCutoff(anyLong(), eq(BATCH_SIZE));
+    verify(workflowRepository, times(1))
+        .delete(eq("admin"), eq(workflowId), eq(true), eq(true));
+
+    StepStats stepStats = getReverseIngestionStepStats();
+    assertNotNull(stepStats);
+    assertEquals(0, stepStats.getSuccessRecords());
+    assertEquals(1, stepStats.getFailedRecords());
   }
 
   private void invokeInitializeStatsDefaults() throws Exception {
