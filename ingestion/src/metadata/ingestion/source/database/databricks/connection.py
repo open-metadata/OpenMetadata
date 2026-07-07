@@ -108,6 +108,16 @@ DATABRICKS_ERRORS = ErrorPack(
         fix="The workspace returned 403 Forbidden. Verify the token's user is entitled to the "
         "workspace and the configured HTTP path / SQL warehouse.",
     ),
+    when(Matchers.contains("no_such_catalog")).diagnose(
+        "Catalog not found",
+        fix="The configured catalog does not exist or is not visible to the token's user. Verify "
+        "the catalog name and that the user has USE CATALOG on it.",
+    ),
+    when(Matchers.contains("no_such_schema")).diagnose(
+        "Schema not found",
+        fix="The configured schema does not exist or is not visible. Verify the schema name and "
+        "that the user has USE SCHEMA on it.",
+    ),
     when(Matchers.contains("table_or_view_not_found")).diagnose(
         "Table or view not found",
         fix="The referenced table or view does not exist or is not visible to the token's user. "
@@ -158,10 +168,23 @@ class DatabricksEngineWrapper:
 
     def __init__(self, engine: Engine):
         self.engine = engine
-        self.inspector = inspect(engine)
+        self._inspector = None
         self.schemas = None
         self.first_schema = None
         self.first_catalog = None
+
+    @property
+    def inspector(self):
+        """Build the inspector on first use, never at construction.
+
+        ``inspect(engine)`` eagerly opens a connection (the dialect's
+        ``_init_engine`` runs ``engine.connect().close()``), so creating it in
+        ``__init__`` would touch the network while the checks provider is being
+        assembled - before the runner and the CheckAccess gate. Deferring it keeps
+        the first connection inside a gated ``@check``."""
+        if self._inspector is None:
+            self._inspector = inspect(self.engine)
+        return self._inspector
 
     def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
         """Get schemas and cache them"""

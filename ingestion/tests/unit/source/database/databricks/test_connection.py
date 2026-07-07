@@ -109,6 +109,18 @@ def test_catalog_does_not_exist_is_classified():
     assert DATABRICKS_ERRORS.classify(error).title == "Object not found"
 
 
+def test_no_such_catalog_exception_is_classified():
+    # Databricks raises NO_SUCH_CATALOG_EXCEPTION with "was not found" (not "does
+    # not exist"); key on the stable token so a configured bad catalog is diagnosed.
+    error = _SqlAlchemyError(Exception("[NO_SUCH_CATALOG_EXCEPTION] Catalog 'batata' was not found. SQLSTATE: 42704"))
+    assert DATABRICKS_ERRORS.classify(error).title == "Catalog not found"
+
+
+def test_no_such_schema_exception_is_classified():
+    error = _SqlAlchemyError(Exception("[NO_SUCH_SCHEMA_EXCEPTION] Schema 'nope' was not found"))
+    assert DATABRICKS_ERRORS.classify(error).title == "Schema not found"
+
+
 def test_network_errors_classify_through_including():
     error = NetworkUnreachableError("workspace:443 is not reachable")
     error.__cause__ = ConnectionRefusedError(61, "Connection refused")
@@ -147,6 +159,18 @@ def test_construction_does_not_touch_the_network():
     engine = MagicMock()
     DatabricksChecks(client=engine, service_connection=_config())
     engine.connect.assert_not_called()
+
+
+def test_construction_does_not_build_the_inspector():
+    # Regression: sqlalchemy.inspect(engine) eagerly opens a connection (the
+    # dialect's _init_engine runs engine.connect().close()), so building it in the
+    # wrapper's __init__ would connect before the gate - the auth error then escapes
+    # the runner as a 500 and an unreachable host hangs. The inspector must be lazy.
+    with patch(f"{CONNECTION_MODULE}.inspect") as mock_inspect:
+        checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+        mock_inspect.assert_not_called()
+        _ = checks._engine_wrapper.inspector
+        mock_inspect.assert_called_once()
 
 
 def test_check_access_probes_the_host_port_then_pings():
