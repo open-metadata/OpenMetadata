@@ -46,6 +46,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
+import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -58,7 +59,6 @@ import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
-import { deleteEntity } from '../../../../rest/miscAPI';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';

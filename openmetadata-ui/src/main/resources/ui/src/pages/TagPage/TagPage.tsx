@@ -41,6 +41,7 @@ import {
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -62,7 +63,6 @@ import AssetsTabs, {
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
-import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -98,9 +98,7 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
-import {
-  getEntityMissingError,
-} from '../../utils/EntityDisplayPureUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   fetchEntityActivityCountInto,
