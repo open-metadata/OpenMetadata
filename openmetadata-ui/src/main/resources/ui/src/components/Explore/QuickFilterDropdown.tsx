@@ -21,6 +21,7 @@ import { ChevronDown } from '@untitledui/icons';
 import { debounce, isUndefined } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchPureUtils';
 import Loader from '../common/Loader/Loader';
@@ -49,6 +50,7 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
   onGetInitialOptions,
 }) => {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<
@@ -63,6 +65,13 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
     () => debounce((value: string) => onSearch(value, searchKey), 500),
     [onSearch, searchKey]
   );
+
+  // Close portal-based dropdowns when navigating to a different page.
+  useEffect(() => {
+    setIsOpen(false);
+    setSearchText('');
+    debouncedOnSearch.cancel();
+  }, [pathname, debouncedOnSearch]);
 
   useEffect(() => {
     setNullOptionSelected(

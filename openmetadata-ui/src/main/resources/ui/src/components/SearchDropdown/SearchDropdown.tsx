@@ -39,6 +39,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { ReactComponent as DropDown } from '../../assets/svg/drop-down.svg';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import { getSelectedOptionLabelString } from '../../utils/AdvancedSearchPureUtils';
@@ -80,6 +81,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
+  const { pathname } = useLocation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
@@ -253,6 +255,13 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   // Cancel a pending trailing call on unmount so it can't fire onSearch /
   // setSearchText after the dropdown is gone.
   useEffect(() => () => debouncedOnSearch.cancel(), [debouncedOnSearch]);
+
+  // Close portal-based dropdowns when navigating to a different page.
+  useEffect(() => {
+    setIsDropDownOpen(false);
+    setSearchText('');
+    debouncedOnSearch.cancel();
+  }, [pathname, debouncedOnSearch]);
 
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {

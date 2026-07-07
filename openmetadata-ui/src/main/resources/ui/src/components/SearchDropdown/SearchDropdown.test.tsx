@@ -19,6 +19,7 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
+const mockUseLocation = jest.fn();
 
 const searchOptions = [
   { key: 'User 1', label: 'User 1' },
@@ -48,7 +49,15 @@ jest.mock('lodash', () => ({
     .mockImplementation((fn) => Object.assign(fn, { cancel: jest.fn() })),
 }));
 
+jest.mock('react-router-dom', () => ({
+  useLocation: () => mockUseLocation(),
+}));
+
 describe('Search DropDown Component', () => {
+  beforeEach(() => {
+    mockUseLocation.mockReturnValue({ pathname: '/explore' });
+  });
+
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);
 
@@ -286,6 +295,23 @@ describe('Search DropDown Component', () => {
     dropdownMenu = screen.queryByTestId('drop-down-menu');
 
     expect(dropdownMenu).toBeNull();
+  });
+
+  it('closes the dropdown when the route pathname changes', async () => {
+    const { rerender } = render(<SearchDropdown {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('search-dropdown-Owner'));
+    });
+
+    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
+
+    mockUseLocation.mockReturnValue({ pathname: '/observability' });
+    rerender(<SearchDropdown {...mockProps} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+    });
   });
 
   it('The selected options should be checked correctly each time popover renders', async () => {
