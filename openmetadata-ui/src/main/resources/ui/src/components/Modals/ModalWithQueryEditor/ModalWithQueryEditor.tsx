@@ -83,7 +83,6 @@ export const ModalWithQueryEditor = ({
       getContainer={getContainer}
       maskClosable={false}
       open={visible}
-      style={{ zIndex: 9999 }}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}
       width="90%"
       onCancel={onCancel}>
