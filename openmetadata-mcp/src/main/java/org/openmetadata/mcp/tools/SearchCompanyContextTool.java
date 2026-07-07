@@ -102,7 +102,8 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("returnedCount", pills.size());
     int rawCount = pills.size();
     fitResultsToBudget(result, pills);
-    attachPagingContract(result, from, rawCount, requestedSize);
+    long totalHits = response.getTotalHits() != null ? response.getTotalHits() : Long.MAX_VALUE;
+    attachPagingContract(result, from, rawCount, requestedSize, totalHits);
     return result;
   }
 
@@ -113,16 +114,17 @@ public class SearchCompanyContextTool implements McpTool {
    * requested size, so a trimmed page never skips the pills it dropped.
    */
   private static void attachPagingContract(
-      Map<String, Object> result, int from, int rawCount, int requestedSize) {
+      Map<String, Object> result, int from, int rawCount, int requestedSize, long totalHits) {
     int returned =
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
     boolean budgetTrimmed = returned < rawCount;
     boolean fullPage = rawCount >= requestedSize;
-    if (fullPage || budgetTrimmed) {
+    boolean moreInIndex = (long) from + rawCount < totalHits;
+    if (budgetTrimmed || (fullPage && moreInIndex)) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
     }
-    if (fullPage && !budgetTrimmed) {
+    if (fullPage && !budgetTrimmed && moreInIndex) {
       result.put(
           McpResponseTrim.MESSAGE_KEY,
           String.format(

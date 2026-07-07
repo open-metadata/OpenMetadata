@@ -113,7 +113,8 @@ public class SemanticSearchTool implements McpTool {
 
     int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
-    attachPagingContract(result, from, rawCount, requestedSize);
+    long totalHits = response.getTotalHits() != null ? response.getTotalHits() : Long.MAX_VALUE;
+    attachPagingContract(result, from, rawCount, requestedSize, totalHits);
     return result;
   }
 
@@ -125,16 +126,17 @@ public class SemanticSearchTool implements McpTool {
    * hasMore}, leaving a full page with no way forward.
    */
   private static void attachPagingContract(
-      Map<String, Object> result, int from, int rawCount, int requestedSize) {
+      Map<String, Object> result, int from, int rawCount, int requestedSize, long totalHits) {
     int returned =
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
     boolean budgetTrimmed = returned < rawCount;
     boolean fullPage = rawCount >= requestedSize;
-    if (fullPage || budgetTrimmed) {
+    boolean moreInIndex = (long) from + rawCount < totalHits;
+    if (budgetTrimmed || (fullPage && moreInIndex)) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
     }
-    if (fullPage && !budgetTrimmed) {
+    if (fullPage && !budgetTrimmed && moreInIndex) {
       result.put(
           McpResponseTrim.MESSAGE_KEY,
           String.format(

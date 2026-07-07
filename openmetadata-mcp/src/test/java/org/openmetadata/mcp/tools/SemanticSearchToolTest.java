@@ -2,6 +2,7 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -470,6 +471,33 @@ class SemanticSearchToolTest {
       verify(vectorService)
           .search(anyString(), anyMap(), anyInt(), fromCaptor.capture(), anyInt(), anyDouble());
       assertEquals(30, fromCaptor.getValue());
+    }
+  }
+
+  @Test
+  void fullLastPageWithKnownTotalDoesNotAdvertiseMore() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, 3L, false);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
     }
   }
 
