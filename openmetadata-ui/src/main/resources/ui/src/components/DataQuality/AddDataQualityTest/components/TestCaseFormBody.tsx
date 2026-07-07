@@ -668,6 +668,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       },
     },
     id: 'root/table',
+    doc: t('message.doc-field-selected-table'),
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
@@ -710,6 +711,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       required: t('label.please-select-entity', { entity: t('label.column') }),
     },
     id: 'root/column',
+    doc: t('message.doc-field-selected-column'),
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
@@ -756,6 +758,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       required: t('label.select-test-type'),
     },
     id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
+    doc: t('message.doc-field-test-type'),
     placeholder: t('label.select-test-type'),
     props: {
       'data-testid': 'test-type',
@@ -802,6 +805,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/name',
+    doc: t('message.doc-field-test-case-name'),
     placeholder: t('message.enter-test-case-name'),
     rules: {
       pattern: {

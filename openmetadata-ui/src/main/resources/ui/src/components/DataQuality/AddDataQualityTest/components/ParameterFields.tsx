@@ -302,6 +302,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       rules: buildRules(data, label),
       helperText: data.description,
       helperTextType: HelperTextType.TOOLTIP,
+      doc: data.description,
       // Legacy antd form-item id kept as the stable E2E selector.
       id: `testCaseFormV1_params_${data.name}`,
       props: { 'data-testid': `parameter-${data.name}` },
