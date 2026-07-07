@@ -12,6 +12,8 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.topology import TopologyContextManager, get_topology_node, get_topology_root
 from metadata.ingestion.progress.modes import ProgressMode, TotalsDeclarer
@@ -87,7 +89,7 @@ def test_leaf_handle_counts_open_and_advance():
     source = _FakeSource()
     tracker = TopologyProgressTracker(source)
     handle = tracker.for_node(_table_node(source), is_leaf=True)
-    handle.open_with_count(2)
+    handle.open(2)
     handle.advance_leaf()
     handle.advance_leaf()
     snapshot = source.progress.snapshot()
@@ -100,7 +102,7 @@ def test_container_handle_is_lazy_without_reconcilable_counter():
     tracker = TopologyProgressTracker(source)
     handle = tracker.for_node(_database_node(source), is_leaf=False)
     assert handle.wants_eager_count is False
-    handle.open_lazy()
+    handle.open(None)
     assert source.progress.snapshot().expected_by_type.get("Database") is None
 
 
@@ -113,7 +115,7 @@ def test_container_handle_reconciles_when_counter_is_reconcilable():
     schema_node = get_topology_node("databaseSchema", source.topology)
     handle = tracker.for_node(schema_node, is_leaf=False)
     assert handle.wants_eager_count is True
-    handle.open_with_count(3)
+    handle.open(3)
     counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
     assert counters["DatabaseSchema"] == (0, 3)
 
@@ -128,19 +130,36 @@ def test_enter_scope_closes_and_tracks_on_exit():
     setattr(source.context.get(), key, "salesdb")
     closed = []
     source.progress.close = lambda path: closed.append(list(path))
-    scope = handle.enter_scope()
-    scope.exit()
+    with handle.enter_scope():
+        pass
     assert closed == [["salesdb"]]
     counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
     assert counters["Database"][0] == 1
+
+
+def test_enter_scope_prunes_without_counting_on_failure():
+    source = _FakeSource()
+    source.progress.set_total("Database", 7)
+    tracker = TopologyProgressTracker(source)
+    node = _database_node(source)
+    handle = tracker.for_node(node, is_leaf=False)
+    key = source._node_primary_stage(node).context
+    setattr(source.context.get(), key, "salesdb")
+    closed = []
+    source.progress.close = lambda path: closed.append(list(path))
+    with pytest.raises(RuntimeError), handle.enter_scope():
+        raise RuntimeError("boom")
+    assert closed == [["salesdb"]]
+    counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
+    assert counters["Database"][0] == 0
 
 
 def test_enter_scope_is_noop_without_context_value():
     source = _FakeSource()
     tracker = TopologyProgressTracker(source)
     handle = tracker.for_node(_database_node(source), is_leaf=False)
-    scope = handle.enter_scope()
-    scope.exit()
+    with handle.enter_scope():
+        pass
     assert source.progress.snapshot() is None  # nothing opened, nothing closed
 
 

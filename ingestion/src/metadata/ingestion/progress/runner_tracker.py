@@ -34,7 +34,10 @@ if TYPE_CHECKING:
 class _NoOpScope:
     """No container scope to retire."""
 
-    def exit(self) -> None:
+    def __enter__(self) -> "_NoOpScope":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         """Nothing to close."""
 
 
@@ -42,17 +45,23 @@ NO_OP_SCOPE = _NoOpScope()
 
 
 class _Scope:
-    """An open container scope: exiting prunes the subtree from the tree and
-    counts the finished container on its global counter."""
+    """An open container scope: exiting prunes the subtree from the tree.
+    The finished container is counted on its global counter only on a clean
+    exit — a failure (or early generator close) mid-subtree prunes without
+    claiming the container completed."""
 
     def __init__(self, registry: "ProgressRegistry", path: List[str], entity_type_name: str) -> None:  # noqa: UP006
         self._registry = registry
         self._path = path
         self._entity_type_name = entity_type_name
 
-    def exit(self) -> None:
+    def __enter__(self) -> "_Scope":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> None:
         self._registry.close(self._path)
-        self._registry.track(self._entity_type_name)
+        if exc_type is None:
+            self._registry.track(self._entity_type_name)
 
 
 class _NoOpNodeProgress:
@@ -60,10 +69,7 @@ class _NoOpNodeProgress:
 
     wants_eager_count = False
 
-    def open_with_count(self, count: int) -> None:
-        """No-op."""
-
-    def open_lazy(self) -> None:
+    def open(self, count: Optional[int]) -> None:  # noqa: UP045
         """No-op."""
 
     def advance_leaf(self) -> None:
@@ -110,13 +116,14 @@ class NodeProgress:
         just-yielded entity populated."""
         return self._reconcilable
 
-    def open_with_count(self, count: int) -> None:
+    def open(self, count: Optional[int]) -> None:  # noqa: UP045
+        """Open this node's counter under its parent scope. An exact ``count``
+        (the runner materialized the producer) additionally reconciles a
+        reconcilable container's scope total toward the observed child count;
+        a lazy open (``None``) has nothing to reconcile with."""
         self._registry.open(self._parent_path, self._entity_type_name, count)
-        if self._reconcilable and self._parent_path:
+        if count is not None and self._reconcilable and self._parent_path:
             self._registry.reconcile_scope_total(self._entity_type_name, self._parent_path[-1], count)
-
-    def open_lazy(self) -> None:
-        self._registry.open(self._parent_path, self._entity_type_name, None)
 
     def advance_leaf(self) -> None:
         if self._is_leaf:

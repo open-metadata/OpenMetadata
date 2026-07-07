@@ -54,23 +54,19 @@ class TotalsDeclarer:
         self._registry.set_reconcilable(entity_type)
 
 
-class ManualProgress:
+class ManualProgress(TotalsDeclarer):
     """Counting facade for ``ProgressMode.MANUAL`` sources — connectors whose
     enumeration the topology runner cannot count (grouped dashboard walks,
-    custom ``_iter`` query sources)."""
+    custom ``_iter`` query sources). Extends the denominator-only declarer
+    with the counting side; AUTO hooks still receive a plain
+    ``TotalsDeclarer``, never this subclass."""
 
     def __init__(self, registry: "ProgressRegistry") -> None:
-        self._registry = registry
+        super().__init__(registry)
         self._group_label: Optional[str] = None  # noqa: UP045
-
-    def set_total(self, entity_type: str, total: Optional[int]) -> None:  # noqa: UP045
-        self._registry.set_total(entity_type, total)
 
     def track(self, entity_type: Optional[str], n: int = 1) -> None:  # noqa: UP045
         self._registry.track(entity_type, n)
-
-    def seed_scope_total(self, entity_type: str, scope: str, n: int) -> None:
-        self._registry.seed_scope_total(entity_type, scope, n)
 
     def reconcile_scope_total(self, entity_type: Optional[str], scope: str, observed: int) -> None:  # noqa: UP045
         self._registry.reconcile_scope_total(entity_type, scope, observed)

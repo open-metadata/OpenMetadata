@@ -144,7 +144,7 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
                 entity_type=entity_type_name,
             )
 
-        node_progress.open_with_count(node_entities_length)
+        node_progress.open(node_entities_length)
 
         if node_entities_length == 0:
             return
@@ -200,10 +200,10 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
 
         if node_progress.wants_eager_count:
             node_entities = list(self._run_node_producer(node) or [])
-            node_progress.open_with_count(len(node_entities))
+            node_progress.open(len(node_entities))
         else:
             node_entities = self._run_node_producer(node) or []
-            node_progress.open_lazy()
+            node_progress.open(None)
 
         for node_entity in node_entities:
             for stage in node.stages:
@@ -215,9 +215,8 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
 
             node_progress.advance_leaf()
 
-            scope = node_progress.enter_scope()
-            yield from self.process_nodes(child_nodes)
-            scope.exit()
+            with node_progress.enter_scope():
+                yield from self.process_nodes(child_nodes)
 
     def process_nodes(self, nodes: List[TopologyNode]) -> Iterable[Entity]:  # noqa: UP006
         """
@@ -285,10 +284,9 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
 
             node_progress.advance_leaf()
 
-            scope = node_progress.enter_scope()
-            for child_result in self.process_nodes(child_nodes):
-                self.queue.put(child_result)
-            scope.exit()
+            with node_progress.enter_scope():
+                for child_result in self.process_nodes(child_nodes):
+                    self.queue.put(child_result)
 
         # Merge thread-local metrics into global state before thread exits
         operation_metrics.merge_thread_metrics()
