@@ -124,9 +124,14 @@ export function useObservabilityAlerts({
     async (params?: Partial<Paging>) => {
       setLoading(true);
       try {
+        const currentPagingParams: Partial<Paging> | undefined =
+          pagingCursor?.cursorType && pagingCursor?.cursorValue
+            ? { [pagingCursor.cursorType]: pagingCursor.cursorValue }
+            : undefined;
+        const requestParams = params ?? currentPagingParams;
         const { data, paging } = await getAllAlerts({
-          after: params?.after,
-          before: params?.before,
+          after: requestParams?.after,
+          before: requestParams?.before,
           limit: pageSize,
           alertType: AlertType.Observability,
         });
@@ -145,7 +150,7 @@ export function useObservabilityAlerts({
         setLoading(false);
       }
     },
-    [fetchAllAlertsPermission, handlePagingChange, pageSize, t]
+    [fetchAllAlertsPermission, handlePagingChange, pageSize, pagingCursor, t]
   );
 
   useEffect(() => {
