@@ -185,14 +185,15 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
     def _process_node(self, node: TopologyNode) -> Iterable[Entity]:
         """Single-threaded processing of a Node.
 
-        Container producers (database, schema) are iterated lazily so connectors
-        can set up per-yield inspector/session state before each child is
-        processed. Leaf producers (table, stored procedure) are materialized
-        eagerly only when the node's progress handle wants an eager count — to
-        record an exact child count via ``progress.open``; otherwise they are
-        iterated lazily so connectors whose stages depend on per-yield producer
-        state (e.g. PowerBI's per-workspace ``state.enter`` / ``finally:
-        state.exit``) are not torn down before their stages run.
+        Producers are iterated lazily by default so connectors can set up
+        per-yield inspector/session state — and read context a stage of the
+        just-yielded entity populated (e.g. S3 storage's ``get_containers``) —
+        before the next child is produced. A producer is materialized eagerly
+        only when its node's progress handle wants an exact upfront child count,
+        which today is limited to reconcilable container counters (schema totals
+        nudged toward the observed count). Leaf producers are never drained
+        eagerly: their per-leaf ``advance`` already yields an accurate processed
+        count.
         """
         child_nodes = self._get_child_nodes(node)
         node_progress = self.progress_tracker.for_node(node, is_leaf=not child_nodes)

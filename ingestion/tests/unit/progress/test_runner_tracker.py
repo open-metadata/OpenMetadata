@@ -62,12 +62,12 @@ def test_for_node_returns_noop_for_root_node():
     assert tracker.for_node(root, is_leaf=False) is NO_OP_NODE_PROGRESS
 
 
-def test_for_node_returns_real_handle_for_auto_leaf():
+def test_for_node_returns_lazy_handle_for_auto_leaf():
     source = _FakeSource()
     tracker = TopologyProgressTracker(source)
     handle = tracker.for_node(_table_node(source), is_leaf=True)
     assert isinstance(handle, NodeProgress)
-    assert handle.wants_eager_count is True
+    assert handle.wants_eager_count is False
 
 
 def test_totals_hook_called_exactly_once_and_only_for_real_nodes():

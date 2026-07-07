@@ -225,11 +225,49 @@ def test_leaf_is_lazy_when_progress_off_preserving_per_yield_state():
     assert runner.state_live_at_stage == ["a", "b"]
 
 
-def test_leaf_is_eager_when_progress_on_recording_count():
+def test_leaf_is_lazy_when_progress_on_preserving_per_yield_state():
+    """AUTO-mode leaf producers must still iterate lazily: per-yield producer
+    state stays live when each stage runs (an eager list()-drain would tear it
+    down first), while the per-leaf advance keeps the processed count accurate."""
     runner = _StatefulLeafRunner()
     list(runner._process_node(get_topology_node("table", runner.topology)))
-    assert runner.state_live_at_stage == [None, None]
+    assert runner.state_live_at_stage == ["a", "b"]
     assert runner.progress.snapshot().processed == 2
+
+
+class _CtxReadingLeafRunner(TopologyRunnerMixin):
+    """Mirrors S3 ``get_containers``: the leaf producer reads a context value that
+    a *stage* of the just-yielded entity populates. Correct only under lazy
+    iteration — an eager list()-drain runs the producer to completion before any
+    stage writes the context, so the producer reads ``None``."""
+
+    topology = DatabaseServiceTopology()
+
+    def __init__(self, mode=ProgressMode.AUTO):
+        self.progress_mode = mode
+        self.context = TopologyContextManager(self.topology)
+        self.status = MagicMock()
+        self.observed_context = []
+
+    def _run_node_producer(self, node):
+        for name in ["t1", "t2"]:
+            yield name
+            self.observed_context.append(getattr(self.context.get(), "table", None))
+
+    def _process_stage(self, stage, node_entity):
+        if getattr(stage, "context", None):
+            setattr(self.context.get(), stage.context, node_entity)
+        return iter(())
+
+
+def test_leaf_producer_reads_context_written_by_prior_yield_stage():
+    """Regression for the S3 ``get_containers`` crash (NoneType fqn /
+    ``container.id``): a leaf producer that reads context populated by the
+    just-yielded entity's stage must observe it. An eager list()-drain leaves the
+    context unset, so the producer would read ``None`` for every entity."""
+    runner = _CtxReadingLeafRunner()
+    list(runner._process_node(get_topology_node("table", runner.topology)))
+    assert runner.observed_context == ["t1", "t2"]
 
 
 def test_closing_container_tracks_global_done():

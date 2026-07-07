@@ -100,9 +100,15 @@ class NodeProgress:
 
     @property
     def wants_eager_count(self) -> bool:
-        """Materialize the producer for an exact child count: always for a
-        leaf; for a container only when its counter is reconcilable."""
-        return self._is_leaf or self._reconcilable
+        """Materialize the producer for an exact child count only when the node's
+        counter is reconcilable (a container whose scope total is nudged toward
+        the observed child count). Leaf producers are always iterated lazily:
+        their per-leaf ``advance`` already yields an accurate processed count, and
+        an eager ``list()``-drain would run the producer to completion before any
+        stage sinks an entity — breaking connectors (e.g. S3 storage's
+        ``get_containers``) whose producer reads context a stage of the
+        just-yielded entity populated."""
+        return self._reconcilable
 
     def open_with_count(self, count: int) -> None:
         self._registry.open(self._parent_path, self._entity_type_name, count)
