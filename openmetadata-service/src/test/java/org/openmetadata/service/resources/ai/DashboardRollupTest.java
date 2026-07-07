@@ -60,8 +60,7 @@ class DashboardRollupTest {
   @Test
   void topApprovalsRanksLongestWaitingFirstWithinSeverity() {
     List<DashboardRollup.RolledAsset> assets =
-        List.of(
-            approval("newer", "High", 200L), approval("older", "High", 100L));
+        List.of(approval("newer", "High", 200L), approval("older", "High", 100L));
 
     List<Map<String, Object>> top =
         DashboardRollup.topByStatus(assets, "PendingApproval", DashboardRollup.approvalRanking());

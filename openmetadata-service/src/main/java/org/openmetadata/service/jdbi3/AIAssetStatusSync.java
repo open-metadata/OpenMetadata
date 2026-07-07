@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.LLMModel;
@@ -54,7 +56,12 @@ final class AIAssetStatusSync {
       GovernanceMetadata governance = governanceMetadata(app);
       governance.setRegistrationStatus(
           GovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
-      stampApprover(governance, status, app.getUpdatedBy());
+      stampApprover(
+          status,
+          app.getUpdatedBy(),
+          governance::getApprovedBy,
+          governance::setApprovedBy,
+          governance::setApprovedAt);
     } else if (isUnset(status)) {
       EntityStatus derived = entityStatusFor(registrationOf(app));
       if (derived != null) {
@@ -69,7 +76,12 @@ final class AIAssetStatusSync {
       McpGovernanceMetadata governance = governanceMetadata(server);
       governance.setRegistrationStatus(
           McpGovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
-      stampApprover(governance, status, server.getUpdatedBy());
+      stampApprover(
+          status,
+          server.getUpdatedBy(),
+          governance::getApprovedBy,
+          governance::setApprovedBy,
+          governance::setApprovedAt);
     } else if (isUnset(status)) {
       EntityStatus derived = entityStatusFor(registrationOf(server));
       if (derived != null) {
@@ -100,23 +112,20 @@ final class AIAssetStatusSync {
     return status == null || status == EntityStatus.UNPROCESSED;
   }
 
+  /**
+   * Stamps the approver on an {@code Approved} transition when not already set. The two AI
+   * governance-metadata POJOs share no supertype, so callers pass method references to their
+   * respective approver getter/setters rather than the metadata object itself.
+   */
   private static void stampApprover(
-      GovernanceMetadata governance, EntityStatus status, String updatedBy) {
-    if (status == EntityStatus.APPROVED
-        && governance.getApprovedBy() == null
-        && updatedBy != null) {
-      governance.setApprovedBy(updatedBy);
-      governance.setApprovedAt(System.currentTimeMillis());
-    }
-  }
-
-  private static void stampApprover(
-      McpGovernanceMetadata governance, EntityStatus status, String updatedBy) {
-    if (status == EntityStatus.APPROVED
-        && governance.getApprovedBy() == null
-        && updatedBy != null) {
-      governance.setApprovedBy(updatedBy);
-      governance.setApprovedAt(System.currentTimeMillis());
+      EntityStatus status,
+      String updatedBy,
+      Supplier<String> currentApprovedBy,
+      Consumer<String> setApprovedBy,
+      Consumer<Long> setApprovedAt) {
+    if (status == EntityStatus.APPROVED && currentApprovedBy.get() == null && updatedBy != null) {
+      setApprovedBy.accept(updatedBy);
+      setApprovedAt.accept(System.currentTimeMillis());
     }
   }
 

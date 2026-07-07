@@ -126,6 +126,15 @@ class FilterEntityImplTest {
   }
 
   @Test
+  void testEntityStatusCanBeExcludedPerWorkflow() throws Exception {
+    List<String> excludeStatus = List.of("entityStatus");
+    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, excludeStatus));
+    assertTrue(
+        invokeFilter(
+            List.of(fieldChange("entityStatus"), fieldChange("description")), null, excludeStatus));
+  }
+
+  @Test
   void testIncludeFilterAllowsOnlySpecifiedFields() throws Exception {
     List<String> includeFields = List.of("sla", "schema");
 
