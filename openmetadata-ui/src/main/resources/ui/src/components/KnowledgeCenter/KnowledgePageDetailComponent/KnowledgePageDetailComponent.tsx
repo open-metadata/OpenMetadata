@@ -187,7 +187,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           (draft.displayName !== undefined &&
             draft.displayName !== response.displayName));
 
-      if (hasChanges) {
+      const serverChangedSinceDraft =
+        draft?.version !== undefined && draft.version !== response.version;
+
+      if (hasChanges && !serverChangedSinceDraft) {
         const pageWithDraft: KnowledgePage = {
           ...response,
           description: draft.description ?? response.description,
@@ -198,12 +201,18 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         try {
           const patch = compare(response, pageWithDraft);
           const saved = await patchKnowledgePage(response.id, patch);
-          setKnowledgePage((prev) => ({
-            ...(prev ?? response),
-            description: saved.description,
-            displayName: saved.displayName,
-            version: saved.version,
-          }));
+          setKnowledgePage((prev) => {
+            if (prev?.id !== response.id) {
+              return prev;
+            }
+
+            return {
+              ...(prev ?? response),
+              description: saved.description,
+              displayName: saved.displayName,
+              version: saved.version,
+            };
+          });
           removeDraft(response.id);
           setContentChangeState(ContentChangeState.SAVED);
         } catch (syncError) {
@@ -367,15 +376,21 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     setContentChangeState(ContentChangeState.SAVING);
   }, []);
 
-  const endTrackedSave = useCallback(() => {
-    pendingSaveCountRef.current = Math.max(0, pendingSaveCountRef.current - 1);
-    if (pendingSaveCountRef.current === 0) {
-      setContentChangeState(ContentChangeState.SAVED);
-      if (knowledgePageIdRef.current) {
-        removeDraft(knowledgePageIdRef.current);
+  const endTrackedSave = useCallback(
+    (savedArticleId?: string) => {
+      pendingSaveCountRef.current = Math.max(
+        0,
+        pendingSaveCountRef.current - 1
+      );
+      if (pendingSaveCountRef.current === 0) {
+        setContentChangeState(ContentChangeState.SAVED);
+        if (savedArticleId) {
+          removeDraft(savedArticleId);
+        }
       }
-    }
-  }, [removeDraft]);
+    },
+    [removeDraft]
+  );
 
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
@@ -429,7 +444,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         showErrorToast(error as AxiosError);
       } finally {
         if (isCurrentArticle) {
-          endTrackedSave();
+          endTrackedSave(currentKnowledgePage.id);
         }
       }
     },
@@ -448,9 +463,12 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   const saveDraftContent = useCallback(
-    debounce((id: string, fqn: string, description: string) => {
-      setDraft(id, { description, fqn });
-    }, 300),
+    debounce(
+      (id: string, fqn: string, description: string, version?: number) => {
+        setDraft(id, { description, fqn, version });
+      },
+      300
+    ),
     [setDraft]
   );
 
@@ -463,7 +481,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           saveDraftContent(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            content
+            content,
+            knowledgePage.version
           );
         }
       } else if (pendingSaveCountRef.current === 0) {
@@ -577,7 +596,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         showErrorToast(error as AxiosError);
       } finally {
         if (isCurrentArticle) {
-          endTrackedSave();
+          endTrackedSave(currentKnowledgePage.id);
         }
       }
     },
@@ -596,16 +615,26 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   const saveDraftDisplayName = useCallback(
-    debounce((id: string, fqn: string, displayName: string) => {
-      setDraft(id, { displayName, fqn });
-    }, 300),
+    debounce(
+      (id: string, fqn: string, displayName: string, version?: number) => {
+        setDraft(id, { displayName, fqn, version });
+      },
+      300
+    ),
     [setDraft]
   );
 
   const handleSave = useCallback(() => {
+    saveDraftContent.flush();
+    saveDraftDisplayName.flush();
     handleDisplayNameSave.flush();
     handleContentSave.flush();
-  }, [handleDisplayNameSave, handleContentSave]);
+  }, [
+    saveDraftContent,
+    saveDraftDisplayName,
+    handleDisplayNameSave,
+    handleContentSave,
+  ]);
 
   const handleDisplayNameChange = useCallback(
     (updatedDisplayName: string) => {
@@ -619,7 +648,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           saveDraftDisplayName(
             knowledgePage.id,
             knowledgePage.fullyQualifiedName,
-            updatedDisplayName
+            updatedDisplayName,
+            knowledgePage.version
           );
         }
       } else if (pendingSaveCountRef.current === 0) {
@@ -865,6 +895,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     () => tabs?.find((t) => t?.key === activeTab)?.children ?? null,
     [tabs, activeTab]
   );
+
+  useEffect(() => {
+    return () => {
+      saveDraftContent.cancel();
+      saveDraftDisplayName.cancel();
+    };
+  }, [saveDraftContent, saveDraftDisplayName]);
 
   useEffect(() => {
     tagClassBase.setFilterClassification([]);

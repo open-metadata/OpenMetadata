@@ -19,6 +19,7 @@ export interface ArticleDraft {
   fqn: string;
   description?: string;
   displayName?: string;
+  version?: number;
 }
 
 interface ArticleDraftStore {

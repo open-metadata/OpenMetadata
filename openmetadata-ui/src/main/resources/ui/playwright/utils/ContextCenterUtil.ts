@@ -532,12 +532,17 @@ export const scrollHierarchyToNode = async (
       .getAttribute('data-testid');
 
   let previousLastNode = '';
-  for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
-    // Registered before the scroll so it can observe the fetch the scroll
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
+
+  for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
+    // Registered before the scroll so it can observe any fetch the scroll
     // triggers; only awaited below if the node list looks unchanged.
     const hierarchyResPromise = page
       .waitForResponse((res) => res.url().includes('/hierarchy'), {
-        timeout: 2000,
+        timeout: 5000,
       })
       .catch(() => null);
 
@@ -550,17 +555,23 @@ export const scrollHierarchyToNode = async (
     let lastNode = await getLastNode();
 
     if (lastNode === previousLastNode) {
-      // The last node may be unchanged because a hierarchy fetch triggered
-      // by this scroll is still in flight rather than the tree truly ending.
-      // Give it a short window to resolve before trusting the comparison.
+      // Wait for any in-flight hierarchy fetch to settle before re-reading.
       await hierarchyResPromise;
 
       lastNode = await getLastNode();
 
       if (lastNode === previousLastNode) {
-        break;
+        staleCount += 1;
+        if (staleCount >= 3) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastNode = lastNode ?? '';
   }
 
