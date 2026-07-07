@@ -272,10 +272,11 @@ test.describe('Entity Version pages', () => {
           await page.locator('#displayName').fill('New Column Name');
 
           await page
-            .locator('[role="dialog"] [data-testid="save-button"]')
+            .getByTestId('entity-name-modal')
+            .getByTestId('save-button')
             .click();
 
-          await page.locator('[role="dialog"]').waitFor({
+          await page.getByTestId('entity-name-modal').waitFor({
             state: 'detached',
           });
 

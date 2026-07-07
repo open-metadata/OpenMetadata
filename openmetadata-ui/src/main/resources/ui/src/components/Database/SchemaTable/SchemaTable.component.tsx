@@ -54,6 +54,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import {
   Column,
+  Constraint,
   Table as TableType,
 } from '../../../generated/entity/data/table';
 import { TestSummary } from '../../../generated/tests/testCase';
@@ -165,7 +166,7 @@ const SchemaTable = () => {
   } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
-  const [editConstraint, setEditConstraint] = useState<string | undefined>();
+  const [editConstraint, setEditConstraint] = useState<Constraint | undefined>();
 
   const {
     permissions: tablePermissions,

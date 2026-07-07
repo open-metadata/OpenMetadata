@@ -35,9 +35,15 @@ const buildValidate =
   (value: string | undefined): string | true => {
     const v = value ?? '';
     for (const rule of rules) {
-      // Skip length/pattern checks for empty non-required values,
-      // mirroring antd async-validator behavior.
-      if (v.length === 0 && !rule.required) {
+      if (v.length === 0) {
+        // Enforce presence for required rules; skip length/pattern otherwise
+        // (mirrors antd async-validator behavior for non-required fields).
+        if (rule.required) {
+          return typeof rule.required === 'string'
+            ? rule.required
+            : (rule.message ?? '');
+        }
+
         continue;
       }
       if (rule.min !== undefined && v.length < rule.min) {
@@ -139,7 +145,7 @@ const EntityNameModal = <T extends EntityName>({
       isOpen={visible}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
-        <Dialog width={520}>
+        <Dialog data-testid="entity-name-modal" width={520}>
           <Dialog.Header>
             <Typography
               as="h3"
