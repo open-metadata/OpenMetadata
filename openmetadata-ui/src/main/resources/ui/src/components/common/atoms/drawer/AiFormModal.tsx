@@ -77,11 +77,10 @@ export const AiFormModal: FC<AiFormModalProps> = ({
           align="start"
           className="tw:w-full tw:justify-center tw:gap-4"
           direction="row">
-          {/* 702px panel matches the Figma modal width */}
           <Dialog
             showCloseButton
-            className="tw:max-w-[702px]"
-            width={702}
+            className="tw:max-w-3xl"
+            width={768}
             onClose={onClose}>
             <Dialog.Header>
               <Box
