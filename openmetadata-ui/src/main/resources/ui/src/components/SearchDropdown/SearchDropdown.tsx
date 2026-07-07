@@ -81,6 +81,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const { t } = useTranslation();
+  // Used only to tear down open portal dropdowns during page navigation.
   const { pathname } = useLocation();
 
   const [isDropDownOpen, setIsDropDownOpen] = useState<boolean>(false);
@@ -262,6 +263,16 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     setSearchText('');
     debouncedOnSearch.cancel();
   }, [pathname, debouncedOnSearch]);
+
+  const getDropdownPopupContainer = useCallback(
+    // Keep the popup scoped to this trigger so route unmounts do not leave
+    // stale body-level overlays behind, while preserving explicit overrides.
+    (triggerNode: HTMLElement) =>
+      getPopupContainer?.(triggerNode) ??
+      triggerNode.parentElement ??
+      document.body,
+    [getPopupContainer]
+  );
 
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
@@ -461,7 +472,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={dropdownCardComponent}
-      getPopupContainer={getPopupContainer}
+      getPopupContainer={getDropdownPopupContainer}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}

@@ -19,6 +19,7 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
+// Route changes are mocked so the dropdown cleanup can be tested without a router.
 const mockUseLocation = jest.fn();
 
 const searchOptions = [
@@ -306,6 +307,7 @@ describe('Search DropDown Component', () => {
 
     expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
 
+    // Simulate navigating away while the dropdown overlay is still open.
     mockUseLocation.mockReturnValue({ pathname: '/observability' });
     rerender(<SearchDropdown {...mockProps} />);
 
