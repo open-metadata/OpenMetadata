@@ -46,6 +46,7 @@ def _http_error(body: str) -> requests.exceptions.HTTPError:
 
 # --- validate_system_wallet ---
 
+
 def test_validate_system_wallet_invalid_raises_actionable_error():
     client = _build_client(wallet_id=WALLET_ID)
 
@@ -99,6 +100,7 @@ def test_validate_system_wallet_defers_non_wallet_error():
 
 # --- Root cause fix: wallet must not be in default auth headers ---
 
+
 def test_get_auth_header_excludes_wallet():
     """Wallet must NOT appear in default headers — the root cause of the P1 bug."""
     client = _build_client(wallet_id=WALLET_ID)
@@ -109,6 +111,7 @@ def test_get_auth_header_excludes_wallet():
 
 
 # --- get_records_by_tql wallet header behaviour ---
+
 
 def test_get_records_by_tql_sends_wallet_header_when_configured():
     """TQL queries must include the wallet header when biqSystemWalletId is set."""

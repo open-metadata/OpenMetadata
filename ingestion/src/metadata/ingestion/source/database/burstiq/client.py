@@ -206,12 +206,11 @@ class BurstIQClient:
         """Probe metadata endpoint with wallet header to detect invalid wallet early."""
         wallet_id = getattr(self.config, "biqSystemWalletId", None)
         if not wallet_id:
-            raise ConnectionError(
-                "biqSystemWalletId not configured. Profiling data will not be accessible."
-            )
+            raise ConnectionError("biqSystemWalletId not configured. Profiling data will not be accessible.")
         try:
             self._make_request(
-                "GET", "/api/metadata/dictionary",
+                "GET",
+                "/api/metadata/dictionary",
                 params={"limit": 1},
                 headers={"biq_system_wallet_id": wallet_id},
             )
