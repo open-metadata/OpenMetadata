@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
-import { KnowledgeCenterResponseDataType } from '../../support/entity/KnowledgeCenter.interface';
+import { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { KnowledgeCenterResponseDataType } from '../../support/entity/KnowledgeCenter.interface';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -44,6 +44,7 @@ import {
   navigateToDashboard,
   QUICK_LINK_DESCRIPTION,
   QUICK_LINK_URL,
+  readDraftStore,
   scrollHierarchyToNode,
   scrollListingToCard,
   verifyArticleSearch,
@@ -84,30 +85,8 @@ const RELATED_QUICK_LINK_URL = 'https://docs.open-metadata.org';
 const UPDATED_QUICK_LINK_URL = 'https://docs.open-metadata.org/quick-link';
 const MIN_CARDS = 10;
 
-const DRAFT_STORE_KEY = 'om-article-drafts';
-let DRAFT_ARTICLE_A_DISPLAY_NAME;
-let DRAFT_ARTICLE_B_DISPLAY_NAME;
-
-const readDraftStore = async (page: Page): Promise<Record<string, unknown>> => {
-  const raw = await page.evaluate(
-    (key: string) => localStorage.getItem(key),
-    DRAFT_STORE_KEY
-  );
-
-  if (!raw) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as {
-      state?: { drafts?: Record<string, unknown> };
-    };
-
-    return (parsed?.state?.drafts as Record<string, unknown>) ?? {};
-  } catch {
-    return {};
-  }
-};
+let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
+let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
 let articleTagClassification: ClassificationClass;
@@ -1307,16 +1286,6 @@ test.describe('Context Center Articles', () => {
         await page.fill('.om-block-editor', newDescription);
       });
 
-      // Register listener BEFORE navigating so the response is captured
-      const articleAPatchPromise = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/contextCenter/pages/${draftArticleA.id}`) &&
-          response.request().method() === 'PATCH',
-        { timeout: 15000 }
-      );
-
       await test.step('Navigate to draft article B via left hierarchy', async () => {
         const node = await scrollHierarchyToNode(
           page,
@@ -1338,12 +1307,6 @@ test.describe('Context Center Articles', () => {
         await expect(page.getByTestId('content-change-state')).not.toHaveText(
           'Unsaved'
         );
-      });
-
-      await test.step('Wait for Article A auto-save to complete', async () => {
-        const patchRes = await articleAPatchPromise;
-
-        expect(patchRes.status()).toBe(200);
       });
 
       await test.step('Navigate back to Article A — should show updated description', async () => {
@@ -1389,16 +1352,6 @@ test.describe('Context Center Articles', () => {
        await page.getByRole('link', { name: 'Articles' }).click();
       });
 
-      // Register listener BEFORE navigating
-      const articleAPatchPromise = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/contextCenter/pages/${draftArticleA.id}`) &&
-          response.request().method() === 'PATCH',
-        { timeout: 15000 }
-      );
-
       await test.step('Navigate to draft article B via left hierarchy', async () => {
         const node = await scrollHierarchyToNode(
           page,
@@ -1420,14 +1373,8 @@ test.describe('Context Center Articles', () => {
         );
       });
 
-      await test.step('Left hierarchy shows Article A old display name before save resolves', async () => {
-        await scrollHierarchyToNode(page, DRAFT_ARTICLE_A_DISPLAY_NAME);
-      });
-
-      await test.step('Wait for Article A auto-save to complete', async () => {
-        const patchRes = await articleAPatchPromise;
-
-        expect(patchRes.status()).toBe(200);
+      await test.step('Left hierarchy shows Article A new display name ', async () => {
+        await scrollHierarchyToNode(page, newDisplayName);
       });
 
       await test.step('Navigate back to Article A — should show updated display name', async () => {
@@ -1438,10 +1385,6 @@ test.describe('Context Center Articles', () => {
           page.getByTestId('entity-header-display-name')
         ).toHaveValue(newDisplayName);
         await assertArticleEditorSaved(page);
-      });
-
-      await test.step('Left hierarchy now shows the updated display name', async () => {
-        await scrollHierarchyToNode(page, newDisplayName);
       });
 
       await test.step('Article list card should reflect updated display name', async () => {

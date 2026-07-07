@@ -91,7 +91,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onToggleRightPanel,
   onVoteChange,
   onFollowChange,
-  onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
   onUpdate,
@@ -290,13 +289,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return null;
     }
   }, [contentChangeState]);
-
-  const showSaveButton =
-    Boolean(onSave) &&
-    contentChangeState === ContentChangeState.UN_SAVED &&
-    (permissions.EditAll ||
-      permissions.EditDescription ||
-      permissions.EditDisplayName);
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
   const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
@@ -497,12 +489,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           {/* Action buttons */}
           <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
             {contentChangeIcon}
-
-            {showSaveButton && (
-              <Button color="primary" size="sm" onClick={onSave}>
-                {t('label.save')}
-              </Button>
-            )}
 
             <Tooltip title={t('label.version-plural')}>
               <TooltipTrigger>

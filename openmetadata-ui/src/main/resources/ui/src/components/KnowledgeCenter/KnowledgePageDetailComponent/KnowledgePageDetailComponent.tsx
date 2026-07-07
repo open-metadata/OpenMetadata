@@ -120,7 +120,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const { currentUser } = useApplicationStore();
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const pendingSaveCountRef = useRef(0);
+  const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
   const knowledgePageIdRef = useRef<string | undefined>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const location = useLocation();
@@ -367,26 +367,34 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   };
 
   // Multiple saves (content/displayName) can be in flight at once since they
-  // are debounced independently. Track how many are pending so the status
-  // only flips back to SAVED once every in-flight save has settled, instead
-  // of one save's `finally` block prematurely clearing the SAVING state set
-  // by another.
-  const beginTrackedSave = useCallback(() => {
-    pendingSaveCountRef.current += 1;
-    setContentChangeState(ContentChangeState.SAVING);
+  // are debounced independently, and saves for an article the user has
+  // navigated away from can still resolve in the background. Track pending
+  // counts per article id so a stale save from a different article can
+  // never mask or clear the currently displayed article's own pending count.
+  const getPendingSaveCount = (articleId: string) =>
+    pendingSaveCountByArticleRef.current.get(articleId) ?? 0;
+
+  const beginTrackedSave = useCallback((articleId: string) => {
+    pendingSaveCountByArticleRef.current.set(
+      articleId,
+      getPendingSaveCount(articleId) + 1
+    );
+    if (articleId === knowledgePageIdRef.current) {
+      setContentChangeState(ContentChangeState.SAVING);
+    }
   }, []);
 
   const endTrackedSave = useCallback(
-    (savedArticleId?: string) => {
-      pendingSaveCountRef.current = Math.max(
-        0,
-        pendingSaveCountRef.current - 1
-      );
-      if (pendingSaveCountRef.current === 0) {
-        setContentChangeState(ContentChangeState.SAVED);
-        if (savedArticleId) {
-          removeDraft(savedArticleId);
+    (savedArticleId: string) => {
+      const remaining = Math.max(0, getPendingSaveCount(savedArticleId) - 1);
+      if (remaining === 0) {
+        pendingSaveCountByArticleRef.current.delete(savedArticleId);
+        if (savedArticleId === knowledgePageIdRef.current) {
+          setContentChangeState(ContentChangeState.SAVED);
         }
+        removeDraft(savedArticleId);
+      } else {
+        pendingSaveCountByArticleRef.current.set(savedArticleId, remaining);
       }
     },
     [removeDraft]
@@ -408,14 +416,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         return;
       }
 
-      // Capture before the await so the finally block uses the same decision
-      const isCurrentArticle =
-        knowledgePageIdRef.current === currentKnowledgePage.id;
-
       try {
-        if (isCurrentArticle) {
-          beginTrackedSave();
-        }
+        beginTrackedSave(currentKnowledgePage.id);
 
         const updatedKnowledgePage: KnowledgePage = {
           ...currentKnowledgePage,
@@ -443,9 +445,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        if (isCurrentArticle) {
-          endTrackedSave(currentKnowledgePage.id);
-        }
+        endTrackedSave(currentKnowledgePage.id);
       }
     },
     [
@@ -485,7 +485,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             knowledgePage.version
           );
         }
-      } else if (pendingSaveCountRef.current === 0) {
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
       handleContentSave(content);
@@ -511,6 +514,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         dataProducts: response.dataProducts,
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -537,6 +545,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         tags: response.tags,
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -556,14 +569,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         displayName: updatedDisplayName.trim(),
       };
 
-      // Capture before the await so the finally block uses the same decision
-      const isCurrentArticle =
-        knowledgePageIdRef.current === currentKnowledgePage.id;
-
       try {
-        if (isCurrentArticle) {
-          beginTrackedSave();
-        }
+        beginTrackedSave(currentKnowledgePage.id);
 
         const patch = compare(currentKnowledgePage, updatedKnowledgePage);
 
@@ -595,9 +602,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
-        if (isCurrentArticle) {
-          endTrackedSave(currentKnowledgePage.id);
-        }
+        endTrackedSave(currentKnowledgePage.id);
       }
     },
     [
@@ -652,7 +657,10 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             knowledgePage.version
           );
         }
-      } else if (pendingSaveCountRef.current === 0) {
+      } else if (
+        !knowledgePage?.id ||
+        getPendingSaveCount(knowledgePage.id) === 0
+      ) {
         setContentChangeState(ContentChangeState.SAVED);
       }
       handleDisplayNameSave(updatedDisplayName);
@@ -682,6 +690,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         relatedEntities: response['relatedEntities'],
         version: response.version,
       }));
+
+      const existingDraft = getDraft(currentKnowledgePage.id);
+      if (existingDraft) {
+        setDraft(currentKnowledgePage.id, { version: response.version });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -848,7 +861,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     setContentChangeState(ContentChangeState.SAVED);
-    pendingSaveCountRef.current = 0;
   }, [fqn]);
 
   useEffect(() => {
@@ -898,8 +910,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   useEffect(() => {
     return () => {
-      saveDraftContent.cancel();
-      saveDraftDisplayName.cancel();
+      saveDraftContent.flush();
+      saveDraftDisplayName.flush();
     };
   }, [saveDraftContent, saveDraftDisplayName]);
 
