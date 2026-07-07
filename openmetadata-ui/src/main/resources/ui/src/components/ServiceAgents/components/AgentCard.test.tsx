@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Agent } from '../AgentsPage.interface';
+import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
 jest.mock('./AgentOverflowMenu.component', () =>
@@ -60,10 +60,11 @@ const baseAgent: Agent = {
   finishedAt: '1m ago',
 };
 
-const renderCard = (agent: Agent) =>
+const renderCard = (agent: Agent, permissions?: AgentActionPermissions) =>
   render(
     <AgentCard
       agent={agent}
+      permissions={permissions}
       onAction={mockOnAction}
       onLogs={mockOnLogs}
       onRun={mockOnRun}
@@ -156,5 +157,17 @@ describe('AgentCard', () => {
     expect(mockOnRunDetails).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'failed' })
     );
+  });
+
+  it('should hide the run button while permissions are unresolved', () => {
+    renderCard(baseAgent);
+
+    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+  });
+
+  it('should show the run button when the user has trigger permission', () => {
+    renderCard(baseAgent, { trigger: true, edit: false, delete: false });
+
+    expect(screen.getByTestId('run-agent-button')).toBeInTheDocument();
   });
 });

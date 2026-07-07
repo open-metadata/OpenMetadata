@@ -21,7 +21,25 @@ import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineag
 import { ReactComponent as ShieldIcon } from '../../../assets/svg/agents/shield.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
 import { ReactComponent as ZapIcon } from '../../../assets/svg/agents/zap.svg';
-import { AgentStatus, RunStatus } from '../AgentsPage.interface';
+import {
+  AgentActionPermissions,
+  AgentStatus,
+  RunStatus,
+} from '../AgentsPage.interface';
+
+// Safe default while permissions are unresolved — actions stay hidden until an
+// explicit permission set is provided.
+export const NO_AGENT_PERMISSIONS: AgentActionPermissions = {
+  trigger: false,
+  edit: false,
+  delete: false,
+};
+
+export const ALL_AGENT_PERMISSIONS: AgentActionPermissions = {
+  trigger: true,
+  edit: true,
+  delete: true,
+};
 
 export const fmtNum = (n: number): string => n.toLocaleString();
 

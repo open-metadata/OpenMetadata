@@ -30,6 +30,7 @@ import {
   getEtaInfo,
   getUnitLabelKey,
   getUnitVerbLabelKey,
+  NO_AGENT_PERMISSIONS,
   RUN_DOT_CLASS,
   RUN_META,
 } from '../utils/agents.utils';
@@ -47,15 +48,9 @@ interface AgentCardProps {
   onRunDetails: (agent: Agent, runId?: string) => void;
 }
 
-const ALL_PERMISSIONS: AgentActionPermissions = {
-  trigger: true,
-  edit: true,
-  delete: true,
-};
-
 const AgentCard: FC<AgentCardProps> = ({
   agent,
-  permissions = ALL_PERMISSIONS,
+  permissions = NO_AGENT_PERMISSIONS,
   onAction,
   onLogs,
   onRun,

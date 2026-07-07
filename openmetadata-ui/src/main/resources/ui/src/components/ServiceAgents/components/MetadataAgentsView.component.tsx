@@ -61,7 +61,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const navigate = useNavigate();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
-  const { agentPermissions } = useAgentPermissions(ingestionPipelineList);
+  const agentFqns = useMemo(() => agents.map((agent) => agent.fqn), [agents]);
+  const { agentPermissions } = useAgentPermissions(agentFqns);
   const [runsFor, setRunsFor] = useState<{
     agent: Agent;
     runId?: string;

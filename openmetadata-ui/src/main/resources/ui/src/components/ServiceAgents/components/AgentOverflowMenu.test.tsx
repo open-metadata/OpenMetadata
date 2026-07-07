@@ -39,6 +39,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 const mockOnAction = jest.fn();
 
+const FULL_PERMISSIONS: AgentActionPermissions = {
+  trigger: true,
+  edit: true,
+  delete: true,
+};
+
 const renderMenu = (
   status: AgentStatus,
   permissions?: AgentActionPermissions
@@ -57,7 +63,7 @@ describe('AgentOverflowMenu', () => {
   });
 
   it('should render run, redeploy, edit and delete for an inactive agent', () => {
-    renderMenu('success');
+    renderMenu('success', FULL_PERMISSIONS);
 
     expect(screen.getByTestId('more-actions')).toBeInTheDocument();
     expect(screen.getByTestId('run-button')).toBeInTheDocument();
@@ -67,7 +73,7 @@ describe('AgentOverflowMenu', () => {
   });
 
   it('should render pause, kill, edit and delete for an active agent', () => {
-    renderMenu('running');
+    renderMenu('running', FULL_PERMISSIONS);
 
     expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.getByTestId('kill-button')).toBeInTheDocument();
@@ -104,6 +110,12 @@ describe('AgentOverflowMenu', () => {
 
   it('should render nothing when the user has no permissions', () => {
     renderMenu('success', { trigger: false, edit: false, delete: false });
+
+    expect(screen.queryByTestId('more-actions')).not.toBeInTheDocument();
+  });
+
+  it('should render nothing while permissions are unresolved', () => {
+    renderMenu('success');
 
     expect(screen.queryByTestId('more-actions')).not.toBeInTheDocument();
   });

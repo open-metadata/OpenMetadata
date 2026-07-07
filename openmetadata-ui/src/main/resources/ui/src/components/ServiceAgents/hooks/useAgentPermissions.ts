@@ -11,21 +11,30 @@
  *  limitations under the License.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/accessControl/resourceDescriptor';
-import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { AgentActionPermissions } from '../AgentsPage.interface';
 
-export const useAgentPermissions = (pipelines: IngestionPipeline[]) => {
+const FQN_KEY_SEPARATOR = '|';
+
+export const useAgentPermissions = (agentFqns: string[]) => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [agentPermissions, setAgentPermissions] = useState<
     Record<string, AgentActionPermissions>
   >({});
 
+  // Agent lists are re-mapped on every SSE progress tick; keying on the joined
+  // FQNs keeps the effect from refetching permissions when only run state changed.
+  const fqnKey = agentFqns.filter(Boolean).join(FQN_KEY_SEPARATOR);
+  const fqns = useMemo(
+    () => (fqnKey ? fqnKey.split(FQN_KEY_SEPARATOR) : []),
+    [fqnKey]
+  );
+
   useEffect(() => {
-    if (pipelines.length === 0) {
+    if (fqns.length === 0) {
       setAgentPermissions({});
 
       return;
@@ -34,11 +43,8 @@ export const useAgentPermissions = (pipelines: IngestionPipeline[]) => {
     let isMounted = true;
 
     Promise.allSettled(
-      pipelines.map((pipeline) =>
-        getEntityPermissionByFqn(
-          ResourceEntity.INGESTION_PIPELINE,
-          pipeline.fullyQualifiedName ?? ''
-        )
+      fqns.map((fqn) =>
+        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, fqn)
       )
     ).then((results) => {
       if (!isMounted) {
@@ -51,14 +57,13 @@ export const useAgentPermissions = (pipelines: IngestionPipeline[]) => {
             const permissions =
               result.status === 'fulfilled' ? result.value : undefined;
 
-            return {
-              ...acc,
-              [pipelines[index].fullyQualifiedName ?? '']: {
-                trigger: permissions?.[Operation.Trigger] ?? false,
-                edit: permissions?.[Operation.EditAll] ?? false,
-                delete: permissions?.[Operation.Delete] ?? false,
-              },
+            acc[fqns[index]] = {
+              trigger: permissions?.[Operation.Trigger] ?? false,
+              edit: permissions?.[Operation.EditAll] ?? false,
+              delete: permissions?.[Operation.Delete] ?? false,
             };
+
+            return acc;
           },
           {}
         )
@@ -68,7 +73,7 @@ export const useAgentPermissions = (pipelines: IngestionPipeline[]) => {
     return () => {
       isMounted = false;
     };
-  }, [pipelines]);
+  }, [fqns]);
 
   return { agentPermissions };
 };

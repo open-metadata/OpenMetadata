@@ -17,6 +17,7 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MoreVerticalIcon } from '../../../assets/svg/agents/more-vertical.svg';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
+import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
 interface AgentOverflowMenuProps {
   permissions?: AgentActionPermissions;
@@ -31,15 +32,9 @@ interface MenuItem {
   testId: string;
 }
 
-const ALL_PERMISSIONS: AgentActionPermissions = {
-  trigger: true,
-  edit: true,
-  delete: true,
-};
-
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   onAction,
-  permissions = ALL_PERMISSIONS,
+  permissions = NO_AGENT_PERMISSIONS,
   status,
 }) => {
   const { t } = useTranslation();

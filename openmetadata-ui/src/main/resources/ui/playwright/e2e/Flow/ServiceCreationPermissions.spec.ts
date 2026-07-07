@@ -591,21 +591,32 @@ test.describe(
       await expect(page.getByTestId('edit-button')).toBeHidden();
       await expect(page.getByTestId('kill-button')).toBeHidden();
 
-      const triggerResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-          response.request().method() === 'POST'
-      );
+      // The pipeline deployed in beforeAll may still be registering in
+      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
+      await expect
+        .poll(
+          async () => {
+            const triggerResponse = page.waitForResponse(
+              (response) =>
+                response
+                  .url()
+                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+                response.request().method() === 'POST'
+            );
 
-      await page.waitForTimeout(15000);
+            await page.getByTestId('run-button').click();
 
-      await page.getByTestId('run-button').click();
+            const response = await triggerResponse;
 
-      const response = await triggerResponse;
+            if (response.status() !== 200) {
+              await openPipelineActions(page);
+            }
 
-      expect(response.status()).toBe(200);
+            return response.status();
+          },
+          { intervals: [3_000], timeout: 90_000 }
+        )
+        .toBe(200);
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({
