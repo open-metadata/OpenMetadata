@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HookForm, Toggle } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  HookForm,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Settings01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -292,6 +298,14 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           () => scrollToError()
         )}>
         <HookForm
+          fieldDocHeader={
+            <Box align="center" className="tw:gap-2" direction="row">
+              <Settings01 className="tw:size-4 tw:text-tertiary" />
+              <Typography size="text-sm" weight="semibold">
+                {t('label.form-hint')}
+              </Typography>
+            </Box>
+          }
           form={form}
           renderFieldDoc={(markdown) => (
             <RichTextEditorPreviewerV1 markdown={markdown} />
