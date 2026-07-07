@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, xor } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { FC, useMemo, useState } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
@@ -37,8 +37,11 @@ import { useLineageStore } from '../../../../hooks/useLineageStore';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageLayersProps } from './LineageLayers.interface';
 
-const LAYER_BUTTON_CLASSES =
-  'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary tw:whitespace-normal tw:break-words tw:hover:ring-brand tw:hover:z-10 tw:selected:bg-brand-primary tw:selected:text-primary';
+const LAYER_BUTTON_CLASSES = [
+  'tw:flex-col tw:gap-1 tw:px-4 tw:py-2 tw:text-[10px] tw:font-medium tw:text-primary',
+  'tw:whitespace-normal tw:break-words tw:hover:ring-brand tw:hover:z-10',
+  'tw:selected:bg-brand-primary tw:selected:text-primary',
+].join(' ');
 
 const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const {
@@ -200,11 +203,11 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
         })}
         color="secondary"
         data-testid="lineage-layer-btn"
+        iconLeading={Layers as FC<{ className?: string }>}
         size="sm">
-        <Layers className="tw:size-5" />
         {t('label.layer-plural')}
       </Button>
-      <Popover placement="top right">
+      <Popover placement="right">
         <ButtonGroup
           aria-label={t('label.layer-plural')}
           selectedKeys={selectedKeys}
