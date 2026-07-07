@@ -181,11 +181,15 @@ const TagsForm = ({
   }, [ownersValue, entityRules.canAddMultipleTeamOwner, form]);
 
   useEffect(() => {
+    let resetOwners: TagFormSelectItem[] = [];
     if (initialValues) {
-      form.reset(convertToTagFormValues(initialValues) as TagFormValues);
+      const formValues = convertToTagFormValues(initialValues) as TagFormValues;
+      resetOwners = formValues.owners ?? [];
+      form.reset(formValues);
     } else {
       form.reset(TAG_FORM_DEFAULTS);
     }
+    previousOwnersRef.current = resetOwners;
   }, [initialValues, form]);
 
   useEffect(() => {
@@ -434,7 +438,7 @@ const TagsForm = ({
   }, [t, disableDisplayNameField]);
 
   const iconField = useMemo(
-    () => getIconField(selectedColor, iconOptions as TagFormSelectItem[], t),
+    () => getIconField(t, selectedColor, iconOptions as TagFormSelectItem[]),
     [t, selectedColor, iconOptions]
   );
 

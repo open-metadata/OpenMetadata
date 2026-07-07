@@ -25,9 +25,9 @@ import {
 import { TagFormSelectItem } from './TagsPage.interface';
 
 export const getIconField = (
+  t: TFunction,
   selectedColor?: string,
   iconOptions?: TagFormSelectItem[],
-  t: TFunction
 ): FieldProp => ({
   name: 'style.iconURL',
   id: 'root/style/iconURL',
