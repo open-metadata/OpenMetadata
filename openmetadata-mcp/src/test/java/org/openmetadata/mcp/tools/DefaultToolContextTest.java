@@ -279,6 +279,37 @@ class DefaultToolContextTest {
   }
 
   @Test
+  void buildSuccessResultOversizedSoftErrorStillFlaggedAsError() {
+    Map<String, Object> result =
+        Map.of("error", "x".repeat(McpResponseTrim.MAX_RESPONSE_CHARS), "statusCode", 500);
+
+    McpSchema.CallToolResult built =
+        DefaultToolContext.buildSuccessResult(result, "search_company_context");
+
+    assertThat(built.isError()).isTrue();
+    assertThat(asMap(built.structuredContent())).containsEntry("truncated", Boolean.TRUE);
+  }
+
+  @Test
+  void resultErrorCategoryBucketsStatusCode() {
+    assertThat(
+            DefaultToolContext.resultErrorCategory(Map.of("error", "not found", "statusCode", 404)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+    assertThat(
+            DefaultToolContext.resultErrorCategory(
+                Map.of("error", "server error", "statusCode", 500)))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
+    assertThat(DefaultToolContext.resultErrorCategory(Map.of("error", "bad input")))
+        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+  }
+
+  @Test
+  void resultErrorCategoryNullForNonError() {
+    assertThat(DefaultToolContext.resultErrorCategory(Map.of("results", List.of()))).isNull();
+    assertThat(DefaultToolContext.resultErrorCategory(null)).isNull();
+  }
+
+  @Test
   void unknownToolErrorResultCarriesStructuredContent() {
     DefaultToolContext.CallToolOutcome outcome = invokeWithToolName("not_a_real_tool");
 

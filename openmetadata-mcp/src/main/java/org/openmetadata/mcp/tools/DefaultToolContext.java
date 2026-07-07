@@ -147,8 +147,7 @@ public class DefaultToolContext {
       }
 
       McpSchema.CallToolResult success = buildSuccessResult(result, toolName);
-      return new CallToolOutcome(
-          success, elapsedMs(startNanos), resultErrorCategory(success.structuredContent()));
+      return new CallToolOutcome(success, elapsedMs(startNanos), resultErrorCategory(result));
     } catch (AuthorizationException ex) {
       LOG.warn("Authorization error: {}", ex.getMessage());
       Map<String, Object> error =
@@ -176,11 +175,12 @@ public class DefaultToolContext {
    * ({@code hasMore:true}) are successful partial responses, so they stay unflagged.
    */
   static McpSchema.CallToolResult buildSuccessResult(Object result, String toolName) {
+    boolean isError = logicalError(result);
     BudgetedResult budgeted = applyBudget(result, toolName);
     return McpSchema.CallToolResult.builder()
         .content(List.of(new McpSchema.TextContent(budgeted.json())))
         .structuredContent(budgeted.payload())
-        .isError(logicalError(budgeted.payload()))
+        .isError(isError)
         .build();
   }
 
