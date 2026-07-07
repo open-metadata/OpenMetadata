@@ -1,0 +1,50 @@
+{
+  "id": "11111111-1111-4111-8111-111111111105",
+  "name": "text_embedding_3_large",
+  "displayName": "Text Embedding 3 Large",
+  "description": "Approved embedding model for support-answer retrieval. The model is restricted to public documentation and sanitized product knowledge chunks.",
+  "modelType": "BaseModel",
+  "baseModel": "text-embedding-3-large",
+  "modelProvider": "OpenAI",
+  "modelVersion": "2025-01-12",
+  "providerModelId": "text-embedding-3-large",
+  "capabilities": ["Embeddings"],
+  "governanceStatus": "Approved",
+  "deploymentInfo": {
+    "deploymentType": "API",
+    "endpoint": "https://api.openai.com/v1/embeddings",
+    "region": "us-east-1"
+  },
+  "costMetrics": {
+    "inputCostPer1kTokens": 0.00013,
+    "outputCostPer1kTokens": 0,
+    "currency": "USD",
+    "estimatedMonthlyUsage": 240000000,
+    "estimatedMonthlyCost": 312
+  },
+  "modelEvaluation": {
+    "evaluatedAt": 1775347200000,
+    "accuracyMetrics": {
+      "accuracy": 0.94,
+      "precision": 0.93,
+      "recall": 0.91,
+      "f1Score": 0.92
+    },
+    "safetyMetrics": {
+      "toxicityScore": 0,
+      "harmfulContentRate": 0,
+      "piiLeakageRisk": 0.01
+    }
+  },
+  "regulatoryCompliance": ["NIST_AI_RMF"],
+  "tags": [
+    {
+      "tagFQN": "Tier.Tier2",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775347200000
+}
