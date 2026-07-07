@@ -25,10 +25,12 @@
 
 .explore-page {
   .content-height-with-resizable-panel {
+    box-sizing: border-box;
     height: calc(
       100vh - @om-navbar-height - @quick-filters-container-height - @size-xs
     );
     overflow-y: auto;
+    padding-bottom: 20px;
 
     &.filter-applied {
       height: calc(
@@ -39,8 +41,10 @@
   }
 
   .explore-page-right-panel {
-    // fixed width to right panel
-    flex: 0 0 400px;
+    flex: 1 1 400px;
+    max-width: 800px;
+    min-width: 400px;
+    overflow: auto;
   }
 
   .explore-icon {
