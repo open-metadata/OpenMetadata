@@ -16,14 +16,54 @@
  */
 export interface TermRelation {
     /**
+     * Unique identifier of this relation edge.
+     */
+    id?: string;
+    /**
+     * How this relation edge originated. Defaults to 'Manual'.
+     */
+    provenance?: Provenance;
+    /**
      * Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to
      * 'relatedTo' for backward compatibility.
      */
     relationType?: string;
     /**
+     * Approval status of this relation edge.
+     */
+    status?: EntityStatus;
+    /**
      * Reference to the related glossary term.
      */
     term: EntityReference;
+}
+
+/**
+ * How this relation edge originated. Defaults to 'Manual'.
+ *
+ * How this relation edge originated.
+ */
+export enum Provenance {
+    AISuggested = "AiSuggested",
+    Imported = "Imported",
+    Inferred = "Inferred",
+    Manual = "Manual",
+}
+
+/**
+ * Approval status of this relation edge.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
