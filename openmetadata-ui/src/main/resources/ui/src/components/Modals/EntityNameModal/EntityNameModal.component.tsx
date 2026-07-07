@@ -41,7 +41,7 @@ const buildValidate =
         if (rule.required) {
           return typeof rule.required === 'string'
             ? rule.required
-            : (rule.message ?? '');
+            : rule.message ?? '';
         }
 
         continue;

@@ -166,7 +166,9 @@ const SchemaTable = () => {
   } = useFqn({ type: EntityType.TABLE });
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
-  const [editConstraint, setEditConstraint] = useState<Constraint | undefined>();
+  const [editConstraint, setEditConstraint] = useState<
+    Constraint | undefined
+  >();
 
   const {
     permissions: tablePermissions,
