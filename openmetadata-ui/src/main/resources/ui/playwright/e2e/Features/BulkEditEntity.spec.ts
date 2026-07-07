@@ -166,9 +166,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-
-      await page.click('.rdg-cell[role="gridcell"]');
+      const databaseNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.database.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await databaseNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...databaseDetails,
@@ -182,7 +184,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
@@ -359,6 +361,12 @@ test.describe('Bulk Edit Entity', () => {
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
 
+      await waitForSearchIndexed(
+        apiContext,
+        table.schemaResponseData.fullyQualifiedName,
+        'database_schema_search_index'
+      );
+
       // Verify Details updated. See sibling-row note in the Database step.
       await expect(
         page.getByTestId('column-name').filter({ hasText: table.schema.name })
@@ -465,8 +473,11 @@ test.describe('Bulk Edit Entity', () => {
         .first()
         .waitFor({ state: 'visible' });
 
-      // Click on first cell and edit
-      await page.click('.rdg-cell[role="gridcell"]');
+      const tableNameCell = page
+        .locator('.rdg-cell-name')
+        .getByText(table.entity.name, { exact: true });
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns can intercept active-cell clicks
+      await tableNameCell.click({ force: true });
       await fillRowDetails(
         {
           ...tableDetails1,
@@ -479,7 +490,7 @@ test.describe('Bulk Edit Entity', () => {
         },
         page,
         customPropertyRecord,
-        undefined,
+        true,
         true
       );
 
@@ -499,6 +510,12 @@ test.describe('Bulk Edit Entity', () => {
       await updateButtonResponse;
       await navigationPromise;
       await toastNotification(page, /details updated successfully/);
+
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table_search_index'
+      );
 
       // Verify Details updated. See sibling-row note in the Database step —
       // the schema listing can render 15+ table rows on redirect (each with a

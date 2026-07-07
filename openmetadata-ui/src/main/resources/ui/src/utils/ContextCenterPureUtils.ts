@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isNull, isUndefined } from 'lodash';
 import { PagingResponse } from 'Models';
+import { MemorySortBy } from '../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
@@ -155,4 +156,20 @@ export const handleAssetDownload = async (file: ContextFile) => {
   } catch (err) {
     showErrorToast(err as AxiosError);
   }
+};
+
+export const getSortConfig = (
+  sortBy: MemorySortBy
+): {
+  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortOrder: 'asc' | 'desc';
+} => {
+  if (sortBy === 'usage') {
+    return { sortBy: 'usageCount', sortOrder: 'desc' };
+  }
+  if (sortBy === 'updatedBy') {
+    return { sortBy: 'updatedBy', sortOrder: 'asc' };
+  }
+
+  return { sortBy: 'updatedAt', sortOrder: 'desc' };
 };

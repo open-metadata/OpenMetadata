@@ -55,25 +55,16 @@ export interface DataAssetPickerShellProps {
   placeholder?: string;
 }
 
-export interface DataAssetFilterPopoverProps {
-  options: DataAssetPickerOption[];
-  selectedId: string;
-  onChange: (id: string) => void;
-  allowAllOption?: boolean;
-  allOptionLabel?: string;
-  popoverClassName?: string;
-  popoverAlign?: 'left' | 'right';
-  placeholder?: string;
-  renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
-}
-
 export interface DataAssetSelectListProps
-  extends Omit<DataAssetAsyncSelectListProps, 'value'> {
+  extends Omit<DataAssetAsyncSelectListProps, 'value' | 'onChange'> {
+  allowAllOption?: boolean;
   value?: DataAssetOption | DataAssetOption[];
   renderTrigger: (state: DataAssetPickerTriggerState) => ReactNode;
   popoverClassName?: string;
+  selectionMode?: 'single' | 'multiple';
   popoverAlign?: 'left' | 'right';
   popoverPlacement?: 'top' | 'bottom';
+  onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
 }
 
 export interface DataAssetPickerRowProps {
