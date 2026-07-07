@@ -23,11 +23,16 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   header,
   offset = 16,
 }) => {
-  const { entry, anchor } = useActiveFieldDoc();
+  const { entry, name } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
-  anchorRef.current = anchor ?? null;
+  // Re-find the anchor by field name on every render so positioning survives
+  // the focused field re-rendering/remounting (e.g. param fields appearing).
+  anchorRef.current =
+    name && typeof document !== 'undefined'
+      ? document.querySelector<HTMLElement>(`[data-field-doc="${CSS.escape(name)}"]`)
+      : null;
 
-  if (!entry || !anchor) {
+  if (!entry || !anchorRef.current) {
     return null;
   }
 

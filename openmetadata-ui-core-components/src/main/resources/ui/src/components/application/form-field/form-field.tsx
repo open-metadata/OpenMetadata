@@ -43,7 +43,7 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     effectiveRules.required = true;
   }
 
-  const { onFocusCapture: handleFocusCapture } = useFieldDoc({
+  const fieldDocProps = useFieldDoc({
     name: field.name,
     label: field.label,
     doc: field.doc,
@@ -56,10 +56,7 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
 
         return (
           <Fragment key={id}>
-            <Box
-              className="tw:gap-[6px]"
-              direction="col"
-              onFocusCapture={handleFocusCapture}>
+            <Box className="tw:gap-[6px]" direction="col" {...fieldDocProps}>
               <FormItemLabel
                 label={label}
                 required={required}

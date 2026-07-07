@@ -880,7 +880,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       )}
 
       <div className="form-card-section" data-testid="select-table-card">
-        <div onFocusCapture={testLevelDoc.onFocusCapture}>
+        <div {...testLevelDoc}>
           <FormField control={form.control} name="testLevel">
             {({ field }) => (
               <>
@@ -987,10 +987,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
         <FormField control={form.control} name="tags">
           {({ field }) => (
-            <div
-              data-testid="tags-selector"
-              id="root/tags"
-              onFocusCapture={tagsDoc.onFocusCapture}>
+            <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
               <TagSuggestion
                 label={t('label.tag-plural')}
                 placeholder={t('label.select-field', {
@@ -1008,7 +1005,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             <div
               data-testid="glossary-terms-selector"
               id="root/glossaryTerms"
-              onFocusCapture={glossaryTermsDoc.onFocusCapture}>
+              {...glossaryTermsDoc}>
               <TagSuggestion
                 label={t('label.glossary-term-plural')}
                 placeholder={t('label.select-field', {
@@ -1024,7 +1021,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       </div>
 
       {selectedTableFqn && canCreatePipeline && (
-        <div onFocusCapture={pipelineDoc.onFocusCapture}>
+        <div {...pipelineDoc}>
           <TestCaseSchedulerSection
             canCreatePipeline={canCreatePipeline}
             form={form}

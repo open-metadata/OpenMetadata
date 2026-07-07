@@ -17,9 +17,8 @@ export interface FieldDocEntry {
 interface FieldDocRegistry {
   register: (name: string, entry: FieldDocEntry) => void;
   unregister: (name: string) => void;
-  setActive: (name?: string, anchor?: HTMLElement | null) => void;
+  setActive: (name?: string) => void;
   activeName?: string;
-  activeAnchor?: HTMLElement | null;
   entries: Map<string, FieldDocEntry>;
   enabled: boolean;
 }
@@ -32,10 +31,7 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
 }) => {
   const entriesRef = useRef<Map<string, FieldDocEntry>>(new Map());
   const [version, setVersion] = useState(0);
-  const [active, setActiveState] = useState<{
-    name: string;
-    anchor: HTMLElement | null;
-  } | null>(null);
+  const [activeName, setActiveName] = useState<string | undefined>(undefined);
 
   const register = useCallback((name: string, entry: FieldDocEntry) => {
     entriesRef.current.set(name, entry);
@@ -47,23 +43,18 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
     setVersion((n) => n + 1);
   }, []);
 
-  const setActive = useCallback(
-    (name?: string, anchor?: HTMLElement | null) =>
-      setActiveState(name ? { name, anchor: anchor ?? null } : null),
-    []
-  );
+  const setActive = useCallback((name?: string) => setActiveName(name), []);
 
   const value = useMemo<FieldDocRegistry>(
     () => ({
       register,
       unregister,
       setActive,
-      activeName: active?.name,
-      activeAnchor: active?.anchor ?? null,
+      activeName,
       entries: entriesRef.current,
       enabled,
     }),
-    [register, unregister, setActive, active, enabled, version]
+    [register, unregister, setActive, activeName, enabled, version]
   );
 
   return (
@@ -80,7 +71,6 @@ export const useFieldDocRegistry = (): FieldDocRegistry => {
       unregister: () => undefined,
       setActive: () => undefined,
       activeName: undefined,
-      activeAnchor: null,
       entries: new Map<string, FieldDocEntry>(),
       enabled: false,
     }
@@ -90,22 +80,22 @@ export const useFieldDocRegistry = (): FieldDocRegistry => {
 export const useActiveFieldDoc = (): {
   name?: string;
   entry?: FieldDocEntry;
-  anchor?: HTMLElement | null;
 } => {
-  const { activeName, activeAnchor, entries } = useFieldDocRegistry();
+  const { activeName, entries } = useFieldDocRegistry();
 
   return {
     name: activeName,
     entry: activeName ? entries.get(activeName) : undefined,
-    anchor: activeAnchor,
   };
 };
 
 /**
- * Register a field's documentation and mark it active on focus. Use this for
- * custom fields that are not rendered through `getField` (e.g. a card group,
- * a tag picker). Spread the returned `onFocusCapture` onto the field's
- * wrapping element so focusing any control inside it shows the field's doc.
+ * Register a field's documentation and mark it active on focus. Spread the
+ * returned props onto the field's wrapping element (`<Box {...fieldDoc}>`).
+ * The `data-field-doc` marker lets the popover re-find the current anchor by
+ * field name on every render, so positioning survives re-renders/remounts
+ * (e.g. when parameter fields appear below the focused field). Use this for
+ * custom fields not rendered through `getField` (card groups, tag pickers).
  */
 export const useFieldDoc = ({
   name,
@@ -115,7 +105,11 @@ export const useFieldDoc = ({
   name: string;
   label: ReactNode;
   doc?: string;
-}): { onFocusCapture?: (event: FocusEvent<HTMLElement>) => void } => {
+}): {
+  onFocusCapture?: (event: FocusEvent<HTMLElement>) => void;
+  onPointerDownCapture?: () => void;
+  'data-field-doc'?: string;
+} => {
   const { enabled, register, unregister, setActive } = useFieldDocRegistry();
   const hasDoc = enabled && typeof doc === 'string' && doc.length > 0;
 
@@ -128,9 +122,13 @@ export const useFieldDoc = ({
     return () => unregister(name);
   }, [hasDoc, name, label, doc, register, unregister]);
 
+  const activate = hasDoc ? () => setActive(name) : undefined;
+
+  // Activate on focus (keyboard) and on pointer-down (click), so fields whose
+  // control does not take focus on click (e.g. a card group) still show docs.
   return {
-    onFocusCapture: hasDoc
-      ? (event: FocusEvent<HTMLElement>) => setActive(name, event.currentTarget)
-      : undefined,
+    onFocusCapture: activate,
+    onPointerDownCapture: activate,
+    'data-field-doc': hasDoc ? name : undefined,
   };
 };
