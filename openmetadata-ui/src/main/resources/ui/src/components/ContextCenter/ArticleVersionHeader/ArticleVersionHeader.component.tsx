@@ -15,7 +15,7 @@ import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/action-icons/file.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';

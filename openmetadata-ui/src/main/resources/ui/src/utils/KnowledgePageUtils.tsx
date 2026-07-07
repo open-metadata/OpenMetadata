@@ -12,17 +12,17 @@
  */
 import { get } from 'lodash';
 import {
-  KnowledgePage,
-  PageType,
-  QuickLink,
-  RecentlyViewedQuickLinks,
-  RecentViewedKnowledgePage,
+    KnowledgePage,
+    PageType,
+    QuickLink,
+    RecentlyViewedQuickLinks,
+    RecentViewedKnowledgePage,
 } from '../interface/knowledge-center.interface';
 
 import { Box } from '@openmetadata/ui-core-components';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as FileIcon } from '../assets/svg/action-icons/file.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';

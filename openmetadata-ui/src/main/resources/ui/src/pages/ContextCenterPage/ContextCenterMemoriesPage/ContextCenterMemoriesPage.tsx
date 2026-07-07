@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  Card,
-  Dropdown,
-  Input,
-  PaginationCardMinimal,
-  Tabs,
-  Typography,
+    Box,
+    Button,
+    Card,
+    Dropdown,
+    Input,
+    PaginationCardMinimal,
+    Tabs,
+    Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  SearchLg,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Plus,
+    SearchLg,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,40 +33,40 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as DatabaseIcon } from '../../../assets/svg/action-icons/database.svg';
 import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
-import { ReactComponent as UserIcon } from '../../../assets/svg/action-icons/user.svg';
+import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/database.svg';
+import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import CreateMemoryModal from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.component';
 import MemoriesView from '../../../components/ContextCenter/MemoriesView/MemoriesView.component';
 import {
-  MemoryFilterTab,
-  MemorySortBy,
+    MemoryFilterTab,
+    MemorySortBy,
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
 import {
-  FILTER_TABS,
-  MEMORIES_PER_PAGE,
-  MEMORY_FIELDS,
+    FILTER_TABS,
+    MEMORIES_PER_PAGE,
+    MEMORY_FIELDS,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  ContextMemoryListParams,
-  deleteContextMemory,
-  getContextMemoryById,
-  getContextMemoryByName,
-  getListContextMemories,
-  pinContextMemory,
-  unpinContextMemory,
+    ContextMemoryListParams,
+    deleteContextMemory,
+    getContextMemoryById,
+    getContextMemoryByName,
+    getListContextMemories,
+    pinContextMemory,
+    unpinContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -75,9 +75,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
-  MemoryCounts,
-  MemoryFilterOption,
-  SearchOptionSource,
+    MemoryCounts,
+    MemoryFilterOption,
+    SearchOptionSource,
 } from './ContextCenterMemoriesPage.interface';
 
 const FILTER_BUTTON_BASE_CLS =

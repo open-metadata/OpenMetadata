@@ -16,15 +16,15 @@ import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/action-icons/file.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
-  KNOWLEDGE_CENTER_CLASSIFICATION,
-  PAGE_SIZE_MEDIUM,
+    KNOWLEDGE_CENTER_CLASSIFICATION,
+    PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
@@ -32,8 +32,8 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
-  KnowledgePage,
-  RecentlyViewedQuickLinks,
+    KnowledgePage,
+    RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';

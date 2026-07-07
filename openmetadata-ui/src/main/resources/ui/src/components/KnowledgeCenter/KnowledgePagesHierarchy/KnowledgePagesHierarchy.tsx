@@ -40,8 +40,8 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as FileIcon } from '../../../assets/svg/action-icons/file.svg';
 import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';

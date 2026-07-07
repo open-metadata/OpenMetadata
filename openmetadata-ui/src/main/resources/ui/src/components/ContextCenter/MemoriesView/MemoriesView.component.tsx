@@ -11,36 +11,36 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Box,
-  ButtonUtility,
-  Dot,
-  Dropdown,
-  Skeleton,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
+    Badge,
+    Box,
+    ButtonUtility,
+    Dot,
+    Dropdown,
+    Skeleton,
+    Tooltip,
+    TooltipTrigger,
+    Typography,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClockIcon } from '../../../assets/svg/action-icons/clock.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
 import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
-  ContextMemory,
-  EntityReference,
+    ContextMemory,
+    EntityReference,
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
-  MemoriesViewProps,
-  MemoryActionsProps,
+    MemoriesViewProps,
+    MemoryActionsProps,
 } from './MemoriesView.interface';
 import './MemoriesView.less';
 

@@ -12,29 +12,29 @@
  */
 
 import {
-  Badge,
-  Button,
-  ButtonUtility,
-  Card,
-  Dot,
-  FileIcon,
-  Skeleton,
-  Tree,
-  Typography,
+    Badge,
+    Button,
+    ButtonUtility,
+    Card,
+    Dot,
+    FileIcon,
+    Skeleton,
+    Tree,
+    Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import {
-  ForwardedRef,
-  forwardRef,
-  MouseEvent,
-  useCallback,
-  useImperativeHandle,
-  useState,
+    ForwardedRef,
+    forwardRef,
+    MouseEvent,
+    useCallback,
+    useImperativeHandle,
+    useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/action-icons/folder.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
@@ -43,9 +43,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import CreateFolderModal from '../CreateFolderModal/CreateFolderModal.component';
 import {
-  DocumentFolderViewHandle,
-  DocumentFolderViewProps,
-  FolderFilesState,
+    DocumentFolderViewHandle,
+    DocumentFolderViewProps,
+    FolderFilesState,
 } from './DocumentsView.interface';
 
 const DocumentFolderView = (
