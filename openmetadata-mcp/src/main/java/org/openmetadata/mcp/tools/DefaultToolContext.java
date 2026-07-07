@@ -139,6 +139,7 @@ public class DefaultToolContext {
         case "create_data_product":
           result = new CreateDataProductTool().execute(authorizer, limits, securityContext, params);
           break;
+
         default:
           return new CallToolOutcome(
               McpSchema.CallToolResult.builder()

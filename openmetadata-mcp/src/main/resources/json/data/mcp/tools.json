@@ -188,10 +188,12 @@
           "threshold": {
             "type": "number",
             "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
-            "default": 0.0
+            "default": 0
           }
         },
-        "required": ["query"],
+        "required": [
+          "query"
+        ],
         "examples": [
           {
             "description": "Find tables related to customer purchases",
@@ -200,7 +202,14 @@
           {
             "description": "Find dashboards about revenue in BigQuery",
             "query": "revenue metrics dashboard",
-            "filters": {"entityType": ["dashboard"], "service": ["BigQuery"]}
+            "filters": {
+              "entityType": [
+                "dashboard"
+              ],
+              "service": [
+                "BigQuery"
+              ]
+            }
           },
           {
             "description": "High-confidence search for PII data",
@@ -210,7 +219,11 @@
           {
             "description": "Find pipeline assets processing user events",
             "query": "user event processing pipeline",
-            "filters": {"entityType": ["pipeline"]}
+            "filters": {
+              "entityType": [
+                "pipeline"
+              ]
+            }
           }
         ]
       }
@@ -413,7 +426,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           },
           "toEntity": {
             "description": "Destination Entity.",
@@ -428,7 +444,10 @@
                 "description": "Id of the entity"
               }
             },
-            "required": ["type", "id"]
+            "required": [
+              "type",
+              "id"
+            ]
           }
         },
         "required": [
@@ -549,7 +568,13 @@
           "metricExpressionLanguage": {
             "type": "string",
             "description": "Language used to define the metric expression.",
-            "enum": ["SQL", "Java", "JavaScript", "Python", "External"]
+            "enum": [
+              "SQL",
+              "Java",
+              "JavaScript",
+              "Python",
+              "External"
+            ]
           },
           "metricExpressionCode": {
             "type": "string",
@@ -558,17 +583,49 @@
           "metricType": {
             "type": "string",
             "description": "Type of the metric.",
-            "enum": ["COUNT", "SUM", "AVERAGE", "RATIO", "PERCENTAGE", "MIN", "MAX", "MEDIAN", "MODE", "STANDARD_DEVIATION", "VARIANCE", "OTHER"]
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVERAGE",
+              "RATIO",
+              "PERCENTAGE",
+              "MIN",
+              "MAX",
+              "MEDIAN",
+              "MODE",
+              "STANDARD_DEVIATION",
+              "VARIANCE",
+              "OTHER"
+            ]
           },
           "granularity": {
             "type": "string",
             "description": "Time granularity at which the metric is computed.",
-            "enum": ["SECOND", "MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "QUARTER", "YEAR"]
+            "enum": [
+              "SECOND",
+              "MINUTE",
+              "HOUR",
+              "DAY",
+              "WEEK",
+              "MONTH",
+              "QUARTER",
+              "YEAR"
+            ]
           },
           "unitOfMeasurement": {
             "type": "string",
             "description": "Unit of measurement for the metric value.",
-            "enum": ["COUNT", "DOLLARS", "PERCENTAGE", "TIMESTAMP", "SIZE", "REQUESTS", "EVENTS", "TRANSACTIONS", "OTHER"]
+            "enum": [
+              "COUNT",
+              "DOLLARS",
+              "PERCENTAGE",
+              "TIMESTAMP",
+              "SIZE",
+              "REQUESTS",
+              "EVENTS",
+              "TRANSACTIONS",
+              "OTHER"
+            ]
           },
           "customUnitOfMeasurement": {
             "type": "string",
@@ -610,7 +667,11 @@
             }
           }
         },
-        "required": ["name", "metricExpressionLanguage", "metricExpressionCode"]
+        "required": [
+          "name",
+          "metricExpressionLanguage",
+          "metricExpressionCode"
+        ]
       }
     },
     {
@@ -870,6 +931,10 @@
       }
     },
     {
+<<<<<<< HEAD
+      "name": "create_domain",
+      "description": "Create a new Domain in OpenMetadata.",
+=======
       "name": "create_context_memory",
       "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
       "parameters": {
