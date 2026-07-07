@@ -31,7 +31,7 @@ def wait_for_system_table(
     query: str,
     expected_count: int,
     params: dict[str, object] | None = None,
-    timeout_seconds: int = 60,
+    timeout_seconds: int = 120,
     interval_seconds: int = 5,
 ) -> list[dict[str, object]]:
     """Poll the query until the expected rows are visible and return them."""
