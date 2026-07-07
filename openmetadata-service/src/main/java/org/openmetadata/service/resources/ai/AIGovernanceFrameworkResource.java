@@ -43,7 +43,6 @@ import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.FrameworkSource;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -240,18 +239,21 @@ public class AIGovernanceFrameworkResource
         listControls(uriInfo, controlRepo, FIELDS, controlFilter);
 
     List<Map<String, Object>> copiedControls = new ArrayList<>();
-    for (AIFrameworkControl original : sourceControls) {
-      AIFrameworkControl childCopy = JsonUtils.deepCopy(original, AIFrameworkControl.class);
-      childCopy.setId(UUID.randomUUID());
-      childCopy.setFullyQualifiedName(null);
-      childCopy.setVersion(null);
-      childCopy.setFramework(created.getEntityReference());
-      childCopy.setUpdatedAt(System.currentTimeMillis());
-      childCopy.setUpdatedBy(user);
-      controlRepo.create(uriInfo, childCopy);
+    long now = System.currentTimeMillis();
+    for (AIFrameworkControl control : sourceControls) {
+      // Re-key each freshly-loaded source control in place as a new entity under the forked
+      // framework. The loaded POJO is not persisted or referenced anywhere else, so mutating it
+      // avoids a per-control JSON deep-copy round-trip while still carrying every field forward.
+      control.setId(UUID.randomUUID());
+      control.setFullyQualifiedName(null);
+      control.setVersion(null);
+      control.setFramework(created.getEntityReference());
+      control.setUpdatedAt(now);
+      control.setUpdatedBy(user);
+      controlRepo.create(uriInfo, control);
       Map<String, Object> entry = new LinkedHashMap<>();
-      entry.put("code", childCopy.getCode());
-      entry.put("name", childCopy.getName());
+      entry.put("code", control.getCode());
+      entry.put("name", control.getName());
       copiedControls.add(entry);
     }
 
