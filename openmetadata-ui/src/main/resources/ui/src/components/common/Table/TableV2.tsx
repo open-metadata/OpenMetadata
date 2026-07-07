@@ -543,7 +543,8 @@ const TableV2 = <T extends object>(
         className={classNames('p-x-md', {
           'p-y-md':
             searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}>
+        })}
+        data-testid="table-toolbar">
         <div className="tw:flex tw:items-center">
           {searchProps && (
             <div style={{ flex: 1 }}>

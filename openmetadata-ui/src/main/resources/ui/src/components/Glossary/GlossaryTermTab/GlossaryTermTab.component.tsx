@@ -476,27 +476,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     // element wrapping the <table> inside the TableV2 card. Sticky headers and
     // infinite scroll both key off this internal scroller.
     const tableScrollContainer = document.querySelector(
-      '.glossary-terms-scroll-container .glossary-terms-table table'
+      '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
     )?.parentElement;
     if (tableScrollContainer) {
       return tableScrollContainer;
     }
 
-    // Fallback to other selectors
-    const selectors = [
-      '.glossary-terms-scroll-container',
-      '.glossary-term-page-tabs .ant-tabs-tabpane-active',
-      '.glossary-page-tabs .ant-tabs-tabpane-active',
-      '.ant-tabs-tabpane-active',
-      '.ant-tabs-content',
-      '.grid-container',
-    ];
-
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element && element.scrollHeight > element.clientHeight) {
-        return element;
-      }
+    // Fallback to the scroll container itself if it is the scrolling element
+    const scrollContainer = document.querySelector(
+      '[data-testid="glossary-terms-scroll-container"]'
+    );
+    if (
+      scrollContainer &&
+      scrollContainer.scrollHeight > scrollContainer.clientHeight
+    ) {
+      return scrollContainer;
     }
 
     return null;
@@ -527,7 +521,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     });
 
     const scrollContainer = document.querySelector(
-      '.glossary-terms-scroll-container'
+      '[data-testid="glossary-terms-scroll-container"]'
     );
     if (scrollContainer) {
       observer.observe(scrollContainer, {
@@ -1125,6 +1119,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                   <div key={option.value}>
                     <Checkbox
                       className="custom-glossary-col-sel-checkbox"
+                      data-testid={`glossary-status-option-${option.value}`}
                       value={option.value}
                       onChange={(e) =>
                         handleCheckboxChange(option.value, e.target.checked)
@@ -1149,12 +1144,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               <Space>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
+                  data-testid="glossary-status-save-btn"
                   type="primary"
                   onClick={handleStatusSelectionDropdownSave}>
                   {t('label.save')}
                 </Button>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
+                  data-testid="glossary-status-cancel-btn"
                   type="default"
                   onClick={handleStatusSelectionDropdownCancel}>
                   {t('label.cancel')}
@@ -1280,7 +1277,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const isExpanded = expandedRowKeys.includes(
         record.fullyQualifiedName || ''
       );
-      const rowClasses: string[] = [`glossary-term-level-${record.level ?? 0}`];
+      const rowClasses: string[] = [];
 
       if (!record.isLoadMoreButton) {
         rowClasses.push('glossary-term-draggable-row');
@@ -1592,7 +1589,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     const targets = [
       scrollEl.querySelector('thead'),
-      scrollEl.querySelector('.p-x-md.p-y-md'),
+      scrollEl.querySelector('[data-testid="table-toolbar"]'),
     ].filter((el): el is HTMLElement => el instanceof HTMLElement);
 
     const isAlreadyTopLevel = () => {
@@ -1731,6 +1728,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           className={classNames('glossary-terms-scroll-container', {
             'glossary-terms-scroll-container-drop-target': isTopLevelDropActive,
           })}
+          data-testid="glossary-terms-scroll-container"
           ref={scrollContainerRef}
           style={{ position: 'relative' }}>
           {glossaryTerms.length > 0 ? (

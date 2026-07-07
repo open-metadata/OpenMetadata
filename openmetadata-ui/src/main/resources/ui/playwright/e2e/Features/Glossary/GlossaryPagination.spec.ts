@@ -276,14 +276,12 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await dropdownButton.click();
 
     // Select InReview status
-    const inReviewCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'In Review',
-    });
+    const inReviewCheckbox = page.getByTestId(
+      'glossary-status-option-In Review'
+    );
     await inReviewCheckbox.click();
 
-    const saveButton = page.locator('.ant-btn-primary', {
-      hasText: 'Save',
-    });
+    const saveButton = page.getByTestId('glossary-status-save-btn');
     await saveButton.click();
 
     // Verify filter is applied (may show no results if no InReview terms exist)
@@ -311,18 +309,14 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await dropdownButton.click();
 
     // Select both Approved and Draft statuses
-    const approvedCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'Approved',
-    });
-    const draftCheckbox = page.locator('.glossary-dropdown-label', {
-      hasText: 'Draft',
-    });
+    const approvedCheckbox = page.getByTestId(
+      'glossary-status-option-Approved'
+    );
+    const draftCheckbox = page.getByTestId('glossary-status-option-Draft');
     await approvedCheckbox.click();
     await draftCheckbox.click();
 
-    const saveButton = page.locator('.ant-btn-primary', {
-      hasText: 'Save',
-    });
+    const saveButton = page.getByTestId('glossary-status-save-btn');
     await saveButton.click();
 
     // Wait for filter to apply

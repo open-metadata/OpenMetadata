@@ -398,14 +398,13 @@ test.describe('Glossary P3 Tests', () => {
 
       // The page should eventually load without errors
 
-      // Verify page is loaded (loader should be gone)
+      // Verify page is loaded (loader should be gone or the table is rendered)
       const loader = page.getByTestId('loader');
-      const skeleton = page.locator('.ant-skeleton');
+      const table = page.getByTestId('glossary-terms-table');
 
-      // Either loader/skeleton is not visible, or content is loaded
       const isLoaded =
         (await loader.isVisible().catch(() => false)) === false ||
-        (await skeleton.isVisible().catch(() => false)) === false;
+        (await table.isVisible().catch(() => false));
 
       expect(isLoaded).toBeTruthy();
     } finally {
@@ -677,7 +676,7 @@ test.describe('Glossary P3 Tests', () => {
 
       // Page should be functional - either shows table or empty state
       const table = page.getByTestId('glossary-terms-table');
-      const pageContent = page.locator('.glossary-details');
+      const pageContent = page.getByTestId('glossary-details');
 
       const isLoaded =
         (await table.isVisible({ timeout: 10000 }).catch(() => false)) ||

@@ -1539,24 +1539,26 @@ test.describe('Glossary tests', () => {
 
       await test.step('Open column dropdown and select columns and check if they are visible', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Synonyms'];
-        await selectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        const columnKeys = ['reviewers', 'synonyms'];
+        const columnLabels = ['Reviewer', 'Synonyms'];
+        await selectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, true);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, true);
+        await verifyColumnsVisibility(page, columnLabels, true);
       });
 
       await test.step('Open column dropdown and deselect columns and check if they are hidden', async () => {
         await openColumnDropdown(page);
-        const checkboxLabels = ['Reviewer', 'Owners'];
-        await deselectColumns(page, checkboxLabels);
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        const columnKeys = ['reviewers', 'owners'];
+        const columnLabels = ['Reviewer', 'Owners'];
+        await deselectColumns(page, columnKeys);
+        await verifyColumnsVisibility(page, columnLabels, false);
 
         await page.reload();
 
-        await verifyColumnsVisibility(page, checkboxLabels, false);
+        await verifyColumnsVisibility(page, columnLabels, false);
       });
 
       await test.step('View All columns selection', async () => {
@@ -1642,9 +1644,9 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
-      const dragColumn = 'Status';
-      const dropColumn = 'Owners';
-      await dragAndDropColumn(page, dragColumn, dropColumn);
+      const dragColumnKey = 'status';
+      const dropColumnKey = 'owners';
+      await dragAndDropColumn(page, dragColumnKey, dropColumnKey);
       await page.locator('thead th').first().waitFor({ state: 'visible' });
       const columnHeaders = page.locator('thead th');
       // eslint-disable-next-line playwright/prefer-web-first-assertions

@@ -1472,26 +1472,20 @@ export async function openColumnDropdown(page: Page): Promise<void> {
 
 export async function selectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
 }
 
 export async function deselectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
 }
@@ -1572,16 +1566,11 @@ export const filterStatus = async (
   await dropdownButton.click();
 
   for (const label of statusLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
-      hasText: label,
-    });
-    await checkbox.click();
+    const optionValue = label === 'All' ? 'all' : label;
+    await page.getByTestId(`glossary-status-option-${optionValue}`).click();
   }
 
-  const saveButton = page.locator('.ant-btn-primary', {
-    hasText: 'Save',
-  });
-  await saveButton.click();
+  await page.getByTestId('glossary-status-save-btn').click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
   // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
@@ -1689,16 +1678,16 @@ export const addMultiOwnerInDialog = async (data: {
 
 export const dragAndDropColumn = async (
   page: Page,
-  dragColumn: string,
-  dropColumn: string
+  dragColumnKey: string,
+  dropColumnKey: string
 ) => {
-  await page.locator(`.draggable-menu-item:has-text("${dragColumn}")`).waitFor({
+  await page.getByTestId(`column-menu-item-${dragColumnKey}`).waitFor({
     state: 'visible',
   });
 
   await page
-    .locator('.draggable-menu-item', { hasText: dragColumn })
-    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }), {
+    .getByTestId(`column-menu-item-${dragColumnKey}`)
+    .dragTo(page.getByTestId(`column-menu-item-${dropColumnKey}`), {
       sourcePosition: {
         x: 16,
         y: 16,

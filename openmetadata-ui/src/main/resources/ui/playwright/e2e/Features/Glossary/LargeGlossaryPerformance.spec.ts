@@ -79,7 +79,9 @@ test.describe('Large Glossary Performance Tests', () => {
     page,
   }) => {
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
     const initialTerms = await page.locator('tbody tr[data-row-key]').count();
@@ -93,7 +95,7 @@ test.describe('Large Glossary Performance Tests', () => {
     // Scroll to bottom to trigger infinite scroll
     await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -103,7 +105,9 @@ test.describe('Large Glossary Performance Tests', () => {
     // Wait for more terms to load
     await infiniteScrollRequest;
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
     // Verify more terms are loaded
@@ -166,7 +170,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
-          '.glossary-terms-scroll-container [data-testid="loader"]'
+          '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
         ).length === 0
       );
     });
@@ -184,7 +188,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.waitForFunction(() => {
       return (
         document.querySelectorAll(
-          '.glossary-terms-scroll-container [data-testid="loader"]'
+          '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
         ).length === 0
       );
     });
@@ -219,7 +223,7 @@ test.describe('Large Glossary Performance Tests', () => {
     // Get initial scroll position
     await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
 
       return scrollContainer?.scrollTop || 0;
@@ -228,7 +232,7 @@ test.describe('Large Glossary Performance Tests', () => {
     // Scroll down partially
     await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
       if (scrollContainer) {
         scrollContainer.scrollTop = 200;
@@ -237,7 +241,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
     const scrollPositionBeforeLoad = await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
 
       return scrollContainer?.scrollTop || 0;
@@ -247,7 +251,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
     await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -256,13 +260,15 @@ test.describe('Large Glossary Performance Tests', () => {
 
     // Wait for more terms to load
     await page
-      .locator('.glossary-terms-scroll-container [data-testid="loader"]')
+      .locator(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
+      )
       .waitFor({ state: 'detached' });
 
     // Scroll back to previous position
     await page.evaluate((scrollPos) => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollPos;
@@ -273,7 +279,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
     const currentScrollTop = await page.evaluate(() => {
       const scrollContainer = document.querySelector(
-        '.glossary-terms-scroll-container'
+        '[data-testid="glossary-terms-scroll-container"]'
       );
 
       return scrollContainer?.scrollTop || 0;
@@ -290,7 +296,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await statusDropdown.click();
 
     // Wait for dropdown menu
-    await page.locator('.status-selection-dropdown').waitFor();
+    await page.getByTestId('glossary-status-option-all').waitFor();
 
     // Check if status options are available
     const approvedCheckbox = page.locator('text=Approved').first();
@@ -406,12 +412,13 @@ test.describe('Large Glossary Child Term Performace', () => {
       page.getByText('Term_1_Child_3', { exact: true })
     ).toBeVisible();
 
-    const initialTerms = await page
-      .locator('tbody .glossary-term-level-1')
+    const initialChildTerms = await page
+      .getByTestId(/^Term_1_Child_\d+$/)
       .count();
 
-    // 51 because last row contain button to view next 50 terms
-    expect(initialTerms).toBe(51);
+    // 50 children are shown, with a "view more" row below to load the next 50
+    expect(initialChildTerms).toBe(50);
+    await expect(page.getByTestId('load-more-children-button')).toBeVisible();
 
     const buttonText = await page
       .getByTestId('load-more-children-button')
@@ -426,11 +433,12 @@ test.describe('Large Glossary Child Term Performace', () => {
       page.getByText('Term_1_Child_54', { exact: true })
     ).toBeVisible();
 
-    const finalTerms = await page
-      .locator('tbody .glossary-term-level-1')
+    const finalChildTerms = await page
+      .getByTestId(/^Term_1_Child_\d+$/)
       .count();
 
-    expect(finalTerms).toBe(100);
+    expect(finalChildTerms).toBe(100);
+    await expect(page.getByTestId('load-more-children-button')).toBeHidden();
 
     // Click to collapse
     await expandIcon.click();
