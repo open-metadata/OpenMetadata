@@ -125,7 +125,6 @@ const EntityNameModal = <T extends EntityName>({
     // Depend on primitive values, not the entity object reference —
     // inline objects (e.g. ManageButton's entity={{ name, displayName }})
     // are recreated every render, which would wipe in-progress edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, entity.name, entity.displayName, reset]);
 
   const onSubmit = async (data: EntityName) => {
