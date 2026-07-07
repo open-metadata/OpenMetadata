@@ -108,11 +108,13 @@ class BurstIQClient:
             if customer_name and sdz_name:
                 logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
-        except Exception as exc:
-            if hasattr(exc, "response") and exc.response is not None:
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None:
                 logger.error(f"Authentication HTTP {exc.response.status_code} error. Response: {exc.response.text}")
-            else:
-                logger.error(f"Authentication failed: {exc}")
+            logger.debug(traceback.format_exc())
+            raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
+        except Exception as exc:
+            logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
             raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
@@ -194,11 +196,13 @@ class BurstIQClient:
             raise ConnectionError(
                 f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
-        except Exception as exc:
-            if hasattr(exc, "response") and exc.response is not None:
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None:
                 logger.error(f"HTTP {exc.response.status_code} error for {url}. Response: {exc.response.text}")
-            else:
-                logger.error(f"API request failed for {url}: {exc}")
+            logger.debug(traceback.format_exc())
+            raise
+        except Exception as exc:
+            logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
 
