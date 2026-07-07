@@ -169,7 +169,7 @@ const FileActions: FC<FileActionsProps> = ({
     <Dropdown.Root>
       <ButtonUtility
         color="tertiary"
-        data-testid="edit-memory-btn"
+        data-testid="manage-button"
         icon={ <DotsVerticalIcon height={20} width={20} />}
         size="sm"
         tooltip={t('label.manage-entity', { entity: t('label.document') })}

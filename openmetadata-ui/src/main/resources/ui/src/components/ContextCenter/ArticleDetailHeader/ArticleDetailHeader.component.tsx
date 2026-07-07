@@ -267,7 +267,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="success"
             size="lg"
             type="color">
-            <UploadCloud01 size={12} />{' '}
+            <UploadCloud01 size={14} />{' '}
             <Typography className='tw:text-utility-success-700' weight="medium">{t('label.saved')}</Typography>
           </Badge>
         </div>
@@ -282,7 +282,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="gray"
             size="lg"
             type="color">
-            <UploadCloud01 size={12} />{' '}
+            <UploadCloud01 size={14} />{' '}
             <Typography weight="medium">{t('label.unsaved')}</Typography>
           </Badge>
         </div>
@@ -335,15 +335,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
-            {/* <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
-              <FileIcon
-                className="tw:text-quaternary"
-                height={40}
-                style={{ verticalAlign: 'middle', flexShrink: 0 }}
-                width={40}
-              />
-            </div> */}
-
             <div className="tw:flex tw:flex-col tw:gap-2 tw:min-w-0">
               {/* Article name with icon */}
               <div className="tw:flex tw:items-center tw:gap-2 tw:flex-wrap">
@@ -588,7 +579,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               <Dropdown.Root>
                  <ButtonUtility
                   color="tertiary"
-                  data-testid="edit-memory-btn"
+                  data-testid="manage-button"
                   icon={ <DotsVerticalIcon height={20} width={20} />}
                   size="sm"
                   tooltip={t('label.manage-entity', {
