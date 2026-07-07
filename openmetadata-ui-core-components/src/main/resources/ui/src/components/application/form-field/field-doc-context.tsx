@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -25,22 +24,26 @@ interface FieldDocRegistry {
 
 const FieldDocContext = createContext<FieldDocRegistry | undefined>(undefined);
 
-export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = ({
-  enabled = false,
-  children,
-}) => {
-  const entriesRef = useRef<Map<string, FieldDocEntry>>(new Map());
-  const [version, setVersion] = useState(0);
+export const FieldDocProvider: FC<{
+  enabled?: boolean;
+  children: ReactNode;
+}> = ({ enabled = false, children }) => {
+  const [entries, setEntries] = useState<Map<string, FieldDocEntry>>(
+    () => new Map()
+  );
   const [activeName, setActiveName] = useState<string | undefined>(undefined);
 
   const register = useCallback((name: string, entry: FieldDocEntry) => {
-    entriesRef.current.set(name, entry);
-    setVersion((n) => n + 1);
+    setEntries((prev) => new Map(prev).set(name, entry));
   }, []);
 
   const unregister = useCallback((name: string) => {
-    entriesRef.current.delete(name);
-    setVersion((n) => n + 1);
+    setEntries((prev) => {
+      const next = new Map(prev);
+      next.delete(name);
+
+      return next;
+    });
   }, []);
 
   const setActive = useCallback((name?: string) => setActiveName(name), []);
@@ -51,14 +54,16 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
       unregister,
       setActive,
       activeName,
-      entries: entriesRef.current,
+      entries,
       enabled,
     }),
-    [register, unregister, setActive, activeName, enabled, version]
+    [register, unregister, setActive, activeName, enabled, entries]
   );
 
   return (
-    <FieldDocContext.Provider value={value}>{children}</FieldDocContext.Provider>
+    <FieldDocContext.Provider value={value}>
+      {children}
+    </FieldDocContext.Provider>
   );
 };
 
