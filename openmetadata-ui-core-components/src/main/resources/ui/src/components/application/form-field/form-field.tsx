@@ -57,7 +57,10 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     return () => unregister(field.name);
   }, [hasDoc, field.name, field.label, field.doc, register, unregister]);
 
-  const handleFocusCapture = hasDoc ? () => setActive(field.name) : undefined;
+  const handleFocusCapture = hasDoc
+    ? (event: import('react').FocusEvent<HTMLDivElement>) =>
+        setActive(field.name, event.target as HTMLElement)
+    : undefined;
 
   const rendered = (
     <FormField control={control} name={name} rules={effectiveRules}>

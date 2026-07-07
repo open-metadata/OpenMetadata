@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { createContext, useContext, useId, useRef } from 'react';
+import { createContext, useContext, useId } from 'react';
 import { Form as AriaForm } from 'react-aria-components';
 import type {
   Control,
@@ -69,8 +69,6 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   renderFieldDoc,
   ...props
 }: FormProps<TFieldValues>) => {
-  const anchorRef = useRef<HTMLDivElement>(null);
-
   if (!showFieldDocs) {
     return (
       <FormProvider {...form}>
@@ -82,10 +80,8 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   return (
     <FormProvider {...form}>
       <FieldDocProvider enabled={showFieldDocs}>
-        <div className="tw:relative" ref={anchorRef}>
-          <AriaForm {...props} />
-        </div>
-        <FieldDocPopover renderDoc={renderFieldDoc} triggerRef={anchorRef} />
+        <AriaForm {...props} />
+        <FieldDocPopover renderDoc={renderFieldDoc} />
       </FieldDocProvider>
     </FormProvider>
   );

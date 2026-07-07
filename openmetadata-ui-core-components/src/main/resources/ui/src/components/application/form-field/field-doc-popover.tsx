@@ -1,9 +1,9 @@
-import type { FC, ReactNode, RefObject } from 'react';
+import type { FC, ReactNode } from 'react';
+import { useRef } from 'react';
 import { Dialog, Popover } from 'react-aria-components';
 import { useActiveFieldDoc } from './field-doc-context';
 
 export interface FieldDocPopoverProps {
-  triggerRef: RefObject<HTMLElement | null>;
   renderDoc?: (doc: string) => ReactNode;
 }
 
@@ -11,10 +11,12 @@ const defaultRenderDoc = (doc: string): ReactNode => (
   <p className="tw:whitespace-pre-wrap tw:text-sm tw:text-secondary">{doc}</p>
 );
 
-export const FieldDocPopover: FC<FieldDocPopoverProps> = ({ triggerRef, renderDoc }) => {
-  const { entry } = useActiveFieldDoc();
+export const FieldDocPopover: FC<FieldDocPopoverProps> = ({ renderDoc }) => {
+  const { entry, anchor } = useActiveFieldDoc();
+  const anchorRef = useRef<HTMLElement | null>(null);
+  anchorRef.current = anchor ?? null;
 
-  if (!entry) {
+  if (!entry || !anchor) {
     return null;
   }
 
@@ -22,12 +24,14 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({ triggerRef, renderDo
     <Popover
       isNonModal
       isOpen
+      className="tw:w-[280px] tw:rounded-xl tw:border tw:border-primary tw:bg-primary tw:shadow-lg tw:p-4"
+      offset={16}
       placement="right top"
-      offset={12}
-      triggerRef={triggerRef}
-      className="tw:w-[280px] tw:rounded-xl tw:border tw:border-primary tw:bg-primary tw:shadow-lg tw:p-4">
+      triggerRef={anchorRef}>
       <Dialog aria-label="Field documentation" className="tw:outline-none">
-        <h4 className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-2">{entry.label}</h4>
+        <h4 className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-2">
+          {entry.label}
+        </h4>
         {(renderDoc ?? defaultRenderDoc)(entry.doc)}
       </Dialog>
     </Popover>

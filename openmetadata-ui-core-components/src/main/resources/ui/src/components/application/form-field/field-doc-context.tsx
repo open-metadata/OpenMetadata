@@ -1,5 +1,12 @@
 import type { FC, ReactNode } from 'react';
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 export interface FieldDocEntry {
   label: ReactNode;
@@ -9,8 +16,9 @@ export interface FieldDocEntry {
 interface FieldDocRegistry {
   register: (name: string, entry: FieldDocEntry) => void;
   unregister: (name: string) => void;
-  setActive: (name?: string) => void;
+  setActive: (name?: string, anchor?: HTMLElement | null) => void;
   activeName?: string;
+  activeAnchor?: HTMLElement | null;
   entries: Map<string, FieldDocEntry>;
   enabled: boolean;
 }
@@ -23,7 +31,10 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
 }) => {
   const entriesRef = useRef<Map<string, FieldDocEntry>>(new Map());
   const [, forceRender] = useState(0);
-  const [activeName, setActiveName] = useState<string | undefined>(undefined);
+  const [active, setActiveState] = useState<{
+    name: string;
+    anchor: HTMLElement | null;
+  } | null>(null);
 
   const register = useCallback((name: string, entry: FieldDocEntry) => {
     entriesRef.current.set(name, entry);
@@ -35,21 +46,28 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
     forceRender((n) => n + 1);
   }, []);
 
-  const setActive = useCallback((name?: string) => setActiveName(name), []);
+  const setActive = useCallback(
+    (name?: string, anchor?: HTMLElement | null) =>
+      setActiveState(name ? { name, anchor: anchor ?? null } : null),
+    []
+  );
 
   const value = useMemo<FieldDocRegistry>(
     () => ({
       register,
       unregister,
       setActive,
-      activeName,
+      activeName: active?.name,
+      activeAnchor: active?.anchor ?? null,
       entries: entriesRef.current,
       enabled,
     }),
-    [register, unregister, setActive, activeName, enabled]
+    [register, unregister, setActive, active, enabled]
   );
 
-  return <FieldDocContext.Provider value={value}>{children}</FieldDocContext.Provider>;
+  return (
+    <FieldDocContext.Provider value={value}>{children}</FieldDocContext.Provider>
+  );
 };
 
 export const useFieldDocRegistry = (): FieldDocRegistry => {
@@ -61,17 +79,23 @@ export const useFieldDocRegistry = (): FieldDocRegistry => {
       unregister: () => undefined,
       setActive: () => undefined,
       activeName: undefined,
+      activeAnchor: null,
       entries: new Map<string, FieldDocEntry>(),
       enabled: false,
     }
   );
 };
 
-export const useActiveFieldDoc = (): { name?: string; entry?: FieldDocEntry } => {
-  const { activeName, entries } = useFieldDocRegistry();
+export const useActiveFieldDoc = (): {
+  name?: string;
+  entry?: FieldDocEntry;
+  anchor?: HTMLElement | null;
+} => {
+  const { activeName, activeAnchor, entries } = useFieldDocRegistry();
 
   return {
     name: activeName,
     entry: activeName ? entries.get(activeName) : undefined,
+    anchor: activeAnchor,
   };
 };
