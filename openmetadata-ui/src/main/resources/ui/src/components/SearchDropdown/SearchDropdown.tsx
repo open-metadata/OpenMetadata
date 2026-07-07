@@ -264,16 +264,6 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
     debouncedOnSearch.cancel();
   }, [pathname, debouncedOnSearch]);
 
-  const getDropdownPopupContainer = useCallback(
-    // Keep the popup scoped to this trigger so route unmounts do not leave
-    // stale body-level overlays behind, while preserving explicit overrides.
-    (triggerNode: HTMLElement) =>
-      getPopupContainer?.(triggerNode) ??
-      triggerNode.parentElement ??
-      document.body,
-    [getPopupContainer]
-  );
-
   // Handle null option change
   const handleNullOptionChange = (checked: boolean) => {
     setNullOptionSelected(checked);
@@ -472,7 +462,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
       destroyPopupOnHide
       data-testid={searchKey}
       dropdownRender={dropdownCardComponent}
-      getPopupContainer={getDropdownPopupContainer}
+      getPopupContainer={getPopupContainer}
       key={searchKey}
       menu={{ items: menuOptions, onClick: handleMenuItemClick }}
       open={isDropDownOpen}
