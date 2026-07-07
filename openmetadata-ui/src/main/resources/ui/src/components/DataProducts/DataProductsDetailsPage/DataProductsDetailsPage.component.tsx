@@ -121,7 +121,7 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { DataProductMetadataModal } from '../DataProductMetadataModal';
@@ -968,11 +968,12 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <DeleteEntityModal
-        allowSoftDelete={false}
-        entityName={dataProduct.name}
-        entityType="Glossary"
-        visible={isDelete}
+      <DeleteModal
+        entityTitle={dataProduct.name}
+        message={t('message.delete-entity-message', {
+          entity: dataProduct.name,
+        })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
         onDelete={onDelete}
       />

@@ -37,7 +37,6 @@ import {
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../utils/EntityDisplayPureUtils';
 import { updateGlossaryTermByFqn } from '../../utils/GlossaryPureUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getGlossaryTermDetailsPath } from '../../utils/RouterUtils';
@@ -46,7 +45,7 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
-import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
+import DeleteModal from '../common/DeleteModal/DeleteModal';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
@@ -481,13 +480,14 @@ const GlossaryV1 = ({
       </GenericProvider>
 
       {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={selectedData.name}
+          message={t('message.delete-entity-message', {
+            entity: selectedData.name,
+          })}
+          open={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onDelete={handleDelete}
         />
       )}
 

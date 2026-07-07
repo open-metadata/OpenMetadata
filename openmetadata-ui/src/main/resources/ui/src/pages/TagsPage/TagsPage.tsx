@@ -27,7 +27,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -785,11 +785,12 @@ const TagsPage = () => {
                 ref={classificationDetailsRef}
               />
 
-              <DeleteEntityModal
-                allowSoftDelete={false}
-                entityName={deleteTags.data?.name ?? ''}
-                entityType={t('label.classification')}
-                visible={deleteTags.state}
+              <DeleteModal
+                entityTitle={deleteTags.data?.name ?? ''}
+                message={t('message.delete-entity-message', {
+                  entity: deleteTags.data?.name ?? '',
+                })}
+                open={deleteTags.state}
                 onCancel={handleCancelClassificationDelete}
                 onDelete={handleConfirmClick}
               />
