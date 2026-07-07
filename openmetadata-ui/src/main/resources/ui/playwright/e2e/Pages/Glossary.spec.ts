@@ -2130,19 +2130,13 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await page.getByTestId('delete-modal').waitFor();
+
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
         );
 
-        await expect(page.getByTestId('body-text')).toContainText('DELETE');
-
-        const confirmationInput = page.locator(
-          '[data-testid="confirmation-text-input"]'
-        );
-        await expect(confirmationInput).toBeVisible();
-
-        await confirmationInput.fill('DELETE');
+        await page.click('[data-testid="hard-delete"]');
 
         await page.getByTestId('confirm-button').click();
       });

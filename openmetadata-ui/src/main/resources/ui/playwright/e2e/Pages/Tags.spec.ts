@@ -57,11 +57,7 @@ const NEW_TAG = {
 const tagFqn = `${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`;
 
 const permanentDeleteModal = async (page: Page, entity: string) => {
-  await page.locator('.ant-modal-content').waitFor({
-    state: 'visible',
-  });
-
-  await expect(page.locator('.ant-modal-content')).toBeVisible();
+  await page.getByTestId('modal-footer').waitFor({ state: 'visible' });
 
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     `Delete ${entity}`
@@ -451,7 +447,7 @@ test('Classification Page', async ({ page }) => {
     );
 
     await page.click('[data-testid="table"] [data-testid="delete-tag"]');
-    await page.locator('.ant-modal-content').waitFor({ state: 'visible' });
+    await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
     const deleteTag = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&
