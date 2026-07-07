@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -262,7 +263,13 @@ public class SearchMetadataTool implements McpTool {
     }
 
     return buildEnhancedSearchResponse(
-        searchResponse, query, size, requestedFields, includeAggregations, maxAggregationBuckets);
+        searchResponse,
+        query,
+        size,
+        from,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
   }
 
   @Override
@@ -280,6 +287,24 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
+      List<String> requestedFields,
+      boolean includeAggregations,
+      int maxAggregationBuckets) {
+    return buildEnhancedSearchResponse(
+        searchResponse,
+        query,
+        requestedLimit,
+        0,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
+  }
+
+  static Map<String, Object> buildEnhancedSearchResponse(
+      Map<String, Object> searchResponse,
+      String query,
+      int requestedLimit,
+      int from,
       List<String> requestedFields,
       boolean includeAggregations,
       int maxAggregationBuckets) {
@@ -360,44 +385,50 @@ public class SearchMetadataTool implements McpTool {
       result.put("hasMore", true);
     }
 
-    try {
-      String serialized = JsonUtils.pojoToJson(result);
-      LOG.debug(
-          "[MCP] search_metadata response size: {} chars for query '{}'",
-          serialized.length(),
-          query);
-      if (serialized.length() > McpResponseTrim.MAX_RESPONSE_CHARS) {
-        int targetCount =
-            Math.min(
-                Math.max(
-                    1,
-                    (int)
-                        (cleanedResults.size()
-                            * (McpResponseTrim.MAX_RESPONSE_CHARS * 0.8)
-                            / serialized.length())),
-                cleanedResults.size());
-        List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
-        LOG.warn(
-            "[MCP] search_metadata response trimmed: {} chars -> {} results (was {})",
-            serialized.length(),
-            trimmed.size(),
-            cleanedResults.size());
-        result.put("results", trimmed);
-        result.put("returnedCount", trimmed.size());
-        result.put("hasMore", true);
-        result.put(
-            "message",
-            String.format(
-                "Response exceeded %d characters and was trimmed to %d of %d results. "
-                    + "There are many matching assets. Are you looking for something specific? "
-                    + "Try narrowing with a service name, schema, or specific name.",
-                McpResponseTrim.MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
-      }
-    } catch (RuntimeException e) {
-      LOG.warn("Failed to check response size for query '{}': {}", query, e.getMessage());
-    }
+    fitResultsToBudget(result, cleanedResults, totalResults, from, query);
 
     return result;
+  }
+
+  /**
+   * Ensures the response stays under the dispatch-level size cap by returning fewer <em>results</em>
+   * (never mangling the ones kept), so search never falls through to the empty-stub nuke. Uses
+   * {@link ResponseBudget} to fit results to the budget by measuring each result's real serialized
+   * size, which the previous single proportional estimate could undershoot on heavy `fields=`
+   * responses, leaving the payload above the cap.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result,
+      List<Map<String, Object>> cleanedResults,
+      long totalResults,
+      int from,
+      String query) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(cleanedResults, overhead);
+    if (fit < cleanedResults.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, fit));
+      LOG.warn(
+          "[MCP] search_metadata fit {} of {} results to size budget for query '{}'",
+          trimmed.size(),
+          cleanedResults.size(),
+          query);
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d results to stay within the response size budget. "
+                  + "Fetch more with 'from'=%d, or narrow the query with a service, schema, or name.",
+              trimmed.size(), totalResults, from + trimmed.size()));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   public static Map<String, Object> cleanSearchResult(
