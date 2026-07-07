@@ -1347,9 +1347,9 @@ test.describe('Context Center Articles', () => {
         await page
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
-       await page.getByText('Unsaved').waitFor({ state: 'visible' })
-       await page.waitForTimeout(400);
-       await page.getByRole('link', { name: 'Articles' }).click();
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+        await page.getByRole('link', { name: 'Articles' }).click();
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
@@ -1406,7 +1406,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to draft article A and type content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', reloadDescription);
-        await page.getByText('Unsaved').waitFor({ state: 'visible' })
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await page.waitForTimeout(400);
       });
 
@@ -1485,7 +1485,7 @@ test.describe('Context Center Articles', () => {
       await test.step('Navigate to the article and type content to create a draft', async () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
         await page.fill('.om-block-editor', 'This draft should be deleted');
-        await page.getByText('Unsaved').waitFor({ state: 'visible' })
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await page.waitForTimeout(400);
       });
 
@@ -1533,14 +1533,14 @@ test.describe('Context Center Articles', () => {
       await test.step('Type in draft article A without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
         await page.fill('.om-block-editor', contentA);
-        await page.getByText('Unsaved').waitFor({ state: 'visible' })
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await page.waitForTimeout(400);
       });
 
       await test.step('Navigate to draft article B and type without saving', async () => {
         await navigateToArticle(page, draftArticleB.fullyQualifiedName);
         await page.fill('.om-block-editor', contentB);
-        await page.getByText('Unsaved').waitFor({ state: 'visible' })
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
         await page.waitForTimeout(400);
       });
 
