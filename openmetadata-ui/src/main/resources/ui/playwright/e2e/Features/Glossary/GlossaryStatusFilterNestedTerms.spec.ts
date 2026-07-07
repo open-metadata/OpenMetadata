@@ -150,17 +150,20 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
     const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
     await expect(termRow).toBeVisible();
 
-    const expandTrigger = termRow.locator('.vertical-baseline').first();
+    const expandTrigger = termRow
+      .locator('[data-testid="expand-icon"]')
+      .first();
     await expandTrigger.click();
-    await page.locator('.ant-table-row').first().waitFor({ state: 'visible' });
+    await page
+      .locator('tr[data-row-key]')
+      .first()
+      .waitFor({ state: 'visible' });
   };
 
   // Helper to collapse a specific term in the table
   const collapseTerm = async (page: Page, termName: string) => {
     const termRow = page.locator(`[data-row-key*="${termName}"]`).first();
-    const collapseIcon = termRow.locator(
-      '.ant-table-row-expand-icon.ant-table-row-expand-icon-expanded'
-    );
+    const collapseIcon = termRow.locator('[data-testid="expand-icon"]');
 
     if (await collapseIcon.isVisible()) {
       await collapseIcon.click();
@@ -190,7 +193,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
     await page
-      .locator('tbody.ant-table-tbody > tr:not([aria-hidden="true"])')
+      .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
       .waitFor({ state: 'visible' })
       .catch(() => {});
@@ -206,7 +209,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
       .waitFor({ state: 'detached', timeout: 30000 })
       .catch(() => {});
     await page
-      .locator('tbody.ant-table-tbody > tr:not([aria-hidden="true"])')
+      .locator('tbody > tr:not([aria-hidden="true"])')
       .first()
       .waitFor({ state: 'visible' })
       .catch(() => {});
@@ -214,9 +217,7 @@ test.describe('Glossary Status Filter - Nested Terms', () => {
 
   // Helper to get row count
   const getRowCount = async (page: Page) => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+    const rows = page.locator('tbody > tr:not([aria-hidden="true"])');
 
     return rows.count();
   };

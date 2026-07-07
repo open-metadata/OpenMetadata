@@ -85,7 +85,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await searchResponse;
     const table = page.getByTestId('glossary-terms-table');
-    const filteredTerms = await table.locator('tbody .ant-table-row').count();
+    const filteredTerms = await table.locator('tbody tr[data-row-key]').count();
 
     expect(filteredTerms).toBe(1);
     await expect(
@@ -108,7 +108,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await partialSearchResponse;
 
     const partialFilteredTerms = await table
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[data-row-key]')
       .count();
 
     expect(partialFilteredTerms).toBeGreaterThan(0);
@@ -147,7 +147,7 @@ test.describe('Glossary tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     const nestedTable = page.getByTestId('glossary-terms-table');
     const filteredTerms = await nestedTable
-      .locator('tbody .ant-table-row')
+      .locator('tbody tr[data-row-key]')
       .count();
 
     expect(filteredTerms).toBe(5);

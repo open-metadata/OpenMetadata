@@ -696,26 +696,10 @@ export const validateGlossaryTerm = async (
   ).toBeHidden();
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Terms' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Description' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Owners' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Status' })
-  ).toBeVisible();
+  const termsTable = page.getByTestId('glossary-terms-table');
+  for (const header of ['Terms', 'Description', 'Owners', 'Status']) {
+    await expect(termsTable.locator('th', { hasText: header })).toBeVisible();
+  }
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
@@ -1599,7 +1583,7 @@ export const filterStatus = async (
   // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
   // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
   const rows = glossaryTermsTable.locator(
-    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+    'tbody > tr:not([aria-hidden="true"])'
   );
   const statusColumnIndex = 2;
 
