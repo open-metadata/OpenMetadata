@@ -1,0 +1,1 @@
+-- Placeholder for 1.12.13 MySQL schema changes
