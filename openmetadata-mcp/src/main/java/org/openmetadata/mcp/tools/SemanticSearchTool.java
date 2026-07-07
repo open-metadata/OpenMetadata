@@ -6,9 +6,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -53,6 +55,7 @@ public class SemanticSearchTool implements McpTool {
 
     int from = McpParams.getInt(params, "from", 0);
     from = Math.max(from, 0);
+    from = cursorOffsetOrDefault(params, from);
 
     int k = McpParams.getInt(params, "k", DEFAULT_K);
     k = Math.min(Math.max(k, 1), MAX_K);
@@ -65,7 +68,7 @@ public class SemanticSearchTool implements McpTool {
     try {
       VectorSearchResponse response =
           vectorService.search(query, filters, size, from, k, threshold);
-      return buildResponse(query, response, size);
+      return buildResponse(query, response, size, from);
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
       return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
@@ -83,7 +86,7 @@ public class SemanticSearchTool implements McpTool {
   }
 
   private Map<String, Object> buildResponse(
-      String query, VectorSearchResponse response, int requestedSize) {
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     Map<String, Object> result = new HashMap<>();
     result.put("query", query);
     result.put("tookMillis", response.getTookMillis());
@@ -108,17 +111,47 @@ public class SemanticSearchTool implements McpTool {
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
-    if (cleanedResults.size() >= requestedSize) {
-      result.put(
-          "message",
-          String.format(
-              "Showing %d results. Increase 'size' or refine your query for different results. "
-                  + "Adjust 'threshold' to filter by similarity score.",
-              cleanedResults.size()));
-    }
-
+    int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
+    attachPagingContract(result, from, rawCount, requestedSize);
     return result;
+  }
+
+  /**
+   * Sets the unified paging markers after budget trimming. {@code nextCursor} advances by the count
+   * actually returned this page (not the requested size), so a budget-trimmed page never skips the
+   * rows it dropped. A full page ({@code rawCount >= requestedSize}) implies more candidates remain
+   * in the top-k, so it is paged too — previously only the budget-trim path signalled {@code
+   * hasMore}, leaving a full page with no way forward.
+   */
+  private static void attachPagingContract(
+      Map<String, Object> result, int from, int rawCount, int requestedSize) {
+    int returned =
+        result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
+    boolean budgetTrimmed = returned < rawCount;
+    boolean fullPage = rawCount >= requestedSize;
+    if (fullPage || budgetTrimmed) {
+      result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
+      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    }
+    if (fullPage && !budgetTrimmed) {
+      result.put(
+          McpResponseTrim.MESSAGE_KEY,
+          String.format(
+              "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
+                  + "Adjust 'threshold' to filter by similarity score.",
+              returned));
+    }
+  }
+
+  private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {
+    int from = defaultFrom;
+    String token = params.get("cursor") instanceof String value ? value : null;
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(token);
+    if (cursor.isPresent() && cursor.get().isOffset()) {
+      from = cursor.get().offset();
+    }
+    return from;
   }
 
   /**

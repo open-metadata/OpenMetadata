@@ -8,9 +8,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -64,11 +66,12 @@ public class SearchCompanyContextTool implements McpTool {
       result = errorResponse("Vector search service is not initialized");
     } else {
       int size = Math.min(Math.max(McpParams.getInt(params, "size", DEFAULT_SIZE), 1), MAX_SIZE);
+      int from = cursorOffsetOrDefault(params, Math.max(McpParams.getInt(params, "from", 0), 0));
       try {
         VectorSearchResponse response =
             vectorService.search(
-                query, companyContextFilters(), size, 0, DEFAULT_K, DEFAULT_THRESHOLD);
-        result = buildResponse(query, response);
+                query, companyContextFilters(), size, from, DEFAULT_K, DEFAULT_THRESHOLD);
+        result = buildResponse(query, response, size, from);
       } catch (Exception e) {
         LOG.error("Company context search failed: {}", e.getMessage(), e);
         result = errorResponse("Company context search failed: " + McpResponseTrim.safeMessage(e));
@@ -85,7 +88,8 @@ public class SearchCompanyContextTool implements McpTool {
     return filters;
   }
 
-  private Map<String, Object> buildResponse(String query, VectorSearchResponse response) {
+  private Map<String, Object> buildResponse(
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     List<Map<String, Object>> pills = new ArrayList<>();
     if (response.getHits() != null) {
       for (Map<String, Object> hit : response.getHits()) {
@@ -96,8 +100,44 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("query", query);
     result.put("results", pills);
     result.put("returnedCount", pills.size());
+    int rawCount = pills.size();
     fitResultsToBudget(result, pills);
+    attachPagingContract(result, from, rawCount, requestedSize);
     return result;
+  }
+
+  /**
+   * Sets the unified paging markers so callers can walk past page 1 — previously this tool searched
+   * at a fixed offset of 0 and gave no {@code nextCursor}, stranding results beyond the first page.
+   * {@code nextCursor} advances by the count actually returned (after any budget trim), never the
+   * requested size, so a trimmed page never skips the pills it dropped.
+   */
+  private static void attachPagingContract(
+      Map<String, Object> result, int from, int rawCount, int requestedSize) {
+    int returned =
+        result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
+    boolean budgetTrimmed = returned < rawCount;
+    boolean fullPage = rawCount >= requestedSize;
+    if (fullPage || budgetTrimmed) {
+      result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
+      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    }
+    if (fullPage && !budgetTrimmed) {
+      result.put(
+          McpResponseTrim.MESSAGE_KEY,
+          String.format(
+              "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.", returned));
+    }
+  }
+
+  private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {
+    int from = defaultFrom;
+    String token = params.get("cursor") instanceof String value ? value : null;
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(token);
+    if (cursor.isPresent() && cursor.get().isOffset()) {
+      from = cursor.get().offset();
+    }
+    return from;
   }
 
   /**
