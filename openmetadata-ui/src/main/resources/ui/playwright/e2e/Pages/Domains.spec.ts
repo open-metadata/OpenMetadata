@@ -43,6 +43,7 @@ import {
   descriptionBox,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
   visitGlossaryPage,
 } from '../../utils/common';
@@ -2729,13 +2730,7 @@ test.describe('Domain Rename Comprehensive Tests', () => {
       // Verify the response status is 409 (Conflict) or 400 (Bad Request)
       expect([400, 409]).toContain(response.status());
 
-      // Verify an error toast/alert is shown
-      await expect(page.getByTestId('alert-bar')).toBeVisible();
-
-      // Verify the error message contains information about the duplicate name
-      await expect(page.getByTestId('alert-message')).toContainText(
-        /already exists/i
-      );
+      await toastNotification(page, /already exists/i);
     } finally {
       await domain1.delete(apiContext);
       await domain2.delete(apiContext);

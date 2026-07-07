@@ -339,6 +339,56 @@ CREATE TABLE IF NOT EXISTS context_memory (
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
 
+-- AI Governance Studio (Phase 4): framework + control entity tables.
+CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_name_index ON ai_governance_framework_entity(name);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_deleted_index ON ai_governance_framework_entity(deleted);
+COMMENT ON TABLE ai_governance_framework_entity IS 'AI Governance Framework entities';
+
+CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_framework_control_name_index ON ai_framework_control_entity(name);
+CREATE INDEX IF NOT EXISTS ai_framework_control_deleted_index ON ai_framework_control_entity(deleted);
+COMMENT ON TABLE ai_framework_control_entity IS 'AI Framework Control entities';
+
+CREATE TABLE IF NOT EXISTS audit_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    status VARCHAR(32) GENERATED ALWAYS AS (json->>'status') STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS audit_report_name_index ON audit_report_entity(name);
+CREATE INDEX IF NOT EXISTS audit_report_status_index ON audit_report_entity(status);
+CREATE INDEX IF NOT EXISTS audit_report_deleted_index ON audit_report_entity(deleted);
+COMMENT ON TABLE audit_report_entity IS 'AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS user_session (
     id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,

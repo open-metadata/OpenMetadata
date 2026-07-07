@@ -28,6 +28,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   GridComponent.Item = GridItem;
 
   return {
+    Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Label: ({ children }: { children: React.ReactNode }) => (
+      <label>{children}</label>
+    ),
     Tooltip: ({
       children,
       title,

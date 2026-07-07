@@ -1007,6 +1007,11 @@
       <version>${jersey-bom.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.glassfish.jersey.media</groupId>
+      <artifactId>jersey-media-sse</artifactId>
+      <version>${jersey-bom.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
       <version>1.1.5</version>

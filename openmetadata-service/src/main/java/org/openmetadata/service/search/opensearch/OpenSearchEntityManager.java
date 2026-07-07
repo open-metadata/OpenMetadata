@@ -24,7 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +89,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
+  // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
+  // stalled search backend can't hold the thread indefinitely; the async result is still handled.
+  private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
+
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
@@ -125,7 +133,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
-    // Async call using OpenSearchAsyncClient
+    // The write is awaited below so realtime column indexing is durable before the caller
+    // returns; failures are routed to the retry queue in the handler.
     CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
 
     future.whenComplete(
@@ -169,11 +178,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                     });
           } else {
             LOG.info(
-                "Successfully indexed {} entities to OpenSearch (async) for index: {}",
+                "Successfully indexed {} entities to OpenSearch for index: {}",
                 docsAndIds.size(),
                 indexName);
           }
         });
+
+    // Await the bulk so realtime indexing is read-your-write consistent: createEntities runs on
+    // the request thread post-commit (SearchIndexHandler.isAsync() is false), like the synchronous
+    // single-doc createEntity path, so a create-then-search in the same flow must see the docs
+    // (refresh=True above makes them searchable the moment the write lands). The wait is bounded so
+    // a stalled backend cannot hold the request thread; the whenComplete handler routes any failure
+    // to the retry queue independently of this wait.
+    awaitBulkCompletion(future, indexName);
+  }
+
+  private void awaitBulkCompletion(CompletableFuture<BulkResponse> future, String indexName) {
+    try {
+      future.get(BULK_AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (InterruptedException interrupted) {
+      Thread.currentThread().interrupt();
+    } catch (TimeoutException timedOut) {
+      LOG.warn(
+          "createEntities bulk for index {} did not complete within {}s; its result will be "
+              + "handled asynchronously and any failure retried",
+          indexName,
+          BULK_AWAIT_TIMEOUT_SECONDS);
+    } catch (ExecutionException | CancellationException failuresAlreadyRetried) {
+      LOG.debug(
+          "createEntities bulk for index {} finished exceptionally; retries were enqueued",
+          indexName,
+          failuresAlreadyRetried);
+    }
   }
 
   @Override

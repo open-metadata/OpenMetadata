@@ -26,7 +26,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
@@ -45,7 +44,6 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useAlertStore } from '../../../hooks/useAlertStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   CreateKnowledgePage,
@@ -68,7 +66,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { alert } = useAlertStore();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
 
@@ -268,7 +265,6 @@ const ContextCenterDashboardPage: FC = () => {
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={
           <Box align="center" className="tw:shrink-0" gap={3}>
@@ -308,10 +304,6 @@ const ContextCenterDashboardPage: FC = () => {
           </Box>
         }
         breadcrumbs={[
-          {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
           {
             label: t('label.dashboard'),
           },

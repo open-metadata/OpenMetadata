@@ -36,6 +36,7 @@ import {
   selectDomain,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -271,8 +272,12 @@ test.describe('Data Product Comprehensive Tests', () => {
         }
 
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 

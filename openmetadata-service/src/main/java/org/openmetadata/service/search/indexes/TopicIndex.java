@@ -6,15 +6,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 import org.openmetadata.schema.entity.data.Topic;
-import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.FlattenSchemaField;
-import org.openmetadata.service.util.FullyQualifiedName;
 
 public class TopicIndex implements DataAssetIndex {
   final Set<String> excludeTopicFields = Set.of("sampleData");
@@ -58,7 +54,8 @@ public class TopicIndex implements DataAssetIndex {
         && topic.getMessageSchema().getSchemaFields() != null
         && !topic.getMessageSchema().getSchemaFields().isEmpty()) {
       List<FlattenSchemaField> flattenFields = new ArrayList<>();
-      parseSchemaFields(topic.getMessageSchema().getSchemaFields(), flattenFields, null);
+      SchemaFieldFlattener.parseSchemaFields(
+          topic.getMessageSchema().getSchemaFields(), flattenFields, null);
 
       List<String> fieldsWithChildrenName = new ArrayList<>();
       Set<List<TagLabel>> childTags = new HashSet<>();
@@ -75,33 +72,6 @@ public class TopicIndex implements DataAssetIndex {
 
     doc.put("messageSchema", topic.getMessageSchema() != null ? topic.getMessageSchema() : null);
     return doc;
-  }
-
-  private void parseSchemaFields(
-      List<Field> fields, List<FlattenSchemaField> flattenSchemaFields, String parentSchemaField) {
-    Optional<String> optParentField =
-        Optional.ofNullable(parentSchemaField).filter(Predicate.not(String::isEmpty));
-    List<TagLabel> tags = new ArrayList<>();
-    for (Field field : fields) {
-      String fieldName = field.getName();
-      if (optParentField.isPresent()) {
-        fieldName = FullyQualifiedName.add(optParentField.get(), fieldName);
-      }
-      if (field.getTags() != null) {
-        tags = field.getTags();
-      }
-
-      FlattenSchemaField flattenSchemaField =
-          FlattenSchemaField.builder().name(fieldName).description(field.getDescription()).build();
-
-      if (!tags.isEmpty()) {
-        flattenSchemaField.setTags(tags);
-      }
-      flattenSchemaFields.add(flattenSchemaField);
-      if (field.getChildren() != null) {
-        parseSchemaFields(field.getChildren(), flattenSchemaFields, field.getName());
-      }
-    }
   }
 
   public static Map<String, Float> getFields() {

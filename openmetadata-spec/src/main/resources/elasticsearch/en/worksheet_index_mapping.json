@@ -266,7 +266,8 @@
         "type": "text"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "spreadsheet": {
         "properties": {
@@ -412,7 +413,8 @@
             "type": "integer"
           },
           "extension": {
-            "type": "flattened"
+            "type": "object",
+            "enabled": false
           },
           "customPropertiesTyped": {
             "type": "nested",

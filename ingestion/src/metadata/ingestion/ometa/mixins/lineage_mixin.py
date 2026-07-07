@@ -248,6 +248,9 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
+                    # `original` mirrors `data`, so build_patch would see no sqlQuery diff. Null it so
+                    # the incoming query is added/updated, while a missing one keeps the stored value.
+                    original.edge.lineageDetails.sqlQuery = None  # pyright: ignore[reportOptionalMemberAccess]
                     # merge the original and new column level lineage
                     data.edge.lineageDetails.columnsLineage = self._merge_column_lineage(
                         original.edge.lineageDetails.columnsLineage,
@@ -313,6 +316,8 @@ class OMetaLineageMixin(Generic[T]):
                         if edge["edge"].get("pipeline")
                         else None
                     )
+                    # sqlQuery is intentionally left out so it defaults to None: that forces build_patch
+                    # to add/update the incoming query. Do not populate it from the stored edge here.
                     original = LineageDetails.model_validate(
                         {
                             "columnsLineage": [
@@ -408,7 +413,7 @@ class OMetaLineageMixin(Generic[T]):
             bool: True if the patch operation is successful, False otherwise.
         """
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
             patch = build_patch(
                 source=original.edge.lineageDetails,
                 destination=updated.edge.lineageDetails,
@@ -441,7 +446,7 @@ class OMetaLineageMixin(Generic[T]):
         updated: LineageDetails,
     ) -> Optional[bool]:  # noqa: UP045
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True}
+            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
             patch = build_patch(
                 source=original,
                 destination=updated,

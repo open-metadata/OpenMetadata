@@ -562,11 +562,6 @@ describe('ServiceConfig', () => {
       render(<ConnectionConfigForm {...mockProps} requireTestConnection />);
     });
 
-    expect(screen.getByTestId('form-builder')).toHaveAttribute(
-      'data-no-validate',
-      'true'
-    );
-
     fireEvent.click(screen.getByTestId('change-valid-form'));
     fireEvent.click(screen.getByTestId('mark-test-connection-success'));
 
@@ -661,6 +656,59 @@ describe('ServiceConfig', () => {
     await act(async () => {
       expect(screen.queryByTestId('ip-address')).not.toBeInTheDocument();
     });
+  });
+
+  it('should add additionalMissingFieldsCount to the count passed to TestConnection', async () => {
+    (getMissingRequiredFieldsCount as jest.Mock).mockReturnValue(2);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm {...mockProps} additionalMissingFieldsCount={1} />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.missingRequiredFieldsCount).toBe(3);
+  });
+
+  it('should call onValidateAdditionalRequiredFields when validating for test connection', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(true);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+    testConnectionProps.onValidateFormRequiredFields();
+
+    expect(onValidateAdditionalRequiredFields).toHaveBeenCalled();
+  });
+
+  it('should return false from form validation when onValidateAdditionalRequiredFields returns false', async () => {
+    const onValidateAdditionalRequiredFields = jest.fn().mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <ConnectionConfigForm
+          {...mockProps}
+          onValidateAdditionalRequiredFields={
+            onValidateAdditionalRequiredFields
+          }
+        />
+      );
+    });
+
+    const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
+
+    expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
   });
 
   it('should render with correct brandName keys', async () => {
