@@ -1,0 +1,133 @@
+{
+  "id": "22222222-2222-4222-8222-222222222201",
+  "name": "customer_profile_tools",
+  "displayName": "Customer Profile Tools",
+  "description": "Approved MCP server exposing read-only customer profile lookup tools for claims and support copilots. PII access is logged and policy-gated.",
+  "serverType": "DataAccess",
+  "transportType": "StreamableHTTP",
+  "protocolVersion": "2025-03-26",
+  "developmentStage": "Production",
+  "deploymentUrl": "https://mcp.acme.example/customer-profile",
+  "documentation": "https://governance.example.com/mcp/customer-profile",
+  "capabilities": {
+    "toolsSupported": true,
+    "resourcesSupported": true,
+    "promptsSupported": false,
+    "loggingSupported": true
+  },
+  "tools": [
+    {
+      "name": "lookup_customer_profile",
+      "displayName": "Lookup Customer Profile",
+      "description": "Returns scoped customer profile attributes for a case or support ticket.",
+      "toolCategory": "DataOperation",
+      "riskLevel": "High",
+      "riskFactors": ["PII access", "Customer account data"],
+      "dataAccess": {
+        "readsData": true,
+        "writesData": false,
+        "deletesData": false,
+        "sensitivityLevel": "Restricted",
+        "piiAccess": true,
+        "dataTypes": ["Customer profile", "Contact data", "Policy metadata"]
+      },
+      "requiredPermissions": ["customer_profile.read"],
+      "sideEffects": false,
+      "idempotent": true,
+      "rateLimitPerMinute": 120,
+      "usageCount": 42100,
+      "lastUsedAt": 1775606400000
+    }
+  ],
+  "resources": [
+    {
+      "name": "customer_profile_schema",
+      "displayName": "Customer Profile Schema",
+      "description": "Schema contract for profile fields exposed to AI applications.",
+      "resourceType": "API",
+      "uri": "mcp://customer-profile/schema",
+      "mimeType": "application/json",
+      "accessLevel": "ReadOnly",
+      "dataClassification": {
+        "sensitivityLevel": "Restricted",
+        "containsPII": true,
+        "dataCategories": ["Customer contact", "Policy metadata"],
+        "complianceRequirements": ["DPIA", "Audit logging"]
+      }
+    }
+  ],
+  "governanceMetadata": {
+    "registrationStatus": "Approved",
+    "registeredBy": "ai-governance@acme.example",
+    "registeredAt": 1773100800000,
+    "approvedBy": "risk-council@acme.example",
+    "approvedAt": 1775001600000,
+    "riskAssessment": {
+      "riskLevel": "High",
+      "riskFactors": ["PII access", "Used by customer-facing copilots"],
+      "mitigations": ["Field-level authorization", "Prompt redaction", "Full audit logging"],
+      "assessedBy": "security@acme.example",
+      "assessedAt": 1775001600000
+    },
+    "dataClassification": {
+      "accessesPII": true,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Customer profile", "Contact data"],
+      "dataRetentionPeriod": "180 days"
+    },
+    "aiCompliance": {
+      "complianceRecords": [
+        {
+          "framework": "EU_AI_Act",
+          "assessedBy": "model-risk@acme.example",
+          "assessedAt": 1775001600000,
+          "nextReviewDate": 1784073600000,
+          "status": "PartiallyCompliant",
+          "euAIAct": {
+            "riskClassification": "High",
+            "riskRationale": "Tooling supports essential private-service decisions and exposes PII.",
+            "highRiskSystems": {
+              "essentialPrivateServices": true
+            }
+          }
+        }
+      ]
+    }
+  },
+  "dataAccessSummary": {
+    "accessPatterns": ["Read"],
+    "sensitivityLevel": "Restricted",
+    "piiAccess": true,
+    "externalApiAccess": false,
+    "fileSystemAccess": false,
+    "networkAccess": true,
+    "databaseAccess": false
+  },
+  "usageMetrics": {
+    "totalInvocations": 42100,
+    "successRate": 0.991,
+    "averageLatencyMs": 145,
+    "p95LatencyMs": 410,
+    "lastInvokedAt": 1775606400000,
+    "uniqueUsers": 132,
+    "dailyActiveUsers": 48
+  },
+  "securityMetrics": {
+    "authenticationRequired": true,
+    "authorizationEnforced": true,
+    "auditLoggingEnabled": true,
+    "encryptionInTransit": true,
+    "sandboxed": true,
+    "secretsManagement": "Vault"
+  },
+  "tags": [
+    {
+      "tagFQN": "PII.Sensitive",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

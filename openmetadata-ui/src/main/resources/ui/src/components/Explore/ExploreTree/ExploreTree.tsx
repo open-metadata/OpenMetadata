@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
@@ -129,6 +130,7 @@ const ExploreTree = ({
   // count refresh.
   const treeSelectRef = useRef(false);
   const { t } = useTranslation();
+  const { isTourOpen } = useTourProvider();
   const { tab } = useRequiredParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -167,7 +169,11 @@ const ExploreTree = ({
   const onLoadData: TreeProps['loadData'] = useCallback(
     async (treeNode: Parameters<NonNullable<TreeProps['loadData']>>[0]) => {
       try {
-        if (treeNode.children || (treeNode as ExploreTreeNode).disabled) {
+        if (
+          isTourOpen ||
+          treeNode.children ||
+          (treeNode as ExploreTreeNode).disabled
+        ) {
           return;
         }
 
@@ -248,10 +254,7 @@ const ExploreTree = ({
           let type = null;
           let logo = undefined;
           if (isEntityType) {
-            const isColumn = bucket.key === EntityType.TABLE_COLUMN;
-            const iconClass = classNames('service-icon w-4 h-4', {
-              'text-grey-500': isColumn,
-            });
+            const iconClass = 'service-icon w-4 h-4 tw:text-quaternary';
             logo = searchClassBase.getEntityIcon(bucket.key, iconClass) ?? (
               <></>
             );
@@ -268,7 +271,7 @@ const ExploreTree = ({
             type = 'Database';
             logo = searchClassBase.getEntityIcon(
               'database',
-              'service-icon w-4 h-4'
+              'service-icon w-4 h-4 tw:text-quaternary'
             ) ?? <></>;
           } else if (
             bucketToFind === EntityFields.DATABASE_SCHEMA_DISPLAY_NAME
@@ -276,7 +279,7 @@ const ExploreTree = ({
             type = 'Database Schema';
             logo = searchClassBase.getEntityIcon(
               'databaseSchema',
-              'service-icon w-4 h-4'
+              'service-icon w-4 h-4 tw:text-quaternary'
             ) ?? <></>;
           } else if (bucketToFind === EntityFields.SERVICE) {
             logo = treeNode.icon;
@@ -326,6 +329,7 @@ const ExploreTree = ({
       }
     },
     [
+      isTourOpen,
       updateTreeData,
       searchQueryParam,
       defaultServiceType,
@@ -395,6 +399,13 @@ const ExploreTree = ({
   );
 
   const fetchEntityCounts = useCallback(async () => {
+    // Explore is mock-driven during the tour; skip the real aggregation calls.
+    if (isTourOpen) {
+      setIsLoading(false);
+
+      return;
+    }
+
     const fetchSeq = ++countFetchSeqRef.current;
     const isLatestFetch = () => fetchSeq === countFetchSeqRef.current;
     // A browse click keeps the expanded subtree; anything else (dropdown filter,
@@ -498,6 +509,7 @@ const ExploreTree = ({
       }
     }
   }, [
+    isTourOpen,
     searchQueryParam,
     setTreeData,
     parsedSearch.quickFilter,
@@ -511,6 +523,15 @@ const ExploreTree = ({
       fetchEntityCounts();
     }
   }, []);
+
+  const previousIsTourOpenRef = useRef(isTourOpen);
+  useEffect(() => {
+    // Fetch the counts skipped during the tour once it closes.
+    if (previousIsTourOpenRef.current && !isTourOpen) {
+      fetchEntityCounts();
+    }
+    previousIsTourOpenRef.current = isTourOpen;
+  }, [isTourOpen, fetchEntityCounts]);
 
   const filterSignature = useMemo(
     () =>
