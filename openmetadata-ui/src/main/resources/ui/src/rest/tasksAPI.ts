@@ -78,6 +78,8 @@ interface TaskScopedListParams {
   limit?: number;
   before?: string;
   after?: string;
+  startTs?: number;
+  endTs?: number;
   include?: Include;
 }
 
@@ -100,6 +102,8 @@ export interface ListTasksParams {
   limit?: number;
   before?: string;
   after?: string;
+  startTs?: number;
+  endTs?: number;
   include?: Include;
 }
 
