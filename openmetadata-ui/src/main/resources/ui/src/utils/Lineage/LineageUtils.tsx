@@ -48,7 +48,7 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   },
 ];
 
-export const getTruncatedPath = (path: string) => {
+export const renderTruncatedPath = (path: string) => {
   if (!path) {
     return path;
   }
