@@ -250,29 +250,29 @@ def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]
 _OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
 
 
-def get_table_view_names(connection, schema=None):
+def get_table_view_names(connection) -> Evidence:
     """Probe that datasets and their objects can be enumerated for the project.
 
-    Iterates the datasets visible to the connection and, for each, attempts to
-    list a single object. A ``NotFound`` on an individual dataset is tolerated -
-    the dataset can be dropped between listing datasets and listing its tables
-    (https://github.com/googleapis/python-bigquery-sqlalchemy/issues/105). A
-    listing failure that is not that race (e.g. ``Forbidden``) propagates so the
-    step fails and is classified.
+    Streams the datasets visible to the connection and, for each, attempts to list
+    a single object. A ``NotFound`` on an individual dataset is tolerated - the
+    dataset can be dropped between listing datasets and listing its tables
+    (https://github.com/googleapis/python-bigquery-sqlalchemy/issues/105). A listing
+    failure that is not that race (e.g. ``Forbidden``) propagates so the step fails
+    and is classified. The dataset iterator is consumed lazily so a project with
+    many datasets is not fully materialized just to report the count.
     """
+    dataset_count = 0
     with connection.connect() as conn:
         client = conn.connection._client
-        datasets = list(client.list_datasets())
-        for dataset in datasets:
-            if schema is not None and schema != dataset.dataset_id:
-                continue
+        for dataset in client.list_datasets():
+            dataset_count += 1
             try:
                 for table in client.list_tables(dataset.reference, page_size=1):
                     if table.table_type in _OBJECT_TYPES:
                         break
             except NotFound:
                 continue
-    return Evidence(summary=f"{len(datasets)} datasets enumerated")
+    return Evidence(summary=f"{dataset_count} datasets enumerated")
 
 
 class BigQueryChecks:
