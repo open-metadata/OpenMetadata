@@ -251,6 +251,10 @@ def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]
 _OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
 
 
+def _enumerated(count: int, noun: str) -> str:
+    return f"{count} {noun if count == 1 else noun + 's'} enumerated"
+
+
 def probe_table_view_enumeration(connection: Engine) -> Evidence:
     """Probe that datasets and their objects can be enumerated.
 
@@ -269,7 +273,7 @@ def probe_table_view_enumeration(connection: Engine) -> Evidence:
                         break
             except NotFound:
                 continue
-    return Evidence(summary=f"{dataset_count} datasets enumerated")
+    return Evidence(summary=_enumerated(dataset_count, "dataset"))
 
 
 class BigQueryChecks:
@@ -359,7 +363,7 @@ class BigQueryChecks:
             parent = f"projects/{project_id}/locations/{location}"
             for taxonomy in client.list_taxonomies(parent=parent):
                 tag_count += sum(1 for _ in client.list_policy_tags(parent=taxonomy.name))
-        return Evidence(summary=f"{tag_count} policy tags enumerated")
+        return Evidence(summary=_enumerated(tag_count, "policy tag"))
 
 
 class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):

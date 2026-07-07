@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.ingestion.source.database.bigquery.connection import (
     BIGQUERY_ERRORS,
     BigQueryChecks,
+    _enumerated,
     probe_table_view_enumeration,
 )
 from metadata.utils.credentials import InvalidPrivateKeyException
@@ -234,4 +235,10 @@ def test_probe_table_view_enumeration_tolerates_deleted_dataset():
     bq_client.list_datasets.return_value = [dataset]
     bq_client.list_tables.side_effect = NotFound("404 Not found: Dataset was deleted")
     evidence = probe_table_view_enumeration(engine)
-    assert evidence.summary == "1 datasets enumerated"
+    assert evidence.summary == "1 dataset enumerated"
+
+
+def test_enumerated_pluralizes_by_count():
+    assert _enumerated(1, "dataset") == "1 dataset enumerated"
+    assert _enumerated(3, "dataset") == "3 datasets enumerated"
+    assert _enumerated(1, "policy tag") == "1 policy tag enumerated"
