@@ -84,6 +84,18 @@ def test_forbidden_message_is_classified():
     assert DATABRICKS_ERRORS.classify(error).title == "Access denied"
 
 
+def test_malformed_http_path_is_classified():
+    # A bad httpPath fails at CheckAccess with MALFORMED_REQUEST; the gate then
+    # short-circuits the rest, so this must carry a diagnosis rather than a raw error.
+    error = _SqlAlchemyError(
+        Exception(
+            "MALFORMED_REQUEST: Path /sql/1.0/warehouses/39c390db3a5e19e must match pattern "
+            "/sql/1.0/endpoints/<endpointId> or /sql/1.0/warehouses/<warehouseId>"
+        )
+    )
+    assert DATABRICKS_ERRORS.classify(error).title == "Invalid HTTP path"
+
+
 def test_permission_denied_is_classified():
     error = _SqlAlchemyError(Exception("[PERMISSION_DENIED] User does not have SELECT on system.access.table_lineage"))
     assert DATABRICKS_ERRORS.classify(error).title == "Insufficient privileges"

@@ -108,6 +108,12 @@ DATABRICKS_ERRORS = ErrorPack(
         fix="The workspace returned 403 Forbidden. Verify the token's user is entitled to the "
         "workspace and the configured HTTP path / SQL warehouse.",
     ),
+    when(Matchers.contains("malformed_request")).diagnose(
+        "Invalid HTTP path",
+        fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
+        "Details in Databricks - it must look like /sql/1.0/warehouses/<warehouseId> or "
+        "/sql/1.0/endpoints/<endpointId>.",
+    ),
     when(Matchers.contains("no_such_catalog")).diagnose(
         "Catalog not found",
         fix="The configured catalog does not exist or is not visible to the token's user. Verify "
