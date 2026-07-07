@@ -300,7 +300,7 @@ class DefaultToolContextTest {
                 Map.of("error", "server error", "statusCode", 500)))
         .isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
     assertThat(DefaultToolContext.resultErrorCategory(Map.of("error", "bad input")))
-        .isEqualTo(McpToolCallUsage.ErrorCategory.VALIDATION);
+        .isEqualTo(McpToolCallUsage.ErrorCategory.INTERNAL);
   }
 
   @Test

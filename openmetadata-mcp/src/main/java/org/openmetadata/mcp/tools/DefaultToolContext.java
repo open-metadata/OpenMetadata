@@ -215,13 +215,15 @@ public class DefaultToolContext {
   }
 
   private static McpToolCallUsage.ErrorCategory categoryForStatus(Object statusCode) {
-    int code = statusCode instanceof Number number ? number.intValue() : STATUS_BAD_REQUEST;
-    return switch (code) {
+    if (!(statusCode instanceof Number number)) {
+      return McpToolCallUsage.ErrorCategory.INTERNAL;
+    }
+    return switch (number.intValue()) {
+      case STATUS_BAD_REQUEST, STATUS_NOT_FOUND -> McpToolCallUsage.ErrorCategory.VALIDATION;
       case STATUS_TOO_MANY_REQUESTS -> McpToolCallUsage.ErrorCategory.RATE_LIMIT;
       case STATUS_FORBIDDEN -> McpToolCallUsage.ErrorCategory.AUTH;
       case STATUS_GATEWAY_TIMEOUT -> McpToolCallUsage.ErrorCategory.TIMEOUT;
-      case STATUS_INTERNAL_ERROR -> McpToolCallUsage.ErrorCategory.INTERNAL;
-      default -> McpToolCallUsage.ErrorCategory.VALIDATION;
+      default -> McpToolCallUsage.ErrorCategory.INTERNAL;
     };
   }
 
