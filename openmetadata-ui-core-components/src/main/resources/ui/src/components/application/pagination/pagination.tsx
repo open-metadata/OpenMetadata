@@ -74,7 +74,7 @@ const compactPageItemClassName = ({ isSelected }: { isSelected: boolean }) =>
 
 const compactPageInputClassName = cx(
   compactPageControlClassName,
-  'tw:w-6 tw:min-w-6 tw:border tw:border-primary tw:bg-primary tw:px-0 tw:text-center tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary tw:shadow-xs tw:outline-none',
+  'tw:min-w-6 tw:border tw:border-primary tw:bg-primary tw:px-0 tw:text-center tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary tw:shadow-xs tw:outline-none',
   'tw:focus-visible:outline-none'
 );
 
@@ -416,6 +416,8 @@ export const PaginationCardWithControls = ({
   const totalPages = Math.max(total, 1);
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const [pageInput, setPageInput] = useState(String(currentPage));
+  // Add one character of room so the current input value does not clip.
+  const pageInputWidth = `${Math.max(pageInput.length, 2) + 1}ch`;
   const pageSizeItems = useMemo(
     () =>
       pageSizeOptions.map((option) => ({
@@ -501,6 +503,7 @@ export const PaginationCardWithControls = ({
             inputMode="numeric"
             max={totalPages}
             min={1}
+            style={{ width: pageInputWidth }}
             type="text"
             value={pageInput}
             onBlur={commitPageInput}
@@ -555,9 +558,9 @@ export const PaginationCardWithControls = ({
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Rows per page</span>
+          <span className={compactTextClassName}>Records</span>
           <Select
-            aria-label="Rows per page"
+            aria-label="Records"
             className={compactRowsPerPageSelectClassName}
             data-testid="rows-per-page-dropdown"
             fontSize="xs"

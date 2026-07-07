@@ -841,7 +841,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
         secondPanel={{
           flex: 0.8,
-          minWidth: 800,
+          minWidth: 812,
           children: (
             <Box className="tw:h-full" colGap={3}>
               <div className="h-full tw:flex tw:min-w-[400px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
