@@ -12,7 +12,7 @@
  */
 
 import type { FC, ReactNode } from 'react';
-import { Fragment } from 'react';
+import { Fragment, useEffect } from 'react';
 import type { RegisterOptions } from 'react-hook-form';
 import { useFormContext } from 'react-hook-form';
 import { Alert } from '@/components/base/alert/alert';
@@ -20,6 +20,7 @@ import { Box } from '@/components/base/box/box';
 import { Divider } from '@/components/base/divider/divider';
 import { FormField } from '@/components/base/form/hook-form';
 import { HintText } from '@/components/base/input/hint-text';
+import { useFieldDocRegistry } from './field-doc-context';
 import { type FieldProp, HelperTextType } from './form-field.types';
 import { FormItemLabel } from './form-item-label';
 import { renderFieldElement } from './render-field-element';
@@ -42,7 +43,23 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     effectiveRules.required = true;
   }
 
-  return (
+  const { enabled, register, unregister, setActive } = useFieldDocRegistry();
+  const hasDoc =
+    enabled && typeof field.doc === 'string' && field.doc.length > 0;
+
+  useEffect(() => {
+    if (!hasDoc) {
+      return undefined;
+    }
+
+    register(field.name, { label: field.label, doc: field.doc as string });
+
+    return () => unregister(field.name);
+  }, [hasDoc, field.name, field.label, field.doc, register, unregister]);
+
+  const handleFocusCapture = hasDoc ? () => setActive(field.name) : undefined;
+
+  const rendered = (
     <FormField control={control} name={name} rules={effectiveRules}>
       {(controller) => {
         const { fieldState } = controller;
@@ -81,6 +98,14 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
         );
       }}
     </FormField>
+  );
+
+  return hasDoc ? (
+    <div className="tw:contents" onFocusCapture={handleFocusCapture}>
+      {rendered}
+    </div>
+  ) : (
+    rendered
   );
 };
 
