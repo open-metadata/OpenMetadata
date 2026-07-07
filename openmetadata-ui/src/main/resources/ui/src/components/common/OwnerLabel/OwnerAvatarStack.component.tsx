@@ -125,7 +125,7 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         className="owner-avatar-stack-row tw:max-w-40"
         data-testid="owner-link"
         to={ownerPath}>
-        <div className='tw:shrink-0'>
+        <div className="tw:shrink-0">
           {isTeam ? renderTeamBadge(owner) : renderUserBadge(owner)}
         </div>
         <Typography

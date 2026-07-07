@@ -70,9 +70,9 @@ import {
 import './TagsForm.less';
 import {
   RenameFormProps,
-  TAG_FORM_DEFAULTS,
   TagFormSelectItem,
   TagFormValues,
+  TAG_FORM_DEFAULTS,
 } from './TagsPage.interface';
 
 const mapEntityReferenceToSelectItem = (
@@ -434,9 +434,7 @@ const TagsForm = ({
   }, [t, disableDisplayNameField]);
 
   const iconField = useMemo(
-    () => 
-      getIconField(selectedColor, iconOptions as TagFormSelectItem[], t)
-    ,
+    () => getIconField(selectedColor, iconOptions as TagFormSelectItem[], t),
     [t, selectedColor, iconOptions]
   );
 

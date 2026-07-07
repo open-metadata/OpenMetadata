@@ -255,8 +255,11 @@ export async function validateForm(page: Page) {
 
   // min length validation
   await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
-   await page.getByTestId('name').getByRole('textbox').clear();
-  await page.getByTestId('name').getByRole('textbox').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.getByTestId('name').getByRole('textbox').clear();
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
 
   await page.waitForLoadState('domcontentloaded');
 
@@ -266,7 +269,10 @@ export async function validateForm(page: Page) {
 
   // max length validation
   await page.getByTestId('name').getByRole('textbox').clear();
-  await page.getByTestId('name').getByRole('textbox').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
 
   await page.waitForLoadState('domcontentloaded');
 
@@ -276,7 +282,10 @@ export async function validateForm(page: Page) {
 
   // with special char validation
   await page.getByTestId('name').getByRole('textbox').clear();
-  await page.getByTestId('name').getByRole('textbox').fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page
+    .getByTestId('name')
+    .getByRole('textbox')
+    .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
   await page.waitForLoadState('domcontentloaded');
 
   await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
@@ -495,15 +504,20 @@ export const LIMITED_USER_RULES: PolicyRulesType[] = [
 
 export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
-  await adminPage.getByTestId('displayName').getByRole('textbox').fill(NEW_TAG.displayName);
+  await adminPage
+    .getByTestId('displayName')
+    .getByRole('textbox')
+    .fill(NEW_TAG.displayName);
   await adminPage.locator(descriptionBox).fill(NEW_TAG.description);
   await adminPage.getByTestId('icon-picker-btn').click();
-  await adminPage.getByRole('button', { name: 'Cube01' }).click()
+  await adminPage.getByRole('button', { name: 'Cube01' }).click();
   await adminPage
     .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
     .click();
 
-  const domainInput = adminPage.getByTestId('domain-select').getByRole('combobox');
+  const domainInput = adminPage
+    .getByTestId('domain-select')
+    .getByRole('combobox');
   await domainInput.scrollIntoViewIfNeeded();
   await domainInput.waitFor({ state: 'visible' });
   await domainInput.click();

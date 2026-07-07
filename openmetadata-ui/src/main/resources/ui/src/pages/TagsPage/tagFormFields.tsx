@@ -59,10 +59,7 @@ export const COLOR_FIELD: FieldProp = {
   type: FieldTypes.COLOR_PICKER,
 };
 
-export const getNameField = (
-  disabled: boolean,
-  t: TFunction
-): FieldProp => ({
+export const getNameField = (disabled: boolean, t: TFunction): FieldProp => ({
   name: 'name',
   id: 'root/name',
   label: 'label.name',
