@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
