@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   Divider,
   Tooltip,
@@ -250,8 +251,8 @@ const Description = ({
   );
 
   const header = (
-    <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
-      <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2">
+    <Box align="center" gap={2} justify="between" wrap="wrap">
+      <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
         <Typography
           as="span"
           className="tw:text-text-secondary"
@@ -265,21 +266,23 @@ const Description = ({
           showTimestamp={false}
         />
         {showActions && actionButtons}
-      </div>
+      </Box>
       {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
-    </div>
+    </Box>
   );
 
   return (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
-      <div
+      <Box
         className={classNames(
           wrapInCard
-            ? 'tw:flex tw:flex-col tw:gap-4 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
-            : 'tw:flex tw:flex-col tw:gap-4',
+            ? 'tw:rounded-[10px] tw:border tw:border-secondary tw:bg-bg-primary tw:p-[18px] tw:shadow-xs'
+            : undefined,
           className
         )}
-        data-testid="asset-description-container">
+        data-testid="asset-description-container"
+        direction="col"
+        gap={4}>
         {header}
         <div className="tw:[&_.tiptap.ProseMirror]:text-xs tw:[&_.tiptap.ProseMirror]:leading-[18px]">
           {descriptionContent}
@@ -303,7 +306,7 @@ const Description = ({
           onCancel={handleCancelEditDescription}
           onSave={handleDescriptionChange}
         />
-      </div>
+      </Box>
     </EntityAttachmentProvider>
   );
 };
