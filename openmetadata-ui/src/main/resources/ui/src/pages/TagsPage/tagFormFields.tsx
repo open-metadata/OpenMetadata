@@ -15,20 +15,26 @@ import {
   FieldTypes,
   HelperTextType,
 } from '@openmetadata/ui-core-components';
+import { TFunction } from 'i18next';
 import { ReactNode } from 'react';
 import { DEFAULT_TAG_ICON } from '../../components/common/IconPicker';
+import {
+  NAME_LENGTH_REGEX,
+  TAG_NAME_REGEX,
+} from '../../constants/regex.constants';
 import { TagFormSelectItem } from './TagsPage.interface';
 
 export const getIconField = (
   selectedColor?: string,
-  iconOptions?: TagFormSelectItem[]
+  iconOptions?: TagFormSelectItem[],
+  t: TFunction
 ): FieldProp => ({
   name: 'style.iconURL',
   id: 'root/style/iconURL',
-  label: 'label.icon',
+  label: t('label.icon'),
   required: false,
   type: FieldTypes.ICON_PICKER,
-  placeholder: 'label.icon-url',
+  placeholder: t('label.icon-url'),
   props: {
     'data-testid': 'icon-picker-btn',
     allowUrl: true,
@@ -36,11 +42,11 @@ export const getIconField = (
     defaultIcon: DEFAULT_TAG_ICON,
     options: iconOptions ?? [],
     labels: {
-      customIconUrl: 'label.icon-url',
-      emptyState: 'message.no-entity-available',
-      enterIconUrl: 'label.enter-entity',
-      iconsTab: 'label.icon-plural',
-      urlTab: 'label.url',
+      customIconUrl: t('label.icon-url'),
+      emptyState: t('message.no-entity-available'),
+      enterIconUrl: t('label.enter-entity'),
+      iconsTab: t('label.icon-plural'),
+      urlTab: t('label.url'),
     },
   },
 });
@@ -53,13 +59,33 @@ export const COLOR_FIELD: FieldProp = {
   type: FieldTypes.COLOR_PICKER,
 };
 
-export const getNameField = (disabled: boolean): FieldProp => ({
+export const getNameField = (
+  disabled: boolean,
+  t: TFunction
+): FieldProp => ({
   name: 'name',
   id: 'root/name',
   label: 'label.name',
   required: true,
   placeholder: 'label.name',
   type: FieldTypes.TEXT,
+  rules: {
+    required: t('label.field-required', {
+      field: t('label.name'),
+    }) as string,
+    validate: {
+      length: (value: string) =>
+        NAME_LENGTH_REGEX.test(value) ||
+        (t('message.entity-size-in-between', {
+          entity: t('label.name'),
+          max: 64,
+          min: 2,
+        }) as string),
+      pattern: (value: string) =>
+        TAG_NAME_REGEX.test(value) ||
+        (t('message.entity-name-validation') as string),
+    },
+  },
   props: {
     'data-testid': 'name',
     disabled,
@@ -80,12 +106,12 @@ export const getDisplayNameField = (disabled: boolean): FieldProp => ({
 });
 
 export const getOwnerField = ({
-  multiple,
+  canAddMultipleUserOwners,
   options,
   onFocus,
   onSearchChange,
 }: {
-  multiple: boolean;
+  canAddMultipleUserOwners: boolean;
   options: TagFormSelectItem[];
   onFocus: () => void;
   onSearchChange: (searchText: string) => void;
@@ -97,7 +123,7 @@ export const getOwnerField = ({
   type: FieldTypes.USER_TEAM_SELECT_INPUT,
   props: {
     filterOption: () => true,
-    multiple,
+    multiple: canAddMultipleUserOwners,
     onFocus,
     onSearchChange,
     options,
@@ -131,10 +157,8 @@ export const getDomainField = ({
 });
 
 export const getDisabledField = ({
-  initialValue: _initialValue,
   disabled,
 }: {
-  initialValue: boolean;
   disabled: boolean;
 }): FieldProp => ({
   name: 'disabled',

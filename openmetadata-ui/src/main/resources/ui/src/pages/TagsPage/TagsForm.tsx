@@ -25,7 +25,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Users01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -63,9 +70,9 @@ import {
 import './TagsForm.less';
 import {
   RenameFormProps,
+  TAG_FORM_DEFAULTS,
   TagFormSelectItem,
   TagFormValues,
-  TAG_FORM_DEFAULTS,
 } from './TagsPage.interface';
 
 const mapEntityReferenceToSelectItem = (
@@ -84,6 +91,48 @@ const convertToTagFormValues = (
   owners: (entity.owners ?? []).map(mapEntityReferenceToSelectItem),
   domains: (entity.domains ?? []).map(mapEntityReferenceToSelectItem),
 });
+
+const toItemArray = (
+  value: TagFormSelectItem | TagFormSelectItem[] | null | undefined
+): TagFormSelectItem[] => {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+};
+
+const resolveOwnerSelection = (
+  previousItems: TagFormSelectItem[],
+  nextItems: TagFormSelectItem[],
+  canAddMultipleTeamOwner: boolean
+): TagFormSelectItem[] => {
+  if (canAddMultipleTeamOwner || nextItems.length <= previousItems.length) {
+    return nextItems;
+  }
+
+  const addedItem = nextItems.find(
+    (item) => !previousItems.some((prevItem) => prevItem.id === item.id)
+  );
+
+  if (!addedItem) {
+    return nextItems;
+  }
+
+  const addedType = (addedItem.value as EntityReference).type;
+
+  if (addedType === EntityType.TEAM) {
+    return [addedItem];
+  }
+
+  if (addedType === EntityType.USER) {
+    return nextItems.filter(
+      (item) => (item.value as EntityReference).type !== EntityType.TEAM
+    );
+  }
+
+  return nextItems;
+};
 
 const TagsForm = ({
   form,
@@ -109,6 +158,27 @@ const TagsForm = ({
     control: form.control,
     name: 'style.color',
   });
+
+  const ownersValue = useWatch({
+    control: form.control,
+    name: 'owners',
+  });
+  const previousOwnersRef = useRef<TagFormSelectItem[]>([]);
+
+  useEffect(() => {
+    const nextItems = toItemArray(ownersValue);
+    const corrected = resolveOwnerSelection(
+      previousOwnersRef.current,
+      nextItems,
+      entityRules.canAddMultipleTeamOwner
+    );
+
+    previousOwnersRef.current = corrected;
+
+    if (corrected !== nextItems) {
+      form.setValue('owners', corrected, { shouldDirty: true });
+    }
+  }, [ownersValue, entityRules.canAddMultipleTeamOwner, form]);
 
   useEffect(() => {
     if (initialValues) {
@@ -300,10 +370,10 @@ const TagsForm = ({
   const handleSave = useCallback(
     async (formData: TagFormValues) => {
       const { id: _id, ...rest } = formData;
-      const owners = (rest.owners ?? []).map(
+      const owners = toItemArray(rest.owners).map(
         (item) => item.value as EntityReference
       );
-      const domainItems = rest.domains ?? [];
+      const domainItems = toItemArray(rest.domains);
 
       let domainsData;
       if (domainItems.length > 0) {
@@ -344,7 +414,7 @@ const TagsForm = ({
   }, [form, handleSave, submitRef]);
 
   const nameField = useMemo(() => {
-    const field = getNameField(disableNameField || false);
+    const field = getNameField(disableNameField || false, t);
 
     return {
       ...field,
@@ -364,10 +434,9 @@ const TagsForm = ({
   }, [t, disableDisplayNameField]);
 
   const iconField = useMemo(
-    () => ({
-      ...getIconField(selectedColor, iconOptions as TagFormSelectItem[]),
-      label: t('label.icon'),
-    }),
+    () => 
+      getIconField(selectedColor, iconOptions as TagFormSelectItem[], t)
+    ,
     [t, selectedColor, iconOptions]
   );
 
@@ -382,9 +451,7 @@ const TagsForm = ({
   const ownerField = useMemo(
     (): FieldProp => ({
       ...getOwnerField({
-        multiple:
-          entityRules.canAddMultipleUserOwners &&
-          entityRules.canAddMultipleTeamOwner,
+        canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
         options: userTeamOptions,
         onFocus: handleUserTeamFocus,
         onSearchChange: (searchText: string) =>
@@ -395,7 +462,6 @@ const TagsForm = ({
     [
       t,
       entityRules.canAddMultipleUserOwners,
-      entityRules.canAddMultipleTeamOwner,
       userTeamOptions,
       handleUserTeamFocus,
       debouncedUserTeamSearch,
@@ -424,7 +490,6 @@ const TagsForm = ({
 
   const disabledField = useMemo(() => {
     const field = getDisabledField({
-      initialValue: (initialValues as Tag)?.disabled ?? false,
       disabled: disableDisabledField,
     });
 

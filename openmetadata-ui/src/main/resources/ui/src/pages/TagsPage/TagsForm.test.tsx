@@ -13,7 +13,6 @@
 
 import { render, screen } from '@testing-library/react';
 import { useForm } from 'react-hook-form';
-import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import TagsForm from './TagsForm';
 import { TagFormValues } from './TagsPage.interface';
 
@@ -188,7 +187,10 @@ jest.mock('../../rest/domainAPI', () => ({
 const mockSubmit = jest.fn();
 
 const TEST_INITIAL_VALUES = {
-  ...DEFAULT_FORM_VALUE,
+  id: '',
+  name: '',
+  displayName: '',
+  description: '',
   autoClassificationConfig: {
     enabled: false,
   },
