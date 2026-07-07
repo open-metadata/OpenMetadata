@@ -1,0 +1,27 @@
+{
+  "name": "meeting-recap-slack",
+  "displayName": "Meeting Recap (Slack bot)",
+  "description": "Slack bot that posts meeting summaries to channels. Auto-detected from outbound API traffic to api.openai.com — no owner registered, processing PII without a DPA on file.",
+  "applicationType": "Chatbot",
+  "governanceMetadata": {
+    "registrationStatus": "Unregistered",
+    "riskAssessment": {
+      "riskLevel": "High",
+      "riskFactors": ["Unauthorized PII processing", "No DPA"]
+    },
+    "dataClassification": {
+      "accessesPII": true,
+      "accessesSensitiveData": false
+    },
+    "detection": {
+      "source": "OutboundApiTraffic",
+      "detectedAt": 1781136000000,
+      "sourceDetails": "api.openai.com from #marketing-eng workspace",
+      "suspectedUser": "mark.jensen@",
+      "suspectedTeam": "Marketing Eng",
+      "volume7d": "~1,820 calls / 7d",
+      "flags": ["PiiWithoutDpa", "NoOwner"],
+      "severity": "High"
+    }
+  }
+}

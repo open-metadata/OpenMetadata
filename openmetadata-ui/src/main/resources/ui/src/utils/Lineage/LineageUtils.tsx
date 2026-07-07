@@ -24,12 +24,12 @@ export const LINEAGE_IMPACT_OPTIONS = [
   {
     label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
-    icon: <TableIcon />,
+    icon: TableIcon,
   },
   {
     label: i18n.t('label.column-level'),
     key: EImpactLevel.ColumnLevel,
-    icon: <ColumnIcon />,
+    icon: ColumnIcon,
   },
 ];
 

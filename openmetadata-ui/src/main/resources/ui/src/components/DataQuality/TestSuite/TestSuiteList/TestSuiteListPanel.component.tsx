@@ -102,6 +102,7 @@ export const TestSuiteListPanel = ({
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
             icon={SearchLg}
+            inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {
               entity:
                 subTab === DataQualitySubTabs.TABLE_SUITES

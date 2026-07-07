@@ -145,13 +145,18 @@ export const EntityExportModalProvider = ({
     exportOnErrorRef.current = exportData.onError;
     try {
       if (exportType !== ExportTypes.CSV) {
-        // Force React to flush the loading state to the DOM before the heavy
-        // toPng work starts — html-to-image does synchronous DOM cloning that
-        // blocks the event loop and would otherwise delay the spinner. Only
-        // needed for non-CSV (image) paths; CSV uses async websocket flow.
+        // Flush the loading state, then wait for the browser to actually paint
+        // it before the heavy toPng work starts — html-to-image does synchronous
+        // DOM cloning that blocks the event loop, so without a paint the
+        // disabled/loading button would only render once the export is already
+        // done. Only needed for non-CSV (image) paths; CSV uses the async
+        // websocket flow.
         flushSync(() => {
           setDownloading(true);
         });
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+        );
 
         await exportUtilClassBase.exportMethodBasedOnType({
           exportType,
@@ -464,9 +469,7 @@ export const EntityExportModalProvider = ({
                     color="primary"
                     data-testid="submit-button"
                     isDisabled={downloading}
-                    isLoading={
-                      selectedExportType !== ExportTypes.CSV && downloading
-                    }
+                    isLoading={downloading}
                     size="lg"
                     onClick={() =>
                       handleExport({ fileName, exportType: selectedExportType })
