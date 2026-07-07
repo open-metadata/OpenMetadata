@@ -91,14 +91,25 @@ const normalizeValue = (value: unknown): unknown => {
 
 export const normalizeParamsForPayload = (
   rawParams: Record<string, unknown> | undefined,
-  _definition?: TestDefinition
+  definition?: TestDefinition
 ): Record<string, NormalizedParamValue> | undefined => {
   if (!rawParams) {
     return undefined;
   }
 
+  // Keep only params that belong to the selected definition. RHF (unlike the
+  // legacy antd `preserve={false}` form) retains values from previously
+  // selected test types, so without this filter stale params leak into the
+  // payload and the API rejects them ("parameter is not defined").
+  const allowedNames = definition?.parameterDefinition
+    ? new Set(definition.parameterDefinition.map((param) => param.name))
+    : undefined;
+
   return Object.entries(rawParams).reduce((result, [key, value]) => {
     const literalKey = restoreParamName(key);
+    if (allowedNames && !allowedNames.has(literalKey)) {
+      return result;
+    }
     result[literalKey] = normalizeValue(value) as NormalizedParamValue;
 
     return result;

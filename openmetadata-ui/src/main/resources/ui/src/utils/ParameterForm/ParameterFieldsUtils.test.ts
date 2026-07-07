@@ -144,9 +144,11 @@ describe('normalizeParamsForPayload', () => {
       },
       {
         parameterDefinition: [
+          { name: 'table2', dataType: TestDataType.String },
           { name: 'keyColumns', dataType: TestDataType.Array },
           { name: 'table2.keyColumns', dataType: TestDataType.Array },
           { name: 'useColumns', dataType: TestDataType.Array },
+          { name: 'threshold', dataType: TestDataType.Number },
         ],
       } as TestDefinition
     );
@@ -158,5 +160,19 @@ describe('normalizeParamsForPayload', () => {
       useColumns: [{ value: 'email' }],
       threshold: '0',
     });
+  });
+
+  it('drops params that do not belong to the selected definition', () => {
+    const result = normalizeParamsForPayload(
+      { minLength: '1', maxLength: '10', missingCountValue: '34' },
+      {
+        parameterDefinition: [
+          { name: 'minLength', dataType: TestDataType.Number },
+          { name: 'maxLength', dataType: TestDataType.Number },
+        ],
+      } as TestDefinition
+    );
+
+    expect(result).toEqual({ minLength: '1', maxLength: '10' });
   });
 });
