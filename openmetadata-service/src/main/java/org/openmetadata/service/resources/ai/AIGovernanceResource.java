@@ -40,6 +40,11 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -312,7 +317,7 @@ public class AIGovernanceResource {
     assertSupported(entityType);
     EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
     return repository.get(
-        null, java.util.UUID.fromString(id), repository.getFields("owners,tags,domains,extension"));
+        null, UUID.fromString(id), repository.getFields("owners,tags,domains,extension"));
   }
 
   private void assertSupported(String entityType) {
@@ -391,7 +396,7 @@ public class AIGovernanceResource {
   private void applyStatusTransition(
       EntityInterface entity, String newStatus, String user, String comment) {
     entity.setEntityStatus(mapToEntityStatus(newStatus));
-    if (entity instanceof org.openmetadata.schema.entity.ai.LLMModel llm) {
+    if (entity instanceof LLMModel llm) {
       llm.setGovernanceStatus(mapToGovernanceStatus(newStatus));
       return;
     }
@@ -433,49 +438,50 @@ public class AIGovernanceResource {
     return result;
   }
 
-  private static org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus mapToGovernanceStatus(
-      String newStatus) {
-    org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus result;
+  private static LLMModel.GovernanceStatus mapToGovernanceStatus(String newStatus) {
+    LLMModel.GovernanceStatus result;
     switch (newStatus) {
       case "Approved":
-        result = org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus.APPROVED;
+        result = LLMModel.GovernanceStatus.APPROVED;
         break;
       case "PendingApproval":
-        result = org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus.PENDING_REVIEW;
+        result = LLMModel.GovernanceStatus.PENDING_REVIEW;
         break;
       case "Rejected":
-        result = org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus.REJECTED;
+        result = LLMModel.GovernanceStatus.REJECTED;
         break;
       default:
-        result = org.openmetadata.schema.entity.ai.LLMModel.GovernanceStatus.UNAUTHORIZED;
+        result = LLMModel.GovernanceStatus.UNAUTHORIZED;
     }
     return result;
   }
 
+  /**
+   * {@code AIApplication} and {@code McpServer} carry distinct generated governance-metadata
+   * types with no shared supertype; projecting to a mutable map lets {@link
+   * #applyStatusTransition} share one block of transition logic across both instead of
+   * duplicating the typed setters per entity type.
+   */
   @SuppressWarnings("unchecked")
   private Map<String, Object> readGovernance(EntityInterface entity) {
-    if (entity instanceof org.openmetadata.schema.entity.ai.AIApplication app) {
+    if (entity instanceof AIApplication app) {
       return JsonUtils.getObjectMapper().convertValue(app.getGovernanceMetadata(), Map.class);
     }
-    if (entity instanceof org.openmetadata.schema.entity.ai.McpServer server) {
+    if (entity instanceof McpServer server) {
       return JsonUtils.getObjectMapper().convertValue(server.getGovernanceMetadata(), Map.class);
     }
     return null;
   }
 
   private void writeGovernance(EntityInterface entity, Map<String, Object> governance) {
-    if (entity instanceof org.openmetadata.schema.entity.ai.AIApplication app) {
+    if (entity instanceof AIApplication app) {
       app.setGovernanceMetadata(
-          JsonUtils.getObjectMapper()
-              .convertValue(
-                  governance, org.openmetadata.schema.entity.ai.GovernanceMetadata.class));
+          JsonUtils.getObjectMapper().convertValue(governance, GovernanceMetadata.class));
       return;
     }
-    if (entity instanceof org.openmetadata.schema.entity.ai.McpServer server) {
+    if (entity instanceof McpServer server) {
       server.setGovernanceMetadata(
-          JsonUtils.getObjectMapper()
-              .convertValue(
-                  governance, org.openmetadata.schema.entity.ai.McpGovernanceMetadata.class));
+          JsonUtils.getObjectMapper().convertValue(governance, McpGovernanceMetadata.class));
     }
   }
 

@@ -48,7 +48,8 @@ final class GovernanceActivity {
 
   static List<Map<String, Object>> compute(String entityType, String entityId, int limit) {
     List<EntityInterface> assets = new ArrayList<>();
-    if (entityType != null && entityId != null) {
+    boolean singleEntity = entityType != null && entityId != null;
+    if (singleEntity) {
       EntityInterface single = loadSingle(entityType, entityId);
       if (single != null) {
         assets.add(single);
@@ -63,7 +64,7 @@ final class GovernanceActivity {
 
     List<Map<String, Object>> events = new ArrayList<>();
     for (EntityInterface entity : assets) {
-      events.addAll(eventsFor(entity));
+      events.addAll(eventsFor(entity, singleEntity));
     }
     events.sort(Comparator.comparing((Map<String, Object> e) -> (Long) e.get("at")).reversed());
     int effective = Math.min(limit > 0 ? limit : 50, events.size());
@@ -108,12 +109,22 @@ final class GovernanceActivity {
   }
 
   static List<Map<String, Object>> eventsFor(EntityInterface entity) {
+    return eventsFor(entity, true);
+  }
+
+  /**
+   * @param reconstructHistory when true, an approved LLM model's original submission time is
+   *     recovered from its version history ({@code listVersions}). The estate/type feed passes
+   *     false to avoid an N+1 version lookup per approved model; a single-entity timeline passes
+   *     true so both submission and approval events are shown.
+   */
+  static List<Map<String, Object>> eventsFor(EntityInterface entity, boolean reconstructHistory) {
     List<Map<String, Object>> events = new ArrayList<>();
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
     Map<String, Object> json =
         (Map<String, Object>) JsonUtils.getObjectMapper().convertValue(entity, Map.class);
-    Map<String, Object> governance = governance(entityType, entity, json);
+    Map<String, Object> governance = governance(entityType, entity, json, reconstructHistory);
 
     if (governance != null) {
       Map<String, Object> detection = asMap(governance.get("detection"));
@@ -245,14 +256,17 @@ final class GovernanceActivity {
   }
 
   private static Map<String, Object> governance(
-      String entityType, EntityInterface entity, Map<String, Object> entityJson) {
+      String entityType,
+      EntityInterface entity,
+      Map<String, Object> entityJson,
+      boolean reconstructHistory) {
     Map<String, Object> result = null;
     if (Entity.LLM_MODEL.equals(entityType)) {
       Map<String, Object> shim = new LinkedHashMap<>();
       if (entityJson.get("detection") != null) {
         shim.put("detection", entityJson.get("detection"));
       }
-      addLlmGovernanceTimeline(entity, entityJson, shim);
+      addLlmGovernanceTimeline(entity, entityJson, shim, reconstructHistory);
       if (!shim.isEmpty()) {
         result = shim;
       }
@@ -263,7 +277,10 @@ final class GovernanceActivity {
   }
 
   private static void addLlmGovernanceTimeline(
-      EntityInterface entity, Map<String, Object> entityJson, Map<String, Object> shim) {
+      EntityInterface entity,
+      Map<String, Object> entityJson,
+      Map<String, Object> shim,
+      boolean reconstructHistory) {
     Object status = entityJson.get("governanceStatus");
     Object updatedAt = entityJson.get("updatedAt");
     Object updatedBy = entityJson.get("updatedBy");
@@ -274,7 +291,9 @@ final class GovernanceActivity {
       } else if ("Approved".equals(status.toString())) {
         shim.put("approvedAt", updatedAt);
         putIfNotNull(shim, "approvedBy", updatedBy);
-        addLlmSubmissionFromHistory(entity, shim);
+        if (reconstructHistory) {
+          addLlmSubmissionFromHistory(entity, shim);
+        }
       }
     }
   }

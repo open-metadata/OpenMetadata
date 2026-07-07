@@ -22,26 +22,69 @@ import org.openmetadata.service.Entity;
 class DashboardRollupTest {
 
   @Test
-  void topByStatusReturnsHighestImpactAssets() {
+  void topByStatusBreaksSameSeverityTiesByImpact() {
     List<DashboardRollup.RolledAsset> assets =
         List.of(
-            asset("low", "Unregistered", 5),
-            asset("approved", "Approved", 1000),
-            asset("mid", "Unregistered", 50),
-            asset("high", "Unregistered", 500),
-            asset("top", "Unregistered", 1000),
-            asset("fifth", "Unregistered", 100),
-            asset("sixth", "Unregistered", 1),
-            asset("second", "Unregistered", 700));
+            asset("low", "Unregistered", "High", 5),
+            asset("approved", "Approved", "High", 1000),
+            asset("mid", "Unregistered", "High", 50),
+            asset("high", "Unregistered", "High", 500),
+            asset("top", "Unregistered", "High", 1000),
+            asset("fifth", "Unregistered", "High", 100),
+            asset("sixth", "Unregistered", "High", 1),
+            asset("second", "Unregistered", "High", 700));
 
-    List<Map<String, Object>> top = DashboardRollup.topByStatus(assets, "Unregistered");
+    List<Map<String, Object>> top =
+        DashboardRollup.topByStatus(assets, "Unregistered", DashboardRollup.shadowRanking());
 
     assertEquals(List.of("top", "second", "high", "fifth", "mid"), names(top));
     assertEquals(List.of(1000, 700, 500, 100, 50), affectedUsers(top));
   }
 
+  @Test
+  void topShadowRanksBySeverityThenRecency() {
+    List<DashboardRollup.RolledAsset> assets =
+        List.of(
+            shadow("minimalManyUsers", "Minimal", 1000, 100L),
+            shadow("unacceptableFewUsers", "Unacceptable", 1, 100L),
+            shadow("highOld", "High", 0, 100L),
+            shadow("highRecent", "High", 0, 200L));
+
+    List<Map<String, Object>> top =
+        DashboardRollup.topByStatus(assets, "Unregistered", DashboardRollup.shadowRanking());
+
+    assertEquals(
+        List.of("unacceptableFewUsers", "highRecent", "highOld", "minimalManyUsers"), names(top));
+  }
+
+  @Test
+  void topApprovalsRanksLongestWaitingFirstWithinSeverity() {
+    List<DashboardRollup.RolledAsset> assets =
+        List.of(
+            approval("newer", "High", 200L), approval("older", "High", 100L));
+
+    List<Map<String, Object>> top =
+        DashboardRollup.topByStatus(assets, "PendingApproval", DashboardRollup.approvalRanking());
+
+    assertEquals(List.of("older", "newer"), names(top));
+  }
+
   private DashboardRollup.RolledAsset asset(
-      String name, String registrationStatus, int affectedUsers) {
+      String name, String registrationStatus, String euRisk, int affectedUsers) {
+    return baseAsset(name, registrationStatus, euRisk, affectedUsers).build();
+  }
+
+  private DashboardRollup.RolledAsset shadow(
+      String name, String euRisk, int affectedUsers, Long detectedAt) {
+    return baseAsset(name, "Unregistered", euRisk, affectedUsers).detectedAt(detectedAt).build();
+  }
+
+  private DashboardRollup.RolledAsset approval(String name, String euRisk, Long registeredAt) {
+    return baseAsset(name, "PendingApproval", euRisk, 0).registeredAt(registeredAt).build();
+  }
+
+  private DashboardRollup.RolledAsset.RolledAssetBuilder baseAsset(
+      String name, String registrationStatus, String euRisk, int affectedUsers) {
     return DashboardRollup.RolledAsset.builder()
         .entityType(Entity.AI_APPLICATION)
         .id(name)
@@ -49,10 +92,9 @@ class DashboardRollupTest {
         .displayName(name)
         .fqn(name)
         .registrationStatus(registrationStatus)
-        .euRisk("High")
+        .euRisk(euRisk)
         .affectedUsers(affectedUsers)
-        .frameworkStatuses(Map.of())
-        .build();
+        .frameworkStatuses(Map.of());
   }
 
   private List<Object> names(List<Map<String, Object>> assets) {

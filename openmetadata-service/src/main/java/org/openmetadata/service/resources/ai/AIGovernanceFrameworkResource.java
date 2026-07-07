@@ -41,6 +41,7 @@ import java.util.UUID;
 import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
+import org.openmetadata.schema.entity.ai.FrameworkSource;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -220,7 +221,7 @@ public class AIGovernanceFrameworkResource
     copy.setDescription(source.getDescription());
     copy.setReference(source.getReference());
     copy.setRegion(source.getRegion());
-    copy.setSource(org.openmetadata.schema.entity.ai.FrameworkSource.ForkedFrom);
+    copy.setSource(FrameworkSource.ForkedFrom);
     copy.setForkedFrom(source.getEntityReference());
     copy.setEnabled(false);
     copy.setAssessmentCadence(source.getAssessmentCadence());

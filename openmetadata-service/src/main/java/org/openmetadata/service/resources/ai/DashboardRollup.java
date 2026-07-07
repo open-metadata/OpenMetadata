@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.ai;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +50,7 @@ final class DashboardRollup {
   private static final int PAGE_SIZE = 1000;
   private static final int TOP_N = 5;
   private static final String COMPLIANT = "Compliant";
+  private static final String[] RISK_SEVERITY = {"Unacceptable", "High", "Limited", "Minimal"};
 
   private DashboardRollup() {}
 
@@ -62,8 +64,8 @@ final class DashboardRollup {
     response.put("estateStats", estateStats(assets));
     response.put("frameworkReadiness", frameworkReadiness(assets));
     response.put("riskMatrix", riskMatrix(assets));
-    response.put("topShadow", topByStatus(assets, "Unregistered"));
-    response.put("topApprovals", topByStatus(assets, "PendingApproval"));
+    response.put("topShadow", topByStatus(assets, "Unregistered", shadowRanking()));
+    response.put("topApprovals", topByStatus(assets, "PendingApproval", approvalRanking()));
     response.put("generatedAt", System.currentTimeMillis());
 
     return response;
@@ -235,7 +237,7 @@ final class DashboardRollup {
    * cell) so the UI can name the headline asset alongside the count.
    */
   private static List<Map<String, Object>> riskMatrix(List<RolledAsset> assets) {
-    String[] risks = {"Unacceptable", "High", "Limited", "Minimal"};
+    String[] risks = RISK_SEVERITY;
     int[] bucketCaps = {1000, 10000, 100000, Integer.MAX_VALUE};
     String[] bucketLabels = {"<1k", "1k–10k", "10k–100k", ">100k"};
     int[][] counts = new int[risks.length][bucketCaps.length];
@@ -306,17 +308,52 @@ final class DashboardRollup {
   }
 
   static List<Map<String, Object>> topByStatus(
-      List<RolledAsset> assets, String registrationStatus) {
+      List<RolledAsset> assets, String registrationStatus, Comparator<RolledAsset> ranking) {
     return assets.stream()
         .filter(asset -> registrationStatus.equals(asset.registrationStatus()))
-        .sorted(
-            (left, right) -> {
-              int compared = Integer.compare(right.affectedUsers(), left.affectedUsers());
-              return compared != 0 ? compared : safeName(left).compareTo(safeName(right));
-            })
+        .sorted(ranking)
         .limit(TOP_N)
-        .map(asset -> asset.toSummary())
+        .map(RolledAsset::toSummary)
         .toList();
+  }
+
+  /**
+   * Shadow AI assets have no compliance records yet (so {@code affectedUsers} is 0 for all
+   * of them); rank by EU-risk severity first, then most-recently-detected, so the headline
+   * detections surface rather than an arbitrary alphabetical slice.
+   */
+  static Comparator<RolledAsset> shadowRanking() {
+    return Comparator.comparingInt((RolledAsset asset) -> severityRank(asset.euRisk()))
+        .thenComparingLong(asset -> recencyKey(asset.detectedAt()))
+        .thenComparingInt(asset -> -asset.affectedUsers())
+        .thenComparing(DashboardRollup::safeName);
+  }
+
+  /**
+   * Pending approvals rank by EU-risk severity, then longest-waiting (oldest submission)
+   * first, so the most urgent Risk Council items are surfaced instead of an alphabetical
+   * slice.
+   */
+  static Comparator<RolledAsset> approvalRanking() {
+    return Comparator.comparingInt((RolledAsset asset) -> severityRank(asset.euRisk()))
+        .thenComparingLong(asset -> waitingKey(asset.registeredAt()))
+        .thenComparingInt(asset -> -asset.affectedUsers())
+        .thenComparing(DashboardRollup::safeName);
+  }
+
+  private static int severityRank(String euRisk) {
+    int index = indexOf(RISK_SEVERITY, euRisk);
+    return index >= 0 ? index : RISK_SEVERITY.length;
+  }
+
+  /** Sort key that surfaces the most recently detected asset first (nulls last). */
+  private static long recencyKey(Long timestamp) {
+    return timestamp == null ? Long.MAX_VALUE : -timestamp;
+  }
+
+  /** Sort key that surfaces the longest-waiting submission first (nulls last). */
+  private static long waitingKey(Long timestamp) {
+    return timestamp == null ? Long.MAX_VALUE : timestamp;
   }
 
   /** Normalized rolled-up view of an AI asset for rollup math. */
@@ -351,6 +388,14 @@ final class DashboardRollup {
 
     int affectedUsers() {
       return affectedUsers;
+    }
+
+    Long detectedAt() {
+      return detectedAt;
+    }
+
+    Long registeredAt() {
+      return registeredAt;
     }
 
     Map<String, String> frameworkStatuses() {

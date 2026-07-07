@@ -203,6 +203,11 @@ final class AuditPackGenerator {
     return payload;
   }
 
+  /**
+   * Asset entries are the normalized JSON maps assembled in {@link #collectAssets}, not
+   * typed POJOs, so the nested governance structure is walked with {@code instanceof}
+   * guards rather than getters.
+   */
   @SuppressWarnings("unchecked")
   private static int countComplianceRecords(List<Map<String, Object>> assets) {
     int total = 0;
@@ -228,7 +233,8 @@ final class AuditPackGenerator {
       List<Map<String, Object>> out) {
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
-      List<? extends EntityInterface> entities = listAssets(entityType, filter);
+      List<? extends EntityInterface> entities =
+          listAssets(entityType, filter, fieldsForScope(entityType, scope));
       for (EntityInterface entity : entities) {
         if (scope == AuditReportScope.Asset && report.getScopeTarget() != null) {
           if (!report.getScopeTarget().getId().equals(entity.getId())) {
@@ -258,17 +264,32 @@ final class AuditPackGenerator {
     }
   }
 
-  private static List<EntityInterface> listAssets(String entityType, ListFilter filter) {
+  private static List<EntityInterface> listAssets(
+      String entityType, ListFilter filter, EntityUtil.Fields fields) {
     List<EntityInterface> result = new ArrayList<>();
     EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
     String after = null;
     do {
       ResultList<? extends EntityInterface> page =
-          repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+          repo.listAfter(null, fields, filter, PAGE_SIZE, after);
       result.addAll(page.getData());
       after = page.getPaging() == null ? null : page.getPaging().getAfter();
     } while (after != null);
 
+    return result;
+  }
+
+  /**
+   * Domain-scoped packs filter on {@link EntityInterface#getDomains()}; {@code domains}
+   * is a relationship field that stays null unless explicitly requested, so a Domain
+   * pack loaded with {@code EMPTY_FIELDS} would match nothing. Estate/Asset scopes read
+   * only the always-present governance JSON and need no relationship fields.
+   */
+  private static EntityUtil.Fields fieldsForScope(String entityType, AuditReportScope scope) {
+    EntityUtil.Fields result = EntityUtil.Fields.EMPTY_FIELDS;
+    if (scope == AuditReportScope.Domain) {
+      result = Entity.getEntityRepository(entityType).getFields("domains");
+    }
     return result;
   }
 

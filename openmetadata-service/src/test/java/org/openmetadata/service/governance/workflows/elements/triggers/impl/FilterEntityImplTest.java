@@ -118,7 +118,11 @@ class FilterEntityImplTest {
     assertFalse(invokeFilter(List.of(fieldChange("updatedAt")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("version")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("href")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  }
+
+  @Test
+  void testEntityStatusIsRecognizedAsTriggerField() throws Exception {
+    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
   }
 
   @Test

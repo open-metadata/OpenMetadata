@@ -193,6 +193,12 @@ final class PolicyEvaluator {
     return result;
   }
 
+  /**
+   * The three AI asset types expose governance state differently (AIApplication/McpServer
+   * carry a rich {@code governanceMetadata}; LLMModel only a detection/evidence shim), so
+   * {@code instanceof} dispatch projects each onto one normalized map the policy rules can
+   * evaluate uniformly without a type switch per rule.
+   */
   private static Map<String, Object> governance(EntityInterface entity, String entityType) {
     Map<String, Object> result = null;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
