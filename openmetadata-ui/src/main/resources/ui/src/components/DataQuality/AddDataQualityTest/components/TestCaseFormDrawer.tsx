@@ -47,6 +47,7 @@ import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
@@ -328,6 +329,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         )}>
         <HookForm
           form={form}
+          renderFieldDoc={(markdown) => (
+            <RichTextEditorPreviewerV1 markdown={markdown} />
+          )}
+          showFieldDocs={isAiVariant}
           onSubmit={form.handleSubmit(
             (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
             () => scrollToError()

@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 import {
+  FieldProp,
+  FieldTypes,
+  getField,
+} from '@openmetadata/ui-core-components';
+import {
   act,
   fireEvent,
   render,
@@ -32,6 +37,12 @@ import {
 } from './TestCaseFormV1.interface';
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
+
+// The real doc markdown Task 7 authored for the test-type field. The mocked
+// TestCaseFormBody renders a real doc-bearing field via getField so the
+// drawer's showFieldDocs/renderFieldDoc wiring is exercised end-to-end.
+const TEST_TYPE_DOC =
+  'The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.';
 
 jest.mock('../../../../rest/testAPI', () => ({
   createTestCase: jest.fn(),
@@ -117,8 +128,19 @@ jest.mock('./TestCaseFormBody', () =>
         emitContextFn = onContextChange;
         emitActiveFieldFn = onActiveFieldChange;
 
+        const testTypeField: FieldProp = {
+          name: 'testTypeId',
+          label: 'Test Type',
+          type: FieldTypes.TEXT,
+          required: false,
+          id: 'root/testType',
+          doc: TEST_TYPE_DOC,
+          props: { 'data-testid': 'test-type' },
+        };
+
         return (
           <div data-testid="test-case-form-body">
+            {getField(testTypeField)}
             {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
             <button
               data-testid="emit-context"
@@ -147,6 +169,18 @@ jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
     .mockImplementation(() => (
       <div data-testid="service-doc-panel">doc-panel</div>
     ))
+);
+
+// RichTextEditorPreviewerV1 wraps a lazy BlockEditor (TipTap) that does not
+// render its content synchronously in jsdom. Mock it to render the markdown as
+// plain text so the field-doc popover assertion inspects the real doc string
+// that renderFieldDoc receives.
+jest.mock(
+  '../../../common/RichTextEditor/RichTextEditorPreviewerV1',
+  () =>
+    function MockRichTextEditorPreviewerV1({ markdown }: { markdown: string }) {
+      return <div data-testid="rich-text-previewer">{markdown}</div>;
+    }
 );
 
 const mockCreateTestCase = createTestCase as jest.Mock;
@@ -500,5 +534,33 @@ describe('TestCaseFormDrawer', () => {
 
       expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
     });
+
+    it('shows the field doc popover in the AI variant on focus', async () => {
+      renderDrawer({ variant: 'ai' });
+
+      const testType = await screen.findByLabelText(/test type/i);
+
+      await act(async () => {
+        testType.focus();
+      });
+
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('does not show the field doc popover in the classic variant on focus', async () => {
+    renderDrawer({ variant: 'classic' });
+
+    const testType = await screen.findByLabelText(/test type/i);
+
+    await act(async () => {
+      testType.focus();
+    });
+
+    expect(
+      screen.queryByText(/kind of validation to run/i)
+    ).not.toBeInTheDocument();
   });
 });
