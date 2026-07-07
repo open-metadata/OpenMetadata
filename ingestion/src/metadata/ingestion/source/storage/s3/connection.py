@@ -9,10 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Source connection handler for S3 object store. For this to work, it requires the following S3 permissions for all
-the buckets which require ingestion: s3:ListBucket, s3:GetObject and s3:GetBucketLocation
-The cloudwatch client is used to fetch the total size in bytes for a bucket, and the total nr of files. This requires
-the cloudwatch:GetMetricData permissions
+Source connection handler for S3 object store.
+
+Ingestion requires these permissions for every bucket to be ingested:
+s3:ListBucket, s3:GetObject and s3:GetBucketLocation. The cloudwatch client
+fetches each bucket's total size in bytes and object count, which needs
+cloudwatch:GetMetricData.
+
+The test-connection steps exercise a narrower set: ListBuckets needs
+s3:ListAllMyBuckets when no bucketNames are configured (or s3:ListBucket on each
+configured bucket otherwise), and GetMetrics needs cloudwatch:ListMetrics.
 """
 
 from __future__ import annotations
