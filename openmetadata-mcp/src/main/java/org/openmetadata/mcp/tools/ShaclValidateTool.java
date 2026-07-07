@@ -47,7 +47,7 @@ public class ShaclValidateTool implements McpTool {
       return error(entityUri.substring("error:".length()));
     }
 
-    if (entityUri == null && !Boolean.TRUE.equals(params.get("fullGraph"))) {
+    if (entityUri == null && !isTruthy(params.get("fullGraph"))) {
       return error(
           "Full-graph SHACL validation must be explicitly enabled by passing fullGraph=true. "
               + "It loads the entire triplestore into memory and can OOM the MCP server. Prefer "
@@ -143,6 +143,20 @@ public class ShaclValidateTool implements McpTool {
   private static String string(Map<String, Object> params, String key) {
     Object v = params.get(key);
     return v instanceof String s ? s : null;
+  }
+
+  /**
+   * MCP clients deliver JSON booleans either as a boxed {@link Boolean} or, commonly, as the string
+   * {@code "true"}. {@code Boolean.TRUE.equals(...)} only matches the former, so accept both.
+   */
+  private static boolean isTruthy(Object value) {
+    boolean result = false;
+    if (value instanceof Boolean b) {
+      result = b;
+    } else if (value instanceof String s) {
+      result = "true".equalsIgnoreCase(s.trim());
+    }
+    return result;
   }
 
   private static Map<String, Object> error(String message) {

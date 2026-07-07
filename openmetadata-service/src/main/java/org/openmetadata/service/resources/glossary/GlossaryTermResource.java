@@ -1283,6 +1283,45 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return Response.ok(addHref(uriInfo, term)).build();
   }
 
+  @PUT
+  @Path("/{id}/relations/{toTermId}")
+  @Operation(
+      operationId = "updateTermRelation",
+      summary = "Change the type or metadata of an existing typed relation",
+      description =
+          "Change the relation type (e.g., broader to narrower) or the provenance/status of an existing typed relation to another glossary term. The inverse relation is updated automatically.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated glossary term",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(responseCode = "404", description = "Glossary term or relation not found")
+      })
+  public Response updateTermRelation(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Id of the related glossary term whose relation is being changed",
+              schema = @Schema(type = "UUID"))
+          @PathParam("toTermId")
+          UUID toTermId,
+      @Valid TermRelation termRelation) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PUT));
+    GlossaryTerm term = repository.updateTermRelation(id, toTermId, termRelation);
+    return Response.ok(addHref(uriInfo, term)).build();
+  }
+
   @GET
   @Path("/{id}/relationsGraph")
   @Operation(

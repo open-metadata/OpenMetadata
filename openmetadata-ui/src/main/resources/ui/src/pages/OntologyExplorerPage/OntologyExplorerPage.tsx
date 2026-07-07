@@ -102,7 +102,7 @@ const OntologyExplorerPage: React.FC = () => {
             <div />
           </div>
 
-          {mode === 'view' ? (
+          {mode !== 'query' ? (
             <div
               className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
               data-testid="ontology-explorer-stats">
@@ -139,29 +139,17 @@ const OntologyExplorerPage: React.FC = () => {
           ) : null}
         </Card>
 
-        {mode === 'view' ? (
+        {mode === 'query' ? (
+          <SparqlQueryConsole />
+        ) : (
           <OntologyExplorer
             height="calc(100vh - 230px)"
+            isEditMode={mode === 'edit'}
             scope="global"
             onLoadingChange={handleLoadingChange}
             onStatsChange={handleStatsChange}
           />
-        ) : null}
-
-        {mode === 'query' ? <SparqlQueryConsole /> : null}
-
-        {mode === 'edit' ? (
-          <Card
-            className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-2 tw:p-10 tw:text-center"
-            data-testid="ontology-studio-edit-placeholder">
-            <Typography as="span" size="text-md" weight="semibold">
-              {t('label.edit')}
-            </Typography>
-            <Typography as="p" className="tw:text-tertiary" size="text-sm">
-              {t('message.ontology-studio-edit-coming-soon')}
-            </Typography>
-          </Card>
-        ) : null}
+        )}
       </div>
     </PageLayoutV1>
   );

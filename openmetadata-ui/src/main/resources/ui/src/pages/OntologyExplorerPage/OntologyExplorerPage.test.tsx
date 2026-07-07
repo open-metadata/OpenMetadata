@@ -149,18 +149,18 @@ describe('OntologyExplorerPage', () => {
     expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
   });
 
-  it('renders the edit placeholder when Edit mode is selected', () => {
+  it('renders the graph with edit mode enabled when Edit is selected', () => {
     render(<OntologyExplorerPage />);
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
-    expect(
-      screen.getByTestId('ontology-studio-edit-placeholder')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
     expect(
       screen.queryByTestId('sparql-query-console')
     ).not.toBeInTheDocument();
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isEditMode: true })
+    );
   });
 
   it('returns to the graph when View mode is reselected', () => {

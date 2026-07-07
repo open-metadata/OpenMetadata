@@ -178,4 +178,51 @@ class ShaclValidateToolTest {
       assertEquals("full-graph", result.get("scope"));
     }
   }
+
+  @Test
+  @DisplayName("fullGraph=\"true\" string (as MCP clients send it) enables full-graph validation")
+  void fullGraphScopeAsString() throws IOException {
+    try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
+      RdfRepository repo = mock(RdfRepository.class);
+      when(repo.isEnabled()).thenReturn(true);
+      when(repo.getBaseUri()).thenReturn("https://open-metadata.org/");
+      when(repo.executeSparqlQueryDirect(anyString(), anyString())).thenReturn("");
+      mocked.when(RdfRepository::getInstanceOrNull).thenReturn(repo);
+
+      Map<String, Object> result =
+          new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of("fullGraph", "true"));
+      assertNull(result.get("error"));
+      assertEquals("full-graph", result.get("scope"));
+    }
+  }
+
+  @Test
+  @DisplayName("No entity scope and no fullGraph opt-in returns the explicit-enable error")
+  void fullGraphRequiresOptIn() throws IOException {
+    try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
+      RdfRepository repo = mock(RdfRepository.class);
+      when(repo.isEnabled()).thenReturn(true);
+      when(repo.getBaseUri()).thenReturn("https://open-metadata.org/");
+      mocked.when(RdfRepository::getInstanceOrNull).thenReturn(repo);
+
+      Map<String, Object> result = new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of());
+      assertNotNull(result.get("error"));
+      assertTrue(((String) result.get("error")).contains("fullGraph=true"));
+    }
+  }
+
+  @Test
+  @DisplayName("Opaque entityUri without a host is rejected")
+  void opaqueEntityUriRejected() throws IOException {
+    try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
+      RdfRepository repo = mock(RdfRepository.class);
+      when(repo.isEnabled()).thenReturn(true);
+      when(repo.getBaseUri()).thenReturn("https://open-metadata.org/");
+      mocked.when(RdfRepository::getInstanceOrNull).thenReturn(repo);
+
+      Map<String, Object> result =
+          new ShaclValidateTool().execute(AUTHORIZER, SEC, Map.of("entityUri", "https:foo"));
+      assertEquals("'entityUri' must be a valid absolute http(s) IRI", result.get("error"));
+    }
+  }
 }

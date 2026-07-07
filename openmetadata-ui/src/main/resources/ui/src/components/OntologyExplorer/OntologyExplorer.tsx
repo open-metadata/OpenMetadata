@@ -18,11 +18,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { SearchMd } from '@untitledui/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../enums/entity.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { addTermRelation } from '../../rest/glossaryAPI';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -77,6 +81,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   glossaryId,
   className,
   height = 'calc(100vh - 200px)',
+  isEditMode = false,
   onStatsChange,
   onLoadingChange,
 }) => {
@@ -161,6 +166,26 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       setSearchInput(filters.searchQuery);
     }
   }, [filters.searchQuery]);
+
+  const handleCreateRelation = useCallback(
+    async (fromId: string, toId: string, relationType: string) => {
+      try {
+        await addTermRelation(fromId, {
+          relationType,
+          term: { id: toId, type: EntityType.GLOSSARY_TERM },
+        });
+        showSuccessToast(
+          t('server.create-entity-success', {
+            entity: t('label.relationship'),
+          })
+        );
+        handleRefresh();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [handleRefresh, t]
+  );
 
   const renderGraphContent = () => {
     const hasNoVisibleNodes =
@@ -299,6 +324,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                   }))
                 : undefined
             }
+            isEditMode={isEditMode}
             nodePositions={hierarchyBakedPositions}
             nodes={graphDataToShow.nodes}
             ref={graphRef}
@@ -309,6 +335,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 : selectedNode?.id
             }
             settings={settings}
+            onCreateRelation={handleCreateRelation}
             onNodeClick={handleGraphNodeClick}
             onNodeDoubleClick={handleGraphNodeDoubleClick}
             onPaneClick={handleGraphPaneClick}

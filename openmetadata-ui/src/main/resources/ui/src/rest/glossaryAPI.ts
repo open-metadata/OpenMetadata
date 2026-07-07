@@ -488,6 +488,19 @@ export const removeTermRelation = async (
   return response.data;
 };
 
+export const updateTermRelation = async (
+  termId: string,
+  toTermId: string,
+  termRelation: TermRelation
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.put<
+    TermRelation,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${termId}/relations/${toTermId}`, termRelation);
+
+  return response.data;
+};
+
 export const getTermRelationGraph = async (
   termId: string,
   depth = 1,

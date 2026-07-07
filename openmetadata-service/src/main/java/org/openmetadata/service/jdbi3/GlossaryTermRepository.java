@@ -55,6 +55,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,6 +95,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -474,17 +476,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private TermRelation buildTermRelation(EntityRelationshipRecord record) {
     EntityReference termRef = Entity.getEntityReferenceById(GLOSSARY_TERM, record.getId(), ALL);
     String relationType = "relatedTo";
+    RelationProvenance provenance = RelationProvenance.MANUAL;
+    EntityStatus status = EntityStatus.UNPROCESSED;
     if (record.getJson() != null) {
       try {
         Map<String, Object> jsonMap = JsonUtils.readValue(record.getJson(), Map.class);
-        if (jsonMap.containsKey("relationType")) {
+        if (jsonMap.get("relationType") != null) {
           relationType = (String) jsonMap.get("relationType");
+        }
+        if (jsonMap.get("provenance") != null) {
+          provenance = RelationProvenance.fromValue((String) jsonMap.get("provenance"));
+        }
+        if (jsonMap.get("status") != null) {
+          status = EntityStatus.fromValue((String) jsonMap.get("status"));
         }
       } catch (Exception e) {
         LOG.debug("Failed to parse relation JSON: {}", e.getMessage());
       }
     }
-    return new TermRelation().withTerm(termRef).withRelationType(relationType);
+    return new TermRelation()
+        .withTerm(termRef)
+        .withRelationType(relationType)
+        .withProvenance(provenance)
+        .withStatus(status);
+  }
+
+  private String buildRelationJson(
+      String canonicalType, RelationProvenance provenance, EntityStatus status) {
+    Map<String, String> relationJson = new LinkedHashMap<>();
+    relationJson.put("relationType", canonicalType);
+    relationJson.put(
+        "provenance", (provenance != null ? provenance : RelationProvenance.MANUAL).value());
+    relationJson.put("status", (status != null ? status : EntityStatus.UNPROCESSED).value());
+    return JsonUtils.pojoToJson(relationJson);
   }
 
   private void populateTermRelations(List<TermRelation> termRelations) {
@@ -709,7 +733,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     String canonicalType = computeCanonicalRelationType(id, termRef.getId(), relationType);
-    String json = String.format("{\"relationType\":\"%s\"}", canonicalType);
+    String json =
+        buildRelationJson(canonicalType, termRelation.getProvenance(), termRelation.getStatus());
     addRelationship(
         id,
         termRef.getId(),
@@ -732,6 +757,48 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     } else {
       deleteAllBidirectionalRelatedTo(id, toTermId);
     }
+    return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
+  }
+
+  /**
+   * Change the type and/or metadata of an existing typed relation to {@code toTermId}. The edge is
+   * removed at its current canonical type and re-added at the new canonical type (auto-inverse and
+   * RDF sync are handled by the same paths as create/delete), so provenance/status changes and
+   * type changes flow through one code path.
+   */
+  @Transaction
+  public GlossaryTerm updateTermRelation(UUID id, UUID toTermId, TermRelation termRelation) {
+    GlossaryTerm term = get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
+    String newType =
+        termRelation.getRelationType() != null ? termRelation.getRelationType() : "relatedTo";
+    validateRelationType(newType);
+    TermRelation existing =
+        listOrEmpty(term.getRelatedTerms()).stream()
+            .filter(rel -> rel.getTerm() != null && toTermId.equals(rel.getTerm().getId()))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new EntityNotFoundException(
+                        String.format(
+                            "No relation found between glossary terms '%s' and '%s'",
+                            id, toTermId)));
+    String oldType = existing.getRelationType() != null ? existing.getRelationType() : "relatedTo";
+    deleteBidirectionalRelatedTo(id, toTermId, oldType);
+    RdfUpdater.removeGlossaryTermRelation(id, toTermId, oldType);
+    String canonicalType = computeCanonicalRelationType(id, toTermId, newType);
+    String json =
+        buildRelationJson(canonicalType, termRelation.getProvenance(), termRelation.getStatus());
+    addRelationship(
+        id,
+        toTermId,
+        GLOSSARY_TERM,
+        GLOSSARY_TERM,
+        Relationship.RELATED_TO,
+        canonicalType,
+        json,
+        true);
+    RdfUpdater.addGlossaryTermRelation(id, toTermId, newType);
+    RequestEntityCache.invalidate(entityType, id, null);
     return get(null, id, getFields("relatedTerms"), Include.NON_DELETED, false);
   }
 

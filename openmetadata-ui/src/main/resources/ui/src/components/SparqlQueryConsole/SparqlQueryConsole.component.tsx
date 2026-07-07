@@ -252,55 +252,70 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
     return { vars, rows };
   }, [result]);
 
+  // A single-variable SELECT is a list of concepts — render them as chips
+  // (subgraph-style) like the design, rather than a one-column table.
+  const conceptChips = useMemo(() => {
+    if (!tabularResult || tabularResult.vars.length !== 1) {
+      return null;
+    }
+    const variable = tabularResult.vars[0];
+
+    return tabularResult.rows.map(
+      (row) => (row[variable] as Binding | undefined)?.value ?? ''
+    );
+  }, [tabularResult]);
+
   return (
     <>
       <div
         className={classNames(
-          'tw:grid tw:grid-cols-1 tw:gap-3 lg:tw:grid-cols-[1fr_320px]',
+          'tw:grid tw:grid-cols-1 tw:gap-3 lg:tw:grid-cols-[220px_1fr]',
           className
         )}>
-        <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
-          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
-            <Select
-              aria-label={t('label.format')}
-              data-testid="sparql-format-select"
-              items={FORMAT_OPTIONS.map((o) => ({
-                id: o.value,
-                label: o.label,
-              }))}
-              size="sm"
-              value={format}
-              onChange={(key) =>
-                setFormat(String(key) as SparqlPlaygroundFormat)
-              }
-            />
-            <Select
-              aria-label={t('label.inference')}
-              data-testid="sparql-inference-select"
-              items={INFERENCE_OPTIONS.map((o) => ({
-                id: o.value,
-                label: o.label,
-              }))}
-              size="sm"
-              value={inference}
-              onChange={(key) =>
-                setInference(String(key) as SparqlPlaygroundInference)
-              }
-            />
-            <Button
-              color="secondary"
-              data-testid="sparql-inject-prefixes"
-              size="sm"
-              onClick={handleInjectPrefixes}>
-              {t('label.inject-prefixes')}
-            </Button>
-            <Button
-              color="secondary"
-              data-testid="sparql-save-query"
-              size="sm"
-              onClick={handleSaveCurrent}>
-              {t('label.save-query')}
-            </Button>
+        <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4 lg:tw:order-2">
+          <div className="tw:flex tw:flex-wrap tw:items-center tw:justify-between tw:gap-2">
+            <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+              <Select
+                aria-label={t('label.format')}
+                data-testid="sparql-format-select"
+                items={FORMAT_OPTIONS.map((o) => ({
+                  id: o.value,
+                  label: o.label,
+                }))}
+                size="sm"
+                value={format}
+                onChange={(key) =>
+                  setFormat(String(key) as SparqlPlaygroundFormat)
+                }
+              />
+              <Select
+                aria-label={t('label.inference')}
+                data-testid="sparql-inference-select"
+                items={INFERENCE_OPTIONS.map((o) => ({
+                  id: o.value,
+                  label: o.label,
+                }))}
+                size="sm"
+                value={inference}
+                onChange={(key) =>
+                  setInference(String(key) as SparqlPlaygroundInference)
+                }
+              />
+              <Button
+                color="secondary"
+                data-testid="sparql-inject-prefixes"
+                size="sm"
+                onClick={handleInjectPrefixes}>
+                {t('label.inject-prefixes')}
+              </Button>
+              <Button
+                color="secondary"
+                data-testid="sparql-save-query"
+                size="sm"
+                onClick={handleSaveCurrent}>
+                {t('label.save-query')}
+              </Button>
+            </div>
             <Button
               color="primary"
               data-testid="sparql-run"
@@ -340,12 +355,22 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
             <div
               className="tw:flex tw:flex-col tw:gap-2"
               data-testid="sparql-result">
-              <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2 tw:text-tertiary">
-                <Typography as="span" size="text-xs">
-                  {t('label.format')}: {result.format}
-                </Typography>
-                <Typography as="span" size="text-xs">
-                  {t('label.duration')}: {result.durationMs}ms
+              <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2">
+                <Typography
+                  as="span"
+                  className={
+                    tabularResult
+                      ? 'tw:text-success-primary'
+                      : 'tw:text-tertiary'
+                  }
+                  data-testid="sparql-result-status"
+                  size="text-xs"
+                  weight="medium">
+                  {tabularResult
+                    ? `✓ ${tabularResult.rows.length} ${t(
+                        'label.result-plural'
+                      )} · ${result.durationMs} ms`
+                    : `${result.format} · ${result.durationMs} ms`}
                 </Typography>
                 <Button
                   color="secondary"
@@ -355,7 +380,28 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
                   {t('label.download')}
                 </Button>
               </div>
-              {tabularResult ? (
+              {conceptChips ? (
+                <div
+                  className="tw:flex tw:flex-wrap tw:gap-2"
+                  data-testid="sparql-chips">
+                  {conceptChips.length === 0 ? (
+                    <Typography
+                      as="span"
+                      className="tw:text-tertiary"
+                      size="text-xs">
+                      {t('message.sparql-no-rows')}
+                    </Typography>
+                  ) : (
+                    conceptChips.map((value, idx) => (
+                      <span
+                        className="tw:rounded-full tw:border tw:border-utility-gray-200 tw:bg-primary tw:px-3 tw:py-1 tw:text-xs"
+                        key={`${value}-${idx}`}>
+                        {value}
+                      </span>
+                    ))
+                  )}
+                </div>
+              ) : tabularResult ? (
                 <div
                   className="tw:max-h-[420px] tw:overflow-auto tw:rounded-md tw:border tw:border-utility-gray-200"
                   data-testid="sparql-table">
@@ -408,14 +454,19 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
           ) : null}
         </Card>
 
-        <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4">
-          <Typography as="span" size="text-sm" weight="semibold">
+        <Card className="tw:flex tw:flex-col tw:gap-3 tw:p-4 lg:tw:order-1">
+          <Typography
+            as="span"
+            className="tw:uppercase tw:text-quaternary"
+            size="text-xs"
+            weight="semibold">
             {t('label.sample-queries')}
           </Typography>
           <ul className="tw:flex tw:flex-col tw:gap-1">
             {SAMPLE_SPARQL_QUERIES.map((sample) => (
               <li key={sample.nameKey}>
                 <Button
+                  className="tw:w-full! tw:justify-start"
                   color="tertiary"
                   data-testid={`sparql-sample-${sample.nameKey}`}
                   size="sm"
@@ -428,8 +479,8 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
 
           <Typography
             as="span"
-            className="tw:mt-3"
-            size="text-sm"
+            className="tw:mt-2 tw:uppercase tw:text-quaternary"
+            size="text-xs"
             weight="semibold">
             {t('label.saved-queries')}
           </Typography>

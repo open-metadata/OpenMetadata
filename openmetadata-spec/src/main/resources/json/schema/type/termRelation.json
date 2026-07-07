@@ -5,7 +5,20 @@
   "description": "This schema defines the TermRelation type used for establishing typed semantic relationships between glossary terms.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.TermRelation",
+  "definitions": {
+    "provenance": {
+      "javaType": "org.openmetadata.schema.type.RelationProvenance",
+      "description": "How this relation edge originated.",
+      "type": "string",
+      "enum": ["Manual", "Inferred", "Imported", "AiSuggested"],
+      "default": "Manual"
+    }
+  },
   "properties": {
+    "id": {
+      "description": "Unique identifier of this relation edge.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
     "relationType": {
       "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
       "type": "string",
@@ -15,6 +28,14 @@
     "term": {
       "description": "Reference to the related glossary term.",
       "$ref": "entityReference.json"
+    },
+    "provenance": {
+      "description": "How this relation edge originated. Defaults to 'Manual'.",
+      "$ref": "#/definitions/provenance"
+    },
+    "status": {
+      "description": "Approval status of this relation edge.",
+      "$ref": "status.json"
     }
   },
   "required": ["term"],

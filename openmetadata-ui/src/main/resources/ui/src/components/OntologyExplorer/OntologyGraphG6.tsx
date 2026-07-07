@@ -29,6 +29,7 @@ import {
   OntologyGraphHandle,
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
+import PortOverlay from './PortOverlay.component';
 
 function writeNodePositions(
   container: HTMLDivElement | null,
@@ -106,6 +107,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onScrollNearEdge,
       nodePositions,
       relationTypes,
+      isEditMode,
+      onCreateRelation,
     },
     ref
   ) => {
@@ -269,10 +272,17 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [cardinalityLabelMap]);
 
     return (
-      <div
-        className="tw:w-full tw:h-full tw:relative ontology-g6-container"
-        ref={containerRef}
-      />
+      <div className="tw:relative tw:h-full tw:w-full">
+        <div
+          className="tw:w-full tw:h-full tw:relative ontology-g6-container"
+          ref={containerRef}
+        />
+        <PortOverlay
+          containerRef={containerRef}
+          isEditMode={Boolean(isEditMode)}
+          onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
+        />
+      </div>
     );
   }
 );

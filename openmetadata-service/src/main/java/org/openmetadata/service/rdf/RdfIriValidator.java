@@ -29,26 +29,36 @@ public final class RdfIriValidator {
    */
   public static String validateEntityIri(String raw) {
     String candidate = sanitizeStoredIri(raw);
-    if (candidate == null) {
-      return null;
+    String result = null;
+    if (candidate != null && isHierarchicalHttpIri(candidate)) {
+      result = candidate;
     }
+    return result;
+  }
+
+  /**
+   * A valid entity IRI must be a hierarchical {@code http(s)://host/...} form. Requiring a non-null
+   * host rejects opaque URIs such as {@code https:foo} (scheme present, {@link URI#isAbsolute()}
+   * true, but no authority) that would otherwise slip past a scheme-only check.
+   */
+  private static boolean isHierarchicalHttpIri(String candidate) {
+    boolean valid = false;
     try {
       URI uri = new URI(candidate);
-      if (!uri.isAbsolute()) {
-        return null;
-      }
-      String scheme = uri.getScheme();
-      if (scheme == null) {
-        return null;
-      }
-      String schemeLower = scheme.toLowerCase(Locale.ROOT);
-      if (!"http".equals(schemeLower) && !"https".equals(schemeLower)) {
-        return null;
-      }
+      valid = uri.isAbsolute() && isHttpScheme(uri.getScheme()) && uri.getHost() != null;
     } catch (URISyntaxException e) {
-      return null;
+      valid = false;
     }
-    return candidate;
+    return valid;
+  }
+
+  private static boolean isHttpScheme(String scheme) {
+    boolean http = false;
+    if (scheme != null) {
+      String schemeLower = scheme.toLowerCase(Locale.ROOT);
+      http = "http".equals(schemeLower) || "https".equals(schemeLower);
+    }
+    return http;
   }
 
   /**

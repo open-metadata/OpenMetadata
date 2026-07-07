@@ -27,6 +27,7 @@ export interface OntologyExplorerProps {
   glossaryId?: string;
   className?: string;
   height?: string | number;
+  isEditMode?: boolean;
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
 }
@@ -119,6 +120,12 @@ export interface OntologyGraphProps {
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   relationTypes?: GlossaryTermRelationType[];
+  isEditMode?: boolean;
+  onCreateRelation?: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => Promise<void>;
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
