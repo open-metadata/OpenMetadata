@@ -26,18 +26,20 @@ import java.util.Set;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
- * Builds and merges structured change-preview JSON stored in {@code thread.message} for approval
- * tasks. The message format is a JSON object mapping field names to {@code {added, removed}} arrays
- * of human-readable identifiers (tagFQN, fullyQualifiedName, displayName, or name).
+ * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
+ * a task payload. The change map is a {@code Map<String, FieldDiff>} of field name to {@code
+ * {added, removed}} arrays of human-readable identifiers (tagFQN, fullyQualifiedName, displayName,
+ * or name).
  */
 @Slf4j
 public final class ChangePreviewUtils {
+
+  public static final String PROPOSED_CHANGES_KEY = "proposedChanges";
 
   private static final List<String> ID_KEYS =
       List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
@@ -112,23 +114,28 @@ public final class ChangePreviewUtils {
   public static Map<String, FieldDiff> buildChangeMap(ChangeDescription changeDescription) {
     Map<String, FieldDiff> result = new LinkedHashMap<>();
     for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsAdded())) {
-      result.put(
-          fieldChange.getName(),
-          new FieldDiff(extractIdentifiers(fieldChange.getNewValue()), List.of()));
+      accumulate(
+          result, fieldChange.getName(), extractIdentifiers(fieldChange.getNewValue()), List.of());
     }
     for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsDeleted())) {
-      result.put(
-          fieldChange.getName(),
-          new FieldDiff(List.of(), extractIdentifiers(fieldChange.getOldValue())));
+      accumulate(
+          result, fieldChange.getName(), List.of(), extractIdentifiers(fieldChange.getOldValue()));
     }
     for (FieldChange fieldChange : listOrEmpty(changeDescription.getFieldsUpdated())) {
-      result.put(
+      accumulate(
+          result,
           fieldChange.getName(),
-          new FieldDiff(
-              extractIdentifiers(fieldChange.getNewValue()),
-              extractIdentifiers(fieldChange.getOldValue())));
+          extractIdentifiers(fieldChange.getNewValue()),
+          extractIdentifiers(fieldChange.getOldValue()));
     }
     return result;
+  }
+
+  private static void accumulate(
+      Map<String, FieldDiff> result, String field, List<String> added, List<String> removed) {
+    FieldDiff incoming = new FieldDiff(added, removed);
+    FieldDiff prior = result.get(field);
+    result.put(field, prior == null ? incoming : prior.merge(incoming));
   }
 
   public static Map<String, FieldDiff> mergeChangeMaps(
@@ -160,24 +167,132 @@ public final class ChangePreviewUtils {
     }
   }
 
-  public static void applyChangePreview(
-      Thread taskThread, EntityInterface entity, String oldMessage) {
-    taskThread.withCardStyle(null).withFieldOperation(null).withFeedInfo(null);
-    final ChangeDescription changeDescription = entity.getChangeDescription();
+  public static Map<String, FieldDiff> extractProposedChanges(Object payload) {
+    if (!(payload instanceof Map<?, ?> payloadMap)) return new LinkedHashMap<>();
+    Object existing = payloadMap.get(PROPOSED_CHANGES_KEY);
+    if (!(existing instanceof Map<?, ?> existingMap)) return new LinkedHashMap<>();
+    Map<String, FieldDiff> result = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : existingMap.entrySet()) {
+      String field = String.valueOf(entry.getKey());
+      FieldDiff diff = coerceFieldDiff(entry.getValue());
+      if (diff != null) {
+        result.put(field, diff);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Accepts either an in-memory {@link FieldDiff} record (freshly built and not yet round-tripped
+   * through JSON) or a raw {@code Map<String, List<String>>} read back from the persisted task
+   * payload, and returns a {@link FieldDiff}. Returns {@code null} when the value is neither
+   * shape.
+   */
+  private static FieldDiff coerceFieldDiff(Object value) {
+    if (value instanceof FieldDiff fd) return fd;
+    if (value instanceof Map<?, ?> diffMap) {
+      return new FieldDiff(
+          coerceStringList(diffMap.get("added")), coerceStringList(diffMap.get("removed")));
+    }
+    return null;
+  }
+
+  private static List<String> coerceStringList(Object value) {
+    if (!(value instanceof Collection<?> collection)) return List.of();
+    return collection.stream().filter(java.util.Objects::nonNull).map(String::valueOf).toList();
+  }
+
+  /**
+   * Build a new task payload that carries the merged proposed-changes map under {@link
+   * #PROPOSED_CHANGES_KEY}. Returns {@code existingPayload} unchanged when the entity has no
+   * change description; returns a payload with the {@code proposedChanges} key removed when the
+   * merged map is empty (e.g. all changes cancelled out across re-edits).
+   */
+  public static Object buildProposedChangesPayload(EntityInterface entity, Object existingPayload) {
+    if (entity == null) return existingPayload;
+    ChangeDescription changeDescription = pickIncrementalOrFull(entity);
     if (hasNoChanges(changeDescription)) {
-      taskThread.withMessage(oldMessage != null ? oldMessage : "{}");
-      return;
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
+            "[ChangePreview] entity='{}' v={} changeDescription is empty/null; carrying existing payload",
+            entity.getFullyQualifiedName(),
+            entity.getVersion());
+      }
+      return existingPayload;
     }
     try {
-      Map<String, FieldDiff> merged =
-          mergeChangeMaps(parseChangeMap(oldMessage), buildChangeMap(changeDescription));
-      taskThread.withMessage(merged.isEmpty() ? "{}" : JsonUtils.pojoToJson(merged));
+      Map<String, FieldDiff> priorMap = extractProposedChanges(existingPayload);
+      Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
+      Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(
+            "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",
+            entity.getFullyQualifiedName(),
+            entity.getVersion(),
+            listOrEmpty(changeDescription.getFieldsAdded()),
+            listOrEmpty(changeDescription.getFieldsDeleted()),
+            listOrEmpty(changeDescription.getFieldsUpdated()),
+            priorMap,
+            newMap,
+            merged);
+      }
+      Map<String, Object> updated = cloneAsMutableMap(existingPayload);
+      if (merged.isEmpty()) {
+        updated.remove(PROPOSED_CHANGES_KEY);
+      } else {
+        updated.put(PROPOSED_CHANGES_KEY, merged);
+      }
+      return updated;
     } catch (Exception e) {
       LOG.warn(
-          "Failed to build change preview for approval task on {}",
+          "Failed to build proposed-changes payload for approval task on {}",
           entity.getFullyQualifiedName(),
           e);
-      taskThread.withMessage(oldMessage != null ? oldMessage : "{}");
+      return existingPayload;
     }
+  }
+
+  /**
+   * Prefer {@code incrementalChangeDescription} (per-edit hop diff) over {@code changeDescription}
+   * (cumulative-between-versions diff). The cumulative form double-counts when prior task payload
+   * has already merged an intermediate state: e.g. a tag added in v0.3 then removed in v0.4 is
+   * already cancelled out in the prior task payload, but v0.4's cumulative changeDescription
+   * still reports the removal, which would re-introduce it on the {@code removed} side.
+   * Incremental change description always reflects just the latest patch, which is the right
+   * unit of work to fold into the running merge.
+   */
+  private static ChangeDescription pickIncrementalOrFull(EntityInterface entity) {
+    ChangeDescription incremental = entity.getIncrementalChangeDescription();
+    if (!hasNoChanges(incremental)) {
+      return incremental;
+    }
+    return entity.getChangeDescription();
+  }
+
+  /**
+   * When a workflow-driven update replaces the entire task payload via a {@code requestedPayload}
+   * variable, any accumulated {@code proposedChanges} on the prior payload would be lost. If the
+   * replacement payload does not carry its own {@code proposedChanges}, copy the key over from
+   * the prior payload so the running merge base is preserved. Returns {@code requestedPayload}
+   * unchanged when there is nothing to preserve.
+   */
+  public static Object preserveProposedChanges(Object requestedPayload, Object priorPayload) {
+    if (!(requestedPayload instanceof Map<?, ?> requestedMap)) return requestedPayload;
+    if (requestedMap.get(PROPOSED_CHANGES_KEY) != null) return requestedPayload;
+    if (!(priorPayload instanceof Map<?, ?> priorMap)) return requestedPayload;
+    Object priorProposed = priorMap.get(PROPOSED_CHANGES_KEY);
+    if (priorProposed == null) return requestedPayload;
+    Map<String, Object> merged = cloneAsMutableMap(requestedPayload);
+    merged.put(PROPOSED_CHANGES_KEY, priorProposed);
+    return merged;
+  }
+
+  private static Map<String, Object> cloneAsMutableMap(Object payload) {
+    if (!(payload instanceof Map<?, ?> source)) return new LinkedHashMap<>();
+    Map<String, Object> copy = new LinkedHashMap<>();
+    for (Map.Entry<?, ?> entry : source.entrySet()) {
+      copy.put(String.valueOf(entry.getKey()), entry.getValue());
+    }
+    return copy;
   }
 }
