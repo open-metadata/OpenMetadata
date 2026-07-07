@@ -932,6 +932,7 @@ const SchemaTable = () => {
       <Select
         allowClear
         data-testid="constraint-type-select"
+        getPopupContainer={(triggerNode) => triggerNode.parentElement}
         options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
