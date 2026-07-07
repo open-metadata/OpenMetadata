@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -117,9 +118,12 @@ export const AiFormModal: FC<AiFormModalProps> = ({
               so the shifted modal never clips the left edge on smaller screens. */}
           <Dialog
             showCloseButton
-            className={`tw:max-w-[820px] tw:transition-transform tw:duration-300 tw:ease-in-out${
-              reserveHintSpace ? ' tw:xl:-translate-x-[178px]' : ''
-            }`}
+            className={classNames(
+              `tw:max-w-205 tw:transition-transform tw:duration-300 tw:ease-in-out`,
+              {
+                'tw:xl:-translate-x-44.5': reserveHintSpace,
+              }
+            )}
             width={820}
             onClose={onClose}>
             <Dialog.Header>
