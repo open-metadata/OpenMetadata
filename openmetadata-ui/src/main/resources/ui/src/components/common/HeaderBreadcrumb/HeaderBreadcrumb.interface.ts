@@ -40,6 +40,12 @@ export interface HeaderBreadcrumbProps {
    * menu when the container is too narrow to fit them all. Defaults to false.
    */
   autoCollapse?: boolean;
+  /**
+   * Maximum number of crumbs to render inline; longer trails collapse the
+   * middle crumbs into a `…` menu (first crumb + trailing crumbs stay
+   * visible). Omit to always render every crumb.
+   */
+  maxItems?: number;
   /** Optional class name applied to the root nav element. */
   className?: string;
 }

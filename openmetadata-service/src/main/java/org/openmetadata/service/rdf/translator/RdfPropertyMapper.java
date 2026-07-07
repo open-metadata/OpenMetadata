@@ -50,8 +50,13 @@ public class RdfPropertyMapper {
   private static final Set<String> STRUCTURED_PROPERTIES =
       Set.of("lifeCycle", "customProperties", "extension", "certification");
 
-  // Properties that should be omitted from RDF because they are audit/helper data.
-  private static final Set<String> IGNORED_PROPERTIES = Set.of("changeDescription", "votes");
+  // Properties omitted from RDF: audit/helper data (changeDescription, votes) plus embedded
+  // time-series data that belongs in the time-series store, not the knowledge graph. A testCase
+  // carries its latest testCaseResult inline; serializing it would push per-run test-result
+  // time-series into the graph on every reindex/update (PROV-O pipeline executions are kept — they
+  // are written deliberately by PipelineRepository, not through this mapper).
+  private static final Set<String> IGNORED_PROPERTIES =
+      Set.of("changeDescription", "votes", "testCaseResult");
 
   // Lineage properties that need special handling
   private static final Set<String> LINEAGE_PROPERTIES =

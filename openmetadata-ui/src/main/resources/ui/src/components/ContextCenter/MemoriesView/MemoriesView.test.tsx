@@ -41,11 +41,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: jest.fn(
     ({
       onClick,
+      isDisabled,
       'data-testid': testId = 'button-utility',
     }: {
       onClick?: () => void;
+      isDisabled?: boolean;
       'data-testid'?: string;
-    }) => <button data-testid={testId} onClick={onClick} />
+    }) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
+    )
   ),
   Dot: jest.fn(() => <span />),
   Dropdown: {

@@ -32,6 +32,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   divider,
   size,
   autoCollapse,
+  maxItems,
   className,
 }) => {
   const navigate = useNavigate();
@@ -77,6 +78,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
       divider={divider}
       items={allItems}
       maxItemWidth={256}
+      maxItems={maxItems}
       size={size}
       type={type}
       onAction={handleAction}

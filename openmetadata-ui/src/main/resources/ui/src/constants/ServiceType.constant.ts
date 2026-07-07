@@ -237,6 +237,42 @@ export const ADVANCED_PROPERTIES = [
   'maxAge',
 ];
 
+export const CONNECTION_AUTH_TYPE_PROPERTY = 'authType';
+
+export const OPTIONAL_CONNECTION_PROPERTIES = new Set([
+  'billingProjectId',
+  'hostPort',
+]);
+
+export const OPTIONAL_SCOPE_PROPERTIES = new Set([
+  'apiCollectionFilterPattern',
+  'apiEndpointFilterPattern',
+  'chartFilterPattern',
+  'containerFilterPattern',
+  'dashboardFilterPattern',
+  'dataModelFilterPattern',
+  'databaseFilterPattern',
+  'databaseName',
+  'directoryFilterPattern',
+  'domainFilterPattern',
+  'fileFilterPattern',
+  'glossaryFilterPattern',
+  'mlModelFilterPattern',
+  'modelFilterPattern',
+  'pipelineFilterPattern',
+  'projectFilterPattern',
+  'schemaFilterPattern',
+  'searchIndexFilterPattern',
+  'serverFilterPattern',
+  'sobjectNames',
+  'spreadsheetFilterPattern',
+  'storedProcedureFilterPattern',
+  'supportsMetadataExtraction',
+  'tableFilterPattern',
+  'topicFilterPattern',
+  'worksheetFilterPattern',
+]);
+
 export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
   'includeTables',
   'includeViews',

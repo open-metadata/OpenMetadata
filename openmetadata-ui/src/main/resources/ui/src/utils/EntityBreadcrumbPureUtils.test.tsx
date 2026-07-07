@@ -38,6 +38,7 @@ jest.mock('./RouterUtils', () => ({
 }));
 
 jest.mock('./ServicePureUtils', () => ({
+  getEntityTypeFromServiceCategory: jest.fn(() => EntityType.DATABASE_SERVICE),
   getServiceRouteFromServiceType: jest.fn(),
 }));
 
@@ -62,10 +63,15 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
-        { name: 'mysql_sample', url: '/service/databaseServices/mysql_sample' },
+        {
+          isServiceBreadcrumb: true,
+          name: 'mysql_sample',
+          url: '/service/databaseServices/mysql_sample',
+        },
       ]);
 
       expect(getServiceRouteFromServiceType).toHaveBeenCalledWith(
@@ -89,11 +95,17 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
-        { name: 'mysql_sample', url: '/service/databaseServices/mysql_sample' },
         {
+          isServiceBreadcrumb: true,
+          name: 'mysql_sample',
+          url: '/service/databaseServices/mysql_sample',
+        },
+        {
+          iconType: EntityType.DATABASE,
           name: 'default',
           url: '/database/default',
         },
@@ -112,14 +124,17 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
         {
+          isServiceBreadcrumb: true,
           name: 'sample_data',
           url: mockServiceUrl,
         },
         {
+          iconType: EntityType.DATABASE,
           name: 'ecommerce_db',
           url: mockDatabaseUrl,
         },
@@ -148,18 +163,22 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
 
       expect(result).toEqual([
         {
+          iconType: EntityType.DATABASE_SERVICE,
           name: startCase(ServiceCategory.DATABASE_SERVICES),
           url: mockSettingUrl,
         },
         {
+          isServiceBreadcrumb: true,
           name: 'sample_data',
           url: mockServiceUrl,
         },
         {
+          iconType: EntityType.DATABASE,
           name: 'ecommerce_db',
           url: mockDatabaseUrl,
         },
         {
+          iconType: EntityType.DATABASE_SCHEMA,
           name: 'shopify',
           url: '/entity/MockDatabase',
         },
@@ -187,7 +206,11 @@ describe('EntityBreadcrumbPureUtils unit tests', () => {
       );
 
       expect(result).toHaveLength(2);
-      expect(result[1]).toEqual({ name: 'monthly_active_users', url: '' });
+      expect(result[1]).toEqual({
+        iconType: EntityType.METRIC,
+        name: 'monthly_active_users',
+        url: '',
+      });
     });
   });
 });

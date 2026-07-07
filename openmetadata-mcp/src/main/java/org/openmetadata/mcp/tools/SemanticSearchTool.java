@@ -9,6 +9,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -116,7 +117,38 @@ public class SemanticSearchTool implements McpTool {
               cleanedResults.size()));
     }
 
+    fitResultsToBudget(result, cleanedResults);
     return result;
+  }
+
+  /**
+   * Ensures the response stays under the dispatch-level size cap by returning fewer <em>results</em>
+   * (never mangling the ones kept), so semantic_search never falls through to the empty-stub nuke.
+   * Uses {@link ResponseBudget} to fit results by measuring each result's real serialized size.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result, List<Map<String, Object>> cleanedResults) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(cleanedResults, overhead);
+    if (fit < cleanedResults.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, fit));
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d results to stay within the response size budget. "
+                  + "Refine the query or lower 'size' for a smaller response.",
+              trimmed.size(), cleanedResults.size()));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   private Map<String, Object> cleanHit(Map<String, Object> hit) {

@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ForwardedRef } from 'react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { triggerOnDemandApp } from '../../rest/applicationAPI';
@@ -37,6 +38,9 @@ jest.mock('../../utils/ServiceUtilClassBase', () => ({
   getExtraInfo: jest.fn(),
   getServiceConfigData: jest.fn(),
   getProperties: jest.fn(),
+  getSupportedServiceFromList: jest
+    .fn()
+    .mockReturnValue({ databaseServices: ['mysql'] }),
 }));
 
 jest.mock('../../hoc/withPageLayout', () => ({
@@ -117,17 +121,47 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>IngestionStepper</div>)
 );
 
+const mockConnectionConfigFormProps = jest.fn();
+
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ConnectionConfigForm',
-  () =>
-    jest.fn().mockImplementation(({ onSave, onCancel }) => (
-      <div>
-        <button onClick={() => onSave({ formData: { host: 'localhost' } })}>
-          Save Connection
-        </button>
-        <button onClick={onCancel}>Back</button>
-      </div>
-    ))
+  () => {
+    const React = jest.requireActual<typeof import('react')>('react');
+
+    return React.forwardRef(function MockConnectionConfigForm(
+      {
+        onSave,
+        onCancel,
+        onValidateAdditionalRequiredFields,
+      }: MockConnectionConfigFormProps,
+      ref: ForwardedRef<MockConnectionConfigFormHandle>
+    ) {
+      const handleSave = () => onSave({ formData: { host: 'localhost' } });
+
+      React.useImperativeHandle(ref, () => ({
+        isSubmitDisabled: false,
+        submit: handleSave,
+      }));
+
+      mockConnectionConfigFormProps({
+        onSave,
+        onCancel,
+        onValidateAdditionalRequiredFields,
+      });
+
+      return (
+        <div>
+          <button onClick={handleSave}>Save Connection</button>
+          <button onClick={onCancel}>Back</button>
+          <button
+            data-testid="trigger-additional-validation"
+            onClick={() => onValidateAdditionalRequiredFields?.()}>
+            Validate Additional Fields
+          </button>
+        </div>
+      );
+    });
+  }
 );
 
 jest.mock(
@@ -145,15 +179,27 @@ jest.mock(
 
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/FiltersConfigForm',
-  () =>
-    jest.fn().mockImplementation(({ onSave, onCancel }) => (
-      <div>
-        <button onClick={() => onSave({ formData: { filterPattern: {} } })}>
-          Save Filters
-        </button>
-        <button onClick={onCancel}>Back</button>
-      </div>
-    ))
+  () => {
+    const React = jest.requireActual<typeof import('react')>('react');
+
+    return React.forwardRef(function MockFiltersConfigForm(
+      { onSave, onCancel }: MockFiltersConfigFormProps,
+      ref: ForwardedRef<MockFiltersConfigFormHandle>
+    ) {
+      const handleSave = () => onSave({ formData: { filterPattern: {} } });
+
+      React.useImperativeHandle(ref, () => ({
+        submit: handleSave,
+      }));
+
+      return (
+        <div>
+          <button onClick={handleSave}>Save Filters</button>
+          <button onClick={onCancel}>Back</button>
+        </div>
+      );
+    });
+  }
 );
 
 jest.mock('../../rest/serviceAPI', () => ({
@@ -201,6 +247,28 @@ const mockProps = {
   pageTitle: 'add-service',
 };
 
+type MockConnectionConfigFormProps = {
+  onCancel?: () => void;
+  onSave: (event: { formData: { host: string } }) => void;
+  onValidateAdditionalRequiredFields?: () => boolean;
+};
+
+type MockConnectionConfigFormHandle = {
+  isSubmitDisabled: boolean;
+  submit: () => void;
+};
+
+type MockFiltersConfigFormProps = {
+  onCancel?: () => void;
+  onSave: (event: {
+    formData: { filterPattern: Record<string, never> };
+  }) => void;
+};
+
+type MockFiltersConfigFormHandle = {
+  submit: () => void;
+};
+
 describe('EmbeddedAddServicePage', () => {
   beforeEach(() => {
     (getServiceByFQN as jest.Mock).mockRejectedValue({
@@ -212,6 +280,7 @@ describe('EmbeddedAddServicePage', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   it('renders the add-new-service container', async () => {
@@ -378,6 +447,114 @@ describe('EmbeddedAddServicePage', () => {
     expect(screen.queryByText('Save Filters')).not.toBeInTheDocument();
   });
 
+  it('sets name error and blocks test connection when service name is empty', async () => {
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(await screen.findByTestId('service-name-error')).toHaveTextContent(
+      'message.field-text-is-required'
+    );
+  });
+
+  it('does not set name error when service name is filled before test connection', async () => {
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Set Service Name'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(screen.queryByTestId('service-name-error')).not.toBeInTheDocument();
+  });
+
+  it('passes onValidateAdditionalRequiredFields to ConnectionConfigForm', async () => {
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    const lastProps = mockConnectionConfigFormProps.mock.calls.at(-1)?.[0];
+
+    expect(typeof lastProps.onValidateAdditionalRequiredFields).toBe(
+      'function'
+    );
+  });
+
+  it('focuses the service name input when additional validation fails on empty name', async () => {
+    const mockFocus = jest.fn();
+    jest
+      .spyOn(document, 'getElementById')
+      .mockReturnValue({ focus: mockFocus } as unknown as HTMLElement);
+
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('trigger-additional-validation'));
+    });
+
+    expect(document.getElementById).toHaveBeenCalledWith('service-name');
+    expect(mockFocus).toHaveBeenCalled();
+  });
+
+  it('focuses the service name input when next is clicked with empty name via Save Connection', async () => {
+    const mockFocus = jest.fn();
+    jest
+      .spyOn(document, 'getElementById')
+      .mockReturnValue({ focus: mockFocus } as unknown as HTMLElement);
+
+    await act(async () => {
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Select MySQL'));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Save Connection'));
+    });
+
+    expect(document.getElementById).toHaveBeenCalledWith('service-name');
+    expect(mockFocus).toHaveBeenCalled();
+  });
+
   it('flags duplicate service names before moving to filters', async () => {
     (getServiceByFQN as jest.Mock).mockResolvedValueOnce({
       name: 'existing-service',
@@ -536,5 +713,87 @@ describe('EmbeddedAddServicePage', () => {
     };
 
     expect(mockedModule.getExtraInfo).toHaveBeenCalled();
+  });
+
+  describe('with a preselected service type from navigation state', () => {
+    const renderPreselected = () =>
+      render(<EmbeddedAddServicePage {...mockProps} />, {
+        wrapper: ({ children }) => (
+          <MemoryRouter
+            initialEntries={[
+              { pathname: '/add-service', state: { serviceType: 'mysql' } },
+            ]}>
+            {children}
+          </MemoryRouter>
+        ),
+      });
+
+    it('starts on the Connect step with the connector preselected', async () => {
+      await act(async () => {
+        renderPreselected();
+      });
+
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'mysql label.service'
+      );
+      expect(screen.getByText('Save Connection')).toBeInTheDocument();
+      expect(screen.queryByText('Select MySQL')).not.toBeInTheDocument();
+    });
+
+    it('returns to the origin on footer Back instead of the connector grid', async () => {
+      await act(async () => {
+        renderPreselected();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+
+    it('returns to a caller-supplied backTo origin on footer Back', async () => {
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                {
+                  pathname: '/add-service',
+                  state: { serviceType: 'mysql', backTo: '/connections' },
+                },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.back' }));
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/connections');
+    });
+
+    it('falls back to the connector grid when the preselected type is unsupported', async () => {
+      await act(async () => {
+        render(<EmbeddedAddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                { pathname: '/add-service', state: { serviceType: 'bogus' } },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+
+      expect(screen.getByText('Select MySQL')).toBeInTheDocument();
+      expect(screen.getByTestId('header')).toHaveTextContent(
+        'label.add-new-entity'
+      );
+    });
   });
 });

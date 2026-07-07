@@ -946,12 +946,14 @@ test.describe('Lineage Filters', () => {
     });
 
     test('verify downstream count for all the entities', async ({ page }) => {
-      test.slow();
+      // Visits one instance of every entity type sequentially, each a full
+      // page navigation, so the default slow (3x = 180s) budget is too tight.
+      test.setTimeout(300_000);
 
       // validate main entity count
       const count = entities.length;
       await expect(
-        page.getByRole('button', { name: `Downstream ${count}` })
+        page.getByRole('radio', { name: `Downstream ${count}` })
       ).toBeVisible();
 
       await depth1Entity.visitEntityPage(page);
@@ -960,7 +962,7 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('button', { name: `Downstream ${count - 1}` })
+        page.getByRole('radio', { name: `Downstream ${count - 1}` })
       ).toBeVisible();
 
       for (const entity of depth2ndEntities) {
@@ -972,7 +974,7 @@ test.describe('Lineage Filters', () => {
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('button', { name: `Downstream 0` })
+          page.getByRole('radio', { name: `Downstream 0` })
         ).toBeVisible();
       }
     });
@@ -981,14 +983,14 @@ test.describe('Lineage Filters', () => {
       test.setTimeout(360_000);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
-      await page.getByRole('button', { name: 'Upstream' }).click();
+      await page.getByRole('radio', { name: 'Upstream' }).click();
       await waitForAllLoadersToDisappear(page);
 
       // validate main entity count
       const upstreamCount = 0;
 
       await expect(
-        page.getByRole('button', { name: `Upstream ${upstreamCount}` })
+        page.getByRole('radio', { name: `Upstream ${upstreamCount}` })
       ).toBeVisible();
 
       await depth1Entity.visitEntityPage(page);
@@ -997,11 +999,11 @@ test.describe('Lineage Filters', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Verify Dashboard is visible in Impact Analysis for Upstream
-      await page.getByRole('button', { name: 'Upstream' }).click();
+      await page.getByRole('radio', { name: 'Upstream' }).click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page.getByRole('button', { name: `Upstream ${upstreamCount + 1}` })
+        page.getByRole('radio', { name: `Upstream ${upstreamCount + 1}` })
       ).toBeVisible();
 
       for (const entity of depth2ndEntities) {
@@ -1013,11 +1015,11 @@ test.describe('Lineage Filters', () => {
 
         await waitForAllLoadersToDisappear(page);
         // Verify Dashboard is visible in Impact Analysis for Upstream
-        await page.getByRole('button', { name: 'Upstream' }).click();
+        await page.getByRole('radio', { name: 'Upstream' }).click();
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('button', { name: `Upstream 2` })
+          page.getByRole('radio', { name: `Upstream 2` })
         ).toBeVisible();
       }
     });

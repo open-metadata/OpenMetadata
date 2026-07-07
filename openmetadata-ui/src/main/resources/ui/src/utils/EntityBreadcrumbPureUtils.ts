@@ -273,6 +273,7 @@ export const getEntityBreadcrumbs = (
                       ]
                     )
                   : '',
+                isServiceBreadcrumb: true,
               },
             ]
           : []),
@@ -284,6 +285,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE,
                   columnData.database?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE,
               },
             ]
           : []),
@@ -295,6 +297,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE_SCHEMA,
                   columnData.databaseSchema?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE_SCHEMA,
               },
             ]
           : []),
@@ -306,6 +309,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.TABLE,
                   columnData.table?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.TABLE,
               },
             ]
           : []),
@@ -314,6 +318,7 @@ export const getEntityBreadcrumbs = (
               {
                 name: entity.name,
                 url: '',
+                iconType: EntityType.TABLE_COLUMN,
               },
             ]
           : []),
