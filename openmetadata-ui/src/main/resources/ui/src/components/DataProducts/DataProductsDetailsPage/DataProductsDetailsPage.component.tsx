@@ -78,7 +78,6 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -122,7 +121,7 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
+import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { DataProductMetadataModal } from '../DataProductMetadataModal';
@@ -969,13 +968,13 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(dataProduct.name, '')}
+      <DeleteEntityModal
+        allowSoftDelete={false}
         entityName={dataProduct.name}
         entityType="Glossary"
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={onDelete}
+        onDelete={onDelete}
       />
 
       <AssetSelectionDrawer

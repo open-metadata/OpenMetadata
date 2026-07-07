@@ -27,7 +27,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -55,7 +55,6 @@ import {
 } from '../../rest/tagAPI';
 import {
   getCountBadge,
-  getEntityDeleteMessage,
 } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
@@ -786,16 +785,13 @@ const TagsPage = () => {
                 ref={classificationDetailsRef}
               />
 
-              <EntityDeleteModal
-                bodyText={getEntityDeleteMessage(
-                  deleteTags.data?.name ?? '',
-                  ''
-                )}
+              <DeleteEntityModal
+                allowSoftDelete={false}
                 entityName={deleteTags.data?.name ?? ''}
                 entityType={t('label.classification')}
                 visible={deleteTags.state}
                 onCancel={handleCancelClassificationDelete}
-                onConfirm={handleConfirmClick}
+                onDelete={handleConfirmClick}
               />
             </>
           ),

@@ -62,7 +62,7 @@ import AssetsTabs, {
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -99,7 +99,6 @@ import {
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
 import {
-  getEntityDeleteMessage,
   getEntityMissingError,
 } from '../../utils/EntityDisplayPureUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -907,13 +906,13 @@ const TagPage = () => {
         </GenericProvider>
       </Row>
 
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(tagItem.name, '')}
+      <DeleteEntityModal
+        allowSoftDelete={false}
         entityName={tagItem.name}
         entityType="Tag"
         visible={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={handleDelete}
+        onDelete={handleDelete}
       />
 
       <EntityNameModal

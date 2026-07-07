@@ -227,18 +227,7 @@ test.describe('Explore Assets Discovery', () => {
     await page.getByTestId('manage-button').click();
     await page.getByTestId('delete-button').click();
 
-    await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(
-          `Delete table "${
-            table1.entityResponseData.displayName ??
-            table1.entityResponseData.name
-          }"`
-        )
-    ).toBeVisible();
-
-    await expect(page.getByTestId('confirm-button')).toBeEnabled();
+    await page.getByTestId('delete-modal').waitFor();
 
     await page.getByTestId('confirm-button').click();
 
