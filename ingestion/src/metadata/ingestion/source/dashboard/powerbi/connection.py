@@ -87,21 +87,30 @@ def _contains_any(*tokens: str) -> Matcher:
 
 
 POWERBI_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
-        "Authentication failed",
-        fix="The service principal token was rejected (401). Check the Client ID, Client Secret, "
-        "and Tenant ID, and that the secret has not expired.",
-    ),
+    # CheckAccess acquires the OAuth token, so a bad secret fails there as an
+    # InvalidSourceException - not here. Any 401/403 from a REST call therefore
+    # means the token was accepted but Power BI would not authorize the call, so
+    # neither diagnosis points at the credentials. Per Microsoft's REST API
+    # troubleshooting guide, a service principal that is not enabled for the
+    # (admin) APIs returns 401, while a missing workspace/resource grant returns
+    # 403 - so the two split on tenant-enablement vs. workspace access.
     when(Matchers.exception(InvalidSourceException)).diagnose(
         "Authentication failed",
         fix="Could not acquire an OAuth token. Check the Client ID, Client Secret, and Tenant ID, "
         "and that the app registration is allowed to request the configured scope.",
     ),
+    when(_http_status(401)).diagnose(
+        "Power BI did not authorize the service principal",
+        fix="The token was accepted but Power BI rejected the call (401). In the Fabric admin "
+        "portal enable 'Allow service principals to use Power BI APIs' (and the read-only admin "
+        "APIs setting when Use Admin APIs is on), add the service principal to the allowed "
+        "security group, and grant the app registration the required API permission.",
+    ),
     when(_http_status(403)).diagnose(
         "Insufficient permissions",
-        fix="The token authenticated but is not authorized (403). Grant the service principal the "
-        "required Power BI tenant settings / admin API access, and enable service-principal access "
-        "in the Power BI admin portal.",
+        fix="The service principal is authenticated but not authorized for this resource (403). "
+        "Add it as a member (or admin) of the target workspace and grant the permissions the "
+        "call needs.",
     ),
     when(_http_status(404)).diagnose(
         "Resource not found",

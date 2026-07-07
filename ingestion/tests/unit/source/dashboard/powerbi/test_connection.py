@@ -150,16 +150,19 @@ def test_get_dashboards_wraps_failure_as_check_error():
 @pytest.mark.parametrize(
     ("error", "title"),
     [
-        (_api_error(401), "Authentication failed"),
+        (_api_error(401), "Power BI did not authorize the service principal"),
         (InvalidSourceException("bad creds"), "Authentication failed"),
         (_api_error(403), "Insufficient permissions"),
         (_api_error(404), "Resource not found"),
-        (_raw_http_error(401), "Authentication failed"),
+        (_raw_http_error(401), "Power BI did not authorize the service principal"),
         (_raw_http_error(403), "Insufficient permissions"),
         (_raw_http_error(404), "Resource not found"),
-        # A 401 whose message echoes the authority URL must still classify as an
-        # auth failure, not be shadowed by the broad 'authority' matcher.
-        (_api_error(401, "AADSTS700016 https://login.microsoftonline.com/<tenant> authority"), "Authentication failed"),
+        # A status-coded 401 whose message echoes the authority URL must classify
+        # by its status, not be shadowed by the broad 'authority' matcher.
+        (
+            _api_error(401, "AADSTS700016 https://login.microsoftonline.com/<tenant> authority"),
+            "Power BI did not authorize the service principal",
+        ),
         (ValueError("Unable to get authority configuration for https://login..."), "Invalid tenant or authority"),
         (ValueError("invalid_instance: The authority you provided is not known"), "Invalid tenant or authority"),
         (
