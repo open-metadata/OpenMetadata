@@ -16,6 +16,13 @@ check exercised (e.g. ``s3:ListBuckets``). Connectors reuse these helpers from
 their ``@check`` methods. On failure the helpers raise ``CheckError`` carrying
 the operation they attempted, so a failed step still reports its ``Evidence``
 to the backend.
+
+The helper *bodies* read boto3 response shapes (``response['Buckets']``,
+``ContinuationToken``, ...) and label their ``command`` with the AWS service
+prefix, so they suit S3 and other boto3-backed AWS object stores. A future
+non-boto3 connector (e.g. GCS via ``google-cloud-storage``) has a different
+client and response shape and should add its own helpers here rather than
+force-fit these; only ``StorageStep`` is truly client-agnostic.
 """
 
 from __future__ import annotations
