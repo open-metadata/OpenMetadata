@@ -453,6 +453,20 @@ test.describe(
         await dialog.getByTestId('memory-type-select').click();
         await page.getByRole('option', { name: /note/i }).click();
 
+        // Add a tag via the tags Autocomplete field
+        const tagFQN = 'PII.Sensitive';
+        const tagsInput = dialog
+          .getByTestId('memory-tags-select')
+          .getByRole('combobox');
+        await tagsInput.click();
+        const tagSearchResPromise = page.waitForResponse(
+          (res) => res.url().includes('/search/query') && res.status() === 200
+        );
+        await tagsInput.fill(tagFQN);
+        await tagSearchResPromise;
+        await page.getByRole('option', { name: tagFQN }).click();
+        await expect(dialog.getByText(tagFQN)).toBeVisible();
+
         const createResPromise = page.waitForResponse(
           (res) =>
             res.url().includes(MEMORIES_API) &&
@@ -464,6 +478,11 @@ test.describe(
 
         const created = await createRes.json();
         createdMemoryId = created.id;
+        expect(
+          (created.tags ?? []).some(
+            (tag: { tagFQN: string }) => tag.tagFQN === tagFQN
+          )
+        ).toBe(true);
 
         await expect(dialog).not.toBeVisible();
         await waitForAllLoadersToDisappear(page);

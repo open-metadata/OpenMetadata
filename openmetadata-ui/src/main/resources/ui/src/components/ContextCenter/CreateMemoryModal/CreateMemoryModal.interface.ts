@@ -37,4 +37,5 @@ export interface MemoryFormValues {
   memory: string;
   memoryType: FormSelectItem | null;
   visibility: ShareVisibility;
+  tags: FormSelectItem[];
 }

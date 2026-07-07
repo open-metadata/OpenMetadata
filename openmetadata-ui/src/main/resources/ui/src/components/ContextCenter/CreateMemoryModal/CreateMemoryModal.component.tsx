@@ -13,17 +13,16 @@
 import {
   Alert,
   Badge,
-  BadgeWithButton,
   Box,
   Button,
   ButtonUtility,
   Card,
   Dialog,
-  Dot,
   FieldProp,
   FieldTypes,
   FormField,
   FormItemLabel,
+  FormSelectItem,
   getField,
   HintText,
   HookForm,
@@ -47,18 +46,10 @@ import {
   X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import {
-  FC,
-  lazy,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { debounce } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
@@ -77,6 +68,7 @@ import {
 } from '../../../constants/ContextCenter.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { Tag } from '../../../generated/entity/classification/tag';
 import {
   EntityReference,
   LabelType,
@@ -98,20 +90,12 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
 import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import {
   CreateMemoryModalProps,
   MemoryFormValues,
 } from './CreateMemoryModal.interface';
-
-const TagSelectForm = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../../components/Tag/TagsSelectForm/TagsSelectForm.component')
-  )
-);
 
 // ─── Form types ───────────────────────────────────────────────────────────────
 
@@ -120,6 +104,7 @@ const DEFAULT_FORM_VALUES: MemoryFormValues = {
   memory: '',
   memoryType: null,
   visibility: ShareVisibility.Shared,
+  tags: [],
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -224,6 +209,12 @@ const VISIBILITY_ICON_MAP = {
   FileLock02: <FileLock02 size={12} strokeWidth={2} />,
 };
 
+const tagLabelToOption = (tag: TagLabel): FormSelectItem => ({
+  id: tag.tagFQN,
+  label: tag.displayName || tag.name || tag.tagFQN,
+  supportingText: tag.displayName ? tag.name : undefined,
+});
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
@@ -275,8 +266,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [modalError, setModalError] = useState<string>('');
   const [linkedAssets, setLinkedAssets] = useState<DataAssetOption[]>([]);
-  const [selectedTags, setSelectedTags] = useState<TagLabel[]>([]);
-  const [showTagForm, setShowTagForm] = useState(false);
+  const tagDataMap = useRef<Map<string, TagLabel>>(new Map());
 
   const isOwner = useMemo(
     () =>
@@ -327,9 +317,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
           : null,
         visibility:
           memoryToEdit.shareConfig?.visibility ?? ShareVisibility.Shared,
+        tags: (memoryToEdit.tags ?? []).map(tagLabelToOption),
       });
 
-      setSelectedTags(memoryToEdit.tags ?? []);
+      (memoryToEdit.tags ?? []).forEach((tag) =>
+        tagDataMap.current.set(tag.tagFQN, tag)
+      );
 
       const toAssetOption = (ref: EntityReference): DataAssetOption => ({
         label: ref.displayName ?? ref.name ?? '',
@@ -346,10 +339,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       setLinkedAssets(assetOptions);
     } else {
       form.reset(DEFAULT_FORM_VALUES);
-      setSelectedTags([]);
       setLinkedAssets([]);
     }
-    setShowTagForm(false);
     setModalError('');
     setIsEditingVisibility(false);
   }, [memoryToEdit]);
@@ -357,8 +348,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
   const handleClose = () => {
     form.reset(DEFAULT_FORM_VALUES);
     setLinkedAssets([]);
-    setSelectedTags([]);
-    setShowTagForm(false);
     setModalError('');
     setIsEditingVisibility(false);
     setIsViewOnly(viewOnly);
@@ -380,37 +369,60 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
     []
   );
 
-  const handleTagSave = useCallback(
-    async (tags: DefaultOptionType | DefaultOptionType[]) => {
-      const tagArray = Array.isArray(tags) ? tags : [tags];
-      const newTags: TagLabel[] = tagArray.map((tag) => ({
-        tagFQN: typeof tag === 'string' ? tag : String(tag.value ?? ''),
-        source: TagSource.Classification,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-        style: tag.data.style,
-      }));
-      setSelectedTags(newTags);
-      setShowTagForm(false);
-    },
-    []
-  );
+  const [tagOptions, setTagOptions] = useState<FormSelectItem[]>([]);
 
-  const handleRemoveTag = useCallback((tagFQN: string) => {
-    setSelectedTags((prev) => prev.filter((tag) => tag.tagFQN !== tagFQN));
+  const fetchTagOptions = useCallback(async (searchText = '') => {
+    try {
+      const response = await tagClassBase.getTags(searchText, 1, true);
+      const fetched = (response?.data ?? []).filter((opt) => opt.value);
+
+      fetched.forEach((opt) => {
+        const tagData = opt.data as Tag | undefined;
+        tagDataMap.current.set(opt.value, {
+          tagFQN: opt.value,
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+          name: tagData?.name,
+          displayName: tagData?.displayName,
+          style: tagData?.style,
+        });
+      });
+
+      setTagOptions(
+        fetched.map((opt) => ({
+          id: opt.value,
+          label: opt.label,
+          supportingText: (opt.data as Tag | undefined)?.displayName,
+        }))
+      );
+    } catch {
+      setTagOptions([]);
+    }
   }, []);
 
-  const fetchTagOptions = useCallback(
-    (searchText: string, page: number) =>
-      tagClassBase.getTags(searchText, page),
-    []
+  const debouncedTagSearch = useMemo(
+    () =>
+      debounce((searchText: string) => void fetchTagOptions(searchText), 250),
+    [fetchTagOptions]
   );
+
+  useEffect(() => () => debouncedTagSearch.cancel(), [debouncedTagSearch]);
 
   const handleSubmit = async (values: MemoryFormValues) => {
     setModalError('');
     try {
-      const { title, memory, memoryType, visibility } = values;
+      const { title, memory, memoryType, visibility, tags } = values;
       const memoryTypeValue = (memoryType?.id as MemoryType) || undefined;
+      const selectedTags: TagLabel[] = tags.map(
+        (option) =>
+          tagDataMap.current.get(option.id) ?? {
+            tagFQN: option.id,
+            source: TagSource.Classification,
+            labelType: LabelType.Manual,
+            state: State.Confirmed,
+          }
+      );
 
       const validAssets = linkedAssets.filter(
         (a) => a.reference?.id && a.reference?.type
@@ -552,6 +564,21 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
         id: opt.id,
         label: t(opt.labelKey),
       })),
+    },
+  };
+
+  const tagsField: FieldProp = {
+    name: 'tags',
+    label: t('label.tag-plural'),
+    placeholder: t('label.select-field', { field: t('label.tag-plural') }),
+    type: FieldTypes.TAG_SUGGESTION,
+    props: {
+      'data-testid': 'memory-tags-select',
+      disabled: isViewOnly,
+      multiple: true,
+      onFocus: () => void fetchTagOptions(),
+      onSearchChange: (searchText: string) => debouncedTagSearch(searchText),
+      options: tagOptions,
     },
   };
 
@@ -952,99 +979,15 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                         </div>
 
                         {/* Tags row */}
-                        <div className="tw:flex tw:flex-col tw:gap-2 tw:px-4 tw:py-3">
-                          <div className="tw:flex tw:items-center tw:gap-3">
-                            <div className="tw:basis-[30%]">
-                              <Typography
-                                className="tw:text-quaternary tw:w-28 tw:shrink-0"
-                                size="text-sm">
-                                {t('label.tag-plural')}
-                              </Typography>
-                            </div>
-                            <div className="tw:flex tw:items-center tw:gap-1.5 tw:flex-wrap tw:flex-1">
-                              {selectedTags.map((tag) =>
-                                isViewOnly ? (
-                                  <Badge
-                                    className="tw:max-w-40 tw:min-w-0"
-                                    key={String(tag.tagFQN ?? '')}
-                                    size="sm"
-                                    type="modern">
-                                    {tag.style?.color && (
-                                      <div className="tw:shrink-0">
-                                        <Dot
-                                          size="sm"
-                                          style={{
-                                            color: tag.style?.color,
-                                            marginRight: '6px',
-                                          }}
-                                        />
-                                      </div>
-                                    )}
-                                    <Typography
-                                      ellipsis
-                                      className="tw:text-secondary"
-                                      size="text-xs">
-                                      {tag.tagFQN}
-                                    </Typography>
-                                  </Badge>
-                                ) : (
-                                  <BadgeWithButton
-                                    color="gray"
-                                    key={tag.tagFQN}
-                                    type="modern"
-                                    onButtonClick={() =>
-                                      handleRemoveTag(tag.tagFQN)
-                                    }>
-                                    <div className="tw:max-w-40 tw:flex tw:items-center">
-                                      {tag.style?.color && (
-                                        <div className="tw:shrink-0">
-                                          <Dot
-                                            size="sm"
-                                            style={{
-                                              color: tag.style?.color,
-                                              marginRight: '6px',
-                                            }}
-                                          />
-                                        </div>
-                                      )}
-                                      <Typography
-                                        ellipsis
-                                        className="tw:text-secondary"
-                                        size="text-xs">
-                                        {tag.tagFQN}
-                                      </Typography>
-                                    </div>
-                                  </BadgeWithButton>
-                                )
-                              )}
-                              {!isViewOnly && (
-                                <Button
-                                  color="link-color"
-                                  iconLeading={Plus}
-                                  size="sm"
-                                  onClick={() => setShowTagForm((v) => !v)}>
-                                  {t('label.add-entity', {
-                                    entity: t('label.tag'),
-                                  })}
-                                </Button>
-                              )}
-                            </div>
+                        <div className="tw:flex tw:items-start tw:gap-3 tw:px-4 tw:py-3">
+                          <div className="tw:basis-[30%] tw:shrink-0">
+                            <Typography
+                              className="tw:text-quaternary tw:w-28 tw:shrink-0"
+                              size="text-sm">
+                              {t('label.tag-plural')}
+                            </Typography>
                           </div>
-
-                          {showTagForm && !isViewOnly && (
-                            <TagSelectForm
-                              defaultValue={selectedTags.map(
-                                (tag) => tag.tagFQN
-                              )}
-                              fetchApi={fetchTagOptions}
-                              placeholder={t('label.search-entity', {
-                                entity: t('label.tag-plural'),
-                              })}
-                              tagType={TagSource.Classification}
-                              onCancel={() => setShowTagForm(false)}
-                              onSubmit={handleTagSave}
-                            />
-                          )}
+                          <div className="tw:flex-1">{getField(tagsField)}</div>
                         </div>
 
                         {Boolean(memoryToEdit?.updatedAt) && (

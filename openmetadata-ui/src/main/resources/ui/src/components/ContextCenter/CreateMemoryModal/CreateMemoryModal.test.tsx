@@ -87,11 +87,6 @@ jest.mock(
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
-jest.mock(
-  '../../../components/Tag/TagsSelectForm/TagsSelectForm.component',
-  () => jest.fn(() => <div data-testid="tag-select-form" />)
-);
-
 jest.mock('../DerivedOntologyCard/DerivedOntologyCard.component', () =>
   jest.fn(() => <div data-testid="derived-ontology-card" />)
 );
@@ -151,7 +146,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }
   ),
   Dot: jest.fn(() => <span />),
-  FieldTypes: { TEXT: 'text', SELECT: 'select' },
+  FieldTypes: {
+    TEXT: 'text',
+    SELECT: 'select',
+    TAG_SUGGESTION: 'tag_suggestion',
+  },
   FormField: ({
     control,
     name,
@@ -194,6 +193,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
                 field.onChange(next ?? null);
               }}>
               <option value="" />
+              {options.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+
+      if (fieldProp.type === 'tag_suggestion') {
+        const options =
+          (fieldProp.props?.options as { id: string; label: string }[]) ?? [];
+        const selected = (field.value as { id: string }[]) ?? [];
+
+        return (
+          <div>
+            <label>{fieldProp.label}</label>
+            <select
+              multiple
+              data-testid={testId}
+              disabled={fieldProp.props?.disabled as boolean}
+              value={selected.map((item) => item.id)}
+              onChange={(e) => {
+                const selectedIds = Array.from(e.target.selectedOptions).map(
+                  (o) => o.value
+                );
+                field.onChange(
+                  options.filter((opt) => selectedIds.includes(opt.id))
+                );
+              }}>
               {options.map((opt) => (
                 <option key={opt.id} value={opt.id}>
                   {opt.label}
