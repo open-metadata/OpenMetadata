@@ -14,14 +14,13 @@ import {
   Box,
   Button,
   Dialog,
-  InputBase,
+  Input,
   Label,
   Modal,
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useEffect, useState } from 'react';
-import { TextField as AriaTextField } from 'react-aria-components';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -31,16 +30,6 @@ import {
   EntityNameModalProps,
   EntityNameValidationRule,
 } from './EntityNameModal.interface';
-
-interface SanitizedFieldProps {
-  id: string;
-  value: string;
-  onChange: (val: string) => void;
-  ariaDescribedBy?: string;
-  isDisabled?: boolean;
-  isInvalid?: boolean;
-  placeholder?: string;
-}
 
 const buildValidate =
   (rules: EntityNameValidationRule[] = []) =>
@@ -71,36 +60,6 @@ const buildValidate =
 
     return true;
   };
-
-/**
- * Wraps InputBase in an AriaTextField to get proper onChange(string) handling.
- * The id prop flows through AriaTextField → InputContext → AriaInput → <input id={id}>.
- * The AriaTextField wrapper div does NOT receive the id (deleted from DOMProps).
- */
-const SanitizedField = ({
-  id,
-  value,
-  onChange,
-  ariaDescribedBy,
-  isDisabled,
-  isInvalid,
-  placeholder,
-}: SanitizedFieldProps) => (
-  <AriaTextField
-    aria-describedby={ariaDescribedBy}
-    id={id}
-    isDisabled={isDisabled}
-    isInvalid={isInvalid}
-    value={value}
-    onChange={(val) => onChange(getSanitizeContent(val))}>
-    <InputBase
-      inputDataTestId={id}
-      isDisabled={isDisabled}
-      isInvalid={isInvalid}
-      placeholder={placeholder}
-    />
-  </AriaTextField>
-);
 
 const EntityNameModal = <T extends EntityName>({
   visible,
@@ -173,18 +132,21 @@ const EntityNameModal = <T extends EntityName>({
                   name="name"
                   render={({ field, fieldState }) => (
                     <>
-                      <SanitizedField
-                        ariaDescribedBy={
+                      <Input
+                        aria-describedby={
                           fieldState.error ? 'name_help' : undefined
                         }
                         id="name"
+                        inputDataTestId="name"
                         isDisabled={!allowRename}
                         isInvalid={!!fieldState.error}
                         placeholder={t('label.enter-entity-name', {
                           entity: t('label.glossary'),
                         })}
                         value={field.value}
-                        onChange={field.onChange}
+                        onChange={(val) =>
+                          field.onChange(getSanitizeContent(val))
+                        }
                       />
                       {fieldState.error && (
                         <Typography
@@ -216,15 +178,18 @@ const EntityNameModal = <T extends EntityName>({
                   name="displayName"
                   render={({ field, fieldState }) => (
                     <>
-                      <SanitizedField
-                        ariaDescribedBy={
+                      <Input
+                        aria-describedby={
                           fieldState.error ? 'displayName_help' : undefined
                         }
                         id="displayName"
+                        inputDataTestId="displayName"
                         isInvalid={!!fieldState.error}
                         placeholder={t('message.enter-display-name')}
                         value={field.value ?? ''}
-                        onChange={field.onChange}
+                        onChange={(val) =>
+                          field.onChange(getSanitizeContent(val))
+                        }
                       />
                       {fieldState.error && (
                         <Typography

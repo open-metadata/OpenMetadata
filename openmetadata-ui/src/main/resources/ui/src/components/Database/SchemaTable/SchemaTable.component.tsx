@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Label } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -924,11 +925,11 @@ const SchemaTable = () => {
 
   const additionalFieldsInEntityNameModal = (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
-      <label className="tw:text-sm tw:font-medium tw:text-secondary">
+      <Label>
         {t('label.entity-type-plural', {
           entity: t('label.constraint'),
         })}
-      </label>
+      </Label>
       <Select
         allowClear
         data-testid="constraint-type-select"
