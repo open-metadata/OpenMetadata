@@ -2130,13 +2130,11 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await page.getByTestId('delete-modal').waitFor();
+        await page.locator('[role="dialog"]').waitFor();
 
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
         );
-
-        await page.click('[data-testid="hard-delete"]');
 
         await page.getByTestId('confirm-button').click();
       });
