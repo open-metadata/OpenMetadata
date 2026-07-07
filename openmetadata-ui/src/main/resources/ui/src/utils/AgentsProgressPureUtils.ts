@@ -45,7 +45,12 @@ export const sumLeafProcessed = (node: ProgressNode): number =>
 
 const computeAssets = (agent: Agent, update: ProgressUpdate): number => {
   let candidate = agent.assets;
-  if (update.globalCounters?.length) {
+  if (
+    update.totalAssetsIngested !== undefined &&
+    update.totalAssetsIngested !== null
+  ) {
+    candidate = update.totalAssetsIngested;
+  } else if (update.globalCounters?.length) {
     candidate = sumGlobalCounters(update.globalCounters);
   } else if (update.progress) {
     candidate = sumLeafProcessed(update.progress);

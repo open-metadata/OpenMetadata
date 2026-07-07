@@ -55,6 +55,9 @@ export const useMetadataAgents = (
   agentsRef.current = agents;
 
   const liveOverridesRef = useRef<Map<string, Agent>>(new Map());
+  const discoveredPipelinesRef = useRef<Map<string, IngestionPipeline>>(
+    new Map()
+  );
   const lastRunEventRef = useRef<Map<string, LastRunEvent>>(new Map());
   const completedThisSessionRef = useRef<Set<string>>(new Set());
   const isMountedRef = useRef(true);
@@ -68,8 +71,19 @@ export const useMetadataAgents = (
   }, []);
 
   useEffect(() => {
+    // Stream-discovered pipelines live here only until a parent refetch
+    // returns them; after that the prop is the source of truth.
+    pipelines.forEach((pipeline) => {
+      discoveredPipelinesRef.current.delete(
+        pipeline.fullyQualifiedName ?? pipeline.name
+      );
+    });
+    const merged = [
+      ...pipelines,
+      ...Array.from(discoveredPipelinesRef.current.values()),
+    ];
     setAgents(
-      pipelines.map((pipeline) => {
+      merged.map((pipeline) => {
         const base = mapPipelineToAgent(pipeline);
         const live = liveOverridesRef.current.get(base.fqn);
 
@@ -125,7 +139,22 @@ export const useMetadataAgents = (
       const known = agentsRef.current.some(
         (agent) => agent.fqn === event.pipelineFqn
       );
-      if (!known || isStaleEvent(event)) {
+      if (!known) {
+        // A DISCOVERY event carries the pipeline entity so a newly created
+        // agent (e.g. autopilot) becomes visible straight from the stream.
+        if (!event.ingestionPipeline) {
+          return;
+        }
+        discoveredPipelinesRef.current.set(
+          event.pipelineFqn,
+          event.ingestionPipeline
+        );
+        agentsRef.current = [
+          ...agentsRef.current,
+          mapPipelineToAgent(event.ingestionPipeline),
+        ];
+      }
+      if (isStaleEvent(event)) {
         return;
       }
 

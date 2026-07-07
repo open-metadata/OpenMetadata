@@ -170,6 +170,57 @@ describe('applyProgressToAgent', () => {
     expect(result.target).toBe(12);
   });
 
+  it('prefers totalAssetsIngested over counters and the progress tree', () => {
+    const result = applyProgressToAgent(
+      baseAgent,
+      buildUpdate({
+        totalAssetsIngested: 17,
+        globalCounters: [{ entityType: 'Table', done: 30, total: 100 }],
+        progress: { children: [{ processed: 8 }] },
+      })
+    );
+
+    expect(result.assets).toBe(17);
+  });
+
+  it('falls back to counters when totalAssetsIngested is null', () => {
+    const result = applyProgressToAgent(
+      baseAgent,
+      buildUpdate({
+        totalAssetsIngested: null,
+        globalCounters: [{ entityType: 'Table', done: 30, total: 100 }],
+      })
+    );
+
+    expect(result.assets).toBe(30);
+  });
+
+  it('keeps totalAssetsIngested monotonic within a run', () => {
+    const agent: Agent = { ...baseAgent, assets: 40, target: 100, pct: 40 };
+    const result = applyProgressToAgent(
+      agent,
+      buildUpdate({ totalAssetsIngested: 25 })
+    );
+
+    expect(result.assets).toBe(40);
+  });
+
+  it('uses the terminal totalAssetsIngested as the final asset count', () => {
+    const agent: Agent = { ...baseAgent, assets: 90, target: 100, pct: 90 };
+    const result = applyProgressToAgent(
+      agent,
+      buildUpdate({
+        updateType: ProgressUpdateType.PipelineComplete,
+        totalAssetsIngested: 123,
+      })
+    );
+
+    expect(result.status).toBe('success');
+    expect(result.assets).toBe(123);
+    expect(result.target).toBe(123);
+    expect(result.pct).toBe(100);
+  });
+
   it('keeps assets monotonic within a run', () => {
     const agent: Agent = { ...baseAgent, assets: 40, target: 100, pct: 40 };
     const result = applyProgressToAgent(
