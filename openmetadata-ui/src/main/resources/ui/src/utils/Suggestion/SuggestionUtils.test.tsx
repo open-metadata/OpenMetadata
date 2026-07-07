@@ -60,6 +60,31 @@ describe('getSuggestionByType', () => {
     expect(janeGroup?.description).toHaveLength(1); // Jane has 1 SuggestDescription
     expect(janeGroup?.combinedData).toHaveLength(1); // Jane has 1 suggestion in total
   });
+
+  it('should ignore suggestions without valid createdBy user', () => {
+    const suggestionMock: Suggestion[] = [
+      {
+        type: SuggestionType.SuggestTagLabel,
+      } as Suggestion,
+      {
+        type: SuggestionType.SuggestDescription,
+        createdBy: { name: 'Missing id' } as EntityReference,
+      } as Suggestion,
+      {
+        type: SuggestionType.SuggestDescription,
+        createdBy: { id: '1', name: 'Jane Smith' } as EntityReference,
+      } as Suggestion,
+    ];
+
+    const result = getSuggestionByType(suggestionMock);
+
+    expect(result.allUsersList).toEqual([{ id: '1', name: 'Jane Smith' }]);
+    expect(result.groupedSuggestions.has('')).toBe(false);
+    expect(result.groupedSuggestions.get('Missing id')).toBeUndefined();
+    expect(
+      result.groupedSuggestions.get('Jane Smith')?.combinedData
+    ).toHaveLength(1);
+  });
 });
 
 describe('getUniqueSuggestions', () => {

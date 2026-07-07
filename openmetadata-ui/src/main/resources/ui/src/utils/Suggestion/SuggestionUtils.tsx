@@ -19,6 +19,11 @@ export const getSuggestionByType = (suggestion: Suggestion[]) => {
   return suggestion.reduce(
     (acc, cv: Suggestion) => {
       const createdBy = cv.createdBy as EntityReference;
+
+      if (!createdBy?.id) {
+        return acc;
+      }
+
       acc.allUsersList.push(createdBy);
 
       // Group suggestions by createdBy name
