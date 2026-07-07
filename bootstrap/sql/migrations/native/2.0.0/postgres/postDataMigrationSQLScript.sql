@@ -235,11 +235,7 @@ SET json = (json::jsonb #- '{connection,config,policyAgentConfig}')
 WHERE serviceType = 'Postgres'
   AND json::jsonb #> '{connection,config,policyAgentConfig}' IS NOT NULL;
 
--- Security: openMetadataServerConnection (app bot JWT) and privateConfiguration (external
--- tokens/passwords) are runtime-only fields, re-injected on demand by
--- ApplicationHandler.setAppRuntimeProperties. They were previously persisted onto app rows
--- and version snapshots and served in API responses. Strip them from stored data so the
--- secrets no longer linger at rest.
+-- Remove runtime-only fields (openMetadataServerConnection, privateConfiguration) from stored application data.
 UPDATE installed_apps
 SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration')
 WHERE jsonb_exists(json::jsonb, 'openMetadataServerConnection')
