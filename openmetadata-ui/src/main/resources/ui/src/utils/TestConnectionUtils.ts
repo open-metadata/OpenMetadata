@@ -42,10 +42,15 @@ export const partitionConnectionSteps = (
     const taggedGateIndex = steps.findIndex(
       (step) => (step as StepWithCategory).category === CONNECTION_GATE_CATEGORY
     );
-    const gateIndex = taggedGateIndex >= 0 ? taggedGateIndex : 0;
     result = {
-      gateStep: steps[gateIndex],
-      capabilitySteps: steps.filter((_, index) => index !== gateIndex),
+      gateStep:
+        taggedGateIndex === -1
+          ? steps.find((step) => step.name === 'CheckAccess')
+          : steps[taggedGateIndex],
+      capabilitySteps:
+        taggedGateIndex === -1
+          ? steps.filter((step) => step.name !== 'CheckAccess')
+          : steps.filter((_, index) => index !== taggedGateIndex),
     };
   }
 
