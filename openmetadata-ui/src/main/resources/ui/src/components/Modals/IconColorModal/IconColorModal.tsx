@@ -23,7 +23,11 @@ import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
 import { iconTooltipDataRender } from '../../../utils/DomainUtils';
 import { ColorSwatchPicker } from '../../common/ColorPicker';
-import { DEFAULT_TAG_ICON, MUIIconPicker } from '../../common/IconPicker';
+import {
+  DEFAULT_TAG_ICON,
+  getIconPickerItems,
+  IconPickerFieldWithLabel,
+} from '../../common/IconPicker';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 
 const IconColorModal: FC<StyleModalProps> = ({
@@ -69,14 +73,16 @@ const IconColorModal: FC<StyleModalProps> = ({
                   name="iconURL"
                   trigger="onChange"
                   valuePropName="value">
-                  <MUIIconPicker
+                  <IconPickerFieldWithLabel
                     allowUrl
                     backgroundColor={selectedColor}
                     data-testid="icon-picker-btn"
                     defaultIcon={DEFAULT_TAG_ICON}
+                    items={getIconPickerItems(DEFAULT_TAG_ICON)}
                     label={t('label.icon')}
+                    name="iconURL"
                     placeholder={t('label.icon-url')}
-                    toolTip={iconTooltipDataRender()}
+                    tooltip={iconTooltipDataRender()}
                   />
                 </Form.Item>
               </div>

@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
+import { FormItemLabel, Grid } from '@openmetadata/ui-core-components';
 import { Form } from 'antd';
 import { castArray } from 'lodash';
 import { Suspense, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityAttachmentProvider } from '../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import MUIFormItemLabel from '../../components/common/MUIFormItemLabel/MUIFormItemLabel';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   DEFAULT_FORM_VALUE,
@@ -116,7 +115,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: <MUIFormItemLabel label={t(field.muiLabel)} />,
+      muiLabel: <FormItemLabel label={t(field.muiLabel)} />,
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
@@ -127,7 +126,7 @@ const TagsForm = ({
   const colorField = useMemo(
     () => ({
       ...COLOR_FIELD,
-      muiLabel: <MUIFormItemLabel label={t(COLOR_FIELD.muiLabel)} />,
+      muiLabel: <FormItemLabel label={t(COLOR_FIELD.muiLabel)} />,
     }),
     [t]
   );
@@ -202,7 +201,7 @@ const TagsForm = ({
     const fields: FieldProp[] = [
       {
         ...descriptionField,
-        label: <MUIFormItemLabel label={t(descriptionField.label)} />,
+        label: <FormItemLabel label={t(descriptionField.label)} />,
       },
     ];
 

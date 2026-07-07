@@ -301,9 +301,7 @@ test('Classification Page', async ({ page }) => {
     await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
-    await page
-      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-      .click();
+    await page.getByRole('button', { name: NEW_TAG.icon, exact: true }).click();
     await page
       .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
       .click();

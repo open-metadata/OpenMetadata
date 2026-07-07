@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import {
+  FormItemLabel as UTItemLabel,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
@@ -47,11 +47,14 @@ import { DomainSelectableListProps } from '../components/common/DomainSelectable
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import { MUIIconPicker } from '../components/common/IconPicker';
+import {
+  getIconPickerItems,
+  IconDefinition,
+  IconPickerFieldWithLabel,
+} from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
-import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import MUIUserTeamSelect, {
@@ -131,14 +134,14 @@ export const getField = (field: FieldProp) => {
 
   // Define MUI label for MUI field types
   const muiLabel = field.muiLabel || (
-    <MUIFormItemLabel
-      helperText={helperText}
-      helperTextType={helperTextType}
-      isBeta={isBeta}
+    <UTItemLabel
       label={label}
-      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
-      showHelperText={showHelperText}
-      slotProps={props?.slotProps as Partial<MUITooltipProps>}
+      required={required}
+      tooltip={
+        helperTextType !== HelperTextType.ALERT && showHelperText
+          ? helperText
+          : undefined
+      }
     />
   );
 
@@ -463,12 +466,25 @@ export const getField = (field: FieldProp) => {
     }
 
     case FieldTypes.ICON_PICKER_MUI: {
+      const {
+        defaultIcon,
+        customStyles: _customStyles,
+        ...restProps
+      } = props as {
+        defaultIcon?: IconDefinition;
+        customStyles?: Record<string, string | number>;
+      } & Record<string, unknown>;
+
       return (
         <Form.Item {...formProps}>
-          <MUIIconPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-            toolTip={helperText}
+          <IconPickerFieldWithLabel
+            {...(restProps as Record<string, unknown>)}
+            defaultIcon={defaultIcon}
+            id={id}
+            items={getIconPickerItems(defaultIcon)}
+            label={muiLabel}
+            name={String(id ?? name)}
+            tooltip={helperText}
           />
         </Form.Item>
       );

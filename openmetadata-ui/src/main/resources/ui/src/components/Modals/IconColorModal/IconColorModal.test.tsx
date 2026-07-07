@@ -79,7 +79,7 @@ jest.mock('../../common/ColorPicker', () => ({
 }));
 
 jest.mock('../../common/IconPicker', () => ({
-  MUIIconPicker: jest
+  IconPickerFieldWithLabel: jest
     .fn()
     .mockImplementation(({ label, value, onChange, placeholder }) => (
       <div data-testid="icon-picker">
@@ -93,6 +93,7 @@ jest.mock('../../common/IconPicker', () => ({
         />
       </div>
     )),
+  getIconPickerItems: jest.fn().mockReturnValue([]),
   DEFAULT_TAG_ICON: 'default-icon',
 }));
 

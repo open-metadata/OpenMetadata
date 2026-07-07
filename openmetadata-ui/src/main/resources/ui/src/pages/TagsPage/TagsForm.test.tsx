@@ -32,6 +32,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Label: ({ children }: { children: React.ReactNode }) => (
       <label>{children}</label>
     ),
+    FormItemLabel: ({
+      label,
+      tooltip,
+      required,
+    }: {
+      label?: React.ReactNode;
+      tooltip?: React.ReactNode;
+      required?: boolean;
+    }) => (
+      <span>
+        {label}
+        {required && '*'}
+        {tooltip}
+      </span>
+    ),
+    IconPickerField: ({
+      value,
+      onChange,
+      'data-testid': dataTestId,
+    }: {
+      value?: string;
+      onChange?: (value: string) => void;
+      'data-testid'?: string;
+    }) => (
+      <input
+        data-testid={dataTestId ?? 'icon-picker-field'}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
     Tooltip: ({
       children,
       title,

@@ -89,6 +89,7 @@ export * from './base/video-player/play-button-icon';
 // Application components
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
+export * from './application/form-field/fields/icon-picker-field';
 export {
   Field,
   FormFields,

@@ -13,4 +13,5 @@
 
 export * from './IconPicker.constants';
 export * from './IconPicker.interface';
-export { default as MUIIconPicker } from './MUIIconPicker';
+export * from './IconPicker.utils';
+export { default as IconPickerFieldWithLabel } from './IconPickerFieldWithLabel';
