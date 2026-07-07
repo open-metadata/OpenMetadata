@@ -111,7 +111,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 {headerActions}
               </Box>
             </Dialog.Header>
-            <Dialog.Content className="tw:max-h-[875px] tw:overflow-y-auto">
+            <Dialog.Content className="tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto">
               {children}
             </Dialog.Content>
             <Dialog.Footer>
