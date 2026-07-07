@@ -19,7 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
 import { debounce, isUndefined } from 'lodash';
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
@@ -61,9 +61,15 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
   const nullLabelText = t('label.no-entity', { entity: label });
   const searchPlaceholder = `${t('label.search-entity', { entity: label })}...`;
 
+  const handleSearchRef = useRef<(value: string) => void>(() => undefined);
+  
+  useEffect(() => {
+    handleSearchRef.current = (value: string) => onSearch(value, searchKey);
+  }, [onSearch, searchKey]);
+
   const debouncedOnSearch = useMemo(
-    () => debounce((value: string) => onSearch(value, searchKey), 500),
-    [onSearch, searchKey]
+    () => debounce((value: string) => handleSearchRef.current(value), 500),
+    []
   );
 
   // Close portal-based dropdowns when navigating to a different page.

@@ -218,6 +218,7 @@ describe('QuickFilterDropdown', () => {
     const { rerender } = renderDropdown();
 
     fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
     expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
 
     mockUseLocation.mockReturnValue({ pathname: '/observability' });
@@ -234,5 +235,27 @@ describe('QuickFilterDropdown', () => {
     );
 
     expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+  });
+
+  it('should stay open when parent rerenders with a new search handler', () => {
+    const { rerender } = renderDropdown({ onSearch: jest.fn() });
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+
+    rerender(
+      <QuickFilterDropdown
+        label="Entity Type"
+        options={OPTIONS}
+        searchKey="entityType"
+        selectedKeys={[]}
+        onChange={jest.fn()}
+        onGetInitialOptions={jest.fn()}
+        onSearch={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });
 });
