@@ -90,6 +90,24 @@ window.IntersectionObserver = jest.fn().mockImplementation(() => ({
 }));
 
 /**
+ * Minimal DataTransfer polyfill — jsdom does not implement it, and the core
+ * FileUploadDropZone builds a FileList via `new DataTransfer()` when forwarding
+ * the selected files to its onDrop handlers.
+ */
+if (typeof global.DataTransfer === 'undefined') {
+  global.DataTransfer = class {
+    constructor() {
+      const files = [];
+      files.item = (index) => files[index] ?? null;
+      this.items = {
+        add: (file) => files.push(file),
+      };
+      this.files = files;
+    }
+  };
+}
+
+/**
  * mock react-i18next
  */
 jest.mock('react-i18next', () => ({

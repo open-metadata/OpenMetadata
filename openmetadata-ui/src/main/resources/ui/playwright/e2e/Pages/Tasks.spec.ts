@@ -160,6 +160,7 @@ test.describe('Task Entity API Tests', () => {
       payload: {
         accessType: 'FullAccess',
         reason: 'Playwright test access request',
+        duration: 'P14D',
       },
     });
 
@@ -276,6 +277,7 @@ test.describe('Task Entity API Tests', () => {
         payload: {
           accessType: 'FullAccess',
           reason: 'Playwright test access request',
+          duration: 'P14D',
         },
       },
       { category: 'MetadataUpdate', type: 'DescriptionUpdate' },

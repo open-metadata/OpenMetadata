@@ -160,6 +160,7 @@ const ContextCenterArticlesPage = () => {
         };
         const response = await postKnowledgePage(data);
         knowledgeCenterPageRef.current?.addKnowledgePage(response);
+        knowledgePagesHierarchyRef.current?.fetchKnowledgePageHierarchy(true);
         showSuccessToast(
           t('message.entity-saved-successfully', {
             entity: t('label.quick-link'),
@@ -267,13 +268,7 @@ const ContextCenterArticlesPage = () => {
             </Dropdown.Root>
           </LimitWrapper>
         }
-        breadcrumbs={[
-          {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          { label: t('label.article-plural') },
-        ]}
+        breadcrumbs={[{ label: t('label.article-plural') }]}
         hasPermission={permissions?.Create}
         searchPlaceholder={t('label.search-entity', {
           entity: t('label.article-plural'),

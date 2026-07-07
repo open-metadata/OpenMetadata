@@ -4,6 +4,7 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTableColumnSearchSettings;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
@@ -39,6 +40,7 @@ public class Migration extends MigrationProcessImpl {
     backfillAnnouncementRelationships(handle);
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
+    addTaskRuleToDataConsumerPolicy(collectionDAO);
     SearchIndexMappingsSeeder.seedIfAbsent();
 
     // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues

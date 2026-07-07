@@ -145,6 +145,21 @@ export const WithoutShortcut: Story = {
   ),
 };
 
+export const WithoutSearchIcon: Story = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <ComboBox
+        items={ITEMS}
+        label="Asset type"
+        placeholder="Select asset type"
+        shortcut={false}
+        showSearchIcon={false}>
+        {renderItem}
+      </ComboBox>
+    </div>
+  ),
+};
+
 export const Disabled: Story = {
   render: () => (
     <div style={{ width: 320 }}>
