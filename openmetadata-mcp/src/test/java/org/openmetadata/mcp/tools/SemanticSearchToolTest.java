@@ -501,6 +501,33 @@ class SemanticSearchToolTest {
     }
   }
 
+  @Test
+  void fullPageWithNullTotalButHasMoreFalseDoesNotAdvertise() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, false);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
+    }
+  }
+
   private Map<String, Object> createHit(String entityType, String fqn, String name, double score) {
     Map<String, Object> hit = new HashMap<>();
     hit.put("entityType", entityType);

@@ -113,8 +113,7 @@ public class SemanticSearchTool implements McpTool {
 
     int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
-    long totalHits = response.getTotalHits() != null ? response.getTotalHits() : Long.MAX_VALUE;
-    attachPagingContract(result, from, rawCount, requestedSize, totalHits);
+    attachPagingContract(result, from, rawCount, requestedSize, response);
     return result;
   }
 
@@ -126,12 +125,16 @@ public class SemanticSearchTool implements McpTool {
    * hasMore}, leaving a full page with no way forward.
    */
   private static void attachPagingContract(
-      Map<String, Object> result, int from, int rawCount, int requestedSize, long totalHits) {
+      Map<String, Object> result,
+      int from,
+      int rawCount,
+      int requestedSize,
+      VectorSearchResponse response) {
     int returned =
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
     boolean budgetTrimmed = returned < rawCount;
     boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = (long) from + rawCount < totalHits;
+    boolean moreInIndex = hasMoreInIndex(response, from, rawCount, fullPage);
     if (budgetTrimmed || (fullPage && moreInIndex)) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
@@ -144,6 +147,17 @@ public class SemanticSearchTool implements McpTool {
                   + "Adjust 'threshold' to filter by similarity score.",
               returned));
     }
+  }
+
+  private static boolean hasMoreInIndex(
+      VectorSearchResponse response, int from, int rawCount, boolean fullPage) {
+    if (response.getTotalHits() != null) {
+      return (long) from + rawCount < response.getTotalHits();
+    }
+    if (response.getHasMore() != null) {
+      return response.getHasMore();
+    }
+    return fullPage;
   }
 
   private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {

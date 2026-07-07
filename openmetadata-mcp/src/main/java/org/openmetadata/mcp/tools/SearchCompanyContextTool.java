@@ -102,24 +102,21 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("returnedCount", pills.size());
     int rawCount = pills.size();
     fitResultsToBudget(result, pills);
-    long totalHits = response.getTotalHits() != null ? response.getTotalHits() : Long.MAX_VALUE;
-    attachPagingContract(result, from, rawCount, requestedSize, totalHits);
+    attachPagingContract(result, from, rawCount, requestedSize, response);
     return result;
   }
 
-  /**
-   * Sets the unified paging markers so callers can walk past page 1 — previously this tool searched
-   * at a fixed offset of 0 and gave no {@code nextCursor}, stranding results beyond the first page.
-   * {@code nextCursor} advances by the count actually returned (after any budget trim), never the
-   * requested size, so a trimmed page never skips the pills it dropped.
-   */
   private static void attachPagingContract(
-      Map<String, Object> result, int from, int rawCount, int requestedSize, long totalHits) {
+      Map<String, Object> result,
+      int from,
+      int rawCount,
+      int requestedSize,
+      VectorSearchResponse response) {
     int returned =
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
     boolean budgetTrimmed = returned < rawCount;
     boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = (long) from + rawCount < totalHits;
+    boolean moreInIndex = hasMoreInIndex(response, from, rawCount, fullPage);
     if (budgetTrimmed || (fullPage && moreInIndex)) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
@@ -130,6 +127,17 @@ public class SearchCompanyContextTool implements McpTool {
           String.format(
               "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.", returned));
     }
+  }
+
+  private static boolean hasMoreInIndex(
+      VectorSearchResponse response, int from, int rawCount, boolean fullPage) {
+    if (response.getTotalHits() != null) {
+      return (long) from + rawCount < response.getTotalHits();
+    }
+    if (response.getHasMore() != null) {
+      return response.getHasMore();
+    }
+    return fullPage;
   }
 
   private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {
