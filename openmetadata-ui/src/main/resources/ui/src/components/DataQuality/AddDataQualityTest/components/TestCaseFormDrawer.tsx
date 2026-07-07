@@ -16,7 +16,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01 } from '@untitledui/icons';
+import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -300,8 +300,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         <HookForm
           fieldDocHeader={
             <Box align="center" className="tw:gap-2" direction="row">
-              <Settings01 className="tw:size-4 tw:text-tertiary" />
-              <Typography size="text-sm" weight="semibold">
+              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
+              <Typography
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
                 {t('label.form-hint')}
               </Typography>
             </Box>

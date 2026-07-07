@@ -49,9 +49,9 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       {/* A plain container, not a Dialog — the doc popover must never take
           focus, or it would steal it from the field being edited. */}
       <div aria-label="Field documentation" role="note">
-        {header != null && <div className="tw:px-4 tw:pt-3">{header}</div>}
-        <div className="tw:px-4 tw:pb-3 tw:pt-2">
-          <h4 className="tw:text-sm tw:font-semibold tw:text-primary tw:mb-1">
+        {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}
+        <div className="tw:px-4 tw:pb-4 tw:pt-4">
+          <h4 className="tw:text-md tw:font-medium tw:text-primary tw:mb-1">
             {entry.label}
           </h4>
           {(renderDoc ?? defaultRenderDoc)(entry.doc)}
