@@ -108,6 +108,7 @@ const EntityNameModal = <T extends EntityName>({
   const [isLoading, setIsLoading] = useState(false);
 
   const { control, handleSubmit, reset } = useForm<EntityName>({
+    mode: 'onChange',
     defaultValues: {
       name: entity.name,
       displayName: entity.displayName ?? '',

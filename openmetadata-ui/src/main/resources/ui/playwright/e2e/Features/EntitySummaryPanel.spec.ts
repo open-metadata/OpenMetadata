@@ -221,7 +221,7 @@ test.describe('Entity Title Section - Edit Display Name', () => {
     const editButton = summaryPanel.getByTestId('edit-displayName-button');
     await editButton.click();
 
-    const modal = page.locator('.ant-modal');
+    const modal = page.locator('[role="dialog"]');
     await expect(modal).toBeVisible();
 
     await modal.getByRole('button', { name: 'Cancel' }).click();
