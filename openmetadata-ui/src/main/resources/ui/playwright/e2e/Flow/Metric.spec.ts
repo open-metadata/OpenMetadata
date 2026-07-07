@@ -16,7 +16,10 @@ import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import {
+  redirectToHomePage,
+  waitForMetricsSearchResponse,
+} from '../../utils/common';
 import {
   addMetric,
   removeGranularity,
@@ -83,9 +86,7 @@ test.describe(
     });
 
     test('Metric creation flow should work', async ({ page }) => {
-      const listAPIPromise = page.waitForResponse(
-        '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
-      );
+      const listAPIPromise = waitForMetricsSearchResponse(page);
 
       await sidebarClick(page, SidebarItem.METRICS);
 

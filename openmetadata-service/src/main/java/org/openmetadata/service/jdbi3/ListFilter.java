@@ -84,12 +84,14 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskApproverCondition());
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
+    conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -160,6 +162,21 @@ public class ListFilter extends Filter<ListFilter> {
               Relationship.MENTIONED_IN.ordinal());
     }
     return result;
+  }
+
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
+    }
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
   }
 
   private String getAssignee() {
@@ -1122,6 +1139,22 @@ public class ListFilter extends Filter<ListFilter> {
     String column = tableName == null ? "status" : tableName + ".status";
     String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
     return String.format("%s IN (%s)", column, inCondition);
+  }
+
+  // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the
+  // validated Long values so the bigint comparison works on MySQL and PostgreSQL.
+  private String getTaskCreatedAtRangeCondition(String tableName) {
+    String column = tableName == null ? "createdAt" : tableName + ".createdAt";
+    String start = queryParams.get("taskStartTs");
+    String end = queryParams.get("taskEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
   }
 
   private String getTaskApproverCondition() {

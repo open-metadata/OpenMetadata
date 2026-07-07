@@ -46,7 +46,9 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
+    MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE,
 )
+from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -173,7 +175,13 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        return run_sql(self.client, MSSQL_TEST_GET_QUERIES, lambda _: "query history accessible")
+        if is_query_store_enabled(self.client):
+            query = MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
+            summary = "query history accessible via Query Store"
+        else:
+            query = MSSQL_TEST_GET_QUERIES
+            summary = "query history accessible via plan-cache DMVs"
+        return run_sql(self.client, query, lambda _: summary)
 
 
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
