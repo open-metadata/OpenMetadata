@@ -214,10 +214,14 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             };
           });
           removeDraft(response.id);
-          setContentChangeState(ContentChangeState.SAVED);
+          if (response.id === knowledgePageIdRef.current) {
+            setContentChangeState(ContentChangeState.SAVED);
+          }
         } catch (syncError) {
           showErrorToast(syncError as AxiosError);
-          setContentChangeState(ContentChangeState.UN_SAVED);
+          if (response.id === knowledgePageIdRef.current) {
+            setContentChangeState(ContentChangeState.UN_SAVED);
+          }
         }
       } else {
         setKnowledgePage(response);
