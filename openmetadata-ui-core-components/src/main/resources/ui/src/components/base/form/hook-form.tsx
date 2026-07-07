@@ -73,23 +73,20 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   fieldDocOffset,
   ...props
 }: FormProps<TFieldValues>) => {
-  if (!showFieldDocs) {
-    return (
-      <FormProvider {...form}>
-        <AriaForm {...props} />
-      </FormProvider>
-    );
-  }
-
+  // Always keep the same tree shape (FormProvider > FieldDocProvider > AriaForm)
+  // so toggling showFieldDocs never remounts the form and resets its state.
+  // FieldDocProvider is a no-op when disabled, and adds no DOM.
   return (
     <FormProvider {...form}>
       <FieldDocProvider enabled={showFieldDocs}>
         <AriaForm {...props} />
-        <FieldDocPopover
-          header={fieldDocHeader}
-          offset={fieldDocOffset}
-          renderDoc={renderFieldDoc}
-        />
+        {showFieldDocs ? (
+          <FieldDocPopover
+            header={fieldDocHeader}
+            offset={fieldDocOffset}
+            renderDoc={renderFieldDoc}
+          />
+        ) : null}
       </FieldDocProvider>
     </FormProvider>
   );
