@@ -281,15 +281,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       <AiFormModal
         headerActions={
           headerActions ?? (
-            <Toggle
-              isSelected={showHint}
-              label={t('label.show-hint')}
-              size="sm"
-              onChange={setShowHint}
-            />
+            <Box align="center" className="tw:gap-2" direction="row">
+              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
+              <Typography
+                className="tw:text-secondary"
+                size="text-sm"
+                weight="medium">
+                {t('label.show-hint')}
+              </Typography>
+              <Toggle isSelected={showHint} size="sm" onChange={setShowHint} />
+            </Box>
           )
         }
         open={open}
+        reserveHintSpace={showHint}
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? t('label.add-entity', { entity: t('label.test-case') })}
         onClose={handleDrawerDismiss}
@@ -309,7 +314,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
               </Typography>
             </Box>
           }
-          fieldDocOffset={64}
+          fieldDocOffset={56}
           form={form}
           renderFieldDoc={(markdown) => (
             <RichTextEditorPreviewerV1 markdown={markdown} />

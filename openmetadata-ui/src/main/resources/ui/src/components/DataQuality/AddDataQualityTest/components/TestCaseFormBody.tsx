@@ -22,6 +22,7 @@ import {
   getField,
   HelperTextType,
   useFieldDoc,
+  useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
@@ -866,6 +867,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.description'),
     doc: t('message.doc-field-description'),
   });
+
+  // Seed the hint panel with the first section's documentation when the form
+  // opens, so it isn't empty before the user focuses a field. Focusing any
+  // field afterwards replaces it as usual.
+  const { setActive: setActiveFieldDoc } = useFieldDocRegistry();
+  useEffect(() => {
+    setActiveFieldDoc('testLevel');
+  }, [setActiveFieldDoc]);
 
   return (
     <div
