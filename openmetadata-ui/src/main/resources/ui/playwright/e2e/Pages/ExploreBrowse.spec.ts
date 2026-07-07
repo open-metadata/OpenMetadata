@@ -231,13 +231,9 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
-        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -245,11 +241,7 @@ test.describe(
       });
 
       await test.step('Removing the service-type chip clears the browse', async () => {
-        const removeRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('remove-browse-chip-serviceType').click();
-        await removeRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -264,18 +256,24 @@ test.describe(
       test.slow();
 
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
-        await expandTreeNode(page, 'Databases');
-
         const serviceTitle = page.getByTestId(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
-        await expect(serviceTitle).toBeVisible();
 
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
-        await serviceTitle.click();
-        await browseRes;
+        // The browse rebuild collapses the tree and can detach the row
+        // mid-click; retry expand → click until the chip confirms the select.
+        await expect(async () => {
+          if (!(await serviceTitle.isVisible())) {
+            await expandTreeNode(page, 'Databases');
+          }
+          await serviceTitle.click();
+          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
+            {
+              timeout: 5000,
+            }
+          );
+        }).toPass({ timeout: 60000 });
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -292,11 +290,7 @@ test.describe(
       });
 
       await test.step('Query-panel Clear restores the full browse estate', async () => {
-        const clearRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('clear-all-chips').click();
-        await clearRes;
         await waitForAllLoadersToDisappear(page);
 
         const url = new URL(page.url());

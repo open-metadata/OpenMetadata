@@ -1313,8 +1313,27 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
     }
 
-    progressTracker.updateProgress(fqn, runId, progressUpdate);
+    progressTracker.updateProgress(
+        fqn, runId, progressUpdate, discoveredPipeline(fqn, progressUpdate));
     return new RestUtil.PutResponse<>(Response.Status.OK, progressUpdate, ENTITY_FIELDS_CHANGED);
+  }
+
+  /**
+   * The pipeline entity to attach to the run's opening event, so the UI can discover a newly
+   * created agent from the stream itself. Loaded only for the DISCOVERY update (once per run) and
+   * never fails the progress update — a lookup error just omits the entity.
+   */
+  private IngestionPipeline discoveredPipeline(String fqn, ProgressUpdate update) {
+    IngestionPipeline result = null;
+    if (update.getUpdateType() == ProgressUpdateType.DISCOVERY) {
+      try {
+        result = getByName(null, fqn, getFields(""));
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not load ingestion pipeline {} for progress discovery: {}", fqn, e.getMessage());
+      }
+    }
+    return result;
   }
 
   public RestUtil.PutResponse<?> addOperationMetrics(
