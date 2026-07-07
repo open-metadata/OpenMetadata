@@ -23,8 +23,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
-import java.time.Duration;
-import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
@@ -75,6 +73,7 @@ import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -973,22 +972,19 @@ public class CreateTask implements TaskListener {
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
+    Long millis = fallback;
     try {
-      return System.currentTimeMillis() + Duration.parse(duration).toMillis();
-    } catch (DateTimeParseException ignored) {
-      // Duration.parse does not support month/year designators; try Period
-    }
-    try {
-      return ZonedDateTime.now(ZoneOffset.UTC)
-          .plus(Period.parse(duration))
-          .toInstant()
-          .toEpochMilli();
-    } catch (DateTimeParseException e) {
+      millis =
+          ZonedDateTime.now(ZoneOffset.UTC)
+              .plus(DurationUtil.parseIso8601(duration))
+              .toInstant()
+              .toEpochMilli();
+    } catch (DateTimeParseException invalid) {
       LOG.warn(
           "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
           duration);
-      return fallback;
     }
+    return millis;
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
