@@ -160,6 +160,20 @@ def test_get_dashboards_wraps_failure_as_check_error():
     assert exc_info.value.evidence.command == "fetch dashboards"
 
 
+def test_get_dashboards_wraps_client_build_failure():
+    # Client construction (MSAL discovery) happens inside fetch_list's try, so a
+    # build failure still reports the step's command rather than escaping raw.
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider = PowerBIChecks(connection=MagicMock())
+        mock_client.side_effect = ValueError("authority discovery failed")
+
+        with pytest.raises(CheckError) as exc_info:
+            provider.get_dashboards()
+
+    assert exc_info.value.evidence.command == "fetch dashboards"
+    assert isinstance(exc_info.value.cause, ValueError)
+
+
 @pytest.mark.parametrize(
     ("error", "title"),
     [

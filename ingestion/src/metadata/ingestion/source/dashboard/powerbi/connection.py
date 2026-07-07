@@ -179,7 +179,7 @@ class PowerBIChecks:
     @check(DashboardStep.GetDashboards)
     def get_dashboards(self) -> Evidence:
         return fetch_list(
-            self._client().fetch_dashboards,
+            lambda: self._client().fetch_dashboards(),
             noun="dashboard",
             command="fetch dashboards",
             empty_caveat=Diagnosis(
