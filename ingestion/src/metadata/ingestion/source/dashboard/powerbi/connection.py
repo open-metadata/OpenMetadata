@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from metadata.core.connections.test_connection import (
+    Diagnosis,
     ErrorPack,
     Evidence,
     Matchers,
@@ -181,6 +182,12 @@ class PowerBIChecks:
             self._client().fetch_dashboards,
             noun="dashboard",
             command="fetch dashboards",
+            empty_caveat=Diagnosis(
+                title="No dashboards visible",
+                remediation="The connection works but returned no dashboards. Confirm the service "
+                "principal has access to a workspace that contains dashboards - an empty result can "
+                "also mean the listing was filtered or could not be read.",
+            ),
         )
 
 

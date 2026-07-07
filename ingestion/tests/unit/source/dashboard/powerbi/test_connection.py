@@ -124,9 +124,20 @@ def test_get_dashboards_caps_the_count():
         evidence = provider.get_dashboards()
 
     assert evidence.summary == "100+ dashboards enumerated"
+    assert evidence.caveat is None
 
 
-def test_get_dashboards_empty_is_singular_aware():
+def test_get_dashboards_at_cap_shows_plus():
+    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
+        provider, client = _checks(mock_client)
+        client.fetch_dashboards.return_value = [object()] * 100
+
+        evidence = provider.get_dashboards()
+
+    assert evidence.summary == "100+ dashboards enumerated"
+
+
+def test_get_dashboards_empty_passes_with_caveat():
     with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
         provider, client = _checks(mock_client)
         client.fetch_dashboards.return_value = None
@@ -134,6 +145,8 @@ def test_get_dashboards_empty_is_singular_aware():
         evidence = provider.get_dashboards()
 
     assert evidence.summary == "0 dashboards enumerated"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No dashboards visible"
 
 
 def test_get_dashboards_wraps_failure_as_check_error():
