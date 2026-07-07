@@ -12,6 +12,7 @@
  */
 
 import { FieldTypes, HelperTextType } from '@openmetadata/ui-core-components';
+import { TFunction } from 'i18next';
 import {
   COLOR_FIELD,
   getDisabledField,
@@ -24,11 +25,12 @@ import {
 } from './tagFormFields';
 
 const noopFn = jest.fn();
+const mockT = jest.fn((key: string) => key) as unknown as TFunction;
 
 describe('tagFormFields', () => {
   describe('getIconField', () => {
     it('should return icon field with ICON_PICKER type', () => {
-      const result = getIconField();
+      const result = getIconField(mockT);
 
       expect(result.name).toBe('style.iconURL');
       expect(result.type).toBe(FieldTypes.ICON_PICKER);
@@ -37,7 +39,7 @@ describe('tagFormFields', () => {
 
     it('should pass backgroundColor from selected color', () => {
       const selectedColor = '#FF5733';
-      const result = getIconField(selectedColor);
+      const result = getIconField(mockT, selectedColor);
 
       expect(result.props?.backgroundColor).toBe(selectedColor);
     });
@@ -53,7 +55,7 @@ describe('tagFormFields', () => {
 
   describe('getNameField', () => {
     it('should return TEXT type with data-testid', () => {
-      const result = getNameField(false);
+      const result = getNameField(false, mockT);
 
       expect(result.type).toBe(FieldTypes.TEXT);
       expect(result.name).toBe('name');
@@ -62,8 +64,8 @@ describe('tagFormFields', () => {
     });
 
     it('should forward disabled prop', () => {
-      expect(getNameField(true).props?.disabled).toBe(true);
-      expect(getNameField(false).props?.disabled).toBe(false);
+      expect(getNameField(true, mockT).props?.disabled).toBe(true);
+      expect(getNameField(false, mockT).props?.disabled).toBe(false);
     });
   });
 
@@ -85,7 +87,7 @@ describe('tagFormFields', () => {
     it('should return USER_TEAM_SELECT_INPUT with provided options and callbacks', () => {
       const options = [{ id: '1', label: 'Alice', value: 'ref1' }];
       const result = getOwnerField({
-        multiple: true,
+        canAddMultipleUserOwners: true,
         options,
         onFocus: noopFn,
         onSearchChange: noopFn,
@@ -128,7 +130,7 @@ describe('tagFormFields', () => {
 
   describe('getDisabledField', () => {
     it('should return SWITCH type with disabled prop', () => {
-      const result = getDisabledField({ initialValue: false, disabled: false });
+      const result = getDisabledField({ disabled: false });
 
       expect(result.type).toBe(FieldTypes.SWITCH);
       expect(result.name).toBe('disabled');
@@ -137,10 +139,7 @@ describe('tagFormFields', () => {
     });
 
     it('should forward disabled prop', () => {
-      expect(
-        getDisabledField({ initialValue: false, disabled: true }).props
-          ?.disabled
-      ).toBe(true);
+      expect(getDisabledField({ disabled: true }).props?.disabled).toBe(true);
     });
   });
 
