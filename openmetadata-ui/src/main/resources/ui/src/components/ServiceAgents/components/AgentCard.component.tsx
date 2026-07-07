@@ -21,7 +21,7 @@ import { ReactComponent as ClockIcon } from '../../../assets/svg/agents/clock.sv
 import { ReactComponent as LogsIcon } from '../../../assets/svg/agents/logs.svg';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { ReactComponent as TerminalIcon } from '../../../assets/svg/agents/terminal.svg';
-import { Agent } from '../AgentsPage.interface';
+import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
@@ -40,14 +40,22 @@ import StatusPill from './shared/StatusPill.component';
 
 interface AgentCardProps {
   agent: Agent;
+  permissions?: AgentActionPermissions;
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
 }
 
+const ALL_PERMISSIONS: AgentActionPermissions = {
+  trigger: true,
+  edit: true,
+  delete: true,
+};
+
 const AgentCard: FC<AgentCardProps> = ({
   agent,
+  permissions = ALL_PERMISSIONS,
   onAction,
   onLogs,
   onRun,
@@ -80,6 +88,7 @@ const AgentCard: FC<AgentCardProps> = ({
       className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-primary tw:px-4.5 tw:py-4 tw:shadow-xs ${
         isFailed ? 'tw:border-utility-error-200' : 'tw:border-secondary'
       }`}
+      data-testid={`agent-card-${agent.fqn}`}
       variant="ghost">
       {isRunning && (
         <div className="tw:absolute tw:bottom-0 tw:left-0 tw:top-0 tw:w-1 tw:bg-utility-brand-500" />
@@ -94,10 +103,14 @@ const AgentCard: FC<AgentCardProps> = ({
             <Icon height={18} width={18} />
           </span>
           <div className="tw:min-w-0">
-            <div className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight">
+            <div
+              className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
+              data-testid="pipeline-name">
               {agent.name}
             </div>
-            <div className="tw:mt-px tw:text-xs tw:text-quaternary">
+            <div
+              className="tw:mt-px tw:text-xs tw:text-quaternary"
+              data-testid="pipeline-type">
               {agent.type}
             </div>
           </div>
@@ -111,6 +124,7 @@ const AgentCard: FC<AgentCardProps> = ({
             <StatusPill status={agent.status} />
             {isRunning && (
               <Metric
+                dataTestId="agent-assets-metric"
                 icon={unitIcon}
                 label={unitVerbLabel}
                 value={fmtNum(agent.assets)}
@@ -118,6 +132,7 @@ const AgentCard: FC<AgentCardProps> = ({
             )}
             {isRunning && (
               <Metric
+                dataTestId="agent-eta-metric"
                 icon={<ClockIcon height={15} width={15} />}
                 value={etaLabel}
               />
@@ -150,6 +165,7 @@ const AgentCard: FC<AgentCardProps> = ({
             <span className="tw:flex-1" />
             {agent.errors > 0 && (
               <Metric
+                dataTestId="agent-errors-metric"
                 icon={<AlertCircleIcon height={15} width={15} />}
                 label={t('label.error-plural-lowercase')}
                 tone="error"
@@ -158,6 +174,7 @@ const AgentCard: FC<AgentCardProps> = ({
             )}
             {agent.warnings > 0 && (
               <Metric
+                dataTestId="agent-warnings-metric"
                 icon={<AlertTriangleIcon height={15} width={15} />}
                 label={t('label.warning-plural-lowercase')}
                 tone="warn"
@@ -165,7 +182,11 @@ const AgentCard: FC<AgentCardProps> = ({
               />
             )}
           </Box>
-          {isRunning && <ProgressBar pct={agent.pct} status={agent.status} />}
+          {isRunning && (
+            <div data-testid="agent-progress-bar">
+              <ProgressBar pct={agent.pct} status={agent.status} />
+            </div>
+          )}
           {!isRunning && agent.recentRuns.length > 0 && (
             <Box align="center" className="tw:mt-2 tw:gap-2">
               <span className="tw:text-xs tw:text-quaternary">
@@ -177,6 +198,7 @@ const AgentCard: FC<AgentCardProps> = ({
                     className={`tw:size-[13px] tw:cursor-pointer tw:rounded tw:border-0 tw:p-0 ${
                       RUN_DOT_CLASS[run.status] ?? 'tw:bg-utility-gray-300'
                     }${index === 0 ? '' : ' tw:opacity-[0.55]'}`}
+                    data-testid="agent-run-dot"
                     key={run.id}
                     title={t('message.run-status-click-details', {
                       status: t(RUN_META[run.status].labelKey),
@@ -189,6 +211,7 @@ const AgentCard: FC<AgentCardProps> = ({
               <Button
                 className="tw:text-xs tw:font-semibold tw:text-brand-tertiary"
                 color="link-color"
+                data-testid="view-run-history-button"
                 size="sm"
                 onClick={() => onRunDetails(agent)}>
                 {t('label.view-run-history')}
@@ -203,6 +226,7 @@ const AgentCard: FC<AgentCardProps> = ({
             <Button
               className="tw:font-semibold"
               color="primary"
+              data-testid="diagnose-button"
               iconLeading={<AlertTriangleIcon height={15} width={15} />}
               size="sm"
               onClick={() => onRunDetails(agent)}>
@@ -212,16 +236,18 @@ const AgentCard: FC<AgentCardProps> = ({
             <Button
               className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
               color="secondary"
+              data-testid="logs-button"
               iconLeading={<LogsIcon height={15} width={15} />}
               size="sm"
               onClick={() => onLogs(agent)}>
               {t('label.log-plural')}
             </Button>
           )}
-          {!isRunning && (
+          {!isRunning && permissions.trigger && (
             <Button
               className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
               color="secondary"
+              data-testid="run-agent-button"
               iconLeading={<PlayIcon height={14} width={14} />}
               size="sm"
               onClick={() => onRun(agent)}>
@@ -229,6 +255,7 @@ const AgentCard: FC<AgentCardProps> = ({
             </Button>
           )}
           <AgentOverflowMenu
+            permissions={permissions}
             status={agent.status}
             onAction={(action) => onAction(action, agent)}
           />

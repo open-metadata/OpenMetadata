@@ -23,7 +23,7 @@ import {
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../interface/service.interface';
 import { deleteIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
-import { getEditIngestionPath } from '../../../utils/RouterUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -32,6 +32,7 @@ import '../agents-preview.css';
 import { Agent } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { useAgentLogs } from '../hooks/useAgentLogs';
+import { useAgentPermissions } from '../hooks/useAgentPermissions';
 import AgentGroup from './AgentGroup.component';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
@@ -60,6 +61,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const navigate = useNavigate();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
+  const { agentPermissions } = useAgentPermissions(ingestionPipelineList);
   const [runsFor, setRunsFor] = useState<{
     agent: Agent;
     runId?: string;
@@ -123,7 +125,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           break;
         case 'edit':
           navigate(
-            getEditIngestionPath(
+            connectionsRouterClassBase.getEditIngestionPath(
               serviceCategory,
               serviceName,
               agent.fqn,
@@ -197,8 +199,10 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     <div data-testid="metadata-agents-view">
       <AgentGroup
         addAgentSlot={addAgentSlot}
+        agentPermissions={agentPermissions}
         agents={agents}
         canCreateAgent={showAddAgent}
+        dataTestId="metadata-agent-group"
         descKey="message.metadata-agents-description"
         icon={<CodeIcon height={18} width={18} />}
         titleKey="label.metadata-agent-plural"

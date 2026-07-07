@@ -16,13 +16,15 @@ import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ChevronDownIcon } from '../../../assets/svg/agents/chevron-down.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/agents/plus.svg';
-import { Agent } from '../AgentsPage.interface';
+import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
 interface AgentGroupProps {
   addAgentSlot?: ReactNode;
+  agentPermissions?: Record<string, AgentActionPermissions>;
   agents: Agent[];
   canCreateAgent: boolean;
+  dataTestId?: string;
   descKey: string;
   icon: ReactNode;
   titleKey: string;
@@ -34,8 +36,10 @@ interface AgentGroupProps {
 
 const AgentGroup: FC<AgentGroupProps> = ({
   addAgentSlot,
+  agentPermissions,
   agents,
   canCreateAgent,
+  dataTestId = 'agent-group',
   descKey,
   icon,
   onAction,
@@ -50,6 +54,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   return (
     <Card
       className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-secondary tw:p-4.5"
+      data-testid={dataTestId}
       variant="ghost">
       <Box align="center" className="tw:mb-4 tw:gap-3">
         <span className="tw:grid tw:size-10 tw:place-items-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:text-fg-secondary">
@@ -67,6 +72,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
           <Badge
             className="tw:gap-1.5 tw:font-semibold"
             color="brand"
+            data-testid="agent-group-running-count"
             size="sm"
             type="pill-color">
             <span className="tw:size-1.5 tw:animate-pulse tw:rounded-full tw:bg-utility-brand-500" />
@@ -89,6 +95,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
           <AgentCard
             agent={agent}
             key={agent.id}
+            permissions={agentPermissions?.[agent.fqn]}
             onAction={onAction}
             onLogs={onLogs}
             onRun={onRun}

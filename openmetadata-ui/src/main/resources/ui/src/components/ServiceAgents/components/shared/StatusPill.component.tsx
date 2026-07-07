@@ -18,6 +18,7 @@ import { AgentStatus } from '../../AgentsPage.interface';
 import { STATUS_PILL_META } from '../../utils/agents.utils';
 
 interface StatusPillProps {
+  dataTestId?: string;
   status: AgentStatus;
 }
 
@@ -37,7 +38,10 @@ const DOT_CLASS: Record<AgentStatus, string> = {
   none: 'tw:bg-utility-gray-400',
 };
 
-const StatusPill: FC<StatusPillProps> = ({ status }) => {
+const StatusPill: FC<StatusPillProps> = ({
+  dataTestId = 'pipeline-status',
+  status,
+}) => {
   const { t } = useTranslation();
   const meta = STATUS_PILL_META[status];
 
@@ -45,6 +49,7 @@ const StatusPill: FC<StatusPillProps> = ({ status }) => {
     <Badge
       className="tw:gap-1.5 tw:font-semibold"
       color={meta.color}
+      data-testid={dataTestId}
       size="sm"
       type="pill-color">
       <span

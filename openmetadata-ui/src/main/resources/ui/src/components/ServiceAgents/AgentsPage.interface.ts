@@ -31,6 +31,12 @@ export interface AgentRecentRun {
   status: RunStatus;
 }
 
+export interface AgentActionPermissions {
+  trigger: boolean;
+  edit: boolean;
+  delete: boolean;
+}
+
 export interface Agent {
   id: string;
   fqn: string;

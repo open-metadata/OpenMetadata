@@ -33,6 +33,7 @@ import RunStepRow from './RunStepRow.component';
 interface StatTileProps {
   value: string;
   label: string;
+  testId?: string;
   tone?: 'error' | 'warn' | 'ok';
 }
 
@@ -42,9 +43,10 @@ const STAT_TONE_CLASS: Record<string, string> = {
   ok: 'tw:text-utility-success-700',
 };
 
-const StatTile: FC<StatTileProps> = ({ value, label, tone }) => (
+const StatTile: FC<StatTileProps> = ({ value, label, testId, tone }) => (
   <Card
     className="tw:flex-1 tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:px-3.5 tw:py-3"
+    data-testid={testId}
     variant="ghost">
     <div
       className={`tw:text-xl tw:font-bold tw:leading-tight tw:tracking-tight tw:tabular-nums ${
@@ -83,6 +85,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
                 ? 'tw:border-utility-brand-600 tw:bg-primary tw:ring-4 tw:ring-utility-brand-600/10'
                 : 'tw:border-secondary tw:bg-secondary'
             }`}
+            data-testid="run-history-item"
             key={r.id}
             type="button"
             onClick={() => onSelect(r.id)}>
@@ -183,6 +186,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           <Button
             className="tw:font-semibold tw:ring-secondary"
             color="secondary"
+            data-testid="raw-logs-button"
             iconLeading={<LogsIcon height={15} width={15} />}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
@@ -191,6 +195,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
           <Button
             className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
             color="secondary"
+            data-testid="drawer-run-now-button"
             iconLeading={<PlayIcon height={14} width={14} />}
             size="sm"
             onClick={() => onRun(agent)}>
@@ -223,6 +228,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               <Badge
                 className="tw:font-semibold"
                 color={m.color}
+                data-testid="selected-run-status"
                 size="sm"
                 type="pill-color">
                 {runLabel}
@@ -233,23 +239,28 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             <Box className="tw:mb-5.5 tw:gap-2.5">
               <StatTile
                 label={t('label.processed')}
+                testId="run-stat-processed"
                 value={fmtNum(tot.records)}
               />
               <StatTile
                 label={t('label.filtered-lowercase')}
+                testId="run-stat-filtered"
                 value={fmtNum(tot.filtered)}
               />
               <StatTile
                 label={t('label.updated-lowercase')}
+                testId="run-stat-updated"
                 value={fmtNum(tot.updated)}
               />
               <StatTile
                 label={t('label.warning-plural-lowercase')}
+                testId="run-stat-warnings"
                 tone={tot.warnings ? 'warn' : undefined}
                 value={fmtNum(tot.warnings)}
               />
               <StatTile
                 label={t('label.error-plural-lowercase')}
+                testId="run-stat-errors"
                 tone={tot.errors ? 'error' : undefined}
                 value={fmtNum(tot.errors)}
               />
@@ -258,6 +269,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             {/* steps card */}
             <Card
               className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
+              data-testid="run-steps-card"
               variant="ghost">
               <Box
                 align="center"

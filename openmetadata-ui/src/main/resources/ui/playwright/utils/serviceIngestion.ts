@@ -29,6 +29,9 @@ export enum Services {
   API = GlobalSettingOptions.APIS,
 }
 
+export const getAgentCard = (page: Page, pipelineName: string) =>
+  page.locator(`[data-testid^="agent-card-"][data-testid*="${pipelineName}"]`);
+
 export const getEntityTypeFromService = (service: Services) => {
   switch (service) {
     case Services.Dashboard:

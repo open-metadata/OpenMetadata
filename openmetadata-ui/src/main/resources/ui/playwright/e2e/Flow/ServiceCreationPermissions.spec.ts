@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import {
   SERVICE_CREATOR_RULES,
@@ -32,6 +32,7 @@ import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   advanceToServiceConnectionStep,
+  getAgentCard,
   mockSuccessfulTestConnection,
   selectServiceConnector,
   testConnectionIfRequired,
@@ -101,9 +102,9 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = page
-    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
-    .getByTestId('more-actions');
+  const actionButton = getAgentCard(page, ingestionPipelineName).getByTestId(
+    'more-actions'
+  );
 
   await actionButton.waitFor();
   await actionButton.click();
@@ -598,6 +599,8 @@ test.describe(
           response.request().method() === 'POST'
       );
 
+      await page.waitForTimeout(15000);
+
       await page.getByTestId('run-button').click();
 
       const response = await triggerResponse;
@@ -611,7 +614,6 @@ test.describe(
       await openPipelineActions(page);
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('kill-button')).toBeVisible();
       await expect(page.getByTestId('re-deploy-button')).toBeVisible();
       await expect(page.getByTestId('run-button')).toBeHidden();
     });

@@ -76,7 +76,9 @@ const computeTarget = (
 };
 
 const computeEta = (agent: Agent, update: ProgressUpdate): number | null =>
-  update.estimatedSecondsRemaining ?? agent.eta;
+  update.estimatedSecondsRemaining === undefined
+    ? agent.eta
+    : update.estimatedSecondsRemaining;
 
 const buildRunningFields = (
   agent: Agent,

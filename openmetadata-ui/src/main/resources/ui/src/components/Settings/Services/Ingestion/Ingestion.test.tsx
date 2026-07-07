@@ -41,6 +41,7 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
     permissions: {
       ingestionPipeline: ENTITY_PERMISSIONS,
     },
+    getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
   })),
 }));
 
@@ -110,6 +111,7 @@ describe('Ingestion', () => {
           Create: false,
         },
       },
+      getEntityPermissionByFqn: jest.fn().mockResolvedValue(ENTITY_PERMISSIONS),
     }));
     await act(async () => {
       render(<Ingestion {...ingestionProps} />, { wrapper: MemoryRouter });

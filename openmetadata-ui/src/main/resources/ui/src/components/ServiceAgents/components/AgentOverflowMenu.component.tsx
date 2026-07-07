@@ -16,9 +16,10 @@ import { FC } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as MoreVerticalIcon } from '../../../assets/svg/agents/more-vertical.svg';
-import { AgentStatus } from '../AgentsPage.interface';
+import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 
 interface AgentOverflowMenuProps {
+  permissions?: AgentActionPermissions;
   status: AgentStatus;
   onAction: (action: string) => void;
 }
@@ -27,28 +28,73 @@ interface MenuItem {
   danger?: boolean;
   id: string;
   label: string;
+  testId: string;
 }
+
+const ALL_PERMISSIONS: AgentActionPermissions = {
+  trigger: true,
+  edit: true,
+  delete: true,
+};
 
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   onAction,
+  permissions = ALL_PERMISSIONS,
   status,
 }) => {
   const { t } = useTranslation();
   const isActive = status === 'running' || status === 'queued';
 
-  const items: MenuItem[] = isActive
+  const allItems: MenuItem[] = isActive
     ? [
-        { id: 'pause', label: t('label.pause') },
-        { id: 'kill', label: t('label.kill-run') },
-        { id: 'edit', label: t('label.edit-configuration') },
-        { danger: true, id: 'delete', label: t('label.delete-agent') },
+        { id: 'pause', label: t('label.pause'), testId: 'pause-button' },
+        { id: 'kill', label: t('label.kill-run'), testId: 'kill-button' },
+        {
+          id: 'edit',
+          label: t('label.edit-configuration'),
+          testId: 'edit-button',
+        },
+        {
+          danger: true,
+          id: 'delete',
+          label: t('label.delete-agent'),
+          testId: 'delete-button',
+        },
       ]
     : [
-        { id: 'run', label: t('label.run-now') },
-        { id: 'redeploy', label: t('label.re-deploy-sentence') },
-        { id: 'edit', label: t('label.edit-configuration') },
-        { danger: true, id: 'delete', label: t('label.delete-agent') },
+        { id: 'run', label: t('label.run-now'), testId: 'run-button' },
+        {
+          id: 'redeploy',
+          label: t('label.re-deploy-sentence'),
+          testId: 're-deploy-button',
+        },
+        {
+          id: 'edit',
+          label: t('label.edit-configuration'),
+          testId: 'edit-button',
+        },
+        {
+          danger: true,
+          id: 'delete',
+          label: t('label.delete-agent'),
+          testId: 'delete-button',
+        },
       ];
+
+  const PERMISSION_BY_ITEM: Record<string, boolean> = {
+    run: permissions.trigger,
+    redeploy: permissions.edit,
+    edit: permissions.edit,
+    kill: permissions.edit,
+    pause: permissions.edit,
+    delete: permissions.delete,
+  };
+
+  const items = allItems.filter((item) => PERMISSION_BY_ITEM[item.id]);
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
     <Dropdown.Root>
@@ -58,13 +104,18 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
           'tw:grid tw:size-8.5 tw:cursor-pointer tw:place-items-center' +
           ' tw:rounded-lg tw:border tw:border-secondary' +
           ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none'
-        }>
+        }
+        data-testid="more-actions">
         <MoreVerticalIcon height={18} width={18} />
       </AriaButton>
-      <Dropdown.Popover>
+      <Dropdown.Popover data-testid="actions-dropdown">
         <Dropdown.Menu onAction={(key) => onAction(String(key))}>
           {items.map((item) => (
-            <Dropdown.Item id={item.id} key={item.id} textValue={item.label}>
+            <Dropdown.Item
+              data-testid={item.testId}
+              id={item.id}
+              key={item.id}
+              textValue={item.label}>
               <span className={item.danger ? 'tw:text-error-primary' : ''}>
                 {item.label}
               </span>

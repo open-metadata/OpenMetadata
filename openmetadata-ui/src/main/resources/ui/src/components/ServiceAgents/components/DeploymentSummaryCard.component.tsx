@@ -25,6 +25,7 @@ interface DeploymentSummaryCardProps {
 
 interface SummaryStatProps {
   label: string;
+  testId?: string;
   tone?: 'error' | 'ok' | 'neutral';
   value: string;
 }
@@ -37,10 +38,11 @@ const STAT_VALUE_CLASS: Record<string, string> = {
 
 const SummaryStat: FC<SummaryStatProps> = ({
   label,
+  testId,
   tone = 'neutral',
   value,
 }) => (
-  <div className="tw:text-right">
+  <div className="tw:text-right" data-testid={testId}>
     <div
       className={`tw:text-[22px] tw:font-bold tw:tracking-tight tw:tabular-nums ${STAT_VALUE_CLASS[tone]}`}>
       {value}
@@ -98,7 +100,8 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
         allDone
           ? 'tw:border-utility-success-200 tw:bg-success-primary'
           : 'tw:border-utility-brand-200 tw:bg-linear-to-b tw:from-brand-25 tw:to-bg-primary tw:dark:from-bg-brand-primary_alt'
-      }`}>
+      }`}
+      data-testid="deployment-summary-card">
       <Box align="center" className="tw:gap-3.5">
         <span
           className={`tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:text-fg-white ${
@@ -116,7 +119,9 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
         </span>
 
         <div className="tw:flex-1">
-          <div className="tw:text-lg tw:font-bold tw:tracking-tight tw:text-primary">
+          <div
+            className="tw:text-lg tw:font-bold tw:tracking-tight tw:text-primary"
+            data-testid="deployment-summary-title">
             {allDone
               ? t('label.deployment-complete')
               : t('message.agents-deploying-ingesting')}
@@ -129,21 +134,27 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
         <Box align="center" className="tw:gap-6">
           <SummaryStat
             label={t('label.assets-ingested')}
+            testId="summary-assets-ingested"
             value={fmtNum(assets)}
           />
           <SummaryStat
             label={t('label.error-plural-lowercase')}
+            testId="summary-errors"
             tone={errors > 0 ? 'error' : 'ok'}
             value={fmtNum(errors)}
           />
           {!allDone && (
-            <SummaryStat label={t('label.est-remaining')} value={etaDisplay} />
+            <SummaryStat
+              label={t('label.est-remaining')}
+              testId="summary-eta-remaining"
+              value={etaDisplay}
+            />
           )}
         </Box>
       </Box>
 
       {!allDone && (
-        <div className="tw:mt-4">
+        <div className="tw:mt-4" data-testid="deployment-progress-bar">
           <ProgressBarBase
             className="tw:h-2 tw:rounded-full tw:bg-tertiary"
             progressClassName="tw:rounded-full tw:bg-brand-solid tw:duration-700"

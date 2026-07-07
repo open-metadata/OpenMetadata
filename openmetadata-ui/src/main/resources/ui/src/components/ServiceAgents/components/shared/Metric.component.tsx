@@ -15,6 +15,7 @@ import { Box } from '@openmetadata/ui-core-components';
 import { FC, ReactNode } from 'react';
 
 interface MetricProps {
+  dataTestId?: string;
   icon: ReactNode;
   label?: string;
   tone?: 'error' | 'warn';
@@ -31,12 +32,12 @@ const ICON_CLASS: Record<string, string> = {
   warn: 'tw:text-fg-warning-secondary',
 };
 
-const Metric: FC<MetricProps> = ({ icon, label, tone, value }) => {
+const Metric: FC<MetricProps> = ({ dataTestId, icon, label, tone, value }) => {
   const valueClass = (tone && VALUE_CLASS[tone]) ?? 'tw:text-primary';
   const iconClass = (tone && ICON_CLASS[tone]) ?? 'tw:text-quaternary';
 
   return (
-    <Box align="center" className="tw:gap-1.5">
+    <Box align="center" className="tw:gap-1.5" data-testid={dataTestId}>
       <span className={`tw:grid tw:place-items-center ${iconClass}`}>
         {icon}
       </span>
