@@ -91,6 +91,12 @@ export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
 export * from './application/form-field/field-doc-popover';
 export {
+  FieldDocProvider,
+  useActiveFieldDoc,
+  useFieldDocRegistry,
+} from './application/form-field/field-doc-context';
+export type { FieldDocEntry } from './application/form-field/field-doc-context';
+export {
   Field,
   FormFields,
   getField,
