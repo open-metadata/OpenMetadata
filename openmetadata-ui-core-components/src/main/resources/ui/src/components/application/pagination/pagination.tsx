@@ -486,13 +486,13 @@ export const PaginationCardWithControls = ({
     <Pagination.Root
       {...props}
       className={cx(
-        'tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:bg-primary tw:px-4 tw:py-1 tw:shadow-[0px_-1px_2px_rgba(0,0,0,0.05)]',
+        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-gray-blue-100 tw:bg-primary tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
         className
       )}
       page={currentPage}
       total={totalPages}
       onPageChange={handlePageChange}>
-      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-5">
+      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
           <span className={compactTextClassName}>Page</span>
           <input
@@ -510,7 +510,7 @@ export const PaginationCardWithControls = ({
           <span className={compactTextClassName}>of {totalPages}</span>
         </div>
 
-        <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1 tw:py-3">
+        <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
             <button
               className={compactIconButtonClassName}
