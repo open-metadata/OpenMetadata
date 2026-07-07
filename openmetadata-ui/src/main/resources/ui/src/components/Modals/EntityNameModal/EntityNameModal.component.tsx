@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   Dialog,
   InputBase,
+  Label,
   Modal,
   ModalOverlay,
   Typography,
@@ -29,6 +31,16 @@ import {
   EntityNameModalProps,
   EntityNameValidationRule,
 } from './EntityNameModal.interface';
+
+interface SanitizedFieldProps {
+  id: string;
+  value: string;
+  onChange: (val: string) => void;
+  ariaDescribedBy?: string;
+  isDisabled?: boolean;
+  isInvalid?: boolean;
+  placeholder?: string;
+}
 
 const buildValidate =
   (rules: EntityNameValidationRule[] = []) =>
@@ -60,15 +72,6 @@ const buildValidate =
     return true;
   };
 
-interface SanitizedFieldProps {
-  id: string;
-  value: string;
-  onChange: (val: string) => void;
-  isDisabled?: boolean;
-  isInvalid?: boolean;
-  placeholder?: string;
-}
-
 /**
  * Wraps InputBase in an AriaTextField to get proper onChange(string) handling.
  * The id prop flows through AriaTextField → InputContext → AriaInput → <input id={id}>.
@@ -78,11 +81,13 @@ const SanitizedField = ({
   id,
   value,
   onChange,
+  ariaDescribedBy,
   isDisabled,
   isInvalid,
   placeholder,
 }: SanitizedFieldProps) => (
   <AriaTextField
+    aria-describedby={ariaDescribedBy}
     id={id}
     isDisabled={isDisabled}
     isInvalid={isInvalid}
@@ -135,8 +140,11 @@ const EntityNameModal = <T extends EntityName>({
 
   const onSubmit = async (data: EntityName) => {
     setIsLoading(true);
-    await onSave(data as T);
-    setIsLoading(false);
+    try {
+      await onSave(data as T);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -158,18 +166,17 @@ const EntityNameModal = <T extends EntityName>({
             <form
               className="tw:flex tw:flex-col tw:gap-4"
               onSubmit={handleSubmit(onSubmit)}>
-              <div className="tw:flex tw:flex-col tw:gap-1.5">
-                <label
-                  className="tw:text-sm tw:font-medium tw:text-secondary"
-                  htmlFor="name">
-                  {t('label.name')}
-                </label>
+              <Box className="tw:gap-1.5" direction="col">
+                <Label htmlFor="name">{t('label.name')}</Label>
                 <Controller
                   control={control}
                   name="name"
                   render={({ field, fieldState }) => (
                     <>
                       <SanitizedField
+                        ariaDescribedBy={
+                          fieldState.error ? 'name_help' : undefined
+                        }
                         id="name"
                         isDisabled={!allowRename}
                         isInvalid={!!fieldState.error}
@@ -180,11 +187,12 @@ const EntityNameModal = <T extends EntityName>({
                         onChange={field.onChange}
                       />
                       {fieldState.error && (
-                        <span
+                        <Typography
+                          as="span"
                           className="tw:text-sm tw:text-error-primary"
                           id="name_help">
                           {fieldState.error.message}
-                        </span>
+                        </Typography>
                       )}
                     </>
                   )}
@@ -199,20 +207,19 @@ const EntityNameModal = <T extends EntityName>({
                     validate: buildValidate(nameValidationRules),
                   }}
                 />
-              </div>
+              </Box>
 
-              <div className="tw:flex tw:flex-col tw:gap-1.5">
-                <label
-                  className="tw:text-sm tw:font-medium tw:text-secondary"
-                  htmlFor="displayName">
-                  {t('label.display-name')}
-                </label>
+              <Box className="tw:gap-1.5" direction="col">
+                <Label htmlFor="displayName">{t('label.display-name')}</Label>
                 <Controller
                   control={control}
                   name="displayName"
                   render={({ field, fieldState }) => (
                     <>
                       <SanitizedField
+                        ariaDescribedBy={
+                          fieldState.error ? 'displayName_help' : undefined
+                        }
                         id="displayName"
                         isInvalid={!!fieldState.error}
                         placeholder={t('message.enter-display-name')}
@@ -220,9 +227,12 @@ const EntityNameModal = <T extends EntityName>({
                         onChange={field.onChange}
                       />
                       {fieldState.error && (
-                        <span className="tw:text-sm tw:text-error-primary">
+                        <Typography
+                          as="span"
+                          className="tw:text-sm tw:text-error-primary"
+                          id="displayName_help">
                           {fieldState.error.message}
-                        </span>
+                        </Typography>
                       )}
                     </>
                   )}
@@ -230,7 +240,7 @@ const EntityNameModal = <T extends EntityName>({
                     validate: buildValidate(displayNameValidationRules),
                   }}
                 />
-              </div>
+              </Box>
 
               {additionalFields}
             </form>
