@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "探索可信的資料產品並申請資料存取權",
     "discover-your-data-and-unlock-the-value-of-data-assets": "無程式碼的資料品質讓事情變得更簡單。透過簡單的步驟來測試、部署和收集結果，並即時收到測試失敗通知。隨時掌握您可以信賴的可靠資料。",
     "distinct-profile-metric-description": "欄位中相異值的百分比",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",

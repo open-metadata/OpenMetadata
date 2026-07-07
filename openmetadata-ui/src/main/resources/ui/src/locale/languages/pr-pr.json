@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "محصولات داده مورد اعتماد را کشف کنید و درخواست دسترسی به داده کنید",
     "discover-your-data-and-unlock-the-value-of-data-assets": "کارها با کیفیت داده بدون نیاز به کدنویسی آسان‌تر شده است. با چند قدم ساده تست کنید، استقرار دهید و نتایج را جمع‌آوری کنید، همراه با اطلاعیه‌های فوری از شکست تست‌ها. با داده‌های قابل اعتماد به‌روز باشید.",
     "distinct-profile-metric-description": "درصد مقادیر متمایز در ستون",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",

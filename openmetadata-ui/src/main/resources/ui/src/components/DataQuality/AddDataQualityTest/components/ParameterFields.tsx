@@ -21,6 +21,7 @@ import {
   getField,
   HelperTextType,
   HintText,
+  useFieldDoc,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
@@ -136,6 +137,11 @@ const SqlExpressionField: React.FC<SqlExpressionFieldProps> = ({
 }) => {
   const { t } = useTranslation();
   const label = getEntityName(data);
+  const fieldDoc = useFieldDoc({
+    name: `params.${data.name}`,
+    label,
+    doc: data.description,
+  });
 
   return (
     <FormField
@@ -153,7 +159,8 @@ const SqlExpressionField: React.FC<SqlExpressionFieldProps> = ({
       {({ field, fieldState }) => (
         <div
           className="tw:flex tw:flex-col tw:gap-1"
-          data-testid={`parameter-${data.name}`}>
+          data-testid={`parameter-${data.name}`}
+          {...fieldDoc}>
           <FormItemLabel
             label={label}
             required={data.required}

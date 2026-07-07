@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react';
 import { useRef } from 'react';
-import { Dialog, Popover } from 'react-aria-components';
+import { Popover } from 'react-aria-components';
 import { useActiveFieldDoc } from './field-doc-context';
 
 export interface FieldDocPopoverProps {
@@ -29,7 +29,9 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   // the focused field re-rendering/remounting (e.g. param fields appearing).
   anchorRef.current =
     name && typeof document !== 'undefined'
-      ? document.querySelector<HTMLElement>(`[data-field-doc="${CSS.escape(name)}"]`)
+      ? document.querySelector<HTMLElement>(
+          `[data-field-doc="${CSS.escape(name)}"]`
+        )
       : null;
 
   if (!entry || !anchorRef.current) {
@@ -44,7 +46,9 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       offset={offset}
       placement="right top"
       triggerRef={anchorRef}>
-      <Dialog aria-label="Field documentation" className="tw:outline-none">
+      {/* A plain container, not a Dialog — the doc popover must never take
+          focus, or it would steal it from the field being edited. */}
+      <div aria-label="Field documentation" role="note">
         {header != null && (
           <div className="tw:border-b tw:border-secondary tw:px-4 tw:py-3">
             {header}
@@ -56,7 +60,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
           </h4>
           {(renderDoc ?? defaultRenderDoc)(entry.doc)}
         </div>
-      </Dialog>
+      </div>
     </Popover>
   );
 };

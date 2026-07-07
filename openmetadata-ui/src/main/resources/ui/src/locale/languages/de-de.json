@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "Entdecken Sie vertrauenswürdige Datenprodukte und fordern Sie Zugriff an",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Die Dinge werden einfacher mit Data Quality ohne Code. Einfache Schritte zum Testen, Bereitstellen und Sammeln von Ergebnissen mit sofortigen Benachrichtigungen bei Testfehlern. Bleiben Sie auf dem Laufenden mit zuverlässigen Daten, denen Sie vertrauen können.",
     "distinct-profile-metric-description": "Prozentsatz der unterschiedlichen Werte in der Spalte",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",

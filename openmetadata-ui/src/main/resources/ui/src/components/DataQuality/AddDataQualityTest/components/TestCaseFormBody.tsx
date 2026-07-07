@@ -861,6 +861,11 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.pipeline'),
     doc: t('message.doc-field-pipeline'),
   });
+  const descriptionDoc = useFieldDoc({
+    name: 'description',
+    label: t('label.description'),
+    doc: t('message.doc-field-description'),
+  });
 
   return (
     <div
@@ -974,7 +979,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
             <div
               className="tw:flex tw:flex-col tw:gap-1"
               data-testid="description"
-              id="root/description">
+              id="root/description"
+              {...descriptionDoc}>
               <FormItemLabel label={t('label.description')} />
               <RichTextEditor
                 initialValue={field.value ?? ''}

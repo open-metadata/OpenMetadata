@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "신뢰할 수 있는 데이터 제품을 찾고 데이터 액세스를 요청하세요",
     "discover-your-data-and-unlock-the-value-of-data-assets": "코드 없는 데이터 품질로 더 쉬워졌습니다. 테스트, 배포, 결과 수집을 간단한 단계로 수행하고 즉각적인 테스트 실패 알림을 받으세요. 신뢰할 수 있는 데이터로 최신 정보를 유지하세요.",
     "distinct-profile-metric-description": "컬럼에서 고유 값의 비율",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",

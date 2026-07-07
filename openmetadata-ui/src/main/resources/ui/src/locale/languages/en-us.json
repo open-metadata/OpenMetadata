@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "Discover trusted data products and request data access",
     "discover-your-data-and-unlock-the-value-of-data-assets": "Things got easier with no-code data quality. Simple steps to test, deploy, and gather results, with instant test failure notifications. Stay up-to-date with reliable data that you can trust.",
     "distinct-profile-metric-description": "Percentage of distinct values in the column",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",

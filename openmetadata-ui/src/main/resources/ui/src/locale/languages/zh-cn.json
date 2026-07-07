@@ -3037,6 +3037,7 @@
     "discover-data-products-subtitle": "发现可信的数据产品并申请数据访问权限",
     "discover-your-data-and-unlock-the-value-of-data-assets": "深入探索数据, 释放数据资产的价值",
     "distinct-profile-metric-description": "列中不同值的百分比",
+    "doc-field-description": "An optional description of what this test case checks and why. Supports rich text.",
     "doc-field-glossary-terms": "Optionally link glossary terms to give this test case business context and connect it to your organization's shared vocabulary.",
     "doc-field-pipeline": "Choose how often this test runs. Pick a schedule to run it automatically, or leave it to run on demand.",
     "doc-field-selected-column": "The column this test validates. Enabled once a table is selected; the available tests adapt to the column's data type.",
