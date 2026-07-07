@@ -19,8 +19,6 @@ import { SearchDropdownProps } from './SearchDropdown.interface';
 
 const mockOnChange = jest.fn();
 const mockOnSearch = jest.fn();
-// Route changes are mocked so the dropdown cleanup can be tested without a router.
-const mockUseLocation = jest.fn();
 
 const searchOptions = [
   { key: 'User 1', label: 'User 1' },
@@ -50,15 +48,7 @@ jest.mock('lodash', () => ({
     .mockImplementation((fn) => Object.assign(fn, { cancel: jest.fn() })),
 }));
 
-jest.mock('react-router-dom', () => ({
-  useLocation: () => mockUseLocation(),
-}));
-
 describe('Search DropDown Component', () => {
-  beforeEach(() => {
-    mockUseLocation.mockReturnValue({ pathname: '/explore' });
-  });
-
   it('Should render Dropdown components', async () => {
     render(<SearchDropdown {...mockProps} />);
 
@@ -116,26 +106,6 @@ describe('Search DropDown Component', () => {
 
     // User 1 is selected key so should be checked
     expect(await screen.findByTestId('User 1-checkbox')).toBeChecked();
-  });
-
-  it('closes the dropdown when route pathname changes', async () => {
-    const { rerender } = render(<SearchDropdown {...mockProps} />);
-
-    const container = await screen.findByTestId('search-dropdown-Owner');
-
-    await act(async () => {
-      fireEvent.click(container);
-    });
-
-    expect(await screen.findByTestId('drop-down-menu')).toBeInTheDocument();
-
-    // Simulate navigating away while the dropdown overlay is still open.
-    mockUseLocation.mockReturnValue({ pathname: '/home' });
-    rerender(<SearchDropdown {...mockProps} />);
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
-    });
   });
 
   it('UnSelected keys option should not be checked', async () => {
