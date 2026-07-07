@@ -170,7 +170,7 @@ const FileActions: FC<FileActionsProps> = ({
       <ButtonUtility
         color="tertiary"
         data-testid="edit-memory-btn"
-        icon={ <DotsVerticalIcon height={18} width={18} />}
+        icon={ <DotsVerticalIcon height={20} width={20} />}
         size="sm"
         tooltip={t('label.manage-entity', { entity: t('label.document') })}
       />
@@ -189,7 +189,7 @@ const FileActions: FC<FileActionsProps> = ({
                 {() => (
                   <Box align="center" justify="between">
                     <Box align='center' gap={2}>
-                      <MoveFolderIcon className="tw:text-secondary" height={18} width={18} />
+                      <MoveFolderIcon className="tw:text-secondary" height={20} width={20} />
                       <Typography ellipsis className="tw:grow tw:text-secondary">
                         {t('label.move-to-folder')}
                       </Typography>
@@ -221,8 +221,8 @@ const FileActions: FC<FileActionsProps> = ({
                 <TrashIcon
                   aria-hidden="true"
                   className="tw:shrink-0 tw:text-error-primary"
-                  height={18}
-                  width={18}
+                  height={20}
+                  width={20}
                 />
                 <Typography
                   ellipsis
@@ -532,12 +532,12 @@ const FileRow: FC<FileRowProps> = ({
           className="tw:ml-1.5"
           color="tertiary"
           data-testid="download-btn"
-          icon={<DownloadIcon height={18} width={18} />}
+          icon={<DownloadIcon height={20} width={20} />}
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
         <CopyLinkButton url={rowUrl}>
-          <CopyIcon aria-hidden="true" height={18} width={18} />
+          <CopyIcon aria-hidden="true" height={20} width={20} />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}

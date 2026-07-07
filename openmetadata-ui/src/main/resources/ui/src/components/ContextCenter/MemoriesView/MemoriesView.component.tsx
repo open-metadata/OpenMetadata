@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-    Badge,
-    Box,
-    ButtonUtility,
-    Dot,
-    Dropdown,
-    Skeleton,
-    Tooltip,
-    TooltipTrigger,
-    Typography,
+  Badge,
+  Box,
+  ButtonUtility,
+  Dot,
+  Dropdown,
+  Skeleton,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,16 +31,16 @@ import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.sv
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
-    ContextMemory,
-    EntityReference,
+  ContextMemory,
+  EntityReference,
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
-    MemoriesViewProps,
-    MemoryActionsProps,
+  MemoriesViewProps,
+  MemoryActionsProps,
 } from './MemoriesView.interface';
 import './MemoriesView.less';
 
@@ -52,7 +52,7 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
         <ButtonUtility
           color="tertiary"
           data-testid="edit-memory-btn"
-          icon={ <DotsVerticalIcon height={18} width={18} />}
+          icon={ <DotsVerticalIcon height={20} width={20} />}
           size="sm"
           tooltip={t('label.manage-entity', { entity: t('label.memory') })}
         />
@@ -68,8 +68,8 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
               <TrashIcon
                 aria-hidden="true"
                 className="tw:shrink-0 tw:text-error-primary"
-                height={18}
-                width={18}
+                height={20}
+                width={20}
               />
               <Typography
                 ellipsis
@@ -287,7 +287,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
           <CopyLinkButton url={memoryUrl}>
-            <CopyIcon aria-hidden="true" height={18} width={18} />
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
@@ -295,7 +295,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="edit-memory-btn"
-                  icon={<EditIcon height={18} width={18} />}
+                  icon={<EditIcon height={20} width={20} />}
                   size="sm"
                   onClick={() => onEditMemory(memory)}
                 />

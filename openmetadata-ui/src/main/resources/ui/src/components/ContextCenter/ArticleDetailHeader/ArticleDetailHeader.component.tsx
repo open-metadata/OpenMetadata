@@ -46,7 +46,6 @@ import { ReactComponent as ThumbsUpActiveIcon } from '../../../assets/svg/action
 import { ReactComponent as ThumbsUpIcon } from '../../../assets/svg/action-icons/thumbs-up.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as EditorIcon } from '../../../assets/svg/common/editor.svg';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as GlobeIcon } from '../../../assets/svg/common/globe.svg';
 import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import { ReactComponent as SidebarCollapsible } from '../../../assets/svg/ic-sidebar-collapsible.svg';
@@ -268,8 +267,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="success"
             size="lg"
             type="color">
-            <UploadCloud01 size={16} />{' '}
-            <Typography weight="medium">{t('label.saved')}</Typography>
+            <UploadCloud01 size={12} />{' '}
+            <Typography className='tw:text-utility-success-700' weight="medium">{t('label.saved')}</Typography>
           </Badge>
         </div>
       );
@@ -283,7 +282,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             color="gray"
             size="lg"
             type="color">
-            <UploadCloud01 size={16} />{' '}
+            <UploadCloud01 size={12} />{' '}
             <Typography weight="medium">{t('label.unsaved')}</Typography>
           </Badge>
         </div>
@@ -336,14 +335,14 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
           <div className="tw:flex tw:gap-4 tw:items-stretch tw:w-full tw:max-w-[60%] tw:pr-3">
-            <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
+            {/* <div className="h:full tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
               <FileIcon
                 className="tw:text-quaternary"
                 height={40}
                 style={{ verticalAlign: 'middle', flexShrink: 0 }}
                 width={40}
               />
-            </div>
+            </div> */}
 
             <div className="tw:flex tw:flex-col tw:gap-2 tw:min-w-0">
               {/* Article name with icon */}
@@ -608,8 +607,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         <TrashIcon
                           aria-hidden="true"
                           className="ttw:shrink-0 tw:text-error-primary"
-                          height={18}
-                          width={18}
+                          height={20}
+                          width={20}
                         />
                         <Typography
                           ellipsis
