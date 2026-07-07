@@ -53,9 +53,11 @@ import org.openmetadata.service.util.EntityUtil;
  * capped per-pod and participates in server lifecycle. Because the AuditReport row is the
  * durable job record, jobs survive a pod restart: {@link #recoverInterruptedReports()}
  * (wired into server startup) re-drives {@code Queued} reports the crash left un-run and
- * reclaims {@code Running} reports orphaned mid-flight. The owning node is stamped in
- * {@code runningOn}. Re-submitting a duplicate request returns the in-flight report via
- * {@link #findActiveDuplicate(AuditReport)} instead of generating the same pack twice.
+ * reclaims {@code Running} reports orphaned mid-flight. Each job is claimed with an atomic
+ * conditional {@code Queued -> Running} update (stamping the owning {@code runningOn} node), so
+ * concurrent recovery across pods generates the pack exactly once. Re-submitting a duplicate
+ * request returns the in-flight report via an indexed {@code requestSignature} lookup
+ * ({@link #findActiveDuplicate(AuditReport)}) instead of generating the same pack twice.
  *
  * <p>Storage strategy is deliberately simple in v1: the artifact bytes are
  * embedded directly in the artifacts[] entry's downloadUrl. PDF rendering is
@@ -82,26 +84,24 @@ public final class AuditPackGenerator {
   }
 
   private static void run(UUID reportId) {
+    long started = System.currentTimeMillis();
+    int claimed =
+        Entity.getCollectionDAO()
+            .auditReportDAO()
+            .claimQueued(reportId.toString(), currentServerId(), started);
+    if (claimed == 0) {
+      // No longer Queued, or another pod atomically won the claim — nothing to do.
+      return;
+    }
     AuditReportRepository repository = auditReportRepository();
     AuditReport report;
     try {
       report = repository.get(null, reportId, repository.getFields("id,name,scope,format"));
     } catch (Exception e) {
-      LOG.warn("Audit pack generator could not fetch report {}: {}", reportId, e.getMessage());
+      LOG.warn(
+          "Audit pack generator could not fetch claimed report {}: {}", reportId, e.getMessage());
       return;
     }
-    if (report.getStatus() != AuditReportStatus.Queued) {
-      return;
-    }
-    long started = System.currentTimeMillis();
-    String serverId = currentServerId();
-    updateReport(
-        reportId,
-        current -> {
-          current.setStatus(AuditReportStatus.Running);
-          current.setStartedAt(started);
-          current.setRunningOn(serverId);
-        });
     try {
       AuditPackPayload payload = assemble(report);
       String json = JsonUtils.pojoToJson(payload.body);
@@ -165,16 +165,28 @@ public final class AuditPackGenerator {
     }
   }
 
+  /** Computes and stamps the request signature backing indexed idempotent-submission dedup. */
+  static void stampRequestSignature(AuditReport report) {
+    report.setRequestSignature(sha256(signatureOf(report).getBytes(StandardCharsets.UTF_8)));
+  }
+
   /**
-   * Returns an in-flight ({@code Queued}/{@code Running}) report whose request signature matches
-   * {@code candidate}, so a retried submission returns the existing job instead of generating the
-   * same pack twice. Best-effort: scans up to {@link #RECOVERY_SCAN_CAP} reports.
+   * Returns the in-flight ({@code Queued}/{@code Running}) report whose request signature matches
+   * {@code candidate} via an indexed O(1) lookup, so a retried submission returns the existing job
+   * instead of generating the same pack twice. {@code candidate} must already carry its
+   * {@code requestSignature} (see {@link #stampRequestSignature}).
    */
   static AuditReport findActiveDuplicate(AuditReport candidate) {
     AuditReport result = null;
     try {
-      String signature = signatureOf(candidate);
-      result = scanForActiveSignature(signature);
+      String signature = candidate.getRequestSignature();
+      if (signature != null) {
+        String json =
+            Entity.getCollectionDAO().auditReportDAO().findActiveByRequestSignature(signature);
+        if (json != null) {
+          result = JsonUtils.readValue(json, AuditReport.class);
+        }
+      }
     } catch (Exception lookupError) {
       LOG.warn("Audit pack duplicate lookup failed: {}", lookupError.getMessage());
     }
@@ -201,27 +213,6 @@ public final class AuditPackGenerator {
     return result;
   }
 
-  private static AuditReport scanForActiveSignature(String signature) {
-    AuditReportRepository repository = auditReportRepository();
-    AuditReport result = null;
-    ListFilter filter = new ListFilter(Include.NON_DELETED);
-    String after = null;
-    int scanned = 0;
-    do {
-      ResultList<AuditReport> page =
-          repository.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
-      for (AuditReport report : page.getData()) {
-        if (isActive(report) && signature.equals(signatureOf(report))) {
-          result = report;
-          break;
-        }
-      }
-      scanned += page.getData().size();
-      after = result != null || page.getPaging() == null ? null : page.getPaging().getAfter();
-    } while (after != null && scanned < RECOVERY_SCAN_CAP);
-    return result;
-  }
-
   static boolean isInterrupted(AuditReport report, long now) {
     boolean result = false;
     AuditReportStatus status = report.getStatus();
@@ -232,11 +223,6 @@ public final class AuditPackGenerator {
       result = startedAt == null || now - startedAt > STALE_RUNNING_MILLIS;
     }
     return result;
-  }
-
-  private static boolean isActive(AuditReport report) {
-    return report.getStatus() == AuditReportStatus.Queued
-        || report.getStatus() == AuditReportStatus.Running;
   }
 
   private static void requeueAndSubmit(AuditReport report) {

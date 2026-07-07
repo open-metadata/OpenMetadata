@@ -467,3 +467,8 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+-- AI audit reports: indexed request signature backs O(1) idempotent-submission dedup
+-- (a retried submit returns the in-flight report instead of generating the same pack twice).
+ALTER TABLE audit_report_entity ADD COLUMN IF NOT EXISTS requestSignature VARCHAR(512) GENERATED ALWAYS AS (json ->> 'requestSignature') STORED;
+CREATE INDEX IF NOT EXISTS audit_report_request_signature_index ON audit_report_entity (requestSignature);

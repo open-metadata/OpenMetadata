@@ -423,9 +423,13 @@ public class AIGovernanceResource {
   private static void stampRegistrationMilestones(
       AIGovernanceRegistration governance, String newStatus, String user, String comment) {
     long now = System.currentTimeMillis();
-    if (STATUS_PENDING_APPROVAL.equals(newStatus) && governance.getRegisteredBy() == null) {
-      governance.setRegisteredBy(user);
-      governance.setRegisteredAt(now);
+    if (STATUS_PENDING_APPROVAL.equals(newStatus)) {
+      if (governance.getRegisteredBy() == null) {
+        governance.setRegisteredBy(user);
+      }
+      if (governance.getRegisteredAt() == null) {
+        governance.setRegisteredAt(now);
+      }
     }
     if (STATUS_APPROVED.equals(newStatus)) {
       governance.setApprovedBy(user);

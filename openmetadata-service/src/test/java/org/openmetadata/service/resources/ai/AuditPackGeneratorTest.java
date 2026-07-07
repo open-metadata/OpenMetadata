@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.ai;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
@@ -62,6 +63,21 @@ class AuditPackGeneratorTest {
     assertNotEquals(
         AuditPackGenerator.signatureOf(domainReport(domainId)),
         AuditPackGenerator.signatureOf(domainReport(UUID.randomUUID())));
+  }
+
+  @Test
+  void stampRequestSignature_isDeterministicAndRequestSpecific() {
+    UUID domainId = UUID.randomUUID();
+    AuditReport first = domainReport(domainId);
+    AuditReport second = domainReport(domainId);
+    AuditPackGenerator.stampRequestSignature(first);
+    AuditPackGenerator.stampRequestSignature(second);
+    assertNotNull(first.getRequestSignature());
+    assertEquals(first.getRequestSignature(), second.getRequestSignature());
+
+    AuditReport different = domainReport(UUID.randomUUID());
+    AuditPackGenerator.stampRequestSignature(different);
+    assertNotEquals(first.getRequestSignature(), different.getRequestSignature());
   }
 
   private AuditReport report(AuditReportStatus status, Long startedAt) {

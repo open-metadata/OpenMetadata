@@ -508,3 +508,8 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- AI audit reports: indexed request signature backs O(1) idempotent-submission dedup
+-- (a retried submit returns the in-flight report instead of generating the same pack twice).
+ALTER TABLE audit_report_entity ADD COLUMN requestSignature VARCHAR(512) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.requestSignature'))) STORED;
+CREATE INDEX audit_report_request_signature_index ON audit_report_entity (requestSignature);
