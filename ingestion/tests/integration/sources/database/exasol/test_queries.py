@@ -53,7 +53,6 @@ class TestExasolQueries(ExasolTestBase):
         columns = {column.lower() for column in rows[0]}
 
         assert columns == {
-            "aborted",
             "query_text",
             "query_type",
             "user_name",

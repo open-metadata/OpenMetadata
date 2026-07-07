@@ -90,7 +90,7 @@ class ExasolUsageTest(TestCase):
         )
 
         assert "EXA_STATISTICS.EXA_DBA_AUDIT_SQL" in sql
-        assert 'CASE WHEN s.success = FALSE THEN TRUE ELSE FALSE END "aborted"' in sql
+        assert '"aborted"' not in sql
         assert "LIMIT 250" in sql
         assert "TO_TIMESTAMP('2025-01-01 00:00:00')" in sql
         assert "TO_TIMESTAMP('2025-01-02 00:00:00')" in sql

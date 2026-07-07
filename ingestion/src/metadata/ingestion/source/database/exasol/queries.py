@@ -8,8 +8,7 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
       se.user_name "user_name",
       s.start_time "start_time",
       s.stop_time "end_time",
-      s.duration "duration",
-      CASE WHEN s.success = FALSE THEN TRUE ELSE FALSE END "aborted"
+      s.duration "duration"
     FROM EXA_STATISTICS.EXA_DBA_AUDIT_SQL s
     JOIN EXA_STATISTICS.EXA_DBA_AUDIT_SESSIONS se
     ON s.SESSION_ID = se.SESSION_ID
