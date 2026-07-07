@@ -191,9 +191,9 @@ test.describe('Data Products', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(
-        page.getByTestId('modal-header').getByText(dataProduct.data.name)
-      ).toBeVisible();
+      await expect(page.getByTestId('modal-header')).toContainText(
+        dataProduct.data.name
+      );
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
       await fillDeleteConfirmationIfPresent(page);
