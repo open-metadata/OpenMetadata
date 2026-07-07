@@ -29,6 +29,7 @@ function ObservabilityAlertActions({
   alertPermission,
   loading,
   record,
+  onEditAlert,
   onSelectAlert,
 }: Readonly<ObservabilityAlertActionsProps>) {
   const { t } = useTranslation();
@@ -52,17 +53,27 @@ function ObservabilityAlertActions({
     <div className="d-flex items-center">
       {alertPermission.edit && (
         <Tooltip placement="bottom" title={t('label.edit')}>
-          <Link
-            to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-              record.fullyQualifiedName ?? ''
-            )}>
+          {onEditAlert ? (
             <Button
               className="flex flex-center"
               data-testid={`alert-edit-${record.name}`}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
               type="text"
+              onClick={() => onEditAlert(record)}
             />
-          </Link>
+          ) : (
+            <Link
+              to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
+                record.fullyQualifiedName ?? ''
+              )}>
+              <Button
+                className="flex flex-center"
+                data-testid={`alert-edit-${record.name}`}
+                icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+                type="text"
+              />
+            </Link>
+          )}
         </Tooltip>
       )}
       {alertPermission.delete && (

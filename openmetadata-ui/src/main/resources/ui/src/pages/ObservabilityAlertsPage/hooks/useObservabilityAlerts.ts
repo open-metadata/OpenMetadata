@@ -232,6 +232,7 @@ export function useObservabilityAlerts({
     handleAlertDelete,
     handlePageSizeChange,
     handleSelectAlert,
+    fetchAlerts,
     loading,
     loadingCount,
     onPageChange,
