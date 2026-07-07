@@ -242,11 +242,11 @@ WHERE serviceType = 'Postgres'
 -- secrets no longer linger at rest.
 UPDATE installed_apps
 SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration')
-WHERE (json::jsonb ? 'openMetadataServerConnection')
-   OR (json::jsonb ? 'privateConfiguration');
+WHERE jsonb_exists(json::jsonb, 'openMetadataServerConnection')
+   OR jsonb_exists(json::jsonb, 'privateConfiguration');
 
 UPDATE entity_extension
 SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration')
 WHERE extension LIKE 'app.version.%'
-  AND ((json::jsonb ? 'openMetadataServerConnection')
-       OR (json::jsonb ? 'privateConfiguration'));
+  AND (jsonb_exists(json::jsonb, 'openMetadataServerConnection')
+       OR jsonb_exists(json::jsonb, 'privateConfiguration'));
