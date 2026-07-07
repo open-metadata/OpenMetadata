@@ -108,12 +108,12 @@ class UsageSource(QueryParserSource, ABC):
             )
             query = None
             try:
-                query = self.get_sql_statement(
-                    start_time=self.start + timedelta(days=days),
-                    end_time=self.start + timedelta(days=days + 1),
-                )
-                logger.debug(f"Executing usage query: {query}")
                 for engine in self.get_engine():
+                    query = self.get_sql_statement(
+                        start_time=self.start + timedelta(days=days),
+                        end_time=self.start + timedelta(days=days + 1),
+                    )
+                    logger.debug(f"Executing usage query: {query}")
                     with engine.connect() as conn:
                         rows = conn.execute(text(query))
                         queries = []

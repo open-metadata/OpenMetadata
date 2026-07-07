@@ -17,4 +17,5 @@ export interface ModalWithFunctionEditorProps {
   visible: boolean;
   onSave: (value: string) => Promise<void> | void;
   onCancel: () => void;
+  getContainer?: () => HTMLElement;
 }
