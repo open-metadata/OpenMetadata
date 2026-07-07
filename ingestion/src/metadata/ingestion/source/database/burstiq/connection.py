@@ -90,9 +90,7 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
 
         def test_get_dictionaries():
             """Test fetching dictionaries from BurstIQ"""
-            dictionaries = client.get_dictionaries(limit=1)
-            if not dictionaries:
-                raise ConnectionError("Failed to fetch dictionaries from BurstIQ")
+            client.get_dictionaries(limit=1)
 
         def test_get_edges():
             """Test fetching edges used for lineage"""

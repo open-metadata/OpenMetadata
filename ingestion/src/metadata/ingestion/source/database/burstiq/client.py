@@ -38,8 +38,6 @@ API_TIMEOUT = (10, 120)
 AUTH_SERVER_BASE = "https://auth.burstiq.com"
 API_BASE_URL = "https://api.burstiq.com"
 
-SYSTEM_WALLET_ERROR_MARKER = "system wallet"
-
 
 class BurstIQClient:
     """
@@ -111,17 +109,14 @@ class BurstIQClient:
                 logger.info(f"Customer: {customer_name}, SDZ: {sdz_name}")
 
         except Exception as exc:
-            logger.error(f"Authentication failed: {exc}")
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error(f"Authentication HTTP {exc.response.status_code} error. Response: {exc.response.text}")
+            else:
+                logger.error(f"Authentication failed: {exc}")
             logger.debug(traceback.format_exc())
             raise Exception("Failed to authenticate with BurstIQ") from exc  # noqa: TRY002
 
     def _get_auth_header(self) -> Dict[str, str]:  # noqa: UP006
-        """
-        Get authentication headers, refreshing the token if necessary.
-
-        Returns:
-            Dictionary of headers
-        """
         if not self.access_token:
             logger.info("No access token found, authenticating...")
             self._authenticate()
@@ -137,14 +132,11 @@ class BurstIQClient:
 
         customer_name = getattr(self.config, "biqCustomerName", None)
         sdz_name = getattr(self.config, "biqSdzName", None)
-        system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
 
         if customer_name:
             headers["biq_customer_name"] = customer_name
         if sdz_name:
             headers["biq_sdz_name"] = sdz_name
-        if system_wallet_id:
-            headers["biq_system_wallet_id"] = system_wallet_id
 
         return headers
 
@@ -203,52 +195,34 @@ class BurstIQClient:
                 f"Failed to connect to BurstIQ API at {url}. Please verify the API URL and network connectivity."
             ) from exc
         except Exception as exc:
-            logger.error(f"API request failed for {url}: {exc}")
+            if hasattr(exc, "response") and exc.response is not None:
+                logger.error(f"HTTP {exc.response.status_code} error for {url}. Response: {exc.response.text}")
+            else:
+                logger.error(f"API request failed for {url}: {exc}")
             logger.debug(traceback.format_exc())
             raise
 
     def validate_system_wallet(self) -> None:
-        """
-        Validate the configured BurstIQ system wallet.
-
-        BurstIQ attaches the biq_system_wallet_id header to every request and,
-        when the wallet is invalid, rejects the call with a 400 whose body reads
-        "... system wallet <id> does not exist". Without a dedicated check this
-        surfaces as a misleading "failed to fetch dictionaries" error. Exercising
-        a lightweight metadata request here lets us raise an actionable message
-        that points at the wallet configuration. Non-wallet failures are deferred
-        to the GetDictionaries step so they are not mislabelled as a wallet issue.
-        """
+        """Probe metadata endpoint with wallet header to detect invalid wallet early."""
         wallet_id = getattr(self.config, "biqSystemWalletId", None)
-        if wallet_id:
-            try:
-                self._make_request("GET", "/api/metadata/dictionary", params={"limit": 1})
-            except Exception as exc:
-                body = self._safe_response_body(getattr(exc, "response", None))
-                if SYSTEM_WALLET_ERROR_MARKER in body.lower():
-                    raise ConnectionError(
-                        f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "
-                        "Verify the 'BurstIQ System Wallet ID' (biqSystemWalletId) in the connection "
-                        f"configuration. BurstIQ response: {body}"
-                    ) from exc
-                logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")
-
-    @staticmethod
-    def _safe_response_body(response: Optional[requests.Response], max_length: int = 500) -> str:  # noqa: UP045
-        """
-        Extract the response body for error diagnostics.
-
-        BurstIQ returns a 400 with an empty reason phrase but an informative
-        body explaining why the request was rejected. Capturing it surfaces the
-        real cause (e.g. missing header, invalid limit, wallet not found)
-        instead of the opaque "400 Client Error:  for url".
-        """
-        body = ""
-        if response is not None:
-            text = (response.text or "").strip()
-            if text:
-                body = text if len(text) <= max_length else f"{text[:max_length]}... (truncated)"
-        return body
+        if not wallet_id:
+            raise ConnectionError(
+                "biqSystemWalletId not configured. Profiling data will not be accessible."
+            )
+        try:
+            self._make_request(
+                "GET", "/api/metadata/dictionary",
+                params={"limit": 1},
+                headers={"biq_system_wallet_id": wallet_id},
+            )
+        except Exception as exc:
+            body = getattr(getattr(exc, "response", None), "text", "") or ""
+            if "system wallet" in body.lower():
+                raise ConnectionError(
+                    f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "
+                    f"Verify biqSystemWalletId in the connection configuration. BurstIQ response: {body[:200]}"
+                ) from exc
+            logger.debug(f"System wallet validation deferred to GetDictionaries (non-wallet error): {exc}")
 
     def get_dictionaries(self, limit: Optional[int] = None) -> List[BurstIQDictionary]:  # noqa: UP006, UP045
         """
@@ -366,8 +340,10 @@ class BurstIQClient:
         """
         tql = f"FROM {chain} SKIP {skip} LIMIT {limit} SELECT data.*"
         logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")
+        system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
+        wallet_header = {"biq_system_wallet_id": system_wallet_id} if system_wallet_id else {}
         try:
-            raw = self._make_request("POST", "/api/graphchain/query", json={"query": tql})
+            raw = self._make_request("POST", "/api/graphchain/query", json={"query": tql}, headers=wallet_header)
         except Exception as exc:
             logger.warning(f"TQL query failed for chain '{chain}': {exc}")
             return []

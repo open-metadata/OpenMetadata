@@ -31,6 +31,9 @@ def _build_client(wallet_id=None) -> "BurstIQClient":
     client = BurstIQClient.__new__(BurstIQClient)
     client.config = SimpleNamespace(biqSystemWalletId=wallet_id)
     client.api_base_url = "https://api.burstiq.com"
+    client.access_token = "test-token"
+    client.token_expires_at = None
+    client._chain_metrics = None
     return client
 
 
@@ -40,6 +43,8 @@ def _http_error(body: str) -> requests.exceptions.HTTPError:
     response._content = body.encode()
     return requests.exceptions.HTTPError("400 Client Error", response=response)
 
+
+# --- validate_system_wallet ---
 
 def test_validate_system_wallet_invalid_raises_actionable_error():
     client = _build_client(wallet_id=WALLET_ID)
@@ -63,16 +68,28 @@ def test_validate_system_wallet_valid_passes():
         client.validate_system_wallet()
 
 
-def test_validate_system_wallet_absent_skips_request():
+def test_validate_system_wallet_absent_raises():
+    """No wallet configured → raises with 'not configured' message, not silent pass."""
     client = _build_client(wallet_id=None)
 
-    with patch.object(client, "_make_request") as mocked_request:
+    with pytest.raises(ConnectionError) as exc_info:
         client.validate_system_wallet()
 
-    mocked_request.assert_not_called()
+    assert "not configured" in str(exc_info.value).lower()
+
+
+def test_validate_system_wallet_passes_wallet_header_explicitly():
+    """validate_system_wallet must pass the wallet header explicitly — not rely on _get_auth_header."""
+    client = _build_client(wallet_id=WALLET_ID)
+
+    with patch.object(client, "_make_request", return_value=[]) as mock_req:
+        client.validate_system_wallet()
+
+    assert mock_req.call_args.kwargs["headers"]["biq_system_wallet_id"] == WALLET_ID
 
 
 def test_validate_system_wallet_defers_non_wallet_error():
+    """Non-wallet 400 errors must not raise — deferred to GetDictionaries step."""
     client = _build_client(wallet_id=WALLET_ID)
     privilege_error = _http_error('{"status":400,"message":"user lacks read privileges"}')
 
@@ -80,13 +97,34 @@ def test_validate_system_wallet_defers_non_wallet_error():
         client.validate_system_wallet()
 
 
-def test_safe_response_body_handles_none():
-    assert BurstIQClient._safe_response_body(None) == ""
+# --- Root cause fix: wallet must not be in default auth headers ---
+
+def test_get_auth_header_excludes_wallet():
+    """Wallet must NOT appear in default headers — the root cause of the P1 bug."""
+    client = _build_client(wallet_id=WALLET_ID)
+
+    headers = client._get_auth_header()
+
+    assert "biq_system_wallet_id" not in headers
 
 
-def test_safe_response_body_truncates_long_body():
-    response = requests.Response()
-    response._content = ("x" * 1000).encode()
-    body = BurstIQClient._safe_response_body(response)
+# --- get_records_by_tql wallet header behaviour ---
 
-    assert "truncated" in body
+def test_get_records_by_tql_sends_wallet_header_when_configured():
+    """TQL queries must include the wallet header when biqSystemWalletId is set."""
+    client = _build_client(wallet_id=WALLET_ID)
+
+    with patch.object(client, "_make_request", return_value=[]) as mock_req:
+        client.get_records_by_tql("mychain", limit=1)
+
+    assert mock_req.call_args.kwargs["headers"]["biq_system_wallet_id"] == WALLET_ID
+
+
+def test_get_records_by_tql_no_wallet_no_header():
+    """TQL queries must not include wallet header when biqSystemWalletId is absent."""
+    client = _build_client(wallet_id=None)
+
+    with patch.object(client, "_make_request", return_value=[]) as mock_req:
+        client.get_records_by_tql("mychain", limit=1)
+
+    assert "biq_system_wallet_id" not in mock_req.call_args.kwargs.get("headers", {})

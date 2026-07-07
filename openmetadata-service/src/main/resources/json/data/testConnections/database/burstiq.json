@@ -13,10 +13,10 @@
     },
     {
       "name": "ValidateSystemWallet",
-      "description": "Validate that the configured BurstIQ System Wallet ID exists and can be elevated to. Skipped when no wallet is configured.",
-      "errorMessage": "The configured BurstIQ System Wallet ID is invalid or does not exist. Please verify the 'BurstIQ System Wallet ID' (biqSystemWalletId) in the connection configuration.",
-      "shortCircuit": true,
-      "mandatory": true
+      "description": "Validate that the configured BurstIQ System Wallet ID exists and can be elevated to. Only affects profiling — metadata ingestion works without a valid wallet.",
+      "errorMessage": "biqSystemWalletId is missing or invalid. Metadata ingestion will work, but profiling data will not be accessible.",
+      "shortCircuit": false,
+      "mandatory": false
     },
     {
       "name": "GetDictionaries",
