@@ -31,7 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.ingestion.source.database.bigquery.connection import (
     BIGQUERY_ERRORS,
     BigQueryChecks,
-    get_table_view_names,
+    probe_table_view_enumeration,
 )
 from metadata.utils.credentials import InvalidPrivateKeyException
 
@@ -223,7 +223,7 @@ def test_get_tags_counts_policy_tags():
     assert evidence.summary == "2 policy tags enumerated"
 
 
-def test_get_table_view_names_tolerates_deleted_dataset():
+def test_probe_table_view_enumeration_tolerates_deleted_dataset():
     # A dataset dropped between listing datasets and listing its tables raises
     # NotFound; the probe skips it and still reports the datasets it enumerated.
     conn = MagicMock()
@@ -233,5 +233,5 @@ def test_get_table_view_names_tolerates_deleted_dataset():
     dataset = MagicMock()
     bq_client.list_datasets.return_value = [dataset]
     bq_client.list_tables.side_effect = NotFound("404 Not found: Dataset was deleted")
-    evidence = get_table_view_names(engine)
+    evidence = probe_table_view_enumeration(engine)
     assert evidence.summary == "1 datasets enumerated"

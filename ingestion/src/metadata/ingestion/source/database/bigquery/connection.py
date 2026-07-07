@@ -250,7 +250,7 @@ def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]
 _OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
 
 
-def get_table_view_names(connection) -> Evidence:
+def probe_table_view_enumeration(connection: Engine) -> Evidence:
     """Probe that datasets and their objects can be enumerated for the project.
 
     Streams the datasets visible to the connection and, for each, attempts to list
@@ -315,11 +315,11 @@ class BigQueryChecks:
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return get_table_view_names(self.client)
+        return probe_table_view_enumeration(self.client)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return get_table_view_names(self.client)
+        return probe_table_view_enumeration(self.client)
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence | None:
