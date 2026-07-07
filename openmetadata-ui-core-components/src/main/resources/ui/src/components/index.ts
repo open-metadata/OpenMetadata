@@ -93,6 +93,7 @@ export * from './application/form-field/field-doc-popover';
 export {
   FieldDocProvider,
   useActiveFieldDoc,
+  useFieldDoc,
   useFieldDocRegistry,
 } from './application/form-field/field-doc-context';
 export type { FieldDocEntry } from './application/form-field/field-doc-context';

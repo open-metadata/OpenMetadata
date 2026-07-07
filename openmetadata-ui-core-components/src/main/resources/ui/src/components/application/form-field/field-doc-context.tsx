@@ -1,8 +1,9 @@
-import type { FC, ReactNode } from 'react';
+import type { FC, FocusEvent, ReactNode } from 'react';
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -30,7 +31,7 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
   children,
 }) => {
   const entriesRef = useRef<Map<string, FieldDocEntry>>(new Map());
-  const [, forceRender] = useState(0);
+  const [version, setVersion] = useState(0);
   const [active, setActiveState] = useState<{
     name: string;
     anchor: HTMLElement | null;
@@ -38,12 +39,12 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
 
   const register = useCallback((name: string, entry: FieldDocEntry) => {
     entriesRef.current.set(name, entry);
-    forceRender((n) => n + 1);
+    setVersion((n) => n + 1);
   }, []);
 
   const unregister = useCallback((name: string) => {
     entriesRef.current.delete(name);
-    forceRender((n) => n + 1);
+    setVersion((n) => n + 1);
   }, []);
 
   const setActive = useCallback(
@@ -62,7 +63,7 @@ export const FieldDocProvider: FC<{ enabled?: boolean; children: ReactNode }> = 
       entries: entriesRef.current,
       enabled,
     }),
-    [register, unregister, setActive, active, enabled]
+    [register, unregister, setActive, active, enabled, version]
   );
 
   return (
@@ -97,5 +98,39 @@ export const useActiveFieldDoc = (): {
     name: activeName,
     entry: activeName ? entries.get(activeName) : undefined,
     anchor: activeAnchor,
+  };
+};
+
+/**
+ * Register a field's documentation and mark it active on focus. Use this for
+ * custom fields that are not rendered through `getField` (e.g. a card group,
+ * a tag picker). Spread the returned `onFocusCapture` onto the field's
+ * wrapping element so focusing any control inside it shows the field's doc.
+ */
+export const useFieldDoc = ({
+  name,
+  label,
+  doc,
+}: {
+  name: string;
+  label: ReactNode;
+  doc?: string;
+}): { onFocusCapture?: (event: FocusEvent<HTMLElement>) => void } => {
+  const { enabled, register, unregister, setActive } = useFieldDocRegistry();
+  const hasDoc = enabled && typeof doc === 'string' && doc.length > 0;
+
+  useEffect(() => {
+    if (!hasDoc) {
+      return undefined;
+    }
+    register(name, { label, doc: doc as string });
+
+    return () => unregister(name);
+  }, [hasDoc, name, label, doc, register, unregister]);
+
+  return {
+    onFocusCapture: hasDoc
+      ? (event: FocusEvent<HTMLElement>) => setActive(name, event.currentTarget)
+      : undefined,
   };
 };
