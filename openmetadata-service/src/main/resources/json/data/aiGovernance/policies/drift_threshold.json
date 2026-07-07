@@ -1,0 +1,22 @@
+{
+  "name": "drift_threshold",
+  "displayName": "Drift threshold",
+  "description": "Triggers a review when the rolling drift score on an AI asset exceeds the configured threshold. Drift indicates the underlying input distribution has shifted enough to call model assumptions into question.",
+  "policyType": "PerformanceStandard",
+  "enforcementLevel": "Warning",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "drift-score-max",
+      "ruleType": "Threshold",
+      "condition": "driftScore > 0.3",
+      "action": "Notify",
+      "severity": "Medium",
+      "enabled": true
+    }
+  ],
+  "performanceStandards": {
+    "minAccuracy": 0.85,
+    "maxLatencyMs": 2000
+  }
+}
