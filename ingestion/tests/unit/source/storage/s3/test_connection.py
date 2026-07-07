@@ -219,5 +219,17 @@ def test_error_pack_endpoint_unreachable():
     assert "endpoint" in diagnosis.title.lower()
 
 
+def test_error_pack_matches_structured_code_not_message_text():
+    # The structured code is NoSuchBucket; the message echoes "AccessDenied".
+    # Matching the code (not the text) must classify it as the bucket error.
+    error = ClientError(
+        {"Error": {"Code": "NoSuchBucket", "Message": "bucket 'AccessDenied-logs' does not exist"}},
+        "ListObjects",
+    )
+    diagnosis = S3_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert "not found" in diagnosis.title.lower()
+
+
 def test_error_pack_unmatched_returns_none():
     assert S3_ERRORS.classify(Exception("novel error")) is None

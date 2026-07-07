@@ -30,6 +30,7 @@ from metadata.core.connections.test_connection.checks.storage import (
     list_metrics,
     probe_buckets,
 )
+from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.storage.s3Connection import (
     S3Connection as S3ConnectionConfig,
@@ -45,37 +46,57 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection.records import Evidence
 
 
-# botocore raises every AWS-side rejection as a ClientError whose message embeds
-# the service error code ("An error occurred (InvalidAccessKeyId) when calling
-# ..."), so the pack matches on those stable codes. Client-side failures
-# (missing credentials, unreachable endpoint) surface as dedicated botocore
-# exception types and are matched by type.
+def aws_error_code(*codes: str) -> Callable[[BaseException], bool]:
+    """Match a botocore ``ClientError`` by its structured AWS error code.
+
+    botocore carries the code at ``error.response['Error']['Code']``; matching
+    that is sturdier than a substring search of the message (a bucket name or
+    message text echoing a code cannot false-match) and mirrors how the framework
+    matches errno / status_code elsewhere. Walks the cause chain like the other
+    matchers.
+    """
+    wanted = frozenset(codes)
+
+    def match(error: BaseException) -> bool:
+        for current in exception_chain(error):
+            response = getattr(current, "response", None)
+            if isinstance(response, dict) and response.get("Error", {}).get("Code") in wanted:
+                return True
+        return False
+
+    return match
+
+
+# botocore raises every AWS-side rejection as a ClientError carrying the service
+# error code at ``response['Error']['Code']``, so the pack matches on those stable
+# codes. Client-side failures (missing credentials, unreachable endpoint) surface
+# as dedicated botocore exception types and are matched by type.
 S3_ERRORS = ErrorPack(
-    when(Matchers.contains("InvalidAccessKeyId")).diagnose(
+    when(aws_error_code("InvalidAccessKeyId")).diagnose(
         "Invalid AWS access key",
         fix="The awsAccessKeyId does not exist in AWS; check the configured credentials.",
     ),
-    when(Matchers.contains("SignatureDoesNotMatch")).diagnose(
+    when(aws_error_code("SignatureDoesNotMatch")).diagnose(
         "AWS secret key does not match",
         fix="The awsSecretAccessKey is wrong for this awsAccessKeyId; re-enter the credential pair.",
     ),
-    when(Matchers.contains("UnrecognizedClientException")).diagnose(
+    when(aws_error_code("UnrecognizedClientException")).diagnose(
         "AWS credentials not recognized",
         fix="The security token or access key is invalid; check the configured credentials.",
     ),
-    when(Matchers.contains("InvalidClientTokenId")).diagnose(
+    when(aws_error_code("InvalidClientTokenId")).diagnose(
         "AWS security token is invalid",
         fix="The awsSessionToken (or access key) is invalid for this region; refresh the credentials.",
     ),
-    when(Matchers.contains("ExpiredToken")).diagnose(
+    when(aws_error_code("ExpiredToken")).diagnose(
         "AWS session token expired",
         fix="Temporary credentials have expired; refresh the awsSessionToken.",
     ),
-    when(Matchers.contains("NoSuchBucket")).diagnose(
+    when(aws_error_code("NoSuchBucket")).diagnose(
         "Bucket not found",
         fix="Verify the configured bucketNames exist in this AWS account and region.",
     ),
-    when(Matchers.contains("AccessDenied")).diagnose(
+    when(aws_error_code("AccessDenied", "AccessDeniedException")).diagnose(
         "Not authorized",
         fix="Grant s3:ListAllMyBuckets (or s3:ListBucket on the configured buckets) "
         "and cloudwatch:ListMetrics to the identity used.",
