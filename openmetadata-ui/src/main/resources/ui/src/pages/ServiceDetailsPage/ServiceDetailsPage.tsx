@@ -206,6 +206,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
   const [hostIp, setHostIp] = useState<string>();
+  // Agents inserted live from the progress stream that the paging totals
+  // don't know about yet; folded into the tab and sub-tab counts.
+  const [discoveredAgentsCount, setDiscoveredAgentsCount] = useState(0);
+
+  useEffect(() => {
+    setDiscoveredAgentsCount(0);
+  }, [decodedServiceFQN]);
 
   const fetchHostIp = async () => {
     try {
@@ -1569,9 +1576,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const agentCounts = useMemo(() => {
     return {
       [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
-      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+      [ServiceAgentSubTabs.METADATA]:
+        ingestionPaging.total + discoveredAgentsCount,
     };
-  }, [collateAgentPaging, ingestionPaging]);
+  }, [collateAgentPaging, ingestionPaging, discoveredAgentsCount]);
 
   const refreshAgentsList = useCallback(
     async (agentListType: ServiceAgentSubTabs) => {
@@ -1618,6 +1626,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         typeFilter={typeFilter}
         workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
         onCollateAgentPageChange={onCollateAgentPageChange}
+        onDiscoveredAgentsCountChange={setDiscoveredAgentsCount}
         onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         onPageChange={onPageChange}
       />
@@ -1836,7 +1845,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.agent-plural'),
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
-        count: ingestionPaging.total + collateAgentPaging.total,
+        count:
+          ingestionPaging.total +
+          collateAgentPaging.total +
+          discoveredAgentsCount,
         children: ingestionTab,
       });
     }
@@ -1902,6 +1914,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     dataModelPaging,
     ingestionPaging,
     collateAgentPaging,
+    discoveredAgentsCount,
     ingestionTab,
     testConnectionTab,
     activeTab,

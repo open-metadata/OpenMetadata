@@ -51,6 +51,7 @@ export interface IngestionProps {
   agentCounts?: Record<ServiceAgentSubTabs, number>;
   refreshAgentsList: (agentListType: ServiceAgentSubTabs) => Promise<void>;
   workflowStartAt?: number;
+  onDiscoveredAgentsCountChange?: (count: number) => void;
 }
 
 export interface SelectedRowDetails {

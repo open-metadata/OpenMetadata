@@ -204,3 +204,117 @@ test.describe(
     });
   }
 );
+
+test.describe(
+  'Service Agents stream discovery (SSE)',
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  () => {
+    const discoveryService = new DatabaseServiceClass();
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await discoveryService.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      await discoveryService.delete(apiContext);
+      await afterAction();
+    });
+
+    test('agent discovered from the stream updates card and tab counts without reload', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await redirectToHomePage(page);
+      await discoveryService.visitEntityPage(page);
+      await page.getByTestId('data-assets-header').waitFor();
+      await page.getByTestId('agents').click();
+
+      const metadataSubTab = page.getByTestId('metadata-sub-tab');
+      const hasSubTabs = await metadataSubTab.isVisible();
+      if (hasSubTabs) {
+        await metadataSubTab.click();
+      }
+
+      const agentsTabCount = page
+        .getByTestId('agents')
+        .getByTestId('filter-count');
+      const initialTabCount = Number(
+        (await agentsTabCount.textContent()) ?? '0'
+      );
+      const initialSubTabCount = hasSubTabs
+        ? Number((await metadataSubTab.textContent())?.match(/\d+/)?.[0] ?? '0')
+        : 0;
+
+      const { apiContext } = await getApiContext(page);
+
+      // The pipeline is created only AFTER the page loaded its (empty) agent
+      // list, so the card and counts below can only come from the stream.
+      const discoveredPipelineName = `pw-discovered-agent-${uuid()}`;
+      const pipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: discoveredPipelineName,
+            pipelineType: 'metadata',
+            service: {
+              id: discoveryService.entityResponseData.id,
+              type: 'databaseService',
+            },
+            sourceConfig: { config: { type: 'DatabaseMetadata' } },
+          },
+        }
+      );
+
+      expect(pipelineResponse.status()).toBe(201);
+
+      const discoveredPipeline = await pipelineResponse.json();
+      const runId = randomUUID();
+
+      // The server attaches the pipeline entity to the DISCOVERY frame, which
+      // is what lets the UI insert the agent it has never fetched.
+      const discoveryResponse = await apiContext.put(
+        `/api/v1/services/ingestionPipelines/progress/${encodeURIComponent(
+          discoveredPipeline.fullyQualifiedName
+        )}/${runId}`,
+        {
+          data: {
+            runId,
+            timestamp: Date.now(),
+            updateType: 'DISCOVERY',
+          },
+        }
+      );
+
+      expect(discoveryResponse.status()).toBe(200);
+
+      await test.step('Card appears live without a reload', async () => {
+        const agentCard = getAgentCard(page, discoveredPipelineName);
+
+        await expect(agentCard).toBeVisible();
+        await expect(agentCard.getByTestId('pipeline-status')).toContainText(
+          'Running'
+        );
+      });
+
+      await test.step('Agents tab count includes the discovered agent', async () => {
+        await expect(agentsTabCount).toHaveText(String(initialTabCount + 1));
+      });
+
+      if (hasSubTabs) {
+        await test.step('Metadata sub-tab count includes the discovered agent', async () => {
+          await expect(metadataSubTab).toContainText(
+            String(initialSubTabCount + 1)
+          );
+        });
+      }
+    });
+  }
+);

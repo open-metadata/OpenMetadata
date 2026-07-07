@@ -197,6 +197,33 @@ describe('useMetadataAgents', () => {
     ).toBe(true);
   });
 
+  it('tracks stream-discovered agents in discoveredCount until the prop catches up', () => {
+    const initial = [buildPipeline('metadata_agent')];
+    const { result, rerender } = renderAgentsHook(initial);
+
+    expect(result.current.discoveredCount).toBe(0);
+
+    act(() => {
+      capturedOnEvent(
+        buildEvent(
+          'testSnowflake.autopilot_agent',
+          { ingestionPipeline: buildPipeline('autopilot_agent') },
+          { updateType: ProgressUpdateType.Discovery }
+        )
+      );
+    });
+
+    expect(result.current.discoveredCount).toBe(1);
+
+    rerender({ pipelines: [...initial] });
+
+    expect(result.current.discoveredCount).toBe(1);
+
+    rerender({ pipelines: [...initial, buildPipeline('autopilot_agent')] });
+
+    expect(result.current.discoveredCount).toBe(0);
+  });
+
   it('does not duplicate a discovered agent once the prop includes it', () => {
     const initial = [buildPipeline('metadata_agent')];
     const { result, rerender } = renderAgentsHook(initial);

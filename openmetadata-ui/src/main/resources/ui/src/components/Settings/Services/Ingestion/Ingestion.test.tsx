@@ -17,6 +17,7 @@ import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ingestionProps } from '../../../../mocks/Ingestion.mock';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
+import { useMetadataAgents } from '../../../ServiceAgents/hooks/useMetadataAgents';
 import Ingestion from './Ingestion.component';
 
 jest.mock(
@@ -33,7 +34,9 @@ jest.mock('./AddIngestionButton.component', () => {
 });
 
 jest.mock('../../../ServiceAgents/hooks/useMetadataAgents', () => ({
-  useMetadataAgents: jest.fn().mockReturnValue({ agents: [] }),
+  useMetadataAgents: jest
+    .fn()
+    .mockReturnValue({ agents: [], discoveredCount: 0 }),
 }));
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -118,5 +121,25 @@ describe('Ingestion', () => {
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
+  });
+
+  it('should bubble the stream-discovered agents count to the parent', async () => {
+    (useMetadataAgents as jest.Mock).mockReturnValue({
+      agents: [],
+      discoveredCount: 3,
+    });
+    const onDiscoveredAgentsCountChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          onDiscoveredAgentsCountChange={onDiscoveredAgentsCountChange}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(onDiscoveredAgentsCountChange).toHaveBeenCalledWith(3);
   });
 });

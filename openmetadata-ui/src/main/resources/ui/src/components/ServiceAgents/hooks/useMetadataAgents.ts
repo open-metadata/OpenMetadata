@@ -47,10 +47,11 @@ export const useMetadataAgents = (
   pipelines: IngestionPipeline[],
   serviceCategory: ServiceCategory,
   serviceFqn?: string
-): { agents: Agent[] } => {
+): { agents: Agent[]; discoveredCount: number } => {
   const [agents, setAgents] = useState<Agent[]>(() =>
     pipelines.map(mapPipelineToAgent)
   );
+  const [discoveredCount, setDiscoveredCount] = useState(0);
   const agentsRef = useRef(agents);
   agentsRef.current = agents;
 
@@ -78,6 +79,7 @@ export const useMetadataAgents = (
         pipeline.fullyQualifiedName ?? pipeline.name
       );
     });
+    setDiscoveredCount(discoveredPipelinesRef.current.size);
     const merged = [
       ...pipelines,
       ...Array.from(discoveredPipelinesRef.current.values()),
@@ -153,6 +155,7 @@ export const useMetadataAgents = (
           ...agentsRef.current,
           mapPipelineToAgent(event.ingestionPipeline),
         ];
+        setDiscoveredCount(discoveredPipelinesRef.current.size);
       }
       if (isStaleEvent(event)) {
         return;
@@ -203,5 +206,5 @@ export const useMetadataAgents = (
     onEvent: handleProgressEvent,
   });
 
-  return { agents };
+  return { agents, discoveredCount };
 };

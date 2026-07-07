@@ -13,7 +13,7 @@
 
 import { Tabs } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { ComponentType, Key, useCallback, useMemo } from 'react';
+import { ComponentType, Key, useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
@@ -47,6 +47,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   agentCounts,
   refreshAgentsList,
   workflowStartAt,
+  onDiscoveredAgentsCountChange,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -58,11 +59,15 @@ const Ingestion: React.FC<IngestionProps> = ({
   }>();
   const { permissions } = usePermissionProvider();
 
-  const { agents } = useMetadataAgents(
+  const { agents, discoveredCount } = useMetadataAgents(
     ingestionPipelineList,
     serviceCategory,
     decodedServiceFQN
   );
+
+  useEffect(() => {
+    onDiscoveredAgentsCountChange?.(discoveredCount);
+  }, [discoveredCount, onDiscoveredAgentsCountChange]);
 
   const isDBService = useMemo(
     () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
