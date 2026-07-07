@@ -255,6 +255,13 @@ final class GovernanceActivity {
     return result;
   }
 
+  /**
+   * Projects an asset's governance state onto one normalized map that {@link #eventsFor} walks with
+   * {@code instanceof} guards. The three AI types differ in shape — AIApplication/McpServer carry a
+   * rich {@code governanceMetadata} subtree, while LLMModel exposes only a flat
+   * {@code governanceStatus} enum whose timeline is synthesized into an equivalent shim — so the map
+   * projection keeps the downstream timestamp extraction uniform without a per-type branch per event.
+   */
   private static Map<String, Object> governance(
       String entityType,
       EntityInterface entity,

@@ -41,6 +41,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.AIGovernanceRegistration;
 import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
@@ -78,6 +79,8 @@ public class AIGovernanceResource {
 
   private static final Set<String> SUPPORTED_TYPES =
       Set.of(Entity.AI_APPLICATION, Entity.LLM_MODEL, Entity.MCP_SERVER);
+  private static final String STATUS_PENDING_APPROVAL = "PendingApproval";
+  private static final String STATUS_APPROVED = "Approved";
 
   private final Authorizer authorizer;
 
@@ -392,32 +395,45 @@ public class AIGovernanceResource {
         new ResourceContext<>(entityType, id, null, ResourceContextInterface.Operation.PATCH));
   }
 
-  @SuppressWarnings("unchecked")
   private void applyStatusTransition(
       EntityInterface entity, String newStatus, String user, String comment) {
     entity.setEntityStatus(mapToEntityStatus(newStatus));
     if (entity instanceof LLMModel llm) {
       llm.setGovernanceStatus(mapToGovernanceStatus(newStatus));
-      return;
+    } else if (entity instanceof AIApplication app) {
+      GovernanceMetadata governance =
+          app.getGovernanceMetadata() == null
+              ? new GovernanceMetadata()
+              : app.getGovernanceMetadata();
+      governance.setRegistrationStatus(GovernanceMetadata.RegistrationStatus.fromValue(newStatus));
+      stampRegistrationMilestones(governance, newStatus, user, comment);
+      app.setGovernanceMetadata(governance);
+    } else if (entity instanceof McpServer server) {
+      McpGovernanceMetadata governance =
+          server.getGovernanceMetadata() == null
+              ? new McpGovernanceMetadata()
+              : server.getGovernanceMetadata();
+      governance.setRegistrationStatus(
+          McpGovernanceMetadata.RegistrationStatus.fromValue(newStatus));
+      stampRegistrationMilestones(governance, newStatus, user, comment);
+      server.setGovernanceMetadata(governance);
     }
-    Map<String, Object> governance = readGovernance(entity);
-    if (governance == null) {
-      governance = new LinkedHashMap<>();
-    }
+  }
+
+  private static void stampRegistrationMilestones(
+      AIGovernanceRegistration governance, String newStatus, String user, String comment) {
     long now = System.currentTimeMillis();
-    governance.put("registrationStatus", newStatus);
-    if ("PendingApproval".equals(newStatus)) {
-      governance.putIfAbsent("registeredBy", user);
-      governance.putIfAbsent("registeredAt", now);
+    if (STATUS_PENDING_APPROVAL.equals(newStatus) && governance.getRegisteredBy() == null) {
+      governance.setRegisteredBy(user);
+      governance.setRegisteredAt(now);
     }
-    if ("Approved".equals(newStatus)) {
-      governance.put("approvedBy", user);
-      governance.put("approvedAt", now);
+    if (STATUS_APPROVED.equals(newStatus)) {
+      governance.setApprovedBy(user);
+      governance.setApprovedAt(now);
     }
     if (comment != null && !comment.isBlank()) {
-      governance.put("approvalComments", comment);
+      governance.setApprovalComments(comment);
     }
-    writeGovernance(entity, governance);
   }
 
   private static EntityStatus mapToEntityStatus(String newStatus) {
@@ -454,35 +470,6 @@ public class AIGovernanceResource {
         result = LLMModel.GovernanceStatus.UNAUTHORIZED;
     }
     return result;
-  }
-
-  /**
-   * {@code AIApplication} and {@code McpServer} carry distinct generated governance-metadata
-   * types with no shared supertype; projecting to a mutable map lets {@link
-   * #applyStatusTransition} share one block of transition logic across both instead of
-   * duplicating the typed setters per entity type.
-   */
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> readGovernance(EntityInterface entity) {
-    if (entity instanceof AIApplication app) {
-      return JsonUtils.getObjectMapper().convertValue(app.getGovernanceMetadata(), Map.class);
-    }
-    if (entity instanceof McpServer server) {
-      return JsonUtils.getObjectMapper().convertValue(server.getGovernanceMetadata(), Map.class);
-    }
-    return null;
-  }
-
-  private void writeGovernance(EntityInterface entity, Map<String, Object> governance) {
-    if (entity instanceof AIApplication app) {
-      app.setGovernanceMetadata(
-          JsonUtils.getObjectMapper().convertValue(governance, GovernanceMetadata.class));
-      return;
-    }
-    if (entity instanceof McpServer server) {
-      server.setGovernanceMetadata(
-          JsonUtils.getObjectMapper().convertValue(governance, McpGovernanceMetadata.class));
-    }
   }
 
   // ─── request / response payloads ────────────────────────────────────────

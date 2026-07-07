@@ -120,6 +120,11 @@ final class IntakeChecks {
     return result;
   }
 
+  /**
+   * The three AI types keep their evidence bundle in different places (AIApplication/McpServer under
+   * {@code governanceMetadata.evidence}, LLMModel at the top level), so {@code instanceof} dispatch
+   * picks the right container and projects it to a map for uniform key lookup.
+   */
   private static String readEvidenceUrl(EntityInterface entity, String key) {
     String url = null;
     Map<String, Object> evidence = null;
@@ -140,6 +145,13 @@ final class IntakeChecks {
     return url;
   }
 
+  /**
+   * AIApplication and McpServer carry distinct generated governance-metadata types with no shared
+   * supertype (LLMModel has no such block). Projecting to a map lets the deeply-nested,
+   * semi-structured compliance subtree ({@code aiCompliance.complianceRecords[].euAIAct.*}) be
+   * walked uniformly with {@code instanceof} guards rather than a long cascade of typed getters and
+   * null checks.
+   */
   @SuppressWarnings("unchecked")
   private static Map<String, Object> readGovernance(EntityInterface entity) {
     Object source = null;
