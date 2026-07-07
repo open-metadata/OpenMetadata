@@ -192,6 +192,15 @@ public class MetricRepository extends EntityRepository<Metric> {
     List<UUID> ids = entities.stream().map(Metric::getId).toList();
     deleteFromMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
     deleteToMany(ids, Entity.METRIC, Relationship.RELATED_TO, Entity.METRIC);
+    // Mirror storeRelationships' re-add of the APPLIED_TO edges so the batch import/update path
+    // replaces the asset list instead of unioning with stale edges (which AIContextBuilder would
+    // keep routing). Assets are heterogeneous, so pass a null toEntity to clear every type from the
+    // metric (the FROM side). Only clear for metrics that actually carry an asset list: assets is
+    // not a CSV column, so a CSV import leaves it null to mean "unchanged" — clearing those would
+    // wipe the existing edges. A null list preserves; an empty list explicitly clears.
+    List<UUID> assetCarryingIds =
+        entities.stream().filter(metric -> metric.getAssets() != null).map(Metric::getId).toList();
+    deleteFromMany(assetCarryingIds, Entity.METRIC, Relationship.APPLIED_TO, null);
   }
 
   @Override

@@ -15,6 +15,7 @@ package org.openmetadata.it.tests.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.StreamSupport;
@@ -138,6 +139,29 @@ class MetricAssetsIT extends McpTestBase {
     patchAssets(metric);
     JsonNode assets = assetsOf(metric);
     assertThat(assets == null || assets.isEmpty()).isTrue();
+  }
+
+  @Test
+  void csvImport_withoutAssetsColumn_preservesExistingAssets() throws Exception {
+    // The metric CSV has no assets column, so exporting then re-importing round-trips the metric
+    // with its asset list unset. The batch import path (storeMany →
+    // clearEntitySpecificRelationshipsForMany) must treat an absent asset list as "unchanged" and
+    // leave the APPLIED_TO edges intact — clearing them here would silently wipe the metric's
+    // assets on every CSV import.
+    Metric metric = createMetric("metricassets_csv_" + suffix, assetA, assetB);
+    assertThat(assetsOf(metric).size()).isEqualTo(2);
+
+    String csv = getResponse("metrics/name/" + metric.getName() + "/export", authToken).body();
+    HttpResponse<String> importResponse =
+        putText("metrics/name/" + metric.getName() + "/import?dryRun=false", csv);
+    assertThat(importResponse.statusCode()).isEqualTo(200);
+    assertThat(OBJECT_MAPPER.readTree(importResponse.body()).path("numberOfRowsProcessed").asInt())
+        .isGreaterThanOrEqualTo(1);
+
+    JsonNode assets = assetsOf(metric);
+    assertThat(assets.size()).isEqualTo(2);
+    assertThat(containsAsset(assets, assetA)).isTrue();
+    assertThat(containsAsset(assets, assetB)).isTrue();
   }
 
   @Test
