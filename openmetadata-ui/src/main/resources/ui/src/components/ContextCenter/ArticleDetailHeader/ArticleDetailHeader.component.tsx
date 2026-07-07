@@ -392,9 +392,9 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       onUpdate={handleDomainSave}>
                       <ButtonUtility
                         className="tw:p-1"
-                        color="secondary"
+                        color="tertiary"
                         data-testid="edit-domain-btn"
-                        icon={<EditIcon className="tw:text-gray-500 tw:hover:text-gray-600" height={11} width={11} />}
+                        icon={<EditIcon height={14} width={14} />}
                         tooltip={t('label.edit-entity', {
                           entity: t('label.domain'),
                         })}
@@ -449,7 +449,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                       onUpdate={handleOwnerSave}>
                       <ButtonUtility
                         className="tw:p-1"
-                        color="secondary"
+                        color="tertiary"
                         data-testid="edit-owner-btn"
                         icon={<EditIcon className="tw:text-gray-500 tw:hover:text-gray-600" height={11} width={11} />}
                         tooltip={t('label.edit-entity', {
@@ -523,12 +523,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
                     voteStatus === QueryVoteType.votedUp ? <ThumbsUpActiveIcon
-                      height={18}
-                      width={18}
+                      height={20}
+                      width={20}
                     /> :
                     <ThumbsUpIcon
-                      height={18}
-                      width={18}
+                      height={20}
+                      width={20}
                     />
                   }
                   tooltip={t('label.up-vote')}
@@ -547,12 +547,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   disabled={knowledgePage?.deleted || voteLoading !== null}
                   icon={
                      voteStatus === QueryVoteType.votedDown ? <ThumbsDownActiveIcon
-                      height={18}
-                      width={18}
+                      height={20}
+                      width={20}
                     /> :
                     <ThumbsDownIcon
-                      height={18}
-                      width={18}
+                      height={20}
+                      width={20}
                     />
                   }
                   tooltip={t('label.down-vote')}
@@ -563,7 +563,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="conversation"
-                  icon={<ChatIcon height={18} width={18} />}
+                  icon={<ChatIcon height={20} width={20} />}
                   tooltip={t('label.conversation')}
                   onClick={handleOpenConversation}
                 />
@@ -573,7 +573,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 color="tertiary"
                 data-testid="follow-btn"
                 disabled={isFollowLoading || knowledgePage?.deleted}
-                icon={isFollowing ? <FollowActiveIcon height={18} width={18} /> : <FollowIcon height={18} width={18} /> }
+                icon={isFollowing ? <FollowActiveIcon height={20} width={20} /> : <FollowIcon height={20} width={20} /> }
                 tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
                 onClick={handleFollowClick}
               />
@@ -582,7 +582,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               color="tertiary"
               testId="copy-btn"
               url={window.location.href}>
-              <CopyIcon height={18} width={18} />
+              <CopyIcon height={20} width={20} />
             </CopyLinkButton>
 
             {permissions?.Delete && (
@@ -590,7 +590,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                  <ButtonUtility
                   color="tertiary"
                   data-testid="edit-memory-btn"
-                  icon={ <DotsVerticalIcon height={18} width={18} />}
+                  icon={ <DotsVerticalIcon height={20} width={20} />}
                   size="sm"
                   tooltip={t('label.manage-entity', {
                               entity: t('label.article'),
