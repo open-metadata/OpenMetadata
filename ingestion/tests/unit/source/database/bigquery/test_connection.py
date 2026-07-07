@@ -17,6 +17,7 @@ scenario classifies to the intended diagnosis).
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from google.api_core.exceptions import Forbidden, NotFound
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
 
@@ -32,6 +33,7 @@ from metadata.ingestion.source.database.bigquery.connection import (
     BigQueryChecks,
     get_table_view_names,
 )
+from metadata.utils.credentials import InvalidPrivateKeyException
 
 _CONNECTION_MODULE = "metadata.ingestion.source.database.bigquery.connection"
 
@@ -120,8 +122,20 @@ def test_network_errors_classify_through_including():
     assert BIGQUERY_ERRORS.classify(error).title == "Connection timed out"
 
 
+def test_malformed_private_key_is_classified():
+    # A malformed PEM raises InvalidPrivateKeyException while the engine is built;
+    # it must be classified (and, being first, win over any message-token rule).
+    error = InvalidPrivateKeyException("Cannot serialise key: Unable to load PEM file.")
+    assert BIGQUERY_ERRORS.classify(error).title == "Malformed service account private key"
+
+
+def _checks(service_connection, client=None) -> BigQueryChecks:
+    engine = client if client is not None else MagicMock()
+    return BigQueryChecks(get_client=lambda: engine, service_connection=service_connection)
+
+
 def test_checks_cover_exactly_the_wired_steps():
-    checks = BigQueryChecks(client=MagicMock(), service_connection=_config())
+    checks = _checks(_config())
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -133,27 +147,38 @@ def test_checks_cover_exactly_the_wired_steps():
     }
 
 
-def test_construction_touches_no_network():
-    # Regression for gotcha #2: building the provider must not connect - that would
-    # run before the gate and bypass the preflight.
-    client = MagicMock()
-    BigQueryChecks(client=client, service_connection=_config())
-    client.connect.assert_not_called()
-    client.execute.assert_not_called()
+def test_construction_does_not_build_the_client():
+    # The engine is built lazily inside CheckAccess, never at construction - so
+    # credential parsing (and any connect) happens behind the gate, not before it.
+    get_client = MagicMock()
+    BigQueryChecks(get_client=get_client, service_connection=_config())
+    get_client.assert_not_called()
 
 
-def test_check_access_pings_the_engine():
-    checks = BigQueryChecks(client=MagicMock(), service_connection=_config())
+def test_check_access_builds_client_lazily_and_pings():
+    get_client = MagicMock()
+    checks = BigQueryChecks(get_client=get_client, service_connection=_config())
     with patch(f"{_CONNECTION_MODULE}.ping", return_value=Evidence(summary="connection established")) as mock_ping:
         evidence = checks.check_access()
-    mock_ping.assert_called_once_with(checks.client)
+    get_client.assert_called_once_with()
+    mock_ping.assert_called_once_with(get_client.return_value)
     assert evidence.summary == "connection established"
+
+
+def test_check_access_surfaces_malformed_key_error():
+    # A malformed key fails while building the engine; because the engine is built
+    # inside CheckAccess, the error reaches the runner (here: the caller) to be
+    # classified, instead of escaping before the test starts.
+    error = InvalidPrivateKeyException("Cannot serialise key: Unable to load PEM file.")
+    checks = BigQueryChecks(get_client=MagicMock(side_effect=error), service_connection=_config())
+    with pytest.raises(InvalidPrivateKeyException):
+        checks.check_access()
 
 
 def test_get_queries_formats_statement_lazily():
     # The INFORMATION_SCHEMA.JOBS_BY_PROJECT statement must be built inside the
     # check (behind the gate), scoped to the configured usage region.
-    checks = BigQueryChecks(client=MagicMock(), service_connection=_config(usageLocation="us-east1"))
+    checks = _checks(_config(usageLocation="us-east1"))
     captured = {}
 
     def fake(client, statement, summarize, *args, **kwargs):
@@ -168,34 +193,28 @@ def test_get_queries_formats_statement_lazily():
 
 
 def test_get_tags_skips_when_policy_tags_disabled():
-    checks = BigQueryChecks(client=MagicMock(), service_connection=_config(includePolicyTags=False))
+    checks = _checks(_config(includePolicyTags=False))
     assert checks.get_tags() is None
 
 
 def test_get_tags_skips_when_no_taxonomy_project():
     client = MagicMock()
     client.url.host = None
-    checks = BigQueryChecks(client=client, service_connection=_config(includePolicyTags=True))
+    checks = _checks(_config(includePolicyTags=True), client=client)
     assert checks.get_tags() is None
 
 
 def test_get_tags_skips_when_no_location():
     client = MagicMock()
     client.url.host = "proj-a"
-    checks = BigQueryChecks(
-        client=client,
-        service_connection=_config(includePolicyTags=True, taxonomyLocation=None),
-    )
+    checks = _checks(_config(includePolicyTags=True, taxonomyLocation=None), client=client)
     assert checks.get_tags() is None
 
 
 def test_get_tags_counts_policy_tags():
     client = MagicMock()
     client.url.host = "proj-a"
-    checks = BigQueryChecks(
-        client=client,
-        service_connection=_config(includePolicyTags=True, taxonomyLocation="us"),
-    )
+    checks = _checks(_config(includePolicyTags=True, taxonomyLocation="us"), client=client)
     tag_client = MagicMock()
     tag_client.list_taxonomies.return_value = [MagicMock(name="tax")]
     tag_client.list_policy_tags.return_value = [object(), object()]

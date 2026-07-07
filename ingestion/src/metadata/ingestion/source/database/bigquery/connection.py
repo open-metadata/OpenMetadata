@@ -61,10 +61,15 @@ from metadata.ingestion.source.database.bigquery.helper import (
 )
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.bigquery_utils import get_bigquery_client
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    InvalidPrivateKeyException,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from metadata.core.connections.test_connection import ChecksProvider
 
 logger = ingestion_logger()
@@ -76,6 +81,11 @@ logger = ingestion_logger()
 # type and stable message token below (customer project ids never appear in a
 # rule).
 BIGQUERY_ERRORS = ErrorPack(
+    when(Matchers.exception(InvalidPrivateKeyException)).diagnose(
+        "Malformed service account private key",
+        fix="The private key in the GCP credentials could not be parsed as a PEM key. Paste the "
+        "full key from the service account JSON, including the BEGIN/END lines and real newlines.",
+    ),
     when(Matchers.contains("invalid_grant")).diagnose(
         "Invalid service account credentials",
         fix="The service account key was rejected (invalid_grant). Verify the private key and "
@@ -270,15 +280,30 @@ class BigQueryChecks:
 
     Steps run against a single-project ``Engine``; the multi-project fan-out
     happens a layer up (``BigquerySource._test_connection`` clones the connection
-    per project and drives this provider once per clone). No step touches the
-    network at construction - each statement/probe is built inside its ``@check``.
+    per project and drives this provider once per clone).
+
+    The engine is built lazily on first use inside ``CheckAccess`` (never at
+    construction), so credential parsing - which happens while building the engine
+    (e.g. a malformed private key) - fails *inside the gate step* and is classified
+    by the error pack, instead of escaping before the runner starts.
     """
 
     errors = BIGQUERY_ERRORS
 
-    def __init__(self, client: Engine, service_connection: BigQueryConnectionConfig) -> None:
-        self.client = client
+    def __init__(
+        self,
+        get_client: Callable[[], Engine],
+        service_connection: BigQueryConnectionConfig,
+    ) -> None:
+        self._get_client = get_client
+        self._client: Engine | None = None
         self.service_connection = service_connection
+
+    @property
+    def client(self) -> Engine:
+        if self._client is None:
+            self._client = self._get_client()
+        return self._client
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -358,4 +383,7 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
         return engine
 
     def checks(self) -> ChecksProvider:
-        return BigQueryChecks(client=self.client, service_connection=self.service_connection)
+        return BigQueryChecks(
+            get_client=lambda: self.client,
+            service_connection=self.service_connection,
+        )

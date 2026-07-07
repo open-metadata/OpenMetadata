@@ -88,17 +88,17 @@ def test_test_connection_probes_each_project_with_a_valid_timeout(mock_creds, mo
         assert isinstance(timeout_seconds, int)
 
 
-@patch(f"{_BASE_CONNECTION_MODULE}.TestConnectionRunner")
 @patch(f"{_CONNECTION_MODULE}.create_generic_db_connection")
 @patch(f"{_CONNECTION_MODULE}.set_google_credentials")
-def test_test_connection_disposes_engine(mock_creds, mock_create, mock_runner):
+def test_close_disposes_engine(mock_creds, mock_create):
     engine = MagicMock()
     mock_create.return_value = engine
 
     connection = BigQueryConnection(_bq_config("proj-a"))
-    connection.test_connection(metadata=MagicMock())
+    _ = connection.client
+    connection.close()
 
     mock_create.assert_called_once()
     # both halves of the fix: _get_client registers engine.dispose AND
-    # BaseConnection.test_connection calls self.close(), so the engine is always released.
+    # close() unwinds it, so the engine built for a test connection is always released.
     engine.dispose.assert_called_once()
